@@ -20,10 +20,7 @@
 
 """Custom objects for the MarketManager ABCI application."""
 
-import dataclasses
-import json
-from enum import Enum, auto
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Tuple
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
@@ -38,69 +35,6 @@ from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciA
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
-
-
-class BetStatus(Enum):
-    """A bet's status."""
-
-    UNPROCESSED = auto()
-    PROCESSED = auto()
-    WAITING_RESPONSE = auto()
-    RESPONSE_RECEIVED = auto()
-    BLACKLISTED = auto()
-
-
-@dataclasses.dataclass
-class Bet:
-    """A bet's structure."""
-
-    id: str
-    title: str
-    creator: str
-    fee: int
-    openingTimestamp: int
-    outcomeSlotCount: int
-    outcomeTokenAmounts: List[int]
-    outcomeTokenMarginalPrices: List[float]
-    outcomes: Optional[List[str]]
-    status: BetStatus = BetStatus.UNPROCESSED
-    blacklist_expiration: float = -1
-
-    def __post_init__(self) -> None:
-        """Post initialization to adjust the values."""
-        if self.outcomes == "null":
-            self.outcomes = None
-
-        if isinstance(self.status, int):
-            super().__setattr__("status", BetStatus(self.status))
-
-
-class BetsEncoder(json.JSONEncoder):
-    """JSON encoder for bets."""
-
-    def default(self, o: Any) -> Any:
-        """The default encoder."""
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
-
-
-class BetsDecoder(json.JSONDecoder):
-    """JSON decoder for bets."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the Bets JSON decoder."""
-        super().__init__(object_hook=self.hook, *args, **kwargs)
-
-    @staticmethod
-    def hook(data: Dict[str, Any]) -> Union[Bet, Dict[str, Bet]]:
-        """Perform the custom decoding."""
-        # if this is a `Bet`
-        status_attributes = Bet.__annotations__.keys()
-        if sorted(status_attributes) == sorted(data.keys()):
-            return Bet(**data)
-
-        return data
 
 
 class SharedState(BaseSharedState):

@@ -24,14 +24,10 @@ from typing import Any, Dict, Generator, List, Optional, Set, Type
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
+from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus, BetsEncoder
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     QueryingBehaviour,
-)
-from packages.valory.skills.market_manager_abci.models import (
-    Bet,
-    BetStatus,
-    BetsEncoder,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (

@@ -36,7 +36,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.models import Bet, BetsDecoder
+from packages.valory.skills.market_manager_abci.bets import Bet, BetsDecoder
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
