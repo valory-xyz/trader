@@ -29,9 +29,11 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen impor
 )
 from packages.valory.skills.market_manager_abci.models import (
     Bet,
+    BetsEncoder,
     MarketManagerParams,
     SharedState,
 )
+from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
 
 
 def to_content(query: str) -> bytes:
@@ -57,6 +59,8 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize a querying behaviour."""
         super().__init__(**kwargs)
+        # list of bets mapped to prediction markets
+        self.bets: Dict[str, List[Bet]] = {}
         self._call_failed: bool = False
         self._fetch_status: FetchStatus = FetchStatus.NONE
         self._creators_iterator: Iterator[
@@ -74,6 +78,23 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def shared_state(self) -> SharedState:
         """Get the shared state."""
         return cast(SharedState, self.context.state)
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return cast(SynchronizedData, super().synchronized_data)
+
+    @property
+    def serialized_bets(self) -> Optional[str]:
+        """Get the bets serialized."""
+        if len(self.bets) == 0:
+            return None
+        return json.dumps(self.bets, cls=BetsEncoder)
+
+    @property
+    def bets_ids(self) -> List[str]:
+        """Get the ids of the already existing bets."""
+        return [bet.id for bets in self.bets.values() for bet in bets]
 
     @property
     def current_subgraph(self) -> ApiSpecs:
@@ -164,16 +185,24 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
     def _update_bets(
         self,
-    ) -> Generator[None, None, bool]:
-        """Fetch the questions from all the prediction markets and update the bets in the shared state."""
+    ) -> Generator:
+        """Fetch the questions from all the prediction markets and update the local copy of the bets."""
+        self.bets = self.synchronized_data.bets
+        existing_ids = self.bets_ids
+
         while True:
             can_proceed = self._prepare_bets_fetching()
             if not can_proceed:
                 break
 
-            current_bets = yield from self._fetch_bets()
-            if current_bets is not None:
-                deserialized_bets = [Bet(**bet) for bet in current_bets]
-                self.shared_state.bets[self._current_market] = deserialized_bets
+            bets_market_chunk = yield from self._fetch_bets()
+            if bets_market_chunk is not None:
+                bets_updates = (
+                    Bet(**bet)
+                    for bet in bets_market_chunk
+                    if bet.id not in existing_ids
+                )
+                self.bets[self._current_market].extend(bets_updates)
 
-        return self._fetch_status == FetchStatus.SUCCESS
+        if self._fetch_status != FetchStatus.SUCCESS:
+            self.bets = {}

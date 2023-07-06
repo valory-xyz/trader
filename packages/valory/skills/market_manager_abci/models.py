@@ -72,8 +72,9 @@ class Bet:
         if isinstance(self.status, int):
             super().__setattr__("status", BetStatus(self.status))
 
-class BetEncoder(json.JSONEncoder):
-    """JSON encoder for a bet."""
+
+class BetsEncoder(json.JSONEncoder):
+    """JSON encoder for bets."""
 
     def default(self, o: Any) -> Any:
         """The default encoder."""
@@ -104,18 +105,6 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls = MarketManagerAbciApp
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the state."""
-        # list of bets mapped to prediction markets
-        self.bets: Dict[str, List[Bet]] = {}
-        super().__init__(*args, **kwargs)
-
-    @property
-    def bets_hash(self) -> str:
-        """Fetch and update the bets of interest, and return the result's hash."""
-        bets = json.dumps(self.bets, cls=BetEncoder).encode()
-        return IPFSHashOnly.hash_bytes(bets)
 
 
 class RandomnessApi(ApiSpecs):

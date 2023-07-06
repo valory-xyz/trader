@@ -66,10 +66,9 @@ class UpdateBetsBehaviour(QueryingBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            succeeded = yield from self._update_bets()
-            bets_hash = self.shared_state.bets_hash if succeeded else ""
+            yield from self._update_bets()
             payload = UpdateBetsPayload(
-                self.context.agent_address, succeeded, bets_hash
+                self.context.agent_address, self.serialized_bets
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

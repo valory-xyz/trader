@@ -19,9 +19,10 @@
 
 """This module contains the rounds for the MarketManager ABCI application."""
 
+import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type, cast
+from typing import Dict, List, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -35,6 +36,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
+from packages.valory.skills.market_manager_abci.models import Bet, BetsDecoder
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
@@ -42,7 +44,6 @@ class Event(Enum):
     """Event enumeration for the MarketManager demo."""
 
     DONE = "done"
-    NONE = "none"
     NO_MAJORITY = "no_majority"
     ROUND_TIMEOUT = "round_timeout"
     FETCH_ERROR = "fetch_error"
@@ -60,14 +61,14 @@ class SynchronizedData(BaseSynchronizedData):
         return CollectionRound.deserialize_collection(serialized)
 
     @property
-    def fetch_succeeded(self) -> bool:
+    def bets(self) -> Dict[str, List[Bet]]:
         """Get the most voted bets."""
-        return bool(self.db.get_strict("fetch_succeeded"))
+        serialized_bets = str(self.db.get("bets", ""))
 
-    @property
-    def bets_hash(self) -> str:
-        """Get the most voted bets."""
-        return str(self.db.get_strict("bets_hash"))
+        if serialized_bets == "":
+            return {}
+
+        return json.loads(serialized_bets, cls=BetsDecoder)
 
     @property
     def participant_to_bets(self) -> DeserializedCollection:
@@ -97,25 +98,11 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
 
     payload_class = UpdateBetsPayload
     done_event = Event.DONE
-    none_event = Event.NONE
+    none_event = Event.FETCH_ERROR
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (
-        get_name(SynchronizedData.fetch_succeeded),
-        get_name(SynchronizedData.bets_hash),
-    )
+    selection_key = get_name(SynchronizedData.bets)
     collection_key = get_name(SynchronizedData.participant_to_bets)
     synchronized_data_class = SynchronizedData
-
-    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
-        """Process the end of the block."""
-        res = super().end_block()
-        if res is None:
-            return None
-
-        synced_data, event = cast(Tuple[SynchronizedData, Event], res)
-        if event == self.done_event and not synced_data.fetch_succeeded:
-            event = Event.FETCH_ERROR
-        return synced_data, event
 
 
 class FinishedMarketManagerRound(DegenerateRound, ABC):
@@ -133,7 +120,6 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
     transition_function: AbciAppTransitionFunction = {
         UpdateBetsRound: {
             Event.DONE: FinishedMarketManagerRound,
-            Event.NONE: FailedMarketManagerRound,  # cannot occur as the payload's fields do not accept `None` values
             Event.FETCH_ERROR: FailedMarketManagerRound,
             Event.ROUND_TIMEOUT: UpdateBetsRound,
             Event.NO_MAJORITY: UpdateBetsRound,
@@ -148,6 +134,6 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {UpdateBetsRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
-        FinishedMarketManagerRound: set(),
+        FinishedMarketManagerRound: {get_name(SynchronizedData.bets)},
         FailedMarketManagerRound: set(),
     }

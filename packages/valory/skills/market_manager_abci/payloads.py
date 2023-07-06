@@ -20,6 +20,7 @@
 """This module contains the transaction payloads for the MarketManager."""
 
 from dataclasses import dataclass
+from typing import Optional
 
 from packages.valory.skills.abstract_round_abci.base import (
     BaseTxPayload as BaseMarketManagerPayload,
@@ -30,5 +31,4 @@ from packages.valory.skills.abstract_round_abci.base import (
 class UpdateBetsPayload(BaseMarketManagerPayload):
     """A transaction payload for the updated bets."""
 
-    succeeded: bool
-    bets_hash: str
+    bets: Optional[str]
