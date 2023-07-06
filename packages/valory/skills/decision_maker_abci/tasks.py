@@ -20,20 +20,10 @@
 """Contains the background tasks of the decision maker skill."""
 
 from dataclasses import dataclass
-from string import Template
-from typing import Optional
+from typing import Optional, Any
 
 from aea.skills.tasks import Task
 from mech_client.interact import interact
-
-BET_PROMPT = Template(
-    """
-    With the given question "${question}" 
-    and the `yes` option represented by ${yes} 
-    and the `no` option represented by ${no}, 
-    what are the respective probabilities of `p_yes` and `p_no` occurring?
-    """
-)
 
 
 @dataclass
@@ -69,16 +59,11 @@ class MechInteractionTask(Task):
 
     def execute(
         self,
-        question: str,
-        yes: str,
-        no: str,
-        agent_id: int,
-        tool: str,
-        private_key_path: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> MechInteractionResponse:
         """Execute the task."""
-        prompt = BET_PROMPT.substitute(question=question, yes=yes, no=no)
-        res = interact(prompt, agent_id, tool, private_key_path)
+        res = interact(*args, **kwargs)
 
         try:
             prediction = PredictionResponse(**res)
