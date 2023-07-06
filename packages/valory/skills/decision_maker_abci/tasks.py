@@ -45,6 +45,13 @@ class PredictionResponse:
         ):
             raise ValueError("Invalid prediction response initialization.")
 
+    @property
+    def vote(self) -> Optional[int]:
+        """Return the vote. `0` represents "yes" and `1` represents "no"."""
+        if self.p_no != self.p_yes:
+            return bool(self.p_no > self.p_yes)
+        return None
+
 
 @dataclass
 class MechInteractionResponse:
