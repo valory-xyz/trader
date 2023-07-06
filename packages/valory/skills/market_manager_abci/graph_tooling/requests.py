@@ -28,8 +28,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen impor
     questions,
 )
 from packages.valory.skills.market_manager_abci.models import (
-    Bet,
-    BetsEncoder,
     MarketManagerParams,
     SharedState,
 )
@@ -59,8 +57,6 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize a querying behaviour."""
         super().__init__(**kwargs)
-        # list of bets mapped to prediction markets
-        self.bets: Dict[str, List[Bet]] = {}
         self._call_failed: bool = False
         self._fetch_status: FetchStatus = FetchStatus.NONE
         self._creators_iterator: Iterator[
@@ -85,16 +81,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         return cast(SynchronizedData, super().synchronized_data)
 
     @property
-    def serialized_bets(self) -> Optional[str]:
-        """Get the bets serialized."""
-        if len(self.bets) == 0:
-            return None
-        return json.dumps(self.bets, cls=BetsEncoder)
-
-    @property
-    def bets_ids(self) -> List[str]:
-        """Get the ids of the already existing bets."""
-        return [bet.id for bets in self.bets.values() for bet in bets]
+    def synced_time(self) -> float:
+        """Get the synchronized time among agents."""
+        synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
+        return synced_time.timestamp()
 
     @property
     def current_subgraph(self) -> ApiSpecs:
@@ -160,12 +150,11 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_bets(self) -> Generator[None, None, Optional[dict]]:
         """Fetch questions from the current subgraph, for the current creators."""
         self._fetch_status = FetchStatus.IN_PROGRESS
-        now = self.shared_state.round_sequence.last_round_transition_timestamp
 
         query = questions.substitute(
             creators=repr(self._current_creators),
             slot_count=self.params.slot_count,
-            opening_threshold=now.timestamp() + self.params.opening_margin,
+            opening_threshold=self.synced_time + self.params.opening_margin,
             languages=repr(self.params.languages),
         )
 
@@ -182,27 +171,3 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         )
 
         return bets
-
-    def _update_bets(
-        self,
-    ) -> Generator:
-        """Fetch the questions from all the prediction markets and update the local copy of the bets."""
-        self.bets = self.synchronized_data.bets
-        existing_ids = self.bets_ids
-
-        while True:
-            can_proceed = self._prepare_bets_fetching()
-            if not can_proceed:
-                break
-
-            bets_market_chunk = yield from self._fetch_bets()
-            if bets_market_chunk is not None:
-                bets_updates = (
-                    Bet(**bet)
-                    for bet in bets_market_chunk
-                    if bet.id not in existing_ids
-                )
-                self.bets[self._current_market].extend(bets_updates)
-
-        if self._fetch_status != FetchStatus.SUCCESS:
-            self.bets = {}

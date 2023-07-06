@@ -47,6 +47,7 @@ class BetStatus(Enum):
     PROCESSED = auto()
     WAITING_RESPONSE = auto()
     RESPONSE_RECEIVED = auto()
+    BLACKLISTED = auto()
 
 
 @dataclasses.dataclass
@@ -63,6 +64,7 @@ class Bet:
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     status: BetStatus = BetStatus.UNPROCESSED
+    blacklist_expiration: float = -1
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

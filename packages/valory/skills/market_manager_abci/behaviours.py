@@ -19,12 +19,19 @@
 
 """This module contains the behaviours for the MarketManager skill."""
 
-from typing import Generator, Set, Type
+import json
+from typing import Any, Dict, Generator, List, Optional, Set, Type
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    FetchStatus,
     QueryingBehaviour,
+)
+from packages.valory.skills.market_manager_abci.models import (
+    Bet,
+    BetStatus,
+    BetsEncoder,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -37,6 +44,59 @@ class UpdateBetsBehaviour(QueryingBehaviour):
     """Behaviour that fetches and updates the bets."""
 
     matching_round = UpdateBetsRound
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize `UpdateBetsBehaviour`."""
+        super().__init__(**kwargs)
+        # list of bets mapped to prediction markets
+        self.bets: Dict[str, List[Bet]] = {}
+
+    @property
+    def serialized_bets(self) -> Optional[str]:
+        """Get the bets serialized."""
+        if len(self.bets) == 0:
+            return None
+        return json.dumps(self.bets, cls=BetsEncoder)
+
+    @property
+    def bets_ids(self) -> List[str]:
+        """Get the ids of the already existing bets."""
+        return [bet.id for bets in self.bets.values() for bet in bets]
+
+    @property
+    def valid_local_bets(self) -> Dict[str, List[Bet]]:
+        """Get the valid already existing bets."""
+        return {
+            market: bet
+            for market, bets in self.synchronized_data.bets.items()
+            for bet in bets
+            if bet.blacklist_expiration > self.synced_time
+            or bet.status != BetStatus.BLACKLISTED
+        }
+
+    def _update_bets(
+        self,
+    ) -> Generator:
+        """Fetch the questions from all the prediction markets and update the local copy of the bets."""
+        self.bets = self.valid_local_bets
+        existing_ids = self.bets_ids
+
+        while True:
+            can_proceed = self._prepare_bets_fetching()
+            if not can_proceed:
+                break
+
+            bets_market_chunk = yield from self._fetch_bets()
+            if bets_market_chunk is not None:
+                bets_updates = (
+                    Bet(**bet)
+                    for bet in bets_market_chunk
+                    if bet.id not in existing_ids
+                )
+                self.bets[self._current_market].extend(bets_updates)
+
+        if self._fetch_status != FetchStatus.SUCCESS:
+            self.bets = {}
 
     def async_act(self) -> Generator:
         """Do the action."""
