@@ -41,6 +41,7 @@ class Bet:
     """A bet's structure."""
 
     id: str
+    market: str
     title: str
     creator: str
     fee: int

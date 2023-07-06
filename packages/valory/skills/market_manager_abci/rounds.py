@@ -61,12 +61,12 @@ class SynchronizedData(BaseSynchronizedData):
         return CollectionRound.deserialize_collection(serialized)
 
     @property
-    def bets(self) -> Dict[str, List[Bet]]:
+    def bets(self) -> List[Bet]:
         """Get the most voted bets."""
         serialized_bets = str(self.db.get("bets", ""))
 
         if serialized_bets == "":
-            return {}
+            return []
 
         return json.loads(serialized_bets, cls=BetsDecoder)
 
