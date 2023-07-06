@@ -27,7 +27,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbciAppTransitionFunction,
     AppState,
     DegenerateRound,
-    CollectDifferentUntilThresholdRound,
+    CollectSameUntilThresholdRound,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
 from packages.valory.skills.market_manager_abci.bets import Bet
@@ -53,7 +53,7 @@ class SynchronizedData(BaseSynchronizedData):
         """Get the sampled bet."""
 
 
-class DecisionMakerRound(CollectDifferentUntilThresholdRound):
+class DecisionMakerRound(CollectSameUntilThresholdRound):
     """A round in which the agents decide on the bet's answer."""
 
     payload_class = DecisionMakerPayload
