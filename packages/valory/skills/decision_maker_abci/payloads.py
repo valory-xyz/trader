@@ -20,6 +20,7 @@
 """This module contains the transaction payloads for the decision maker."""
 
 from dataclasses import dataclass
+from typing import Optional
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 
@@ -28,5 +29,5 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 class DecisionMakerPayload(BaseTxPayload):
     """Represents a transaction payload for the decision-making."""
 
-    vote: bool
-    confidence: float
+    vote: Optional[int]
+    confidence: Optional[float]

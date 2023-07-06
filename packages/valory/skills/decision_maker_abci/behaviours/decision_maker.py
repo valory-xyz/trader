@@ -55,7 +55,7 @@ class DecisionMakerBehaviour(BaseBehaviour):
         task_id = self.context.task_manager.enqueue_task(mech_task, kwargs=task_kwargs)
         self._async_result = self.context.task_manager.get_task_result(task_id)
 
-    def _get_decision(self) -> Generator[None, None, Optional[Tuple[Optional[int], float]]]:
+    def _get_decision(self) -> Generator[None, None, Optional[Tuple[Optional[int], Optional[float]]]]:
         """Get the vote and it's confidence."""
         self._async_result = cast(AsyncResult, self._async_result)
         if not self._async_result.ready():
@@ -69,7 +69,7 @@ class DecisionMakerBehaviour(BaseBehaviour):
 
         if mech_response.prediction is None:
             self.context.logger.info(f"There was an error on the mech response: {mech_response.error}")
-            return None, -1
+            return None, None
 
         return mech_response.prediction.vote, mech_response.prediction.confidence
 
