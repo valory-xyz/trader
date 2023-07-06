@@ -22,9 +22,8 @@
 
 import dataclasses
 import json
-from typing import Any, Dict, Iterator, List, Optional, Tuple
-
-from aea.helpers.ipfs.base import IPFSHashOnly
+from enum import Enum, auto
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
@@ -41,6 +40,15 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
 
+class BetStatus(Enum):
+    """A bet's status."""
+
+    UNPROCESSED = auto()
+    PROCESSED = auto()
+    WAITING_RESPONSE = auto()
+    RESPONSE_RECEIVED = auto()
+
+
 @dataclasses.dataclass
 class Bet:
     """A bet's structure."""
@@ -54,12 +62,15 @@ class Bet:
     outcomeTokenAmounts: List[int]
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
+    status: BetStatus = BetStatus.UNPROCESSED
 
     def __post_init__(self) -> None:
-        """Post initialization to adjust the optional values."""
+        """Post initialization to adjust the values."""
         if self.outcomes == "null":
             self.outcomes = None
 
+        if isinstance(self.status, int):
+            super().__setattr__("status", BetStatus(self.status))
 
 class BetEncoder(json.JSONEncoder):
     """JSON encoder for a bet."""
@@ -69,6 +80,24 @@ class BetEncoder(json.JSONEncoder):
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
+
+
+class BetsDecoder(json.JSONDecoder):
+    """JSON decoder for bets."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the Bets JSON decoder."""
+        super().__init__(object_hook=self.hook, *args, **kwargs)
+
+    @staticmethod
+    def hook(data: Dict[str, Any]) -> Union[Bet, Dict[str, Bet]]:
+        """Perform the custom decoding."""
+        # if this is a `Bet`
+        status_attributes = Bet.__annotations__.keys()
+        if sorted(status_attributes) == sorted(data.keys()):
+            return Bet(**data)
+
+        return data
 
 
 class SharedState(BaseSharedState):
