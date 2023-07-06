@@ -61,6 +61,20 @@ class Bet:
         if isinstance(self.status, int):
             super().__setattr__("status", BetStatus(self.status))
 
+    @property
+    def yes(self) -> str:
+        """Return the "yes" outcome."""
+        if not self.outcomes:
+            return "yes"
+        return self.outcomes[0]
+
+    @property
+    def no(self) -> str:
+        """Return the "no" outcome."""
+        if self.outcomes is None or len(self.outcomes) < 2:
+            return "no"
+        return self.outcomes[1]
+
 
 class BetsEncoder(json.JSONEncoder):
     """JSON encoder for bets."""
