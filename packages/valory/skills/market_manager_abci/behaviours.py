@@ -59,15 +59,19 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         """Get the ids of the already existing bets."""
         return [bet.id for bets in self.bets.values() for bet in bets]
 
+    def is_valid_bet(self, bet: Bet) -> bool:
+        """Return if a bet is valid or not."""
+        return (
+            bet.blacklist_expiration > self.synced_time
+            or bet.status != BetStatus.BLACKLISTED
+        )
+
     @property
     def valid_local_bets(self) -> Dict[str, List[Bet]]:
         """Get the valid already existing bets."""
         return {
-            market: bet
+            market: list(filter(self.is_valid_bet, bets))
             for market, bets in self.synchronized_data.bets.items()
-            for bet in bets
-            if bet.blacklist_expiration > self.synced_time
-            or bet.status != BetStatus.BLACKLISTED
         }
 
     def _update_bets(
