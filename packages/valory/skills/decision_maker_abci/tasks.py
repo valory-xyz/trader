@@ -51,7 +51,7 @@ class MechInteractionResponse:
     """A structure for the response of a mech interaction task."""
 
     prediction: Optional[PredictionResponse] = None
-    message: str = "Success"
+    error: str = "Unknown"
 
 
 class MechInteractionTask(Task):
@@ -69,6 +69,6 @@ class MechInteractionTask(Task):
             prediction = PredictionResponse(**res)
         except (ValueError, TypeError):
             error_msg = f"The response's format was unexpected: {res}"
-            return MechInteractionResponse(message=error_msg)
+            return MechInteractionResponse(error=error_msg)
         else:
             return MechInteractionResponse(prediction)
