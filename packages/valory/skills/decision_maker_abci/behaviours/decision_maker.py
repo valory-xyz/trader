@@ -20,8 +20,11 @@
 """This module contains the behaviours for the 'decision_maker_abci' skill."""
 
 from multiprocessing.pool import AsyncResult
+from pathlib import Path
 from string import Template
 from typing import Any, Generator, Optional, Tuple, cast
+
+from mech_client.interact import PRIVATE_KEY_FILE_PATH
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
@@ -87,7 +90,7 @@ class DecisionMakerBehaviour(BaseBehaviour):
             prompt=BET_PROMPT.substitute(prompt_params),
             agent_id=self.params.mech_agent_id,
             tool=self.params.mech_tool,
-            private_key_path=self.context.private_key_paths.read("ethereum"),
+            private_key_path=str(Path(self.context.data_dir) / PRIVATE_KEY_FILE_PATH),
         )
         task_id = self.context.task_manager.enqueue_task(mech_task, kwargs=task_kwargs)
         self._async_result = self.context.task_manager.get_task_result(task_id)
