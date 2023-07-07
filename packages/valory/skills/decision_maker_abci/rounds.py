@@ -64,14 +64,14 @@ class SynchronizedData(BaseSynchronizedData):
     """
 
     @property
-    def sampled_bet_id(self) -> int:
+    def sampled_bet_index(self) -> int:
         """Get the sampled bet."""
         return int(self.db.get_strict("sampled_bet_index"))
 
     @property
     def sampled_bet(self) -> Bet:
         """Get the sampled bet."""
-        return self.bets[self.sampled_bet_id]
+        return self.bets[self.sampled_bet_index]
 
     @property
     def non_binary(self) -> bool:
