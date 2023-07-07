@@ -128,3 +128,10 @@ class BetsDecoder(json.JSONDecoder):
             return Bet(**data)
 
         return data
+
+
+def serialize_bets(bets: List[Bet]) -> Optional[str]:
+    """Get the bets serialized."""
+    if len(bets) == 0:
+        return None
+    return json.dumps(bets, cls=BetsEncoder)

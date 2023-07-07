@@ -19,12 +19,15 @@
 
 """This module contains the behaviours for the MarketManager skill."""
 
-import json
-from typing import Any, Generator, Iterator, List, Optional, Set, Type
+from typing import Any, Generator, Iterator, List, Set, Type
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
-from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus, BetsEncoder
+from packages.valory.skills.market_manager_abci.bets import (
+    Bet,
+    BetStatus,
+    serialize_bets,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     QueryingBehaviour,
@@ -46,13 +49,6 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         super().__init__(**kwargs)
         # list of bets mapped to prediction markets
         self.bets: List[Bet] = []
-
-    @property
-    def serialized_bets(self) -> Optional[str]:
-        """Get the bets serialized."""
-        if len(self.bets) == 0:
-            return None
-        return json.dumps(self.bets, cls=BetsEncoder)
 
     @property
     def bets_ids(self) -> List[str]:
@@ -100,7 +96,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self._update_bets()
             payload = UpdateBetsPayload(
-                self.context.agent_address, self.serialized_bets
+                self.context.agent_address, serialize_bets(self.bets)
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
