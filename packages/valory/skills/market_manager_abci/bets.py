@@ -34,8 +34,6 @@ class BetStatus(Enum):
 
     UNPROCESSED = auto()
     PROCESSED = auto()
-    WAITING_RESPONSE = auto()
-    RESPONSE_RECEIVED = auto()
     BLACKLISTED = auto()
 
 
