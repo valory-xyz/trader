@@ -59,7 +59,8 @@ class Bet:
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         if (
-            self.outcomes == "null"
+            self.outcomes is None
+            or self.outcomes == "null"
             or len(self.outcomes)
             != len(self.outcomeTokenAmounts)
             != len(self.outcomeTokenMarginalPrices)
@@ -70,12 +71,25 @@ class Bet:
         if isinstance(self.status, int):
             super().__setattr__("status", BetStatus(self.status))
 
+    def get_outcome(self, index: int) -> str:
+        """Get an outcome given its index."""
+        if self.outcomes is None:
+            raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
+        try:
+            return self.outcomes[index]
+        except KeyError as exc:
+            error = f"Cannot get outcome with index {index} from {self.outcomes}"
+            raise ValueError(error) from exc
+
     def _get_binary_outcome(self, no: bool) -> str:
         """Get an outcome only if it is binary."""
         if self.outcomeSlotCount == BINARY_N_SLOTS:
-            return self.outcomes[int(no)]
-        outcome = "no" if no else "yes"
-        raise ValueError(f"A '{outcome}' outcome is only available for binary questions.")
+            return self.get_outcome(int(no))
+        requested_outcome = "no" if no else "yes"
+        error = (
+            f"A {requested_outcome!r} outcome is only available for binary questions."
+        )
+        raise ValueError(error)
 
     @property
     def yes(self) -> str:
