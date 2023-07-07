@@ -109,14 +109,12 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self,
         res: Optional[Dict],
         res_context: str,
-        keys: Tuple[Union[str, int], ...],
         sleep_on_fail: bool = True,
     ) -> Generator[None, None, Optional[Any]]:
         """Handle a response from a subgraph.
 
         :param res: the response to handle.
         :param res_context: the context of the current response.
-        :param keys: keys to get the information from the response.
         :param sleep_on_fail: whether we want to sleep if we fail to get the response's result.
         :return: the response's result, using the given keys. `None` if response is `None` (has failed).
         :yield: None
@@ -136,16 +134,11 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 yield from self.sleep(sleep_time)
             return None
 
-        value = res[keys[0]]
-        if len(keys) > 1:
-            for key in keys[1:]:
-                value = value[key]
-
-        self.context.logger.info(f"Retrieved {res_context}: {value}.")
+        self.context.logger.info(f"Retrieved {res_context}: {res}.")
         self._call_failed = False
         self.current_subgraph.reset_retries()
         self._fetch_status = FetchStatus.SUCCESS
-        return value
+        return res
 
     def _fetch_bets(self) -> Generator[None, None, Optional[list]]:
         """Fetch questions from the current subgraph, for the current creators."""
@@ -167,7 +160,6 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         bets = yield from self._handle_response(
             res,
             res_context="questions",
-            keys=("fixedProductMarketMakers",),
         )
 
         return bets

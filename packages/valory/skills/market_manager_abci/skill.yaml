@@ -137,7 +137,7 @@ models:
         Content-Type: application/json
       method: POST
       parameters: { }
-      response_key: data
+      response_key: data:fixedProductMarketMakers
       response_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
