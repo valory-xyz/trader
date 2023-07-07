@@ -141,7 +141,7 @@ class DecisionMakerRound(CollectSameUntilThresholdRound):
 
 
 class BlacklistingRound(BaseUpdateBetsRound):
-    """A round for the bets fetching & updating."""
+    """A round for updating the bets after blacklisting the sampled one."""
 
     done_event = Event.DONE
     none_event = Event.NONE
