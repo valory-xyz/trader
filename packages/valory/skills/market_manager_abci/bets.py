@@ -53,6 +53,7 @@ class Bet:
     outcomeTokenAmounts: List[int]
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
+    usdLiquidityMeasure: int
     status: BetStatus = BetStatus.UNPROCESSED
     blacklist_expiration: float = -1
 

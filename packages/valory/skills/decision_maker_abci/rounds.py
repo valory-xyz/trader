@@ -31,7 +31,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    DecisionMakerPayload,
+    SamplingPayload,
+)
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as BaseSynchronizedData,
@@ -63,7 +66,7 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def sampled_bet_id(self) -> int:
         """Get the sampled bet."""
-        raise NotImplementedError
+        return int(self.db.get_strict("sampled_bet_index"))
 
     @property
     def sampled_bet(self) -> Bet:
@@ -95,6 +98,11 @@ class SynchronizedData(BaseSynchronizedData):
     def participant_to_decision(self) -> DeserializedCollection:
         """Get the participants to decision-making."""
         return self._get_deserialized("participant_to_decision")
+
+    @property
+    def participant_to_sampling(self) -> DeserializedCollection:
+        """Get the participants to bet-sampling."""
+        return self._get_deserialized("participant_to_sampling")
 
 
 class DecisionMakerRound(CollectSameUntilThresholdRound):
@@ -141,6 +149,18 @@ class BlacklistingRound(BaseUpdateBetsRound):
     no_majority_event = Event.NO_MAJORITY
 
 
+class SamplingRound(CollectSameUntilThresholdRound):
+    """A round for sampling a bet."""
+
+    payload_class = SamplingPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = get_name(SynchronizedData.sampled_bet_index)
+    collection_key = get_name(SynchronizedData.participant_to_sampling)
+
+
 class FinishedDecisionMakerRound(DegenerateRound):
     """A round representing that decision-making has finished."""
 
@@ -164,9 +184,14 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         round timeout: 30.0
     """
 
-    initial_round_cls: AppState = DecisionMakerRound
-    initial_states: Set[AppState] = {DecisionMakerRound}
+    initial_round_cls: AppState = SamplingRound
+    initial_states: Set[AppState] = {SamplingRound}
     transition_function: AbciAppTransitionFunction = {
+        SamplingRound: {
+            Event.DONE: DecisionMakerRound,
+            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.NO_MAJORITY: SamplingRound,
+        },
         DecisionMakerRound: {
             Event.DONE: FinishedDecisionMakerRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,

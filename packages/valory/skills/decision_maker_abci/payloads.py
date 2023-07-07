@@ -33,3 +33,10 @@ class DecisionMakerPayload(BaseTxPayload):
     is_profitable: bool
     vote: Optional[int]
     confidence: Optional[float]
+
+
+@dataclass(frozen=True)
+class SamplingPayload(BaseTxPayload):
+    """Represents a transaction payload for the sampling of a bet."""
+
+    index: int

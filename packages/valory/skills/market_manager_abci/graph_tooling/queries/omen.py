@@ -45,6 +45,7 @@ questions = Template(
         outcomeTokenAmounts
         outcomeTokenMarginalPrices
         outcomes
+        usdLiquidityMeasure
       }
     }
     """
