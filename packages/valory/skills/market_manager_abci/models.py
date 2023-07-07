@@ -30,14 +30,12 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciApp
 
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
-
-
-SUPPORTED_N_SLOTS = 2
 
 
 class SharedState(BaseSharedState):
@@ -61,7 +59,7 @@ class MarketManagerParams(BaseParams):
         )
         self.slot_count: int = self._ensure("slot_count", kwargs, int)
 
-        if self.slot_count != SUPPORTED_N_SLOTS:
+        if self.slot_count != BINARY_N_SLOTS:
             raise ValueError(
                 f"Only a slot_count `2` is currently supported. `{self.slot_count}` was found in the configuration."
             )

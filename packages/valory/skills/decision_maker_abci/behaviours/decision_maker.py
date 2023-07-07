@@ -38,7 +38,7 @@ from packages.valory.skills.decision_maker_abci.tasks import (
     MechInteractionResponse,
     MechInteractionTask,
 )
-from packages.valory.skills.market_manager_abci.models import SUPPORTED_N_SLOTS
+from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 
 
 BET_PROMPT = Template(
@@ -74,7 +74,7 @@ class DecisionMakerBehaviour(BaseBehaviour):
     @property
     def n_slots_unsupported(self) -> bool:
         """Whether the behaviour supports the current number of slots as it currently only supports binary decisions."""
-        return self.params.slot_count != SUPPORTED_N_SLOTS
+        return self.params.slot_count != BINARY_N_SLOTS
 
     def setup(self) -> None:
         """Setup behaviour."""
