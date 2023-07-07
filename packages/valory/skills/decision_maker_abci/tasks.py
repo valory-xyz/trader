@@ -20,7 +20,7 @@
 """Contains the background tasks of the decision maker skill."""
 
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Any, Optional
 
 from aea.skills.tasks import Task
 from mech_client.interact import interact
@@ -35,7 +35,7 @@ class PredictionResponse:
     confidence: float
     info_utility: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Runs checks on whether the current prediction response is valid or not."""
         # all the fields are probabilities
         probabilities = (getattr(self, field) for field in self.__annotations__)

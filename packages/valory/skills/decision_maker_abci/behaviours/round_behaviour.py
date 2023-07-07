@@ -25,17 +25,17 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.decision_maker import DecisionMakerBehaviour
-from packages.valory.skills.decision_maker_abci.rounds import (
-    AgentDecisionMakerAbciApp,
+from packages.valory.skills.decision_maker_abci.behaviours.decision_maker import (
+    DecisionMakerBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 
 
 class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
     """This behaviour manages the consensus stages for the decision-making."""
 
     initial_behaviour_cls = DecisionMakerBehaviour
-    abci_app_cls = AgentDecisionMakerAbciApp
+    abci_app_cls = DecisionMakerAbciApp
     behaviours: Set[Type[BaseBehaviour]] = {
         DecisionMakerBehaviour,  # type: ignore
     }

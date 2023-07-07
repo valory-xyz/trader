@@ -17,4 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the behaviours for the 'decision_maker_abci' skill."""
+"""This package contains the behaviours for the 'decision_maker_abci' skill."""

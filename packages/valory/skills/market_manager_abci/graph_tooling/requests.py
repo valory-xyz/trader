@@ -20,7 +20,7 @@
 import json
 from abc import ABC
 from enum import Enum, auto
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs

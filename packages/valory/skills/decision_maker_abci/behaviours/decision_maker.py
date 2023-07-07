@@ -1,19 +1,48 @@
+# -*- coding: utf-8 -*-
+# ------------------------------------------------------------------------------
+#
+#   Copyright 2023 Valory AG
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# ------------------------------------------------------------------------------
+
+"""This module contains the behaviours for the 'decision_maker_abci' skill."""
+
 from multiprocessing.pool import AsyncResult
 from string import Template
-from typing import Any, Optional, cast, Generator, Tuple
+from typing import Any, Generator, Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
-from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerRound, SynchronizedData
-from packages.valory.skills.decision_maker_abci.tasks import MechInteractionTask, MechInteractionResponse
+from packages.valory.skills.decision_maker_abci.rounds import (
+    DecisionMakerRound,
+    SynchronizedData,
+)
+from packages.valory.skills.decision_maker_abci.tasks import (
+    MechInteractionResponse,
+    MechInteractionTask,
+)
+from packages.valory.skills.market_manager_abci.models import SUPPORTED_N_SLOTS
+
 
 BET_PROMPT = Template(
     """
-    With the given question "${question}" 
-    and the `yes` option represented by ${yes} 
-    and the `no` option represented by ${no}, 
+    With the given question "${question}"
+    and the `yes` option represented by ${yes}
+    and the `no` option represented by ${no},
     what are the respective probabilities of `p_yes` and `p_no` occurring?
     """
 )
@@ -80,7 +109,9 @@ class DecisionMakerBehaviour(BaseBehaviour):
         self.context.logger.info(f"Decision has been received:\n{mech_response}")
 
         if mech_response.prediction is None:
-            self.context.logger.info(f"There was an error on the mech response: {mech_response.error}")
+            self.context.logger.info(
+                f"There was an error on the mech response: {mech_response.error}"
+            )
             return None, None
 
         return mech_response.prediction.vote, mech_response.prediction.confidence
@@ -104,7 +135,11 @@ class DecisionMakerBehaviour(BaseBehaviour):
             vote, confidence = decision
             is_profitable = self._is_profitable(vote, confidence)
             payload = DecisionMakerPayload(
-                self.context.agent_address, self.n_slots_unsupported, is_profitable, vote, confidence
+                self.context.agent_address,
+                self.n_slots_unsupported,
+                is_profitable,
+                vote,
+                confidence,
             )
 
         yield from self.finish_behaviour(payload)

@@ -21,7 +21,6 @@
 
 from typing import Any
 
-from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -29,7 +28,10 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
-from packages.valory.skills.decision_maker_abci.rounds import AgentDecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.market_manager_abci.models import (
+    MarketManagerParams as BaseParams,
+)
 
 
 Requests = BaseRequests
@@ -39,7 +41,7 @@ BenchmarkTool = BaseBenchmarkTool
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
-    abci_app_cls = AgentDecisionMakerAbciApp
+    abci_app_cls = DecisionMakerAbciApp
 
 
 class DecisionMakerParams(BaseParams):

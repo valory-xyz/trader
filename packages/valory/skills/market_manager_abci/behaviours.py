@@ -20,7 +20,7 @@
 """This module contains the behaviours for the MarketManager skill."""
 
 import json
-from typing import Any, Generator, List, Optional, Set, Type, Iterator
+from typing import Any, Generator, Iterator, List, Optional, Set, Type
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
