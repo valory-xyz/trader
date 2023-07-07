@@ -37,6 +37,9 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
 
+SUPPORTED_N_SLOTS = 2
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -57,6 +60,12 @@ class MarketManagerParams(BaseParams):
             "creator_per_subgraph", kwargs, Dict[str, List[str]]
         )
         self.slot_count: int = self._ensure("slot_count", kwargs, int)
+
+        if self.slot_count != SUPPORTED_N_SLOTS:
+            raise ValueError(
+                f"Only a slot_count `2` is currently supported. `{self.slot_count}` was found in the configuration."
+            )
+
         self.opening_margin: int = self._ensure("opening_margin", kwargs, int)
         self.languages: List[str] = self._ensure("languages", kwargs, List[str])
         super().__init__(*args, **kwargs)
