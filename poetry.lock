@@ -1839,14 +1839,14 @@ files = [
 
 [[package]]
 name = "mech-client"
-version = "0.2.1"
+version = "0.2.2"
 description = "Basic client to interact with a mech"
 category = "main"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "mech_client-0.2.1-py3-none-any.whl", hash = "sha256:f50a758a94e92ed09fba30ac3b278b31eb2f098f7573a9abce3c2db6830c8a90"},
-    {file = "mech_client-0.2.1.tar.gz", hash = "sha256:a7e2193e664a2c4af2bfe1209d84f23e7ce35362218b7cd59ef616bfa5229e0d"},
+    {file = "mech_client-0.2.2-py3-none-any.whl", hash = "sha256:deaafea15d1dee0e4ed56124a325dbf27bb65c826c6ae0c6093cf718ad51dbe0"},
+    {file = "mech_client-0.2.2.tar.gz", hash = "sha256:2704a9f50e8da467942f9e4ef2dcfb5d05c58d2a9fe2f460da2af78b87c471f8"},
 ]
 
 [package.dependencies]
@@ -2267,14 +2267,14 @@ six = ">=1.9.0"
 
 [[package]]
 name = "platformdirs"
-version = "3.8.0"
+version = "3.8.1"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "platformdirs-3.8.0-py3-none-any.whl", hash = "sha256:ca9ed98ce73076ba72e092b23d3c93ea6c4e186b3f1c3dad6edd98ff6ffcca2e"},
-    {file = "platformdirs-3.8.0.tar.gz", hash = "sha256:b0cabcb11063d21a0b261d557acb0a9d2126350e63b70cdf7db6347baea456dc"},
+    {file = "platformdirs-3.8.1-py3-none-any.whl", hash = "sha256:cec7b889196b9144d088e4c57d9ceef7374f6c39694ad1577a0aab50d27ea28c"},
+    {file = "platformdirs-3.8.1.tar.gz", hash = "sha256:f87ca4fcff7d2b0f81c6a748a77973d7af0f4d526f98f308477c3c436c74d528"},
 ]
 
 [package.extras]
@@ -3466,4 +3466,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.11"
-content-hash = "a1ff96b6540040b94e05122810f9e4ad0085c4dba288696d594e84d2938eea3d"
+content-hash = "9b90524176d2146d43ae1306618b4800b462913d469cb1b12f95eaf5d661de03"
