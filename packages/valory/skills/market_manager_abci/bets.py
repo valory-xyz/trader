@@ -55,7 +55,13 @@ class Bet:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        if self.outcomes == "null":
+        if (
+            self.outcomes == "null"
+            or len(self.outcomes)
+            != len(self.outcomeTokenAmounts)
+            != len(self.outcomeTokenMarginalPrices)
+            != self.outcomeSlotCount
+        ):
             self.outcomes = None
 
         if isinstance(self.status, int):
