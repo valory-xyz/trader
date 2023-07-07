@@ -128,6 +128,19 @@ models:
       use_termination: false
       mech_agent_id: 3
       mech_tool: prediction-online
+      bet_amount_per_threshold:
+        0: 0
+        0.1: 0
+        0.2: 0
+        0.3: 0
+        0.4: 0
+        0.5: 0
+        0.6: 0
+        0.7: 0
+        0.8: 0
+        0.9: 0
+        1: 0
+      bet_threshold: 100000000000000000
     class_name: DecisionMakerParams
   requests:
     args: {}

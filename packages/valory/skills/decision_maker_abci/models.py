@@ -19,7 +19,7 @@
 
 """This module contains the models for the skill."""
 
-from typing import Any
+from typing import Any, Dict
 
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
@@ -51,4 +51,15 @@ class DecisionMakerParams(BaseParams):
         """Initialize the parameters' object."""
         self.mech_agent_id: int = self._ensure("mech_agent_id", kwargs, int)
         self.mech_tool: int = self._ensure("mech_tool", kwargs, str)
+        # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
+        self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
+            "bet_amount_per_threshold", kwargs, Dict[float, int]
+        )
+        # the threshold amount in WEI starting from which we are willing to place a bet
+        self.bet_threshold: int = self._ensure("bet_threshold", kwargs, str)
         super().__init__(*args, **kwargs)
+
+    def get_bet_amount(self, confidence: float) -> int:
+        """Get the bet amount given a prediction's confidence."""
+        threshold = round(confidence, 1)
+        return self.bet_amount_per_threshold[threshold]

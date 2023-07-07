@@ -116,6 +116,16 @@ class DecisionMakerBehaviour(BaseBehaviour):
 
         return mech_response.prediction.vote, mech_response.prediction.confidence
 
+    def _is_profitable(self, vote: Optional[int], confidence: Optional[float]) -> bool:
+        """Whether the decision is profitable or not."""
+        if vote is None or confidence is None:
+            return False
+
+        bet_amount = self.params.get_bet_amount(confidence)
+        fee = self.synchronized_data.sampled_bet.fee
+        bet_threshold = self.params.bet_threshold
+        return bet_amount - fee >= bet_threshold
+
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
