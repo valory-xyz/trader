@@ -49,7 +49,7 @@ class PredictionResponse:
     def vote(self) -> Optional[int]:
         """Return the vote. `0` represents "yes" and `1` represents "no"."""
         if self.p_no != self.p_yes:
-            return bool(self.p_no > self.p_yes)
+            return int(self.p_no > self.p_yes)
         return None
 
 
