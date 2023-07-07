@@ -109,8 +109,7 @@ class DecisionMakerRound(CollectSameUntilThresholdRound):
     """A round in which the agents decide on the bet's answer."""
 
     payload_class = DecisionMakerPayload
-    synchronized_data_class = BaseSynchronizedData
-
+    synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     none_event = Event.MECH_RESPONSE_ERROR
     no_majority_event = Event.NO_MAJORITY
