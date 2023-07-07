@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the behaviours for the 'decision_maker_abci' skill."""
+"""This module contains the behaviour for the decision-making of the skill."""
 
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
@@ -49,7 +49,7 @@ BET_PROMPT = Template(
 
 
 class DecisionMakerBehaviour(DecisionMakerBaseBehaviour):
-    """A round in which the agents decide which answer they are going to choose for the next bet."""
+    """A behaviour in which the agents decide which answer they are going to choose for the next bet."""
 
     matching_round = DecisionMakerRound
 
