@@ -26,6 +26,9 @@ from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Union
 
 
+BINARY_N_SLOTS = 2
+
+
 class BetStatus(Enum):
     """A bet's status."""
 
@@ -67,19 +70,22 @@ class Bet:
         if isinstance(self.status, int):
             super().__setattr__("status", BetStatus(self.status))
 
+    def _get_binary_outcome(self, no: bool) -> str:
+        """Get an outcome only if it is binary."""
+        if self.outcomeSlotCount == BINARY_N_SLOTS:
+            return self.outcomes[int(no)]
+        outcome = "no" if no else "yes"
+        raise ValueError(f"A '{outcome}' outcome is only available for binary questions.")
+
     @property
     def yes(self) -> str:
         """Return the "yes" outcome."""
-        if not self.outcomes:
-            return "yes"
-        return self.outcomes[0]
+        return self._get_binary_outcome(False)
 
     @property
     def no(self) -> str:
         """Return the "no" outcome."""
-        if self.outcomes is None or len(self.outcomes) < 2:
-            return "no"
-        return self.outcomes[1]
+        return self._get_binary_outcome(True)
 
 
 class BetsEncoder(json.JSONEncoder):
