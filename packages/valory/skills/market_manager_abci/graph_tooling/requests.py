@@ -147,7 +147,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.SUCCESS
         return value
 
-    def _fetch_bets(self) -> Generator[None, None, Optional[dict]]:
+    def _fetch_bets(self) -> Generator[None, None, Optional[list]]:
         """Fetch questions from the current subgraph, for the current creators."""
         self._fetch_status = FetchStatus.IN_PROGRESS
 
