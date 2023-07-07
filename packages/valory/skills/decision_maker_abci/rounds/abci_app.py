@@ -79,6 +79,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound: {},
     }
     final_states: Set[AppState] = {
+        ImpossibleRound,
         FinishedDecisionMakerRound,
     }
     event_to_timeout: Dict[Event, float] = {

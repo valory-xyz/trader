@@ -45,5 +45,7 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
     initial_behaviour_cls = DecisionMakerBehaviour
     abci_app_cls = DecisionMakerAbciApp
     behaviours: Set[Type[BaseBehaviour]] = {
+        SamplingBehaviour,  # type: ignore
         DecisionMakerBehaviour,  # type: ignore
+        BlacklistingBehaviour,  # type: ignore
     }
