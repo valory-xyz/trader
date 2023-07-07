@@ -26,14 +26,11 @@ from typing import Any, Generator, Optional, Tuple, cast
 
 from mech_client.interact import PRIVATE_KEY_FILE_PATH
 
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
-from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
-from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
-from packages.valory.skills.decision_maker_abci.rounds import (
-    DecisionMakerRound,
-    SynchronizedData,
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
+from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerRound
 from packages.valory.skills.decision_maker_abci.tasks import (
     MechInteractionResponse,
     MechInteractionTask,
@@ -51,7 +48,7 @@ BET_PROMPT = Template(
 )
 
 
-class DecisionMakerBehaviour(BaseBehaviour):
+class DecisionMakerBehaviour(DecisionMakerBaseBehaviour):
     """A round in which the agents decide which answer they are going to choose for the next bet."""
 
     matching_round = DecisionMakerRound
@@ -60,16 +57,6 @@ class DecisionMakerBehaviour(BaseBehaviour):
         """Initialize Behaviour."""
         super().__init__(**kwargs)
         self._async_result: Optional[AsyncResult] = None
-
-    @property
-    def params(self) -> DecisionMakerParams:
-        """Return the params."""
-        return cast(DecisionMakerParams, self.context.params)
-
-    @property
-    def synchronized_data(self) -> SynchronizedData:
-        """Return the synchronized data."""
-        return cast(SynchronizedData, super().synchronized_data)
 
     @property
     def n_slots_unsupported(self) -> bool:
@@ -128,14 +115,6 @@ class DecisionMakerBehaviour(BaseBehaviour):
         fee = self.synchronized_data.sampled_bet.fee
         bet_threshold = self.params.bet_threshold
         return bet_amount - fee >= bet_threshold
-
-    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
-        """Finish the behaviour."""
-        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
-            yield from self.send_a2a_transaction(payload)
-            yield from self.wait_until_round_end()
-
-        self.set_done()
 
     def async_act(self) -> Generator:
         """Do the action."""
