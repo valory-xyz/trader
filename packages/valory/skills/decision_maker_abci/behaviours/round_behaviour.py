@@ -34,9 +34,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_maker import
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.rounds.abci_app import (
-    DecisionMakerAbciApp,
-)
+from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 
 
 class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):

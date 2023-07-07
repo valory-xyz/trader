@@ -26,18 +26,18 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbciAppTransitionFunction,
     AppState,
 )
-from packages.valory.skills.decision_maker_abci.rounds.base import Event
-from packages.valory.skills.decision_maker_abci.rounds.blacklisting import (
+from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.decision_maker_abci.rounds.decision_maker import (
+from packages.valory.skills.decision_maker_abci.states.decision_maker import (
     DecisionMakerRound,
 )
-from packages.valory.skills.decision_maker_abci.rounds.final_states import (
+from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     ImpossibleRound,
 )
-from packages.valory.skills.decision_maker_abci.rounds.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
@@ -77,6 +77,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: BlacklistingRound,
         },
         FinishedDecisionMakerRound: {},
+        ImpossibleRound: {},
     }
     final_states: Set[AppState] = {
         ImpossibleRound,
@@ -86,8 +87,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         Event.ROUND_TIMEOUT: 30.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
-        DecisionMakerRound: set(),
+        SamplingRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: set(),
+        ImpossibleRound: set(),
     }

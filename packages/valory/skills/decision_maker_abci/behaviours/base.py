@@ -25,7 +25,7 @@ from typing import Generator, cast
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
-from packages.valory.skills.decision_maker_abci.rounds.base import SynchronizedData
+from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 
 
 class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):

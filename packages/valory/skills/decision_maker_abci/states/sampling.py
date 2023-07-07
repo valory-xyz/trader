@@ -24,7 +24,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
-from packages.valory.skills.decision_maker_abci.rounds.base import (
+from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )

@@ -25,7 +25,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
-from packages.valory.skills.decision_maker_abci.rounds.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus
 
 

@@ -19,7 +19,7 @@
 
 """This module contains the blacklisting state of the decision-making abci app."""
 
-from packages.valory.skills.decision_maker_abci.rounds.base import Event
+from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.market_manager_abci.rounds import (
     UpdateBetsRound as BaseUpdateBetsRound,
 )

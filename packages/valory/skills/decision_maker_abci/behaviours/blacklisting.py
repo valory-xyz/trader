@@ -24,7 +24,7 @@ from typing import Generator, Optional
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.rounds.blacklisting import (
+from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
 from packages.valory.skills.market_manager_abci.bets import BetStatus, serialize_bets
