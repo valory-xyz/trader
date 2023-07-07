@@ -20,24 +20,32 @@
 """This module contains the rounds for the decision-making."""
 
 from enum import Enum
-from typing import Dict, Set
+from typing import Dict, Optional, Set, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
     AppState,
-    DegenerateRound,
     CollectSameUntilThresholdRound,
+    DegenerateRound,
+    DeserializedCollection,
+    get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
 from packages.valory.skills.market_manager_abci.bets import Bet
-from packages.valory.skills.market_manager_abci.rounds import SynchronizedData as BaseSynchronizedData
+from packages.valory.skills.market_manager_abci.rounds import (
+    SynchronizedData as BaseSynchronizedData,
+)
 
 
 class Event(Enum):
     """Event enumeration for the price estimation demo."""
 
     DONE = "done"
+    MECH_RESPONSE_ERROR = "mech_response_error"
+    NON_BINARY = "non_binary"
+    TIE = "tie"
+    UNPROFITABLE = "unprofitable"
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
 
@@ -51,6 +59,33 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def sampled_bet(self) -> Bet:
         """Get the sampled bet."""
+        raise NotImplementedError
+
+    @property
+    def non_binary(self) -> bool:
+        """Get whether the question is non-binary."""
+        return bool(self.db.get_strict("non_binary"))
+
+    @property
+    def vote(self) -> str:
+        """Get the bet's vote."""
+        vote = self.db.get_strict("vote")
+        return self.sampled_bet.get_outcome(vote)
+
+    @property
+    def confidence(self) -> float:
+        """Get the vote's confidence."""
+        return float(self.db.get_strict("confidence"))
+
+    @property
+    def is_profitable(self) -> bool:
+        """Get whether the current vote is profitable or not."""
+        return bool(self.db.get_strict("is_profitable"))
+
+    @property
+    def participant_to_decision(self) -> DeserializedCollection:
+        """Get the participants to decision-making."""
+        return self._get_deserialized("participant_to_decision")
 
 
 class DecisionMakerRound(CollectSameUntilThresholdRound):
@@ -59,13 +94,46 @@ class DecisionMakerRound(CollectSameUntilThresholdRound):
     payload_class = DecisionMakerPayload
     synchronized_data_class = BaseSynchronizedData
 
+    done_event = Event.DONE
+    none_event = Event.MECH_RESPONSE_ERROR
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = (
+        get_name(SynchronizedData.non_binary),
+        get_name(SynchronizedData.vote),
+        get_name(SynchronizedData.confidence),
+        get_name(SynchronizedData.is_profitable),
+    )
+    collection_key = get_name(SynchronizedData.participant_to_decision)
+
+    def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event == Event.DONE and synced_data.non_binary:
+            return synced_data, Event.NON_BINARY
+
+        if event == Event.DONE and synced_data.vote is None:
+            return synced_data, Event.TIE
+
+        if event == Event.DONE and not synced_data.is_profitable:
+            return synced_data, Event.UNPROFITABLE
+
+        return synced_data, event
+
 
 class FinishedDecisionMakerRound(DegenerateRound):
-    """A round representing that decision-making has finished"""
+    """A round representing that decision-making has finished."""
 
 
-class AgentDecisionMakerAbciApp(AbciApp[Event]):
-    """AgentDecisionMakerAbciApp
+class ImpossibleRound(DegenerateRound):
+    """A round representing that decision-making is impossible with the given parametrization."""
+
+
+class DecisionMakerAbciApp(AbciApp[Event]):
+    """DecisionMakerAbciApp
 
     Initial round: DecisionMakerRound
 
@@ -84,7 +152,11 @@ class AgentDecisionMakerAbciApp(AbciApp[Event]):
     transition_function: AbciAppTransitionFunction = {
         DecisionMakerRound: {
             Event.DONE: FinishedDecisionMakerRound,
+            Event.MECH_RESPONSE_ERROR: FinishedDecisionMakerRound,  # TODO blacklist and go back to sampling a bet
             Event.NO_MAJORITY: DecisionMakerRound,
+            Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.TIE: FinishedDecisionMakerRound,  # TODO blacklist and go back to sampling a bet
+            Event.UNPROFITABLE: FinishedDecisionMakerRound,  # TODO blacklist the sampled bet for duration set in config
         },
         FinishedDecisionMakerRound: {},
     }

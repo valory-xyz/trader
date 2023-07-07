@@ -29,5 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 class DecisionMakerPayload(BaseTxPayload):
     """Represents a transaction payload for the decision-making."""
 
+    unsupported: bool
+    is_profitable: bool
     vote: Optional[int]
     confidence: Optional[float]

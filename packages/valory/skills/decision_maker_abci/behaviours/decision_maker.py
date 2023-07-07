@@ -39,8 +39,16 @@ class DecisionMakerBehaviour(BaseBehaviour):
         """Return the synchronized data."""
         return cast(SynchronizedData, super().synchronized_data)
 
+    @property
+    def n_slots_unsupported(self) -> bool:
+        """Whether the behaviour supports the current number of slots as it currently only supports binary decisions."""
+        return self.params.slot_count != SUPPORTED_N_SLOTS
+
     def setup(self) -> None:
         """Setup behaviour."""
+        if self.n_slots_unsupported:
+            return
+
         mech_task = MechInteractionTask()
         sampled_bet = self.synchronized_data.sampled_bet
         prompt_params = dict(
@@ -55,9 +63,13 @@ class DecisionMakerBehaviour(BaseBehaviour):
         task_id = self.context.task_manager.enqueue_task(mech_task, kwargs=task_kwargs)
         self._async_result = self.context.task_manager.get_task_result(task_id)
 
-    def _get_decision(self) -> Generator[None, None, Optional[Tuple[Optional[int], Optional[float]]]]:
+    def _get_decision(
+        self,
+    ) -> Generator[None, None, Optional[Tuple[Optional[int], Optional[float]]]]:
         """Get the vote and it's confidence."""
-        self._async_result = cast(AsyncResult, self._async_result)
+        if self._async_result is None:
+            return None, None
+
         if not self._async_result.ready():
             self.context.logger.debug("The decision making task is not finished yet.")
             yield from self.sleep(self.params.sleep_time)
@@ -90,6 +102,9 @@ class DecisionMakerBehaviour(BaseBehaviour):
                 return
 
             vote, confidence = decision
-            payload = DecisionMakerPayload(self.context.agent_address, vote, confidence)
+            is_profitable = self._is_profitable(vote, confidence)
+            payload = DecisionMakerPayload(
+                self.context.agent_address, self.n_slots_unsupported, is_profitable, vote, confidence
+            )
 
         yield from self.finish_behaviour(payload)
