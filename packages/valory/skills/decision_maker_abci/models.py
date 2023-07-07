@@ -28,7 +28,9 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
-from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.rounds.abci_app import (
+    DecisionMakerAbciApp,
+)
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams as BaseParams,
 )
