@@ -93,7 +93,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
                 self.bets.extend(bets_updates)
 
         if self._fetch_status != FetchStatus.SUCCESS:
-            self.bets = {}
+            self.bets = []
 
     def async_act(self) -> Generator:
         """Do the action."""
