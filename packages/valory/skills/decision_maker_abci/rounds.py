@@ -36,12 +36,16 @@ from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as BaseSynchronizedData,
 )
+from packages.valory.skills.market_manager_abci.rounds import (
+    UpdateBetsRound as BaseUpdateBetsRound,
+)
 
 
 class Event(Enum):
     """Event enumeration for the price estimation demo."""
 
     DONE = "done"
+    NONE = "none"
     MECH_RESPONSE_ERROR = "mech_response_error"
     NON_BINARY = "non_binary"
     TIE = "tie"
@@ -57,9 +61,14 @@ class SynchronizedData(BaseSynchronizedData):
     """
 
     @property
-    def sampled_bet(self) -> Bet:
+    def sampled_bet_id(self) -> int:
         """Get the sampled bet."""
         raise NotImplementedError
+
+    @property
+    def sampled_bet(self) -> Bet:
+        """Get the sampled bet."""
+        return self.bets[self.sampled_bet_id]
 
     @property
     def non_binary(self) -> bool:
@@ -124,6 +133,14 @@ class DecisionMakerRound(CollectSameUntilThresholdRound):
         return synced_data, event
 
 
+class BlacklistingRound(BaseUpdateBetsRound):
+    """A round for the bets fetching & updating."""
+
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+
+
 class FinishedDecisionMakerRound(DegenerateRound):
     """A round representing that decision-making has finished."""
 
@@ -152,11 +169,16 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     transition_function: AbciAppTransitionFunction = {
         DecisionMakerRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            Event.MECH_RESPONSE_ERROR: FinishedDecisionMakerRound,  # TODO blacklist and go back to sampling a bet
+            Event.MECH_RESPONSE_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionMakerRound,
             Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
-            Event.TIE: FinishedDecisionMakerRound,  # TODO blacklist and go back to sampling a bet
-            Event.UNPROFITABLE: FinishedDecisionMakerRound,  # TODO blacklist the sampled bet for duration set in config
+            Event.TIE: BlacklistingRound,
+            Event.UNPROFITABLE: BlacklistingRound,
+        },
+        BlacklistingRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.NO_MAJORITY: BlacklistingRound,
         },
         FinishedDecisionMakerRound: {},
     }

@@ -57,6 +57,10 @@ class DecisionMakerParams(BaseParams):
         )
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, str)
+        # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
+        self.blacklisting_duration: int = self._ensure(
+            "blacklisting_duration", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     def get_bet_amount(self, confidence: float) -> int:

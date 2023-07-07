@@ -141,6 +141,7 @@ models:
         0.9: 0
         1: 0
       bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
     class_name: DecisionMakerParams
   requests:
     args: {}
