@@ -34,8 +34,6 @@ class BetStatus(Enum):
 
     UNPROCESSED = auto()
     PROCESSED = auto()
-    WAITING_RESPONSE = auto()
-    RESPONSE_RECEIVED = auto()
     BLACKLISTED = auto()
 
 
@@ -53,6 +51,7 @@ class Bet:
     outcomeTokenAmounts: List[int]
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
+    usdLiquidityMeasure: int
     status: BetStatus = BetStatus.UNPROCESSED
     blacklist_expiration: float = -1
 

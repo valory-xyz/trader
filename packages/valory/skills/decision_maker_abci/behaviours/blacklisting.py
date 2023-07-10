@@ -24,7 +24,9 @@ from typing import Generator, Optional
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.rounds import BlacklistingRound
+from packages.valory.skills.decision_maker_abci.states.blacklisting import (
+    BlacklistingRound,
+)
 from packages.valory.skills.market_manager_abci.bets import BetStatus, serialize_bets
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
@@ -43,8 +45,8 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
     def _blacklist(self) -> Optional[str]:
         """Blacklist the sampled bet and return the updated version of the bets, serialized."""
         bets = self.synchronized_data.bets
-        sampled_bet_id = self.synchronized_data.sampled_bet_id
-        sampled_bet = bets[sampled_bet_id]
+        sampled_bet_index = self.synchronized_data.sampled_bet_index
+        sampled_bet = bets[sampled_bet_index]
         sampled_bet.status = BetStatus.BLACKLISTED
         blacklist_expiration = self.synced_time + self.params.blacklisting_duration
         sampled_bet.blacklist_expiration = blacklist_expiration

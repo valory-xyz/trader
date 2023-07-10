@@ -17,36 +17,26 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
+"""This module contains the sampling state of the decision-making abci app."""
 
-from string import Template
-
-
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
+from packages.valory.skills.abstract_round_abci.base import (
+    CollectSameUntilThresholdRound,
+    get_name,
 )
+from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
+
+
+class SamplingRound(CollectSameUntilThresholdRound):
+    """A round for sampling a bet."""
+
+    payload_class = SamplingPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = get_name(SynchronizedData.sampled_bet_index)
+    collection_key = get_name(SynchronizedData.participant_to_sampling)

@@ -25,8 +25,14 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
+    BlacklistingBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.decision_maker import (
     DecisionMakerBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
+    SamplingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 
@@ -37,5 +43,7 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
     initial_behaviour_cls = DecisionMakerBehaviour
     abci_app_cls = DecisionMakerAbciApp
     behaviours: Set[Type[BaseBehaviour]] = {
+        SamplingBehaviour,  # type: ignore
         DecisionMakerBehaviour,  # type: ignore
+        BlacklistingBehaviour,  # type: ignore
     }
