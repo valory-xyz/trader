@@ -27,7 +27,9 @@ from packages.valory.skills.abstract_round_abci.base import (
     AppState,
 )
 from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.decision_maker_abci.states.bet_placement import BetPlacementRound
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
@@ -35,8 +37,9 @@ from packages.valory.skills.decision_maker_abci.states.decision_maker import (
     DecisionMakerRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
+    FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
-    ImpossibleRound, FinishedDecisionMakerRound,
+    ImpossibleRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 
@@ -63,6 +66,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: DecisionMakerRound,
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: SamplingRound,
+            Event.ROUND_TIMEOUT: SamplingRound,
         },
         DecisionMakerRound: {
             Event.DONE: BetPlacementRound,
@@ -71,6 +75,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
+            Event.ROUND_TIMEOUT: DecisionMakerRound,
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
