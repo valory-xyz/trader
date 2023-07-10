@@ -1,0 +1,33 @@
+name: market_maker
+author: valory
+version: 0.1.0
+type: contract
+description: Fixed product market maker contract
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeiegnihrovfkk5big52pl4bo6evt5toqvvmft2jgnq6ofdbhfp7xwa
+  __init__.py: bafybeicoucixii3fv5xlpk3zfewm4ys4okidcng54bhtjxvwup7g2jcjza
+  build/FixedProductMarketMaker.json: bafybeigim7n3f67r5czfc5wp2m7cxzxwvnhxops3n5j2zlawenan7qrrtu
+  contract.py: bafybeicfiicuke4ly5hpcxtyvnob5bgzrqsopuxalruxp2m3w4koxmhrqa
+  tests/__init__.py: bafybeiel37q64d2i24nab4nt5qu3zfbqonyid2sbap2i4m6yvcpm7zl4iy
+  tests/test_contract.py: bafybeiapphtneb4ddpxmgxn2wius7ystafrnahkcbtlichwum4mlp7p7ze
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: FixedProductMarketMakerContract
+contract_interface_paths:
+  ethereum: build/FixedProductMarketMaker.json
+dependencies:
+  ecdsa:
+    version: '>=0.15'
+  eth_typing: {}
+  hexbytes: {}
+  open-aea-ledger-ethereum:
+    version: ==1.35.0
+  open-aea-test-autonomy:
+    version: ==0.10.7
+  packaging: {}
+  py-eth-sig-utils: {}
+  requests: {}
+  web3:
+    version: ==5.31.4
