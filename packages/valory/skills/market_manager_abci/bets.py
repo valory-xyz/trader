@@ -34,8 +34,6 @@ class BetStatus(Enum):
 
     UNPROCESSED = auto()
     PROCESSED = auto()
-    WAITING_RESPONSE = auto()
-    RESPONSE_RECEIVED = auto()
     BLACKLISTED = auto()
 
 
@@ -53,6 +51,7 @@ class Bet:
     outcomeTokenAmounts: List[int]
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
+    usdLiquidityMeasure: int
     status: BetStatus = BetStatus.UNPROCESSED
     blacklist_expiration: float = -1
 
@@ -128,3 +127,10 @@ class BetsDecoder(json.JSONDecoder):
             return Bet(**data)
 
         return data
+
+
+def serialize_bets(bets: List[Bet]) -> Optional[str]:
+    """Get the bets serialized."""
+    if len(bets) == 0:
+        return None
+    return json.dumps(bets, cls=BetsEncoder)

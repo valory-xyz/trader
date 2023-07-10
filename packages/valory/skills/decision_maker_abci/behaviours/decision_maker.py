@@ -30,7 +30,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
-from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerRound
+from packages.valory.skills.decision_maker_abci.states.decision_maker import (
+    DecisionMakerRound,
+)
 from packages.valory.skills.decision_maker_abci.tasks import (
     MechInteractionResponse,
     MechInteractionTask,

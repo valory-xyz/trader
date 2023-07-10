@@ -17,26 +17,17 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the decision maker."""
+"""This module contains the blacklisting state of the decision-making abci app."""
 
-from dataclasses import dataclass
-from typing import Optional
-
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-
-
-@dataclass(frozen=True)
-class DecisionMakerPayload(BaseTxPayload):
-    """Represents a transaction payload for the decision-making."""
-
-    unsupported: bool
-    is_profitable: bool
-    vote: Optional[int]
-    confidence: Optional[float]
+from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.market_manager_abci.rounds import (
+    UpdateBetsRound as BaseUpdateBetsRound,
+)
 
 
-@dataclass(frozen=True)
-class SamplingPayload(BaseTxPayload):
-    """Represents a transaction payload for the sampling of a bet."""
+class BlacklistingRound(BaseUpdateBetsRound):
+    """A round for updating the bets after blacklisting the sampled one."""
 
-    index: int
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY

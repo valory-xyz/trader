@@ -17,26 +17,14 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the decision maker."""
+"""This module contains the final states of the decision-making abci app."""
 
-from dataclasses import dataclass
-from typing import Optional
-
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.abstract_round_abci.base import DegenerateRound
 
 
-@dataclass(frozen=True)
-class DecisionMakerPayload(BaseTxPayload):
-    """Represents a transaction payload for the decision-making."""
-
-    unsupported: bool
-    is_profitable: bool
-    vote: Optional[int]
-    confidence: Optional[float]
+class FinishedDecisionMakerRound(DegenerateRound):
+    """A round representing that decision-making has finished."""
 
 
-@dataclass(frozen=True)
-class SamplingPayload(BaseTxPayload):
-    """Represents a transaction payload for the sampling of a bet."""
-
-    index: int
+class ImpossibleRound(DegenerateRound):
+    """A round representing that decision-making is impossible with the given parametrization."""
