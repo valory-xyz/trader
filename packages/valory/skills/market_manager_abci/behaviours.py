@@ -19,12 +19,15 @@
 
 """This module contains the behaviours for the MarketManager skill."""
 
-import json
-from typing import Any, Dict, Generator, List, Optional, Set, Type
+from typing import Any, Generator, Iterator, List, Set, Type
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
-from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus, BetsEncoder
+from packages.valory.skills.market_manager_abci.bets import (
+    Bet,
+    BetStatus,
+    serialize_bets,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     QueryingBehaviour,
@@ -45,19 +48,12 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         """Initialize `UpdateBetsBehaviour`."""
         super().__init__(**kwargs)
         # list of bets mapped to prediction markets
-        self.bets: Dict[str, List[Bet]] = {}
-
-    @property
-    def serialized_bets(self) -> Optional[str]:
-        """Get the bets serialized."""
-        if len(self.bets) == 0:
-            return None
-        return json.dumps(self.bets, cls=BetsEncoder)
+        self.bets: List[Bet] = []
 
     @property
     def bets_ids(self) -> List[str]:
         """Get the ids of the already existing bets."""
-        return [bet.id for bets in self.bets.values() for bet in bets]
+        return [bet.id for bet in self.bets]
 
     def is_valid_bet(self, bet: Bet) -> bool:
         """Return if a bet is valid or not."""
@@ -67,18 +63,15 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         )
 
     @property
-    def valid_local_bets(self) -> Dict[str, List[Bet]]:
+    def valid_local_bets(self) -> Iterator[Bet]:
         """Get the valid already existing bets."""
-        return {
-            market: list(filter(self.is_valid_bet, bets))
-            for market, bets in self.synchronized_data.bets.items()
-        }
+        return filter(self.is_valid_bet, self.synchronized_data.bets)
 
     def _update_bets(
         self,
     ) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
-        self.bets = self.valid_local_bets
+        self.bets = list(self.valid_local_bets)
         existing_ids = self.bets_ids
 
         while True:
@@ -89,21 +82,21 @@ class UpdateBetsBehaviour(QueryingBehaviour):
             bets_market_chunk = yield from self._fetch_bets()
             if bets_market_chunk is not None:
                 bets_updates = (
-                    Bet(**bet)
+                    Bet(**bet, market=self._current_market)
                     for bet in bets_market_chunk
-                    if bet.id not in existing_ids
+                    if bet.id not in existing_ids and bet.outcomes is not None
                 )
-                self.bets[self._current_market].extend(bets_updates)
+                self.bets.extend(bets_updates)
 
         if self._fetch_status != FetchStatus.SUCCESS:
-            self.bets = {}
+            self.bets = []
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self._update_bets()
             payload = UpdateBetsPayload(
-                self.context.agent_address, self.serialized_bets
+                self.context.agent_address, serialize_bets(self.bets)
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

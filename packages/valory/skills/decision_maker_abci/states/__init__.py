@@ -17,36 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
-
-from string import Template
-
-
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
-)
+"""This package contains the rounds for the 'decision_maker_abci' skill."""

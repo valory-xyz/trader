@@ -17,36 +17,9 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
+"""This module contains the decision maker skill for the trader."""
 
-from string import Template
+from aea.configurations.base import PublicId
 
 
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
-)
+PUBLIC_ID = PublicId.from_str("valory/decision_maker_abci:0.1.0")

@@ -17,36 +17,14 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
+"""This module contains the final states of the decision-making abci app."""
 
-from string import Template
+from packages.valory.skills.abstract_round_abci.base import DegenerateRound
 
 
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
-)
+class FinishedDecisionMakerRound(DegenerateRound):
+    """A round representing that decision-making has finished."""
+
+
+class ImpossibleRound(DegenerateRound):
+    """A round representing that decision-making is impossible with the given parametrization."""

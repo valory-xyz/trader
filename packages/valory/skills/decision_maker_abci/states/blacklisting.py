@@ -17,36 +17,17 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
+"""This module contains the blacklisting state of the decision-making abci app."""
 
-from string import Template
-
-
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
+from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.market_manager_abci.rounds import (
+    UpdateBetsRound as BaseUpdateBetsRound,
 )
+
+
+class BlacklistingRound(BaseUpdateBetsRound):
+    """A round for updating the bets after blacklisting the sampled one."""
+
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY

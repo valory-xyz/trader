@@ -17,36 +17,26 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
+"""This module contains the transaction payloads for the decision maker."""
 
-from string import Template
+from dataclasses import dataclass
+from typing import Optional
+
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 
 
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
-)
+@dataclass(frozen=True)
+class DecisionMakerPayload(BaseTxPayload):
+    """Represents a transaction payload for the decision-making."""
+
+    unsupported: bool
+    is_profitable: bool
+    vote: Optional[int]
+    confidence: Optional[float]
+
+
+@dataclass(frozen=True)
+class SamplingPayload(BaseTxPayload):
+    """Represents a transaction payload for the sampling of a bet."""
+
+    index: int

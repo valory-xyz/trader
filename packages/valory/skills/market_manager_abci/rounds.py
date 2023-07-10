@@ -61,12 +61,12 @@ class SynchronizedData(BaseSynchronizedData):
         return CollectionRound.deserialize_collection(serialized)
 
     @property
-    def bets(self) -> Dict[str, List[Bet]]:
+    def bets(self) -> List[Bet]:
         """Get the most voted bets."""
         serialized_bets = str(self.db.get("bets", ""))
 
         if serialized_bets == "":
-            return {}
+            return []
 
         return json.loads(serialized_bets, cls=BetsDecoder)
 
@@ -97,9 +97,9 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
     """A round for the bets fetching & updating."""
 
     payload_class = UpdateBetsPayload
-    done_event = Event.DONE
-    none_event = Event.FETCH_ERROR
-    no_majority_event = Event.NO_MAJORITY
+    done_event: Enum = Event.DONE
+    none_event: Enum = Event.FETCH_ERROR
+    no_majority_event: Enum = Event.NO_MAJORITY
     selection_key = get_name(SynchronizedData.bets)
     collection_key = get_name(SynchronizedData.participant_to_bets)
     synchronized_data_class = SynchronizedData
