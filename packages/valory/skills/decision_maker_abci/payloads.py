@@ -40,3 +40,10 @@ class SamplingPayload(BaseTxPayload):
     """Represents a transaction payload for the sampling of a bet."""
 
     index: int
+
+
+@dataclass(frozen=True)
+class BetPlacementPayload(BaseTxPayload):
+    """Represents a transaction payload for placing a bet."""
+
+    tx_hash: str

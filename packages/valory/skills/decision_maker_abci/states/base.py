@@ -20,11 +20,15 @@
 """This module contains the base functionality for the rounds of the decision-making abci app."""
 
 from enum import Enum
+from typing import Optional
 
 from packages.valory.skills.abstract_round_abci.base import DeserializedCollection
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
-    SynchronizedData as BaseSynchronizedData,
+    SynchronizedData as MarketManagerSyncedData,
+)
+from packages.valory.skills.transaction_settlement_abci.rounds import (
+    SynchronizedData as TxSettlementSyncedData,
 )
 
 
@@ -41,7 +45,7 @@ class Event(Enum):
     NO_MAJORITY = "no_majority"
 
 
-class SynchronizedData(BaseSynchronizedData):
+class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     """Class to represent the synchronized data.
 
     This data is replicated by the tendermint application.
@@ -63,10 +67,9 @@ class SynchronizedData(BaseSynchronizedData):
         return bool(self.db.get_strict("non_binary"))
 
     @property
-    def vote(self) -> str:
-        """Get the bet's vote."""
-        vote = self.db.get_strict("vote")
-        return self.sampled_bet.get_outcome(vote)
+    def vote(self) -> Optional[int]:
+        """Get the bet's vote index."""
+        return int(self.db.get_strict("vote"))
 
     @property
     def confidence(self) -> float:
@@ -87,3 +90,8 @@ class SynchronizedData(BaseSynchronizedData):
     def participant_to_sampling(self) -> DeserializedCollection:
         """Get the participants to bet-sampling."""
         return self._get_deserialized("participant_to_sampling")
+
+    @property
+    def participant_to_bet_placement(self) -> DeserializedCollection:
+        """Get the participants to bet-placement."""
+        return self._get_deserialized("participant_to_bet_placement")
