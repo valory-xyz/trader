@@ -1,27 +1,38 @@
-name: market_manager_abci
+name: trader_abci
 author: valory
 version: 0.1.0
 type: skill
-description: This skill implements the MarketManager for an AEA.
+description: This skill implements the trader skill for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md:
+  __init__.py:
+  behaviours.py:
+  composition.py:
+  dialogues.py:
+  fsm_specification.yaml:
+  handlers.py:
+  models.py:
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
-protocols:
-- valory/http:1.0.0:bafybeifyoio7nlh5zzyn5yz7krkou56l22to3cwg7gw5v5o3vxwklibhty
+protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
+- valory/registration_abci:0.1.0:bafybeib6fsfur5jnflcveidnaeylneybwazewufzwa5twnwovdqgwtwsxm
+- valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
+- valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
+- valory/market_manager_abci
+- valory/decision_maker_abci
 behaviours:
   main:
     args: {}
-    class_name: MarketManagerRoundBehaviour
+    class_name: TraderConsensusBehaviour
 handlers:
   abci:
     args: {}
-    class_name: ABCIMarketManagerHandler
+    class_name: TraderHandler
   contract_api:
     args: {}
     class_name: ContractApiHandler
@@ -81,8 +92,8 @@ models:
             max_bytes: '1048576'
           validator:
             pub_key_types:
-            - ed25519
-          version: {}
+              - ed25519
+          version: { }
         voting_power: '10'
       keeper_timeout: 30.0
       max_attempts: 10
@@ -100,7 +111,7 @@ models:
       service_registry_address: null
       setup:
         all_participants:
-        - '0x0000000000000000000000000000000000000000'
+          - '0x0000000000000000000000000000000000000000'
         safe_contract_address: '0x0000000000000000000000000000000000000000'
         consensus_threshold: null
       share_tm_config_on_startup: false
@@ -114,23 +125,27 @@ models:
       tx_timeout: 10.0
       use_termination: false
       creator_per_subgraph:
-        omen_subgraph: []
+        omen_subgraph: [ ]
       slot_count: 2
       opening_margin: 300
-      languages: [en_US]
-    class_name: MarketManagerParams
-  omen_subgraph:
-    args:
-      api_id: omen
-      headers:
-        Content-Type: application/json
-      method: POST
-      parameters: { }
-      response_key: data:fixedProductMarketMakers
-      response_type: dict
-      retries: 5
-      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
-    class_name: OmenSubgraph
+      languages: [ en_US ]
+      mech_agent_id: 3
+      mech_tool: prediction-online
+      bet_amount_per_threshold:
+        0: 0
+        0.1: 0
+        0.2: 0
+        0.3: 0
+        0.4: 0
+        0.5: 0
+        0.6: 0
+        0.7: 0
+        0.8: 0
+        0.9: 0
+        1: 0
+      bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
+    class_name: TraderParams
   requests:
     args: {}
     class_name: Requests
@@ -140,5 +155,8 @@ models:
   state:
     args: {}
     class_name: SharedState
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
 dependencies: {}
-is_abstract: true
+is_abstract: false

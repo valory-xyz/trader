@@ -47,6 +47,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         The sampling logic is relatively simple at the moment
         It simply selects the unprocessed bet with the largest liquidity.
+
+        :return: the id of the sampled bet.
         """
         max_lq = max(self.available_bets, key=lambda bet: bet.usdLiquidityMeasure)
         return self.synchronized_data.bets.index(max_lq)

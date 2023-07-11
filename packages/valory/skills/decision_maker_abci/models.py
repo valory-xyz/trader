@@ -29,9 +29,7 @@ from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
-from packages.valory.skills.market_manager_abci.models import (
-    MarketManagerParams as BaseParams,
-)
+from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 
 
 Requests = BaseRequests
@@ -44,7 +42,7 @@ class SharedState(BaseSharedState):
     abci_app_cls = DecisionMakerAbciApp
 
 
-class DecisionMakerParams(BaseParams):
+class DecisionMakerParams(MarketManagerParams):
     """Decision maker's parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
