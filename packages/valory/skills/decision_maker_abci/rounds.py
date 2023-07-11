@@ -27,6 +27,9 @@ from packages.valory.skills.abstract_round_abci.base import (
     AppState,
 )
 from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
@@ -35,6 +38,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_maker import (
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedWithoutDecisionRound,
     ImpossibleRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
@@ -62,26 +66,37 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: DecisionMakerRound,
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: SamplingRound,
+            Event.ROUND_TIMEOUT: SamplingRound,
         },
         DecisionMakerRound: {
-            Event.DONE: FinishedDecisionMakerRound,
+            Event.DONE: BetPlacementRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionMakerRound,
             Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
+            Event.ROUND_TIMEOUT: DecisionMakerRound,
         },
         BlacklistingRound: {
-            Event.DONE: FinishedDecisionMakerRound,
+            Event.DONE: FinishedWithoutDecisionRound,
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: BlacklistingRound,
+            Event.ROUND_TIMEOUT: BlacklistingRound,
+        },
+        BetPlacementRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.NO_MAJORITY: BetPlacementRound,
+            Event.ROUND_TIMEOUT: BetPlacementRound,
         },
         FinishedDecisionMakerRound: {},
+        FinishedWithoutDecisionRound: {},
         ImpossibleRound: {},
     }
     final_states: Set[AppState] = {
-        ImpossibleRound,
         FinishedDecisionMakerRound,
+        FinishedWithoutDecisionRound,
+        ImpossibleRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -91,5 +106,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: set(),
+        FinishedWithoutDecisionRound: set(),
         ImpossibleRound: set(),
     }

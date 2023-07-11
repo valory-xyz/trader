@@ -25,6 +25,9 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import (
+    BetPlacementBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
@@ -46,4 +49,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         SamplingBehaviour,  # type: ignore
         DecisionMakerBehaviour,  # type: ignore
         BlacklistingBehaviour,  # type: ignore
+        BetPlacementBehaviour,  # type: ignore
     }
