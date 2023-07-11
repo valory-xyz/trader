@@ -6,7 +6,20 @@ description: This skill implements the MarketManager for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md:
+  README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
+  __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
+  behaviours.py: bafybeiayppjlgmxhhazgmqghdb7lkth3tekmd64lzlw5k22y4xr5rjacbi
+  bets.py: bafybeiekghlncbj5i2bme62b7sopm4gm622syqoxiafsnba5vv7f2x2xpe
+  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
+  fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
+  graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
+  graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
+  graph_tooling/queries/omen.py: bafybeia2rhkpj4mu6ttcqze2i4eqdslwgew2iui2egqen5ym7ko4ybgwma
+  graph_tooling/requests.py: bafybeifb2c4gdtsqz3sh4a2fsejzgt7bchzmabirgt3fwd5hmmxku6grb4
+  handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
+  models.py: bafybeidhhhp2obt36iatytckybywdm55pzmefpyccakfw3ufyz732ydigy
+  payloads.py: bafybeihkxngjzlmorqpckhf7avdaczmzecpawa4ne6ewz7zhfcsw6trbeu
+  rounds.py: bafybeib3kjtz6lpx7vczrmnanj6c2z4jrbvbdw6l3jvq5z3ecyglugiwmy
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -115,7 +128,8 @@ models:
         omen_subgraph: []
       slot_count: 2
       opening_margin: 300
-      languages: [en_US]
+      languages:
+      - en_US
     class_name: MarketManagerParams
   omen_subgraph:
     args:
@@ -123,7 +137,7 @@ models:
       headers:
         Content-Type: application/json
       method: POST
-      parameters: { }
+      parameters: {}
       response_key: data:fixedProductMarketMakers
       response_type: dict
       retries: 5

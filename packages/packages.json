@@ -1,5 +1,10 @@
 {
-    "dev": {},
+    "dev": {
+        "skill/valory/market_manager_abci/0.1.0": "bafybeigrh3jnhsunxskn4itlrr3ybjzhtad4lxh2uvosk4ibgqmx2qjxja",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeicmkk6jqagmj6hykd6pufet7qe4dxq2cewajbjfd7oaadrxi4zcbi",
+        "skill/valory/trader_abci/0.1.0": "bafybeignj5x6ebh26r3kecvkkymhkjk247bmgfmvmsy3yomlau2quuxlvy",
+        "contract/valory/market_maker/0.1.0": "bafybeibri3g2khx7prxkmcvlupqnojetysl3wfmjelqwynk7yvmy5gmruy",
+    },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4",
         "protocol/valory/abci/0.1.0": "bafybeig3dj5jhsowlvg3t73kgobf6xn4nka7rkttakdb2gwsg5bp7rt7q4",
