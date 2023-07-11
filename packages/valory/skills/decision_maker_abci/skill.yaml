@@ -12,13 +12,13 @@ fingerprint:
   behaviours/base.py: bafybeihpxgeu6bkjyfhnayz27jvmm44h4cogia3erl2ihm4bdle6ribpiy
   behaviours/bet_placement.py: bafybeigs7rzfms4axsdrqayo6vjomrxfu4vb2xu7yemizqehqimmdejx4e
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_maker.py: bafybeifistruowsaw3j7ria4py4x4xsc2kfttxxbg5dfciajxfn3ksuveq
+  behaviours/decision_maker.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
   behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
   behaviours/sampling.py: bafybeicx24iw2k4ps2eqmokqtnkndii7togl2cgfr65vjiegoxflzj5ekq
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeierfujdtrnzl72b3vdsdiqcah6anroerqa4m763erxe6m6aq3tw3y
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeib6tlpohniaupamwvb24y6dne42wrxaftywe6ffnwolfmu6qvwxdm
+  models.py: bafybeiggylwxzknh4duj6cid3qoodm5wg7ip6ui5hxptvjgkpuaqcuewbq
   payloads.py: bafybeihc2t4biela7hktwltwfjatihsxbsu4dutj4jcciiizgsgxwy2nxe
   rounds.py: bafybeihr6psedc6gcd4pjtnp5mqhu5a2rvgiofha43kr4w4hmnhaaftrvm
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
@@ -37,9 +37,9 @@ contracts:
 protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
-- valory/market_manager_abci:0.1.0:bafybeigrh3jnhsunxskn4itlrr3ybjzhtad4lxh2uvosk4ibgqmx2qjxja
-- valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
+- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
+- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
+- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
 behaviours:
   main:
     args: {}
