@@ -102,7 +102,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.buy_amount = buy_amount
         return True
 
-    def _get_buy_data(self) -> Generator[None, None, bool]:
+    def _build_buy_data(self) -> Generator[None, None, bool]:
         """Get the buy tx data encoded."""
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
@@ -129,12 +129,8 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.buy_data = buy_data
         return True
 
-    def _get_safe_tx_hash(self) -> Generator[None, None, bool]:
-        """
-        Prepares and returns the safe tx hash.
-
-        :return: the tx hash
-        """
+    def _build_safe_tx_hash(self) -> Generator[None, None, bool]:
+        """Prepares and returns the safe tx hash."""
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.synchronized_data.safe_contract_address,
@@ -200,8 +196,8 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         """Prepare the safe transaction for placing a bet and return the hex for the tx settlement skill."""
         for step in (
             self._calc_buy_amount,
-            self._get_buy_data,
-            self._get_safe_tx_hash,
+            self._build_buy_data,
+            self._build_safe_tx_hash,
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
