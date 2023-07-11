@@ -44,8 +44,8 @@ class SharedState(BaseSharedState):
     abci_app_cls = MarketManagerAbciApp
 
 
-class RandomnessApi(ApiSpecs):
-    """A model that wraps ApiSpecs for randomness api specifications."""
+class OmenSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
 
 
 class MarketManagerParams(BaseParams):
