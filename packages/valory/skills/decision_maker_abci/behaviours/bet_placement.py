@@ -197,12 +197,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             yield from self.sleep(self.params.sleep_time)
 
     def _prepare_safe_tx(self) -> Generator[None, None, str]:
-        """
-        Sample a bet and return its id.
-
-        The sampling logic is relatively simple at the moment
-        It simply selects the unprocessed bet with the largest liquidity.
-        """
+        """Prepare the safe transaction for placing a bet and return the hex for the tx settlement skill."""
         for step in (
             self._calc_buy_amount,
             self._get_buy_data,
