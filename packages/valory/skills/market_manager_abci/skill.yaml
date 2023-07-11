@@ -139,7 +139,7 @@ models:
       method: POST
       parameters: {}
       response_key: data:fixedProductMarketMakers
-      response_type: dict
+      response_type: list
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
