@@ -119,17 +119,6 @@ models:
       opening_margin: 300
       languages: [en_US]
     class_name: MarketManagerParams
-  randomness_api:
-    args:
-      api_id: cloudflare
-      headers: {}
-      method: GET
-      parameters: {}
-      response_key: null
-      response_type: dict
-      retries: 5
-      url: https://drand.cloudflare.com/public/latest
-    class_name: RandomnessApi
   omen_subgraph:
     args:
       api_id: omen
@@ -151,7 +140,5 @@ models:
   state:
     args: {}
     class_name: SharedState
-dependencies:
-  open-aea-test-autonomy:
-    version: ==0.10.7
+dependencies: {}
 is_abstract: true
