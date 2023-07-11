@@ -42,6 +42,9 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     ImpossibleRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.market_manager_abci.rounds import (
+    Event as MarketManagerEvent,
+)
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
@@ -82,6 +85,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
