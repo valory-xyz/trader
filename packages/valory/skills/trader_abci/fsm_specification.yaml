@@ -1,0 +1,59 @@
+alphabet_in:
+- DONE
+- FETCH_ERROR
+- MECH_RESPONSE_ERROR
+- NONE
+- NON_BINARY
+- NO_MAJORITY
+- RESET_AND_PAUSE_TIMEOUT
+- ROUND_TIMEOUT
+- TIE
+- UNPROFITABLE
+default_start_state: RegistrationStartupRound
+final_states:
+- ImpossibleRound
+label: TraderAbciApp
+start_states:
+- RegistrationRound
+- RegistrationStartupRound
+states:
+- BetPlacementRound
+- BlacklistingRound
+- DecisionMakerRound
+- ImpossibleRound
+- RegistrationRound
+- RegistrationStartupRound
+- ResetAndPauseRound
+- SamplingRound
+- UpdateBetsRound
+transition_func:
+    (BetPlacementRound, DONE): ResetAndPauseRound
+    (BetPlacementRound, NONE): ImpossibleRound
+    (BetPlacementRound, NO_MAJORITY): BetPlacementRound
+    (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
+    (BlacklistingRound, DONE): ResetAndPauseRound
+    (BlacklistingRound, FETCH_ERROR): ImpossibleRound
+    (BlacklistingRound, NONE): ImpossibleRound
+    (BlacklistingRound, NO_MAJORITY): BlacklistingRound
+    (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
+    (DecisionMakerRound, DONE): BetPlacementRound
+    (DecisionMakerRound, MECH_RESPONSE_ERROR): BlacklistingRound
+    (DecisionMakerRound, NON_BINARY): ImpossibleRound
+    (DecisionMakerRound, NO_MAJORITY): DecisionMakerRound
+    (DecisionMakerRound, ROUND_TIMEOUT): DecisionMakerRound
+    (DecisionMakerRound, TIE): BlacklistingRound
+    (DecisionMakerRound, UNPROFITABLE): BlacklistingRound
+    (RegistrationRound, DONE): UpdateBetsRound
+    (RegistrationRound, NO_MAJORITY): RegistrationRound
+    (RegistrationStartupRound, DONE): UpdateBetsRound
+    (ResetAndPauseRound, DONE): UpdateBetsRound
+    (ResetAndPauseRound, NO_MAJORITY): RegistrationRound
+    (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): RegistrationRound
+    (SamplingRound, DONE): DecisionMakerRound
+    (SamplingRound, NONE): ImpossibleRound
+    (SamplingRound, NO_MAJORITY): SamplingRound
+    (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (UpdateBetsRound, DONE): SamplingRound
+    (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
+    (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
+    (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound

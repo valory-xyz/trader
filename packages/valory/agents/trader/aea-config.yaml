@@ -1,0 +1,160 @@
+agent_name: trader
+author: valory
+version: 0.1.0
+license: Apache-2.0
+description: Trader agent.
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
+  __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
+  tests/__init__.py: bafybeihatrrk4q6f7iuhrump5q3x2rpk42hnnyusmpk3jd4bpgw4s6esta
+  tests/test_apy_estimation.py: bafybeibignn5sp3y5oc4jnon3uctjrj6zo527vd6j4ouqazsxr33tlpuqy
+fingerprint_ignore_patterns: []
+connections:
+- valory/abci:0.1.0:bafybeihofnsokowicviac6yz3uhur52l3mf54s2hz4i2je5ie4vlruouga
+- valory/http_client:0.23.0:bafybeidykl4elwbcjkqn32wt5h4h7tlpeqovrcq3c5bcplt6nhpznhgczi
+- valory/ipfs:0.1.0:bafybeiatjutuiav7oxl4hszy3oypdwuetr6crjpminush54c5k4nbeciv4
+- valory/ledger:0.19.0:bafybeicgfupeudtmvehbwziqfxiz6ztsxr5rxzvalzvsdsspzz73o5fzfi
+- valory/p2p_libp2p_client:0.1.0:bafybeidwcobzb7ut3efegoedad7jfckvt2n6prcmd4g7xnkm6hp6aafrva
+contracts:
+- valory/service_registry:0.1.0:bafybeibdy55edqs3djptv77ljkmbf6m3zizhutmvwgj3hpsagvmzhr4jbm
+- valory/market_maker:0.1.0:bafybeibri3g2khx7prxkmcvlupqnojetysl3wfmjelqwynk7yvmy5gmruy
+protocols:
+- open_aea/signing:1.0.0:bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4
+- valory/abci:0.1.0:bafybeig3dj5jhsowlvg3t73kgobf6xn4nka7rkttakdb2gwsg5bp7rt7q4
+- valory/acn:1.1.0:bafybeignmc5uh3vgpuckljcj2tgg7hdqyytkm6m5b6v6mxtazdcvubibva
+- valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
+- valory/http:1.0.0:bafybeifyoio7nlh5zzyn5yz7krkou56l22to3cwg7gw5v5o3vxwklibhty
+- valory/ipfs:0.1.0:bafybeic72ncgqbzoz2guj4p4yjqulid7mv6yroeh65hxznloamoveeg7hq
+- valory/ledger_api:1.0.0:bafybeibo4bdtcrxi2suyzldwoetjar6pqfzm6vt5xal22ravkkcvdmtksi
+- valory/tendermint:0.1.0:bafybeicusvezoqlmyt6iqomcbwaz3xkhk2qf3d56q5zprmj3xdxfy64k54
+skills:
+- valory/abstract_abci:0.1.0:bafybeiff2dqnkeorf343fmb3547fhiznvdw4ewbwl4rqluek2cv6ibl5hi
+- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
+- valory/registration_abci:0.1.0:bafybeifkjbbdrazpnl6uggwv44dwnbwtrw4o2be4buq7qbhwgctdqww4lq
+- valory/reset_pause_abci:0.1.0:bafybeidrupr6pesmkdwx6yq2po5z54elgh2wteyweohfaem4qgxlluklme
+- valory/termination_abci:0.1.0:bafybeidindokcjbpcqo5sx3vstabvv4nr4t4ifc4ikb4cdgab25nuefvm4
+- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
+- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
+- valory/decision_maker_abci:0.1.0:bafybeicyjkkhftedfj2xbwstfnbtodnvnlg2gtazvfhfi3ehvtzrhmctaa
+- valory/trader_abci:0.1.0:bafybeidohsxvfbrt5h4jv2cg3mvnxqayvnjfsoqk2plgsbqhlcterqlwc4
+default_ledger: ethereum
+required_ledgers:
+- ethereum
+- cosmos
+default_routing: {}
+connection_private_key_paths: {}
+private_key_paths: {}
+logging_config:
+  version: 1
+  disable_existing_loggers: false
+  formatters:
+    standard:
+      format: '[%(asctime)s] [%(levelname)s] %(message)s'
+  handlers:
+    logfile:
+      class: logging.FileHandler
+      formatter: standard
+      filename: ${LOG_FILE:str:log.txt}
+      level: ${LOG_LEVEL:str:INFO}
+    console:
+      class: logging.StreamHandler
+      formatter: standard
+      stream: ext://sys.stdout
+  loggers:
+    aea:
+      handlers:
+      - logfile
+      - console
+      propagate: true
+dependencies:
+  open-aea-ledger-cosmos:
+    version: ==1.35.0
+  open-aea-ledger-ethereum:
+    version: ==1.35.0
+  open-aea-test-autonomy:
+    version: ==0.10.7
+skill_exception_policy: stop_and_exit
+connection_exception_policy: just_log
+default_connection: null
+---
+public_id: valory/abci:0.1.0
+type: connection
+config:
+  target_skill_id: valory/trader_abci:0.1.0
+  host: ${str:localhost}
+  port: ${int:26658}
+  use_tendermint: ${bool:false}
+---
+public_id: valory/trader_abci:0.1.0
+type: skill
+models:
+  benchmark_tool:
+    args:
+      log_dir: ${str:/benchmarks}
+  params:
+    args:
+      setup:
+        all_participants: ${list:["0x0000000000000000000000000000000000000000"]}
+        consensus_threshold: ${int:null}
+        safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
+      tendermint_url: ${str:http://localhost:26657}
+      tendermint_com_url: ${str:http://localhost:8080}
+      round_timeout_seconds: ${float:3650.0}
+      reset_pause_duration: ${int:3600}
+      max_healthcheck: ${int:43200}
+      multisend_address: ${str:0x0000000000000000000000000000000000000000}
+      drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
+      service_registry_address: ${str:null}
+      share_tm_config_on_startup: ${bool:false}
+      sleep_time: ${int:10}
+      tendermint_p2p_url: ${str:localhost:26656}
+      termination_sleep: ${int:900}
+      use_termination: ${bool:false}
+      on_chain_service_id: ${int:null}
+      creator_per_subgraph:
+        omen_subgraph: ${list:["0x5367f217f5942cb10db16f2831a11fa287d78216"]}
+      slot_count: ${int:2}
+      opening_margin: ${int:300}
+      languages: ${list:["en_US"]}
+      mech_agent_id: ${int:3}
+      mech_tool: prediction-online
+      bet_amount_per_threshold:
+        0.0: ${int:0}
+        0.1: ${int:0}
+        0.2: ${int:0}
+        0.3: ${int:0}
+        0.4: ${int:0}
+        0.5: ${int:0}
+        0.6: ${int:600000000000000000}
+        0.7: ${int:900000000000000000}
+        0.8: ${int:1000000000000000000}
+        0.9: ${int:10000000000000000000}
+        1.0: ${int:100000000000000000000}
+      bet_threshold: ${int:100000000000000000}
+      blacklisting_duration: ${int:3600}
+---
+public_id: valory/p2p_libp2p_client:0.1.0
+type: connection
+config:
+  nodes:
+  - uri: ${str:acn.staging.autonolas.tech:9005}
+    public_key: ${str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
+cert_requests:
+- identifier: acn
+  ledger_id: ethereum
+  message_format: '{public_key}'
+  not_after: '2024-01-01'
+  not_before: '2023-01-01'
+  public_key: ${str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
+  save_path: .certs/acn_cosmos_9005.txt
+---
+public_id: valory/ledger:0.19.0
+type: connection
+config:
+  ledger_apis:
+    ethereum:
+      address: ${str:http://host.docker.internal:8545}
+      chain_id: ${int:1337}
+      default_gas_price_strategy: ${str:eip1559}
+      poa_chain: ${bool:false}

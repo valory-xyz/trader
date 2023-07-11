@@ -1,0 +1,47 @@
+alphabet_in:
+- DONE
+- FETCH_ERROR
+- MECH_RESPONSE_ERROR
+- NONE
+- NON_BINARY
+- NO_MAJORITY
+- ROUND_TIMEOUT
+- TIE
+- UNPROFITABLE
+default_start_state: SamplingRound
+final_states:
+- FinishedDecisionMakerRound
+- FinishedWithoutDecisionRound
+- ImpossibleRound
+label: DecisionMakerAbciApp
+start_states:
+- SamplingRound
+states:
+- BetPlacementRound
+- BlacklistingRound
+- DecisionMakerRound
+- FinishedDecisionMakerRound
+- FinishedWithoutDecisionRound
+- ImpossibleRound
+- SamplingRound
+transition_func:
+    (BetPlacementRound, DONE): FinishedDecisionMakerRound
+    (BetPlacementRound, NONE): ImpossibleRound
+    (BetPlacementRound, NO_MAJORITY): BetPlacementRound
+    (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
+    (BlacklistingRound, DONE): FinishedWithoutDecisionRound
+    (BlacklistingRound, FETCH_ERROR): ImpossibleRound
+    (BlacklistingRound, NONE): ImpossibleRound
+    (BlacklistingRound, NO_MAJORITY): BlacklistingRound
+    (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
+    (DecisionMakerRound, DONE): BetPlacementRound
+    (DecisionMakerRound, MECH_RESPONSE_ERROR): BlacklistingRound
+    (DecisionMakerRound, NON_BINARY): ImpossibleRound
+    (DecisionMakerRound, NO_MAJORITY): DecisionMakerRound
+    (DecisionMakerRound, ROUND_TIMEOUT): DecisionMakerRound
+    (DecisionMakerRound, TIE): BlacklistingRound
+    (DecisionMakerRound, UNPROFITABLE): BlacklistingRound
+    (SamplingRound, DONE): DecisionMakerRound
+    (SamplingRound, NONE): ImpossibleRound
+    (SamplingRound, NO_MAJORITY): SamplingRound
+    (SamplingRound, ROUND_TIMEOUT): SamplingRound
