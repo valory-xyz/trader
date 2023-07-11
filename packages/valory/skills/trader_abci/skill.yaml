@@ -73,7 +73,6 @@ models:
     class_name: LedgerApiDialogues
   params:
     args:
-      broadcast_to_server: false
       cleanup_history_depth: 1
       cleanup_history_depth_current: null
       decimals: 5
