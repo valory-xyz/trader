@@ -43,8 +43,8 @@ from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 BET_PROMPT = Template(
     """
     With the given question "${question}"
-    and the `yes` option represented by ${yes}
-    and the `no` option represented by ${no},
+    and the `yes` option represented by `${yes}`
+    and the `no` option represented by `${no}`,
     what are the respective probabilities of `p_yes` and `p_no` occurring?
     """
 )
