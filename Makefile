@@ -88,6 +88,7 @@ common-checks-1:
 common-checks-2:
 	tox -e check-abci-docstrings
 	tox -e check-abciapp-specs
+	tox -e check-dependencies
 	tox -e check-handlers
 
 .PHONY: all-checks
