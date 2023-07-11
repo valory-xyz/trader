@@ -105,7 +105,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res = next(self._creators_iterator, None)
             if res is None:
                 return False
-            self._current_market, self._current_creators = next(self._creators_iterator)
+            self._current_market, self._current_creators = res
 
         if self._fetch_status == FetchStatus.FAIL:
             return False
