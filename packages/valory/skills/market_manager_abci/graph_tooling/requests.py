@@ -84,10 +84,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         return cast(SynchronizedData, super().synchronized_data)
 
     @property
-    def synced_time(self) -> float:
+    def synced_time(self) -> int:
         """Get the synchronized time among agents."""
         synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
-        return synced_time.timestamp()
+        return int(synced_time.timestamp())
 
     @property
     def current_subgraph(self) -> ApiSpecs:
