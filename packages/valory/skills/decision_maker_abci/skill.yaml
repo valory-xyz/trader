@@ -1,0 +1,170 @@
+name: decision_maker_abci
+author: valory
+version: 0.1.0
+type: skill
+description: ABCI application for common apps.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
+  __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
+  behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
+  behaviours/base.py: bafybeihpxgeu6bkjyfhnayz27jvmm44h4cogia3erl2ihm4bdle6ribpiy
+  behaviours/bet_placement.py: bafybeigs7rzfms4axsdrqayo6vjomrxfu4vb2xu7yemizqehqimmdejx4e
+  behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
+  behaviours/decision_maker.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
+  behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
+  behaviours/sampling.py: bafybeicx24iw2k4ps2eqmokqtnkndii7togl2cgfr65vjiegoxflzj5ekq
+  dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
+  fsm_specification.yaml: bafybeierfujdtrnzl72b3vdsdiqcah6anroerqa4m763erxe6m6aq3tw3y
+  handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
+  models.py: bafybeiggylwxzknh4duj6cid3qoodm5wg7ip6ui5hxptvjgkpuaqcuewbq
+  payloads.py: bafybeihc2t4biela7hktwltwfjatihsxbsu4dutj4jcciiizgsgxwy2nxe
+  rounds.py: bafybeihr6psedc6gcd4pjtnp5mqhu5a2rvgiofha43kr4w4hmnhaaftrvm
+  states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
+  states/base.py: bafybeidbtfxqgy6xek4ehoco5mvmhmcmx5nl4nrmjac4pit4243bfah4ee
+  states/bet_placement.py: bafybeiafuxdellvnnocttnelnyi75sqrlnkobh6wr57mqysyrsyzirkaya
+  states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
+  states/decision_maker.py: bafybeicspctxyok4h2rssbg7a5fb7iduf4hwr2snglsjmqpldzim3p5e3i
+  states/final_states.py: bafybeicruy5dbfzxtx5nvihcpxr5pfbgxxwbosy7x7d5wbqudtooxjsoqi
+  states/sampling.py: bafybeigehqnkr2hhc2hpagbj4ffiewzjqfwyj7cwkm6fvaoqvntburkxaq
+  tasks.py: bafybeidgfoukqknzwxc3aeu5ifhpygo5nwl6t37ezy362itx4wjslto5be
+fingerprint_ignore_patterns: []
+connections: []
+contracts:
+- valory/gnosis_safe:0.1.0:bafybeif5fdwoxq5mscrurtuimadmtctyxxeeui45u4g6leqobzls7bsl3u
+- valory/market_maker:0.1.0:bafybeibri3g2khx7prxkmcvlupqnojetysl3wfmjelqwynk7yvmy5gmruy
+protocols:
+- valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
+- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
+- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
+behaviours:
+  main:
+    args: {}
+    class_name: AgentDecisionMakerRoundBehaviour
+handlers:
+  abci:
+    args: {}
+    class_name: ABCIHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  benchmark_tool:
+    args:
+      log_dir: /logs
+    class_name: BenchmarkTool
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  params:
+    args:
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      genesis_config:
+        genesis_time: '2022-05-20T16:00:21.735122717Z'
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_num_blocks: '100000'
+            max_age_duration: '172800000000000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        voting_power: '10'
+      keeper_timeout: 30.0
+      max_attempts: 10
+      max_healthcheck: 120
+      on_chain_service_id: null
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 10
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 30.0
+      service_id: decision_maker
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+      share_tm_config_on_startup: false
+      sleep_time: 1
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      tx_timeout: 10.0
+      use_termination: false
+      mech_agent_id: 3
+      mech_tool: prediction-online
+      bet_amount_per_threshold:
+        0.0: 0
+        0.1: 0
+        0.2: 0
+        0.3: 0
+        0.4: 0
+        0.5: 0
+        0.6: 0
+        0.7: 0
+        0.8: 0
+        0.9: 0
+        1.0: 0
+      bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
+    class_name: DecisionMakerParams
+  requests:
+    args: {}
+    class_name: Requests
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  state:
+    args: {}
+    class_name: SharedState
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
+dependencies:
+  mech-client:
+    version: ==0.2.2
+is_abstract: true

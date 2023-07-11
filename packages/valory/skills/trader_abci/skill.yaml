@@ -1,0 +1,180 @@
+name: trader_abci
+author: valory
+version: 0.1.0
+type: skill
+description: This skill implements the trader skill for an AEA.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
+  __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
+  behaviours.py: bafybeihxxsqctxptcch2pl2u4egpbrwukpggr7abrkcukzf6ant57wsqrq
+  composition.py: bafybeidtwoiy4wwatsbjxxob5tjqhu6glxgc3cgdal4efnh4rwpl3kyb2u
+  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
+  fsm_specification.yaml: bafybeicmkn23fgw45r7qovwzo2cooiujjsafgr6kqaczyab2s466t5ek5a
+  handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
+  models.py: bafybeihee6sik7fdoclzztjrrrmlzw4sdemk326omzv2rvonchhb2j6jaq
+fingerprint_ignore_patterns: []
+connections: []
+contracts: []
+protocols: []
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
+- valory/registration_abci:0.1.0:bafybeifkjbbdrazpnl6uggwv44dwnbwtrw4o2be4buq7qbhwgctdqww4lq
+- valory/reset_pause_abci:0.1.0:bafybeidrupr6pesmkdwx6yq2po5z54elgh2wteyweohfaem4qgxlluklme
+- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
+- valory/termination_abci:0.1.0:bafybeidindokcjbpcqo5sx3vstabvv4nr4t4ifc4ikb4cdgab25nuefvm4
+- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
+- valory/decision_maker_abci:0.1.0:bafybeicyjkkhftedfj2xbwstfnbtodnvnlg2gtazvfhfi3ehvtzrhmctaa
+behaviours:
+  main:
+    args: {}
+    class_name: TraderConsensusBehaviour
+handlers:
+  abci:
+    args: {}
+    class_name: TraderHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  benchmark_tool:
+    args:
+      log_dir: /logs
+    class_name: BenchmarkTool
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  params:
+    args:
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      decimals: 5
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      finalize_timeout: 60.0
+      genesis_config:
+        genesis_time: '2022-05-20T16:00:21.735122717Z'
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_num_blocks: '100000'
+            max_age_duration: '172800000000000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        voting_power: '10'
+      history_check_timeout: 1205
+      init_fallback_gas: 0
+      keeper_allowed_retries: 3
+      keeper_timeout: 30.0
+      max_attempts: 10
+      max_healthcheck: 120
+      multisend_address: '0x0000000000000000000000000000000000000000'
+      on_chain_service_id: null
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 10
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 120.0
+      service_id: market_manager_estimation
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+      share_tm_config_on_startup: false
+      sleep_time: 5
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      termination_sleep: 900
+      tx_timeout: 10.0
+      use_termination: false
+      validate_timeout: 1205
+      creator_per_subgraph:
+        omen_subgraph: []
+      slot_count: 2
+      opening_margin: 300
+      languages:
+      - en_US
+      mech_agent_id: 3
+      mech_tool: prediction-online
+      bet_amount_per_threshold:
+        0.0: 0
+        0.1: 0
+        0.2: 0
+        0.3: 0
+        0.4: 0
+        0.5: 0
+        0.6: 0
+        0.7: 0
+        0.8: 0
+        0.9: 0
+        1.0: 0
+      bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
+    class_name: TraderParams
+  omen_subgraph:
+    args:
+      api_id: omen
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
+    class_name: OmenSubgraph
+  requests:
+    args: {}
+    class_name: Requests
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  state:
+    args: {}
+    class_name: SharedState
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
+dependencies: {}
+is_abstract: false
