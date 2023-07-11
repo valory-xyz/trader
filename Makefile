@@ -88,10 +88,11 @@ common-checks-1:
 common-checks-2:
 	tox -e check-abci-docstrings
 	tox -e check-abciapp-specs
+	tox -e check-dependencies
 	tox -e check-handlers
 
 .PHONY: all-checks
-all-checks: clean format code-checks security generators common-checks-1 common-checks-2
+all-checks: format code-checks security generators common-checks-1 common-checks-2
 
 .PHONY: fix-abci-app-specs
 fix-abci-app-specs:

@@ -106,6 +106,8 @@ class BetsEncoder(json.JSONEncoder):
 
     def default(self, o: Any) -> Any:
         """The default encoder."""
+        if isinstance(o, BetStatus):
+            return o.value
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)

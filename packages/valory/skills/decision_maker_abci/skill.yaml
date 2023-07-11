@@ -6,31 +6,40 @@ description: ABCI application for common apps.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeieztbubb6yn5umyt5ulknvb2xxppz5ecxaosxqsaejnrcrrwfu2ji
-  __init__.py: bafybeigqj2uodavhrygpqn6iah3ljp53z54c5fxyh5ykgkxuhh5lof6pda
-  behaviours.py: bafybeihtnjhozgnfasa4weq4tdoj74z5n7bkoqquh6h6eb2ykckmyamxny
-  dialogues.py: bafybeicm4bqedlyytfo4icqqbyolo36j2hk7pqh32d3zc5yqg75bt4demm
-  fsm_specification.yaml: bafybeicx5eutgr4lin7mhwr73xhanuzwdmps7pfoy5f2k7gfxmuec4qbyu
-  handlers.py: bafybeifby6yecei2d7jvxbqrc3tpyemb7xdb4ood2kny5dqja26qnxrf24
-  models.py: bafybeifkfjsfkjy2x32cbuoewxujfgpcl3wk3fji6kq27ofr2zcfe7l5oe
-  payloads.py: bafybeiacrixfazch2a5ydj7jfk2pnvlxwkygqlwzkfmdeldrj4fqgwyyzm
-  rounds.py: bafybeicaewfjtvn4tg3te2glocojmd2gzqkjznv2ruyeev22yrw6ed3wu4
-  tests/__init__.py: bafybeiab2s4vkmbz5bc4wggcclapdbp65bosv4en5zaazk5dwmldojpqja
-  tests/test_behaviours.py: bafybeiffgw2msg466lrtebl6cqa3736iuis2juf33a6awj7wzrcn5yxi6u
-  tests/test_dialogues.py: bafybeibeqnpzuzgcfb6yz76htslwsbbpenihswbp7j3qdyq42yswjq25l4
-  tests/test_handlers.py: bafybeifpnwaktxckbvclklo6flkm5zqs7apmb33ffs4jrmunoykjbl5lni
-  tests/test_models.py: bafybeiewxl7nio5av2aukql2u7hlhodzdvjjneleba32abr42xeirrycb4
-  tests/test_payloads.py: bafybeifik6ek75ughyd4y6t2lchlmjadkzbrz4hsb332k6ul4pwhlo2oga
-  tests/test_rounds.py: bafybeiefwk4quzkdn7m43rlahdhoe53xtzm4itlznjh26vdt5567oblgdm
+  README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
+  __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
+  behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
+  behaviours/base.py: bafybeihpxgeu6bkjyfhnayz27jvmm44h4cogia3erl2ihm4bdle6ribpiy
+  behaviours/bet_placement.py: bafybeigs7rzfms4axsdrqayo6vjomrxfu4vb2xu7yemizqehqimmdejx4e
+  behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
+  behaviours/decision_maker.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
+  behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
+  behaviours/sampling.py: bafybeicx24iw2k4ps2eqmokqtnkndii7togl2cgfr65vjiegoxflzj5ekq
+  dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
+  fsm_specification.yaml: bafybeierfujdtrnzl72b3vdsdiqcah6anroerqa4m763erxe6m6aq3tw3y
+  handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
+  models.py: bafybeiggylwxzknh4duj6cid3qoodm5wg7ip6ui5hxptvjgkpuaqcuewbq
+  payloads.py: bafybeihc2t4biela7hktwltwfjatihsxbsu4dutj4jcciiizgsgxwy2nxe
+  rounds.py: bafybeihr6psedc6gcd4pjtnp5mqhu5a2rvgiofha43kr4w4hmnhaaftrvm
+  states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
+  states/base.py: bafybeidbtfxqgy6xek4ehoco5mvmhmcmx5nl4nrmjac4pit4243bfah4ee
+  states/bet_placement.py: bafybeiafuxdellvnnocttnelnyi75sqrlnkobh6wr57mqysyrsyzirkaya
+  states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
+  states/decision_maker.py: bafybeicspctxyok4h2rssbg7a5fb7iduf4hwr2snglsjmqpldzim3p5e3i
+  states/final_states.py: bafybeicruy5dbfzxtx5nvihcpxr5pfbgxxwbosy7x7d5wbqudtooxjsoqi
+  states/sampling.py: bafybeigehqnkr2hhc2hpagbj4ffiewzjqfwyj7cwkm6fvaoqvntburkxaq
+  tasks.py: bafybeidgfoukqknzwxc3aeu5ifhpygo5nwl6t37ezy362itx4wjslto5be
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeif5fdwoxq5mscrurtuimadmtctyxxeeui45u4g6leqobzls7bsl3u
+- valory/market_maker:0.1.0:bafybeibri3g2khx7prxkmcvlupqnojetysl3wfmjelqwynk7yvmy5gmruy
 protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
-- valory/market_manager_abci:0.1.0:bafybeiunkownhashhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
+- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
+- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
 behaviours:
   main:
     args: {}
@@ -129,7 +138,7 @@ models:
       mech_agent_id: 3
       mech_tool: prediction-online
       bet_amount_per_threshold:
-        0: 0
+        0.0: 0
         0.1: 0
         0.2: 0
         0.3: 0
@@ -139,7 +148,7 @@ models:
         0.7: 0
         0.8: 0
         0.9: 0
-        1: 0
+        1.0: 0
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
     class_name: DecisionMakerParams
@@ -155,5 +164,7 @@ models:
   tendermint_dialogues:
     args: {}
     class_name: TendermintDialogues
-dependencies: {}
+dependencies:
+  mech-client:
+    version: ==0.2.2
 is_abstract: true

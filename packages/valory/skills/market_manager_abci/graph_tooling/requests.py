@@ -1,5 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2021-2023 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -42,6 +45,11 @@ def to_content(query: str) -> bytes:
     return encoded_query
 
 
+def to_graphql_list(li: list) -> str:
+    """Convert the given list to a string representing a list for a GraphQL query."""
+    return repr(li).replace("'", '"')
+
+
 class FetchStatus(Enum):
     """The status of a fetch operation."""
 
@@ -63,7 +71,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             Tuple[str, List[str]]
         ] = self.params.creators_iterator
         self._current_market: str = ""
-        self._current_creators: Optional[List[str]] = None
+        self._current_creators: List[str] = []
 
     @property
     def params(self) -> MarketManagerParams:
@@ -81,10 +89,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         return cast(SynchronizedData, super().synchronized_data)
 
     @property
-    def synced_time(self) -> float:
+    def synced_time(self) -> int:
         """Get the synchronized time among agents."""
         synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
-        return synced_time.timestamp()
+        return int(synced_time.timestamp())
 
     @property
     def current_subgraph(self) -> ApiSpecs:
@@ -97,7 +105,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res = next(self._creators_iterator, None)
             if res is None:
                 return False
-            self._current_market, self._current_creators = next(self._creators_iterator)
+            self._current_market, self._current_creators = res
 
         if self._fetch_status == FetchStatus.FAIL:
             return False
@@ -145,10 +153,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.IN_PROGRESS
 
         query = questions.substitute(
-            creators=repr(self._current_creators),
+            creators=to_graphql_list(self._current_creators),
             slot_count=self.params.slot_count,
             opening_threshold=self.synced_time + self.params.opening_margin,
-            languages=repr(self.params.languages),
+            languages=to_graphql_list(self.params.languages),
         )
 
         res_raw = yield from self.get_http_response(

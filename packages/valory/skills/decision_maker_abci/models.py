@@ -54,7 +54,7 @@ class DecisionMakerParams(MarketManagerParams):
             "bet_amount_per_threshold", kwargs, Dict[float, int]
         )
         # the threshold amount in WEI starting from which we are willing to place a bet
-        self.bet_threshold: int = self._ensure("bet_threshold", kwargs, str)
+        self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int

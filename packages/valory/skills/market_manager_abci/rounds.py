@@ -114,7 +114,26 @@ class FailedMarketManagerRound(DegenerateRound, ABC):
 
 
 class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
-    """MarketManagerAbciApp"""
+    """MarketManagerAbciApp
+
+    Initial round: UpdateBetsRound
+
+    Initial states: {UpdateBetsRound}
+
+    Transition states:
+        0. UpdateBetsRound
+            - done: 1.
+            - fetch error: 2.
+            - round timeout: 0.
+            - no majority: 0.
+        1. FinishedMarketManagerRound
+        2. FailedMarketManagerRound
+
+    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound}
+
+    Timeouts:
+        round timeout: 30.0
+    """
 
     initial_round_cls: Type[AbstractRound] = UpdateBetsRound
     transition_function: AbciAppTransitionFunction = {

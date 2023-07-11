@@ -41,4 +41,5 @@ keys.json
 leak_report
 
 agent/
-mech/
+trader/
+!/packages/valory/agents/trader/

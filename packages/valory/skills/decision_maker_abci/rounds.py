@@ -42,18 +42,48 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     ImpossibleRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.market_manager_abci.rounds import (
+    Event as MarketManagerEvent,
+)
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
     """DecisionMakerAbciApp
 
-    Initial round: DecisionMakerRound
+    Initial round: SamplingRound
 
-    Initial states: {DecisionMakerRound}
+    Initial states: {SamplingRound}
 
     Transition states:
+        0. SamplingRound
+            - done: 1.
+            - none: 6.
+            - no majority: 0.
+            - round timeout: 0.
+        1. DecisionMakerRound
+            - done: 3.
+            - mech response error: 2.
+            - no majority: 1.
+            - non binary: 6.
+            - tie: 2.
+            - unprofitable: 2.
+            - round timeout: 1.
+        2. BlacklistingRound
+            - done: 5.
+            - none: 6.
+            - no majority: 2.
+            - round timeout: 2.
+            - fetch error: 6.
+        3. BetPlacementRound
+            - done: 4.
+            - none: 6.
+            - no majority: 3.
+            - round timeout: 3.
+        4. FinishedDecisionMakerRound
+        5. FinishedWithoutDecisionRound
+        6. ImpossibleRound
 
-    Final states: {FinishedDecisionMakerRound}
+    Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, ImpossibleRound}
 
     Timeouts:
         round timeout: 30.0
@@ -82,6 +112,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
