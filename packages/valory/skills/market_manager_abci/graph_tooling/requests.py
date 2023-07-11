@@ -45,6 +45,11 @@ def to_content(query: str) -> bytes:
     return encoded_query
 
 
+def to_graphql_list(li: list) -> str:
+    """Convert the given list to a string representing a list for a GraphQL query."""
+    return repr(li).replace("'", '"')
+
+
 class FetchStatus(Enum):
     """The status of a fetch operation."""
 
@@ -66,7 +71,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             Tuple[str, List[str]]
         ] = self.params.creators_iterator
         self._current_market: str = ""
-        self._current_creators: Optional[List[str]] = None
+        self._current_creators: List[str] = []
 
     @property
     def params(self) -> MarketManagerParams:
@@ -148,10 +153,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.IN_PROGRESS
 
         query = questions.substitute(
-            creators=repr(self._current_creators),
+            creators=to_graphql_list(self._current_creators),
             slot_count=self.params.slot_count,
             opening_threshold=self.synced_time + self.params.opening_margin,
-            languages=repr(self.params.languages),
+            languages=to_graphql_list(self.params.languages),
         )
 
         res_raw = yield from self.get_http_response(
