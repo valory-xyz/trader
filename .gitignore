@@ -43,3 +43,4 @@ leak_report
 agent/
 trader/
 !/packages/valory/agents/trader/
+!/packages/valory/services/trader/
