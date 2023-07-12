@@ -7,8 +7,6 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
-  tests/__init__.py: bafybeihatrrk4q6f7iuhrump5q3x2rpk42hnnyusmpk3jd4bpgw4s6esta
-  tests/test_apy_estimation.py: bafybeibignn5sp3y5oc4jnon3uctjrj6zo527vd6j4ouqazsxr33tlpuqy
 fingerprint_ignore_patterns: []
 connections:
 - valory/abci:0.1.0:bafybeihofnsokowicviac6yz3uhur52l3mf54s2hz4i2je5ie4vlruouga
@@ -18,7 +16,7 @@ connections:
 - valory/p2p_libp2p_client:0.1.0:bafybeidwcobzb7ut3efegoedad7jfckvt2n6prcmd4g7xnkm6hp6aafrva
 contracts:
 - valory/service_registry:0.1.0:bafybeibdy55edqs3djptv77ljkmbf6m3zizhutmvwgj3hpsagvmzhr4jbm
-- valory/market_maker:0.1.0:bafybeibri3g2khx7prxkmcvlupqnojetysl3wfmjelqwynk7yvmy5gmruy
+- valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
 protocols:
 - open_aea/signing:1.0.0:bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4
 - valory/abci:0.1.0:bafybeig3dj5jhsowlvg3t73kgobf6xn4nka7rkttakdb2gwsg5bp7rt7q4
@@ -35,9 +33,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
-- valory/market_manager_abci:0.1.0:bafybeih7i2e5wsuzhv2htuztz4sygvibehs3vdq3kmby75px3fd4z6fgxy
-- valory/decision_maker_abci:0.1.0:bafybeid3m57otpvsebdbbcu2mzc6rt2aorkazv73j6i3kysm2by56ghffm
-- valory/trader_abci:0.1.0:bafybeiby4lk2z5vesdr2ilm6lsxdscwhuyw6xhipsnmuqddkwnbdw6kkbm
+- valory/market_manager_abci:0.1.0:bafybeihosbo5jkviuy2bdgbt4gll3ba4hgxwgbkj6lup23z5wiopb7vf7q
+- valory/decision_maker_abci:0.1.0:bafybeia52wpwgnqxb3bm4mgbb5y2cq6lvuuhv2uvmfvsg6qglmrbfsdkru
+- valory/trader_abci:0.1.0:bafybeigpnlzqcktz6b43l4azljemu4lobsastxdzfdbzhukzctb5tusxly
 default_ledger: ethereum
 required_ledgers:
 - ethereum
