@@ -19,13 +19,13 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
-- valory/registration_abci:0.1.0:bafybeifkjbbdrazpnl6uggwv44dwnbwtrw4o2be4buq7qbhwgctdqww4lq
-- valory/reset_pause_abci:0.1.0:bafybeidrupr6pesmkdwx6yq2po5z54elgh2wteyweohfaem4qgxlluklme
-- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
-- valory/termination_abci:0.1.0:bafybeidindokcjbpcqo5sx3vstabvv4nr4t4ifc4ikb4cdgab25nuefvm4
-- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
-- valory/decision_maker_abci:0.1.0:bafybeicyjkkhftedfj2xbwstfnbtodnvnlg2gtazvfhfi3ehvtzrhmctaa
+- valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
+- valory/registration_abci:0.1.0:bafybeib6fsfur5jnflcveidnaeylneybwazewufzwa5twnwovdqgwtwsxm
+- valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
+- valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
+- valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
+- valory/market_manager_abci:0.1.0:bafybeihosbo5jkviuy2bdgbt4gll3ba4hgxwgbkj6lup23z5wiopb7vf7q
+- valory/decision_maker_abci:0.1.0:bafybeia52wpwgnqxb3bm4mgbb5y2cq6lvuuhv2uvmfvsg6qglmrbfsdkru
 behaviours:
   main:
     args: {}
@@ -76,7 +76,6 @@ models:
     args:
       cleanup_history_depth: 1
       cleanup_history_depth_current: null
-      decimals: 5
       drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
       finalize_timeout: 60.0
       genesis_config:

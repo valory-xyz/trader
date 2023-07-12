@@ -7,8 +7,6 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
-  tests/__init__.py: bafybeihatrrk4q6f7iuhrump5q3x2rpk42hnnyusmpk3jd4bpgw4s6esta
-  tests/test_apy_estimation.py: bafybeibignn5sp3y5oc4jnon3uctjrj6zo527vd6j4ouqazsxr33tlpuqy
 fingerprint_ignore_patterns: []
 connections:
 - valory/abci:0.1.0:bafybeihofnsokowicviac6yz3uhur52l3mf54s2hz4i2je5ie4vlruouga
@@ -18,7 +16,7 @@ connections:
 - valory/p2p_libp2p_client:0.1.0:bafybeidwcobzb7ut3efegoedad7jfckvt2n6prcmd4g7xnkm6hp6aafrva
 contracts:
 - valory/service_registry:0.1.0:bafybeibdy55edqs3djptv77ljkmbf6m3zizhutmvwgj3hpsagvmzhr4jbm
-- valory/market_maker:0.1.0:bafybeibri3g2khx7prxkmcvlupqnojetysl3wfmjelqwynk7yvmy5gmruy
+- valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
 protocols:
 - open_aea/signing:1.0.0:bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4
 - valory/abci:0.1.0:bafybeig3dj5jhsowlvg3t73kgobf6xn4nka7rkttakdb2gwsg5bp7rt7q4
@@ -30,14 +28,14 @@ protocols:
 - valory/tendermint:0.1.0:bafybeicusvezoqlmyt6iqomcbwaz3xkhk2qf3d56q5zprmj3xdxfy64k54
 skills:
 - valory/abstract_abci:0.1.0:bafybeiff2dqnkeorf343fmb3547fhiznvdw4ewbwl4rqluek2cv6ibl5hi
-- valory/abstract_round_abci:0.1.0:bafybeifobajvcwzzvguf7o5wpr6p7mv433bwtiiabaqst2zdb7hqmcl7dy
-- valory/registration_abci:0.1.0:bafybeifkjbbdrazpnl6uggwv44dwnbwtrw4o2be4buq7qbhwgctdqww4lq
-- valory/reset_pause_abci:0.1.0:bafybeidrupr6pesmkdwx6yq2po5z54elgh2wteyweohfaem4qgxlluklme
-- valory/termination_abci:0.1.0:bafybeidindokcjbpcqo5sx3vstabvv4nr4t4ifc4ikb4cdgab25nuefvm4
-- valory/transaction_settlement_abci:0.1.0:bafybeigzuht2t6ueebxx567zkyx4om2dcrmx6cynu5gqtflh5bz7hbgahu
-- valory/market_manager_abci:0.1.0:bafybeicain3mpp5wi5dnlmvibpjcww4j3gbbgubkx2x6byb5rinyxrxmgm
-- valory/decision_maker_abci:0.1.0:bafybeicyjkkhftedfj2xbwstfnbtodnvnlg2gtazvfhfi3ehvtzrhmctaa
-- valory/trader_abci:0.1.0:bafybeidohsxvfbrt5h4jv2cg3mvnxqayvnjfsoqk2plgsbqhlcterqlwc4
+- valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
+- valory/registration_abci:0.1.0:bafybeib6fsfur5jnflcveidnaeylneybwazewufzwa5twnwovdqgwtwsxm
+- valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
+- valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
+- valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
+- valory/market_manager_abci:0.1.0:bafybeihosbo5jkviuy2bdgbt4gll3ba4hgxwgbkj6lup23z5wiopb7vf7q
+- valory/decision_maker_abci:0.1.0:bafybeia52wpwgnqxb3bm4mgbb5y2cq6lvuuhv2uvmfvsg6qglmrbfsdkru
+- valory/trader_abci:0.1.0:bafybeigpnlzqcktz6b43l4azljemu4lobsastxdzfdbzhukzctb5tusxly
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -98,10 +96,44 @@ models:
         all_participants: ${list:["0x0000000000000000000000000000000000000000"]}
         consensus_threshold: ${int:null}
         safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
+      cleanup_history_depth: ${int:1}
+      cleanup_history_depth_current: ${int:null}
+      finalize_timeout: ${float:60.0}
+      genesis_config:
+        genesis_time: ${str:2022-09-26T00:00:00.000000000Z}
+        chain_id: ${str:chain-c4daS1}
+        consensus_params:
+          block:
+            max_bytes: ${str:22020096}
+            max_gas: ${str:-1}
+            time_iota_ms: ${str:1000}
+          evidence:
+            max_age_num_blocks: ${str:100000}
+            max_age_duration: ${str:172800000000000}
+            max_bytes: ${str:1048576}
+          validator:
+            pub_key_types: ${list:["ed25519"]}
+          version: ${dict:{}}
+        voting_power: ${str:10}
+      init_fallback_gas: ${int:0}
+      keeper_allowed_retries: ${int:3}
+      keeper_timeout: ${float:30.0}
+      max_attempts: ${int:10}
+      reset_tendermint_after: ${int:2}
+      retry_attempts: ${int:400}
+      retry_timeout: ${int:3}
+      request_retry_delay: ${float:1.0}
+      request_timeout: ${float:10.0}
+      service_id: ${str:trader}
       tendermint_url: ${str:http://localhost:26657}
       tendermint_com_url: ${str:http://localhost:8080}
-      round_timeout_seconds: ${float:3650.0}
-      reset_pause_duration: ${int:3600}
+      tendermint_check_sleep_delay: ${int:3}
+      tendermint_max_retries: ${int:5}
+      tx_timeout: ${float:10.0}
+      round_timeout_seconds: ${float:120.0}
+      validate_timeout: ${int:1205}
+      history_check_timeout: ${int:1205}
+      reset_pause_duration: ${int:30}
       max_healthcheck: ${int:43200}
       multisend_address: ${str:0x0000000000000000000000000000000000000000}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
@@ -118,7 +150,7 @@ models:
       opening_margin: ${int:300}
       languages: ${list:["en_US"]}
       mech_agent_id: ${int:3}
-      mech_tool: prediction-online
+      mech_tool: ${str:prediction-online}
       bet_amount_per_threshold:
         0.0: ${int:0}
         0.1: ${int:0}
