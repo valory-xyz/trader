@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidj3nxm3njw3zz6tglngvmrzjbnhz3bmbnbta2r3dryj3xbseumue
+agent: valory/trader:0.1.0:bafybeia44qgnkalaq4lnus2xixlhskp73us53cgpafai2czgqvkavvcfae
 number_of_agents: 4
 deployment: {}
 ---
@@ -25,7 +25,7 @@ type: skill
   models:
     params:
       args:
-        setup: &setup
+        setup: &id001
           all_participants: ${ALL_PARTICIPANTS:list:[]}
           safe_contract_address: ${SAFE_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
           consensus_threshold: ${CONSENSUS_THRESHOLD:int:null}
@@ -33,7 +33,7 @@ type: skill
         cleanup_history_depth_current: ${CLEANUP_HISTORY_DEPTH_CURRENT:int:null}
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
-        genesis_config: &genesis_config
+        genesis_config: &id002
           genesis_time: ${GENESIS_TIME:str:'2023-07-12T00:00:00.000000000Z'}
           chain_id: ${CHAIN_ID:str:chain-c4daS1}
           consensus_params:
@@ -77,14 +77,14 @@ type: skill
         use_termination: ${USE_TERMINATION:bool:false}
         validate_timeout: ${VALIDATE_TIMEOUT:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
-        creator_per_subgraph: &creators
+        creator_per_subgraph: &id003
           omen_subgraph: ${OMEN_CREATORS:list:["0x5367f217f5942cb10db16f2831a11fa287d78216"]}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
         mech_agent_id: ${MECH_AGENT_ID:int:3}
         mech_tool: ${MECH_TOOL:str:prediction-online}
-        bet_amount_per_threshold: &bet_amount_per_threshold
+        bet_amount_per_threshold: &id004
           0.0: ${00:int:0}
           0.1: ${01:int:0}
           0.2: ${02:int:0}
@@ -98,19 +98,19 @@ type: skill
           1.0: ${10:int:100000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
-    benchmark_tool: &benchmark_tool
+    benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
 1:
   models:
     params:
       args:
-        setup: *setup
+        setup: *id001
         cleanup_history_depth: ${CLEANUP_HISTORY_DEPTH:int:1}
         cleanup_history_depth_current: ${CLEANUP_HISTORY_DEPTH_CURRENT:int:null}
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
-        genesis_config: *genesis_config
+        genesis_config: *id002
         init_fallback_gas: ${INIT_FALLBACK_GAS:0}
         keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
@@ -139,26 +139,26 @@ type: skill
         use_termination: ${USE_TERMINATION:bool:false}
         validate_timeout: ${VALIDATE_TIMEOUT:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
-        creator_per_subgraph: *creators
+        creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
         mech_agent_id: ${MECH_AGENT_ID:int:3}
         mech_tool: ${MECH_TOOL:str:prediction-online}
-        bet_amount_per_threshold: *bet_amount_per_threshold
+        bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
-    benchmark_tool: *benchmark_tool
+    benchmark_tool: *id005
 2:
   models:
     params:
       args:
-        setup: *setup
+        setup: *id001
         cleanup_history_depth: ${CLEANUP_HISTORY_DEPTH:int:1}
         cleanup_history_depth_current: ${CLEANUP_HISTORY_DEPTH_CURRENT:int:null}
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
-        genesis_config: *genesis_config
+        genesis_config: *id002
         init_fallback_gas: ${INIT_FALLBACK_GAS:0}
         keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
@@ -187,26 +187,26 @@ type: skill
         use_termination: ${USE_TERMINATION:bool:false}
         validate_timeout: ${VALIDATE_TIMEOUT:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
-        creator_per_subgraph: *creators
+        creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
         mech_agent_id: ${MECH_AGENT_ID:int:3}
         mech_tool: ${MECH_TOOL:str:prediction-online}
-        bet_amount_per_threshold: *bet_amount_per_threshold
+        bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
-    benchmark_tool: *benchmark_tool
+    benchmark_tool: *id005
 3:
   models:
     params:
       args:
-        setup: *setup
+        setup: *id001
         cleanup_history_depth: ${CLEANUP_HISTORY_DEPTH:int:1}
         cleanup_history_depth_current: ${CLEANUP_HISTORY_DEPTH_CURRENT:int:null}
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
-        genesis_config: *genesis_config
+        genesis_config: *id002
         init_fallback_gas: ${INIT_FALLBACK_GAS:0}
         keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
@@ -235,16 +235,16 @@ type: skill
         use_termination: ${USE_TERMINATION:bool:false}
         validate_timeout: ${VALIDATE_TIMEOUT:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
-        creator_per_subgraph: *creators
+        creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
         mech_agent_id: ${MECH_AGENT_ID:int:3}
         mech_tool: ${MECH_TOOL:str:prediction-online}
-        bet_amount_per_threshold: *bet_amount_per_threshold
+        bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
-    benchmark_tool: *benchmark_tool
+    benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0
 type: connection
