@@ -1,0 +1,8 @@
+token_id-"component_id"
+X-
+---
+token_id-"agent_id"
+X-
+---
+token_id-"service_id" (Gnosis)
+10-"service/valory/trader/0.1.0"
