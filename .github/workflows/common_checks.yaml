@@ -61,7 +61,7 @@ jobs:
     - name: Check dependencies
       run: tox -e check-dependencies
     - name: Check doc links
-      run: tomte check-doc-links
+      run: tomte check-doc-links --url-skips https://github.com/valory-xyz/trader.git
     - name: Check doc IPFS hashes
       run: tox -e check-doc-hashes
 
