@@ -98,10 +98,44 @@ models:
         all_participants: ${list:["0x0000000000000000000000000000000000000000"]}
         consensus_threshold: ${int:null}
         safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
+      cleanup_history_depth: ${int:1}
+      cleanup_history_depth_current: ${int:null}
+      finalize_timeout: ${float:60.0}
+      genesis_config:
+        genesis_time: ${str:2022-09-26T00:00:00.000000000Z}
+        chain_id: ${str:chain-c4daS1}
+        consensus_params:
+          block:
+            max_bytes: ${str:22020096}
+            max_gas: ${str:-1}
+            time_iota_ms: ${str:1000}
+          evidence:
+            max_age_num_blocks: ${str:100000}
+            max_age_duration: ${str:172800000000000}
+            max_bytes: ${str:1048576}
+          validator:
+            pub_key_types: ${list:["ed25519"]}
+          version: ${dict:{}}
+        voting_power: ${int:10}
+      init_fallback_gas: ${int:0}
+      keeper_allowed_retries: ${int:3}
+      keeper_timeout: ${float:30.0}
+      max_attempts: ${int:10}
+      reset_tendermint_after: ${int:2}
+      retry_attempts: ${int:400}
+      retry_timeout: ${int:3}
+      request_retry_delay: ${float:1.0}
+      request_timeout: ${float:10.0}
+      service_id: ${str:trader}
       tendermint_url: ${str:http://localhost:26657}
       tendermint_com_url: ${str:http://localhost:8080}
-      round_timeout_seconds: ${float:3650.0}
-      reset_pause_duration: ${int:3600}
+      tendermint_check_sleep_delay: ${int:3}
+      tendermint_max_retries: ${int:5}
+      tx_timeout: ${float:10.0}
+      round_timeout_seconds: ${float:120.0}
+      validate_timeout: ${int:1205}
+      history_check_timeout: ${int:1205}
+      reset_pause_duration: ${int:30}
       max_healthcheck: ${int:43200}
       multisend_address: ${str:0x0000000000000000000000000000000000000000}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
@@ -118,7 +152,7 @@ models:
       opening_margin: ${int:300}
       languages: ${list:["en_US"]}
       mech_agent_id: ${int:3}
-      mech_tool: prediction-online
+      mech_tool: ${str:prediction-online}
       bet_amount_per_threshold:
         0.0: ${int:0}
         0.1: ${int:0}
