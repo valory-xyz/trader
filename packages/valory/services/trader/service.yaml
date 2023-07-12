@@ -56,7 +56,7 @@ type: skill
         max_healthcheck: ${MAX_HEALTHCHECK:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
-        reset_tendermint_after: ${RESET_TM_AFTER:INT:2}
+        reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:400}
         retry_timeout: ${RETRY_TIMEOUT:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
@@ -118,7 +118,7 @@ type: skill
         max_healthcheck: ${MAX_HEALTHCHECK:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
-        reset_tendermint_after: ${RESET_TM_AFTER:INT:2}
+        reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:400}
         retry_timeout: ${RETRY_TIMEOUT:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
@@ -166,7 +166,7 @@ type: skill
         max_healthcheck: ${MAX_HEALTHCHECK:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
-        reset_tendermint_after: ${RESET_TM_AFTER:INT:2}
+        reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:400}
         retry_timeout: ${RETRY_TIMEOUT:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
@@ -214,7 +214,7 @@ type: skill
         max_healthcheck: ${MAX_HEALTHCHECK:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
-        reset_tendermint_after: ${RESET_TM_AFTER:INT:2}
+        reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:400}
         retry_timeout: ${RETRY_TIMEOUT:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}

@@ -116,7 +116,7 @@ models:
           validator:
             pub_key_types: ${list:["ed25519"]}
           version: ${dict:{}}
-        voting_power: ${int:10}
+        voting_power: ${str:10}
       init_fallback_gas: ${int:0}
       keeper_allowed_retries: ${int:3}
       keeper_timeout: ${float:30.0}
