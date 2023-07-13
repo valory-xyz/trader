@@ -38,6 +38,7 @@ questions = Template(
       ){
         id
         title
+        collateralToken
         creator
         fee
         openingTimestamp
