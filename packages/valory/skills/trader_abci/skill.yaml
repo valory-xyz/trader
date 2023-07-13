@@ -9,11 +9,11 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeihxxsqctxptcch2pl2u4egpbrwukpggr7abrkcukzf6ant57wsqrq
-  composition.py: bafybeidtwoiy4wwatsbjxxob5tjqhu6glxgc3cgdal4efnh4rwpl3kyb2u
+  composition.py: bafybeiankmqnq3pns5f2zeclzoij2skpy35hly5evzqpjsh6hfe34ahwza
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeicmkn23fgw45r7qovwzo2cooiujjsafgr6kqaczyab2s466t5ek5a
+  fsm_specification.yaml: bafybeiewykne3nhzw7er25z3ywoi7wpdshkos66yzrstzilm5ywksswbu4
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeihee6sik7fdoclzztjrrrmlzw4sdemk326omzv2rvonchhb2j6jaq
+  models.py: bafybeigro3coqmff2xd7hbnuxq7qi4pcirpr6v526zw6fstko3dsgce63u
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,8 +24,8 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
-- valory/market_manager_abci:0.1.0:bafybeihosbo5jkviuy2bdgbt4gll3ba4hgxwgbkj6lup23z5wiopb7vf7q
-- valory/decision_maker_abci:0.1.0:bafybeia52wpwgnqxb3bm4mgbb5y2cq6lvuuhv2uvmfvsg6qglmrbfsdkru
+- valory/market_manager_abci:0.1.0:bafybeihdw263vfkzvopfmsatnlrcky5ohcq6grjeurr6opcmm6kcqqfkba
+- valory/decision_maker_abci:0.1.0:bafybeigdlxygxlxtubwwbninvhcm7m44fe634kp6fjhsdsvsubbti44kzy
 behaviours:
   main:
     args: {}
@@ -166,9 +166,9 @@ models:
   randomness_api:
     args:
       api_id: cloudflare
-      headers: { }
+      headers: {}
       method: GET
-      parameters: { }
+      parameters: {}
       response_key: null
       response_type: dict
       retries: 5
