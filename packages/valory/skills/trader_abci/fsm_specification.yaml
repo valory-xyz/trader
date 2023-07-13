@@ -7,6 +7,7 @@ alphabet_in:
 - FINALIZATION_FAILED
 - FINALIZE_TIMEOUT
 - INCORRECT_SERIALIZATION
+- INSUFFICIENT_BALANCE
 - INSUFFICIENT_FUNDS
 - MECH_RESPONSE_ERROR
 - NEGATIVE
@@ -23,6 +24,7 @@ alphabet_in:
 default_start_state: RegistrationStartupRound
 final_states:
 - ImpossibleRound
+- RefillRequiredRound
 label: TraderAbciApp
 start_states:
 - RegistrationRound
@@ -37,6 +39,7 @@ states:
 - FinalizationRound
 - ImpossibleRound
 - RandomnessTransactionSubmissionRound
+- RefillRequiredRound
 - RegistrationRound
 - RegistrationStartupRound
 - ResetAndPauseRound
@@ -50,7 +53,7 @@ states:
 - ValidateTransactionRound
 transition_func:
     (BetPlacementRound, DONE): RandomnessTransactionSubmissionRound
-    (BetPlacementRound, NONE): ImpossibleRound
+    (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): ResetAndPauseRound
