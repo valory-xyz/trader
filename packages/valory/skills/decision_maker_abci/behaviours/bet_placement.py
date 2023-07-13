@@ -100,6 +100,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         """Get the index of the outcome that the service is going to place a bet on."""
         return cast(int, self.synchronized_data.vote)
 
+    @property
     def multi_send_txs(self) -> List[dict]:
         """Get the multisend transactions as a list of dictionaries."""
         return [dataclasses.asdict(batch) for batch in self.multisend_batches]
