@@ -43,9 +43,9 @@ class DecisionMakerRound(CollectSameUntilThresholdRound):
     no_majority_event = Event.NO_MAJORITY
     selection_key = (
         get_name(SynchronizedData.non_binary),
+        get_name(SynchronizedData.is_profitable),
         get_name(SynchronizedData.vote),
         get_name(SynchronizedData.confidence),
-        get_name(SynchronizedData.is_profitable),
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)
 
