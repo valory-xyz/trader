@@ -19,7 +19,7 @@ contracts:
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeiaa6fgwtykrti6i7sbt22raavpsbobsq2xgem4nkbcg744agnmkae
 - valory/service_registry:0.1.0:bafybeibdy55edqs3djptv77ljkmbf6m3zizhutmvwgj3hpsagvmzhr4jbm
 - valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
-- valory/erc20:0.1.0:bafybeibsosyv5kmxqkxvh4h2z3mwqljqd263nwzdmwgaj4r2mmaxpgt6lq
+- valory/erc20:0.1.0:bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a
 - valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
 protocols:
 - open_aea/signing:1.0.0:bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4
@@ -38,8 +38,8 @@ skills:
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 - valory/market_manager_abci:0.1.0:bafybeiakiozzsmmqnpp2siwnyfc7ymgnjqga65ntyjlsqk3ntsqpfj2kaa
-- valory/decision_maker_abci:0.1.0:bafybeih225amdw3a62bhsq4ivomv4jrv52m7miudoki5ykl4poaqmamiry
-- valory/trader_abci:0.1.0:bafybeid44nadre5wpf5wqmk2yz74s3hk6367a5agblcur3blxrljgco44m
+- valory/decision_maker_abci:0.1.0:bafybeie6wgyx67kfpa2susaylnl3qoxl77aex5pvlxggvxjbfsqykkzuve
+- valory/trader_abci:0.1.0:bafybeibhd4nsc7pkpzkyzsgpvdadsxd2rlle5ap23fydrkgoztfpam4u64
 default_ledger: ethereum
 required_ledgers:
 - ethereum
