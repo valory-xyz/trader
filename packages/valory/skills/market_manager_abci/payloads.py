@@ -22,13 +22,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from packages.valory.skills.abstract_round_abci.base import (
-    BaseTxPayload as BaseMarketManagerPayload,
-)
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 
 
 @dataclass(frozen=True)
-class UpdateBetsPayload(BaseMarketManagerPayload):
+class UpdateBetsPayload(BaseTxPayload):
     """A transaction payload for the updated bets."""
 
     bets: Optional[str]
