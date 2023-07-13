@@ -163,6 +163,17 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
+  randomness_api:
+    args:
+      api_id: cloudflare
+      headers: { }
+      method: GET
+      parameters: { }
+      response_key: null
+      response_type: dict
+      retries: 5
+      url: https://drand.cloudflare.com/public/latest
+    class_name: RandomnessApi
   requests:
     args: {}
     class_name: Requests
