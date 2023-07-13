@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class DecisionMakerPayload(BaseTxPayload):
 
 
 @dataclass(frozen=True)
-class SamplingPayload(BaseTxPayload):
+class SamplingPayload(UpdateBetsPayload):
     """Represents a transaction payload for the sampling of a bet."""
 
     index: int

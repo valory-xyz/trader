@@ -38,5 +38,8 @@ class SamplingRound(CollectSameUntilThresholdRound):
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.sampled_bet_index)
+    selection_key = (
+        get_name(SynchronizedData.bets),
+        get_name(SynchronizedData.sampled_bet_index),
+    )
     collection_key = get_name(SynchronizedData.participant_to_sampling)

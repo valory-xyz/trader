@@ -19,14 +19,18 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-from typing import Generator, Iterator
+from typing import Generator, Iterator, Optional
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
-from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus
+from packages.valory.skills.market_manager_abci.bets import (
+    Bet,
+    BetStatus,
+    serialize_bets,
+)
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour):
@@ -53,9 +57,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         max_lq = max(self.available_bets, key=lambda bet: bet.usdLiquidityMeasure)
         return self.synchronized_data.bets.index(max_lq)
 
+    def set_processed(self, idx: int) -> Optional[str]:
+        """Update the bet's status for the given id to `PROCESSED`, and return the updated bets list, serialized."""
+        bets = self.synchronized_data.bets
+        bets[idx].status = BetStatus.PROCESSED
+        return serialize_bets(bets)
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            payload = SamplingPayload(self.context.agent_address, self.sampled_bet_idx)
+            idx = self.sampled_bet_idx
+            bets = self.set_processed(idx)
+            payload = SamplingPayload(self.context.agent_address, bets, idx)
 
         yield from self.finish_behaviour(payload)
