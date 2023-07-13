@@ -200,7 +200,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             )
             return False
 
-        buy_data = response_msg.raw_transaction.body.get("data", None)
+        buy_data = response_msg.state.body.get("data", None)
         if buy_data is None:
             self.context.logger.error(
                 f"Something went wrong while trying to encode the buy data: {response_msg}"
@@ -268,7 +268,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             )
             return False
 
-        tx_hash = response_msg.raw_transaction.body.get("tx_hash", None)
+        tx_hash = response_msg.state.body.get("tx_hash", None)
         if tx_hash is None or len(tx_hash) != TX_HASH_LENGTH:
             self.context.logger.error(
                 "Something went wrong while trying to get the buy transaction's hash. "
