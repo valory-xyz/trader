@@ -25,8 +25,12 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
     AppState,
+    get_name,
 )
-from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
@@ -52,7 +56,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: SamplingRound
 
-    Initial states: {SamplingRound}
+    Initial states: {BlacklistingRound, SamplingRound}
 
     Transition states:
         0. SamplingRound
@@ -90,7 +94,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     """
 
     initial_round_cls: AppState = SamplingRound
-    initial_states: Set[AppState] = {SamplingRound}
+    initial_states: Set[AppState] = {SamplingRound, BlacklistingRound}
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
             Event.DONE: DecisionMakerRound,
@@ -134,10 +138,16 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         Event.ROUND_TIMEOUT: 30.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
+        BlacklistingRound: {
+            get_name(SynchronizedData.bets),
+        },
         SamplingRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
-        FinishedDecisionMakerRound: set(),
-        FinishedWithoutDecisionRound: set(),
+        FinishedDecisionMakerRound: {
+            get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
         ImpossibleRound: set(),
     }
