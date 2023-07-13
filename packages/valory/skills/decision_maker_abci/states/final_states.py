@@ -30,5 +30,9 @@ class FinishedWithoutDecisionRound(DegenerateRound):
     """A round representing that decision-making has finished without deciding on a bet."""
 
 
+class RefillRequiredRound(DegenerateRound):
+    """A round representing that a refill is required for placing a bet."""
+
+
 class ImpossibleRound(DegenerateRound):
     """A round representing that decision-making is impossible with the given parametrization."""

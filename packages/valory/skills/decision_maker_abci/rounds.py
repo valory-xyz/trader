@@ -44,6 +44,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
     ImpossibleRound,
+    RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -121,17 +122,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
         },
         FinishedDecisionMakerRound: {},
         FinishedWithoutDecisionRound: {},
+        RefillRequiredRound: {},
         ImpossibleRound: {},
     }
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
         FinishedWithoutDecisionRound,
+        RefillRequiredRound,
         ImpossibleRound,
     }
     event_to_timeout: Dict[Event, float] = {
@@ -149,5 +152,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
+        RefillRequiredRound: set(),
         ImpossibleRound: set(),
     }

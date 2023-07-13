@@ -47,4 +47,4 @@ class SamplingPayload(UpdateBetsPayload):
 class BetPlacementPayload(BaseTxPayload):
     """Represents a transaction payload for placing a bet."""
 
-    tx_hash: str
+    tx_hash: Optional[str]

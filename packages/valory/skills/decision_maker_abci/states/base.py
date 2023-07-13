@@ -41,6 +41,7 @@ class Event(Enum):
     NON_BINARY = "non_binary"
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
+    INSUFFICIENT_BALANCE = "insufficient_balance"
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
 
