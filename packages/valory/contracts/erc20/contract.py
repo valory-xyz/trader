@@ -58,5 +58,6 @@ class ERC20(Contract):
     ) -> Dict[str, bytes]:
         """Build an ERC20 approval."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        data = contract_instance.encodeABI("approve", args=(spender, amount))
+        checksumed_spender = ledger_api.api.toChecksumAddress(spender)
+        data = contract_instance.encodeABI("approve", args=(checksumed_spender, amount))
         return {"data": bytes.fromhex(data[2:])}
