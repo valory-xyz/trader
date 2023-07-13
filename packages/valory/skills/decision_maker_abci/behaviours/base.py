@@ -39,7 +39,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     @property
     def synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
-        return cast(SynchronizedData, super().synchronized_data)
+        return SynchronizedData(super().synchronized_data.db)
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

@@ -15,6 +15,7 @@ final_states:
 - ImpossibleRound
 label: DecisionMakerAbciApp
 start_states:
+- BlacklistingRound
 - SamplingRound
 states:
 - BetPlacementRound

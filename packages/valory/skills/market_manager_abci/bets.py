@@ -20,6 +20,7 @@
 
 """Structures for the bets."""
 
+import builtins
 import dataclasses
 import json
 from enum import Enum, auto
@@ -51,7 +52,7 @@ class Bet:
     outcomeTokenAmounts: List[int]
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
-    usdLiquidityMeasure: int
+    usdLiquidityMeasure: float
     status: BetStatus = BetStatus.UNPROCESSED
     blacklist_expiration: float = -1
 
@@ -68,7 +69,17 @@ class Bet:
             self.outcomes = None
 
         if isinstance(self.status, int):
-            super().__setattr__("status", BetStatus(self.status))
+            self.status = BetStatus(self.status)
+
+        types_to_cast = ("int", "float", "str")
+        str_to_type = {getattr(builtins, type_): type_ for type_ in types_to_cast}
+        for field, hinted_type in self.__annotations__.items():
+            uncasted = getattr(self, field)
+            for type_to_cast, type_name in str_to_type.items():
+                if hinted_type == type_to_cast:
+                    setattr(self, field, hinted_type(uncasted))
+                if f"{str(List)}[{type_name}]" == str(hinted_type):
+                    setattr(self, field, list(type_to_cast(val) for val in uncasted))
 
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""

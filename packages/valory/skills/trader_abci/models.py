@@ -21,6 +21,7 @@
 
 from typing import Dict, Type, Union, cast
 
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -61,6 +62,10 @@ BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
 
 MARGIN = 5
+
+
+class RandomnessApi(ApiSpecs):
+    """A model for randomness api specifications."""
 
 
 class TraderParams(DecisionMakerParams, TerminationParams):

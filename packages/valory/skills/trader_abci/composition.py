@@ -24,6 +24,9 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
     chain,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.states.blacklisting import (
+    BlacklistingRound,
+)
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
@@ -49,13 +52,21 @@ from packages.valory.skills.reset_pause_abci.rounds import (
 from packages.valory.skills.termination_abci.rounds import BackgroundRound
 from packages.valory.skills.termination_abci.rounds import Event as TerminationEvent
 from packages.valory.skills.termination_abci.rounds import TerminationAbciApp
+from packages.valory.skills.transaction_settlement_abci.rounds import (
+    FailedRound,
+    FinishedTransactionSubmissionRound,
+    RandomnessTransactionSubmissionRound,
+    TransactionSubmissionAbciApp,
+)
 
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
     FinishedMarketManagerRound: SamplingRound,
     FailedMarketManagerRound: ResetAndPauseRound,
-    FinishedDecisionMakerRound: ResetAndPauseRound,
+    FinishedDecisionMakerRound: RandomnessTransactionSubmissionRound,
+    FinishedTransactionSubmissionRound: ResetAndPauseRound,
+    FailedRound: BlacklistingRound,
     FinishedWithoutDecisionRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
     FinishedResetAndPauseErrorRound: RegistrationRound,
@@ -66,6 +77,7 @@ TraderAbciApp = chain(
         AgentRegistrationAbciApp,
         DecisionMakerAbciApp,
         MarketManagerAbciApp,
+        TransactionSubmissionAbciApp,
         ResetPauseAbciApp,
     ),
     abci_app_transition_mapping,
