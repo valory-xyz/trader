@@ -19,7 +19,7 @@
 
 """This module contains the behaviours for the MarketManager skill."""
 
-from typing import Any, Generator, Iterator, List, Set, Type
+from typing import Any, Generator, Iterator, List, Set, Tuple, Type
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
@@ -50,29 +50,33 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         # list of bets mapped to prediction markets
         self.bets: List[Bet] = []
 
-    @property
-    def bets_ids(self) -> List[str]:
-        """Get the ids of the already existing bets."""
-        return [bet.id for bet in self.bets]
-
-    def is_valid_bet(self, bet: Bet) -> bool:
-        """Return if a bet is valid or not."""
+    def is_frozen_bet(self, bet: Bet) -> bool:
+        """Return if a bet should not be updated."""
         return (
-            bet.blacklist_expiration > self.synced_time
-            or bet.status != BetStatus.BLACKLISTED
-        )
+            bet.blacklist_expiration < self.synced_time
+            and bet.status == BetStatus.BLACKLISTED
+        ) or bet.status == BetStatus.PROCESSED
 
     @property
-    def valid_local_bets(self) -> Iterator[Bet]:
-        """Get the valid already existing bets."""
-        return filter(self.is_valid_bet, self.synchronized_data.bets)
+    def frozen_local_bets(self) -> Iterator[Bet]:
+        """Get the frozen, already existing, bets."""
+        return filter(self.is_frozen_bet, self.synchronized_data.bets)
+
+    @property
+    def frozen_bets_and_ids(self) -> Tuple[List[Bet], Set[str]]:
+        """Get the ids of the frozen, already existing, bets."""
+        bets = []
+        ids = set()
+        for bet in self.frozen_local_bets:
+            bets.append(bet)
+            ids.add(bet.id)
+        return bets, ids
 
     def _update_bets(
         self,
     ) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
-        self.bets = list(self.valid_local_bets)
-        existing_ids = self.bets_ids
+        self.bets, existing_ids = self.frozen_bets_and_ids
 
         while True:
             can_proceed = self._prepare_bets_fetching()
