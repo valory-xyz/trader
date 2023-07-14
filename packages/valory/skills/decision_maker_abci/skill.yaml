@@ -120,7 +120,7 @@ models:
       reset_tendermint_after: 2
       retry_attempts: 400
       retry_timeout: 3
-      round_timeout_seconds: 30.0
+      round_timeout_seconds: 350.0
       service_id: decision_maker
       service_registry_address: null
       setup:

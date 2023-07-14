@@ -134,7 +134,7 @@ models:
       tendermint_check_sleep_delay: ${int:3}
       tendermint_max_retries: ${int:5}
       tx_timeout: ${float:10.0}
-      round_timeout_seconds: ${float:120.0}
+      round_timeout_seconds: ${float:350.0}
       validate_timeout: ${int:1205}
       history_check_timeout: ${int:1205}
       reset_pause_duration: ${int:30}

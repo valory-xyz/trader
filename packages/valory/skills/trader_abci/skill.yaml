@@ -109,7 +109,7 @@ models:
       reset_tendermint_after: 2
       retry_attempts: 400
       retry_timeout: 3
-      round_timeout_seconds: 120.0
+      round_timeout_seconds: 350.0
       service_id: market_manager_estimation
       service_registry_address: null
       setup:
