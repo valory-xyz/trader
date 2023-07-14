@@ -100,7 +100,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
             Event.DONE: DecisionMakerRound,
-            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
         },

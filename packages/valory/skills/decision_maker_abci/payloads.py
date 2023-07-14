@@ -40,7 +40,7 @@ class DecisionMakerPayload(BaseTxPayload):
 class SamplingPayload(UpdateBetsPayload):
     """Represents a transaction payload for the sampling of a bet."""
 
-    index: int
+    index: Optional[int]
 
 
 @dataclass(frozen=True)

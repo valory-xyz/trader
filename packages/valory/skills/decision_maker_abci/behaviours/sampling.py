@@ -19,7 +19,7 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-from typing import Generator, Iterator, Optional
+from typing import Generator, Iterator, Optional, List, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -44,30 +44,36 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         bets = self.synchronized_data.bets
         return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, bets)
 
-    @property
-    def sampled_bet_idx(self) -> int:
+    def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
         Sample a bet and return its id.
 
         The sampling logic is relatively simple at the moment
         It simply selects the unprocessed bet with the largest liquidity.
 
-        :return: the id of the sampled bet.
+        :param bets: the bets' values to compare for the sampling.
+        :return: the id of the sampled bet, out of all the available bets, not only the given ones.
         """
-        max_lq = max(self.available_bets, key=lambda bet: bet.usdLiquidityMeasure)
-        return self.synchronized_data.bets.index(max_lq)
+        return self.synchronized_data.bets.index(max(bets))
 
-    def set_processed(self, idx: int) -> Optional[str]:
+    def _set_processed(self, idx: int) -> Optional[str]:
         """Update the bet's status for the given id to `PROCESSED`, and return the updated bets list, serialized."""
         bets = self.synchronized_data.bets
         bets[idx].status = BetStatus.PROCESSED
         return serialize_bets(bets)
 
+    def _sample(self) -> Tuple[Optional[str], Optional[int]]:
+        """Sample a bet and return the bets, serialized, with the sampled bet marked as processed, and its index."""
+        bets = idx = None
+        available_bets = list(self.available_bets)
+        if len(available_bets) > 0:
+            idx = self._sampled_bet_idx(available_bets)
+            bets = self._set_processed(idx)
+        return bets, idx
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            idx = self.sampled_bet_idx
-            bets = self.set_processed(idx)
-            payload = SamplingPayload(self.context.agent_address, bets, idx)
+            payload = SamplingPayload(self.context.agent_address, *self._sample())
 
         yield from self.finish_behaviour(payload)
