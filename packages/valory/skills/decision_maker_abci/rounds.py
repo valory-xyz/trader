@@ -62,7 +62,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 7.
+            - none: 5.
             - no majority: 0.
             - round timeout: 0.
         1. DecisionMakerRound

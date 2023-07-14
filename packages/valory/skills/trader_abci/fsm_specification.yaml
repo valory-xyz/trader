@@ -102,7 +102,7 @@ transition_func:
     (ResetRound, NO_MAJORITY): BlacklistingRound
     (ResetRound, RESET_TIMEOUT): BlacklistingRound
     (SamplingRound, DONE): DecisionMakerRound
-    (SamplingRound, NONE): ImpossibleRound
+    (SamplingRound, NONE): ResetAndPauseRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound

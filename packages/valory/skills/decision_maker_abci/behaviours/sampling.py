@@ -19,7 +19,7 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-from typing import Generator, Iterator, Optional, List, Tuple
+from typing import Generator, Iterator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,

@@ -37,9 +37,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
-- valory/market_manager_abci:0.1.0:bafybeiakiozzsmmqnpp2siwnyfc7ymgnjqga65ntyjlsqk3ntsqpfj2kaa
-- valory/decision_maker_abci:0.1.0:bafybeie6wgyx67kfpa2susaylnl3qoxl77aex5pvlxggvxjbfsqykkzuve
-- valory/trader_abci:0.1.0:bafybeibhd4nsc7pkpzkyzsgpvdadsxd2rlle5ap23fydrkgoztfpam4u64
+- valory/market_manager_abci:0.1.0:bafybeieheaq7jgndahj6mqqee53epgbtu3frf3qmab6o3brwwill5ftvaq
+- valory/decision_maker_abci:0.1.0:bafybeigi6bjrgnzk34xpxah46ewovuijjxnqjwnrk6gl7iasxupfluuf5y
+- valory/trader_abci:0.1.0:bafybeieu4brymqya2sz7i4jwzcyfxtufykfjeetcuik3vg53hdjbrxrmpq
 default_ledger: ethereum
 required_ledgers:
 - ethereum

@@ -46,6 +46,6 @@ transition_func:
     (DecisionMakerRound, TIE): BlacklistingRound
     (DecisionMakerRound, UNPROFITABLE): BlacklistingRound
     (SamplingRound, DONE): DecisionMakerRound
-    (SamplingRound, NONE): ImpossibleRound
+    (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
