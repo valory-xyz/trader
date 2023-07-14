@@ -62,7 +62,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 7.
+            - none: 5.
             - no majority: 0.
             - round timeout: 0.
         1. DecisionMakerRound
@@ -100,7 +100,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
             Event.DONE: DecisionMakerRound,
-            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
         },

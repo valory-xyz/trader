@@ -146,7 +146,7 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
         FinishedMarketManagerRound: {},
         FailedMarketManagerRound: {},
     }
-    cross_period_persisted_keys = frozenset()
+    cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets)})
     final_states: Set[AppState] = {FinishedMarketManagerRound, FailedMarketManagerRound}
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,

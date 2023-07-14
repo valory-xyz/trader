@@ -82,6 +82,10 @@ class Bet:
                 if f"{str(List)}[{type_name}]" == str(hinted_type):
                     setattr(self, field, list(type_to_cast(val) for val in uncasted))
 
+    def __lt__(self, other: "Bet") -> bool:
+        """Implements less than operator."""
+        return self.usdLiquidityMeasure < other.usdLiquidityMeasure
+
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
         if self.outcomes is None:

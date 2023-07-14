@@ -14,13 +14,13 @@ fingerprint:
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
   behaviours/decision_maker.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
   behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
-  behaviours/sampling.py: bafybeiejyrqf2evjtct35eq3vwjw3f3ymeank2utsa62u5zytbj7y4l7tm
+  behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeid4zoekzgda5txsihu3dunkwfu752to34p2fhrnbzlhc7rvqm6rky
+  fsm_specification.yaml: bafybeigrdkenq2yxz3i56esauohv4wtdgphql2bqiyqgoyrzysdad7rsxi
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
   models.py: bafybeicacv5b5i3bw6fve5ilkidjg2e6jaljcmmgnkjmw25fhz52u3l22q
-  payloads.py: bafybeieywq56f4sg7qz44ztchksmx344mgopvc7apf4jpnrau2kuosaaai
-  rounds.py: bafybeigrouhbsvpmoo7k4ye2ebqrpxlv3gimcorzn3utyau5637p3fs2nu
+  payloads.py: bafybeia63qdzl2lhn656yszisrcllg2idm5mjcpnk5mhvxttsbfcdwutdm
+  rounds.py: bafybeid6caier4wg4mi3t5zgsrie2oyc7iif6ybicgtjcimhownjr625my
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeifk44bz77zbz65q6vppfsjbxmjqvfeespd5jf6ms333cqrgli2rba
   states/bet_placement.py: bafybeig5remjdlsuiyla6gismcahnqqq7ooashzcz2m3lalntf37hfj3be
@@ -40,7 +40,7 @@ protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
-- valory/market_manager_abci:0.1.0:bafybeiakiozzsmmqnpp2siwnyfc7ymgnjqga65ntyjlsqk3ntsqpfj2kaa
+- valory/market_manager_abci:0.1.0:bafybeieheaq7jgndahj6mqqee53epgbtu3frf3qmab6o3brwwill5ftvaq
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 behaviours:
   main:
@@ -120,7 +120,7 @@ models:
       reset_tendermint_after: 2
       retry_attempts: 400
       retry_timeout: 3
-      round_timeout_seconds: 30.0
+      round_timeout_seconds: 350.0
       service_id: decision_maker
       service_registry_address: null
       setup:
