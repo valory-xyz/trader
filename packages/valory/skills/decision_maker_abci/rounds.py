@@ -44,6 +44,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
     ImpossibleRound,
+    RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -61,33 +62,34 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 6.
+            - none: 7.
             - no majority: 0.
             - round timeout: 0.
         1. DecisionMakerRound
             - done: 3.
             - mech response error: 2.
             - no majority: 1.
-            - non binary: 6.
+            - non binary: 7.
             - tie: 2.
             - unprofitable: 2.
             - round timeout: 1.
         2. BlacklistingRound
             - done: 5.
-            - none: 6.
+            - none: 7.
             - no majority: 2.
             - round timeout: 2.
-            - fetch error: 6.
+            - fetch error: 7.
         3. BetPlacementRound
             - done: 4.
-            - none: 6.
+            - insufficient balance: 6.
             - no majority: 3.
             - round timeout: 3.
         4. FinishedDecisionMakerRound
         5. FinishedWithoutDecisionRound
-        6. ImpossibleRound
+        6. RefillRequiredRound
+        7. ImpossibleRound
 
-    Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, ImpossibleRound}
+    Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -121,17 +123,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
         },
         FinishedDecisionMakerRound: {},
         FinishedWithoutDecisionRound: {},
+        RefillRequiredRound: {},
         ImpossibleRound: {},
     }
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
         FinishedWithoutDecisionRound,
+        RefillRequiredRound,
         ImpossibleRound,
     }
     event_to_timeout: Dict[Event, float] = {
@@ -149,5 +153,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
+        RefillRequiredRound: set(),
         ImpossibleRound: set(),
     }

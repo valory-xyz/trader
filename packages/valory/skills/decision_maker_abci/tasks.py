@@ -19,6 +19,7 @@
 
 """Contains the background tasks of the decision maker skill."""
 
+import json
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -60,6 +61,13 @@ class MechInteractionResponse:
     prediction: Optional[PredictionResponse] = None
     error: str = "Unknown"
 
+    @classmethod
+    def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
+        """Return an incorrect format response."""
+        response = cls()
+        response.error = f"The response's format was unexpected: {res}"
+        return response
+
 
 class MechInteractionTask(Task):
     """Perform an interaction with a mech."""
@@ -73,9 +81,10 @@ class MechInteractionTask(Task):
         res = interact(*args, **kwargs)
 
         try:
-            prediction = PredictionResponse(**res)
-        except (ValueError, TypeError):
-            error_msg = f"The response's format was unexpected: {res}"
-            return MechInteractionResponse(error=error_msg)
+            prediction_result = res["result"]
+            deserialized_prediction = json.loads(prediction_result)
+            prediction = PredictionResponse(**deserialized_prediction)
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+            return MechInteractionResponse.incorrect_format(res)
         else:
             return MechInteractionResponse(prediction)

@@ -19,8 +19,13 @@
 
 """This module contains the models for the skill."""
 
+from dataclasses import dataclass
 from typing import Any, Dict
 
+from aea.exceptions import enforce
+from hexbytes import HexBytes
+
+from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -59,9 +64,22 @@ class DecisionMakerParams(MarketManagerParams):
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int
         )
+        multisend_address = kwargs.get("multisend_address", None)
+        enforce(multisend_address is not None, "Multisend address not specified!")
+        self.multisend_address = multisend_address
         super().__init__(*args, **kwargs)
 
     def get_bet_amount(self, confidence: float) -> int:
         """Get the bet amount given a prediction's confidence."""
         threshold = round(confidence, 1)
         return self.bet_amount_per_threshold[threshold]
+
+
+@dataclass
+class MultisendBatch:
+    """A structure representing a single transaction of a multisend."""
+
+    to: str
+    data: HexBytes
+    value: int = 0
+    operation: MultiSendOperation = MultiSendOperation.CALL

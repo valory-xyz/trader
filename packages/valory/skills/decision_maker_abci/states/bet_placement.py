@@ -36,7 +36,7 @@ class BetPlacementRound(CollectSameUntilThresholdRound):
     payload_class = BetPlacementPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.DONE
-    none_event = Event.NONE
+    none_event = Event.INSUFFICIENT_BALANCE
     no_majority_event = Event.NO_MAJORITY
     selection_key = get_name(SynchronizedData.most_voted_tx_hash)
     collection_key = get_name(SynchronizedData.participant_to_bet_placement)

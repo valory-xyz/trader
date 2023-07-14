@@ -15,8 +15,12 @@ connections:
 - valory/ledger:0.19.0:bafybeicgfupeudtmvehbwziqfxiz6ztsxr5rxzvalzvsdsspzz73o5fzfi
 - valory/p2p_libp2p_client:0.1.0:bafybeidwcobzb7ut3efegoedad7jfckvt2n6prcmd4g7xnkm6hp6aafrva
 contracts:
+- valory/gnosis_safe:0.1.0:bafybeif5fdwoxq5mscrurtuimadmtctyxxeeui45u4g6leqobzls7bsl3u
+- valory/gnosis_safe_proxy_factory:0.1.0:bafybeiaa6fgwtykrti6i7sbt22raavpsbobsq2xgem4nkbcg744agnmkae
 - valory/service_registry:0.1.0:bafybeibdy55edqs3djptv77ljkmbf6m3zizhutmvwgj3hpsagvmzhr4jbm
 - valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
+- valory/erc20:0.1.0:bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a
+- valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
 protocols:
 - open_aea/signing:1.0.0:bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4
 - valory/abci:0.1.0:bafybeig3dj5jhsowlvg3t73kgobf6xn4nka7rkttakdb2gwsg5bp7rt7q4
@@ -33,9 +37,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
-- valory/market_manager_abci:0.1.0:bafybeihdw263vfkzvopfmsatnlrcky5ohcq6grjeurr6opcmm6kcqqfkba
-- valory/decision_maker_abci:0.1.0:bafybeigdlxygxlxtubwwbninvhcm7m44fe634kp6fjhsdsvsubbti44kzy
-- valory/trader_abci:0.1.0:bafybeiaf76cioo47imacxziiqnvzmzq5tculaxk3q2sa53mrpuvszur2ji
+- valory/market_manager_abci:0.1.0:bafybeiakiozzsmmqnpp2siwnyfc7ymgnjqga65ntyjlsqk3ntsqpfj2kaa
+- valory/decision_maker_abci:0.1.0:bafybeie6wgyx67kfpa2susaylnl3qoxl77aex5pvlxggvxjbfsqykkzuve
+- valory/trader_abci:0.1.0:bafybeibhd4nsc7pkpzkyzsgpvdadsxd2rlle5ap23fydrkgoztfpam4u64
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -135,7 +139,7 @@ models:
       history_check_timeout: ${int:1205}
       reset_pause_duration: ${int:30}
       max_healthcheck: ${int:43200}
-      multisend_address: ${str:0x0000000000000000000000000000000000000000}
+      multisend_address: ${str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:null}
       share_tm_config_on_startup: ${bool:false}

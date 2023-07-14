@@ -17,37 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen queries."""
-
-from string import Template
-
-
-questions = Template(
-    """
-    {
-      fixedProductMarketMakers(
-        where: {
-          creator_in: ${creators},
-          outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-          language_in: ${languages},
-          isPendingArbitration: false
-        },
-        orderBy: creationTimestamp
-        orderDirection: desc
-      ){
-        id
-        title
-        collateralToken
-        creator
-        fee
-        openingTimestamp
-        outcomeSlotCount
-        outcomeTokenAmounts
-        outcomeTokenMarginalPrices
-        outcomes
-        usdLiquidityMeasure
-      }
-    }
-    """
-)
+"""This module contains the support resources for an ERC20 token."""

@@ -1,6 +1,7 @@
 alphabet_in:
 - DONE
 - FETCH_ERROR
+- INSUFFICIENT_BALANCE
 - MECH_RESPONSE_ERROR
 - NONE
 - NON_BINARY
@@ -13,6 +14,7 @@ final_states:
 - FinishedDecisionMakerRound
 - FinishedWithoutDecisionRound
 - ImpossibleRound
+- RefillRequiredRound
 label: DecisionMakerAbciApp
 start_states:
 - BlacklistingRound
@@ -24,10 +26,11 @@ states:
 - FinishedDecisionMakerRound
 - FinishedWithoutDecisionRound
 - ImpossibleRound
+- RefillRequiredRound
 - SamplingRound
 transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
-    (BetPlacementRound, NONE): ImpossibleRound
+    (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound

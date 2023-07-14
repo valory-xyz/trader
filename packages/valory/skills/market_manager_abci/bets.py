@@ -45,6 +45,7 @@ class Bet:
     id: str
     market: str
     title: str
+    collateralToken: str
     creator: str
     fee: int
     openingTimestamp: int
