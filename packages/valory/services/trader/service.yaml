@@ -8,7 +8,7 @@ fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
 agent: valory/trader:0.1.0:bafybeicxmxc6kao53xcjs5w2p7dehso5fzz33zuailsdrvlh4wmxvqidim
-number_of_agents: 4
+number_of_agents: 1
 deployment: {}
 ---
 public_id: valory/abci:0.1.0
@@ -85,17 +85,17 @@ type: skill
         mech_agent_id: ${MECH_AGENT_ID:int:3}
         mech_tool: ${MECH_TOOL:str:prediction-online}
         bet_amount_per_threshold: &id004
-          0.0: ${00:int:0}
-          0.1: ${01:int:0}
-          0.2: ${02:int:0}
-          0.3: ${03:int:0}
-          0.4: ${04:int:0}
-          0.5: ${05:int:0}
-          0.6: ${06:int:600000000000000000}
-          0.7: ${07:int:900000000000000000}
-          0.8: ${08:int:1000000000000000000}
-          0.9: ${09:int:10000000000000000000}
-          1.0: ${10:int:100000000000000000000}
+          0.0: ${BET_AMOUNT_PER_THRESHOLD_000:int:0}
+          0.1: ${BET_AMOUNT_PER_THRESHOLD_010:int:0}
+          0.2: ${BET_AMOUNT_PER_THRESHOLD_020:int:0}
+          0.3: ${BET_AMOUNT_PER_THRESHOLD_030:int:0}
+          0.4: ${BET_AMOUNT_PER_THRESHOLD_040:int:0}
+          0.5: ${BET_AMOUNT_PER_THRESHOLD_050:int:0}
+          0.6: ${BET_AMOUNT_PER_THRESHOLD_060:int:600000000000000000}
+          0.7: ${BET_AMOUNT_PER_THRESHOLD_070:int:900000000000000000}
+          0.8: ${BET_AMOUNT_PER_THRESHOLD_080:int:1000000000000000000}
+          0.9: ${BET_AMOUNT_PER_THRESHOLD_090:int:10000000000000000000}
+          1.0: ${BET_AMOUNT_PER_THRESHOLD_100:int:100000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
     benchmark_tool: &id005
