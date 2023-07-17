@@ -2,3 +2,4 @@
 64ceb66bf1bd9d3872d95dfea998e723fdee297c:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:84
 9c3fa1a89cd918ca1a1c74ad5efd48f9ec106c34:packages/valory/skills/market_manager_abci/skill.yaml:generic-api-key:68
 62f2fabeeb87ccbe9b8a880d832a1028d92ae596:README.md:generic-api-key:60
+cb7b8233efe65445b5835dd2ea6c93eac3364d39:packages/valory/skills/tx_settlement_multiplexer_abci/skill.yaml:generic-api-key:67
