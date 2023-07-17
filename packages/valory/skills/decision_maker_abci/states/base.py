@@ -84,6 +84,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return bool(self.db.get_strict("is_profitable"))
 
     @property
+    def tx_submitter(self) -> str:
+        """Get the round that submitted a tx to transaction_settlement_abci."""
+        return str(self.db.get_strict("tx_submitter"))
+
+    @property
     def participant_to_decision(self) -> DeserializedCollection:
         """Get the participants to decision-making."""
         return self._get_deserialized("participant_to_decision")

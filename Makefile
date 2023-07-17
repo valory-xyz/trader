@@ -99,6 +99,7 @@ fix-abci-app-specs:
 	autonomy analyse fsm-specs --update --app-class MarketManagerAbciApp --package packages/valory/skills/market_manager_abci
 	autonomy analyse fsm-specs --update --app-class DecisionMakerAbciApp --package packages/valory/skills/decision_maker_abci
 	autonomy analyse fsm-specs --update --app-class TraderAbciApp --package packages/valory/skills/trader_abci
+	autonomy analyse fsm-specs --update --app-class TxSettlementMultiplexerAbciApp --package packages/valory/skills/tx_settlement_multiplexer_abci
 	echo "Successfully validated abcis!"
 
 protolint_install:
