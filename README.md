@@ -1,11 +1,13 @@
 ## Trader
 
-Trader is an autonomous service that performs bets on existing prediction markets on the Omen platform (Gnosis chain). The service roughly works as follows:
+Trader is an autonomous service that performs bets on existing prediction markets. The service roughly works as follows:
 
-1. Monitor existing prediction markets on the Gnosis chain that met a certain condition (e.g., markets created by a set of given addresses).
-2. For each suitable market, send a request to an [AI Mech](https://github.com/valory-xyz/mech) to estimate the likelihood of the answers of the market, together with a confidence value when making this prediction.
-3. If the response of the [AI Mech](https://github.com/valory-xyz/mech) satisfies a certain confidence, the service will bet a pre-determined amount on that market. The amount to bet can be configured according to the confidence returned by the AI Mech.
-4. Repeat steps 1-3.
+1. Retrieve information on existing prediction markets that fulfill specific conditions, such as markets created by designated addresses.
+2. Utilize a sampling strategy to select one of the markets for predicting its outcome.
+3. Send a request to an [AI Mech](https://github.com/valory-xyz/mech) to assess the probabilities of the market's answers and obtain confidence values for the estimates.
+4. If the response from the [AI Mech](https://github.com/valory-xyz/mech) meets certain criteria indicating profitability, the service will place a bet on that market. The betting amount can be adjusted based on the confidence level provided by the AI Mech.
+5. In case the bet is deemed unprofitable, the market will be blacklisted for a configurable duration.
+6. Repeat the aforementioned steps in a cyclic manner.
 
 ## Developers
 
@@ -71,10 +73,10 @@ Trader is an autonomous service that performs bets on existing prediction market
     In case you want to run it with more agents, please edit the keys generation command below,
     and replace the `--n 1` argument in the `build` command with the number of your agents.
   - `SAFE_CONTRACT_ADDRESS`: address of the agents' multisig wallet.
-  - `OMEN_CREATORS`: addresses of the market maker(s) that the service will track
+  - `OMEN_CREATORS`: addresses of the market creator(s) that the service will track
     for placing bets on Omen.
   - `BET_AMOUNT_PER_THRESHOLD_X`: amount (wei) to bet when the prediction returned by the AI Mech surpasses a threshold of `X`% confidence.
-  - `BET_THRESHOLD`: minimum amount (wei) for placing a bet.
+  - `BET_THRESHOLD`: minimum amount (wei) for placing a bet, after calculating the profit.
 
 * Fetch the service
 
