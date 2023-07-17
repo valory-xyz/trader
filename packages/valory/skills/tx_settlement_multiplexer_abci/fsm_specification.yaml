@@ -1,0 +1,23 @@
+alphabet_in:
+- BET_PLACEMENT_DONE
+- DECISION_MAKING_DONE
+- ROUND_TIMEOUT
+- UNRECOGNIZED
+default_start_state: PostTxSettlementRound
+final_states:
+- FailedMultiplexerRound
+- FinishedBetPlacementRound
+- FinishedDecisionMakerRound
+label: TxSettlementMultiplexerAbciApp
+start_states:
+- PostTxSettlementRound
+states:
+- FailedMultiplexerRound
+- FinishedBetPlacementRound
+- FinishedDecisionMakerRound
+- PostTxSettlementRound
+transition_func:
+    (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementRound
+    (PostTxSettlementRound, DECISION_MAKING_DONE): FinishedDecisionMakerRound
+    (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
+    (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound

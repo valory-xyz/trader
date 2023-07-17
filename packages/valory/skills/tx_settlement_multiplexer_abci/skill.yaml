@@ -6,14 +6,21 @@ description: This skill implements a multiplexer for the transaction settlement 
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  n/a:
+  README.md: bafybeiegcjg2wjrsqhrmvyulioch3d67rnbzkx5af3ztkaw7kxathjreda
+  __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
+  behaviours.py: bafybeiafrhq7vtj2nrhrcvwi4d4r6w4pn4yoq2ria7lfakn6x4p4dcne4m
+  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
+  fsm_specification.yaml: bafybeierumzymhb7dvhxmqctf3lnrtidp56pmma5ezohbockikajyw5wje
+  handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
+  models.py: bafybeiahojnn52s762zitwx6k5s4ef5qw7hwjf3orlklqwuz3zi7k2o7bi
+  rounds.py: bafybeichzlh6m6o4cr2o37c4gtnfurgwshdnycqdgco7ultbxejens5bya
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
-- valory/decision_maker_abci:0.1.0:bafybeigi6bjrgnzk34xpxah46ewovuijjxnqjwnrk6gl7iasxupfluuf5y
+- valory/decision_maker_abci:0.1.0:bafybeib234rmobhfr6es6e6wouthwu7ssdvxjfhgactgjyhwkeq7wufkwu
 behaviours:
   main:
     args: {}
