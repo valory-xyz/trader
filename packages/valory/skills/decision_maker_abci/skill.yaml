@@ -22,7 +22,7 @@ fingerprint:
   payloads.py: bafybeia63qdzl2lhn656yszisrcllg2idm5mjcpnk5mhvxttsbfcdwutdm
   rounds.py: bafybeid6caier4wg4mi3t5zgsrie2oyc7iif6ybicgtjcimhownjr625my
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeifk44bz77zbz65q6vppfsjbxmjqvfeespd5jf6ms333cqrgli2rba
+  states/base.py: bafybeid6jkvqe6mskz3a7yabgylt6rjbx2vzyaca43o3rm4a77qcgneeaq
   states/bet_placement.py: bafybeig5remjdlsuiyla6gismcahnqqq7ooashzcz2m3lalntf37hfj3be
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
   states/decision_maker.py: bafybeiaqehtdzivhswlurqzxx2bxqjnrmeo6bfyvr2zn55ng3qpwbokauy
@@ -40,7 +40,7 @@ protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
-- valory/market_manager_abci:0.1.0:bafybeieheaq7jgndahj6mqqee53epgbtu3frf3qmab6o3brwwill5ftvaq
+- valory/market_manager_abci:0.1.0:bafybeiez3sahk7q3akqjpmzathafmgziwfdddddyuggzkbcxxf5mzq3nue
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 behaviours:
   main:

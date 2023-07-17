@@ -1,39 +1,34 @@
-name: market_manager_abci
+name: tx_settlement_multiplexer_abci
 author: valory
 version: 0.1.0
 type: skill
-description: This skill implements the MarketManager for an AEA.
+description: This skill implements a multiplexer for the transaction settlement skill.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
-  __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeicl4o53f4zwwcntxui34fjhlmyrl5carz5vp5olxbeg7iltlpf7zy
-  bets.py: bafybeibkmrktcj3ld5kypdjulf6gwzj6ft6qeh2iokm4yqjzzyv3ry6ga4
+  README.md: bafybeiegcjg2wjrsqhrmvyulioch3d67rnbzkx5af3ztkaw7kxathjreda
+  __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
+  behaviours.py: bafybeiafrhq7vtj2nrhrcvwi4d4r6w4pn4yoq2ria7lfakn6x4p4dcne4m
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
-  graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
-  graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
-  graph_tooling/queries/omen.py: bafybeiduznpc6n4kqqoaeev5qwthf7yxpx7tyarlzeiedhpchwkqqqpau4
-  graph_tooling/requests.py: bafybeifkwmfjhxbmfexolos3umq3k4gsrn5ajhdgq4iht7ne3yge4llfjq
-  handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeidhhhp2obt36iatytckybywdm55pzmefpyccakfw3ufyz732ydigy
-  payloads.py: bafybeiamavgddfbzofpsjthmw6j7g2dyxm7fb6hvdb47kweyrx4w2ihcfi
-  rounds.py: bafybeihiwbenmf4aijpswq4egdcoguwah4pxzklt2aelou3c2mhptisl3e
+  fsm_specification.yaml: bafybeierumzymhb7dvhxmqctf3lnrtidp56pmma5ezohbockikajyw5wje
+  handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
+  models.py: bafybeiahojnn52s762zitwx6k5s4ef5qw7hwjf3orlklqwuz3zi7k2o7bi
+  rounds.py: bafybeicnnskn6qlrhceb6n4lvx45cjbcmnpjpm2zpdfelxb7joyttxunvm
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
+- valory/decision_maker_abci:0.1.0:bafybeib234rmobhfr6es6e6wouthwu7ssdvxjfhgactgjyhwkeq7wufkwu
 behaviours:
   main:
     args: {}
-    class_name: MarketManagerRoundBehaviour
+    class_name: PostTxSettlementFullBehaviour
 handlers:
   abci:
     args: {}
-    class_name: ABCIMarketManagerHandler
+    class_name: TxSettlementMultiplexerHandler
   contract_api:
     args: {}
     class_name: ContractApiHandler
@@ -106,7 +101,7 @@ models:
       retry_attempts: 400
       retry_timeout: 3
       round_timeout_seconds: 350.0
-      service_id: market_manager
+      service_id: tx_settlement_multiplexer
       service_registry_address: null
       setup:
         all_participants:
@@ -123,25 +118,7 @@ models:
       termination_sleep: 900
       tx_timeout: 10.0
       use_termination: false
-      creator_per_subgraph:
-        omen_subgraph: []
-      slot_count: 2
-      opening_margin: 300
-      languages:
-      - en_US
-    class_name: MarketManagerParams
-  omen_subgraph:
-    args:
-      api_id: omen
-      headers:
-        Content-Type: application/json
-      method: POST
-      parameters: {}
-      response_key: data:fixedProductMarketMakers
-      response_type: list
-      retries: 5
-      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
-    class_name: OmenSubgraph
+    class_name: Params
   requests:
     args: {}
     class_name: Requests
