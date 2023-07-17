@@ -106,7 +106,7 @@ models:
       retry_attempts: 400
       retry_timeout: 3
       round_timeout_seconds: 350.0
-      service_id: market_manager_estimation
+      service_id: market_manager
       service_registry_address: null
       setup:
         all_participants:
