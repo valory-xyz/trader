@@ -49,12 +49,6 @@ class Event(Enum):
     UNRECOGNIZED = "unrecognized"
 
 
-SUBMITTER_TO_EVENT: Dict[str, Event] = {
-    DecisionMakerRound.auto_round_id(): Event.DECISION_MAKING_DONE,
-    BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
-}
-
-
 class PostTxSettlementRound(CollectSameUntilThresholdRound):
     """A round that will be called after tx settlement is done."""
 
@@ -70,8 +64,13 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         We simply use this round to check which round submitted the tx,
         and move to the next state in accordance with that.
         """
+        submitter_to_event: Dict[str, Event] = {
+            DecisionMakerRound.auto_round_id(): Event.DECISION_MAKING_DONE,
+            BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
+        }
+
         synced_data = SynchronizedData(self.synchronized_data.db)
-        event = SUBMITTER_TO_EVENT.get(synced_data.tx_submitter, Event.UNRECOGNIZED)
+        event = submitter_to_event.get(synced_data.tx_submitter, Event.UNRECOGNIZED)
         return synced_data, event
 
 

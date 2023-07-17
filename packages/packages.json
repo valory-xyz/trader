@@ -7,7 +7,7 @@
         "agent/valory/trader/0.1.0": "bafybeicrc5atl2eupc6mwdrnzkotyvhqpfc633s4zaa76glgkabqgi5hhq",
         "service/valory/trader/0.1.0": "bafybeid3zhftilr7qyqap4hgfzt64cgi637m5vmqcrl3xhrx6qzo45l3c4",
         "contract/valory/erc20/0.1.0": "bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeievmpkawwqrgf6fyqyjwhth62gsvrjgxk7ydyybq772zbz546hcty"
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeihfuf4bo4pxsts377syoa22njqwmcgldyuxsc74yzulqlenoclgl4"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4",
