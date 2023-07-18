@@ -38,6 +38,7 @@ class Event(Enum):
     DONE = "done"
     NONE = "none"
     MECH_RESPONSE_ERROR = "mech_response_error"
+    SLOTS_UNSUPPORTED_ERROR = "slots_unsupported_error"
     NON_BINARY = "non_binary"
     TIE = "tie"
     UNPROFITABLE = "unprofitable"

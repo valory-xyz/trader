@@ -137,7 +137,7 @@ models:
       tendermint_url: http://localhost:26657
       tx_timeout: 10.0
       use_termination: false
-      mech_agent_id: 3
+      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       mech_tool: prediction-online
       bet_amount_per_threshold:
         0.0: 0
@@ -153,6 +153,7 @@ models:
         1.0: 0
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
+      ipfs_address: https://gateway.autonolas.tech/ipfs/
     class_name: DecisionMakerParams
   requests:
     args: {}

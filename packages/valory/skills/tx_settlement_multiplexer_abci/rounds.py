@@ -35,8 +35,8 @@ from packages.valory.skills.decision_maker_abci.states.base import SynchronizedD
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_maker import (
-    DecisionMakerRound,
+from packages.valory.skills.decision_maker_abci.states.decision_request import (
+    DecisionRequestRound,
 )
 
 
@@ -65,7 +65,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         and move to the next state in accordance with that.
         """
         submitter_to_event: Dict[str, Event] = {
-            DecisionMakerRound.auto_round_id(): Event.DECISION_MAKING_DONE,
+            DecisionRequestRound.auto_round_id(): Event.DECISION_MAKING_DONE,
             BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
         }
 

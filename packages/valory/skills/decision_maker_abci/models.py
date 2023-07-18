@@ -52,8 +52,8 @@ class DecisionMakerParams(MarketManagerParams):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.mech_agent_id: int = self._ensure("mech_agent_id", kwargs, int)
-        self.mech_tool: int = self._ensure("mech_tool", kwargs, str)
+        self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
+        self.mech_tool: str = self._ensure("mech_tool", kwargs, str)
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
@@ -64,10 +64,18 @@ class DecisionMakerParams(MarketManagerParams):
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int
         )
+        self._ipfs_address: str = self._ensure("ipfs_address", kwargs, str)
         multisend_address = kwargs.get("multisend_address", None)
         enforce(multisend_address is not None, "Multisend address not specified!")
         self.multisend_address = multisend_address
         super().__init__(*args, **kwargs)
+
+    @property
+    def ipfs_address(self) -> str:
+        """Get the IPFS address."""
+        if self._ipfs_address.endswith("/"):
+            return self._ipfs_address
+        return f"{self._ipfs_address}/"
 
     def get_bet_amount(self, confidence: float) -> int:
         """Get the bet amount given a prediction's confidence."""

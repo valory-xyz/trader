@@ -37,8 +37,8 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_maker import (
-    DecisionMakerRound,
+from packages.valory.skills.decision_maker_abci.states.decision_request import (
+    DecisionRequestRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
@@ -99,19 +99,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     initial_states: Set[AppState] = {SamplingRound, BlacklistingRound}
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
-            Event.DONE: DecisionMakerRound,
+            Event.DONE: DecisionRequestRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
         },
-        DecisionMakerRound: {
+        DecisionRequestRound: {
             Event.DONE: BetPlacementRound,
-            Event.MECH_RESPONSE_ERROR: BlacklistingRound,
-            Event.NO_MAJORITY: DecisionMakerRound,
+            Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
+            Event.NO_MAJORITY: DecisionRequestRound,
             Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.ROUND_TIMEOUT: DecisionMakerRound,
+            Event.ROUND_TIMEOUT: DecisionRequestRound,
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,

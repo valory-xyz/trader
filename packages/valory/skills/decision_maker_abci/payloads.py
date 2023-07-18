@@ -44,7 +44,7 @@ class SamplingPayload(UpdateBetsPayload):
 
 
 @dataclass(frozen=True)
-class BetPlacementPayload(BaseTxPayload):
-    """Represents a transaction payload for placing a bet."""
+class MultisigTxPayload(BaseTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction to be sent via the agents' multisig."""
 
     tx_hash: Optional[str]
