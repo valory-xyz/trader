@@ -6,7 +6,10 @@ description: Agent mech contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md:
+  README.md: bafybeibl4uw7rs6mwh7zuvdnqmj2o2xyr7nx5qk3w7torwx3jg6farn6ca
+  __init__.py: bafybeicx5pxh3cxnml2biuuoebvafvu5tvy6mgkzyjzuubuoeebb5yzjsm
+  build/mech.json: bafybeihsfz7rdnf6cpa3c4eagvs4pw6jhr6pcsikstakejrlkuwvwzhw7m
+  contract.py: bafybeig62z6ptmyuov7latrktldxtezhglrdxj4mnkomq6dvk5665cltiq
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: Mech
