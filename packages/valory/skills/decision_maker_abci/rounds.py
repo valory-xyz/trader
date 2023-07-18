@@ -65,9 +65,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 5.
             - no majority: 0.
             - round timeout: 0.
-        1. DecisionMakerRound
+        1. DecisionRequestRound
             - done: 3.
-            - mech response error: 2.
+            - slots unsupported error: 2.
             - no majority: 1.
             - non binary: 7.
             - tie: 2.
