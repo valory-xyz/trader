@@ -25,6 +25,9 @@ Trader is an autonomous service that performs bets on existing prediction market
 
 - Create development environment:
 
+      poetry run pip install "cython<3"
+      poetry run pip install wheel
+      poetry run pip install --no-build-isolation pyyaml==5.4.1
       poetry install && poetry shell
 
 - Configure command line:
