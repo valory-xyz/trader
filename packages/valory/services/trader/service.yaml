@@ -7,17 +7,9 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigyj6yfnjpc3bu5xftxzsbr23rassny5nnubxvxfr6xeyahir2lam
+agent: valory/trader:0.1.0:bafybeicrc5atl2eupc6mwdrnzkotyvhqpfc633s4zaa76glgkabqgi5hhq
 number_of_agents: 4
 deployment: {}
----
-public_id: valory/abci:0.1.0
-type: connection
-config:
-  target_skill_id: valory/trader_abci:0.1.0
-  host: ${ABCI_HOST:str:localhost}
-  port: ${ABCI_PORT:int:26658}
-  use_tendermint: ${ABCI_USE_TM:bool:false}
 ---
 public_id: valory/trader_abci:0.1.0
 type: skill
