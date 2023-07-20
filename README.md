@@ -71,7 +71,6 @@ Trader is an autonomous service that performs bets on existing prediction market
     # Threshold for placing a bet 0.005 xDAI
     export BET_THRESHOLD=5000000000000000
 
-    # Prompt for the prediction AI Mech
     export PROMPT_TEMPLATE='With the given question "@{question}" and the `yes` option represented by `@{yes}` and the `no` option represented by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?'
     ```
 
@@ -87,6 +86,7 @@ Trader is an autonomous service that performs bets on existing prediction market
     for placing bets on Omen.
   - `BET_AMOUNT_PER_THRESHOLD_X`: amount (wei) to bet when the prediction returned by the AI Mech surpasses a threshold of `X`% confidence.
   - `BET_THRESHOLD`: threshold (wei) for placing a bet. That is, a bet will only be placed if `expected_return - bet_fees >= BET_THRESHOLD`. [See below](#some-notes-on-the-service).
+  - `PROMPT_TEMPLATE`: prompt to be used with the prediction AI Mech. Please keep it as a single line including the placeholders `@{question}`, `@{yes}` and `@{no}`.
 
 - Fetch the service
 
