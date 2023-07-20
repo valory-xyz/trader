@@ -12,13 +12,13 @@ fingerprint:
   behaviours/base.py: bafybeiftzkqcn2abil4ljzoppcl52zrztplymwqbnydm6ippn7kzhgjexy
   behaviours/bet_placement.py: bafybeifsninom3ith4amavgn5ou2rqx5vvjpr2f7ezdqz7lrmjltsfbv2i
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_maker.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
+  behaviours/decision_maker.py: bafybeif3x4nakgnbau3endvcgvs3z74peq3ybuik2hznnmy54uo3acxwiy
   behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
   behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigrdkenq2yxz3i56esauohv4wtdgphql2bqiyqgoyrzysdad7rsxi
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeicacv5b5i3bw6fve5ilkidjg2e6jaljcmmgnkjmw25fhz52u3l22q
+  models.py: bafybeifncixvjvhddj7ziw225c72mvovsqzohkvmwujoq2s5qiay6oflkm
   payloads.py: bafybeia63qdzl2lhn656yszisrcllg2idm5mjcpnk5mhvxttsbfcdwutdm
   rounds.py: bafybeid6caier4wg4mi3t5zgsrie2oyc7iif6ybicgtjcimhownjr625my
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
@@ -153,6 +153,9 @@ models:
         1.0: 0
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
+      prompt_template: With the given question "@{question}" and the `yes` option
+        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
+        the respective probabilities of `p_yes` and `p_no` occurring?
     class_name: DecisionMakerParams
   requests:
     args: {}

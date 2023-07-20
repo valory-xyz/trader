@@ -38,8 +38,9 @@ skills:
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 - valory/market_manager_abci:0.1.0:bafybeiez3sahk7q3akqjpmzathafmgziwfdddddyuggzkbcxxf5mzq3nue
-- valory/decision_maker_abci:0.1.0:bafybeib234rmobhfr6es6e6wouthwu7ssdvxjfhgactgjyhwkeq7wufkwu
-- valory/trader_abci:0.1.0:bafybeiei5p7flqgenpvspfxbjcc4xwbb2rql7bwbp3dzb4ixv3xwkr44gy
+- valory/decision_maker_abci:0.1.0:bafybeic6vgqdnxdg542rksidza7erqziw2p75wgrfshwowphzqpqrwjkri
+- valory/trader_abci:0.1.0:bafybeicw6lcvxkjr2edlxt2rohpccls4c5muouwojm2wm4b3odz72rgloe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidy6ygzje3cmfn4mesm5p4cinly4bme7yw3p4wvlanys7fhnylg6q
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -169,6 +170,9 @@ models:
         1.0: ${int:100000000000000000000}
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
+      prompt_template: ${str:With the given question "@{question}" and the `yes` option
+        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
+        the respective probabilities of `p_yes` and `p_no` occurring?}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

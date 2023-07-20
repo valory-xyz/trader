@@ -21,7 +21,6 @@
 
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
-from string import Template
 from typing import Any, Generator, Optional, Tuple, cast
 
 from mech_client.interact import PRIVATE_KEY_FILE_PATH
@@ -38,16 +37,6 @@ from packages.valory.skills.decision_maker_abci.tasks import (
     MechInteractionTask,
 )
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
-
-
-BET_PROMPT = Template(
-    """
-    With the given question "${question}"
-    and the `yes` option represented by `${yes}`
-    and the `no` option represented by `${no}`,
-    what are the respective probabilities of `p_yes` and `p_no` occurring?
-    """
-)
 
 
 class DecisionMakerBehaviour(DecisionMakerBaseBehaviour):
@@ -76,7 +65,7 @@ class DecisionMakerBehaviour(DecisionMakerBaseBehaviour):
             question=sampled_bet.title, yes=sampled_bet.yes, no=sampled_bet.no
         )
         task_kwargs = dict(
-            prompt=BET_PROMPT.substitute(prompt_params),
+            prompt=self.params.prompt_template.substitute(prompt_params),
             agent_id=self.params.mech_agent_id,
             tool=self.params.mech_tool,
             private_key_path=str(Path(self.context.data_dir) / PRIVATE_KEY_FILE_PATH),
