@@ -53,7 +53,7 @@ Trader is an autonomous service that performs bets on existing prediction market
     export OMEN_CREATORS='["CREATOR_0", "CREATOR_1", ...]'
     
     # Optional. The following example values bet a variable amount depending on the
-    # prediction confidence. Here, amounts vary between 0.005 xDAI (60% confidence)
+    # prediction confidence. Here, amounts vary between 0.03 xDAI (60% confidence)
     # and 0.1 xDAI (100% confidence). Please, adjust these values accordingly.
     export BET_AMOUNT_PER_THRESHOLD_000=0
     export BET_AMOUNT_PER_THRESHOLD_000=0
@@ -62,14 +62,14 @@ Trader is an autonomous service that performs bets on existing prediction market
     export BET_AMOUNT_PER_THRESHOLD_030=0
     export BET_AMOUNT_PER_THRESHOLD_040=0
     export BET_AMOUNT_PER_THRESHOLD_050=0
-    export BET_AMOUNT_PER_THRESHOLD_060=5000000000000000
-    export BET_AMOUNT_PER_THRESHOLD_070=7000000000000000
-    export BET_AMOUNT_PER_THRESHOLD_080=10000000000000000
-    export BET_AMOUNT_PER_THRESHOLD_090=50000000000000000
+    export BET_AMOUNT_PER_THRESHOLD_060=30000000000000000
+    export BET_AMOUNT_PER_THRESHOLD_070=40000000000000000
+    export BET_AMOUNT_PER_THRESHOLD_080=60000000000000000
+    export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
     export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
 
-    # Threshold for placing a bet
-    export BET_THRESHOLD=2000000000000000
+    # Threshold for placing a bet 0.005 xDAI
+    export BET_THRESHOLD=5000000000000000
     ```
 
   Replace the above placeholders with their respective actual values:
@@ -83,7 +83,7 @@ Trader is an autonomous service that performs bets on existing prediction market
   - `OMEN_CREATORS`: addresses of the market creator(s) that the service will track
     for placing bets on Omen.
   - `BET_AMOUNT_PER_THRESHOLD_X`: amount (wei) to bet when the prediction returned by the AI Mech surpasses a threshold of `X`% confidence.
-  - `BET_THRESHOLD`: threshold (wei) for placing a bet. That is, a bet will only be placed if `expected_return - tx_fees >= BET_THRESHOLD`. [See below](#some-notes-on-the-service).
+  - `BET_THRESHOLD`: threshold (wei) for placing a bet. That is, a bet will only be placed if `expected_return - bet_fees >= BET_THRESHOLD`. [See below](#some-notes-on-the-service).
 
 - Fetch the service
 
@@ -124,6 +124,6 @@ Trader is an autonomous service that performs bets on existing prediction market
 Please, take into consideration the following:
 
 - If the service does not have enough funds for placing a bet, you will see an `Event.INSUFICIENT_FUNDS` in the service logs.
-- If the service determines that a bet is not profitable (i.e., `expected_return - tx_fees < BET_THRESHOLD`), you will see an `Event.UNPROFITABLE` in the service logs, and the service will transition into the blacklisting round. This round blacklists a bet for a predetermined amount of time. This can be adjusted by using the `BLACKLISTING_DURATION` environment variable.
+- If the service determines that a bet is not profitable (i.e., `expected_return - bet_fees < BET_THRESHOLD`), you will see an `Event.UNPROFITABLE` in the service logs, and the service will transition into the blacklisting round. This round blacklists a bet for a predetermined amount of time. This can be adjusted by using the `BLACKLISTING_DURATION` environment variable.
 - For simplicity, the current implementation considers `expected_return = bet_amount`, although this calculation might be refined.
-- When assigning `BET_THRESHOLD` take into consideration that transaction fees (at the time of writing this guide) are in the range of 0.0006 - 0.0009 xDAI. We urge you to keep an eye on these fees, as they might vary.
+- When assigning `BET_THRESHOLD` take into consideration that fees (at the time of writing this guide) are in the range of 0.02 xDAI. See for example [here](https://api.thegraph.com/subgraphs/name/protofire/omen-xdai/graphql?query=%7B%0A++fixedProductMarketMakers%28%0A++++where%3A+%7B%0A++++++creator_in%3A+%5B%220x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec%22%5D%2C%0A++++++outcomeSlotCount%3A+2%2C%0A++++++isPendingArbitration%3A+false%0A++++%7D%2C%0A++++orderBy%3A+creationTimestamp%0A++++orderDirection%3A+desc%0A++%29%7B%0A++++fee%0A++%7D%0A%7D). We urge you to keep an eye on these fees, as they might vary.
