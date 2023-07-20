@@ -25,7 +25,7 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/market_manager_abci:0.1.0:bafybeiez3sahk7q3akqjpmzathafmgziwfdddddyuggzkbcxxf5mzq3nue
-- valory/decision_maker_abci:0.1.0:bafybeib234rmobhfr6es6e6wouthwu7ssdvxjfhgactgjyhwkeq7wufkwu
+- valory/decision_maker_abci:0.1.0:bafybeigefyssygcvg3lvbv2dbvvx72jlcvluhkos4kvoorinxgatvrk42m
 behaviours:
   main:
     args: {}
@@ -150,6 +150,9 @@ models:
         1.0: 0
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
+      prompt_template: With the given question "@{question}" and the `yes` option
+        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
+        the respective probabilities of `p_yes` and `p_no` occurring?
     class_name: TraderParams
   omen_subgraph:
     args:
