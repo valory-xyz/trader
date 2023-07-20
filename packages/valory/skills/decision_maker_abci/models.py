@@ -20,7 +20,7 @@
 """This module contains the models for the skill."""
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from aea.exceptions import enforce
 from hexbytes import HexBytes
@@ -91,3 +91,46 @@ class MultisendBatch:
     data: HexBytes
     value: int = 0
     operation: MultiSendOperation = MultiSendOperation.CALL
+
+
+@dataclass
+class PredictionResponse:
+    """A response of a prediction."""
+
+    p_yes: float
+    p_no: float
+    confidence: float
+    info_utility: float
+
+    def __post_init__(self) -> None:
+        """Runs checks on whether the current prediction response is valid or not."""
+        # all the fields are probabilities
+        probabilities = (getattr(self, field) for field in self.__annotations__)
+        if (
+            any(not (0 <= prob <= 1) for prob in probabilities)
+            or self.p_yes + self.p_no != 1
+        ):
+            raise ValueError("Invalid prediction response initialization.")
+
+    @property
+    def vote(self) -> Optional[int]:
+        """Return the vote. `0` represents "yes" and `1` represents "no"."""
+        if self.p_no != self.p_yes:
+            return int(self.p_no > self.p_yes)
+        return None
+
+
+@dataclass
+class MechInteractionResponse:
+    """A structure for the response of a mech interaction task."""
+
+    requestId: int = 0
+    result: Optional[PredictionResponse] = None
+    error: str = "Unknown"
+
+    @classmethod
+    def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
+        """Return an incorrect format response."""
+        response = cls()
+        response.error = f"The response's format was unexpected: {res}"
+        return response
