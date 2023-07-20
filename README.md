@@ -70,6 +70,9 @@ Trader is an autonomous service that performs bets on existing prediction market
 
     # Threshold for placing a bet 0.005 xDAI
     export BET_THRESHOLD=5000000000000000
+
+    # Prompt for the prediction AI Mech
+    export PROMPT_TEMPLATE='With the given question "@{question}" and the `yes` option represented by `@{yes}` and the `no` option represented by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?'
     ```
 
   Replace the above placeholders with their respective actual values:
