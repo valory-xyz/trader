@@ -20,8 +20,7 @@
 """This module contains the behaviour for sampling a bet."""
 
 import dataclasses
-from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, List, Optional, cast
+from typing import Any, Generator, List, cast
 
 from hexbytes import HexBytes
 
@@ -35,12 +34,13 @@ from packages.valory.contracts.market_maker.contract import (
 )
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+    SAFE_GAS,
+    WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
+from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
@@ -50,13 +50,6 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
-WaitableConditionType = Generator[None, None, bool]
-
-
-# setting the safe gas to 0 means that all available gas will be used
-# which is what we want in most cases
-# more info here: https://safe-docs.dev.gnosisdev.com/safe/docs/contracts_tx_execution/
-_SAFE_GAS = 0
 # hardcoded to 0 because we don't need to send any ETH when betting
 _ETHER_VALUE = 0
 
@@ -256,7 +249,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             to_address=self.params.multisend_address,
             value=_ETHER_VALUE,
             data=self.multisend_data,
-            safe_tx_gas=_SAFE_GAS,
+            safe_tx_gas=SAFE_GAS,
             operation=SafeOperation.DELEGATE_CALL.value,
         )
 
@@ -280,37 +273,6 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.safe_tx_hash = tx_hash[2:]
         return True
 
-    def wait_for_condition_with_sleep(
-        self,
-        condition_gen: Callable[[], WaitableConditionType],
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, None]:
-        """Wait for a condition to happen and sleep in-between checks.
-
-        This is a modified version of the base `wait_for_condition` method which:
-            1. accepts a generator that creates the condition instead of a callable
-            2. sleeps in-between checks
-
-        :param condition_gen: a generator of the condition to wait for
-        :param timeout: the maximum amount of time to wait
-        :yield: None
-        """
-
-        deadline = (
-            datetime.now() + timedelta(0, timeout)
-            if timeout is not None
-            else datetime.max
-        )
-
-        while True:
-            condition_satisfied = yield from condition_gen()
-            if condition_satisfied:
-                break
-            if timeout is not None and datetime.now() > deadline:
-                raise TimeoutException()
-            self.context.logger.error(f"Retrying in {self.params.sleep_time} seconds.")
-            yield from self.sleep(self.params.sleep_time)
-
     def _prepare_safe_tx(self) -> Generator[None, None, str]:
         """Prepare the safe transaction for placing a bet and return the hex for the tx settlement skill."""
         for step in (
@@ -325,7 +287,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         return hash_payload_to_hex(
             self.safe_tx_hash,
             _ETHER_VALUE,
-            _SAFE_GAS,
+            SAFE_GAS,
             self.params.multisend_address,
             self.multisend_data,
             SafeOperation.DELEGATE_CALL.value,
@@ -338,6 +300,6 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             betting_tx_hex = None
             if self.sufficient_balance:
                 betting_tx_hex = yield from self._prepare_safe_tx()
-            payload = BetPlacementPayload(self.context.agent_address, betting_tx_hex)
+            payload = MultisigTxPayload(self.context.agent_address, betting_tx_hex)
 
         yield from self.finish_behaviour(payload)

@@ -9,7 +9,6 @@ alphabet_in:
 - INCORRECT_SERIALIZATION
 - INSUFFICIENT_BALANCE
 - INSUFFICIENT_FUNDS
-- MECH_RESPONSE_ERROR
 - NEGATIVE
 - NONE
 - NON_BINARY
@@ -17,6 +16,7 @@ alphabet_in:
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
 - ROUND_TIMEOUT
+- SLOTS_UNSUPPORTED_ERROR
 - SUSPICIOUS_ACTIVITY
 - TIE
 - UNPROFITABLE
@@ -35,7 +35,7 @@ states:
 - CheckLateTxHashesRound
 - CheckTransactionHistoryRound
 - CollectSignatureRound
-- DecisionMakerRound
+- DecisionRequestRound
 - FinalizationRound
 - ImpossibleRound
 - RandomnessTransactionSubmissionRound
@@ -76,13 +76,13 @@ transition_func:
     (CollectSignatureRound, DONE): FinalizationRound
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
-    (DecisionMakerRound, DONE): BetPlacementRound
-    (DecisionMakerRound, MECH_RESPONSE_ERROR): BlacklistingRound
-    (DecisionMakerRound, NON_BINARY): ImpossibleRound
-    (DecisionMakerRound, NO_MAJORITY): DecisionMakerRound
-    (DecisionMakerRound, ROUND_TIMEOUT): DecisionMakerRound
-    (DecisionMakerRound, TIE): BlacklistingRound
-    (DecisionMakerRound, UNPROFITABLE): BlacklistingRound
+    (DecisionRequestRound, DONE): BetPlacementRound
+    (DecisionRequestRound, NON_BINARY): ImpossibleRound
+    (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
+    (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
+    (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (DecisionRequestRound, TIE): BlacklistingRound
+    (DecisionRequestRound, UNPROFITABLE): BlacklistingRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound
@@ -101,7 +101,7 @@ transition_func:
     (ResetRound, DONE): RandomnessTransactionSubmissionRound
     (ResetRound, NO_MAJORITY): BlacklistingRound
     (ResetRound, RESET_TIMEOUT): BlacklistingRound
-    (SamplingRound, DONE): DecisionMakerRound
+    (SamplingRound, DONE): DecisionRequestRound
     (SamplingRound, NONE): ResetAndPauseRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound

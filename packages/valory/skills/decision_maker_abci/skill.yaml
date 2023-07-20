@@ -9,23 +9,25 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiftzkqcn2abil4ljzoppcl52zrztplymwqbnydm6ippn7kzhgjexy
-  behaviours/bet_placement.py: bafybeifsninom3ith4amavgn5ou2rqx5vvjpr2f7ezdqz7lrmjltsfbv2i
+  behaviours/base.py: bafybeieoqhh4cppokbnuqc3aelhcqxes3guo56ocfcvq2k7nr6juf5ke2y
+  behaviours/bet_placement.py: bafybeibto4qok27vqk55y3cwmnjsi7pesm5obz3rcqjknjskwj2du5ggj4
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_maker.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
-  behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
+  behaviours/decision_receive.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
+  behaviours/decision_request.py: bafybeihkzetiubxpnyhmpz7lestilo3q2ped2zcbsexc6hdoqa25wcflcu
+  behaviours/round_behaviour.py: bafybeigoryodpq6u6s373uhadihlkinwi62eqgk3rfayw6mkwobkyam2em
   behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeigrdkenq2yxz3i56esauohv4wtdgphql2bqiyqgoyrzysdad7rsxi
+  fsm_specification.yaml: bafybeigzpshihpreievassr6s5tdbdpxr74av4hy42hghxenfghxuie5ce
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeicacv5b5i3bw6fve5ilkidjg2e6jaljcmmgnkjmw25fhz52u3l22q
-  payloads.py: bafybeia63qdzl2lhn656yszisrcllg2idm5mjcpnk5mhvxttsbfcdwutdm
-  rounds.py: bafybeid6caier4wg4mi3t5zgsrie2oyc7iif6ybicgtjcimhownjr625my
+  models.py: bafybeigxesrdsueervsu3d6epudjq5kfsaonn4ncqfvdryjnf6nntyfxni
+  payloads.py: bafybeiff6yav76fu3mesjo5j2jttglctvy75nl44dg42dlrv25bybajg3q
+  rounds.py: bafybeifgi6ab7a2hfmxzs7pagf4eq6xy54v74zlcabw4s3azq6ahlsqtky
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeid6jkvqe6mskz3a7yabgylt6rjbx2vzyaca43o3rm4a77qcgneeaq
-  states/bet_placement.py: bafybeig5remjdlsuiyla6gismcahnqqq7ooashzcz2m3lalntf37hfj3be
+  states/base.py: bafybeigsotl6raab2xszjy4gpnc34pre5u6sd4zuq7xgcfmt7lxi2qfgca
+  states/bet_placement.py: bafybeic7scrnqxr36kaonedcflqnqecmcigk3vfzyyofk47j64ifto7xnu
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
   states/decision_maker.py: bafybeiaqehtdzivhswlurqzxx2bxqjnrmeo6bfyvr2zn55ng3qpwbokauy
+  states/decision_request.py: bafybeigqbvo6yutpshje4hbqe644ajzvos6xosdpngql5i4s4fikksxiti
   states/final_states.py: bafybeifhr36wfvzzum44qqknrolglii5fyspg7f5cmq4dxc6oukd7hniji
   states/sampling.py: bafybeidnvdogjlthjfe7jpaiuezm3xydrbxxukyoss4gx6t5fdin52rsta
   tasks.py: bafybeid47ybp2opuz2xb7bgxcwztk6rhwluubf7mnxiytqopwx4adprtve
@@ -137,7 +139,7 @@ models:
       tendermint_url: http://localhost:26657
       tx_timeout: 10.0
       use_termination: false
-      mech_agent_id: 3
+      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       mech_tool: prediction-online
       bet_amount_per_threshold:
         0.0: 0
@@ -153,6 +155,7 @@ models:
         1.0: 0
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
+      ipfs_address: https://gateway.autonolas.tech/ipfs/
     class_name: DecisionMakerParams
   requests:
     args: {}
