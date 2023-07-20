@@ -31,7 +31,6 @@ import multicodec
 from aea.helpers.cid import to_v1
 
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
-from packages.valory.contracts.mech.contract import Mech
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.io_.store import SupportedFiletype
@@ -168,21 +167,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Prompt uploaded: {ipfs_link}")
         self._v1_hex_truncated = Ox + v1_file_hash_hex[9:]
         return True
-
-    def _mech_contract_interact(
-        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
-    ) -> WaitableConditionType:
-        """Interact with the mech contract."""
-        status = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.mech_agent_address,
-            contract_public_id=Mech.contract_id,
-            contract_callable=contract_callable,
-            data_key=data_key,
-            placeholder=placeholder,
-            **kwargs,
-        )
-        return status
 
     def _build_request_data(self) -> Generator[None, None, bool]:
         """Get the request tx data encoded."""
