@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicrc5atl2eupc6mwdrnzkotyvhqpfc633s4zaa76glgkabqgi5hhq
+agent: valory/trader:0.1.0:bafybeigwxffob34itjtwsvlojv4uypgp2dh4gmzts6voqy5guwqwaxhe5e
 number_of_agents: 4
 deployment: {}
 ---
@@ -90,6 +90,10 @@ type: skill
           1.0: ${BET_AMOUNT_PER_THRESHOLD_100:int:100000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -140,6 +144,10 @@ type: skill
         bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: *id005
 2:
   models:
@@ -188,6 +196,10 @@ type: skill
         bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: *id005
 3:
   models:
@@ -236,6 +248,10 @@ type: skill
         bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0
