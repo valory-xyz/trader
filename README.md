@@ -124,6 +124,6 @@ Trader is an autonomous service that performs bets on existing prediction market
 Please, take into consideration the following:
 
 - If the service does not have enough funds for placing a bet, you will see an `Event.INSUFICIENT_FUNDS` in the service logs.
-- If the service determines that a bet is not profitable (i.e., `expected_return - tx_fees < BET_THRESHOLD`), you will see an `Event.UNPROFITABLE` in the service logs.
+- If the service determines that a bet is not profitable (i.e., `expected_return - tx_fees < BET_THRESHOLD`), you will see an `Event.UNPROFITABLE` in the service logs, and the service will transition into the blacklisting round. This round blacklists a bet for a predetermined amount of time. This can be adjusted by using the `BLACKLISTING_DURATION` environment variable.
 - For simplicity, the current implementation considers `expected_return = bet_amount`, although this calculation might be refined.
-- When assigning `BET_THRESHOLD` take into consideration that transaction fees (at the time of writing this guide) are in the range of 0.0006 - 0.0009 xDAI. We urge you to keep an eye on these fees, as they might vary depending on current gas costs.
+- When assigning `BET_THRESHOLD` take into consideration that transaction fees (at the time of writing this guide) are in the range of 0.0006 - 0.0009 xDAI. We urge you to keep an eye on these fees, as they might vary.
