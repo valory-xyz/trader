@@ -220,9 +220,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            mech_tx_hex = None
+            tx_submitter = mech_tx_hex = None
             if self.n_slots_supported:
+                tx_submitter = self.matching_round.auto_round_id()
                 mech_tx_hex = yield from self._prepare_safe_tx()
-            payload = MultisigTxPayload(self.context.agent_address, mech_tx_hex)
+            agent = self.context.agent_address
+            payload = MultisigTxPayload(agent, tx_submitter, mech_tx_hex)
 
         yield from self.finish_behaviour(payload)

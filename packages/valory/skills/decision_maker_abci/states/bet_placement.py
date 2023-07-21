@@ -19,24 +19,13 @@
 
 """This module contains the sampling state of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import (
-    CollectSameUntilThresholdRound,
-    get_name,
-)
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
-    SynchronizedData,
+    TxPreparationRound,
 )
 
 
-class BetPlacementRound(CollectSameUntilThresholdRound):
+class BetPlacementRound(TxPreparationRound):
     """A round for placing a bet."""
 
-    payload_class = MultisigTxPayload
-    synchronized_data_class = SynchronizedData
-    done_event = Event.DONE
     none_event = Event.INSUFFICIENT_BALANCE
-    no_majority_event = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.most_voted_tx_hash)
-    collection_key = get_name(SynchronizedData.participant_to_bet_placement)

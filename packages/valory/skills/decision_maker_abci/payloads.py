@@ -46,4 +46,5 @@ class SamplingPayload(UpdateBetsPayload):
 class MultisigTxPayload(BaseTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction to be sent via the agents' multisig."""
 
+    tx_submitter: Optional[str]
     tx_hash: Optional[str]

@@ -22,7 +22,12 @@
 from enum import Enum
 from typing import Optional
 
-from packages.valory.skills.abstract_round_abci.base import DeserializedCollection
+from packages.valory.skills.abstract_round_abci.base import (
+    CollectSameUntilThresholdRound,
+    DeserializedCollection,
+    get_name,
+)
+from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
@@ -94,6 +99,21 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return self._get_deserialized("participant_to_sampling")
 
     @property
-    def participant_to_bet_placement(self) -> DeserializedCollection:
+    def participant_to_tx_prep(self) -> DeserializedCollection:
         """Get the participants to bet-placement."""
-        return self._get_deserialized("participant_to_bet_placement")
+        return self._get_deserialized("participant_to_tx_prep")
+
+
+class TxPreparationRound(CollectSameUntilThresholdRound):
+    """A round for preparing a transaction."""
+
+    payload_class = MultisigTxPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = (
+        get_name(SynchronizedData.tx_submitter),
+        get_name(SynchronizedData.most_voted_tx_hash),
+    )
+    collection_key = get_name(SynchronizedData.participant_to_tx_prep)
