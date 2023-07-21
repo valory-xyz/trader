@@ -70,7 +70,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     def contract_interact(
         self,
         performative: ContractApiMessage.Performative,
-        contract_address: Optional[str],
+        contract_address: str,
         contract_public_id: PublicId,
         contract_callable: str,
         data_key: str,
@@ -97,7 +97,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 contract_id, contract_callable, response_msg
             )
 
-        setattr(self, placeholder, data[data_key])
+        setattr(self, placeholder, data)
         return True
 
     def _mech_contract_interact(

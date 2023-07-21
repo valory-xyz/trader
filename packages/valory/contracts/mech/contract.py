@@ -138,6 +138,7 @@ class Mech(Contract):
     def get_block_number(
         cls,
         ledger_api: EthereumApi,
+        contract_address: str,
         tx_hash: HexStr,
     ) -> JSONLike:
         """Get the number of the block in which the tx of the given hash was settled."""

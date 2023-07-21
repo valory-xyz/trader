@@ -37,6 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 
 
 IPFS_HASH_PREFIX = "f01701220"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -99,7 +100,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Get the block number in which the request to the mech was settled."""
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=None,
+            # we do not need the address to get the block number, but the base method does
+            contract_address=ZERO_ADDRESS,
             contract_public_id=Mech.contract_id,
             contract_callable="get_block_number",
             data_key="number",
