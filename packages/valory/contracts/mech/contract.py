@@ -62,7 +62,7 @@ class Mech(Contract):
         :param request_data: the request data
         """
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        encoded_data = contract_instance.encodeABI("request", request_data)
+        encoded_data = contract_instance.encodeABI("request", args=(request_data,))
         return {"data": bytes.fromhex(encoded_data[2:])}
 
     @classmethod
