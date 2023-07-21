@@ -43,6 +43,12 @@ from packages.valory.skills.termination_abci.behaviours import (
     TerminationAbciBehaviours,
 )
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
+from packages.valory.skills.transaction_settlement_abci.behaviours import (
+    TransactionSettlementRoundBehaviour,
+)
+from packages.valory.skills.tx_settlement_multiplexer_abci.behaviours import (
+    PostTxSettlementFullBehaviour,
+)
 
 
 class TraderConsensusBehaviour(AbstractRoundBehaviour):
@@ -57,5 +63,7 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *MarketManagerRoundBehaviour.behaviours,
         *ResetPauseABCIConsensusBehaviour.behaviours,
         *TerminationAbciBehaviours.behaviours,
+        *TransactionSettlementRoundBehaviour.behaviours,
+        *PostTxSettlementFullBehaviour.behaviours,
     }
     background_behaviour_cls = BackgroundBehaviour
