@@ -171,8 +171,6 @@ models:
     args: {}
     class_name: TendermintDialogues
 dependencies:
-  mech-client:
-    version: ==0.2.2
   hexbytes:
     version: ==0.3.1
   py-multibase:
