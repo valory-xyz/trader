@@ -163,7 +163,7 @@ class Mech(Contract):
         deliver_filter.fromBlock = from_block
         deliver_filter.toBlock = to_block
         deliver_filter.args.requestId.match_single(request_id)
-        delivered = list(deliver_filter.deploy().get_all_entries())
+        delivered = list(deliver_filter.deploy(ledger_api.api).get_all_entries())
         n_delivered = len(delivered)
 
         if n_delivered == 0:
