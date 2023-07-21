@@ -151,7 +151,7 @@ models:
       use_termination: ${bool:false}
       on_chain_service_id: ${int:null}
       creator_per_subgraph:
-        omen_subgraph: ${list:["0x5367f217f5942cb10db16f2831a11fa287d78216"]}
+        omen_subgraph: ${list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
       slot_count: ${int:2}
       opening_margin: ${int:300}
       languages: ${list:["en_US"]}
