@@ -131,7 +131,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.ROUND_TIMEOUT: DecisionReceiveRound,
+            Event.ROUND_TIMEOUT: BlacklistingRound,
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
