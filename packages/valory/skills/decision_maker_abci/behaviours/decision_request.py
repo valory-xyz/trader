@@ -192,9 +192,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             contract_address=self.synchronized_data.safe_contract_address,
             contract_public_id=GnosisSafeContract.contract_id,
             contract_callable="get_raw_safe_transaction_hash",
+            to_address=self.params.mech_agent_address,
+            value=self.price,
+            data=self.request_data,
             data_key="tx_hash",
             placeholder=get_name(DecisionRequestBehaviour.safe_tx_hash),
-            value=self.price,
         )
         return status
 
