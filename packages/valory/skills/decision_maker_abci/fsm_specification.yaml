@@ -2,8 +2,8 @@ alphabet_in:
 - DONE
 - FETCH_ERROR
 - INSUFFICIENT_BALANCE
+- MECH_RESPONSE_ERROR
 - NONE
-- NON_BINARY
 - NO_MAJORITY
 - ROUND_TIMEOUT
 - SLOTS_UNSUPPORTED_ERROR
@@ -18,10 +18,12 @@ final_states:
 label: DecisionMakerAbciApp
 start_states:
 - BlacklistingRound
+- DecisionReceiveRound
 - SamplingRound
 states:
 - BetPlacementRound
 - BlacklistingRound
+- DecisionReceiveRound
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedWithoutDecisionRound
@@ -31,6 +33,7 @@ states:
 transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
+    (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
@@ -38,13 +41,17 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
-    (DecisionRequestRound, DONE): BetPlacementRound
-    (DecisionRequestRound, NON_BINARY): ImpossibleRound
+    (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
+    (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
+    (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
+    (DecisionReceiveRound, TIE): BlacklistingRound
+    (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
+    (DecisionRequestRound, DONE): FinishedDecisionMakerRound
+    (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
-    (DecisionRequestRound, TIE): BlacklistingRound
-    (DecisionRequestRound, UNPROFITABLE): BlacklistingRound
     (SamplingRound, DONE): DecisionRequestRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound

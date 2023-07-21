@@ -60,37 +60,43 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: SamplingRound
 
-    Initial states: {BlacklistingRound, SamplingRound}
+    Initial states: {BlacklistingRound, DecisionReceiveRound, SamplingRound}
 
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 5.
+            - none: 6.
             - no majority: 0.
             - round timeout: 0.
         1. DecisionRequestRound
-            - done: 3.
-            - slots unsupported error: 2.
-            - no majority: 1.
-            - non binary: 7.
-            - tie: 2.
-            - unprofitable: 2.
-            - round timeout: 1.
-        2. BlacklistingRound
             - done: 5.
-            - none: 7.
-            - no majority: 2.
-            - round timeout: 2.
-            - fetch error: 7.
-        3. BetPlacementRound
+            - slots unsupported error: 3.
+            - no majority: 1.
+            - round timeout: 1.
+            - none: 8.
+        2. DecisionReceiveRound
             - done: 4.
-            - insufficient balance: 6.
+            - mech response error: 3.
+            - no majority: 2.
+            - tie: 3.
+            - unprofitable: 3.
+            - round timeout: 2.
+        3. BlacklistingRound
+            - done: 6.
+            - none: 8.
             - no majority: 3.
             - round timeout: 3.
-        4. FinishedDecisionMakerRound
-        5. FinishedWithoutDecisionRound
-        6. RefillRequiredRound
-        7. ImpossibleRound
+            - fetch error: 8.
+        4. BetPlacementRound
+            - done: 5.
+            - insufficient balance: 7.
+            - no majority: 4.
+            - round timeout: 4.
+            - none: 8.
+        5. FinishedDecisionMakerRound
+        6. FinishedWithoutDecisionRound
+        7. RefillRequiredRound
+        8. ImpossibleRound
 
     Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, ImpossibleRound, RefillRequiredRound}
 

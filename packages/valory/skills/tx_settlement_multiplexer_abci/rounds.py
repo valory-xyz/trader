@@ -95,15 +95,15 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
 
     Transition states:
         0. PostTxSettlementRound
-            - decision making done: 1.
+            - decision requesting done: 1.
             - bet placement done: 2.
             - round timeout: 0.
             - unrecognized: 3.
-        1. FinishedDecisionMakerRound
-        2. FinishedBetPlacementRound
+        1. FinishedDecisionRequestTxRound
+        2. FinishedBetPlacementTxRound
         3. FailedMultiplexerRound
 
-    Final states: {FailedMultiplexerRound, FinishedBetPlacementRound, FinishedDecisionMakerRound}
+    Final states: {FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound}
 
     Timeouts:
         round timeout: 30.0
