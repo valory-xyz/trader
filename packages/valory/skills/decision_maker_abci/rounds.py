@@ -37,6 +37,9 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
+)
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
@@ -96,7 +99,11 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     """
 
     initial_round_cls: AppState = SamplingRound
-    initial_states: Set[AppState] = {SamplingRound, BlacklistingRound}
+    initial_states: Set[AppState] = {
+        SamplingRound,
+        BlacklistingRound,
+        DecisionReceiveRound,
+    }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
             Event.DONE: DecisionRequestRound,
@@ -105,12 +112,20 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: SamplingRound,
         },
         DecisionRequestRound: {
-            Event.DONE: BetPlacementRound,
+            Event.DONE: FinishedDecisionMakerRound,
             Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionRequestRound,
+            Event.ROUND_TIMEOUT: DecisionRequestRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        DecisionReceiveRound: {
+            Event.DONE: BetPlacementRound,
+            Event.MECH_RESPONSE_ERROR: BlacklistingRound,
+            Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.ROUND_TIMEOUT: DecisionRequestRound,
+            Event.ROUND_TIMEOUT: DecisionReceiveRound,
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
@@ -125,6 +140,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
         },
         FinishedDecisionMakerRound: {},
         FinishedWithoutDecisionRound: {},
@@ -141,6 +158,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         Event.ROUND_TIMEOUT: 30.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
+        DecisionReceiveRound: {
+            get_name(SynchronizedData.final_tx_hash),
+        },
         BlacklistingRound: {
             get_name(SynchronizedData.bets),
         },
@@ -149,6 +169,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
             get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
