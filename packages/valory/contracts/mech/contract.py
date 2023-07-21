@@ -88,7 +88,7 @@ class Mech(Contract):
 
         log = logs.pop()
         event_args = log.get("args", None)
-        if event_args is None or (
+        if event_args is None or any(
             expected_key not in event_args for expected_key in args
         ):
             error = f"The emitted event's ({event_name!r}) log for tx {tx_hash} do not match the expected format: {log}"
