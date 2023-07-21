@@ -17,6 +17,7 @@ contract_interface_paths:
   ethereum: build/mech.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.35.0
+    version: ==1.36.0
   web3:
     version: ==5.31.4
+  eth_typing: {}
