@@ -39,7 +39,6 @@ class Event(Enum):
     NONE = "none"
     MECH_RESPONSE_ERROR = "mech_response_error"
     SLOTS_UNSUPPORTED_ERROR = "slots_unsupported_error"
-    NON_BINARY = "non_binary"
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
@@ -62,11 +61,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def sampled_bet(self) -> Bet:
         """Get the sampled bet."""
         return self.bets[self.sampled_bet_index]
-
-    @property
-    def non_binary(self) -> bool:
-        """Get whether the question is non-binary."""
-        return bool(self.db.get_strict("non_binary"))
 
     @property
     def vote(self) -> Optional[int]:

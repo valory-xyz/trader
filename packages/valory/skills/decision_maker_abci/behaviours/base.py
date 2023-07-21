@@ -25,6 +25,7 @@ from typing import Any, Callable, Generator, Optional, cast
 
 from aea.configurations.data_types import PublicId
 
+from packages.valory.contracts.mech.contract import Mech
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import (
@@ -69,7 +70,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     def contract_interact(
         self,
         performative: ContractApiMessage.Performative,
-        contract_address: str,
+        contract_address: Optional[str],
         contract_public_id: PublicId,
         contract_callable: str,
         data_key: str,
@@ -98,6 +99,21 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
         setattr(self, placeholder, data[data_key])
         return True
+
+    def _mech_contract_interact(
+        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
+    ) -> WaitableConditionType:
+        """Interact with the mech contract."""
+        status = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.mech_agent_address,
+            contract_public_id=Mech.contract_id,
+            contract_callable=contract_callable,
+            data_key=data_key,
+            placeholder=placeholder,
+            **kwargs,
+        )
+        return status
 
     def wait_for_condition_with_sleep(
         self,

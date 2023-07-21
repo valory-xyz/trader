@@ -19,118 +19,179 @@
 
 """This module contains the behaviour for the decision-making of the skill."""
 
-from multiprocessing.pool import AsyncResult
-from pathlib import Path
-from string import Template
-from typing import Any, Generator, Optional, Tuple, cast
+from typing import Any, Generator, Optional, Tuple, Union, cast
 
-from mech_client.interact import PRIVATE_KEY_FILE_PATH
-
+from packages.valory.contracts.mech.contract import Mech
+from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.io_.store import SupportedFiletype
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+    WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
-from packages.valory.skills.decision_maker_abci.states.decision_maker import (
-    DecisionMakerRound,
-)
-from packages.valory.skills.decision_maker_abci.tasks import (
-    MechInteractionResponse,
-    MechInteractionTask,
-)
-from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
-
-
-BET_PROMPT = Template(
-    """
-    With the given question "${question}"
-    and the `yes` option represented by `${yes}`
-    and the `no` option represented by `${no}`,
-    what are the respective probabilities of `p_yes` and `p_no` occurring?
-    """
+from packages.valory.skills.decision_maker_abci.models import MechInteractionResponse
+from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
 )
 
 
-class DecisionMakerBehaviour(DecisionMakerBaseBehaviour):
-    """A behaviour in which the agents decide which answer they are going to choose for the next bet."""
+IPFS_HASH_PREFIX = "f01701220"
 
-    matching_round = DecisionMakerRound
+
+class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
+    """A behaviour in which the agents receive the mech response."""
+
+    matching_round = DecisionReceiveRound
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize Behaviour."""
         super().__init__(**kwargs)
-        self._async_result: Optional[AsyncResult] = None
+        self._from_block: int = 0
+        self._request_id: int = 0
+        self._response_hex: str = ""
 
     @property
-    def n_slots_unsupported(self) -> bool:
-        """Whether the behaviour supports the current number of slots as it currently only supports binary decisions."""
-        return self.params.slot_count != BINARY_N_SLOTS
+    def from_block(self) -> int:
+        """Get the block number in which the request to the mech was settled."""
+        return self._from_block
 
-    def setup(self) -> None:
-        """Setup behaviour."""
-        if self.n_slots_unsupported:
-            return
+    @from_block.setter
+    def from_block(self, from_block: int) -> None:
+        """Set the block number in which the request to the mech was settled."""
+        self._from_block = from_block
 
-        mech_task = MechInteractionTask()
-        sampled_bet = self.synchronized_data.sampled_bet
-        prompt_params = dict(
-            question=sampled_bet.title, yes=sampled_bet.yes, no=sampled_bet.no
+    @property
+    def request_id(self) -> int:
+        """Get the request id."""
+        return self._request_id
+
+    @request_id.setter
+    def request_id(self, request_id: Union[str, int]) -> None:
+        """Set the request id."""
+        try:
+            self._request_id = int(request_id)
+        except ValueError:
+            msg = f"Request id {request_id} is not a valid integer!"
+            self.context.logger.error(msg)
+
+    @property
+    def response_hex(self) -> str:
+        """Get the hash of the response data."""
+        return self._response_hex
+
+    @response_hex.setter
+    def response_hex(self, response_hash: bytes) -> None:
+        """Set the hash of the response data."""
+        try:
+            self._response_hex = response_hash.hex()
+        except AttributeError:
+            msg = f"Response hash {response_hash!r} is not valid hex bytes!"
+            self.context.logger.error(msg)
+
+    @property
+    def ipfs_link(self) -> str:
+        """Get the IPFS link using the response hex."""
+        full_ipfs_hash = IPFS_HASH_PREFIX + self.response_hex
+        return self.params.ipfs_address + full_ipfs_hash + f"/{self.request_id}"
+
+    def _get_block_number(self) -> WaitableConditionType:
+        """Get the block number in which the request to the mech was settled."""
+        result = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=None,
+            contract_public_id=Mech.contract_id,
+            contract_callable="get_block_number",
+            data_key="number",
+            placeholder=get_name(DecisionReceiveBehaviour.from_block),
+            tx_hash=self.synchronized_data.final_tx_hash,
         )
-        task_kwargs = dict(
-            prompt=BET_PROMPT.substitute(prompt_params),
-            agent_id=self.params.mech_agent_id,
-            tool=self.params.mech_tool,
-            private_key_path=str(Path(self.context.data_dir) / PRIVATE_KEY_FILE_PATH),
+
+        return result
+
+    def _get_request_id(self) -> WaitableConditionType:
+        """Get the request id."""
+        result = yield from self._mech_contract_interact(
+            contract_callable="process_request_event",
+            data_key="requestId",
+            placeholder=get_name(DecisionReceiveBehaviour.request_id),
+            tx_hash=self.synchronized_data.final_tx_hash,
         )
-        task_id = self.context.task_manager.enqueue_task(mech_task, kwargs=task_kwargs)
-        self._async_result = self.context.task_manager.get_task_result(task_id)
+        return result
+
+    def _get_response_hash(self) -> WaitableConditionType:
+        """Get the hash of the response data."""
+        result = yield from self._mech_contract_interact(
+            contract_callable="get_response",
+            data_key="data",
+            placeholder=get_name(DecisionReceiveBehaviour.response_hex),
+            request_id=self.request_id,
+            from_block=self.from_block,
+        )
+        return result
+
+    def _get_response(self) -> Generator[None, None, Optional[MechInteractionResponse]]:
+        """Get the response data from IPFS."""
+        res = yield from self.get_from_ipfs(self.ipfs_link, SupportedFiletype.JSON)
+        if res is None:
+            return None
+
+        try:
+            prediction = MechInteractionResponse(**cast(dict, res))
+        except (ValueError, TypeError):
+            return MechInteractionResponse.incorrect_format(res)
+        else:
+            return prediction
 
     def _get_decision(
         self,
-    ) -> Generator[None, None, Optional[Tuple[Optional[int], Optional[float]]]]:
+    ) -> Generator[None, None, Tuple[Optional[int], Optional[float]]]:
         """Get the vote and it's confidence."""
-        if self._async_result is None:
+        for step in (
+            self._get_block_number,
+            self._get_request_id,
+            self._get_response_hash,
+        ):
+            yield from self.wait_for_condition_with_sleep(step)
+
+        mech_response = yield from self._get_response()
+        if mech_response is None:
+            self.context.logger.error("No decision has been received from the mech.")
             return None, None
 
-        if not self._async_result.ready():
-            self.context.logger.debug("The decision making task is not finished yet.")
-            yield from self.sleep(self.params.sleep_time)
-            return None
-
-        # Get the decision from the task.
-        mech_response = cast(MechInteractionResponse, self._async_result.get())
         self.context.logger.info(f"Decision has been received:\n{mech_response}")
-
-        if mech_response.prediction is None:
-            self.context.logger.info(
-                f"There was an error on the mech response: {mech_response.error}"
-            )
+        if mech_response.result is None:
+            msg = f"There was an error on the mech response: {mech_response.error}"
+            self.context.logger.error(msg)
             return None, None
 
-        return mech_response.prediction.vote, mech_response.prediction.confidence
+        return mech_response.result.vote, mech_response.result.confidence
 
-    def _is_profitable(self, vote: Optional[int], confidence: Optional[float]) -> bool:
+    def _is_profitable(self, confidence: float) -> bool:
         """Whether the decision is profitable or not."""
-        if vote is None or confidence is None:
-            return False
+        bet_threshold = self.params.bet_threshold
+
+        if bet_threshold < 0:
+            self.context.logger.warning(
+                f"A negative bet threshold was given ({bet_threshold}), "
+                f"which means that the profitability check will be bypassed!"
+            )
+            return True
 
         bet_amount = self.params.get_bet_amount(confidence)
         fee = self.synchronized_data.sampled_bet.fee
-        bet_threshold = self.params.bet_threshold
         return bet_amount - fee >= bet_threshold
 
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            decision = yield from self._get_decision()
-            if decision is None:
-                return
-
-            vote, confidence = decision
-            is_profitable = self._is_profitable(vote, confidence)
-            payload = DecisionMakerPayload(
+            vote, confidence = yield from self._get_decision()
+            is_profitable = None
+            if vote is not None and confidence is not None:
+                is_profitable = self._is_profitable(confidence)
+            payload = DecisionReceivePayload(
                 self.context.agent_address,
-                self.n_slots_unsupported,
                 is_profitable,
                 vote,
                 confidence,

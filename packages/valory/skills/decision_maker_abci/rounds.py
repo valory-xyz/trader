@@ -108,7 +108,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: BetPlacementRound,
             Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionRequestRound,
-            Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
             Event.ROUND_TIMEOUT: DecisionRequestRound,
