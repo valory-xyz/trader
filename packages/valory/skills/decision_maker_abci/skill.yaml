@@ -9,28 +9,27 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeieoqhh4cppokbnuqc3aelhcqxes3guo56ocfcvq2k7nr6juf5ke2y
-  behaviours/bet_placement.py: bafybeibto4qok27vqk55y3cwmnjsi7pesm5obz3rcqjknjskwj2du5ggj4
+  behaviours/base.py: bafybeig2zoyowdeqg44kyxdc5tzdiczzpkzpbchq6f2nwjqertfvmi6xvy
+  behaviours/bet_placement.py: bafybeigqzadqydhnu6ggsy2nznaxqghezxq2m36kasutk3awtxqc7y6gdm
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_receive.py: bafybeia7uxg4z2orig42t7k2s6bi2236jhlbgfwz2airwbpsuujbr3l6by
-  behaviours/decision_request.py: bafybeihkzetiubxpnyhmpz7lestilo3q2ped2zcbsexc6hdoqa25wcflcu
-  behaviours/round_behaviour.py: bafybeigoryodpq6u6s373uhadihlkinwi62eqgk3rfayw6mkwobkyam2em
+  behaviours/decision_receive.py: bafybeiadmp7ufummitsg6q6rpfxwnq4xwhrmmr7ymnb2iscuxjtcwlioba
+  behaviours/decision_request.py: bafybeiaghoqpazquzzchavjcby336tg4ujnsrvvre5utg52p22rqoyjivq
+  behaviours/round_behaviour.py: bafybeiahjypqkswz5ufusagxpxmjhngipin2feis56lasqin75jwqcwpaa
   behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeigzpshihpreievassr6s5tdbdpxr74av4hy42hghxenfghxuie5ce
+  fsm_specification.yaml: bafybeickhbppg4kttuouhwagza2b3ngw3syrmceinkylcw2nruyclkb5di
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeigxesrdsueervsu3d6epudjq5kfsaonn4ncqfvdryjnf6nntyfxni
-  payloads.py: bafybeiff6yav76fu3mesjo5j2jttglctvy75nl44dg42dlrv25bybajg3q
-  rounds.py: bafybeifgi6ab7a2hfmxzs7pagf4eq6xy54v74zlcabw4s3azq6ahlsqtky
+  models.py: bafybeiazmi6cjjow47z7otk43hfci3erox54j7tb3h4lysjdroga42dimm
+  payloads.py: bafybeifvklik2j2jsevy2e5oermoo3mml6hiy6gyuppsd7cgupsylosl6a
+  rounds.py: bafybeieynq7pvkflqrwil3o72gedqkwlmui4s5zrt3ywh7ftqxb4zvpebm
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeigsotl6raab2xszjy4gpnc34pre5u6sd4zuq7xgcfmt7lxi2qfgca
-  states/bet_placement.py: bafybeic7scrnqxr36kaonedcflqnqecmcigk3vfzyyofk47j64ifto7xnu
+  states/base.py: bafybeib7wpuo2suhgb6xkvxvjiij22bvm5e2tpzpoccelv57c2stql4o7y
+  states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
-  states/decision_maker.py: bafybeiaqehtdzivhswlurqzxx2bxqjnrmeo6bfyvr2zn55ng3qpwbokauy
-  states/decision_request.py: bafybeigqbvo6yutpshje4hbqe644ajzvos6xosdpngql5i4s4fikksxiti
+  states/decision_receive.py: bafybeifm3oyq2aji7f5yag6wpe4vr3ivi74pybdsk2jvmziiidx5nt7t4a
+  states/decision_request.py: bafybeiguje2p3qmqvg6bujf5n7ncr4ss63mviqp4rbnequel37ocuhhvgm
   states/final_states.py: bafybeifhr36wfvzzum44qqknrolglii5fyspg7f5cmq4dxc6oukd7hniji
   states/sampling.py: bafybeidnvdogjlthjfe7jpaiuezm3xydrbxxukyoss4gx6t5fdin52rsta
-  tasks.py: bafybeid47ybp2opuz2xb7bgxcwztk6rhwluubf7mnxiytqopwx4adprtve
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -38,6 +37,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
 - valory/erc20:0.1.0:bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a
 - valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
+- valory/mech:0.1.0:bafybeihpgr3qnopqtiqm33sv4euzjitodbez3bqaducgdr6sjokrryf6mq
 protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:
@@ -170,8 +170,10 @@ models:
     args: {}
     class_name: TendermintDialogues
 dependencies:
-  mech-client:
-    version: ==0.2.2
   hexbytes:
     version: ==0.3.1
+  py-multibase:
+    version: ==1.0.3
+  py-multicodec:
+    version: ==0.2.1
 is_abstract: true

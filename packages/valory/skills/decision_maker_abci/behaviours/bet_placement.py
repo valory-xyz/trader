@@ -297,9 +297,11 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self._check_balance)
-            betting_tx_hex = None
+            tx_submitter = betting_tx_hex = None
             if self.sufficient_balance:
+                tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
-            payload = MultisigTxPayload(self.context.agent_address, betting_tx_hex)
+            agent = self.context.agent_address
+            payload = MultisigTxPayload(agent, tx_submitter, betting_tx_hex)
 
         yield from self.finish_behaviour(payload)

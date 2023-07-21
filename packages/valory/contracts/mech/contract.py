@@ -62,7 +62,7 @@ class Mech(Contract):
         :param request_data: the request data
         """
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        encoded_data = contract_instance.encodeABI("request", request_data)
+        encoded_data = contract_instance.encodeABI("request", args=(request_data,))
         return {"data": bytes.fromhex(encoded_data[2:])}
 
     @classmethod
@@ -88,7 +88,7 @@ class Mech(Contract):
 
         log = logs.pop()
         event_args = log.get("args", None)
-        if event_args is None or (
+        if event_args is None or any(
             expected_key not in event_args for expected_key in args
         ):
             error = f"The emitted event's ({event_name!r}) log for tx {tx_hash} do not match the expected format: {log}"
@@ -138,6 +138,7 @@ class Mech(Contract):
     def get_block_number(
         cls,
         ledger_api: EthereumApi,
+        contract_address: str,
         tx_hash: HexStr,
     ) -> JSONLike:
         """Get the number of the block in which the tx of the given hash was settled."""
@@ -162,7 +163,7 @@ class Mech(Contract):
         deliver_filter.fromBlock = from_block
         deliver_filter.toBlock = to_block
         deliver_filter.args.requestId.match_single(request_id)
-        delivered = list(deliver_filter.deploy().get_all_entries())
+        delivered = list(deliver_filter.deploy(ledger_api.api).get_all_entries())
         n_delivered = len(delivered)
 
         if n_delivered == 0:
@@ -179,9 +180,7 @@ class Mech(Contract):
         delivered_event = delivered.pop()
         deliver_args = delivered_event.get("args", None)
         if deliver_args is None or "data" not in deliver_args:
-            error = (
-                f"The mech's response does not match the expected format: {delivered_event}"
-            )
+            error = f"The mech's response does not match the expected format: {delivered_event}"
             return {"error": error}
 
         return dict(data=deliver_args["data"])

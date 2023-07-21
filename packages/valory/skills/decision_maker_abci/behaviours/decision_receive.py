@@ -37,6 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 
 
 IPFS_HASH_PREFIX = "f01701220"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -90,16 +91,16 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(msg)
 
     @property
-    def ipfs_link(self) -> str:
-        """Get the IPFS link using the response hex."""
-        full_ipfs_hash = IPFS_HASH_PREFIX + self.response_hex
-        return self.params.ipfs_address + full_ipfs_hash + f"/{self.request_id}"
+    def ipfs_hash(self) -> str:
+        """Get the IPFS hash using the response hex."""
+        return IPFS_HASH_PREFIX + self.response_hex
 
     def _get_block_number(self) -> WaitableConditionType:
         """Get the block number in which the request to the mech was settled."""
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=None,
+            # we do not need the address to get the block number, but the base method does
+            contract_address=ZERO_ADDRESS,
             contract_public_id=Mech.contract_id,
             contract_callable="get_block_number",
             data_key="number",
@@ -132,7 +133,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_response(self) -> Generator[None, None, Optional[MechInteractionResponse]]:
         """Get the response data from IPFS."""
-        res = yield from self.get_from_ipfs(self.ipfs_link, SupportedFiletype.JSON)
+        res = yield from self.get_from_ipfs(self.ipfs_hash, SupportedFiletype.JSON)
         if res is None:
             return None
 

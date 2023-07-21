@@ -192,9 +192,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             contract_address=self.synchronized_data.safe_contract_address,
             contract_public_id=GnosisSafeContract.contract_id,
             contract_callable="get_raw_safe_transaction_hash",
+            to_address=self.params.mech_agent_address,
+            value=self.price,
+            data=self.request_data,
             data_key="tx_hash",
             placeholder=get_name(DecisionRequestBehaviour.safe_tx_hash),
-            value=self.price,
         )
         return status
 
@@ -220,9 +222,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            mech_tx_hex = None
+            tx_submitter = mech_tx_hex = None
             if self.n_slots_supported:
+                tx_submitter = self.matching_round.auto_round_id()
                 mech_tx_hex = yield from self._prepare_safe_tx()
-            payload = MultisigTxPayload(self.context.agent_address, mech_tx_hex)
+            agent = self.context.agent_address
+            payload = MultisigTxPayload(agent, tx_submitter, mech_tx_hex)
 
         yield from self.finish_behaviour(payload)

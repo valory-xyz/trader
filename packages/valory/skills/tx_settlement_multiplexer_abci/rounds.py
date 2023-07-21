@@ -43,7 +43,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 class Event(Enum):
     """Multiplexing events."""
 
-    DECISION_MAKING_DONE = "decision_making_done"
+    DECISION_REQUESTING_DONE = "decision_requesting_done"
     BET_PLACEMENT_DONE = "bet_placement_done"
     ROUND_TIMEOUT = "round_timeout"
     UNRECOGNIZED = "unrecognized"
@@ -65,7 +65,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         and move to the next state in accordance with that.
         """
         submitter_to_event: Dict[str, Event] = {
-            DecisionRequestRound.auto_round_id(): Event.DECISION_MAKING_DONE,
+            DecisionRequestRound.auto_round_id(): Event.DECISION_REQUESTING_DONE,
             BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
         }
 
@@ -74,11 +74,11 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         return synced_data, event
 
 
-class FinishedDecisionMakerRound(DegenerateRound):
-    """Finished decision maker round."""
+class FinishedDecisionRequestTxRound(DegenerateRound):
+    """Finished decision requesting round."""
 
 
-class FinishedBetPlacementRound(DegenerateRound):
+class FinishedBetPlacementTxRound(DegenerateRound):
     """Finished bet placement round."""
 
 
@@ -95,15 +95,15 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
 
     Transition states:
         0. PostTxSettlementRound
-            - decision making done: 1.
+            - decision requesting done: 1.
             - bet placement done: 2.
             - round timeout: 0.
             - unrecognized: 3.
-        1. FinishedDecisionMakerRound
-        2. FinishedBetPlacementRound
+        1. FinishedDecisionRequestTxRound
+        2. FinishedBetPlacementTxRound
         3. FailedMultiplexerRound
 
-    Final states: {FailedMultiplexerRound, FinishedBetPlacementRound, FinishedDecisionMakerRound}
+    Final states: {FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound}
 
     Timeouts:
         round timeout: 30.0
@@ -113,28 +113,28 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
     initial_states: Set[AppState] = {PostTxSettlementRound}
     transition_function: AbciAppTransitionFunction = {
         PostTxSettlementRound: {
-            Event.DECISION_MAKING_DONE: FinishedDecisionMakerRound,
-            Event.BET_PLACEMENT_DONE: FinishedBetPlacementRound,
+            Event.DECISION_REQUESTING_DONE: FinishedDecisionRequestTxRound,
+            Event.BET_PLACEMENT_DONE: FinishedBetPlacementTxRound,
             Event.ROUND_TIMEOUT: PostTxSettlementRound,
             Event.UNRECOGNIZED: FailedMultiplexerRound,
         },
-        FinishedDecisionMakerRound: {},
-        FinishedBetPlacementRound: {},
+        FinishedDecisionRequestTxRound: {},
+        FinishedBetPlacementTxRound: {},
         FailedMultiplexerRound: {},
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
     }
     final_states: Set[AppState] = {
-        FinishedDecisionMakerRound,
-        FinishedBetPlacementRound,
+        FinishedDecisionRequestTxRound,
+        FinishedBetPlacementTxRound,
         FailedMultiplexerRound,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         PostTxSettlementRound: {get_name(SynchronizedData.tx_submitter)}
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
-        FinishedDecisionMakerRound: set(),
-        FinishedBetPlacementRound: set(),
+        FinishedDecisionRequestTxRound: set(),
+        FinishedBetPlacementTxRound: set(),
         FailedMultiplexerRound: set(),
     }

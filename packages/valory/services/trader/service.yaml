@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeibstm27ah6oxsm637opxhs26ju5uyhn7tpxmwseq5r35rzdbi75ti
+agent: valory/trader:0.1.0:bafybeiefckh6jz6yahqevyoo42anqwitjrp46fptevlgcd76i7tum6qh5i
 number_of_agents: 4
 deployment: {}
 ---
@@ -78,7 +78,7 @@ type: skill
         validate_timeout: ${VALIDATE_TIMEOUT:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
         creator_per_subgraph: &id003
-          omen_subgraph: ${OMEN_CREATORS:list:["0x5367f217f5942cb10db16f2831a11fa287d78216"]}
+          omen_subgraph: ${OMEN_CREATORS:list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}

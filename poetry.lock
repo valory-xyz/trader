@@ -102,18 +102,6 @@ tests = ["attrs[tests-no-zope]", "zope-interface"]
 tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=1.1.1)", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist[psutil]"]
 
 [[package]]
-name = "backoff"
-version = "2.2.1"
-description = "Function decoration for backoff and retry"
-category = "main"
-optional = false
-python-versions = ">=3.7,<4.0"
-files = [
-    {file = "backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8"},
-    {file = "backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba"},
-]
-
-[[package]]
 name = "base58"
 version = "2.1.1"
 description = "Base58 and Base58Check implementation."
@@ -963,14 +951,14 @@ cython = ["cython"]
 
 [[package]]
 name = "distlib"
-version = "0.3.6"
+version = "0.3.7"
 description = "Distribution utilities"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "distlib-0.3.6-py2.py3-none-any.whl", hash = "sha256:f35c4b692542ca110de7ef0bea44d73981caeb34ca0b9b6b2e6d7790dda8f80e"},
-    {file = "distlib-0.3.6.tar.gz", hash = "sha256:14bad2d9b04d3a36127ac97f30b12a19268f211063d8f8ee4f47108896e11b46"},
+    {file = "distlib-0.3.7-py2.py3-none-any.whl", hash = "sha256:2e24928bc811348f0feb63014e97aaae3037f2cf48712d51ae61df7fd6075057"},
+    {file = "distlib-0.3.7.tar.gz", hash = "sha256:9dafe54b34a028eafd95039d5e5d4851a13734540f1331060d31c9916e7147a8"},
 ]
 
 [[package]]
@@ -1351,14 +1339,14 @@ grpcio-gcp = ["grpcio-gcp (>=0.2.2,<1.0.dev0)"]
 
 [[package]]
 name = "google-api-python-client"
-version = "2.92.0"
+version = "2.94.0"
 description = "Google API Client Library for Python"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "google-api-python-client-2.92.0.tar.gz", hash = "sha256:f38a6e106a7417719715506d36f0a233ec253335e422bda311352866a86c4187"},
-    {file = "google_api_python_client-2.92.0-py2.py3-none-any.whl", hash = "sha256:e0b74ed5fa9bdb07a66fb030d3f4cae550ed1c07e23600d86450d3c3c5efae51"},
+    {file = "google-api-python-client-2.94.0.tar.gz", hash = "sha256:4ff598b7b83d5c0c5582927e74947286070b5b21a13e1bb64409fd92e45bfb26"},
+    {file = "google_api_python_client-2.94.0-py2.py3-none-any.whl", hash = "sha256:28b2f0c2c6380a119e2efd7ecd28fa9d313becf37d71f00bfa49332428e071b4"},
 ]
 
 [package.dependencies]
@@ -1370,14 +1358,14 @@ uritemplate = ">=3.0.1,<5"
 
 [[package]]
 name = "google-auth"
-version = "2.21.0"
+version = "2.22.0"
 description = "Google Authentication Library"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "google-auth-2.21.0.tar.gz", hash = "sha256:b28e8048e57727e7cf0e5bd8e7276b212aef476654a09511354aa82753b45c66"},
-    {file = "google_auth-2.21.0-py2.py3-none-any.whl", hash = "sha256:da3f18d074fa0f5a7061d99b9af8cee3aa6189c987af7c1b07d94566b6b11268"},
+    {file = "google-auth-2.22.0.tar.gz", hash = "sha256:164cba9af4e6e4e40c3a4f90a1a6c12ee56f14c0b4868d1ca91b32826ab334ce"},
+    {file = "google_auth-2.22.0-py2.py3-none-any.whl", hash = "sha256:d61d1b40897407b574da67da1a833bdc10d5a11642566e506565d1b1a46ba873"},
 ]
 
 [package.dependencies]
@@ -1428,45 +1416,6 @@ protobuf = ">=3.19.5,<3.20.0 || >3.20.0,<3.20.1 || >3.20.1,<4.21.1 || >4.21.1,<4
 
 [package.extras]
 grpc = ["grpcio (>=1.44.0,<2.0.0.dev0)"]
-
-[[package]]
-name = "gql"
-version = "3.4.1"
-description = "GraphQL client for Python"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "gql-3.4.1-py2.py3-none-any.whl", hash = "sha256:315624ca0f4d571ef149d455033ebd35e45c1a13f18a059596aeddcea99135cf"},
-    {file = "gql-3.4.1.tar.gz", hash = "sha256:11dc5d8715a827f2c2899593439a4f36449db4f0eafa5b1ea63948f8a2f8c545"},
-]
-
-[package.dependencies]
-backoff = ">=1.11.1,<3.0"
-graphql-core = ">=3.2,<3.3"
-yarl = ">=1.6,<2.0"
-
-[package.extras]
-aiohttp = ["aiohttp (>=3.7.1,<3.9.0)"]
-all = ["aiohttp (>=3.7.1,<3.9.0)", "botocore (>=1.21,<2)", "requests (>=2.26,<3)", "requests-toolbelt (>=0.9.1,<1)", "urllib3 (>=1.26,<2)", "websockets (>=10,<11)", "websockets (>=9,<10)"]
-botocore = ["botocore (>=1.21,<2)"]
-dev = ["aiofiles", "aiohttp (>=3.7.1,<3.9.0)", "black (==22.3.0)", "botocore (>=1.21,<2)", "check-manifest (>=0.42,<1)", "flake8 (==3.8.1)", "isort (==4.3.21)", "mock (==4.0.2)", "mypy (==0.910)", "parse (==1.15.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-console-scripts (==1.3.1)", "pytest-cov (==3.0.0)", "requests (>=2.26,<3)", "requests-toolbelt (>=0.9.1,<1)", "sphinx (>=3.0.0,<4)", "sphinx-argparse (==0.2.5)", "sphinx-rtd-theme (>=0.4,<1)", "types-aiofiles", "types-mock", "types-requests", "urllib3 (>=1.26,<2)", "vcrpy (==4.0.2)", "websockets (>=10,<11)", "websockets (>=9,<10)"]
-requests = ["requests (>=2.26,<3)", "requests-toolbelt (>=0.9.1,<1)", "urllib3 (>=1.26,<2)"]
-test = ["aiofiles", "aiohttp (>=3.7.1,<3.9.0)", "botocore (>=1.21,<2)", "mock (==4.0.2)", "parse (==1.15.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-console-scripts (==1.3.1)", "pytest-cov (==3.0.0)", "requests (>=2.26,<3)", "requests-toolbelt (>=0.9.1,<1)", "urllib3 (>=1.26,<2)", "vcrpy (==4.0.2)", "websockets (>=10,<11)", "websockets (>=9,<10)"]
-test-no-transport = ["aiofiles", "mock (==4.0.2)", "parse (==1.15.0)", "pytest (==6.2.5)", "pytest-asyncio (==0.16.0)", "pytest-console-scripts (==1.3.1)", "pytest-cov (==3.0.0)", "vcrpy (==4.0.2)"]
-websockets = ["websockets (>=10,<11)", "websockets (>=9,<10)"]
-
-[[package]]
-name = "graphql-core"
-version = "3.2.3"
-description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
-category = "main"
-optional = false
-python-versions = ">=3.6,<4"
-files = [
-    {file = "graphql-core-3.2.3.tar.gz", hash = "sha256:06d2aad0ac723e35b1cb47885d3e5c45e956a53bc1b209a9fc5369007fe46676"},
-    {file = "graphql_core-3.2.3-py3-none-any.whl", hash = "sha256:5766780452bd5ec8ba133f8bf287dc92713e3868ddd83aee4faab9fc3e303dc3"},
-]
 
 [[package]]
 name = "grpcio"
@@ -1841,27 +1790,6 @@ files = [
 ]
 
 [[package]]
-name = "mech-client"
-version = "0.2.2"
-description = "Basic client to interact with a mech"
-category = "main"
-optional = false
-python-versions = ">=3.10,<4.0"
-files = [
-    {file = "mech_client-0.2.2-py3-none-any.whl", hash = "sha256:deaafea15d1dee0e4ed56124a325dbf27bb65c826c6ae0c6093cf718ad51dbe0"},
-    {file = "mech_client-0.2.2.tar.gz", hash = "sha256:2704a9f50e8da467942f9e4ef2dcfb5d05c58d2a9fe2f460da2af78b87c471f8"},
-]
-
-[package.dependencies]
-asn1crypto = ">=1.4.0,<1.5.0"
-gql = ">=3.4.1"
-open-aea = {version = "1.35.0", extras = ["cli"]}
-open-aea-cli-ipfs = "1.35.0"
-open-aea-ledger-cosmos = "1.35.0"
-open-aea-ledger-ethereum = "1.35.0"
-websocket-client = ">=0.32.0,<1"
-
-[[package]]
 name = "morphys"
 version = "1.0"
 description = "Smart conversions between unicode and bytes types for common cases"
@@ -2051,8 +1979,8 @@ files = [
 
 [package.dependencies]
 base58 = ">=1.0.3,<3.0.0"
-click = {version = "8.0.2", optional = true, markers = "extra == \"cli\""}
-coverage = {version = ">=6.4.4,<8.0.0", optional = true, markers = "extra == \"cli\""}
+click = {version = "8.0.2", optional = true, markers = "extra == \"all\""}
+coverage = {version = ">=6.4.4,<8.0.0", optional = true, markers = "extra == \"all\""}
 ecdsa = ">=0.15,<0.17.0"
 jsonschema = ">=3.0.0,<4.0.0"
 morphys = ">=1.0"
@@ -2061,7 +1989,7 @@ protobuf = ">=3.19.0,<4.0.0"
 py-multibase = ">=1.0.0"
 py-multicodec = ">=0.2.0"
 pymultihash = "0.8.2"
-pytest = {version = ">=7.0.0,<7.3.0", optional = true, markers = "extra == \"cli\""}
+pytest = {version = ">=7.0.0,<7.3.0", optional = true, markers = "extra == \"all\""}
 python-dotenv = ">=0.14.0,<0.18.0"
 pyyaml = ">=4.2b1,<6.0"
 requests = ">=2.22.0,<3.0.0"
@@ -2270,14 +2198,14 @@ six = ">=1.9.0"
 
 [[package]]
 name = "platformdirs"
-version = "3.8.1"
+version = "3.9.1"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "platformdirs-3.8.1-py3-none-any.whl", hash = "sha256:cec7b889196b9144d088e4c57d9ceef7374f6c39694ad1577a0aab50d27ea28c"},
-    {file = "platformdirs-3.8.1.tar.gz", hash = "sha256:f87ca4fcff7d2b0f81c6a748a77973d7af0f4d526f98f308477c3c436c74d528"},
+    {file = "platformdirs-3.9.1-py3-none-any.whl", hash = "sha256:ad8291ae0ae5072f66c16945166cb11c63394c7a3ad1b1bc9828ca3162da8c2f"},
+    {file = "platformdirs-3.9.1.tar.gz", hash = "sha256:1b42b450ad933e981d56e59f1b97495428c9bd60698baab9f3eb3d00d5822421"},
 ]
 
 [package.extras]
@@ -3196,14 +3124,14 @@ files = [
 
 [[package]]
 name = "virtualenv"
-version = "20.23.1"
+version = "20.24.1"
 description = "Virtual Python Environment builder"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "virtualenv-20.23.1-py3-none-any.whl", hash = "sha256:34da10f14fea9be20e0fd7f04aba9732f84e593dac291b757ce42e3368a39419"},
-    {file = "virtualenv-20.23.1.tar.gz", hash = "sha256:8ff19a38c1021c742148edc4f81cb43d7f8c6816d2ede2ab72af5b84c749ade1"},
+    {file = "virtualenv-20.24.1-py3-none-any.whl", hash = "sha256:01aacf8decd346cf9a865ae85c0cdc7f64c8caa07ff0d8b1dfc1733d10677442"},
+    {file = "virtualenv-20.24.1.tar.gz", hash = "sha256:2ef6a237c31629da6442b0bcaa3999748108c7166318d1f55cc9f8d7294e97bd"},
 ]
 
 [package.dependencies]
@@ -3469,4 +3397,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.11"
-content-hash = "be9ea8fe821ec3f5d3e318c781784442b829fd0482dda98fe08b13dc32b832fd"
+content-hash = "736eaad89fe01fc8f96afa6a07a29d914aa549eddd40055cb1a5e5c67c495f8d"
