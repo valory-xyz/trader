@@ -9,19 +9,19 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiecn5v2ni53k2jewlbbbduadyjcgviwstvggvqohdymxlo7jvgjuy
+  behaviours/base.py: bafybeig2zoyowdeqg44kyxdc5tzdiczzpkzpbchq6f2nwjqertfvmi6xvy
   behaviours/bet_placement.py: bafybeigqzadqydhnu6ggsy2nznaxqghezxq2m36kasutk3awtxqc7y6gdm
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_receive.py: bafybeifto6zrvndq7oblsydjhzlmoi24wwiaevrpajysl3bbfxqhgqslra
-  behaviours/decision_request.py: bafybeidmxdgwf5qldsibnaxgzw7tq2kshv7kwaqulczkwuopdyfkxuv6tm
+  behaviours/decision_receive.py: bafybeiadmp7ufummitsg6q6rpfxwnq4xwhrmmr7ymnb2iscuxjtcwlioba
+  behaviours/decision_request.py: bafybeiaghoqpazquzzchavjcby336tg4ujnsrvvre5utg52p22rqoyjivq
   behaviours/round_behaviour.py: bafybeiahjypqkswz5ufusagxpxmjhngipin2feis56lasqin75jwqcwpaa
   behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeigdfhb6h3okjytsnh7np7m25e2jh6tg7664zfv3mqkictje77z5zm
+  fsm_specification.yaml: bafybeickhbppg4kttuouhwagza2b3ngw3syrmceinkylcw2nruyclkb5di
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
   models.py: bafybeiazmi6cjjow47z7otk43hfci3erox54j7tb3h4lysjdroga42dimm
   payloads.py: bafybeifvklik2j2jsevy2e5oermoo3mml6hiy6gyuppsd7cgupsylosl6a
-  rounds.py: bafybeid3yvlmpnof5h264m5uzov7vzhlrlixewookdglupm37gmszbfqye
+  rounds.py: bafybeieynq7pvkflqrwil3o72gedqkwlmui4s5zrt3ywh7ftqxb4zvpebm
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeib7wpuo2suhgb6xkvxvjiij22bvm5e2tpzpoccelv57c2stql4o7y
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
@@ -37,7 +37,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
 - valory/erc20:0.1.0:bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a
 - valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
-- valory/mech:0.1.0:bafybeihqymyhnpsnleabggrjtcthz5tgebkvhjv7ims2qnvtbtv2rbygbu
+- valory/mech:0.1.0:bafybeihpgr3qnopqtiqm33sv4euzjitodbez3bqaducgdr6sjokrryf6mq
 protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:

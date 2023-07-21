@@ -87,7 +87,7 @@ transition_func:
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
-    (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
+    (DecisionReceiveRound, ROUND_TIMEOUT): BlacklistingRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
     (DecisionRequestRound, DONE): RandomnessTransactionSubmissionRound

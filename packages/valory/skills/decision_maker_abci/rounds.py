@@ -80,7 +80,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 2.
             - tie: 3.
             - unprofitable: 3.
-            - round timeout: 2.
+            - round timeout: 3.
         3. BlacklistingRound
             - done: 6.
             - none: 8.

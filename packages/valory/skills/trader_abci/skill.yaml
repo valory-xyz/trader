@@ -8,10 +8,10 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeihxxsqctxptcch2pl2u4egpbrwukpggr7abrkcukzf6ant57wsqrq
+  behaviours.py: bafybeiaqm5cdrhdiavrcuop35dndttz2cgmt2emcs274l6swobfla2a3li
   composition.py: bafybeibswfjor3yoaiy4w4pkr54cskuoizi4u2hd22drjp3qayxv5t7dwa
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeihspwwmwjb3zrabqq6i433qljppgjqocyw7bhpndugvnaqly65p24
+  fsm_specification.yaml: bafybeibtyxaijr7t6v26z66wkknltauu3vgjhrr5zm7gzlbhflymktcz2e
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
   models.py: bafybeigro3coqmff2xd7hbnuxq7qi4pcirpr6v526zw6fstko3dsgce63u
 fingerprint_ignore_patterns: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/market_manager_abci:0.1.0:bafybeiez3sahk7q3akqjpmzathafmgziwfdddddyuggzkbcxxf5mzq3nue
-- valory/decision_maker_abci:0.1.0:bafybeihu22cibaqqzffuo4rdnoqlmz4dqirwaa45vbhxhr6hdxt6phaqxu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiad4rggz3ftfhuxgyvk5mhd2lfr4i75d62a42vrseyd5ixhzmkjtm
+- valory/decision_maker_abci:0.1.0:bafybeignq4ebxzhn2bhrdsbx4lkjdwidmfkiyspysp3u24dqokfm6pksgu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicus75knxa5v5pamzh3e7shl57s5fhgn4fx6ytrzwtkpwfwojrwo4
 behaviours:
   main:
     args: {}

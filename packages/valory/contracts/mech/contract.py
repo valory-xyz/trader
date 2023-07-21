@@ -180,9 +180,7 @@ class Mech(Contract):
         delivered_event = delivered.pop()
         deliver_args = delivered_event.get("args", None)
         if deliver_args is None or "data" not in deliver_args:
-            error = (
-                f"The mech's response does not match the expected format: {delivered_event}"
-            )
+            error = f"The mech's response does not match the expected format: {delivered_event}"
             return {"error": error}
 
         return dict(data=deliver_args["data"])

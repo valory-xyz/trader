@@ -21,7 +21,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
 - valory/erc20:0.1.0:bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a
 - valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
-- valory/mech:0.1.0:bafybeihqymyhnpsnleabggrjtcthz5tgebkvhjv7ims2qnvtbtv2rbygbu
+- valory/mech:0.1.0:bafybeihpgr3qnopqtiqm33sv4euzjitodbez3bqaducgdr6sjokrryf6mq
 protocols:
 - open_aea/signing:1.0.0:bafybeibqlfmikg5hk4phzak6gqzhpkt6akckx7xppbp53mvwt6r73h7tk4
 - valory/abci:0.1.0:bafybeig3dj5jhsowlvg3t73kgobf6xn4nka7rkttakdb2gwsg5bp7rt7q4
@@ -38,10 +38,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibqz7y3i4aepuprhijwdydkcsbqjtpeea6gdzpp5fgc6abrvjz25a
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiad4rggz3ftfhuxgyvk5mhd2lfr4i75d62a42vrseyd5ixhzmkjtm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicus75knxa5v5pamzh3e7shl57s5fhgn4fx6ytrzwtkpwfwojrwo4
 - valory/market_manager_abci:0.1.0:bafybeiez3sahk7q3akqjpmzathafmgziwfdddddyuggzkbcxxf5mzq3nue
-- valory/decision_maker_abci:0.1.0:bafybeihu22cibaqqzffuo4rdnoqlmz4dqirwaa45vbhxhr6hdxt6phaqxu
-- valory/trader_abci:0.1.0:bafybeids5ucwyceeoksaxml3goetg7vazujaaldwbyrwmrgbusfutq7nmi
+- valory/decision_maker_abci:0.1.0:bafybeignq4ebxzhn2bhrdsbx4lkjdwidmfkiyspysp3u24dqokfm6pksgu
+- valory/trader_abci:0.1.0:bafybeih6eyrtjtvggqzm24wzsbeoug46xrq2owzrk2w6ltkqjavpjzftxq
 default_ledger: ethereum
 required_ledgers:
 - ethereum
