@@ -19,6 +19,7 @@
 
 """This module contains the models for the skill."""
 
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -26,6 +27,7 @@ from aea.exceptions import enforce
 from hexbytes import HexBytes
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -83,6 +85,10 @@ class DecisionMakerParams(MarketManagerParams):
         return self.bet_amount_per_threshold[threshold]
 
 
+class MechResponseSpecs(ApiSpecs):
+    """A model that wraps ApiSpecs for the Mech's response specifications."""
+
+
 @dataclass
 class MultisendBatch:
     """A structure representing a single transaction of a multisend."""
@@ -127,6 +133,11 @@ class MechInteractionResponse:
     requestId: int = 0
     result: Optional[PredictionResponse] = None
     error: str = "Unknown"
+
+    def __post_init__(self) -> None:
+        """Parses the nested part of the mech interaction response to a `PredictionResponse`."""
+        if isinstance(self.result, str):
+            self.result = PredictionResponse(**json.loads(self.result))
 
     @classmethod
     def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
