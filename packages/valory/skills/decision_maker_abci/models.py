@@ -26,6 +26,7 @@ from aea.exceptions import enforce
 from hexbytes import HexBytes
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -81,6 +82,10 @@ class DecisionMakerParams(MarketManagerParams):
         """Get the bet amount given a prediction's confidence."""
         threshold = round(confidence, 1)
         return self.bet_amount_per_threshold[threshold]
+
+
+class MechResponseSpecs(ApiSpecs):
+    """A model that wraps ApiSpecs for the Mech's response specifications."""
 
 
 @dataclass

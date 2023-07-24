@@ -157,6 +157,18 @@ models:
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
     class_name: DecisionMakerParams
+  mech_response:
+    args:
+      api_id: mech_response
+      headers:
+        Content-Type: application/json
+      method: GET
+      parameters: {}
+      response_key: null
+      response_type: dict
+      retries: 5
+      url: ''
+    class_name: MechResponseSpecs
   requests:
     args: {}
     class_name: Requests
