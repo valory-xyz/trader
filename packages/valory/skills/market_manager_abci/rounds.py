@@ -22,7 +22,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, List, Set, Tuple, Type, cast
+from typing import Dict, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -103,6 +103,19 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
     selection_key = get_name(SynchronizedData.bets)
     collection_key = get_name(SynchronizedData.participant_to_bets)
     synchronized_data_class = SynchronizedData
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event != Event.FETCH_ERROR:
+            return res
+
+        synced_data.update(SynchronizedData, bets=synced_data.bets)
+        return synced_data, event
 
 
 class FinishedMarketManagerRound(DegenerateRound, ABC):
