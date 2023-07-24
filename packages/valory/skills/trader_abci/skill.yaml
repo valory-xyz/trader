@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 - valory/termination_abci:0.1.0:bafybeieb3gnvjxxsh73g67m7rivzknwb63xu4qeagpkv7f4mqz33ecikem
 - valory/market_manager_abci:0.1.0:bafybeiepqc3pkwvymublwaqr3cqopjkw6fwc3ztpavtho26orzzfd7j2la
-- valory/decision_maker_abci:0.1.0:bafybeifp3ge4jwsjap7p35v6ttrpqgo32o6jryondrhsqhrzmqcw53ljjq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiejm3juxhmk5jrwdrymtof4jalf6k33wempl46f5v5taj44bbhzxi
+- valory/decision_maker_abci:0.1.0:bafybeifrjuyigqg7yfgzypxsnpnuueklfnlfji3jjclrm6ew2lxeetpehq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifpu3rjla2jhduvolseof7u3csorxhqeciyw5kn5pc2b6qp4inybm
 behaviours:
   main:
     args: {}
@@ -152,6 +152,9 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
+      prompt_template: With the given question "@{question}" and the `yes` option
+        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
+        the respective probabilities of `p_yes` and `p_no` occurring?
     class_name: TraderParams
   omen_subgraph:
     args:

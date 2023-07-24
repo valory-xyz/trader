@@ -13,13 +13,13 @@ fingerprint:
   behaviours/bet_placement.py: bafybeigqzadqydhnu6ggsy2nznaxqghezxq2m36kasutk3awtxqc7y6gdm
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
   behaviours/decision_receive.py: bafybeienputxccxmraia64x73r4ogw4qzivcsketb3xmtq3xbpixrt6yca
-  behaviours/decision_request.py: bafybeiaghoqpazquzzchavjcby336tg4ujnsrvvre5utg52p22rqoyjivq
+  behaviours/decision_request.py: bafybeietmihincw46ahq2kdh3ascv6htrnqzszf2uz2g6kujlu55cg5c5a
   behaviours/round_behaviour.py: bafybeiahjypqkswz5ufusagxpxmjhngipin2feis56lasqin75jwqcwpaa
   behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeickhbppg4kttuouhwagza2b3ngw3syrmceinkylcw2nruyclkb5di
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeidg2c5ysmnefyxl5c2n4byk2vezl6anohayixhzpcnqetpv55nrxe
+  models.py: bafybeiguysd4fy2apzcqtrag3yjcuat3apy5zm35blaktywjabt7pzbibu
   payloads.py: bafybeifvklik2j2jsevy2e5oermoo3mml6hiy6gyuppsd7cgupsylosl6a
   rounds.py: bafybeieynq7pvkflqrwil3o72gedqkwlmui4s5zrt3ywh7ftqxb4zvpebm
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
@@ -156,6 +156,9 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
+      prompt_template: With the given question "@{question}" and the `yes` option
+        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
+        the respective probabilities of `p_yes` and `p_no` occurring?
     class_name: DecisionMakerParams
   mech_response:
     args:

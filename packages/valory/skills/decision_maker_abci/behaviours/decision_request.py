@@ -21,7 +21,6 @@
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from string import Template
 from tempfile import mkdtemp
 from typing import Any, Dict, Generator, Optional, cast
 from uuid import uuid4
@@ -50,14 +49,6 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
-BET_PROMPT = Template(
-    """
-    With the given question "${question}"
-    and the `yes` option represented by `${yes}`
-    and the `no` option represented by `${no}`,
-    what are the respective probabilities of `p_yes` and `p_no` occurring?
-    """
-)
 METADATA_FILENAME = "metadata.json"
 V1_HEX_PREFIX = "f01"
 Ox = "0x"
@@ -146,7 +137,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         prompt_params = dict(
             question=sampled_bet.title, yes=sampled_bet.yes, no=sampled_bet.no
         )
-        prompt = BET_PROMPT.substitute(prompt_params)
+        prompt = self.params.prompt_template.substitute(prompt_params)
         self._metadata = MechMetadata(prompt=prompt, tool=self.params.mech_tool)
 
     def _send_metadata_to_ipfs(

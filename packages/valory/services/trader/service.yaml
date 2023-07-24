@@ -7,17 +7,9 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidrmyflpnbeb533mphtvnt77nyewgyjkjn4a2ypluqnaoiupi65me
+agent: valory/trader:0.1.0:bafybeiffe3l3yvrcfx722hghnv6wbmtzxlajwwjd7nvo7rmxqtb5bq7ik4
 number_of_agents: 4
 deployment: {}
----
-public_id: valory/abci:0.1.0
-type: connection
-config:
-  target_skill_id: valory/trader_abci:0.1.0
-  host: ${ABCI_HOST:str:localhost}
-  port: ${ABCI_PORT:int:26658}
-  use_tendermint: ${ABCI_USE_TM:bool:false}
 ---
 public_id: valory/trader_abci:0.1.0
 type: skill
@@ -99,6 +91,10 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -150,6 +146,10 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: *id005
 2:
   models:
@@ -199,6 +199,10 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: *id005
 3:
   models:
@@ -248,6 +252,10 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+          and the `yes` option represented by `@{yes}` and the `no` option represented
+          by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
+          occurring?}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0

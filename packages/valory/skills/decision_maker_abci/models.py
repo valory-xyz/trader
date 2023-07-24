@@ -20,8 +20,10 @@
 """This module contains the models for the skill."""
 
 import json
+import re
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from string import Template
+from typing import Any, Dict, Optional, Set
 
 from aea.exceptions import enforce
 from hexbytes import HexBytes
@@ -39,6 +41,11 @@ from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciA
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 
 
+RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
+REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
+Template.delimiter = "@"
+
+
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
@@ -47,6 +54,31 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls = DecisionMakerAbciApp
+
+
+def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
+    """Extract the keys from a string template, given the delimiter."""
+    # matches the placeholders of the template's keys
+    pattern = re.escape(delimiter) + RE_CONTENT_IN_BRACKETS
+    keys = re.findall(pattern, template)
+    return set(keys)
+
+
+def check_prompt_template(bet_prompt_template: Template) -> None:
+    """Check if the keys required for a bet are given in the provided prompt's template."""
+    delimiter = bet_prompt_template.delimiter
+    template_keys = extract_keys_from_template(delimiter, bet_prompt_template.template)
+    if template_keys != REQUIRED_BET_TEMPLATE_KEYS:
+        example_key = (REQUIRED_BET_TEMPLATE_KEYS - template_keys).pop()
+        n_found = len(template_keys)
+        found = "no keys" if n_found == 0 else f"keys {template_keys}"
+        raise ValueError(
+            f"The bet's template should contain exclusively the following keys: {REQUIRED_BET_TEMPLATE_KEYS}.\n"
+            f"Found {found} instead in the given template:\n{bet_prompt_template.template!r}\n"
+            f"Please make sure that you are using the right delimiter {delimiter!r} for the prompt's template.\n"
+            f"For example, to parametrize {example_key!r} you may use "
+            f"'{delimiter}{{{example_key}}}'"
+        )
 
 
 class DecisionMakerParams(MarketManagerParams):
@@ -67,6 +99,8 @@ class DecisionMakerParams(MarketManagerParams):
             "blacklisting_duration", kwargs, int
         )
         self._ipfs_address: str = self._ensure("ipfs_address", kwargs, str)
+        self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
+        check_prompt_template(self.prompt_template)
         multisend_address = kwargs.get("multisend_address", None)
         enforce(multisend_address is not None, "Multisend address not specified!")
         self.multisend_address = multisend_address
@@ -78,6 +112,11 @@ class DecisionMakerParams(MarketManagerParams):
         if self._ipfs_address.endswith("/"):
             return self._ipfs_address
         return f"{self._ipfs_address}/"
+
+    @property
+    def prompt_template(self) -> Template:
+        """Get the prompt template as a string `Template`."""
+        return Template(self._prompt_template)
 
     def get_bet_amount(self, confidence: float) -> int:
         """Get the bet amount given a prediction's confidence."""
