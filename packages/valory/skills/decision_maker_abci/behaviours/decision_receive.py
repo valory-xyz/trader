@@ -19,17 +19,19 @@
 
 """This module contains the behaviour for the decision-making of the skill."""
 
-from typing import Any, Generator, Optional, Tuple, Union, cast
+from typing import Any, Generator, Optional, Tuple, Union
 
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
-from packages.valory.skills.abstract_round_abci.io_.store import SupportedFiletype
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.models import MechInteractionResponse
+from packages.valory.skills.decision_maker_abci.models import (
+    MechInteractionResponse,
+    MechResponseSpecs,
+)
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
@@ -51,6 +53,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self._from_block: int = 0
         self._request_id: int = 0
         self._response_hex: str = ""
+        self._mech_response: Optional[MechInteractionResponse] = None
 
     @property
     def from_block(self) -> int:
@@ -91,10 +94,26 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(msg)
 
     @property
-    def ipfs_link(self) -> str:
-        """Get the IPFS link using the response hex."""
+    def mech_response_api(self) -> MechResponseSpecs:
+        """Get the mech response api specs."""
+        return self.context.mech_response
+
+    def set_mech_response_specs(self) -> None:
+        """Set the mech's response specs."""
         full_ipfs_hash = IPFS_HASH_PREFIX + self.response_hex
-        return self.params.ipfs_address + full_ipfs_hash + f"/{self.request_id}"
+        ipfs_link = self.params.ipfs_address + full_ipfs_hash + f"/{self.request_id}"
+        # The url must be dynamically generated as it depends on the ipfs hash
+        self.mech_response_api.__dict__["_frozen"] = False
+        self.mech_response_api.url = ipfs_link
+        self.mech_response_api.__dict__["_frozen"] = True
+
+    @property
+    def mech_response(self) -> MechInteractionResponse:
+        """Get the mech response api specs."""
+        if self._mech_response is None:
+            error = "The mech's response has not been set!"
+            return MechInteractionResponse(error=error)
+        return self._mech_response
 
     def _get_block_number(self) -> WaitableConditionType:
         """Get the block number in which the request to the mech was settled."""
@@ -130,20 +149,52 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             request_id=self.request_id,
             from_block=self.from_block,
         )
+
+        if result:
+            self.set_mech_response_specs()
+
         return result
 
-    def _get_response(self) -> Generator[None, None, Optional[MechInteractionResponse]]:
-        """Get the response data from IPFS."""
-        res = yield from self.get_from_ipfs(self.ipfs_link, SupportedFiletype.JSON)
+    def _handle_response(
+        self,
+        res: Optional[str],
+    ) -> Optional[Any]:
+        """Handle a response from a subgraph.
+
+        :param res: the response to handle.
+        :return: the response's result, using the given keys. `None` if response is `None` (has failed).
+        """
         if res is None:
+            msg = f"Could not get the mech's response from {self.mech_response_api.api_id}"
+            self.context.logger.error(msg)
+            self.mech_response_api.increment_retries()
             return None
 
+        self.context.logger.info(f"Retrieved the mech's response: {res}.")
+        self.mech_response_api.reset_retries()
+        return res
+
+    def _get_response(self) -> WaitableConditionType:
+        """Get the response data from IPFS."""
+        specs = self.mech_response_api.get_spec()
+        res_raw = yield from self.get_http_response(**specs)
+        res = self.mech_response_api.process_response(res_raw)
+        res = self._handle_response(res)
+
+        if self.mech_response_api.is_retries_exceeded():
+            error = "Retries were exceeded while trying to get the mech's response."
+            self._mech_response = MechInteractionResponse(error=error)
+            return True
+
+        if res is None:
+            return False
+
         try:
-            prediction = MechInteractionResponse(**cast(dict, res))
+            self._mech_response = MechInteractionResponse(**res)
         except (ValueError, TypeError):
-            return MechInteractionResponse.incorrect_format(res)
-        else:
-            return prediction
+            self._mech_response = MechInteractionResponse.incorrect_format(res)
+
+        return True
 
     def _get_decision(
         self,
@@ -153,21 +204,18 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self._get_block_number,
             self._get_request_id,
             self._get_response_hash,
+            self._get_response,
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-        mech_response = yield from self._get_response()
-        if mech_response is None:
-            self.context.logger.error("No decision has been received from the mech.")
+        self.context.logger.info(f"Decision has been received:\n{self.mech_response}")
+        if self.mech_response.result is None:
+            self.context.logger.error(
+                f"There was an error on the mech's response: {self.mech_response.error}"
+            )
             return None, None
 
-        self.context.logger.info(f"Decision has been received:\n{mech_response}")
-        if mech_response.result is None:
-            msg = f"There was an error on the mech response: {mech_response.error}"
-            self.context.logger.error(msg)
-            return None, None
-
-        return mech_response.result.vote, mech_response.result.confidence
+        return self.mech_response.result.vote, self.mech_response.result.confidence
 
     def _is_profitable(self, confidence: float) -> bool:
         """Whether the decision is profitable or not."""
