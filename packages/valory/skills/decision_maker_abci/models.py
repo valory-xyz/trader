@@ -19,15 +19,17 @@
 
 """This module contains the models for the skill."""
 
+import json
 import re
 from dataclasses import dataclass
 from string import Template
-from typing import Any, Dict, Set
+from typing import Any, Dict, Optional, Set
 
 from aea.exceptions import enforce
 from hexbytes import HexBytes
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -84,8 +86,8 @@ class DecisionMakerParams(MarketManagerParams):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.mech_agent_id: int = self._ensure("mech_agent_id", kwargs, int)
-        self.mech_tool: int = self._ensure("mech_tool", kwargs, str)
+        self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
+        self.mech_tool: str = self._ensure("mech_tool", kwargs, str)
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
@@ -96,12 +98,20 @@ class DecisionMakerParams(MarketManagerParams):
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int
         )
+        self._ipfs_address: str = self._ensure("ipfs_address", kwargs, str)
         self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
         check_prompt_template(self.prompt_template)
         multisend_address = kwargs.get("multisend_address", None)
         enforce(multisend_address is not None, "Multisend address not specified!")
         self.multisend_address = multisend_address
         super().__init__(*args, **kwargs)
+
+    @property
+    def ipfs_address(self) -> str:
+        """Get the IPFS address."""
+        if self._ipfs_address.endswith("/"):
+            return self._ipfs_address
+        return f"{self._ipfs_address}/"
 
     @property
     def prompt_template(self) -> Template:
@@ -114,6 +124,10 @@ class DecisionMakerParams(MarketManagerParams):
         return self.bet_amount_per_threshold[threshold]
 
 
+class MechResponseSpecs(ApiSpecs):
+    """A model that wraps ApiSpecs for the Mech's response specifications."""
+
+
 @dataclass
 class MultisendBatch:
     """A structure representing a single transaction of a multisend."""
@@ -122,3 +136,51 @@ class MultisendBatch:
     data: HexBytes
     value: int = 0
     operation: MultiSendOperation = MultiSendOperation.CALL
+
+
+@dataclass
+class PredictionResponse:
+    """A response of a prediction."""
+
+    p_yes: float
+    p_no: float
+    confidence: float
+    info_utility: float
+
+    def __post_init__(self) -> None:
+        """Runs checks on whether the current prediction response is valid or not."""
+        # all the fields are probabilities
+        probabilities = (getattr(self, field) for field in self.__annotations__)
+        if (
+            any(not (0 <= prob <= 1) for prob in probabilities)
+            or self.p_yes + self.p_no != 1
+        ):
+            raise ValueError("Invalid prediction response initialization.")
+
+    @property
+    def vote(self) -> Optional[int]:
+        """Return the vote. `0` represents "yes" and `1` represents "no"."""
+        if self.p_no != self.p_yes:
+            return int(self.p_no > self.p_yes)
+        return None
+
+
+@dataclass
+class MechInteractionResponse:
+    """A structure for the response of a mech interaction task."""
+
+    requestId: int = 0
+    result: Optional[PredictionResponse] = None
+    error: str = "Unknown"
+
+    def __post_init__(self) -> None:
+        """Parses the nested part of the mech interaction response to a `PredictionResponse`."""
+        if isinstance(self.result, str):
+            self.result = PredictionResponse(**json.loads(self.result))
+
+    @classmethod
+    def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
+        """Return an incorrect format response."""
+        response = cls()
+        response.error = f"The response's format was unexpected: {res}"
+        return response

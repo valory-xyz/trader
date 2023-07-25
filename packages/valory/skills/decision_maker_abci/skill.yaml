@@ -9,26 +9,27 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiftzkqcn2abil4ljzoppcl52zrztplymwqbnydm6ippn7kzhgjexy
-  behaviours/bet_placement.py: bafybeifsninom3ith4amavgn5ou2rqx5vvjpr2f7ezdqz7lrmjltsfbv2i
+  behaviours/base.py: bafybeig2zoyowdeqg44kyxdc5tzdiczzpkzpbchq6f2nwjqertfvmi6xvy
+  behaviours/bet_placement.py: bafybeigqzadqydhnu6ggsy2nznaxqghezxq2m36kasutk3awtxqc7y6gdm
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_maker.py: bafybeif3x4nakgnbau3endvcgvs3z74peq3ybuik2hznnmy54uo3acxwiy
-  behaviours/round_behaviour.py: bafybeieoumnukyl3zojpud5ojmjder5lkncxwsxnhtfvwrbvs52bl4gj7a
+  behaviours/decision_receive.py: bafybeienputxccxmraia64x73r4ogw4qzivcsketb3xmtq3xbpixrt6yca
+  behaviours/decision_request.py: bafybeietmihincw46ahq2kdh3ascv6htrnqzszf2uz2g6kujlu55cg5c5a
+  behaviours/round_behaviour.py: bafybeiahjypqkswz5ufusagxpxmjhngipin2feis56lasqin75jwqcwpaa
   behaviours/sampling.py: bafybeiaxhu4xa5rrk4gszmrdpiwsz37hlwwj5vtooramm4rqiyqd6sjeqm
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeigrdkenq2yxz3i56esauohv4wtdgphql2bqiyqgoyrzysdad7rsxi
+  fsm_specification.yaml: bafybeickhbppg4kttuouhwagza2b3ngw3syrmceinkylcw2nruyclkb5di
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeidg2mgtzdhpxyj4xjzzytzn6u5zggsfcwjm6qsytwr5tp3fklhdi4
-  payloads.py: bafybeia63qdzl2lhn656yszisrcllg2idm5mjcpnk5mhvxttsbfcdwutdm
-  rounds.py: bafybeid6caier4wg4mi3t5zgsrie2oyc7iif6ybicgtjcimhownjr625my
+  models.py: bafybeiguysd4fy2apzcqtrag3yjcuat3apy5zm35blaktywjabt7pzbibu
+  payloads.py: bafybeifvklik2j2jsevy2e5oermoo3mml6hiy6gyuppsd7cgupsylosl6a
+  rounds.py: bafybeieynq7pvkflqrwil3o72gedqkwlmui4s5zrt3ywh7ftqxb4zvpebm
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeid6jkvqe6mskz3a7yabgylt6rjbx2vzyaca43o3rm4a77qcgneeaq
-  states/bet_placement.py: bafybeig5remjdlsuiyla6gismcahnqqq7ooashzcz2m3lalntf37hfj3be
+  states/base.py: bafybeib7wpuo2suhgb6xkvxvjiij22bvm5e2tpzpoccelv57c2stql4o7y
+  states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
-  states/decision_maker.py: bafybeiaqehtdzivhswlurqzxx2bxqjnrmeo6bfyvr2zn55ng3qpwbokauy
+  states/decision_receive.py: bafybeifm3oyq2aji7f5yag6wpe4vr3ivi74pybdsk2jvmziiidx5nt7t4a
+  states/decision_request.py: bafybeiguje2p3qmqvg6bujf5n7ncr4ss63mviqp4rbnequel37ocuhhvgm
   states/final_states.py: bafybeifhr36wfvzzum44qqknrolglii5fyspg7f5cmq4dxc6oukd7hniji
   states/sampling.py: bafybeidnvdogjlthjfe7jpaiuezm3xydrbxxukyoss4gx6t5fdin52rsta
-  tasks.py: bafybeid47ybp2opuz2xb7bgxcwztk6rhwluubf7mnxiytqopwx4adprtve
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -36,11 +37,12 @@ contracts:
 - valory/market_maker:0.1.0:bafybeifihhoertnx3itmfzbuf4lazclzjuctxurayajguyn7ggsddolhte
 - valory/erc20:0.1.0:bafybeico5tbp27ebo7a745ok7duafmgeacyuonq5unjrisaefj6mg3rq7a
 - valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
+- valory/mech:0.1.0:bafybeihpgr3qnopqtiqm33sv4euzjitodbez3bqaducgdr6sjokrryf6mq
 protocols:
 - valory/contract_api:1.0.0:bafybeidv6wxpjyb2sdyibnmmum45et4zcla6tl63bnol6ztyoqvpl4spmy
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiac62ennpw54gns2quk4g3yoaili2mb72nj6c52czobz5dcwj4mwi
-- valory/market_manager_abci:0.1.0:bafybeiez3sahk7q3akqjpmzathafmgziwfdddddyuggzkbcxxf5mzq3nue
+- valory/market_manager_abci:0.1.0:bafybeiepqc3pkwvymublwaqr3cqopjkw6fwc3ztpavtho26orzzfd7j2la
 - valory/transaction_settlement_abci:0.1.0:bafybeihdpac4ayfgop3ixflimlb3zzyeejlpqtljfptdak6tc7aq4u5fzi
 behaviours:
   main:
@@ -137,7 +139,7 @@ models:
       tendermint_url: http://localhost:26657
       tx_timeout: 10.0
       use_termination: false
-      mech_agent_id: 3
+      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       mech_tool: prediction-online
       bet_amount_per_threshold:
         0.0: 0
@@ -153,10 +155,23 @@ models:
         1.0: 0
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
+      ipfs_address: https://gateway.autonolas.tech/ipfs/
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
     class_name: DecisionMakerParams
+  mech_response:
+    args:
+      api_id: mech_response
+      headers:
+        Content-Type: application/json
+      method: GET
+      parameters: {}
+      response_key: null
+      response_type: dict
+      retries: 5
+      url: ''
+    class_name: MechResponseSpecs
   requests:
     args: {}
     class_name: Requests
@@ -170,8 +185,10 @@ models:
     args: {}
     class_name: TendermintDialogues
 dependencies:
-  mech-client:
-    version: ==0.2.2
   hexbytes:
     version: ==0.3.1
+  py-multibase:
+    version: ==1.0.3
+  py-multicodec:
+    version: ==0.2.1
 is_abstract: true

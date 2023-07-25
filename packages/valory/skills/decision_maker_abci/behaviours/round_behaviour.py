@@ -31,8 +31,11 @@ from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import 
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.decision_maker import (
-    DecisionMakerBehaviour,
+from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
+    DecisionReceiveBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.decision_request import (
+    DecisionRequestBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
@@ -43,11 +46,12 @@ from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciA
 class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
     """This behaviour manages the consensus stages for the decision-making."""
 
-    initial_behaviour_cls = DecisionMakerBehaviour
+    initial_behaviour_cls = SamplingBehaviour
     abci_app_cls = DecisionMakerAbciApp
     behaviours: Set[Type[BaseBehaviour]] = {
         SamplingBehaviour,  # type: ignore
-        DecisionMakerBehaviour,  # type: ignore
+        DecisionRequestBehaviour,  # type: ignore
+        DecisionReceiveBehaviour,  # type: ignore
         BlacklistingBehaviour,  # type: ignore
         BetPlacementBehaviour,  # type: ignore
     }

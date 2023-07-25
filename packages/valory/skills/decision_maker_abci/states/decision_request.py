@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the sampling state of the decision-making abci app."""
+"""This module contains the decision requesting state of the decision-making abci app."""
 
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -25,7 +25,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 )
 
 
-class BetPlacementRound(TxPreparationRound):
-    """A round for placing a bet."""
+class DecisionRequestRound(TxPreparationRound):
+    """A round in which the agents prepare a tx to initiate a request to a mech to determine the answer to a bet."""
 
-    none_event = Event.INSUFFICIENT_BALANCE
+    none_event = Event.SLOTS_UNSUPPORTED_ERROR

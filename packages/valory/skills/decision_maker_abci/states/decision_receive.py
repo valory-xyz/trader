@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the decision-making state of the decision-making abci app."""
+"""This module contains the decision receiving state of the decision-making abci app."""
 
 from enum import Enum
 from typing import Optional, Tuple, cast
@@ -26,23 +26,22 @@ from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import DecisionMakerPayload
+from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
 
 
-class DecisionMakerRound(CollectSameUntilThresholdRound):
+class DecisionReceiveRound(CollectSameUntilThresholdRound):
     """A round in which the agents decide on the bet's answer."""
 
-    payload_class = DecisionMakerPayload
+    payload_class = DecisionReceivePayload
     synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     none_event = Event.MECH_RESPONSE_ERROR
     no_majority_event = Event.NO_MAJORITY
     selection_key = (
-        get_name(SynchronizedData.non_binary),
         get_name(SynchronizedData.is_profitable),
         get_name(SynchronizedData.vote),
         get_name(SynchronizedData.confidence),
@@ -56,8 +55,6 @@ class DecisionMakerRound(CollectSameUntilThresholdRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        if event == Event.DONE and synced_data.non_binary:
-            return synced_data, Event.NON_BINARY
 
         if event == Event.DONE and synced_data.vote is None:
             return synced_data, Event.TIE

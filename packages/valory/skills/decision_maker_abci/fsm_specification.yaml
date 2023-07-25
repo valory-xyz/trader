@@ -4,9 +4,9 @@ alphabet_in:
 - INSUFFICIENT_BALANCE
 - MECH_RESPONSE_ERROR
 - NONE
-- NON_BINARY
 - NO_MAJORITY
 - ROUND_TIMEOUT
+- SLOTS_UNSUPPORTED_ERROR
 - TIE
 - UNPROFITABLE
 default_start_state: SamplingRound
@@ -18,11 +18,13 @@ final_states:
 label: DecisionMakerAbciApp
 start_states:
 - BlacklistingRound
+- DecisionReceiveRound
 - SamplingRound
 states:
 - BetPlacementRound
 - BlacklistingRound
-- DecisionMakerRound
+- DecisionReceiveRound
+- DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedWithoutDecisionRound
 - ImpossibleRound
@@ -31,6 +33,7 @@ states:
 transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
+    (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
@@ -38,14 +41,18 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
-    (DecisionMakerRound, DONE): BetPlacementRound
-    (DecisionMakerRound, MECH_RESPONSE_ERROR): BlacklistingRound
-    (DecisionMakerRound, NON_BINARY): ImpossibleRound
-    (DecisionMakerRound, NO_MAJORITY): DecisionMakerRound
-    (DecisionMakerRound, ROUND_TIMEOUT): DecisionMakerRound
-    (DecisionMakerRound, TIE): BlacklistingRound
-    (DecisionMakerRound, UNPROFITABLE): BlacklistingRound
-    (SamplingRound, DONE): DecisionMakerRound
+    (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
+    (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
+    (DecisionReceiveRound, ROUND_TIMEOUT): BlacklistingRound
+    (DecisionReceiveRound, TIE): BlacklistingRound
+    (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
+    (DecisionRequestRound, DONE): FinishedDecisionMakerRound
+    (DecisionRequestRound, NONE): ImpossibleRound
+    (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
+    (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
+    (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (SamplingRound, DONE): DecisionRequestRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound

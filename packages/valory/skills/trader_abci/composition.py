@@ -27,6 +27,9 @@ from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciA
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
+)
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
@@ -53,10 +56,18 @@ from packages.valory.skills.termination_abci.rounds import BackgroundRound
 from packages.valory.skills.termination_abci.rounds import Event as TerminationEvent
 from packages.valory.skills.termination_abci.rounds import TerminationAbciApp
 from packages.valory.skills.transaction_settlement_abci.rounds import (
-    FailedRound,
+    FailedRound as FailedTransactionSubmissionRound,
+)
+from packages.valory.skills.transaction_settlement_abci.rounds import (
     FinishedTransactionSubmissionRound,
     RandomnessTransactionSubmissionRound,
     TransactionSubmissionAbciApp,
+)
+from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    FinishedBetPlacementTxRound,
+    FinishedDecisionRequestTxRound,
+    PostTxSettlementRound,
+    TxSettlementMultiplexerAbciApp,
 )
 
 
@@ -65,8 +76,10 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMarketManagerRound: SamplingRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: RandomnessTransactionSubmissionRound,
-    FinishedTransactionSubmissionRound: ResetAndPauseRound,
-    FailedRound: BlacklistingRound,
+    FinishedTransactionSubmissionRound: PostTxSettlementRound,
+    FailedTransactionSubmissionRound: BlacklistingRound,
+    FinishedDecisionRequestTxRound: DecisionReceiveRound,
+    FinishedBetPlacementTxRound: ResetAndPauseRound,
     FinishedWithoutDecisionRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
     FinishedResetAndPauseErrorRound: RegistrationRound,
@@ -78,6 +91,7 @@ TraderAbciApp = chain(
         DecisionMakerAbciApp,
         MarketManagerAbciApp,
         TransactionSubmissionAbciApp,
+        TxSettlementMultiplexerAbciApp,
         ResetPauseAbciApp,
     ),
     abci_app_transition_mapping,

@@ -22,7 +22,12 @@
 from enum import Enum
 from typing import Optional
 
-from packages.valory.skills.abstract_round_abci.base import DeserializedCollection
+from packages.valory.skills.abstract_round_abci.base import (
+    CollectSameUntilThresholdRound,
+    DeserializedCollection,
+    get_name,
+)
+from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
@@ -38,7 +43,7 @@ class Event(Enum):
     DONE = "done"
     NONE = "none"
     MECH_RESPONSE_ERROR = "mech_response_error"
-    NON_BINARY = "non_binary"
+    SLOTS_UNSUPPORTED_ERROR = "slots_unsupported_error"
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
@@ -61,11 +66,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def sampled_bet(self) -> Bet:
         """Get the sampled bet."""
         return self.bets[self.sampled_bet_index]
-
-    @property
-    def non_binary(self) -> bool:
-        """Get whether the question is non-binary."""
-        return bool(self.db.get_strict("non_binary"))
 
     @property
     def vote(self) -> Optional[int]:
@@ -99,6 +99,21 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return self._get_deserialized("participant_to_sampling")
 
     @property
-    def participant_to_bet_placement(self) -> DeserializedCollection:
+    def participant_to_tx_prep(self) -> DeserializedCollection:
         """Get the participants to bet-placement."""
-        return self._get_deserialized("participant_to_bet_placement")
+        return self._get_deserialized("participant_to_tx_prep")
+
+
+class TxPreparationRound(CollectSameUntilThresholdRound):
+    """A round for preparing a transaction."""
+
+    payload_class = MultisigTxPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = (
+        get_name(SynchronizedData.tx_submitter),
+        get_name(SynchronizedData.most_voted_tx_hash),
+    )
+    collection_key = get_name(SynchronizedData.participant_to_tx_prep)

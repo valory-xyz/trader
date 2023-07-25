@@ -30,6 +30,9 @@ from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
+from packages.valory.skills.decision_maker_abci.models import (
+    MechResponseSpecs as DecisionMakerMechResponseSpecs,
+)
 from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
 )
@@ -60,6 +63,7 @@ EventToTimeoutMappingType = Dict[
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
+MechResponseSpecs = DecisionMakerMechResponseSpecs
 
 MARGIN = 5
 

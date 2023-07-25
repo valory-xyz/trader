@@ -27,7 +27,7 @@ from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from aea_ledger_ethereum import EthereumApi
 from eth_typing import HexStr
-from web3.types import TxReceipt, EventData
+from web3.types import TxReceipt, EventData, BlockIdentifier, BlockData
 
 PUBLIC_ID = PublicId.from_str("valory/mech:0.1.0")
 
@@ -62,7 +62,7 @@ class Mech(Contract):
         :param request_data: the request data
         """
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        encoded_data = contract_instance.encodeABI("request", request_data)
+        encoded_data = contract_instance.encodeABI("request", args=(request_data,))
         return {"data": bytes.fromhex(encoded_data[2:])}
 
     @classmethod
@@ -88,7 +88,7 @@ class Mech(Contract):
 
         log = logs.pop()
         event_args = log.get("args", None)
-        if event_args is None or (
+        if event_args is None or any(
             expected_key not in event_args for expected_key in args
         ):
             error = f"The emitted event's ({event_name!r}) log for tx {tx_hash} do not match the expected format: {log}"
@@ -133,3 +133,54 @@ class Mech(Contract):
         return cls._process_event(
             ledger_api, contract_address, tx_hash, "Deliver", "requestId", "data"
         )
+
+    @classmethod
+    def get_block_number(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+        tx_hash: HexStr,
+    ) -> JSONLike:
+        """Get the number of the block in which the tx of the given hash was settled."""
+        receipt: TxReceipt = ledger_api.api.eth.get_transaction_receipt(tx_hash)
+        block: BlockData = ledger_api.api.eth.get_block(receipt["blockNumber"])
+        return dict(number=block["number"])
+
+    @classmethod
+    def get_response(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        request_id: int,
+        from_block: BlockIdentifier = "earliest",
+        to_block: BlockIdentifier = "latest",
+    ) -> JSONLike:
+        """Filter the `Deliver` events emitted by the contract and get the data of the given `request_id`."""
+        ledger_api = cast(EthereumApi, ledger_api)
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+
+        deliver_filter = contract_instance.events.Deliver.build_filter()
+        deliver_filter.fromBlock = from_block
+        deliver_filter.toBlock = to_block
+        deliver_filter.args.requestId.match_single(request_id)
+        delivered = list(deliver_filter.deploy(ledger_api.api).get_all_entries())
+        n_delivered = len(delivered)
+
+        if n_delivered == 0:
+            error = f"The mech ({contract_address}) has not delivered a response yet for request with id {request_id}."
+            return {"error": error}
+
+        if n_delivered != 1:
+            error = (
+                f"A single response was expected by the mech ({contract_address}) for request with id {request_id}. "
+                f"Received {n_delivered} responses: {delivered}."
+            )
+            return {"error": error}
+
+        delivered_event = delivered.pop()
+        deliver_args = delivered_event.get("args", None)
+        if deliver_args is None or "data" not in deliver_args:
+            error = f"The mech's response does not match the expected format: {delivered_event}"
+            return {"error": error}
+
+        return dict(data=deliver_args["data"])

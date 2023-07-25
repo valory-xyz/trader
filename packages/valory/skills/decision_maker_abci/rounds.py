@@ -37,8 +37,11 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_maker import (
-    DecisionMakerRound,
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
+)
+from packages.valory.skills.decision_maker_abci.states.decision_request import (
+    DecisionRequestRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
@@ -57,37 +60,43 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: SamplingRound
 
-    Initial states: {BlacklistingRound, SamplingRound}
+    Initial states: {BlacklistingRound, DecisionReceiveRound, SamplingRound}
 
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 5.
+            - none: 6.
             - no majority: 0.
             - round timeout: 0.
-        1. DecisionMakerRound
-            - done: 3.
-            - mech response error: 2.
-            - no majority: 1.
-            - non binary: 7.
-            - tie: 2.
-            - unprofitable: 2.
-            - round timeout: 1.
-        2. BlacklistingRound
+        1. DecisionRequestRound
             - done: 5.
-            - none: 7.
-            - no majority: 2.
-            - round timeout: 2.
-            - fetch error: 7.
-        3. BetPlacementRound
+            - slots unsupported error: 3.
+            - no majority: 1.
+            - round timeout: 1.
+            - none: 8.
+        2. DecisionReceiveRound
             - done: 4.
-            - insufficient balance: 6.
+            - mech response error: 3.
+            - no majority: 2.
+            - tie: 3.
+            - unprofitable: 3.
+            - round timeout: 3.
+        3. BlacklistingRound
+            - done: 6.
+            - none: 8.
             - no majority: 3.
             - round timeout: 3.
-        4. FinishedDecisionMakerRound
-        5. FinishedWithoutDecisionRound
-        6. RefillRequiredRound
-        7. ImpossibleRound
+            - fetch error: 8.
+        4. BetPlacementRound
+            - done: 5.
+            - insufficient balance: 7.
+            - no majority: 4.
+            - round timeout: 4.
+            - none: 8.
+        5. FinishedDecisionMakerRound
+        6. FinishedWithoutDecisionRound
+        7. RefillRequiredRound
+        8. ImpossibleRound
 
     Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, ImpossibleRound, RefillRequiredRound}
 
@@ -96,22 +105,33 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     """
 
     initial_round_cls: AppState = SamplingRound
-    initial_states: Set[AppState] = {SamplingRound, BlacklistingRound}
+    initial_states: Set[AppState] = {
+        SamplingRound,
+        BlacklistingRound,
+        DecisionReceiveRound,
+    }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
-            Event.DONE: DecisionMakerRound,
+            Event.DONE: DecisionRequestRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
         },
-        DecisionMakerRound: {
+        DecisionRequestRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+            Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
+            Event.NO_MAJORITY: DecisionRequestRound,
+            Event.ROUND_TIMEOUT: DecisionRequestRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
-            Event.NO_MAJORITY: DecisionMakerRound,
-            Event.NON_BINARY: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.ROUND_TIMEOUT: DecisionMakerRound,
+            Event.ROUND_TIMEOUT: BlacklistingRound,
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
@@ -126,6 +146,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
         },
         FinishedDecisionMakerRound: {},
         FinishedWithoutDecisionRound: {},
@@ -142,6 +164,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         Event.ROUND_TIMEOUT: 30.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
+        DecisionReceiveRound: {
+            get_name(SynchronizedData.final_tx_hash),
+        },
         BlacklistingRound: {
             get_name(SynchronizedData.bets),
         },
@@ -150,6 +175,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
             get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
