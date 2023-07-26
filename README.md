@@ -25,9 +25,6 @@ Trader is an autonomous service that performs bets on existing prediction market
 
 - Create development environment:
 
-      poetry run pip install "cython<3"
-      poetry run pip install wheel==0.4.0
-      poetry run pip install --no-build-isolation pyyaml==5.4.1
       poetry install && poetry shell
 
 - Configure command line:
@@ -124,7 +121,7 @@ Trader is an autonomous service that performs bets on existing prediction market
 
 ## Some notes on the service
 
-Please, take into consideration the following:
+Please take into consideration the following:
 
 - If the service does not have enough funds for placing a bet, you will see an `Event.INSUFICIENT_FUNDS` in the service logs.
 - If the service determines that a bet is not profitable (i.e., `expected_return - bet_fees < BET_THRESHOLD`), you will see an `Event.UNPROFITABLE` in the service logs, and the service will transition into the blacklisting round. This round blacklists a bet for a predetermined amount of time. This can be adjusted by using the `BLACKLISTING_DURATION` environment variable.
