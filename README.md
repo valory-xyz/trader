@@ -48,11 +48,10 @@ Trader is an autonomous service that performs bets on existing prediction market
     export ALL_PARTICIPANTS='["YOUR_AGENT_ADDRESS"]'
     export SAFE_CONTRACT_ADDRESS="YOUR_SAFE_ADDRESS"
     export OMEN_CREATORS='["CREATOR_0", "CREATOR_1", ...]'
-    
+
     # Optional. The following example values bet a variable amount depending on the
     # prediction confidence. Here, amounts vary between 0.03 xDAI (60% confidence)
     # and 0.1 xDAI (100% confidence). Please, adjust these values accordingly.
-    export BET_AMOUNT_PER_THRESHOLD_000=0
     export BET_AMOUNT_PER_THRESHOLD_000=0
     export BET_AMOUNT_PER_THRESHOLD_010=0
     export BET_AMOUNT_PER_THRESHOLD_020=0
