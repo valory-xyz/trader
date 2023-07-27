@@ -41,9 +41,7 @@ Trader is an autonomous service that performs bets on existing prediction market
 
     ```bash
     export RPC_0=INSERT_YOUR_RPC
-    export RPC_1=INSERT_YOUR_RPC
-    export RPC_2=INSERT_YOUR_RPC
-    export RPC_3=INSERT_YOUR_RPC
+
     export CHAIN_ID=100
     export ALL_PARTICIPANTS='["YOUR_AGENT_ADDRESS"]'
     export SAFE_CONTRACT_ADDRESS="YOUR_SAFE_ADDRESS"
@@ -71,7 +69,7 @@ Trader is an autonomous service that performs bets on existing prediction market
     ```
 
   Replace the above placeholders with their respective actual values:
-  - `RPC_i`: RPC endpoint per agent (you can get an RPC endpoint, e.g. [here](https://getblock.io/)).
+  - `RPC_0`: RPC endpoint for the agent (you can get an RPC endpoint, e.g. [here](https://getblock.io/)).
   - `CHAIN_ID`: identifier of the chain on which the service is running.
   - `ALL_PARTICIPANTS`: list of all the agent addresses participating in the service.
     You need to obtain at least one Gnosis address to associate it with an agent of the service.
@@ -149,3 +147,14 @@ Please take into consideration the following:
 - If the service determines that a bet is not profitable (i.e., `expected_return - bet_fees < BET_THRESHOLD`), you will see an `Event.UNPROFITABLE` in the service logs, and the service will transition into the blacklisting round. This round blacklists a bet for a predetermined amount of time. This can be adjusted by using the `BLACKLISTING_DURATION` environment variable.
 - For simplicity, the current implementation considers `expected_return = bet_amount`, although this calculation might be refined.
 - When assigning `BET_THRESHOLD` take into consideration that fees (at the time of writing this guide) are in the range of 0.02 xDAI. See, for example, [here](https://api.thegraph.com/subgraphs/name/protofire/omen-xdai/graphql?query=%7B%0A++fixedProductMarketMakers%28%0A++++where%3A+%7B%0A++++++creator_in%3A+%5B%220x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec%22%5D%2C%0A++++++outcomeSlotCount%3A+2%2C%0A++++++isPendingArbitration%3A+false%0A++++%7D%2C%0A++++orderBy%3A+creationTimestamp%0A++++orderDirection%3A+desc%0A++%29%7B%0A++++fee%0A++%7D%0A%7D). We urge you to keep an eye on these fees, as they might vary.
+- The trader service can be run as a multi-agent system. If you want to explore this option, extra environment variables need to be defined, i.e. in the case of 4 agents
+
+    ```bash
+    export RPC_0=INSERT_YOUR_RPC
+    export RPC_1=INSERT_YOUR_RPC
+    export RPC_2=INSERT_YOUR_RPC
+    export RPC_3=INSERT_YOUR_RPC
+    export ALL_PARTICIPANTS='["AGENT_ADDRESS_0,AGENT_ADDRESS_1,AGENT_ADDRESS_2,AGENT_ADDRESS_3"]'
+    ```
+where   `RPC_i` is the RPC endpoint for agent `AGENT_ADDRESS_i`
+
