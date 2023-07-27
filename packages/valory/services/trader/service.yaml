@@ -27,7 +27,7 @@ type: skill
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
         genesis_config: &id002
           genesis_time: ${GENESIS_TIME:str:'2023-07-12T00:00:00.000000000Z'}
-          chain_id: ${CHAIN_ID:str:chain-c4daS1}
+          chain_id: ${GENESIS_CHAIN_ID:str:chain-c4daS1}
           consensus_params:
             block:
               max_bytes: ${BLOCK_MAX_BYTES:str:'22020096'}
