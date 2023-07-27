@@ -41,16 +41,16 @@ type: skill
               pub_key_types: ${PUB_KEY_TYPES:list:["ed25519"]}
             version: ${VERSION:dict:{}}
           voting_power: ${VOTING_POWER:str:'10'}
-        init_fallback_gas: ${INIT_FALLBACK_GAS:0}
-        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
+        init_fallback_gas: ${INIT_FALLBACK_GAS:int:0}
+        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:int:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
-        max_attempts: ${MAX_ATTEMPTS:10}
-        max_healthcheck: ${MAX_HEALTHCHECK:120}
+        max_attempts: ${MAX_ATTEMPTS:int:10}
+        max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
-        retry_attempts: ${RETRY_ATTEMPTS:400}
-        retry_timeout: ${RETRY_TIMEOUT:3}
+        retry_attempts: ${RETRY_ATTEMPTS:int:400}
+        retry_timeout: ${RETRY_TIMEOUT:int:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
@@ -58,17 +58,17 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
-        sleep_time: ${SLEEP_TIME:1}
-        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:3}
+        sleep_time: ${SLEEP_TIME:int:1}
+        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
         tendermint_com_url: ${TENDERMINT_COM_URL:str:http://localhost:8080}
-        tendermint_max_retries: ${TM_MAX_RETRIES:5}
+        tendermint_max_retries: ${TM_MAX_RETRIES:int:5}
         tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
         tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_0:str:node0:26656}
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
-        validate_timeout: ${VALIDATE_TIMEOUT:1205}
-        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
+        validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
+        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: &id003
           omen_subgraph: ${OMEN_CREATORS:list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
         slot_count: ${SLOT_COUNT:int:2}
@@ -108,16 +108,16 @@ type: skill
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
         genesis_config: *id002
-        init_fallback_gas: ${INIT_FALLBACK_GAS:0}
-        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
+        init_fallback_gas: ${INIT_FALLBACK_GAS:int:0}
+        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:int:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
-        max_attempts: ${MAX_ATTEMPTS:10}
-        max_healthcheck: ${MAX_HEALTHCHECK:120}
+        max_attempts: ${MAX_ATTEMPTS:int:10}
+        max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
-        retry_attempts: ${RETRY_ATTEMPTS:400}
-        retry_timeout: ${RETRY_TIMEOUT:3}
+        retry_attempts: ${RETRY_ATTEMPTS:int:400}
+        retry_timeout: ${RETRY_TIMEOUT:int:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
@@ -125,17 +125,17 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
-        sleep_time: ${SLEEP_TIME:1}
-        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:3}
+        sleep_time: ${SLEEP_TIME:int:1}
+        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
         tendermint_com_url: ${TENDERMINT_COM_URL:str:http://localhost:8080}
-        tendermint_max_retries: ${TM_MAX_RETRIES:5}
+        tendermint_max_retries: ${TM_MAX_RETRIES:int:5}
         tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
         tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_1:str:node1:26656}
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
-        validate_timeout: ${VALIDATE_TIMEOUT:1205}
-        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
+        validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
+        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
@@ -161,16 +161,16 @@ type: skill
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
         genesis_config: *id002
-        init_fallback_gas: ${INIT_FALLBACK_GAS:0}
-        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
+        init_fallback_gas: ${INIT_FALLBACK_GAS:int:0}
+        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:int:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
-        max_attempts: ${MAX_ATTEMPTS:10}
-        max_healthcheck: ${MAX_HEALTHCHECK:120}
+        max_attempts: ${MAX_ATTEMPTS:int:10}
+        max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
-        retry_attempts: ${RETRY_ATTEMPTS:400}
-        retry_timeout: ${RETRY_TIMEOUT:3}
+        retry_attempts: ${RETRY_ATTEMPTS:int:400}
+        retry_timeout: ${RETRY_TIMEOUT:int:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
@@ -178,17 +178,17 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
-        sleep_time: ${SLEEP_TIME:1}
-        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:3}
+        sleep_time: ${SLEEP_TIME:int:1}
+        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
         tendermint_com_url: ${TENDERMINT_COM_URL:str:http://localhost:8080}
-        tendermint_max_retries: ${TM_MAX_RETRIES:5}
+        tendermint_max_retries: ${TM_MAX_RETRIES:int:5}
         tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
         tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_2:str:node2:26656}
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
-        validate_timeout: ${VALIDATE_TIMEOUT:1205}
-        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
+        validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
+        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
@@ -214,16 +214,16 @@ type: skill
         drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
         finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
         genesis_config: *id002
-        init_fallback_gas: ${INIT_FALLBACK_GAS:0}
-        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:3}
+        init_fallback_gas: ${INIT_FALLBACK_GAS:int:0}
+        keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:int:3}
         keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
-        max_attempts: ${MAX_ATTEMPTS:10}
-        max_healthcheck: ${MAX_HEALTHCHECK:120}
+        max_attempts: ${MAX_ATTEMPTS:int:10}
+        max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
-        retry_attempts: ${RETRY_ATTEMPTS:400}
-        retry_timeout: ${RETRY_TIMEOUT:3}
+        retry_attempts: ${RETRY_ATTEMPTS:int:400}
+        retry_timeout: ${RETRY_TIMEOUT:int:3}
         reset_pause_duration: ${RESET_PAUSE_DURATION:int:10}
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
@@ -231,17 +231,17 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
-        sleep_time: ${SLEEP_TIME:1}
-        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:3}
+        sleep_time: ${SLEEP_TIME:int:1}
+        tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
         tendermint_com_url: ${TENDERMINT_COM_URL:str:http://localhost:8080}
-        tendermint_max_retries: ${TM_MAX_RETRIES:5}
+        tendermint_max_retries: ${TM_MAX_RETRIES:int:5}
         tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
         tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_3:str:node3:26656}
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
-        validate_timeout: ${VALIDATE_TIMEOUT:1205}
-        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:1205}
+        validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
+        history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
