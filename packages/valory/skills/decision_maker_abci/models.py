@@ -43,7 +43,12 @@ from packages.valory.skills.market_manager_abci.models import MarketManagerParam
 
 RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
 REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
-Template.delimiter = "@"
+
+
+class PromptTemplate(Template):
+    """A prompt template."""
+
+    delimiter = "@"
 
 
 Requests = BaseRequests
@@ -64,7 +69,7 @@ def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
     return set(keys)
 
 
-def check_prompt_template(bet_prompt_template: Template) -> None:
+def check_prompt_template(bet_prompt_template: PromptTemplate) -> None:
     """Check if the keys required for a bet are given in the provided prompt's template."""
     delimiter = bet_prompt_template.delimiter
     template_keys = extract_keys_from_template(delimiter, bet_prompt_template.template)
@@ -114,9 +119,9 @@ class DecisionMakerParams(MarketManagerParams):
         return f"{self._ipfs_address}/"
 
     @property
-    def prompt_template(self) -> Template:
-        """Get the prompt template as a string `Template`."""
-        return Template(self._prompt_template)
+    def prompt_template(self) -> PromptTemplate:
+        """Get the prompt template as a string `PromptTemplate`."""
+        return PromptTemplate(self._prompt_template)
 
     def get_bet_amount(self, confidence: float) -> int:
         """Get the bet amount given a prediction's confidence."""

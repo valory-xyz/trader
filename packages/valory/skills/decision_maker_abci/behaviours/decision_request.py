@@ -139,6 +139,8 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         )
         prompt = self.params.prompt_template.substitute(prompt_params)
         self._metadata = MechMetadata(prompt=prompt, tool=self.params.mech_tool)
+        msg = f"Prepared metadata {self.metadata!r} for the request."
+        self.context.logger.info(msg)
 
     def _send_metadata_to_ipfs(
         self,

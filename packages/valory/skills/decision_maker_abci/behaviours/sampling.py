@@ -64,11 +64,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def _sample(self) -> Tuple[Optional[str], Optional[int]]:
         """Sample a bet and return the bets, serialized, with the sampled bet marked as processed, and its index."""
-        bets = idx = None
         available_bets = list(self.available_bets)
-        if len(available_bets) > 0:
-            idx = self._sampled_bet_idx(available_bets)
-            bets = self._set_processed(idx)
+
+        if len(available_bets) == 0:
+            msg = "There were no unprocessed bets available to sample from!"
+            self.context.logger.warning(msg)
+            return None, None
+
+        idx = self._sampled_bet_idx(available_bets)
+        bets = self._set_processed(idx)
+        msg = f"Sampled bet: {self.synchronized_data.bets[idx]}"
+        self.context.logger.info(msg)
         return bets, idx
 
     def async_act(self) -> Generator:
