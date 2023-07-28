@@ -284,6 +284,14 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
+        self.context.logger.info(
+            "Preparing a mutlisig transaction to place a bet for "
+            f"{self.synchronized_data.sampled_bet.get_outcome(self.outcome_index)!r}, "
+            f"with confidence {self.synchronized_data.confidence!r}, "
+            f"for the amount of {self.investment_amount!r}, which is equal to the amount of "
+            f"{self.buy_amount!r} of the corresponding conditional token."
+        )
+
         return hash_payload_to_hex(
             self.safe_tx_hash,
             _ETHER_VALUE,

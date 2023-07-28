@@ -95,6 +95,8 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         if self._fetch_status != FetchStatus.SUCCESS:
             self.bets = []
 
+        self.context.logger.info(f"Updated bets: {self.bets}")
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
