@@ -142,6 +142,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_response_hash(self) -> WaitableConditionType:
         """Get the hash of the response data."""
+        self.context.logger.info(
+            f"Filtering the mech's events from block {self.from_block} "
+            f"for a response to our request with id {self.request_id!r}."
+        )
         result = yield from self._mech_contract_interact(
             contract_callable="get_response",
             data_key="data",
@@ -159,7 +163,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self,
         res: Optional[str],
     ) -> Optional[Any]:
-        """Handle a response from a subgraph.
+        """Handle the response from the IPFS.
 
         :param res: the response to handle.
         :return: the response's result, using the given keys. `None` if response is `None` (has failed).
