@@ -53,7 +53,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
     def is_frozen_bet(self, bet: Bet) -> bool:
         """Return if a bet should not be updated."""
         return (
-            bet.blacklist_expiration < self.synced_time
+            bet.blacklist_expiration > self.synced_time
             and bet.status == BetStatus.BLACKLISTED
         ) or bet.status == BetStatus.PROCESSED
 
