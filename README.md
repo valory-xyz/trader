@@ -4,7 +4,7 @@ Trader is an autonomous service that performs **bets on existing prediction mark
 
 1. Retrieve information on existing prediction markets (for example, markets created by a given address).
 2. Select one of these markets for betting.
-3. Send a request to an [AI Mech](https://github.com/valory-xyz/mech) to estimate the probability of the the event referenced by the prediction market question, and what confidence the AI Mech has on that prediction.
+3. Send a request to an [AI Mech](https://github.com/valory-xyz/mech) to estimate the probability of the event referenced by the prediction market question, and what confidence the AI Mech has on that prediction.
     - The service will typically bet higher amounts for higher confidence predictions coming from the AI Mech.
     - These parameters are configurable (see below).
 4. If the response from the [AI Mech](https://github.com/valory-xyz/mech) meets certain criteria indicating profitability, the service will place a bet on that market. The betting amount can be adjusted based on the confidence level provided by the AI Mech.
