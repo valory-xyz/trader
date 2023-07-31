@@ -50,8 +50,7 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
-# hardcoded to 0 because we don't need to send any ETH when betting
-_ETHER_VALUE = 0
+WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
 class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
@@ -62,7 +61,8 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the bet placement behaviour."""
         super().__init__(**kwargs)
-        self.balance = 0
+        self.token_balance = 0
+        self.wallet_balance = 0
         self.buy_amount = 0
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
@@ -84,9 +84,9 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         return self.params.get_bet_amount(self.synchronized_data.confidence)
 
     @property
-    def sufficient_balance(self) -> int:
-        """Get whether the balance is sufficient for the investment amount of the bet."""
-        return self.balance >= self.investment_amount
+    def w_xdai_deficit(self) -> int:
+        """Get the amount of missing wxDAI fo placing the bet."""
+        return self.investment_amount - self.token_balance
 
     @property
     def outcome_index(self) -> int:
@@ -97,6 +97,11 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def multi_send_txs(self) -> List[dict]:
         """Get the multisend transactions as a list of dictionaries."""
         return [dataclasses.asdict(batch) for batch in self.multisend_batches]
+
+    @property
+    def txs_value(self) -> int:
+        """Get the total value of the transactions."""
+        return sum(batch.value for batch in self.multisend_batches)
 
     def _check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
@@ -113,14 +118,42 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             )
             return False
 
-        balance = response_msg.raw_transaction.body.get("balance", None)
-        if balance is None:
+        token = response_msg.raw_transaction.body.get("token", None)
+        wallet = response_msg.raw_transaction.body.get("wallet", None)
+        if token is None or wallet is None:
             self.context.logger.error(
                 f"Something went wrong while trying to get the balance of the safe: {response_msg}"
             )
             return False
 
-        self.balance = int(balance)
+        self.token_balance = int(token)
+        self.wallet_balance = int(wallet)
+        return True
+
+    def _build_exchange_tx(self) -> WaitableConditionType:
+        """Exchange xDAI to wxDAI."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=WXDAI,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_deposit_tx",
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
+            return False
+
+        approval_data = response_msg.state.body.get("data")
+        if approval_data is None:
+            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=self.collateral_token,
+            data=HexBytes(approval_data),
+            value=self.w_xdai_deficit,
+        )
+        self.multisend_batches.append(batch)
         return True
 
     def _build_approval_tx(self) -> WaitableConditionType:
@@ -247,7 +280,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             contract_id=str(GnosisSafeContract.contract_id),
             contract_callable="get_raw_safe_transaction_hash",
             to_address=self.params.multisend_address,
-            value=_ETHER_VALUE,
+            value=self.txs_value,
             data=self.multisend_data,
             safe_tx_gas=SAFE_GAS,
             operation=SafeOperation.DELEGATE_CALL.value,
@@ -294,7 +327,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
         return hash_payload_to_hex(
             self.safe_tx_hash,
-            _ETHER_VALUE,
+            self.txs_value,
             SAFE_GAS,
             self.params.multisend_address,
             self.multisend_data,
@@ -306,9 +339,19 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self._check_balance)
             tx_submitter = betting_tx_hex = None
-            if self.sufficient_balance:
+
+            can_exchange = (
+                self.collateral_token == WXDAI
+                # no need to take fees into consideration because it is the safe's balance and the agents pay the fees
+                and self.wallet_balance >= self.w_xdai_deficit
+            )
+            if self.token_balance < self.investment_amount and can_exchange:
+                yield from self.wait_for_condition_with_sleep(self._build_exchange_tx)
+
+            if self.token_balance >= self.investment_amount or can_exchange:
                 tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
+
             agent = self.context.agent_address
             payload = MultisigTxPayload(agent, tx_submitter, betting_tx_hex)
 

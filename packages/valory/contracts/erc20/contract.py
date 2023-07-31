@@ -45,8 +45,20 @@ class ERC20(Contract):
         """Check the balance of the given account."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         balance_of = getattr(contract_instance.functions, "balanceOf")
-        balance = balance_of(account).call()
-        return dict(balance=balance)
+        token_balance = balance_of(account).call()
+        wallet_balance = ledger_api.api.eth.get_balance(account)
+        return dict(token=token_balance, wallet=wallet_balance)
+
+    @classmethod
+    def build_deposit_tx(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+    ) -> Dict[str, bytes]:
+        """Build a deposit transaction."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        data = contract_instance.encodeABI("deposit")
+        return {"data": bytes.fromhex(data[2:])}
 
     @classmethod
     def build_approval_tx(

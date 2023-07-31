@@ -10,7 +10,7 @@ fingerprint:
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
   behaviours/base.py: bafybeig2zoyowdeqg44kyxdc5tzdiczzpkzpbchq6f2nwjqertfvmi6xvy
-  behaviours/bet_placement.py: bafybeicqccffm7cuex5xofzu5cn2ink6s4kxjvvf45vvjyllgv55nwkmna
+  behaviours/bet_placement.py: bafybeigius6g2k2foyttxihbna2xpffeziige6273udsvam24bfcgcspfa
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
   behaviours/decision_receive.py: bafybeigjct7st66x7n3go5vdp62wtdxgmgw233hyyvd3a63ly4x3ptdqbq
   behaviours/decision_request.py: bafybeidsvohdt2fxonh5qmctftjj5wfaa5z3ommr2yie6e7bhcml6xueuu
@@ -35,7 +35,7 @@ connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeic3ajabs7sl6qgkzy452szlsdeitj746kdzfd7k4m4ixtxw4g33qi
 - valory/market_maker:0.1.0:bafybeig3b2wfngntdypnixi2gphuqz3o6w7zba2rq6n6kepwdmth2mx3ni
-- valory/erc20:0.1.0:bafybeict775c7iytqbhiv2tq6pdwtpyzr3p2wls3duvmrl3acee7pietwy
+- valory/erc20:0.1.0:bafybeid4dnlzxpvb7sbgo2bnnffzwk5scelytshworzbfyxce6ibdyk67i
 - valory/multisend:0.1.0:bafybeict2k3vf3c4fvzosaq5kku2ivtzsskbomrujmmoicut7eg52onnje
 - valory/mech:0.1.0:bafybeib3syh35usqjtqapqjjvobnkcxllkpjbxcb67g3vp3f566qsbhqgq
 protocols:
