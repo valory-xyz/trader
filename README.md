@@ -73,7 +73,7 @@ represented on-chain in the [Autonolas Protocol](https://docs.autonolas.network/
     3. This is the last step. A transaction for the Safe deployment is already prepared and needs to be executed.
 5. After completing the process you should see that your service is **Deployed**, and you will be able to retrieve your **Safe contract address** as shown in the image below:
 
-<img src="/img/safe_address_screenshot.png" alt="Safe address field]" width="500"/>
+<img src="/img/safe_address_screenshot.png" alt="Safe address field" width="500"/>
 
 
 **You need to provide some funds (XDAI) both to your agent address and to the Safe address in order to place bets on prediction markets.**
