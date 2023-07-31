@@ -1,17 +1,17 @@
 ## Trader service
 
-Trader is an autonomous service that performs **bets on existing prediction markets**. The service interacts with an [AI Mech](https://github.com/valory-xyz/mech) (a service that executes AI tasks), and it roughly works as follows:
+Trader is an autonomous service that performs **bets on existing prediction markets**. The service interacts with an [AI Mech](https://github.com/valory-xyz/mech) (a service that executes AI tasks), and its workflow is as follows:
 
 1. Retrieve information on existing prediction markets (for example, markets created by a given address).
 2. Select one of these markets for betting.
 3. Send a request to an [AI Mech](https://github.com/valory-xyz/mech) to estimate the probability of the event referenced by the prediction market question, and what confidence the AI Mech has on that prediction.
     - The service will typically bet higher amounts for higher confidence predictions coming from the AI Mech.
-    - These parameters are configurable (see below).
+    - These parameters are configurable.
 4. If the response from the [AI Mech](https://github.com/valory-xyz/mech) meets certain criteria indicating profitability, the service will place a bet on that market. The betting amount can be adjusted based on the confidence level provided by the AI Mech.
 5. In case the bet is deemed unprofitable, the market will be blacklisted for a configurable duration.
 6. Repeat these steps continuously.
 
-The Trader service is an [agent service](https://docs.autonolas.network/open-autonomy/get_started/what_is_an_agent_service/) based on the [Open Autonomy framework](https://docs.autonolas.network/open-autonomy/). Below we show you how to prepare your environment, how to prepare the agent keys, and how to configure and run the service.
+The Trader service is an [agent service](https://docs.autonolas.network/open-autonomy/get_started/what_is_an_agent_service/) (or autonomous service) based on the [Open Autonomy framework](https://docs.autonolas.network/open-autonomy/). Below we show you how to prepare your environment, how to prepare the agent keys, and how to configure and run the service.
 
 ## Prepare the environment
 
@@ -73,7 +73,8 @@ represented on-chain in the [Autonolas Protocol](https://docs.autonolas.network/
     3. This is the last step. A transaction for the Safe deployment is already prepared and needs to be executed.
 5. After completing the process you should see that your service is **Deployed**, and you will be able to retrieve your **Safe contract address** as shown in the image below:
 
-![Safe address field](/img/safe_address_screenshot.png)
+<img src="/img/safe_address_screenshot.png" alt="Safe address field]" width="500"/>
+
 
 **You need to provide some funds (XDAI) both to your agent address and to the Safe address in order to place bets on prediction markets.**
 
