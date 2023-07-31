@@ -50,8 +50,6 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
-# hardcoded to 0 because we don't need to send any ETH when betting
-_ETHER_VALUE = 0
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
@@ -99,6 +97,11 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def multi_send_txs(self) -> List[dict]:
         """Get the multisend transactions as a list of dictionaries."""
         return [dataclasses.asdict(batch) for batch in self.multisend_batches]
+
+    @property
+    def txs_value(self) -> int:
+        """Get the total value of the transactions."""
+        return sum(batch.value for batch in self.multisend_batches)
 
     def _check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
@@ -277,7 +280,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             contract_id=str(GnosisSafeContract.contract_id),
             contract_callable="get_raw_safe_transaction_hash",
             to_address=self.params.multisend_address,
-            value=_ETHER_VALUE,
+            value=self.txs_value,
             data=self.multisend_data,
             safe_tx_gas=SAFE_GAS,
             operation=SafeOperation.DELEGATE_CALL.value,
@@ -324,7 +327,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
         return hash_payload_to_hex(
             self.safe_tx_hash,
-            _ETHER_VALUE,
+            self.txs_value,
             SAFE_GAS,
             self.params.multisend_address,
             self.multisend_data,
