@@ -50,6 +50,17 @@ class ERC20(Contract):
         return dict(token=token_balance, wallet=wallet_balance)
 
     @classmethod
+    def build_deposit_tx(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+    ) -> Dict[str, bytes]:
+        """Build a deposit transaction."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        data = contract_instance.encodeABI("deposit")
+        return {"data": bytes.fromhex(data[2:])}
+
+    @classmethod
     def build_approval_tx(
         cls,
         ledger_api: LedgerApi,
