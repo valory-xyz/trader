@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiacwr7p4nhhufoey7uz2jqkegrlykdrmc7mm3rzkvh2mslu66gyle
 - valory/termination_abci:0.1.0:bafybeifqsogqiar4yook5bu3j6z66dbdcizey7dr3e5oxeocdjijvfbaja
 - valory/market_manager_abci:0.1.0:bafybeids5us4cnfu2zboxfjjkyihxk2i4qmctwzbnrsk2uizzjl2gbjj4m
-- valory/decision_maker_abci:0.1.0:bafybeigo76utrglsm234zwlnktj2qoi66oyvnoh2ams2ltheccatzn6ow4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieby37xdqlqotwl3cdfvk4i4ng2uhaxmmhuopjylrqufbfkj54iem
+- valory/decision_maker_abci:0.1.0:bafybeidwexscouadfvf7qqe37bknjwoj7w54aefwomu54ht2myvgjraes4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig6avhzw2x5tacq7jyxgnpoz6k6s62clgsexlp55y6qdwietcfgqi
 behaviours:
   main:
     args: {}
