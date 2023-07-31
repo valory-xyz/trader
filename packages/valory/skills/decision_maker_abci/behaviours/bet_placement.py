@@ -52,6 +52,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LE
 
 # hardcoded to 0 because we don't need to send any ETH when betting
 _ETHER_VALUE = 0
+WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
 class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
@@ -85,9 +86,9 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         return self.params.get_bet_amount(self.synchronized_data.confidence)
 
     @property
-    def sufficient_balance(self) -> int:
-        """Get whether the balance is sufficient for the investment amount of the bet."""
-        return self.balance >= self.investment_amount
+    def w_xdai_deficit(self) -> int:
+        """Get the amount of missing wxDAI fo placing the bet."""
+        return self.investment_amount - self.token_balance
 
     @property
     def outcome_index(self) -> int:
@@ -124,6 +125,32 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
         self.token_balance = int(token)
         self.wallet_balance = int(wallet)
+        return True
+
+    def _build_exchange_tx(self) -> WaitableConditionType:
+        """Exchange xDAI to wxDAI."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=WXDAI,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_deposit_tx",
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
+            return False
+
+        approval_data = response_msg.state.body.get("data")
+        if approval_data is None:
+            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=self.collateral_token,
+            data=HexBytes(approval_data),
+            value=self.w_xdai_deficit,
+        )
+        self.multisend_batches.append(batch)
         return True
 
     def _build_approval_tx(self) -> WaitableConditionType:
@@ -309,9 +336,19 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self._check_balance)
             tx_submitter = betting_tx_hex = None
-            if self.sufficient_balance:
+
+            can_exchange = (
+                self.collateral_token == WXDAI
+                # no need to take fees into consideration because it is the safe's balance and the agents pay the fees
+                and self.wallet_balance >= self.w_xdai_deficit
+            )
+            if self.token_balance < self.investment_amount and can_exchange:
+                yield from self.wait_for_condition_with_sleep(self._build_exchange_tx)
+
+            if self.token_balance >= self.investment_amount or can_exchange:
                 tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
+
             agent = self.context.agent_address
             payload = MultisigTxPayload(agent, tx_submitter, betting_tx_hex)
 
