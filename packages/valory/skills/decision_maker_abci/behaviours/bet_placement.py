@@ -62,7 +62,8 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the bet placement behaviour."""
         super().__init__(**kwargs)
-        self.balance = 0
+        self.token_balance = 0
+        self.wallet_balance = 0
         self.buy_amount = 0
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
@@ -113,14 +114,16 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             )
             return False
 
-        balance = response_msg.raw_transaction.body.get("balance", None)
-        if balance is None:
+        token = response_msg.raw_transaction.body.get("token", None)
+        wallet = response_msg.raw_transaction.body.get("wallet", None)
+        if token is None or wallet is None:
             self.context.logger.error(
                 f"Something went wrong while trying to get the balance of the safe: {response_msg}"
             )
             return False
 
-        self.balance = int(balance)
+        self.token_balance = int(token)
+        self.wallet_balance = int(wallet)
         return True
 
     def _build_approval_tx(self) -> WaitableConditionType:
