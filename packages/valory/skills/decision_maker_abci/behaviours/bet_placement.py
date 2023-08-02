@@ -74,6 +74,11 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         return self.synchronized_data.sampled_bet.collateralToken
 
     @property
+    def is_wxdai(self) -> bool:
+        """Get whether the collateral address is wxDAI."""
+        return self.collateral_token.lower() == WXDAI.lower()
+
+    @property
     def market_maker_contract_address(self) -> str:
         """Get the contract address of the market maker on which the service is going to place the bet."""
         return self.synchronized_data.sampled_bet.id
@@ -341,7 +346,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             tx_submitter = betting_tx_hex = None
 
             can_exchange = (
-                self.collateral_token == WXDAI
+                self.is_wxdai
                 # no need to take fees into consideration because it is the safe's balance and the agents pay the fees
                 and self.wallet_balance >= self.w_xdai_deficit
             )
