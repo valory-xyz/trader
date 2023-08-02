@@ -53,6 +53,11 @@ from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LE
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
+def wei_to_native(wei: int) -> float:
+    """Convert WEI to native token."""
+    return wei / 10**18
+
+
 class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
@@ -108,6 +113,14 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         """Get the total value of the transactions."""
         return sum(batch.value for batch in self.multisend_batches)
 
+    def _collateral_amount_info(self, amount: int) -> str:
+        """Get a description of the collateral token's amount."""
+        return (
+            f"{wei_to_native(amount)} wxDAI"
+            if self.is_wxdai
+            else f"{amount} WEI of the collateral token with address {self.collateral_token}"
+        )
+
     def _check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
         response_msg = yield from self.get_contract_api_response(
@@ -133,6 +146,10 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
         self.token_balance = int(token)
         self.wallet_balance = int(wallet)
+
+        native = wei_to_native(self.wallet_balance)
+        collateral = self._collateral_amount_info(self.token_balance)
+        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
     def _build_exchange_tx(self) -> WaitableConditionType:
@@ -322,12 +339,12 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
+        outcome = self.synchronized_data.sampled_bet.get_outcome(self.outcome_index)
+        investment = self._collateral_amount_info(self.investment_amount)
         self.context.logger.info(
-            "Preparing a mutlisig transaction to place a bet for "
-            f"{self.synchronized_data.sampled_bet.get_outcome(self.outcome_index)!r}, "
-            f"with confidence {self.synchronized_data.confidence!r}, "
-            f"for the amount of {self.investment_amount!r}, which is equal to the amount of "
-            f"{self.buy_amount!r} of the corresponding conditional token."
+            f"Preparing a mutlisig transaction to place a bet for {outcome!r}, with confidence "
+            f"{self.synchronized_data.confidence!r}, for the amount of {investment}, which is equal to the amount of "
+            f"{self.buy_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )
 
         return hash_payload_to_hex(
