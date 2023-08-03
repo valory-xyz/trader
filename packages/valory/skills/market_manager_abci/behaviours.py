@@ -88,7 +88,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
                 bets_updates = (
                     Bet(**bet, market=self._current_market)
                     for bet in bets_market_chunk
-                    if bet["id"] not in existing_ids and bet["outcomes"] is not None
+                    if bet.get("id", "") not in existing_ids
                 )
                 self.bets.extend(bets_updates)
 
