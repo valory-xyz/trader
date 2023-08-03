@@ -51,8 +51,8 @@ class Bet:
     fee: int
     openingTimestamp: int
     outcomeSlotCount: int
-    outcomeTokenAmounts: List[int]
-    outcomeTokenMarginalPrices: List[float]
+    outcomeTokenAmounts: Optional[List[int]]
+    outcomeTokenMarginalPrices: Optional[List[float]]
     outcomes: Optional[List[str]]
     usdLiquidityMeasure: float
     status: BetStatus = BetStatus.UNPROCESSED
@@ -60,16 +60,51 @@ class Bet:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        if (
-            self.outcomes is None
-            or self.outcomes == "null"
-            or len(self.outcomes)
-            != len(self.outcomeTokenAmounts)
-            != len(self.outcomeTokenMarginalPrices)
-            != self.outcomeSlotCount
-        ):
+        self._validate()
+        self._cast()
+
+    def __lt__(self, other: "Bet") -> bool:
+        """Implements less than operator."""
+        return self.usdLiquidityMeasure < other.usdLiquidityMeasure
+
+    def _blacklist_forever(self) -> None:
+        """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
+        self.outcomes = None
+        self.status = BetStatus.BLACKLISTED
+        self.blacklist_expiration = sys.maxsize
+
+    def _validate(self) -> None:
+        """Validate the values of the instance."""
+        necessary_values = (
+            self.id,
+            self.market,
+            self.title,
+            self.collateralToken,
+            self.creator,
+            self.fee,
+            self.openingTimestamp,
+            self.outcomeSlotCount,
+            self.outcomes,
+            self.usdLiquidityMeasure,
+        )
+        nulls_exist = any(val is None or val == "null" for val in necessary_values)
+
+        outcomes_lists = (
+            self.outcomes,
+            self.outcomeTokenAmounts,
+            self.outcomeTokenMarginalPrices,
+        )
+        mismatching_outcomes = any(
+            self.outcomeSlotCount != len(outcomes)
+            for outcomes in outcomes_lists
+            if outcomes is not None
+        )
+
+        if nulls_exist or mismatching_outcomes:
             self._blacklist_forever()
 
+    def _cast(self) -> None:
+        """Cast the values of the instance."""
         if isinstance(self.status, int):
             self.status = BetStatus(self.status)
 
@@ -85,16 +120,6 @@ class Bet:
                     setattr(self, field, hinted_type(uncasted))
                 if f"{str(List)}[{type_name}]" == str(hinted_type):
                     setattr(self, field, list(type_to_cast(val) for val in uncasted))
-
-    def __lt__(self, other: "Bet") -> bool:
-        """Implements less than operator."""
-        return self.usdLiquidityMeasure < other.usdLiquidityMeasure
-
-    def _blacklist_forever(self) -> None:
-        """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
-        self.outcomes = None
-        self.status = BetStatus.BLACKLISTED
-        self.blacklist_expiration = sys.maxsize
 
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
