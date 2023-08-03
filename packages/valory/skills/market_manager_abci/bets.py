@@ -77,6 +77,9 @@ class Bet:
         str_to_type = {getattr(builtins, type_): type_ for type_ in types_to_cast}
         for field, hinted_type in self.__annotations__.items():
             uncasted = getattr(self, field)
+            if uncasted is None:
+                continue
+
             for type_to_cast, type_name in str_to_type.items():
                 if hinted_type == type_to_cast:
                     setattr(self, field, hinted_type(uncasted))
