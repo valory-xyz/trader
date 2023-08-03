@@ -23,6 +23,7 @@
 import builtins
 import dataclasses
 import json
+import sys
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Union
 
@@ -67,7 +68,7 @@ class Bet:
             != len(self.outcomeTokenMarginalPrices)
             != self.outcomeSlotCount
         ):
-            self.outcomes = None
+            self._blacklist_forever()
 
         if isinstance(self.status, int):
             self.status = BetStatus(self.status)
@@ -85,6 +86,12 @@ class Bet:
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
         return self.usdLiquidityMeasure < other.usdLiquidityMeasure
+
+    def _blacklist_forever(self) -> None:
+        """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
+        self.outcomes = None
+        self.status = BetStatus.BLACKLISTED
+        self.blacklist_expiration = sys.maxsize
 
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
