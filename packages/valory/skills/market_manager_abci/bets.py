@@ -62,6 +62,7 @@ class Bet:
         """Post initialization to adjust the values."""
         self._validate()
         self._cast()
+        self._check_usefulness()
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
@@ -120,6 +121,11 @@ class Bet:
                     setattr(self, field, hinted_type(uncasted))
                 if f"{str(List)}[{type_name}]" == str(hinted_type):
                     setattr(self, field, list(type_to_cast(val) for val in uncasted))
+
+    def _check_usefulness(self) -> None:
+        """If the bet is deemed unhelpful, then blacklist it."""
+        if self.usdLiquidityMeasure == 0:
+            self._blacklist_forever()
 
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
