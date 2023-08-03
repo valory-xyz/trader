@@ -13,10 +13,24 @@ command -v poetry >/dev/null 2>&1 ||
   exit 1
 }
 
+
+# if the key path is not set, we hard exit
+if [ -z "$MAS_KEYPATH" ]; then
+    echo "MAS_KEYPATH is not set!"
+    exit 1
+fi
+
+echo "-----------------------------"
+echo "Using keys: $MAS_KEYPATH"
+
+export AGENT_ADDRESS=$(echo -n $(cat $MAS_KEYPATH | jq '.[].address' -r))
+export private_key=$(echo -n $(cat $MAS_KEYPATH | jq '.[].private_key' -r))
+
+echo "Agent address: $AGENT_ADDRESS"
+
+
 # Prompt for agent address, safe address, private key and RPC
-[[ -z "${AGENT_ADDRESS}" ]] && read -p "Enter agent address: " AGENT_ADDRESS || AGENT_ADDRESS="${AGENT_ADDRESS}"
 [[ -z "${SAFE_CONTRACT_ADDRESS}" ]] && read -p "Enter Safe address: " SAFE_CONTRACT_ADDRESS || SAFE_CONTRACT_ADDRESS="${SAFE_CONTRACT_ADDRESS}"
-[[ -z "${private_key}" ]] && read -p "Enter agent private key: " private_key || private_key="${private_key}"
 [[ -z "${RPC_0}" ]] && read -p "Enter a Gnosis RPC that support eth_newFilter: " RPC_0 || RPC_0="${RPC_0}"
 
 # Set environment variables. Tweak these to modify your strategy
@@ -41,7 +55,7 @@ export BET_THRESHOLD=5000000000000000
 export PROMPT_TEMPLATE='With the given question "@{question}" and the `yes` option represented by `@{yes}` and the `no` option represented by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?'
 
 # This is a tested version that works well, but there is a potential issue with the xDAI to wxDAI swapping. Feel free to replace this with a different version of the service.
-service_version=0.1.0:bafybeievpm2om4fsh5duizqabun57mhntd3t5r6te2aj2p3u5bfgmeojl4
+service_version=0.1.0
 
 directory="trader/trader_service/abci_build"
 if [ -d $directory ]
@@ -49,12 +63,8 @@ then
     echo "Detected an existing build. Using this one..."
     cd $directory/..
 else
-    echo "Setting up the trader repo..."
-    git clone https://github.com/valory-xyz/trader.git
-    cd trader
-    poetry install
     # Fetch the service
-    poetry run autonomy fetch --service valory/trader:$service_version --alias trader_service
+    poetry run autonomy fetch --service eightballer/trader:$service_version --local --alias trader_service
     cd trader_service
     # Build the image
     poetry run autonomy build-image

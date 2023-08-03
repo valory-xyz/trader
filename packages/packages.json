@@ -8,7 +8,8 @@
         "service/valory/trader/0.1.0": "bafybeievpm2om4fsh5duizqabun57mhntd3t5r6te2aj2p3u5bfgmeojl4",
         "contract/valory/erc20/0.1.0": "bafybeid4dnlzxpvb7sbgo2bnnffzwk5scelytshworzbfyxce6ibdyk67i",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeig6avhzw2x5tacq7jyxgnpoz6k6s62clgsexlp55y6qdwietcfgqi",
-        "contract/valory/mech/0.1.0": "bafybeib3syh35usqjtqapqjjvobnkcxllkpjbxcb67g3vp3f566qsbhqgq"
+        "contract/valory/mech/0.1.0": "bafybeib3syh35usqjtqapqjjvobnkcxllkpjbxcb67g3vp3f566qsbhqgq",
+        "service/eightballer/trader/0.1.0": "bafybeib7mlpkp2atr2j6i5r65xje2gp6tchllfw3doarcaksu4dsepwzbu"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeifuxs7gdg2okbn7uofymenjlmnih2wxwkym44lsgwmklgwuckxm2m",
