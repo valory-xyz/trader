@@ -16,9 +16,9 @@ command -v poetry >/dev/null 2>&1 ||
 # Prompt for agent address, safe address, private key and RPC
 [[ -z "${AGENT_ADDRESS}" ]] && read -p "Enter agent address: " AGENT_ADDRESS || AGENT_ADDRESS="${AGENT_ADDRESS}"
 [[ -z "${SAFE_CONTRACT_ADDRESS}" ]] && read -p "Enter Safe address: " SAFE_CONTRACT_ADDRESS || SAFE_CONTRACT_ADDRESS="${SAFE_CONTRACT_ADDRESS}"
-[[ -z "${private_key}" ]] && read -sp "Enter agent private key: " private_key || private_key="${private_key}"
+[[ -z "${private_key}" ]] && read -sp "Enter agent private key [hidden input]: " private_key || private_key="${private_key}"
 echo
-[[ -z "${RPC_0}" ]] && read -sp "Enter a Gnosis RPC that support eth_newFilter: " RPC_0 || RPC_0="${RPC_0}"
+[[ -z "${RPC_0}" ]] && read -sp "Enter a Gnosis RPC that support eth_newFilter [hidden input]: " RPC_0 || RPC_0="${RPC_0}"
 echo
 
 # Set environment variables. Tweak these to modify your strategy
