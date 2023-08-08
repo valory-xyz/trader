@@ -45,19 +45,30 @@ export PROMPT_TEMPLATE='With the given question "@{question}" and the `yes` opti
 # This is a tested version that works well. Feel free to replace this with a different version of the service.
 service_version=0.1.0:bafybeihdl7u6a2khmvpz2iebjgmmxcyd3bpn7rv5dcdduj2wtac2eqrede
 
-directory="trader/trader_service/abci_build"
+service_dir="trader_service"
+build_dir="abci_build"
+directory="trader/$service_dir/$build_dir"
 if [ -d $directory ]
 then
-    echo "Detected an existing build. Using this one..."
-    cd $directory/..
+    echo "Detected an existing build. Using this one."
+    cd "trader/$service_dir"
+    echo "The script will use sudo permissions in order to delete part of the build artifacts."
+    sudo rm -rf $build_dir
 else
-    echo "Setting up the trader repo..."
-    git clone https://github.com/valory-xyz/trader.git
+    if ! [ -d "trader" ]; then
+        echo "Setting up the trader repo..."
+        git clone https://github.com/valory-xyz/trader.git
+    fi
     cd trader
+    echo "Setting up the trader service..."
     poetry install
-    # Fetch the service
-    poetry run autonomy fetch --service valory/trader:$service_version --alias trader_service
-    cd trader_service
+
+    if ! [ -d "$service_dir" ]; then
+        # Fetch the service
+        poetry run autonomy fetch --service valory/trader:$service_version --alias $service_dir
+    fi
+
+    cd $service_dir
     # Build the image
     poetry run autonomy build-image
     cat > keys.json << EOF
@@ -68,9 +79,9 @@ else
 }
 ]
 EOF
-    # Build the deployment with a single agent
-    poetry run autonomy deploy build --n 1 -ltm
 fi
 
+# Build the deployment with a single agent
+poetry run autonomy deploy build --n 1 -ltm
 # Run the deployment
-poetry run autonomy deploy run --build-dir abci_build/
+poetry run autonomy deploy run --build-dir $build_dir
