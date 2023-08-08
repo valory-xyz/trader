@@ -201,8 +201,12 @@ then
     sudo rm -rf $build_dir
 else
     echo "Setting up the service..."
-    # Fetch the service
-    poetry run autonomy fetch --service valory/trader --local --alias $service_dir
+
+    if ! [ -d "$service_dir" ]; then
+        # Fetch the service
+        poetry run autonomy fetch --service valory/trader:$service_version --alias $service_dir
+    fi
+
     cd $service_dir
     # Build the image
     poetry run autonomy build-image
