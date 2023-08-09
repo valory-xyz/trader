@@ -121,7 +121,9 @@ service_id=$(poetry run autonomy mint \
   --threshold 1 \
   -c 10000000000000000
   )
-# check output
+# parse only the id from the response
+service_id="${service_id##*: }"
+# validate id
 if ! [[ "$service_id" =~ ^[0-9]+$ || "$service_id" =~ ^[-][0-9]+$ ]]
 then
     echo "Service minting failed: $service_id"
