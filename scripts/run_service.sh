@@ -128,6 +128,7 @@ service_id="${service_id##*: }"
 if ! [[ "$service_id" =~ ^[0-9]+$ || "$service_id" =~ ^[-][0-9]+$ ]]
 then
     echo "Service minting failed: $service_id"
+    exit 1
 fi
 
 # activate service
