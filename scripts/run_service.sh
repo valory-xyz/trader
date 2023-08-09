@@ -244,7 +244,7 @@ else
 
     if ! [ -d "$service_dir" ]; then
         # Fetch the service
-        poetry run autonomy fetch --service valory/trader:$service_version --alias $service_dir
+        poetry run autonomy fetch --local --service valory/trader --alias $service_dir
     fi
 
     cd $service_dir
