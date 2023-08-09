@@ -257,7 +257,7 @@ else
     cd $service_dir
     # Build the image
     poetry run autonomy build-image
-    mv ../../$keys_json $keys_json
+    mv ../$keys_json $keys_json
 fi
 
 # Build the deployment with a single agent
