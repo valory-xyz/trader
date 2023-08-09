@@ -187,14 +187,14 @@ else
     echo "$deployment"
 fi
 
-echo "Checking safe's balance..."
-
 # get the deployed service's safe address from the contract
 safe=$(echo "$service_info" | grep "Multisig Address")
 address_start_position=31
 safe=$(echo "$safe" |
   awk '{ print substr( $0, '$address_start_position', length($0) - '$address_start_position' - 3 ) }')
 export SAFE_CONTRACT_ADDRESS=$safe
+
+echo "Your safe's address: $safe"
 
 # Check the safe's balance
 safe_balance=$(curl -s -S -X POST \
