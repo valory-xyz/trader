@@ -132,11 +132,31 @@ then
 fi
 
 # activate service
-poetry run autonomy service --use-custom-chain activate --key "$operator_pkey_file" "$service_id"
+activation=$(poetry run autonomy service --use-custom-chain activate --key "$operator_pkey_file" "$service_id")
+# validate activation
+if ! [[ "$activation" = "Service activated succesfully" ]]
+then
+    echo "Service activation failed: $activation"
+    exit 1
+fi
+
 # register service
-poetry run autonomy service --use-custom-chain register --key "$operator_pkey_file" "$service_id" -a $agent_id -i "$agent_address"
+registration=$(poetry run autonomy service --use-custom-chain register --key "$operator_pkey_file" "$service_id" -a $agent_id -i "$agent_address")
+# validate registration
+if ! [[ "$registration" = "Agent instance registered succesfully" ]]
+then
+    echo "Service registration failed: $registration"
+    exit 1
+fi
+
 # deploy service
-poetry run autonomy service --use-custom-chain deploy --key "$operator_pkey_file" "$service_id"
+deployment=$(poetry run autonomy service --use-custom-chain deploy --key "$operator_pkey_file" "$service_id")
+# validate deployment
+if ! [[ "$deployment" = "Service deployed succesfully" ]]
+then
+    echo "Service deployment failed: $deployment"
+    exit 1
+fi
 
 # delete the operator's pkey file
 rm $operator_pkey_file
