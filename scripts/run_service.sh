@@ -177,9 +177,9 @@ fi
 
 # get the deployed service's safe address from the contract
 safe=$(echo "$service_info" | grep "Multisig Address")
-address_start_position=22
+address_start_position=31
 safe=$(echo "$safe" |
-  awk '{ print substr( $0, '$address_start_position', length($0) - '$address_start_position' - 1 ) }')
+  awk '{ print substr( $0, '$address_start_position', length($0) - '$address_start_position' - 3 ) }')
 export SAFE_CONTRACT_ADDRESS=$safe
 
 # Check the safe's balance
