@@ -234,9 +234,7 @@ export BET_AMOUNT_PER_THRESHOLD_080=60000000000000000
 export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
 export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
 export BET_THRESHOLD=5000000000000000
-export PROMPT_TEMPLATE="With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\`
-and the \`no\` option represented by \`@{no}\`,
-what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
+export PROMPT_TEMPLATE="With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\` and the \`no\` option represented by \`@{no}\`, what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
 
 service_dir="trader_service"
 build_dir="abci_build"
