@@ -13,6 +13,13 @@ command -v poetry >/dev/null 2>&1 ||
   exit 1
 }
 
+command -v docker >/dev/null 2>&1 ||
+{ echo >&2 "Docker is not installed!";
+  exit 1
+}
+
+docker rm -f abci0 node0 trader_abci_0 trader_tm_0 &> /dev/null
+
 # Prompt for RPC
 [[ -z "${RPC_0}" ]] && read -rsp "Enter a Gnosis RPC that supports eth_newFilter [hidden input]: " RPC_0 || RPC_0="${RPC_0}"
 echo
