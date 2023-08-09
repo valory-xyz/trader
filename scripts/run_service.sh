@@ -133,6 +133,7 @@ then
     exit 1
 fi
 
+echo "Activating your service with id $service_id..."
 # activate service
 activation=$(poetry run autonomy service --use-custom-chain activate --key "$operator_pkey_file" "$service_id")
 # validate activation
@@ -142,6 +143,7 @@ then
     exit 1
 fi
 
+echo "Registering your service with id $service_id..."
 # register service
 registration=$(poetry run autonomy service --use-custom-chain register --key "$operator_pkey_file" "$service_id" -a $agent_id -i "$agent_address")
 # validate registration
@@ -151,6 +153,7 @@ then
     exit 1
 fi
 
+echo "Deploying your service with id $service_id..."
 # deploy service
 deployment=$(poetry run autonomy service --use-custom-chain deploy --key "$operator_pkey_file" "$service_id")
 # validate deployment
@@ -173,7 +176,11 @@ then
     echo "$service_state"
     echo "Please check the output of the script for more information."
     exit 1
+else
+    echo "$deployment"
 fi
+
+echo "Checking safe's balance..."
 
 # get the deployed service's safe address from the contract
 safe=$(echo "$service_info" | grep "Multisig Address")
