@@ -18,7 +18,7 @@ command -v docker >/dev/null 2>&1 ||
   exit 1
 }
 
-docker rm -f abci0 node0 trader_abci_0 trader_tm_0
+docker rm -f abci0 node0 trader_abci_0 trader_tm_0 &> /dev/null
 
 # Prompt for agent address, safe address, private key and RPC
 [[ -z "${AGENT_ADDRESS}" ]] && read -p "Enter agent address: " AGENT_ADDRESS || AGENT_ADDRESS="${AGENT_ADDRESS}"
