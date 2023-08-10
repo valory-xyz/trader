@@ -2,6 +2,13 @@
 
 set -e  # Exit script on first error
 
+# Check if user is inside a venv
+if [[ "$VIRTUAL_ENV" != "" ]]
+then
+    echo "Please exit the virtual environment!"
+    exit 1
+fi
+
 # Check dependencies
 command -v git >/dev/null 2>&1 ||
 { echo >&2 "Git is not installed!";
