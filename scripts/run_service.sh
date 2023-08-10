@@ -149,7 +149,7 @@ then
         echo "Both of the addresses need to be funded to cover gas costs."
         echo "Please fund them with at least 0.05 xDAI each to continue."
         echo "Checking again in 10s..."
-        sleep 10s
+        sleep 10
         agent_balance=$(curl -s -S -X POST \
           -H "Content-Type: application/json" \
           --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["'"$agent_address"'","latest"],"id":1}' "$rpc" | \
@@ -265,7 +265,7 @@ do
     echo "The safe address needs to be funded."
     echo "Please fund it with the amount you want to use for trading (at least 0.5 xDAI) to continue."
     echo "Checking again in 10s..."
-    sleep 10s
+    sleep 10
 done
 
 # Set environment variables. Tweak these to modify your strategy
