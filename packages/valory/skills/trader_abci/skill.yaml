@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiaqm5cdrhdiavrcuop35dndttz2cgmt2emcs274l6swobfla2a3li
-  composition.py: bafybeibswfjor3yoaiy4w4pkr54cskuoizi4u2hd22drjp3qayxv5t7dwa
+  composition.py: bafybeihfwptqgt74i3c7ojaeztchyk765xzyualdtedtvsdczuswwwzu5e
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeibtyxaijr7t6v26z66wkknltauu3vgjhrr5zm7gzlbhflymktcz2e
+  fsm_specification.yaml: bafybeidwwcaupfdfo6pte4nwk4ghsqihnlvwrwu7rydvnay65t6t4xzhr4
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
   models.py: bafybeid4lhamqwhe2mxizjftdz3wspinrdzb5sor3iwo7pltixmojwrx6y
 fingerprint_ignore_patterns: []

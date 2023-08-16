@@ -33,6 +33,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
+    RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -76,6 +77,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMarketManagerRound: SamplingRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: RandomnessTransactionSubmissionRound,
+    RefillRequiredRound: ResetAndPauseRound,
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
     FailedTransactionSubmissionRound: BlacklistingRound,
     FinishedDecisionRequestTxRound: DecisionReceiveRound,

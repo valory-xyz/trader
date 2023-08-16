@@ -28,7 +28,6 @@ default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
 - ImpossibleRound
-- RefillRequiredRound
 label: TraderAbciApp
 start_states:
 - RegistrationRound
@@ -46,7 +45,6 @@ states:
 - ImpossibleRound
 - PostTxSettlementRound
 - RandomnessTransactionSubmissionRound
-- RefillRequiredRound
 - RegistrationRound
 - RegistrationStartupRound
 - ResetAndPauseRound
@@ -60,7 +58,7 @@ states:
 - ValidateTransactionRound
 transition_func:
     (BetPlacementRound, DONE): RandomnessTransactionSubmissionRound
-    (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
+    (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound

@@ -32,16 +32,16 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeigsvceac33asd6ecbqev34meyyjwu3rangenv6xp5rkxyz4krvcby
 - valory/tendermint:0.1.0:bafybeidjqmwvgi4rqgp65tbkhmi45fwn2odr5ecezw6q47hwitsgyw4jpa
 skills:
-- valory/abstract_abci:0.1.0:bafybeibcemiz3qxoordadxwkxkjp7g7rerbfwap6wqxiepcms22ocb3v7i
-- valory/abstract_round_abci:0.1.0:bafybeicyy4g3x6ol6x2ayzcdkg2wstubqecp6ycgo6f2c2bhjnhwdjs3qa
-- valory/registration_abci:0.1.0:bafybeigexg5mw5sh35qkhlaeegycgtkd2ym5o4marjc5o7gl7t352hohiu
-- valory/reset_pause_abci:0.1.0:bafybeigabcdz5en52zuxzxa6a4p5c7z4qyi3fcfp7lodqusjh32z5obcqy
-- valory/termination_abci:0.1.0:bafybeies2zrbcsajnsgjq2ljr352gzvjsvkoycu65tuj5avnxlgjqlevci
-- valory/transaction_settlement_abci:0.1.0:bafybeic7vatd3um6en3fqdxpbdsdq4n2zdqf3c4m5cs2r73ag5pbgdohoe
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicqxiddvcl56vaunqk6r5w2dgzt6akakwkbde6qhuxgkzoim6bkqe
-- valory/market_manager_abci:0.1.0:bafybeiaytludbsgrk4pf3ugxnbq34af2ilungin2pttr2cos4pgjzsv67u
-- valory/decision_maker_abci:0.1.0:bafybeidv7td6ondrgbri62byg6ru7os63p4n62tmmhsbrcvca3gl2c5g6a
-- valory/trader_abci:0.1.0:bafybeign3v2g7iv2pcscg5lbsrnqughyhewx3tsvdc6rrykgvr5ncfdule
+- valory/abstract_abci:0.1.0:bafybeihj6mz6wpamylo44b2ow4pgodfzufablksntfz7vshyx4eu6e52wi
+- valory/abstract_round_abci:0.1.0:bafybeia7meaha7vnyf4rxyzvcuvdbv4qj2kv5gr44zmiua5mc6uono3ahy
+- valory/registration_abci:0.1.0:bafybeiejvpurwbmuya5egtpur6tc3eyqrplhw2b2d3vl3qnhpxljbcxpsa
+- valory/reset_pause_abci:0.1.0:bafybeif37obaocjidjucueenfjv5j3vnfk5atn2o3ba5m6gpbo44mbecie
+- valory/termination_abci:0.1.0:bafybeigw26jiilc7acvuianzprzxo4vomhvarkwbtkd6sh7mczzsxlpe2e
+- valory/transaction_settlement_abci:0.1.0:bafybeiejtandjclzbafnpubqi7ii47k2lo3vbqcvqx433mjqgi757warv4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihsv7khyk2naol6jnxm4g5asqona5pleugxpkcl4ndmkw2udm3qty
+- valory/market_manager_abci:0.1.0:bafybeigwpyxlr4ghhwn5zoqsffao2y53pimz3aqynbl2aqmuzymqitouxi
+- valory/decision_maker_abci:0.1.0:bafybeibbtsy7akfyfy6sofivtf6ltdzbwst4uwaov2bpbykhkbow73t3tq
+- valory/trader_abci:0.1.0:bafybeicp36leaudfv4kpkr26zriqwyrmy44o2sodsc5q4hkq2ray63kq7y
 default_ledger: ethereum
 required_ledgers:
 - ethereum
