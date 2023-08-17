@@ -76,7 +76,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 8.
         2. DecisionReceiveRound
             - done: 4.
-            - mech response error: 3.
+            - mech response error: 2.
             - no majority: 2.
             - tie: 3.
             - unprofitable: 3.
