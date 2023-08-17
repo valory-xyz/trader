@@ -27,8 +27,8 @@ from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from aea_ledger_ethereum import EthereumApi
 
-PUBLIC_ID = PublicId.from_str("valory/erc20:0.1.0")
 
+PUBLIC_ID = PublicId.from_str("valory/erc20:0.1.0")
 
 class ERC20(Contract):
     """The ERC20 contract."""
@@ -70,6 +70,6 @@ class ERC20(Contract):
     ) -> Dict[str, bytes]:
         """Build an ERC20 approval."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        checksumed_spender = ledger_api.api.toChecksumAddress(spender)
+        checksumed_spender = ledger_api.api.to_checksum_address(spender)
         data = contract_instance.encodeABI("approve", args=(checksumed_spender, amount))
         return {"data": bytes.fromhex(data[2:])}

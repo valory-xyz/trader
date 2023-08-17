@@ -35,9 +35,9 @@ connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeigaeon5qhgdwhduw4wtjt7x7o3hpz62aifr5a7522ynll3nps3qnm
 - valory/market_maker:0.1.0:bafybeic3ar4fw4dy36l7w2satfiznlmnns3a3sgyrn7yuyyhoe5qnka4d4
-- valory/erc20:0.1.0:bafybeiep7lqmnic46mxyj7uabliwffdywcfbju2ltyjmapx67tbbjjj57a
+- valory/erc20:0.1.0:bafybeib6bpjgzulo7hf5d5vibcglbosairxdce54lmwtw4zmjxw6ymysra
 - valory/multisend:0.1.0:bafybeiemglycsigpsf2f6ohfdlsha7w6lrc5nmhlydmocna4apa7b4cqcq
-- valory/mech:0.1.0:bafybeich7xcbyjji3z6b36xydvbfkzarcfzfwfy4sf7q5lcwkb6buvarcm
+- valory/mech:0.1.0:bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:

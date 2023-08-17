@@ -79,7 +79,7 @@ class Mech(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         receipt: TxReceipt = ledger_api.api.eth.get_transaction_receipt(tx_hash)
         event_method = getattr(contract.events, event_name)
-        logs: List[EventData] = list(event_method().processReceipt(receipt))
+        logs: List[EventData] = list(event_method().process_receipt(receipt))
 
         n_logs = len(logs)
         if n_logs != 1:
