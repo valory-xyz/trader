@@ -83,7 +83,7 @@ transition_func:
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
     (DecisionReceiveRound, DONE): BetPlacementRound
-    (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
+    (DecisionReceiveRound, MECH_RESPONSE_ERROR): DecisionReceiveRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
     (DecisionReceiveRound, ROUND_TIMEOUT): BlacklistingRound
     (DecisionReceiveRound, TIE): BlacklistingRound
