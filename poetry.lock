@@ -2034,14 +2034,14 @@ open-aea-web3 = "6.0.1"
 
 [[package]]
 name = "open-aea-test-autonomy"
-version = "0.11.0"
+version = "0.11.1"
 description = "Plugin containing test tools for open-autonomy packages."
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "open-aea-test-autonomy-0.11.0.tar.gz", hash = "sha256:5364997ff7564cfe661b452bc3617e40fa4e700d481a05fd68f01028ca35788b"},
-    {file = "open_aea_test_autonomy-0.11.0-py3-none-any.whl", hash = "sha256:6ff5174b950e25b3e8f4b063c934541a02d037ae39fcf611464eb9a659bbe1b0"},
+    {file = "open-aea-test-autonomy-0.11.1.tar.gz", hash = "sha256:316f5236e4057364493cd5b24e626f90ea4cb1c97eb0384b8f4060067f1b47d6"},
+    {file = "open_aea_test_autonomy-0.11.1-py3-none-any.whl", hash = "sha256:5b44e1e2d965b28fd2f8977023dc59efa2f2112adeaa91ca9a57fdc21d586aee"},
 ]
 
 [package.dependencies]
@@ -2087,14 +2087,14 @@ tester = ["eth-tester[py-evm] (==v0.8.0-b.3)", "py-geth (>=3.11.0)"]
 
 [[package]]
 name = "open-autonomy"
-version = "0.11.0"
+version = "0.11.1"
 description = "A framework for the creation of autonomous agent services."
 category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "open-autonomy-0.11.0.tar.gz", hash = "sha256:2be6e76d79226054e3c4ce9c0ad0270afafe61b80e566edf5ace91209ca639f1"},
-    {file = "open_autonomy-0.11.0-py3-none-any.whl", hash = "sha256:6be4cad69169ab632ee23129c4a359f01b9f0a93013a11c21715d10b5314c881"},
+    {file = "open-autonomy-0.11.1.tar.gz", hash = "sha256:fc54483dc13c0343cf84cb1be388edbec7ebd2565a33a264178ec0d192ab83c8"},
+    {file = "open_autonomy-0.11.1-py3-none-any.whl", hash = "sha256:b360df6aeb41a13520f2a451b63d882f63ab414fad0c5d70701728be24fe11c7"},
 ]
 
 [package.dependencies]
@@ -3611,4 +3611,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.11"
-content-hash = "0764f04ee8ed256d44fa96a34f077ffc157cba29e28ae7509453526ce76b51ce"
+content-hash = "a1c318c1281acd518dceed65487cbdf7b859cf994ddf485640e8335b183936f5"
