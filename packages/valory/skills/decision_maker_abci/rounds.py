@@ -80,7 +80,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 2.
             - tie: 3.
             - unprofitable: 3.
-            - round timeout: 3.
+            - round timeout: 2.
         3. BlacklistingRound
             - done: 6.
             - none: 8.
@@ -131,7 +131,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.ROUND_TIMEOUT: BlacklistingRound,
+            Event.ROUND_TIMEOUT: DecisionReceiveRound,  # loop on the same state until Mech deliver is received
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
