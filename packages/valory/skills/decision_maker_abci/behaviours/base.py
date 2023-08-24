@@ -143,7 +143,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 break
             if timeout is not None and datetime.now() > deadline:
                 raise TimeoutException()
-            self.context.logger.error(f"Retrying in {self.params.sleep_time} seconds.")
+            self.context.logger.info(f"Retrying in {self.params.sleep_time} seconds.")
             yield from self.sleep(self.params.sleep_time)
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
