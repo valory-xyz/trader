@@ -2,7 +2,10 @@ name: decision_maker_abci
 author: valory
 version: 0.1.0
 type: skill
-description: ABCI application for common apps.
+description: This skill is responsible for the decision making and placing the bets.
+  It samples a market based on its liquidity, it sends a request to a mech to decide
+  what to vote for, it receives the response from the mech, it decides whether voting
+  is profitable or not, and ultimately, it either bets or blacklists the market.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
