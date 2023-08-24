@@ -76,7 +76,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 8.
         2. DecisionReceiveRound
             - done: 4.
-            - mech response error: 2.
+            - mech response error: 3.
             - no majority: 2.
             - tie: 3.
             - unprofitable: 3.
@@ -127,7 +127,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
-            Event.MECH_RESPONSE_ERROR: DecisionReceiveRound,  # loop on the same state until Mech deliver is received
+            Event.MECH_RESPONSE_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
