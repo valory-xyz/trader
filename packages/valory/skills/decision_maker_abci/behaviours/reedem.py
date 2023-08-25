@@ -28,41 +28,6 @@ from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import DecisionMakerBaseBehaviour
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 
-TRADES_QUERY = Template(
-    """
-    {
-      fpmmTrades(
-        where: {type: Buy, creator: "${creator}"}
-      ) {
-        id
-        title
-        collateralToken
-        outcomeTokenMarginalPrice
-        oldOutcomeTokenMarginalPrice
-        type
-        creator {
-          id
-        }
-        creationTimestamp
-        collateralAmount
-        collateralAmountUSD
-        feeAmount
-        outcomeIndex
-        outcomeTokensTraded
-        transactionHash
-        fpmm {
-          id
-          outcomes
-          title
-          answerFinalizedTimestamp
-          currentAnswer
-          isPendingArbitration
-          arbitrationOccurred
-        }
-      }
-    }
-    """
-)
 
 
 class RedeemBehaviour(DecisionMakerBaseBehaviour):
