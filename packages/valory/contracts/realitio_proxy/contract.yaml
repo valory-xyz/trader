@@ -1,20 +1,19 @@
-name: realtio
+name: realitio_proxy
 author: valory
 version: 0.1.0
 type: contract
-description: The scaffold contract scaffolds a contract to be implemented by the developer.
+description: RealitioProxy contract.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeieeus2bbbexmthy4pnsdtgen4flxzk3ao5ekjbocvmrkhhszffbgu
-  build/Realtio.json: bafybeifhuqnulohagjvlzvwis3uj3wgq4jdfugdtjeam5ic2m6eln4ldba
+  build/Realitio.json: bafybeifhuqnulohagjvlzvwis3uj3wgq4jdfugdtjeam5ic2m6eln4ldba
   contract.py: bafybeigc5ei23eltcb3zklycmshtepqmkftrylh3ijzjgkddogcdzjigi4
 fingerprint_ignore_patterns: []
-class_name: RealtioContract
+class_name: RealitioProxyContract
 contract_interface_paths:
-  ethereum: build/Realtio.json
+  ethereum: build/Realitio.json
 dependencies:
-  hexbytes: {}
-  web3:
-    version: ==5.31.4
+  open-aea-web3:
+    version: ==6.0.1
 contracts: []

@@ -17,4 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the support resources for the ConditionalTokens contract."""
+"""This module contains functionality for interacting with a GraphQL API."""

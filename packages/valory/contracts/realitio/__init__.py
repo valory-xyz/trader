@@ -17,4 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the support resources for the ConditionalTokens contract."""
+"""This module contains the support resources for the Realitio_v2_1 contract."""
