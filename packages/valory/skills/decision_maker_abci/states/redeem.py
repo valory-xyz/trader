@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the decision requesting state of the decision-making abci app."""
+"""This module contains the redeem state of the decision-making abci app."""
 
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -25,7 +25,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 )
 
 
-class ReedemRound(TxPreparationRound):
-    """A round in which the agents prepare a tx to initiate a tx to redeem the winnings."""
+class RedeemRound(TxPreparationRound):
+    """A round in which the agents prepare a tx to redeem the winnings."""
 
     none_event = Event.NONE

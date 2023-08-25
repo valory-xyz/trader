@@ -17,7 +17,8 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the decision requesting state of the decision-making abci app."""
+"""This module contains the redeeming state of the decision-making abci app."""
+
 import json
 from typing import Generator, Optional, Any, Dict, List
 
