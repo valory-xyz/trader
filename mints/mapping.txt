@@ -1,14 +1,14 @@
 token_id-"component_id"
-X-"contract/valory/mech/0.1.0"
-X-"contract/valory/erc20/0.1.0"
-X-"contract/valory/market_maker/0.1.0"
-X-"skill/valory/market_manager_abci/0.1.0" -> 14
-X-"skill/valory/decision_maker_abci/0.1.0" -> 3, 14, 19, 20, 22, valory/market_maker:0.1.0, valory/erc20:0.1.0, valory/mech:0.1.0, valory/market_manager_abci:0.1.0
-X-"skill/valory/tx_settlement_multiplexer_abci/0.1.0" -> 14, valory/decision_maker_abci:0.1.0
-X-"skill/valory/trader_abci/0.1.0" -> 14, 16, 17, 22, 33, valory/market_manager_abci:0.1.0, valory/decision_maker_abci:0.1.0, valory/tx_settlement_multiplexer_abci:0.1.0
+107-"contract/valory/mech/0.1.0"
+108-"contract/valory/erc20/0.1.0"
+109-"contract/valory/market_maker/0.1.0"
+110-"skill/valory/market_manager_abci/0.1.0"
+111-"skill/valory/decision_maker_abci/0.1.0"
+112-"skill/valory/tx_settlement_multiplexer_abci/0.1.0"
+113-"skill/valory/trader_abci/0.1.0"
 ---
 token_id-"agent_id"
-X-"agent/valory/trader/0.1.0" -> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 22, 33, 39, 50, valory/market_maker, valory/erc20:0.1.0, valory/mech:0.1.0, valory/tx_settlement_multiplexer_abci:0.1.0, valory/market_manager_abci, valory/decision_maker_abci, valory/trader_abci:0.1.0
+14-"agent/valory/trader/0.1.0"
 ---
 token_id-"service_id" (Gnosis)
 10-"service/valory/trader/0.1.0"
