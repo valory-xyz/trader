@@ -47,7 +47,6 @@ class UpdateBetsBehaviour(QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `UpdateBetsBehaviour`."""
         super().__init__(**kwargs)
-        # list of bets mapped to prediction markets
         self.bets: List[Bet] = []
 
     def is_frozen_bet(self, bet: Bet) -> bool:
