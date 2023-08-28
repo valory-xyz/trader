@@ -29,6 +29,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehav
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import (
     questions,
+    trades,
 )
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
@@ -171,3 +172,25 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         )
 
         return bets
+
+    def _fetch_redeem_info(self) -> Generator[None, None, Optional[list]]:
+        """Fetch redeeming information from the current subgraph."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+
+        safe = self.synchronized_data.safe_contract_address
+        query = trades.substitute(creator=safe.lower())
+
+        current_subgraph = self.current_subgraph
+        res_raw = yield from self.get_http_response(
+            content=to_content(query),
+            **current_subgraph.get_spec(),
+        )
+        current_subgraph.response_info.response_key = "data:fpmmTrades"
+        res = current_subgraph.process_response(res_raw)
+
+        redeem_info = yield from self._handle_response(
+            res,
+            res_context="trades",
+        )
+
+        return redeem_info
