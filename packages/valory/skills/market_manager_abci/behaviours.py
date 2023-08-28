@@ -79,7 +79,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
         self.bets, existing_ids = self.frozen_bets_and_ids
 
         while True:
-            can_proceed = self._prepare_bets_fetching()
+            can_proceed = self._prepare_fetching()
             if not can_proceed:
                 break
 

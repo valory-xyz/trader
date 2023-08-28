@@ -100,7 +100,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """Get a subgraph by prediction market's name."""
         return getattr(self.context, self._current_market)
 
-    def _prepare_bets_fetching(self) -> bool:
+    def _prepare_fetching(self) -> bool:
         """Prepare for fetching a bet."""
         if self._fetch_status in (FetchStatus.SUCCESS, FetchStatus.NONE):
             res = next(self._creators_iterator, None)
