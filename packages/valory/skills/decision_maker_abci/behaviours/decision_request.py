@@ -46,7 +46,6 @@ from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
-from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
 METADATA_FILENAME = "metadata.json"

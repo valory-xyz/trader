@@ -6,9 +6,9 @@ description: Realitio_v2_1 contract.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeieeus2bbbexmthy4pnsdtgen4flxzk3ao5ekjbocvmrkhhszffbgu
-  build/Realitio.json: bafybeifhuqnulohagjvlzvwis3uj3wgq4jdfugdtjeam5ic2m6eln4ldba
-  contract.py: bafybeigc5ei23eltcb3zklycmshtepqmkftrylh3ijzjgkddogcdzjigi4
+  __init__.py: bafybeictahkgfmlqv5kksvj6klmxtmjdpeq4sp3x7dp2yr5x4kmzbcihse
+  build/Realitio.json: bafybeiagi7zoeoy5s7duhg4oeuekj2s6z5mad2z6g2pn3n5elsvze25qiu
+  contract.py: bafybeih65ysqdtetqtqgntrqpzz6m5n5jeelytf7omcqzdwmv3qwcmxfve
 fingerprint_ignore_patterns: []
 class_name: RealitioContract
 contract_interface_paths:

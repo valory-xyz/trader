@@ -65,20 +65,20 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: SamplingRound
 
-    Initial states: {BlacklistingRound, DecisionReceiveRound, SamplingRound}
+    Initial states: {DecisionReceiveRound, HandleFailedTxRound, RedeemRound, SamplingRound}
 
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 6.
+            - none: 8.
             - no majority: 0.
             - round timeout: 0.
         1. DecisionRequestRound
-            - done: 5.
+            - done: 7.
             - slots unsupported error: 3.
             - no majority: 1.
             - round timeout: 1.
-            - none: 8.
+            - none: 11.
         2. DecisionReceiveRound
             - done: 4.
             - mech response error: 2.
@@ -87,23 +87,34 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - unprofitable: 3.
             - round timeout: 3.
         3. BlacklistingRound
-            - done: 6.
-            - none: 8.
+            - done: 8.
+            - none: 11.
             - no majority: 3.
             - round timeout: 3.
-            - fetch error: 8.
+            - fetch error: 11.
         4. BetPlacementRound
-            - done: 5.
-            - insufficient balance: 7.
+            - done: 7.
+            - insufficient balance: 10.
             - no majority: 4.
             - round timeout: 4.
-            - none: 8.
-        5. FinishedDecisionMakerRound
-        6. FinishedWithoutDecisionRound
-        7. RefillRequiredRound
-        8. ImpossibleRound
+            - none: 11.
+        5. RedeemRound
+            - done: 7.
+            - no redeeming: 9.
+            - no majority: 5.
+            - round timeout: 5.
+            - none: 11.
+        6. HandleFailedTxRound
+            - blacklist: 3.
+            - no op: 5.
+            - no majority: 6.
+        7. FinishedDecisionMakerRound
+        8. FinishedWithoutDecisionRound
+        9. FinishedWithoutRedeemingRound
+        10. RefillRequiredRound
+        11. ImpossibleRound
 
-    Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0

@@ -1,6 +1,7 @@
 alphabet_in:
 - BET_PLACEMENT_DONE
 - DECISION_REQUESTING_DONE
+- REDEEMING_DONE
 - ROUND_TIMEOUT
 - UNRECOGNIZED
 default_start_state: PostTxSettlementRound
@@ -8,6 +9,7 @@ final_states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedDecisionRequestTxRound
+- FinishedRedeemingTxRound
 label: TxSettlementMultiplexerAbciApp
 start_states:
 - PostTxSettlementRound
@@ -15,9 +17,11 @@ states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedDecisionRequestTxRound
+- FinishedRedeemingTxRound
 - PostTxSettlementRound
 transition_func:
     (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementTxRound
     (PostTxSettlementRound, DECISION_REQUESTING_DONE): FinishedDecisionRequestTxRound
+    (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound

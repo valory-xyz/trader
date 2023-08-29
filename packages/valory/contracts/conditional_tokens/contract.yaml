@@ -6,9 +6,9 @@ description: ConditionalTokens contract.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeieeus2bbbexmthy4pnsdtgen4flxzk3ao5ekjbocvmrkhhszffbgu
-  build/ConditionalTokens.json: bafybeihhorqa54r2kxw6iavwdc427dqipltwehnjhxb3afjzox7moihesi
-  contract.py: bafybeif43ybzpo4cnjyr4nvn7gmsemxvn2ctk3vhrq4miztgx3njucznbu
+  __init__.py: bafybeidhdxio3oq5gqdnxmngumvt3fcd6zyiyrpk5f2k4dwhflbg4e5iky
+  build/ConditionalTokens.json: bafybeia2ahis7zx2yhhf23kpkcxu56hto6fwg6ptjg5ld46lp4dgz7cz3e
+  contract.py: bafybeihcgrdqifhx5tgc2yvekzfelojuzlllkw2dbzbltzgrdqr7kuc3ze
 fingerprint_ignore_patterns: []
 class_name: ConditionalTokensContract
 contract_interface_paths:
