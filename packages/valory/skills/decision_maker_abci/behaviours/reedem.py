@@ -48,7 +48,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 )
 
 
-ZERO_BYTES = "0x0000000000000000000000000000000000000000000000000000000000000000"
+ZERO_BYTES_HEX = "0" * 64
+ZERO_BYTES = bytes.fromhex(ZERO_BYTES_HEX)
 
 
 class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
