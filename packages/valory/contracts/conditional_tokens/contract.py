@@ -42,7 +42,7 @@ class ConditionalTokensContract(Contract):
         redeemer: str,
         collateral_token: str,
         parent_collection_id: bytes,
-        condition_id: Union[bytes, str],
+        condition_id: HexBytes,
         index_sets: List[int],
         from_block: BlockIdentifier = "earliest",
         to_block: BlockIdentifier = "latest",
@@ -59,7 +59,7 @@ class ConditionalTokensContract(Contract):
         payout_filter.args.redeemer.match_single(redeemer_checksummed)
         payout_filter.args.collateralToken.match_single(collateral_token_checksummed)
         payout_filter.args.parentCollectionId.match_single(parent_collection_id)
-        payout_filter.args.conditionId.match_single(HexBytes(condition_id))
+        payout_filter.args.conditionId.match_single(condition_id)
         payout_filter.args.indexSets.match_single(index_sets)
 
         redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
@@ -76,7 +76,7 @@ class ConditionalTokensContract(Contract):
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
-        condition_id: str,
+        condition_id: HexBytes,
     ) -> JSONLike:
         """Check whether a position has already been resolved."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
@@ -93,7 +93,7 @@ class ConditionalTokensContract(Contract):
         contract_address: str,
         collateral_token: str,
         parent_collection_id: bytes,
-        condition_id: bytes,
+        condition_id: HexBytes,
         index_sets: List[int],
     ) -> JSONLike:
         """Build a `redeemPositions` tx."""

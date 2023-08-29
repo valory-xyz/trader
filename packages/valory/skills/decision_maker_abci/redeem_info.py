@@ -23,17 +23,22 @@
 import dataclasses
 from typing import List, cast
 
+from hexbytes import HexBytes
+
 
 @dataclasses.dataclass
 class Condition:
     """A structure for an OMEN condition."""
 
-    id: str
+    id: HexBytes
     outcomeSlotCount: int
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         self.outcomeSlotCount = int(self.outcomeSlotCount)
+
+        if isinstance(self.id, str):
+            self.id = HexBytes(self.id)
 
     @property
     def index_sets(self) -> List[str]:

@@ -94,7 +94,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.current_fpmm.collateralToken
 
     @property
-    def current_condition_id(self) -> str:
+    def current_condition_id(self) -> HexBytes:
         """Get the current condition id."""
         return self.current_condition.id
 
