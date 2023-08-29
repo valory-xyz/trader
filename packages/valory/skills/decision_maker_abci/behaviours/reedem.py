@@ -300,7 +300,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         self.multisend_batches = []
         self.multisend_data = b""
-        self.safe_tx_hash = ""
+        self._safe_tx_hash = ""
         return True
 
     def _process_candidate(

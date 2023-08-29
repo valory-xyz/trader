@@ -66,7 +66,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
-        self.safe_tx_hash = ""
+        self._safe_tx_hash = ""
 
     @property
     def params(self) -> DecisionMakerParams:
@@ -77,6 +77,22 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     def synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
         return SynchronizedData(super().synchronized_data.db)
+
+    @property
+    def safe_tx_hash(self) -> str:
+        """Get the safe_tx_hash."""
+        return self._safe_tx_hash
+
+    @safe_tx_hash.setter
+    def safe_tx_hash(self, safe_hash: str) -> None:
+        """Set the safe_tx_hash."""
+        length = len(safe_hash)
+        if length != TX_HASH_LENGTH:
+            raise ValueError(
+                f"Incorrect length {length} != {TX_HASH_LENGTH} detected "
+                f"when trying to assign a safe transaction hash: {safe_hash}"
+            )
+        self._safe_tx_hash = safe_hash[2:]
 
     @property
     def multi_send_txs(self) -> List[dict]:
@@ -230,7 +246,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             return False
 
         # strip "0x" from the response hash
-        self.safe_tx_hash = tx_hash[2:]
+        self.safe_tx_hash = tx_hash
         return True
 
     def wait_for_condition_with_sleep(

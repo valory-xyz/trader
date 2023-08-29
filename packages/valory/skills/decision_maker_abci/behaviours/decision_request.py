@@ -75,7 +75,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         self._v1_hex_truncated: str = ""
         self._request_data: bytes = b""
         self._price: int = 0
-        self._safe_tx_hash: str = ""
 
     @property
     def metadata_filepath(self) -> str:
@@ -106,22 +105,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
     def price(self, price: int) -> None:
         """Set the price."""
         self._price = price
-
-    @property
-    def safe_tx_hash(self) -> str:
-        """Get the safe_tx_hash."""
-        return self._safe_tx_hash
-
-    @safe_tx_hash.setter
-    def safe_tx_hash(self, safe_hash: str) -> None:
-        """Set the safe_tx_hash."""
-        length = len(safe_hash)
-        if length != TX_HASH_LENGTH:
-            raise ValueError(
-                f"Incorrect length {length} != {TX_HASH_LENGTH} detected "
-                f"when trying to assign a safe transaction hash: {safe_hash}"
-            )
-        self._safe_tx_hash = safe_hash[2:]
 
     @property
     def n_slots_supported(self) -> bool:
