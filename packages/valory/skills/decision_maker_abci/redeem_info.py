@@ -41,9 +41,9 @@ class Condition:
             self.id = HexBytes(self.id)
 
     @property
-    def index_sets(self) -> List[str]:
+    def index_sets(self) -> List[int]:
         """Get the index sets."""
-        return [str(i + 1) for i in range(self.outcomeSlotCount)]
+        return [i + 1 for i in range(self.outcomeSlotCount)]
 
 
 @dataclasses.dataclass

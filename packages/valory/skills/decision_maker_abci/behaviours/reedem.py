@@ -99,7 +99,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.current_condition.id
 
     @property
-    def current_index_sets(self) -> List[str]:
+    def current_index_sets(self) -> List[int]:
         """Get the current index sets."""
         return self.current_condition.index_sets
 
