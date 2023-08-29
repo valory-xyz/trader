@@ -68,9 +68,9 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     @property
     def current_redeem_info(self) -> RedeemInfo:
         """Get the current redeem info."""
-        if self.current_redeem_info is None:
+        if self._current_redeem_info is None:
             raise ValueError("Current redeem information have not been set.")
-        return self.current_redeem_info
+        return self._current_redeem_info
 
     @property
     def current_fpmm(self) -> FPMM:
