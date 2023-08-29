@@ -21,8 +21,7 @@
 """Structures for the redeeming."""
 
 import dataclasses
-import json
-from typing import List
+from typing import List, cast
 
 
 @dataclasses.dataclass
@@ -68,8 +67,8 @@ class Question:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        if isinstance(self.answers, str):
-            self.answers = [Answer(**answer) for answer in json.loads(self.answers)]
+        if isinstance(self.answers, list):
+            self.answers = [Answer(**cast(dict, answer)) for answer in self.answers]
 
     @property
     def answer_data(self) -> AnswerData:
@@ -97,11 +96,11 @@ class FPMM:
         """Post initialization to adjust the values."""
         self.templateId = int(self.templateId)
 
-        if isinstance(self.condition, str):
-            self.condition = Condition(**json.loads(self.condition))
+        if isinstance(self.condition, dict):
+            self.condition = Condition(**self.condition)
 
-        if isinstance(self.question, str):
-            self.question = Question(**json.loads(self.question))
+        if isinstance(self.question, dict):
+            self.question = Question(**self.question)
 
     @property
     def current_answer_index(self) -> int:
@@ -124,8 +123,8 @@ class RedeemInfo:
         self.outcomeTokenMarginalPrice = float(self.outcomeTokenMarginalPrice)
         self.outcomeTokensTraded = int(self.outcomeTokensTraded)
 
-        if isinstance(self.fpmm, str):
-            self.fpmm = FPMM(**json.loads(self.fpmm))
+        if isinstance(self.fpmm, dict):
+            self.fpmm = FPMM(**self.fpmm)
 
     @property
     def claimable_amount(self) -> float:
