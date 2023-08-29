@@ -59,7 +59,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
-        self._waitable_flag_result: bool = False
+        self._already_resolved: bool = False
         self._payout: int = 0
         self._built_data: Optional[HexBytes] = None
         self._redeem_info: List[RedeemInfo] = []
@@ -119,14 +119,14 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self._payout = flag
 
     @property
-    def waitable_flag_result(self) -> bool:
-        """Get a waitable flag's result for the current market."""
-        return self._waitable_flag_result
+    def already_resolved(self) -> bool:
+        """Get whether the current market has already been resolved."""
+        return self._already_resolved
 
-    @waitable_flag_result.setter
-    def waitable_flag_result(self, flag: bool) -> None:
-        """Set a waitable flag's result for the current market."""
-        self._waitable_flag_result = flag
+    @already_resolved.setter
+    def already_resolved(self, flag: bool) -> None:
+        """Set whether the current market has already been resolved."""
+        self._already_resolved = flag
 
     @property
     def built_data(self) -> HexBytes:
@@ -203,7 +203,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             performative=ContractApiMessage.Performative.GET_STATE,
             contract_callable=get_name(ConditionalTokensContract.check_resolved),
             data_key="resolved",
-            placeholder=get_name(RedeemBehaviour.waitable_flag_result),
+            placeholder=get_name(RedeemBehaviour.already_resolved),
             condition_id=self.current_condition_id,
         )
         return result
@@ -296,7 +296,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             return False
 
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
-        steps = [] if self.waitable_flag_result else [self._build_resolve_data]
+        steps = [] if self.already_resolved else [self._build_resolve_data]
         steps.extend(
             [
                 self._build_claim_data,
