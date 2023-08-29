@@ -248,7 +248,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             # however, the current implementation of the service does not place multiple answers for a single market.
             # therefore, this value is always set to zero bytes
             history_hashes=[ZERO_BYTES],
-            addresses=self.safe_address_lower,
+            addresses=[self.safe_address_lower],
             bonds=answer_data.bonds,
             answers=answer_data.answers,
         )
