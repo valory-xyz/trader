@@ -48,3 +48,10 @@ class MultisigTxPayload(BaseTxPayload):
 
     tx_submitter: Optional[str]
     tx_hash: Optional[str]
+
+
+@dataclass(frozen=True)
+class VotingPayload(BaseTxPayload):
+    """Represents a transaction payload for voting."""
+
+    vote: bool
