@@ -28,4 +28,4 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 class RedeemRound(TxPreparationRound):
     """A round in which the agents prepare a tx to redeem the winnings."""
 
-    none_event = Event.NONE
+    none_event = Event.NO_REDEEMING
