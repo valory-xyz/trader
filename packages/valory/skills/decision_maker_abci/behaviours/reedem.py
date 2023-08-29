@@ -314,8 +314,10 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if not self._is_winning_position() or self._is_dust():
             return None
 
-        self._expected_winnings += self.current_redeem_info.claimable_amount
         winnings_found = yield from self._prepare_single_redeem()
+        if winnings_found:
+            self._expected_winnings += self.current_redeem_info.claimable_amount
+
         return winnings_found
 
     def _prepare_safe_tx(self) -> Generator[None, None, Optional[str]]:
