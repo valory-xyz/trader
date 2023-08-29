@@ -11,7 +11,7 @@ fingerprint:
   behaviours.py: bafybeiaqm5cdrhdiavrcuop35dndttz2cgmt2emcs274l6swobfla2a3li
   composition.py: bafybeibycneanofdfp4zjucgsn5nxr4rtcahewrmhebd4vgke3dcwlkady
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeihe5tprre25gcolxkapyorqqvdyhdduj3io4fctxmxem76bubhuju
+  fsm_specification.yaml: bafybeiaekexc7erqmp3a2ff742pgy4r3tf3m5nxztdlpkvnzjtttodtmt4
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
   models.py: bafybeid4lhamqwhe2mxizjftdz3wspinrdzb5sor3iwo7pltixmojwrx6y
 fingerprint_ignore_patterns: []
@@ -19,14 +19,14 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeicyy4g3x6ol6x2ayzcdkg2wstubqecp6ycgo6f2c2bhjnhwdjs3qa
-- valory/registration_abci:0.1.0:bafybeigexg5mw5sh35qkhlaeegycgtkd2ym5o4marjc5o7gl7t352hohiu
-- valory/reset_pause_abci:0.1.0:bafybeigabcdz5en52zuxzxa6a4p5c7z4qyi3fcfp7lodqusjh32z5obcqy
-- valory/transaction_settlement_abci:0.1.0:bafybeic7vatd3um6en3fqdxpbdsdq4n2zdqf3c4m5cs2r73ag5pbgdohoe
-- valory/termination_abci:0.1.0:bafybeies2zrbcsajnsgjq2ljr352gzvjsvkoycu65tuj5avnxlgjqlevci
-- valory/market_manager_abci:0.1.0:bafybeifl7igfumauoino454a7n3spp2etskjvyaf2amysfnwvafegkhuka
-- valory/decision_maker_abci:0.1.0:bafybeicvlapc7k5kjzitxqdolyt6jwlrnapi6xqgymnhk4qgi7u7vgyvka
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibjfyqkuxrxa3dghmde3pcuvumwsihaa4r23b37w34ke2ciq6v4xm
+- valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
+- valory/registration_abci:0.1.0:bafybeibc4kczqbh23sc6tufrzn3axmhp3vjav7fa3u6cnpvolrbbc2fd7i
+- valory/reset_pause_abci:0.1.0:bafybeid445uy6wwvugf3byzl7r73c7teu6xr5ezxb4h7cxbenghg3copvy
+- valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
+- valory/termination_abci:0.1.0:bafybeiguy7pkrcptg6c754ioig4mlkr7truccym3fpv6jwpjx2tmpdbzhi
+- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
+- valory/decision_maker_abci:0.1.0:bafybeig4ka34xhtg6lgszhwarybs4xfzlnnwezaxh6tvhxikmlwgiqg6fe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidfq6zrepllfgg3jyzj46spndgmtk2cqmfxf6uczk7ynpqyvdya7m
 behaviours:
   main:
     args: {}

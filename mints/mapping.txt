@@ -1,8 +1,16 @@
 token_id-"component_id"
-X-
+107-"contract/valory/mech/0.1.0"
+108-"contract/valory/erc20/0.1.0"
+109-"contract/valory/market_maker/0.1.0"
+110-"skill/valory/market_manager_abci/0.1.0"
+111-"skill/valory/decision_maker_abci/0.1.0"
+112-"skill/valory/tx_settlement_multiplexer_abci/0.1.0"
+113-"skill/valory/trader_abci/0.1.0"
 ---
 token_id-"agent_id"
-X-
+14-"agent/valory/trader/0.1.0"
 ---
 token_id-"service_id" (Gnosis)
+10-"service/valory/trader/0.1.0"
+token_id-"service_id" (Ethereum)
 10-"service/valory/trader/0.1.0"

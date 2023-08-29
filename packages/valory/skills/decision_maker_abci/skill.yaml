@@ -2,7 +2,10 @@ name: decision_maker_abci
 author: valory
 version: 0.1.0
 type: skill
-description: ABCI application for common apps.
+description: This skill is responsible for the decision making and placing the bets.
+  It samples a market based on its liquidity, it sends a request to a mech to decide
+  what to vote for, it receives the response from the mech, it decides whether voting
+  is profitable or not, and ultimately, it either bets or blacklists the market.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
@@ -19,12 +22,12 @@ fingerprint:
   behaviours/round_behaviour.py: bafybeifk5utwuaneima4rdeow7tcpbe6hcc2utlzxcw3w7vsm5zw7zpamm
   behaviours/sampling.py: bafybeiesza5cols7opbpp3g3ozyqmskl5g6cqdjow4vsq4r7tet2xkyruq
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeiayrpm34dj54szmn7jktn6afek2by2kekf6qzwlvkkcwgbyineneq
+  fsm_specification.yaml: bafybeigrljw66oxyvn5wqecfgkcx7ozkjg7xuv75zcjmo25fft37qyed6y
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
   models.py: bafybeifk6qxmktuqpk6pxybagvjeqoitiin6shw2ix62fcjuzq2kbl4noy
   payloads.py: bafybeigate7v3haokrquzojwl6ycgf3zosclgjhmiuqhrx3kpbnj6hacte
   redeem_info.py: bafybeien2qatvg7mocnr5jtp7df67sejihh4qw37xu6nuj3o2hclrapltm
-  rounds.py: bafybeiet2w46nbg7xh2hlh6cbtgk5zrqnhov4jkc2frlj6a73ymsaboq4e
+  rounds.py: bafybeihpstybessozkb3hjxhf3gvf323zw4d575ihmxrsuzcyhqtbsruoq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeigyicytkdcho5l4i6a6b724zv7otwekecvztbf7wvx7zh6crugbny
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
@@ -38,10 +41,10 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeigaeon5qhgdwhduw4wtjt7x7o3hpz62aifr5a7522ynll3nps3qnm
-- valory/market_maker:0.1.0:bafybeic3ar4fw4dy36l7w2satfiznlmnns3a3sgyrn7yuyyhoe5qnka4d4
-- valory/erc20:0.1.0:bafybeib6bpjgzulo7hf5d5vibcglbosairxdce54lmwtw4zmjxw6ymysra
-- valory/multisend:0.1.0:bafybeiemglycsigpsf2f6ohfdlsha7w6lrc5nmhlydmocna4apa7b4cqcq
+- valory/gnosis_safe:0.1.0:bafybeigvqg4lapdaa23dpc3pv67rdptdhey6e435mxqsw2gb2u74yw4yei
+- valory/market_maker:0.1.0:bafybeighn4o263yxjxc46n5rckfnonwtyyhvjmegmkrqraixvswuyhcsp4
+- valory/erc20:0.1.0:bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy
+- valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u
 - valory/conditional_tokens:0.1.0:bafybeibicjtiieztpsspcjdp6em3dtinpoabbn5zwvbf7ihvoswh6a4zua
 - valory/realitio:0.1.0:bafybeieouoz3teavsesdxmuvehjk5cltukvujjxph7au2foa3stsakyvzy
@@ -49,9 +52,9 @@ contracts:
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeicyy4g3x6ol6x2ayzcdkg2wstubqecp6ycgo6f2c2bhjnhwdjs3qa
-- valory/market_manager_abci:0.1.0:bafybeifl7igfumauoino454a7n3spp2etskjvyaf2amysfnwvafegkhuka
-- valory/transaction_settlement_abci:0.1.0:bafybeic7vatd3um6en3fqdxpbdsdq4n2zdqf3c4m5cs2r73ag5pbgdohoe
+- valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
+- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
+- valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 behaviours:
   main:
     args: {}
