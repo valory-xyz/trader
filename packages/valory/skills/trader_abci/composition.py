@@ -24,17 +24,19 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
     chain,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
-from packages.valory.skills.decision_maker_abci.states.blacklisting import (
-    BlacklistingRound,
-)
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
+    FinishedWithoutRedeemingRound,
     RefillRequiredRound,
 )
+from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
+    HandleFailedTxRound,
+)
+from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
@@ -67,6 +69,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
     FinishedDecisionRequestTxRound,
+    FinishedRedeemingTxRound,
     PostTxSettlementRound,
     TxSettlementMultiplexerAbciApp,
 )
@@ -79,10 +82,12 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedDecisionMakerRound: RandomnessTransactionSubmissionRound,
     RefillRequiredRound: ResetAndPauseRound,
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
-    FailedTransactionSubmissionRound: BlacklistingRound,
+    FailedTransactionSubmissionRound: HandleFailedTxRound,
     FinishedDecisionRequestTxRound: DecisionReceiveRound,
-    FinishedBetPlacementTxRound: ResetAndPauseRound,
-    FinishedWithoutDecisionRound: ResetAndPauseRound,
+    FinishedBetPlacementTxRound: RedeemRound,
+    FinishedRedeemingTxRound: ResetAndPauseRound,
+    FinishedWithoutDecisionRound: RedeemRound,
+    FinishedWithoutRedeemingRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
     FinishedResetAndPauseErrorRound: RegistrationRound,
 }
