@@ -66,8 +66,10 @@ class ConditionalTokensContract(Contract):
         n_redeemed = len(redeemed)
 
         if n_redeemed == 0:
-            return dict(redeemed=False)
-        return dict(redeemed=True)
+            return dict(payout=0)
+
+        payout = redeemed.pop().get("args", {}).get("payout", 0)
+        return dict(payout=payout)
 
     @classmethod
     def check_resolved(

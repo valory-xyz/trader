@@ -60,6 +60,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
         self._waitable_flag_result: bool = False
+        self._payout: int = 0
         self._built_data: Optional[HexBytes] = None
         self._redeem_info: List[RedeemInfo] = []
         self._current_redeem_info: Optional[RedeemInfo] = None
@@ -106,6 +107,16 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def safe_address_lower(self) -> str:
         """Get the safe's address converted to lower case."""
         return self.synchronized_data.safe_contract_address.lower()
+
+    @property
+    def payout(self) -> int:
+        """Get the payout for the current market."""
+        return self._payout
+
+    @payout.setter
+    def payout(self, flag: int) -> None:
+        """Set the payout for the current market."""
+        self._payout = flag
 
     @property
     def waitable_flag_result(self) -> bool:
@@ -177,7 +188,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             performative=ContractApiMessage.Performative.GET_STATE,
             contract_callable=get_name(ConditionalTokensContract.check_redeemed),
             data_key="redeemed",
-            placeholder=get_name(RedeemBehaviour.waitable_flag_result),
+            placeholder=get_name(RedeemBehaviour.payout),
             redeemer=self.safe_address_lower,
             collateral_token=self.current_collateral_token,
             parent_collection_id=ZERO_BYTES,
@@ -281,7 +292,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _prepare_single_redeem(self) -> Generator[None, None, bool]:
         """Prepare a multisend transaction for a single redeeming action."""
         yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
-        if self.waitable_flag_result:
+        if self.payout > 0:
             return False
 
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
