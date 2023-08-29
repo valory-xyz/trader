@@ -51,15 +51,24 @@ class Answer:
     """A structure for an OMEN answer."""
 
     answer: str
-    bondAggregate: str
+    bondAggregate: int
+
+    def __post_init__(self) -> None:
+        """Post initialization to adjust the values."""
+        self.bondAggregate = int(self.bondAggregate)
+
+    @property
+    def answer_bytes(self) -> bytes:
+        """Get the answer in bytes."""
+        return bytes.fromhex(self.answer[2:])
 
 
 @dataclasses.dataclass
 class AnswerData:
     """A structure for the answers' data."""
 
-    answers: List[str]
-    bonds: List[str]
+    answers: List[bytes]
+    bonds: List[int]
 
 
 @dataclasses.dataclass
@@ -80,7 +89,7 @@ class Question:
         """Get the answers' data."""
         answers, bonds = [], []
         for answer in self.answers:
-            answers.append(answer.answer)
+            answers.append(answer.answer_bytes)
             bonds.append(answer.bondAggregate)
 
         return AnswerData(answers, bonds)
