@@ -56,10 +56,10 @@ class ConditionalTokensContract(Contract):
         payout_filter.fromBlock = from_block
         payout_filter.toBlock = to_block
         payout_filter.args.redeemer.match_single(redeemer_checksummed)
-        payout_filter.args.collateral_token.match_single(collateral_token_checksummed)
-        payout_filter.args.parent_collection_id.match_single(parent_collection_id)
-        payout_filter.args.condition_id.match_single(condition_id)
-        payout_filter.args.index_sets.match_single(index_sets)
+        payout_filter.args.collateralToken.match_single(collateral_token_checksummed)
+        payout_filter.args.parentCollectionId.match_single(parent_collection_id)
+        payout_filter.args.conditionId.match_single(condition_id)
+        payout_filter.args.indexSets.match_single(index_sets)
 
         redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
         n_redeemed = len(redeemed)
