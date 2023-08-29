@@ -161,7 +161,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _is_winning_position(self) -> bool:
         """Return whether the current position is winning."""
         our_answer = self.current_redeem_info.outcomeIndex
-        correct_answer = self.current_redeem_info.fpmm.currentAnswer
+        correct_answer = self.current_redeem_info.fpmm.current_answer_index
         return our_answer == correct_answer
 
     def _is_dust(self) -> bool:
