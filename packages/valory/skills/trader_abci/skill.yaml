@@ -155,6 +155,10 @@ models:
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
+      dust_threshold: 10000000000000
+      conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
+      realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
+      realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
     class_name: TraderParams
   omen_subgraph:
     args:

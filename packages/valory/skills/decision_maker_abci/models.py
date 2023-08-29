@@ -109,6 +109,14 @@ class DecisionMakerParams(MarketManagerParams):
         multisend_address = kwargs.get("multisend_address", None)
         enforce(multisend_address is not None, "Multisend address not specified!")
         self.multisend_address = multisend_address
+        self.dust_threshold = self._ensure("dust_threshold", kwargs, int)
+        self.conditional_tokens_address = self._ensure(
+            "conditional_tokens_address", kwargs, str
+        )
+        self.realitio_proxy_address = self._ensure(
+            "realitio_proxy_address", kwargs, str
+        )
+        self.realitio_address = self._ensure("realitio_address", kwargs, str)
         super().__init__(*args, **kwargs)
 
     @property
