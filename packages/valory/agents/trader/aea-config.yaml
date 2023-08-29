@@ -22,6 +22,9 @@ contracts:
 - valory/erc20:0.1.0:bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u
+- valory/conditional_tokens:0.1.0:bafybeibicjtiieztpsspcjdp6em3dtinpoabbn5zwvbf7ihvoswh6a4zua
+- valory/realitio:0.1.0:bafybeieouoz3teavsesdxmuvehjk5cltukvujjxph7au2foa3stsakyvzy
+- valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - open_aea/signing:1.0.0:bafybeifuxs7gdg2okbn7uofymenjlmnih2wxwkym44lsgwmklgwuckxm2m
 - valory/abci:0.1.0:bafybeigootsvqpk6th5xpdtzanxum3earifrrezfyhylfrit7yvqdrtgpe
@@ -38,10 +41,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeid445uy6wwvugf3byzl7r73c7teu6xr5ezxb4h7cxbenghg3copvy
 - valory/termination_abci:0.1.0:bafybeiguy7pkrcptg6c754ioig4mlkr7truccym3fpv6jwpjx2tmpdbzhi
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidpcigxwdjnsvjt5yqe5nlfvq4s4owsmnljkjcs2atggmrqgxjxbm
-- valory/market_manager_abci:0.1.0:bafybeibulxdh2fiar3gmqmxu3772s3bxps6jpl77r2weuh3py56mtmiptu
-- valory/decision_maker_abci:0.1.0:bafybeid6ybkow7alrcqrevgpsncqttrvm6pe72yjppnbn67a7d5ggy6cue
-- valory/trader_abci:0.1.0:bafybeihw5yjwjyqov7ta773jigyatzvnbn2xj3cgw3z3mnqbdyuniaprjy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib4dtyfii7cgk32vfoa2ncgy7pl75fzeum6ctpueriggj5525t4xy
+- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
+- valory/decision_maker_abci:0.1.0:bafybeig2l6dszfphwicbetmbllq7nbhmrsafcqplkahi44jdk7vxixnz3y
+- valory/trader_abci:0.1.0:bafybeic22v3aemxkktx2rq6uttggbiqkkaa3t4iwj5fia6bifmoi6ugkba
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -175,6 +178,10 @@ models:
       prompt_template: ${str:With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?}
+      dust_threshold: ${int:10000000000000}
+      conditional_tokens_address: ${str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+      realitio_proxy_address: ${str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+      realitio_address: ${str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

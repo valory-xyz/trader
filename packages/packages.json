@@ -1,14 +1,17 @@
 {
     "dev": {
-        "skill/valory/market_manager_abci/0.1.0": "bafybeibulxdh2fiar3gmqmxu3772s3bxps6jpl77r2weuh3py56mtmiptu",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeid6ybkow7alrcqrevgpsncqttrvm6pe72yjppnbn67a7d5ggy6cue",
-        "skill/valory/trader_abci/0.1.0": "bafybeihw5yjwjyqov7ta773jigyatzvnbn2xj3cgw3z3mnqbdyuniaprjy",
+        "skill/valory/market_manager_abci/0.1.0": "bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeig2l6dszfphwicbetmbllq7nbhmrsafcqplkahi44jdk7vxixnz3y",
+        "skill/valory/trader_abci/0.1.0": "bafybeic22v3aemxkktx2rq6uttggbiqkkaa3t4iwj5fia6bifmoi6ugkba",
         "contract/valory/market_maker/0.1.0": "bafybeighn4o263yxjxc46n5rckfnonwtyyhvjmegmkrqraixvswuyhcsp4",
-        "agent/valory/trader/0.1.0": "bafybeihdv2yhy4drpjhsvfocvgyl3vp5byieczl3xfe2cxwq22cmsi7tta",
-        "service/valory/trader/0.1.0": "bafybeiby2oe7n5msmo525wzjwnj4f2wecmobs3v7xmyymlwbd4hmkoi4si",
+        "agent/valory/trader/0.1.0": "bafybeihgvihqhawtypi6cd6tyv6uku4h3qzhi7jjtngvtblqmcuojjvohi",
+        "service/valory/trader/0.1.0": "bafybeia4f3rymzukltyhe3wpwq5m2woqy5iyvncqiu2szsa7ctras5qyl4",
         "contract/valory/erc20/0.1.0": "bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidpcigxwdjnsvjt5yqe5nlfvq4s4owsmnljkjcs2atggmrqgxjxbm",
-        "contract/valory/mech/0.1.0": "bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u"
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeib4dtyfii7cgk32vfoa2ncgy7pl75fzeum6ctpueriggj5525t4xy",
+        "contract/valory/mech/0.1.0": "bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u",
+        "contract/valory/realitio/0.1.0": "bafybeieouoz3teavsesdxmuvehjk5cltukvujjxph7au2foa3stsakyvzy",
+        "contract/valory/realitio_proxy/0.1.0": "bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy",
+        "contract/valory/conditional_tokens/0.1.0": "bafybeibicjtiieztpsspcjdp6em3dtinpoabbn5zwvbf7ihvoswh6a4zua"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeifuxs7gdg2okbn7uofymenjlmnih2wxwkym44lsgwmklgwuckxm2m",

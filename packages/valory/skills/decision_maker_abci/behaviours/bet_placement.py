@@ -19,24 +19,17 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import dataclasses
-from typing import Any, Generator, List, cast
+from typing import Any, Generator, Optional, cast
 
 from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
-from packages.valory.contracts.gnosis_safe.contract import (
-    GnosisSafeContract,
-    SafeOperation,
-)
 from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
 )
-from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
-    SAFE_GAS,
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
@@ -44,18 +37,9 @@ from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayloa
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
-from packages.valory.skills.transaction_settlement_abci.payload_tools import (
-    hash_payload_to_hex,
-)
-from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-
-
-def wei_to_native(wei: int) -> float:
-    """Convert WEI to native token."""
-    return wei / 10**18
 
 
 class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
@@ -69,9 +53,6 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.token_balance = 0
         self.wallet_balance = 0
         self.buy_amount = 0
-        self.multisend_batches: List[MultisendBatch] = []
-        self.multisend_data = b""
-        self.safe_tx_hash = ""
 
     @property
     def collateral_token(self) -> str:
@@ -103,20 +84,10 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         """Get the index of the outcome that the service is going to place a bet on."""
         return cast(int, self.synchronized_data.vote)
 
-    @property
-    def multi_send_txs(self) -> List[dict]:
-        """Get the multisend transactions as a list of dictionaries."""
-        return [dataclasses.asdict(batch) for batch in self.multisend_batches]
-
-    @property
-    def txs_value(self) -> int:
-        """Get the total value of the transactions."""
-        return sum(batch.value for batch in self.multisend_batches)
-
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
         return (
-            f"{wei_to_native(amount)} wxDAI"
+            f"{self.wei_to_native(amount)} wxDAI"
             if self.is_wxdai
             else f"{amount} WEI of the collateral token with address {self.collateral_token}"
         )
@@ -147,7 +118,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.token_balance = int(token)
         self.wallet_balance = int(wallet)
 
-        native = wei_to_native(self.wallet_balance)
+        native = self.wei_to_native(self.wallet_balance)
         collateral = self._collateral_amount_info(self.token_balance)
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
@@ -262,80 +233,14 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.multisend_batches.append(batch)
         return True
 
-    def _build_multisend_data(
-        self,
-    ) -> WaitableConditionType:
-        """Get the multisend tx."""
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.multisend_address,
-            contract_id=str(MultiSendContract.contract_id),
-            contract_callable="get_tx_data",
-            multi_send_txs=self.multi_send_txs,
-        )
-        expected_performative = ContractApiMessage.Performative.RAW_TRANSACTION
-        if response_msg.performative != expected_performative:
-            self.context.logger.error(
-                f"Couldn't compile the multisend tx. "
-                f"Expected response performative {expected_performative.value}, "  # type: ignore
-                f"received {response_msg.performative.value}: {response_msg}"
-            )
-            return False
-
-        multisend_data_str = response_msg.raw_transaction.body.get("data", None)
-        if multisend_data_str is None:
-            self.context.logger.error(
-                f"Something went wrong while trying to prepare the multisend data: {response_msg}"
-            )
-            return False
-
-        # strip "0x" from the response
-        multisend_data_str = str(response_msg.raw_transaction.body["data"])[2:]
-        self.multisend_data = bytes.fromhex(multisend_data_str)
-        return True
-
-    def _build_safe_tx_hash(self) -> WaitableConditionType:
-        """Prepares and returns the safe tx hash."""
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
-            contract_address=self.synchronized_data.safe_contract_address,
-            contract_id=str(GnosisSafeContract.contract_id),
-            contract_callable="get_raw_safe_transaction_hash",
-            to_address=self.params.multisend_address,
-            value=self.txs_value,
-            data=self.multisend_data,
-            safe_tx_gas=SAFE_GAS,
-            operation=SafeOperation.DELEGATE_CALL.value,
-        )
-
-        if response_msg.performative != ContractApiMessage.Performative.STATE:
-            self.context.logger.error(
-                "Couldn't get safe tx hash. Expected response performative "
-                f"{ContractApiMessage.Performative.STATE.value}, "  # type: ignore
-                f"received {response_msg.performative.value}: {response_msg}."
-            )
-            return False
-
-        tx_hash = response_msg.state.body.get("tx_hash", None)
-        if tx_hash is None or len(tx_hash) != TX_HASH_LENGTH:
-            self.context.logger.error(
-                "Something went wrong while trying to get the buy transaction's hash. "
-                f"Invalid hash {tx_hash!r} was returned."
-            )
-            return False
-
-        # strip "0x" from the response hash
-        self.safe_tx_hash = tx_hash[2:]
-        return True
-
-    def _prepare_safe_tx(self) -> Generator[None, None, str]:
+    def _prepare_safe_tx(self) -> Generator[None, None, Optional[str]]:
         """Prepare the safe transaction for placing a bet and return the hex for the tx settlement skill."""
         for step in (
             self._build_approval_tx,
             self._calc_buy_amount,
             self._build_buy_tx,
             self._build_multisend_data,
-            self._build_safe_tx_hash,
+            self._build_multisend_safe_tx_hash,
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
@@ -347,14 +252,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             f"{self.buy_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )
 
-        return hash_payload_to_hex(
-            self.safe_tx_hash,
-            self.txs_value,
-            SAFE_GAS,
-            self.params.multisend_address,
-            self.multisend_data,
-            SafeOperation.DELEGATE_CALL.value,
-        )
+        return self.tx_hex
 
     def async_act(self) -> Generator:
         """Do the action."""

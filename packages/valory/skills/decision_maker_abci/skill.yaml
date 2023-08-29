@@ -12,26 +12,31 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeig2zoyowdeqg44kyxdc5tzdiczzpkzpbchq6f2nwjqertfvmi6xvy
-  behaviours/bet_placement.py: bafybeic4cfzg4brkfzjkogt3kvtksewubdh67fea2o64y4nkirs4epx5ni
+  behaviours/base.py: bafybeide5zuydarnghuwzvokmzk4plutp6u2w7tqtwbwaz2pc2uvmg7emm
+  behaviours/bet_placement.py: bafybeicdmayxmxvydechibri7z45wrx7n354eny4s5aval5mk2pqdszh64
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
   behaviours/decision_receive.py: bafybeigjct7st66x7n3go5vdp62wtdxgmgw233hyyvd3a63ly4x3ptdqbq
-  behaviours/decision_request.py: bafybeidsvohdt2fxonh5qmctftjj5wfaa5z3ommr2yie6e7bhcml6xueuu
-  behaviours/round_behaviour.py: bafybeiahjypqkswz5ufusagxpxmjhngipin2feis56lasqin75jwqcwpaa
+  behaviours/decision_request.py: bafybeienx5mvflzrgbocqdnqwkyvi3s5xxcgwcaxcrzd2vqazqntn3pyfi
+  behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
+  behaviours/reedem.py: bafybeiehvnkpge7ex7u5oswrchrwu674vnvjtmoe6rnds5rvsbameze4qu
+  behaviours/round_behaviour.py: bafybeifk5utwuaneima4rdeow7tcpbe6hcc2utlzxcw3w7vsm5zw7zpamm
   behaviours/sampling.py: bafybeiesza5cols7opbpp3g3ozyqmskl5g6cqdjow4vsq4r7tet2xkyruq
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeigdfhb6h3okjytsnh7np7m25e2jh6tg7664zfv3mqkictje77z5zm
+  fsm_specification.yaml: bafybeigrljw66oxyvn5wqecfgkcx7ozkjg7xuv75zcjmo25fft37qyed6y
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeietew6d4nva64afznxropoko2is56f33dfww5es4cmdwuqpdh56m4
-  payloads.py: bafybeifvklik2j2jsevy2e5oermoo3mml6hiy6gyuppsd7cgupsylosl6a
-  rounds.py: bafybeihcjqhodtyutwdjcdpdmuw3ra7qhf56brh5g2k4ctcn3t5lvdvwhy
+  models.py: bafybeifk6qxmktuqpk6pxybagvjeqoitiin6shw2ix62fcjuzq2kbl4noy
+  payloads.py: bafybeigate7v3haokrquzojwl6ycgf3zosclgjhmiuqhrx3kpbnj6hacte
+  redeem_info.py: bafybeien2qatvg7mocnr5jtp7df67sejihh4qw37xu6nuj3o2hclrapltm
+  rounds.py: bafybeihpstybessozkb3hjxhf3gvf323zw4d575ihmxrsuzcyhqtbsruoq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeib7wpuo2suhgb6xkvxvjiij22bvm5e2tpzpoccelv57c2stql4o7y
+  states/base.py: bafybeigyicytkdcho5l4i6a6b724zv7otwekecvztbf7wvx7zh6crugbny
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
   states/decision_receive.py: bafybeifm3oyq2aji7f5yag6wpe4vr3ivi74pybdsk2jvmziiidx5nt7t4a
   states/decision_request.py: bafybeiguje2p3qmqvg6bujf5n7ncr4ss63mviqp4rbnequel37ocuhhvgm
-  states/final_states.py: bafybeifhr36wfvzzum44qqknrolglii5fyspg7f5cmq4dxc6oukd7hniji
+  states/final_states.py: bafybeidiwhuyd5zm2cq7vhv2owcrxdpm7fnvn3db6p6tql4jz5hgpalflu
+  states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
+  states/redeem.py: bafybeifl7qgs2xvm4nykloec5tq47sriqah3dzahv3gppvgtrrxzw5yyyq
   states/sampling.py: bafybeidnvdogjlthjfe7jpaiuezm3xydrbxxukyoss4gx6t5fdin52rsta
 fingerprint_ignore_patterns: []
 connections: []
@@ -41,11 +46,14 @@ contracts:
 - valory/erc20:0.1.0:bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u
+- valory/conditional_tokens:0.1.0:bafybeibicjtiieztpsspcjdp6em3dtinpoabbn5zwvbf7ihvoswh6a4zua
+- valory/realitio:0.1.0:bafybeieouoz3teavsesdxmuvehjk5cltukvujjxph7au2foa3stsakyvzy
+- valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
-- valory/market_manager_abci:0.1.0:bafybeibulxdh2fiar3gmqmxu3772s3bxps6jpl77r2weuh3py56mtmiptu
+- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 behaviours:
   main:
@@ -162,6 +170,10 @@ models:
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
+      dust_threshold: 10000000000000
+      conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
+      realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
+      realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
     class_name: DecisionMakerParams
   mech_response:
     args:

@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiaqm5cdrhdiavrcuop35dndttz2cgmt2emcs274l6swobfla2a3li
-  composition.py: bafybeihfwptqgt74i3c7ojaeztchyk765xzyualdtedtvsdczuswwwzu5e
+  composition.py: bafybeibycneanofdfp4zjucgsn5nxr4rtcahewrmhebd4vgke3dcwlkady
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeiavnhxwmh27v5iol4grbbuv3vn2xcpuha3mzwx43aj5yqrx4xbfte
+  fsm_specification.yaml: bafybeiaekexc7erqmp3a2ff742pgy4r3tf3m5nxztdlpkvnzjtttodtmt4
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
   models.py: bafybeid4lhamqwhe2mxizjftdz3wspinrdzb5sor3iwo7pltixmojwrx6y
 fingerprint_ignore_patterns: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeid445uy6wwvugf3byzl7r73c7teu6xr5ezxb4h7cxbenghg3copvy
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 - valory/termination_abci:0.1.0:bafybeiguy7pkrcptg6c754ioig4mlkr7truccym3fpv6jwpjx2tmpdbzhi
-- valory/market_manager_abci:0.1.0:bafybeibulxdh2fiar3gmqmxu3772s3bxps6jpl77r2weuh3py56mtmiptu
-- valory/decision_maker_abci:0.1.0:bafybeid6ybkow7alrcqrevgpsncqttrvm6pe72yjppnbn67a7d5ggy6cue
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidpcigxwdjnsvjt5yqe5nlfvq4s4owsmnljkjcs2atggmrqgxjxbm
+- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
+- valory/decision_maker_abci:0.1.0:bafybeig2l6dszfphwicbetmbllq7nbhmrsafcqplkahi44jdk7vxixnz3y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib4dtyfii7cgk32vfoa2ncgy7pl75fzeum6ctpueriggj5525t4xy
 behaviours:
   main:
     args: {}
@@ -155,6 +155,10 @@ models:
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
+      dust_threshold: 10000000000000
+      conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
+      realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
+      realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
     class_name: TraderParams
   omen_subgraph:
     args:

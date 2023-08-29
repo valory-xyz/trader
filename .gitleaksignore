@@ -3,4 +3,7 @@
 9c3fa1a89cd918ca1a1c74ad5efd48f9ec106c34:packages/valory/skills/market_manager_abci/skill.yaml:generic-api-key:68
 62f2fabeeb87ccbe9b8a880d832a1028d92ae596:README.md:generic-api-key:60
 cb7b8233efe65445b5835dd2ea6c93eac3364d39:packages/valory/skills/tx_settlement_multiplexer_abci/skill.yaml:generic-api-key:67
+2647595ea644b0a9ab064587d69c6bd7ea66dba3:packages/valory/contracts/conditional_tokens/contract.yaml:generic-api-key:10
+e601530b1b2503589126e99070459e3e46a789d5:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:166
+e601530b1b2503589126e99070459e3e46a789d5:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:159
 9150ab78d5e30f576226cf38fb4cc62d73b09752:packages/valory/contracts/conditional_tokens/contract.yaml:generic-api-key:10

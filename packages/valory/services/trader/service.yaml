@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihdv2yhy4drpjhsvfocvgyl3vp5byieczl3xfe2cxwq22cmsi7tta
+agent: valory/trader:0.1.0:bafybeihgvihqhawtypi6cd6tyv6uku4h3qzhi7jjtngvtblqmcuojjvohi
 number_of_agents: 4
 deployment: {}
 ---
@@ -95,6 +95,10 @@ type: skill
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
+        dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
+        conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+        realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+        realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -150,6 +154,10 @@ type: skill
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
+        dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
+        conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+        realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+        realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
     benchmark_tool: *id005
 2:
   models:
@@ -203,6 +211,10 @@ type: skill
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
+        dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
+        conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+        realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+        realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
     benchmark_tool: *id005
 3:
   models:
@@ -256,6 +268,10 @@ type: skill
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
+        dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
+        conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+        realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+        realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0
