@@ -297,17 +297,12 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             [
                 self._build_claim_data,
                 self._build_redeem_data,
-                self._build_multisend_data,
-                self._build_multisend_safe_tx_hash,
             ]
         )
 
         for build_step in steps:
             yield from self.wait_for_condition_with_sleep(build_step)
 
-        self.multisend_batches = []
-        self.multisend_data = b""
-        self._safe_tx_hash = ""
         return True
 
     def _process_candidate(
@@ -358,6 +353,12 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if not winnings_found:
             self.context.logger.info("No winnings to redeem.")
             return None
+
+        for build_step in (
+            self._build_multisend_data,
+            self._build_multisend_safe_tx_hash,
+        ):
+            yield from self.wait_for_condition_with_sleep(build_step)
 
         winnings = self.wei_to_native(self._expected_winnings)
         msg = (
