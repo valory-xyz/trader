@@ -138,7 +138,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
             trades_market_chunk = yield from self._fetch_redeem_info()
             if trades_market_chunk is not None:
-                redeem_updates = (RedeemInfo(**trade) for trade in trades_market_chunk)
+                redeem_updates = [RedeemInfo(**trade) for trade in trades_market_chunk]
                 self._redeem_info.extend(redeem_updates)
 
         if self._fetch_status != FetchStatus.SUCCESS:
