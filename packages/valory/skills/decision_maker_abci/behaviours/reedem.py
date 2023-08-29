@@ -63,7 +63,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self._built_data: Optional[HexBytes] = None
         self._redeem_info: List[RedeemInfo] = []
         self._current_redeem_info: Optional[RedeemInfo] = None
-        self._expected_winnings: float = 0
+        self._expected_winnings: int = 0
 
     @property
     def current_redeem_info(self) -> RedeemInfo:
@@ -352,7 +352,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.info("No winnings to redeem.")
             return None
 
-        winnings = self.wei_to_native(int(self._expected_winnings))
+        winnings = self.wei_to_native(self._expected_winnings)
         msg = (
             f"Prepared a multisend transaction to redeem winnings of {winnings} wxDAI."
         )

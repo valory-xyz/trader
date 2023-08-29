@@ -127,6 +127,6 @@ class RedeemInfo:
             self.fpmm = FPMM(**self.fpmm)
 
     @property
-    def claimable_amount(self) -> float:
+    def claimable_amount(self) -> int:
         """Get the claimable amount of the current market."""
-        return self.outcomeTokenMarginalPrice * self.outcomeTokensTraded
+        return int(self.outcomeTokenMarginalPrice * self.outcomeTokensTraded)
