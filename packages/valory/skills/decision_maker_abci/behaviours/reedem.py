@@ -186,9 +186,8 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _check_already_redeemed(self) -> WaitableConditionType:
         """Check whether we have already redeemed for this bet."""
         result = yield from self._conditional_tokens_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_callable=get_name(ConditionalTokensContract.check_redeemed),
-            data_key="redeemed",
+            contract_callable="check_redeemed",
+            data_key="payout",
             placeholder=get_name(RedeemBehaviour.payout),
             redeemer=self.safe_address_lower,
             collateral_token=self.current_collateral_token,
@@ -201,8 +200,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _check_already_resolved(self) -> WaitableConditionType:
         """Check whether someone has already resolved for this market."""
         result = yield from self._conditional_tokens_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_callable=get_name(ConditionalTokensContract.check_resolved),
+            contract_callable="check_resolved",
             data_key="resolved",
             placeholder=get_name(RedeemBehaviour.already_resolved),
             condition_id=self.current_condition_id,
@@ -212,10 +210,10 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _build_resolve_data(self) -> WaitableConditionType:
         """Prepare the safe tx to resolve the condition."""
         result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.realitio_proxy_address,
             contract_public_id=RealitioProxyContract.contract_id,
-            contract_callable=get_name(RealitioProxyContract.build_resolve_tx),
+            contract_callable="build_resolve_tx",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
             question_id=self.current_question_id,
@@ -238,10 +236,10 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Prepare the safe tx to claim the winnings."""
         answer_data = self.current_fpmm.question.answer_data
         result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.realitio_address,
             contract_public_id=RealitioContract.contract_id,
-            contract_callable=get_name(RealitioContract.build_claim_winnings),
+            contract_callable="build_claim_winnings",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
             question_id=self.current_question_id,
@@ -268,10 +266,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _build_redeem_data(self) -> WaitableConditionType:
         """Prepare the safe tx to redeem the position."""
         result = yield from self._conditional_tokens_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_callable=get_name(
-                ConditionalTokensContract.build_redeem_positions_tx
-            ),
+            contract_callable="build_redeem_positions_tx",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
             collateral_token=self.current_collateral_token,
