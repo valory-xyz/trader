@@ -180,13 +180,16 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         safe = self.synchronized_data.safe_contract_address
         query = trades.substitute(creator=safe.lower())
 
-        current_subgraph = self.current_subgraph
+        # workaround because we cannot have multiple response keys for a single `ApiSpec`
+        res_key_backup = self.current_subgraph.response_info.response_key
+        self.current_subgraph.response_info.response_key = "data:fpmmTrades"
+
         res_raw = yield from self.get_http_response(
             content=to_content(query),
-            **current_subgraph.get_spec(),
+            **self.current_subgraph.get_spec(),
         )
-        current_subgraph.response_info.response_key = "data:fpmmTrades"
-        res = current_subgraph.process_response(res_raw)
+        res = self.current_subgraph.process_response(res_raw)
+        self.current_subgraph.response_info.response_key = res_key_backup
 
         redeem_info = yield from self._handle_response(
             res,
