@@ -75,7 +75,7 @@ class AnswerData:
 class Question:
     """A structure for an OMEN question."""
 
-    id: str
+    id: bytes
     data: str
     answers: List[Answer]
 
@@ -83,6 +83,9 @@ class Question:
         """Post initialization to adjust the values."""
         if isinstance(self.answers, list):
             self.answers = [Answer(**cast(dict, answer)) for answer in self.answers]
+
+        if isinstance(self.id, str):
+            self.id = bytes.fromhex(self.id[2:])
 
     @property
     def answer_data(self) -> AnswerData:

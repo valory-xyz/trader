@@ -84,7 +84,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.current_fpmm.condition
 
     @property
-    def current_question_id(self) -> str:
+    def current_question_id(self) -> bytes:
         """Get the current question's id."""
         return self.current_fpmm.question.id
 
