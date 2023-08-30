@@ -18,15 +18,15 @@ fingerprint:
   behaviours/decision_receive.py: bafybeigjct7st66x7n3go5vdp62wtdxgmgw233hyyvd3a63ly4x3ptdqbq
   behaviours/decision_request.py: bafybeienx5mvflzrgbocqdnqwkyvi3s5xxcgwcaxcrzd2vqazqntn3pyfi
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeiehvnkpge7ex7u5oswrchrwu674vnvjtmoe6rnds5rvsbameze4qu
+  behaviours/reedem.py: bafybeihnmmn3cttk6qpxbw3xo2htnqx72wsdk4ohvo7ms63jny6vauv3xm
   behaviours/round_behaviour.py: bafybeifk5utwuaneima4rdeow7tcpbe6hcc2utlzxcw3w7vsm5zw7zpamm
   behaviours/sampling.py: bafybeiesza5cols7opbpp3g3ozyqmskl5g6cqdjow4vsq4r7tet2xkyruq
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigrljw66oxyvn5wqecfgkcx7ozkjg7xuv75zcjmo25fft37qyed6y
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeifk6qxmktuqpk6pxybagvjeqoitiin6shw2ix62fcjuzq2kbl4noy
+  models.py: bafybeibyfpucv2e6kltxpjkwobeg3u2ejrceba6cyuecuwbmpv4q7zmu3m
   payloads.py: bafybeigate7v3haokrquzojwl6ycgf3zosclgjhmiuqhrx3kpbnj6hacte
-  redeem_info.py: bafybeien2qatvg7mocnr5jtp7df67sejihh4qw37xu6nuj3o2hclrapltm
+  redeem_info.py: bafybeicygcnp5io6xt4vgstgyrkzvn2hi6r5xmgdcvgh34c5egsb3uaosa
   rounds.py: bafybeihpstybessozkb3hjxhf3gvf323zw4d575ihmxrsuzcyhqtbsruoq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeigyicytkdcho5l4i6a6b724zv7otwekecvztbf7wvx7zh6crugbny
@@ -46,14 +46,14 @@ contracts:
 - valory/erc20:0.1.0:bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u
-- valory/conditional_tokens:0.1.0:bafybeibicjtiieztpsspcjdp6em3dtinpoabbn5zwvbf7ihvoswh6a4zua
-- valory/realitio:0.1.0:bafybeieouoz3teavsesdxmuvehjk5cltukvujjxph7au2foa3stsakyvzy
+- valory/conditional_tokens:0.1.0:bafybeie6nnaehmchkl2aewoz2vtthythen5pttmuzj3pl4j5t76eowimxa
+- valory/realitio:0.1.0:bafybeienrsrsfujetuxpodyz76bwffsmuailcqzfo5kyqblekuatbkvipi
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
-- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
+- valory/market_manager_abci:0.1.0:bafybeicfhmzztrgxpjnwmfs5kw3s3nhla5mcdkp32azcyvxfgzbeeyvpza
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 behaviours:
   main:
@@ -174,6 +174,7 @@ models:
       conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
+      redeeming_batch_size: 5
     class_name: DecisionMakerParams
   mech_response:
     args:

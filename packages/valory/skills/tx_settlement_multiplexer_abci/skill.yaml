@@ -20,7 +20,7 @@ contracts: []
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
-- valory/decision_maker_abci:0.1.0:bafybeig2l6dszfphwicbetmbllq7nbhmrsafcqplkahi44jdk7vxixnz3y
+- valory/decision_maker_abci:0.1.0:bafybeidlybeevx2ayorh3f6kfiutafjxfb45mtda6z3d4tfysuq2yz5c44
 behaviours:
   main:
     args: {}

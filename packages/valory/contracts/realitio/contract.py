@@ -50,7 +50,7 @@ class RealitioContract(Contract):
             args=[
                 question_id,
                 history_hashes,
-                addresses,
+                [ledger_api.api.to_checksum_address(a) for a in addresses],
                 bonds,
                 answers,
             ],

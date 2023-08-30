@@ -19,7 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
-from typing import Any, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from hexbytes import HexBytes
 
@@ -48,7 +48,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 )
 
 
-ZERO_BYTES = "0x0000000000000000000000000000000000000000000000000000000000000000"
+ZERO_BYTES_HEX = "0" * 64
+ZERO_BYTES = bytes.fromhex(ZERO_BYTES_HEX)
 
 
 class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -59,7 +60,8 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
-        self._waitable_flag_result: bool = False
+        self._already_resolved: bool = False
+        self._payouts: Dict[str, int] = {}
         self._built_data: Optional[HexBytes] = None
         self._redeem_info: List[RedeemInfo] = []
         self._current_redeem_info: Optional[RedeemInfo] = None
@@ -83,7 +85,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.current_fpmm.condition
 
     @property
-    def current_question_id(self) -> str:
+    def current_question_id(self) -> bytes:
         """Get the current question's id."""
         return self.current_fpmm.question.id
 
@@ -93,12 +95,12 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.current_fpmm.collateralToken
 
     @property
-    def current_condition_id(self) -> str:
+    def current_condition_id(self) -> HexBytes:
         """Get the current condition id."""
         return self.current_condition.id
 
     @property
-    def current_index_sets(self) -> List[str]:
+    def current_index_sets(self) -> List[int]:
         """Get the current index sets."""
         return self.current_condition.index_sets
 
@@ -108,14 +110,24 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.synchronized_data.safe_contract_address.lower()
 
     @property
-    def waitable_flag_result(self) -> bool:
-        """Get a waitable flag's result for the current market."""
-        return self._waitable_flag_result
+    def payouts(self) -> Dict[str, int]:
+        """Get the trades' transaction hashes mapped to payouts for the current market."""
+        return self._payouts
 
-    @waitable_flag_result.setter
-    def waitable_flag_result(self, flag: bool) -> None:
-        """Set a waitable flag's result for the current market."""
-        self._waitable_flag_result = flag
+    @payouts.setter
+    def payouts(self, payouts: Dict[str, int]) -> None:
+        """Set the trades' transaction hashes mapped to payouts for the current market."""
+        self._payouts = payouts
+
+    @property
+    def already_resolved(self) -> bool:
+        """Get whether the current market has already been resolved."""
+        return self._already_resolved
+
+    @already_resolved.setter
+    def already_resolved(self, flag: bool) -> None:
+        """Set whether the current market has already been resolved."""
+        self._already_resolved = flag
 
     @property
     def built_data(self) -> HexBytes:
@@ -138,6 +150,13 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
             trades_market_chunk = yield from self._fetch_redeem_info()
             if trades_market_chunk is not None:
+                # here an important assumption is made.
+                # we assume that the trade information does not conflict with each other,
+                # in the sense that one trade sample can only conclude one redeeming action for one pool.
+                # this is correct for the current implementation of the service,
+                # because no more than one answer is given to each question.
+                # if this were to change, then the multisend transaction prepared below could be incorrect
+                # because it would have conflicting calls.
                 redeem_updates = [RedeemInfo(**trade) for trade in trades_market_chunk]
                 self._redeem_info.extend(redeem_updates)
 
@@ -145,16 +164,6 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self._redeem_info = []
 
         self.context.logger.info(f"Fetched redeeming information: {self._redeem_info}")
-
-    def _is_winning_position(self) -> bool:
-        """Return whether the current position is winning."""
-        our_answer = self.current_redeem_info.outcomeIndex
-        correct_answer = self.current_redeem_info.fpmm.currentAnswer
-        return our_answer == correct_answer
-
-    def _is_dust(self) -> bool:
-        """Return whether the current claimable amount is dust or not."""
-        return self.current_redeem_info.claimable_amount < self.params.dust_threshold
 
     def _conditional_tokens_interact(
         self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
@@ -173,26 +182,61 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _check_already_redeemed(self) -> WaitableConditionType:
         """Check whether we have already redeemed for this bet."""
+        kwargs: Dict[str, list] = {
+            key: []
+            for key in (
+                "collateral_tokens",
+                "parent_collection_ids",
+                "condition_ids",
+                "index_sets",
+                "trade_tx_hashes",
+            )
+        }
+        for redeem_candidate in self._redeem_info:
+            kwargs["collateral_tokens"].append(redeem_candidate.fpmm.collateralToken)
+            kwargs["parent_collection_ids"].append(ZERO_BYTES)
+            kwargs["condition_ids"].append(redeem_candidate.fpmm.condition.id)
+            kwargs["index_sets"].append(redeem_candidate.fpmm.condition.index_sets)
+            kwargs["trade_tx_hashes"].append(redeem_candidate.transactionHash)
+
         result = yield from self._conditional_tokens_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_callable=get_name(ConditionalTokensContract.check_redeemed),
-            data_key="redeemed",
-            placeholder=get_name(RedeemBehaviour.waitable_flag_result),
+            contract_callable="check_redeemed",
+            data_key="payouts",
+            placeholder=get_name(RedeemBehaviour.payouts),
             redeemer=self.safe_address_lower,
-            collateral_token=self.current_collateral_token,
-            parent_collection_id=ZERO_BYTES,
-            condition_id=self.current_condition_id,
-            index_sets=self.current_index_sets,
+            **kwargs,
         )
         return result
+
+    def _clean_redeem_info(self) -> Generator:
+        """Clean the redeeming information based on whether any positions have already been redeemed."""
+        yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
+        payout_so_far = sum(self.payouts.values())
+        if payout_so_far > 0:
+            self._redeem_info = [
+                info
+                for info in self._redeem_info
+                if info.transactionHash not in self.payouts.keys()
+            ]
+            msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
+            self.context.logger.info(msg)
+
+    def _is_winning_position(self) -> bool:
+        """Return whether the current position is winning."""
+        our_answer = self.current_redeem_info.outcomeIndex
+        correct_answer = self.current_redeem_info.fpmm.current_answer_index
+        return our_answer == correct_answer
+
+    def _is_dust(self) -> bool:
+        """Return whether the current claimable amount is dust or not."""
+        return self.current_redeem_info.claimable_amount < self.params.dust_threshold
 
     def _check_already_resolved(self) -> WaitableConditionType:
         """Check whether someone has already resolved for this market."""
         result = yield from self._conditional_tokens_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_callable=get_name(ConditionalTokensContract.check_resolved),
+            contract_callable="check_resolved",
             data_key="resolved",
-            placeholder=get_name(RedeemBehaviour.waitable_flag_result),
+            placeholder=get_name(RedeemBehaviour.already_resolved),
             condition_id=self.current_condition_id,
         )
         return result
@@ -200,10 +244,10 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _build_resolve_data(self) -> WaitableConditionType:
         """Prepare the safe tx to resolve the condition."""
         result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.realitio_proxy_address,
             contract_public_id=RealitioProxyContract.contract_id,
-            contract_callable=get_name(RealitioProxyContract.build_resolve_tx),
+            contract_callable="build_resolve_tx",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
             question_id=self.current_question_id,
@@ -226,10 +270,10 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Prepare the safe tx to claim the winnings."""
         answer_data = self.current_fpmm.question.answer_data
         result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.realitio_address,
             contract_public_id=RealitioContract.contract_id,
-            contract_callable=get_name(RealitioContract.build_claim_winnings),
+            contract_callable="build_claim_winnings",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
             question_id=self.current_question_id,
@@ -238,7 +282,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             # however, the current implementation of the service does not place multiple answers for a single market.
             # therefore, this value is always set to zero bytes
             history_hashes=[ZERO_BYTES],
-            addresses=self.safe_address_lower,
+            addresses=[self.safe_address_lower],
             bonds=answer_data.bonds,
             answers=answer_data.answers,
         )
@@ -256,10 +300,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _build_redeem_data(self) -> WaitableConditionType:
         """Prepare the safe tx to redeem the position."""
         result = yield from self._conditional_tokens_interact(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_callable=get_name(
-                ConditionalTokensContract.build_redeem_positions_tx
-            ),
+            contract_callable="build_redeem_positions_tx",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
             collateral_token=self.current_collateral_token,
@@ -278,43 +319,32 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.multisend_batches.append(batch)
         return True
 
-    def _prepare_single_redeem(self) -> Generator[None, None, bool]:
+    def _prepare_single_redeem(self) -> Generator:
         """Prepare a multisend transaction for a single redeeming action."""
-        yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
-        if self.waitable_flag_result:
-            return False
-
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
-        steps = [] if self.waitable_flag_result else [self._build_resolve_data]
+        steps = [] if self.already_resolved else [self._build_resolve_data]
         steps.extend(
             [
                 self._build_claim_data,
                 self._build_redeem_data,
-                self._build_multisend_data,
-                self._build_multisend_safe_tx_hash,
             ]
         )
 
         for build_step in steps:
             yield from self.wait_for_condition_with_sleep(build_step)
 
-        self.multisend_batches = []
-        self.multisend_data = b""
-        self._safe_tx_hash = ""
-        return True
-
     def _process_candidate(
         self, redeem_candidate: RedeemInfo
-    ) -> Generator[None, None, Optional[bool]]:
+    ) -> Generator[None, None, bool]:
         """Process a redeeming candidate and return whether winnings were found."""
         self._current_redeem_info = redeem_candidate
         # in case of a non-winning position or the claimable amount is dust
         if not self._is_winning_position() or self._is_dust():
-            return None
+            return False
 
+        yield from self._prepare_single_redeem()
         self._expected_winnings += self.current_redeem_info.claimable_amount
-        winnings_found = yield from self._prepare_single_redeem()
-        return winnings_found
+        return True
 
     def _prepare_safe_tx(self) -> Generator[None, None, Optional[str]]:
         """
@@ -339,30 +369,42 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :yields: None
         :returns: the safe's transaction hash for the redeeming operation.
         """
-        self.context.logger.info("Preparing a multisend tx to redeem payout...")
+        if len(self._redeem_info) > 0:
+            self.context.logger.info("Preparing a multisend tx to redeem payout...")
+
         winnings_found = False
 
         for redeem_candidate in self._redeem_info:
-            processing_result = yield from self._process_candidate(redeem_candidate)
-            if processing_result is None:
+            is_non_dust_winning = yield from self._process_candidate(redeem_candidate)
+            if not is_non_dust_winning:
                 continue
-            winnings_found |= processing_result
+
+            winnings_found = True
+
+            if len(self.multisend_batches) == self.params.redeeming_batch_size:
+                break
 
         if not winnings_found:
             self.context.logger.info("No winnings to redeem.")
             return None
 
+        for build_step in (
+            self._build_multisend_data,
+            self._build_multisend_safe_tx_hash,
+        ):
+            yield from self.wait_for_condition_with_sleep(build_step)
+
         winnings = self.wei_to_native(self._expected_winnings)
-        msg = (
+        self.context.logger.info(
             f"Prepared a multisend transaction to redeem winnings of {winnings} wxDAI."
         )
-        self.context.logger.info(msg)
         return self.tx_hex
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self._get_redeem_info()
+            yield from self._clean_redeem_info()
             agent = self.context.agent_address
             redeem_tx_hex = yield from self._prepare_safe_tx()
             tx_submitter = (

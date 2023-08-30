@@ -23,22 +23,27 @@
 import dataclasses
 from typing import List, cast
 
+from hexbytes import HexBytes
+
 
 @dataclasses.dataclass
 class Condition:
     """A structure for an OMEN condition."""
 
-    id: str
+    id: HexBytes
     outcomeSlotCount: int
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         self.outcomeSlotCount = int(self.outcomeSlotCount)
 
+        if isinstance(self.id, str):
+            self.id = HexBytes(self.id)
+
     @property
-    def index_sets(self) -> List[str]:
+    def index_sets(self) -> List[int]:
         """Get the index sets."""
-        return [str(i + 1) for i in range(self.outcomeSlotCount)]
+        return [i + 1 for i in range(self.outcomeSlotCount)]
 
 
 @dataclasses.dataclass
@@ -46,22 +51,31 @@ class Answer:
     """A structure for an OMEN answer."""
 
     answer: str
-    bondAggregate: str
+    bondAggregate: int
+
+    def __post_init__(self) -> None:
+        """Post initialization to adjust the values."""
+        self.bondAggregate = int(self.bondAggregate)
+
+    @property
+    def answer_bytes(self) -> bytes:
+        """Get the answer in bytes."""
+        return bytes.fromhex(self.answer[2:])
 
 
 @dataclasses.dataclass
 class AnswerData:
     """A structure for the answers' data."""
 
-    answers: List[str]
-    bonds: List[str]
+    answers: List[bytes]
+    bonds: List[int]
 
 
 @dataclasses.dataclass
 class Question:
     """A structure for an OMEN question."""
 
-    id: str
+    id: bytes
     data: str
     answers: List[Answer]
 
@@ -70,12 +84,15 @@ class Question:
         if isinstance(self.answers, list):
             self.answers = [Answer(**cast(dict, answer)) for answer in self.answers]
 
+        if isinstance(self.id, str):
+            self.id = bytes.fromhex(self.id[2:])
+
     @property
     def answer_data(self) -> AnswerData:
         """Get the answers' data."""
         answers, bonds = [], []
         for answer in self.answers:
-            answers.append(answer.answer)
+            answers.append(answer.answer_bytes)
             bonds.append(answer.bondAggregate)
 
         return AnswerData(answers, bonds)
@@ -116,6 +133,7 @@ class RedeemInfo:
     outcomeIndex: int
     outcomeTokenMarginalPrice: float
     outcomeTokensTraded: int
+    transactionHash: str
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

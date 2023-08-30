@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeid445uy6wwvugf3byzl7r73c7teu6xr5ezxb4h7cxbenghg3copvy
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 - valory/termination_abci:0.1.0:bafybeiguy7pkrcptg6c754ioig4mlkr7truccym3fpv6jwpjx2tmpdbzhi
-- valory/market_manager_abci:0.1.0:bafybeia3tmfhluio6lrsbkbwd7fftmparc3u47i63x6ygaoaeotkryhple
-- valory/decision_maker_abci:0.1.0:bafybeig2l6dszfphwicbetmbllq7nbhmrsafcqplkahi44jdk7vxixnz3y
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib4dtyfii7cgk32vfoa2ncgy7pl75fzeum6ctpueriggj5525t4xy
+- valory/market_manager_abci:0.1.0:bafybeicfhmzztrgxpjnwmfs5kw3s3nhla5mcdkp32azcyvxfgzbeeyvpza
+- valory/decision_maker_abci:0.1.0:bafybeidlybeevx2ayorh3f6kfiutafjxfb45mtda6z3d4tfysuq2yz5c44
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidpukej7ot3ksbwxl5vonu4iyfiygn5k5q7yh4qucnvvxnewhm67u
 behaviours:
   main:
     args: {}
@@ -159,6 +159,7 @@ models:
       conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
+      redeeming_batch_size: 5
     class_name: TraderParams
   omen_subgraph:
     args:
