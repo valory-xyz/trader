@@ -19,7 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
-from typing import Any, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from hexbytes import HexBytes
 
@@ -61,7 +61,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
         self._already_resolved: bool = False
-        self._payout: int = 0
+        self._payouts: Dict[str, int] = {}
         self._built_data: Optional[HexBytes] = None
         self._redeem_info: List[RedeemInfo] = []
         self._current_redeem_info: Optional[RedeemInfo] = None
@@ -110,14 +110,14 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.synchronized_data.safe_contract_address.lower()
 
     @property
-    def payout(self) -> int:
-        """Get the payout for the current market."""
-        return self._payout
+    def payouts(self) -> Dict[str, int]:
+        """Get the trades' transaction hashes mapped to payouts for the current market."""
+        return self._payouts
 
-    @payout.setter
-    def payout(self, flag: int) -> None:
-        """Set the payout for the current market."""
-        self._payout = flag
+    @payouts.setter
+    def payouts(self, payouts: Dict[str, int]) -> None:
+        """Set the trades' transaction hashes mapped to payouts for the current market."""
+        self._payouts = payouts
 
     @property
     def already_resolved(self) -> bool:
@@ -165,16 +165,6 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         self.context.logger.info(f"Fetched redeeming information: {self._redeem_info}")
 
-    def _is_winning_position(self) -> bool:
-        """Return whether the current position is winning."""
-        our_answer = self.current_redeem_info.outcomeIndex
-        correct_answer = self.current_redeem_info.fpmm.current_answer_index
-        return our_answer == correct_answer
-
-    def _is_dust(self) -> bool:
-        """Return whether the current claimable amount is dust or not."""
-        return self.current_redeem_info.claimable_amount < self.params.dust_threshold
-
     def _conditional_tokens_interact(
         self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
     ) -> WaitableConditionType:
@@ -192,18 +182,54 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _check_already_redeemed(self) -> WaitableConditionType:
         """Check whether we have already redeemed for this bet."""
+        kwargs: Dict[str, list] = {
+            key: []
+            for key in (
+                "collateral_tokens",
+                "parent_collection_ids",
+                "condition_ids",
+                "index_sets",
+                "trade_tx_hashes",
+            )
+        }
+        for redeem_candidate in self._redeem_info:
+            kwargs["collateral_tokens"].append(redeem_candidate.fpmm.collateralToken)
+            kwargs["parent_collection_ids"].append(ZERO_BYTES)
+            kwargs["condition_ids"].append(redeem_candidate.fpmm.condition.id)
+            kwargs["index_sets"].append(redeem_candidate.fpmm.condition.index_sets)
+            kwargs["trade_tx_hashes"].append(redeem_candidate.transactionHash)
+
         result = yield from self._conditional_tokens_interact(
             contract_callable="check_redeemed",
-            data_key="payout",
-            placeholder=get_name(RedeemBehaviour.payout),
+            data_key="payouts",
+            placeholder=get_name(RedeemBehaviour.payouts),
             redeemer=self.safe_address_lower,
-            collateral_token=self.current_collateral_token,
-            parent_collection_id=ZERO_BYTES,
-            condition_id=self.current_condition_id,
-            index_sets=self.current_index_sets,
-            trade_tx_hash=self.current_redeem_info.transactionHash,
+            **kwargs,
         )
         return result
+
+    def _clean_redeem_info(self) -> Generator:
+        """Clean the redeeming information based on whether any positions have already been redeemed."""
+        yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
+        payout_so_far = sum(self.payouts.values())
+        if payout_so_far > 0:
+            self._redeem_info = [
+                info
+                for info in self._redeem_info
+                if info.transactionHash not in self.payouts.keys()
+            ]
+            msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
+            self.context.logger.info(msg)
+
+    def _is_winning_position(self) -> bool:
+        """Return whether the current position is winning."""
+        our_answer = self.current_redeem_info.outcomeIndex
+        correct_answer = self.current_redeem_info.fpmm.current_answer_index
+        return our_answer == correct_answer
+
+    def _is_dust(self) -> bool:
+        """Return whether the current claimable amount is dust or not."""
+        return self.current_redeem_info.claimable_amount < self.params.dust_threshold
 
     def _check_already_resolved(self) -> WaitableConditionType:
         """Check whether someone has already resolved for this market."""
@@ -293,12 +319,8 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.multisend_batches.append(batch)
         return True
 
-    def _prepare_single_redeem(self) -> Generator[None, None, bool]:
+    def _prepare_single_redeem(self) -> Generator:
         """Prepare a multisend transaction for a single redeeming action."""
-        yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
-        if self.payout > 0:
-            return False
-
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
         steps = [] if self.already_resolved else [self._build_resolve_data]
         steps.extend(
@@ -311,22 +333,18 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         for build_step in steps:
             yield from self.wait_for_condition_with_sleep(build_step)
 
-        return True
-
     def _process_candidate(
         self, redeem_candidate: RedeemInfo
-    ) -> Generator[None, None, Optional[bool]]:
+    ) -> Generator[None, None, bool]:
         """Process a redeeming candidate and return whether winnings were found."""
         self._current_redeem_info = redeem_candidate
         # in case of a non-winning position or the claimable amount is dust
         if not self._is_winning_position() or self._is_dust():
-            return None
+            return False
 
-        winnings_found = yield from self._prepare_single_redeem()
-        if winnings_found:
-            self._expected_winnings += self.current_redeem_info.claimable_amount
-
-        return winnings_found
+        yield from self._prepare_single_redeem()
+        self._expected_winnings += self.current_redeem_info.claimable_amount
+        return True
 
     def _prepare_safe_tx(self) -> Generator[None, None, Optional[str]]:
         """
@@ -355,8 +373,8 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         winnings_found = False
 
         for redeem_candidate in self._redeem_info:
-            processing_result = yield from self._process_candidate(redeem_candidate)
-            if processing_result is None:
+            is_non_dust_winning = yield from self._process_candidate(redeem_candidate)
+            if not is_non_dust_winning:
                 continue
             winnings_found |= processing_result
 
@@ -381,6 +399,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self._get_redeem_info()
+            yield from self._clean_redeem_info()
             agent = self.context.agent_address
             redeem_tx_hex = yield from self._prepare_safe_tx()
             tx_submitter = (
