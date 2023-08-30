@@ -19,14 +19,14 @@
 
 """This module contains the conditional tokens contract definition."""
 
-from typing import List, Union
+from typing import List
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from hexbytes import HexBytes
-from web3.types import BlockIdentifier
+from web3.types import BlockData, TxReceipt
 
 
 class ConditionalTokensContract(Contract):
@@ -44,10 +44,13 @@ class ConditionalTokensContract(Contract):
         parent_collection_id: bytes,
         condition_id: HexBytes,
         index_sets: List[int],
-        from_block: BlockIdentifier = "earliest",
-        to_block: BlockIdentifier = "latest",
+        trade_tx_hash: str,
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
+        receipt: TxReceipt = ledger_api.api.eth.get_transaction_receipt(trade_tx_hash)
+        block: BlockData = ledger_api.api.eth.get_block(receipt["blockNumber"])
+        from_block = block.get("number", "earliest")
+
         contract_instance = cls.get_instance(ledger_api, contract_address)
         to_checksum = ledger_api.api.to_checksum_address
         redeemer_checksummed = to_checksum(redeemer)
@@ -55,7 +58,7 @@ class ConditionalTokensContract(Contract):
 
         payout_filter = contract_instance.events.PayoutRedemption.build_filter()
         payout_filter.fromBlock = from_block
-        payout_filter.toBlock = to_block
+        payout_filter.toBlock = "latest"
         payout_filter.args.redeemer.match_single(redeemer_checksummed)
         payout_filter.args.collateralToken.match_single(collateral_token_checksummed)
         payout_filter.args.parentCollectionId.match_single(parent_collection_id)

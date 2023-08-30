@@ -133,6 +133,7 @@ class RedeemInfo:
     outcomeIndex: int
     outcomeTokenMarginalPrice: float
     outcomeTokensTraded: int
+    transactionHash: str
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

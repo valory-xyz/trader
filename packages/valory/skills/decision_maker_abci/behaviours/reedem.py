@@ -201,6 +201,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             parent_collection_id=ZERO_BYTES,
             condition_id=self.current_condition_id,
             index_sets=self.current_index_sets,
+            trade_tx_hash=self.current_redeem_info.transactionHash,
         )
         return result
 
