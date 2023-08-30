@@ -150,6 +150,13 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
             trades_market_chunk = yield from self._fetch_redeem_info()
             if trades_market_chunk is not None:
+                # here an important assumption is made.
+                # we assume that the trade information does not conflict with each other,
+                # in the sense that one trade sample can only conclude one redeeming action for one pool.
+                # this is correct for the current implementation of the service,
+                # because no more than one answer is given to each question.
+                # if this were to change, then the multisend transaction prepared below could be incorrect
+                # because it would have conflicting calls.
                 redeem_updates = [RedeemInfo(**trade) for trade in trades_market_chunk]
                 self._redeem_info.extend(redeem_updates)
 
