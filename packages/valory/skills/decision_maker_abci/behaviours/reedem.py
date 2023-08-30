@@ -376,7 +376,11 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             is_non_dust_winning = yield from self._process_candidate(redeem_candidate)
             if not is_non_dust_winning:
                 continue
-            winnings_found |= processing_result
+
+            winnings_found = True
+
+            if len(self.multisend_batches) == self.params.redeeming_batch_size:
+                break
 
         if not winnings_found:
             self.context.logger.info("No winnings to redeem.")

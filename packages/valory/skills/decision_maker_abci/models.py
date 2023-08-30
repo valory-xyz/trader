@@ -117,6 +117,9 @@ class DecisionMakerParams(MarketManagerParams):
             "realitio_proxy_address", kwargs, str
         )
         self.realitio_address = self._ensure("realitio_address", kwargs, str)
+        # this is the max number of redeeming operations that will be batched on a single multisend transaction.
+        # increasing this number equals fewer fees but more chances for the transaction to fail
+        self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
         super().__init__(*args, **kwargs)
 
     @property
