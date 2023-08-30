@@ -17,4 +17,6 @@ dependencies:
   hexbytes: {}
   open-aea-web3:
     version: ==6.0.1
+  requests:
+    version: ==2.28.2
 contracts: []

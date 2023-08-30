@@ -21,12 +21,17 @@
 
 from typing import List
 
+import requests
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from hexbytes import HexBytes
 from web3.types import BlockData, TxReceipt
+
+
+class RPCTimedOutError(Exception):
+    """Exception to raise when the RPC times out."""
 
 
 class ConditionalTokensContract(Contract):
@@ -65,7 +70,19 @@ class ConditionalTokensContract(Contract):
         payout_filter.args.conditionId.match_single(condition_id)
         payout_filter.args.indexSets.match_single(index_sets)
 
-        redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
+        try:
+            redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
+        except requests.exceptions.ReadTimeout as exc:
+            msg = (
+                "The RPC timed out! This usually happens if the filtering is too wide. "
+                f"The service tried to filter from block {from_block} to latest, "
+                f"as the trading transaction ({trade_tx_hash}) took place at block {from_block}."
+                f"Did the trading happen too long in the past?\n"
+                "Please consider manually redeeming for the market with condition id "
+                f"{condition_id!r} if this issue persists."
+            )
+            raise RPCTimedOutError(msg) from exc
+
         n_redeemed = len(redeemed)
 
         if n_redeemed == 0:
