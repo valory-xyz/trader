@@ -369,7 +369,9 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :yields: None
         :returns: the safe's transaction hash for the redeeming operation.
         """
-        self.context.logger.info("Preparing a multisend tx to redeem payout...")
+        if len(self._redeem_info) > 0:
+            self.context.logger.info("Preparing a multisend tx to redeem payout...")
+
         winnings_found = False
 
         for redeem_candidate in self._redeem_info:
