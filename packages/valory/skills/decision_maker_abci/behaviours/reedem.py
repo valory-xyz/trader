@@ -395,10 +395,9 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             yield from self.wait_for_condition_with_sleep(build_step)
 
         winnings = self.wei_to_native(self._expected_winnings)
-        msg = (
+        self.context.logger.info(
             f"Prepared a multisend transaction to redeem winnings of {winnings} wxDAI."
         )
-        self.context.logger.info(msg)
         return self.tx_hex
 
     def async_act(self) -> Generator:
