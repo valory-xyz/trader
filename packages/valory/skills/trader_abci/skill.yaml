@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeiaekexc7erqmp3a2ff742pgy4r3tf3m5nxztdlpkvnzjtttodtmt4
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeid4lhamqwhe2mxizjftdz3wspinrdzb5sor3iwo7pltixmojwrx6y
+  models.py: bafybeih26gyqv24lc2mlz3kbdsifip3zlac3owcpqlyi7hg6du6y6ojdda
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeid445uy6wwvugf3byzl7r73c7teu6xr5ezxb4h7cxbenghg3copvy
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 - valory/termination_abci:0.1.0:bafybeiguy7pkrcptg6c754ioig4mlkr7truccym3fpv6jwpjx2tmpdbzhi
-- valory/market_manager_abci:0.1.0:bafybeicfhmzztrgxpjnwmfs5kw3s3nhla5mcdkp32azcyvxfgzbeeyvpza
-- valory/decision_maker_abci:0.1.0:bafybeidlybeevx2ayorh3f6kfiutafjxfb45mtda6z3d4tfysuq2yz5c44
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidpukej7ot3ksbwxl5vonu4iyfiygn5k5q7yh4qucnvvxnewhm67u
+- valory/market_manager_abci:0.1.0:bafybeifmtdyb7sxpbu23traeuthmycygrv35xf2ql3y7sf5iyswizlqpzu
+- valory/decision_maker_abci:0.1.0:bafybeic3q73uix3vahjako3ixum7jxzilhchg44cvxfl56j6pwhwf5es3y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicani53ed453ltxmz2av5hathwfcdq7tfa3qmzy2r47clnnhes26i
 behaviours:
   main:
     args: {}
@@ -169,7 +169,7 @@ models:
       headers:
         Content-Type: application/json
       method: POST
-      parameters: { }
+      parameters: {}
       response_key: data:blocks
       response_index: 0
       response_type: dict

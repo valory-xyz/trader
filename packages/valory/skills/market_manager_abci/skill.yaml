@@ -14,10 +14,11 @@ fingerprint:
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
-  graph_tooling/queries/omen.py: bafybeidrmpskn5p24eqojhehvqg4ttoiqn6ko6bfd3igeiyhwwodtq2gvq
-  graph_tooling/requests.py: bafybeicek5hjxroziuebmkmclyqefsd6pv6fajbptj4y64zdwjknacat4u
+  graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
+  graph_tooling/queries/omen.py: bafybeiexw6z2xlpbjvcnjoerbmdbt5nchxs6fmkh54j5qd7qllii72kzji
+  graph_tooling/requests.py: bafybeiee27knuanzuvk4boop6ycfn3vlpm22zgclwynkgeiauywjeo2r3e
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeidhhhp2obt36iatytckybywdm55pzmefpyccakfw3ufyz732ydigy
+  models.py: bafybeifmb4cojxesv2lcw6j3pm3yqjpsiuwyxpuexjbz656fpapdqcj2ba
   payloads.py: bafybeiamavgddfbzofpsjthmw6j7g2dyxm7fb6hvdb47kweyrx4w2ihcfi
   rounds.py: bafybeib2jkzzpnmx6eebw3cw6t2hlzxktumbzrerjlowlpv532eink6g7e
 fingerprint_ignore_patterns: []
