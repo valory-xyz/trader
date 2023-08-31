@@ -22,6 +22,7 @@
 from typing import Any, Dict, Generator, List, Optional, Union
 
 from hexbytes import HexBytes
+from web3.constants import HASH_ZERO
 
 from packages.valory.contracts.conditional_tokens.contract import (
     ConditionalTokensContract,
@@ -48,8 +49,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 )
 
 
-ZERO_BYTES_HEX = "0" * 64
-ZERO_BYTES = bytes.fromhex(ZERO_BYTES_HEX)
+ZERO_HEX = HASH_ZERO[2:]
+ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 DEFAULT_FROM_BLOCK = "earliest"
 
 
