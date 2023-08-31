@@ -8,13 +8,16 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeictahkgfmlqv5kksvj6klmxtmjdpeq4sp3x7dp2yr5x4kmzbcihse
   build/Realitio.json: bafybeiagi7zoeoy5s7duhg4oeuekj2s6z5mad2z6g2pn3n5elsvze25qiu
-  contract.py: bafybeia4t5gyonsakycsnit2iokruj5kuh5tloc3lxalucv7coe7bwj7gu
+  contract.py: bafybeiack5tz6vyesyvpq6wqhkkrdfevjedopdvjgyv5erhatknw2fazz4
 fingerprint_ignore_patterns: []
 class_name: RealitioContract
 contract_interface_paths:
   ethereum: build/Realitio.json
 dependencies:
+  eth_typing: {}
   hexbytes: {}
   open-aea-web3:
     version: ==6.0.1
+  requests:
+    version: ==2.28.2
 contracts: []

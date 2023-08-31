@@ -21,12 +21,12 @@
 """Structures for the redeeming."""
 
 import dataclasses
-from typing import List, cast
+from typing import Any, List
 
 from hexbytes import HexBytes
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Condition:
     """A structure for an OMEN condition."""
 
@@ -35,10 +35,10 @@ class Condition:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        self.outcomeSlotCount = int(self.outcomeSlotCount)
+        super().__setattr__("outcomeSlotCount", int(self.outcomeSlotCount))
 
         if isinstance(self.id, str):
-            self.id = HexBytes(self.id)
+            super().__setattr__("id", HexBytes(self.id))
 
     @property
     def index_sets(self) -> List[int]:
@@ -46,7 +46,7 @@ class Condition:
         return [i + 1 for i in range(self.outcomeSlotCount)]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Answer:
     """A structure for an OMEN answer."""
 
@@ -55,7 +55,7 @@ class Answer:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        self.bondAggregate = int(self.bondAggregate)
+        super().__setattr__("bondAggregate", int(self.bondAggregate))
 
     @property
     def answer_bytes(self) -> bytes:
@@ -63,61 +63,45 @@ class Answer:
         return bytes.fromhex(self.answer[2:])
 
 
-@dataclasses.dataclass
-class AnswerData:
-    """A structure for the answers' data."""
-
-    answers: List[bytes]
-    bonds: List[int]
-
-
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Question:
     """A structure for an OMEN question."""
 
     id: bytes
     data: str
-    answers: List[Answer]
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        if isinstance(self.answers, list):
-            self.answers = [Answer(**cast(dict, answer)) for answer in self.answers]
-
         if isinstance(self.id, str):
-            self.id = bytes.fromhex(self.id[2:])
-
-    @property
-    def answer_data(self) -> AnswerData:
-        """Get the answers' data."""
-        answers, bonds = [], []
-        for answer in self.answers:
-            answers.append(answer.answer_bytes)
-            bonds.append(answer.bondAggregate)
-
-        return AnswerData(answers, bonds)
+            super().__setattr__("id", bytes.fromhex(self.id[2:]))
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class FPMM:
     """A structure for an OMEN FPMM."""
 
+    answerFinalizedTimestamp: int
     collateralToken: str
     condition: Condition
     creator: str
+    creationTimestamp: int
     currentAnswer: str
     question: Question
     templateId: int
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        self.templateId = int(self.templateId)
+        super().__setattr__(
+            "answerFinalizedTimestamp", int(self.answerFinalizedTimestamp)
+        )
+        super().__setattr__("templateId", int(self.templateId))
+        super().__setattr__("creationTimestamp", int(self.creationTimestamp))
 
         if isinstance(self.condition, dict):
-            self.condition = Condition(**self.condition)
+            super().__setattr__("condition", Condition(**self.condition))
 
         if isinstance(self.question, dict):
-            self.question = Question(**self.question)
+            super().__setattr__("question", Question(**self.question))
 
     @property
     def current_answer_index(self) -> int:
@@ -125,7 +109,7 @@ class FPMM:
         return int(self.currentAnswer, 16)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RedeemInfo:
     """A structure with redeeming information."""
 
@@ -137,12 +121,21 @@ class RedeemInfo:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        self.outcomeIndex = int(self.outcomeIndex)
-        self.outcomeTokenMarginalPrice = float(self.outcomeTokenMarginalPrice)
-        self.outcomeTokensTraded = int(self.outcomeTokensTraded)
+        super().__setattr__("outcomeIndex", int(self.outcomeIndex))
+        super().__setattr__(
+            "outcomeTokenMarginalPrice", float(self.outcomeTokenMarginalPrice)
+        )
+        super().__setattr__("outcomeTokensTraded", int(self.outcomeTokensTraded))
 
         if isinstance(self.fpmm, dict):
-            self.fpmm = FPMM(**self.fpmm)
+            super().__setattr__("fpmm", FPMM(**self.fpmm))
+
+    def __eq__(self, other: Any) -> bool:
+        """Check equality."""
+        return (
+            isinstance(other, RedeemInfo)
+            and self.fpmm.condition.id == other.fpmm.condition.id
+        )
 
     @property
     def claimable_amount(self) -> int:

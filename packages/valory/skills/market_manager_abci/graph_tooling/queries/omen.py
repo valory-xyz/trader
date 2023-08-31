@@ -68,26 +68,24 @@ trades = Template(
         orderDirection: asc
       ){
         fpmm {
+          answerFinalizedTimestamp
           collateralToken
           condition {
             id
             outcomeSlotCount
           }
           creator
+          creationTimestamp
           currentAnswer
           question {
             id
             data
-            answers {
-              answer
-              bondAggregate
-            }
           }
           templateId
         }
-        outcomeIndex,
-        outcomeTokenMarginalPrice,
-        outcomeTokensTraded,
+        outcomeIndex
+        outcomeTokenMarginalPrice
+        outcomeTokensTraded
         transactionHash
       }
     }

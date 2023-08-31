@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiegvrfan4uckwobpiuoikzy2phq7gdlbcb277s7yoddwpnpq5y4ju
+agent: valory/trader:0.1.0:bafybeiaufx7msehruw4qefhgapcaijw7ndmwe4erb7xfyww2najxevha3u
 number_of_agents: 4
 deployment: {}
 ---
@@ -74,6 +74,8 @@ type: skill
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
+        average_block_time: ${ABT:int:5}
+        abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         mech_tool: ${MECH_TOOL:str:prediction-online}
         bet_amount_per_threshold: &id004
@@ -145,6 +147,8 @@ type: skill
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
+        average_block_time: ${ABT:int:5}
+        abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         mech_tool: ${MECH_TOOL:str:prediction-online}
         bet_amount_per_threshold: *id004
@@ -203,6 +207,8 @@ type: skill
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
+        average_block_time: ${ABT:int:5}
+        abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         mech_tool: ${MECH_TOOL:str:prediction-online}
         bet_amount_per_threshold: *id004
@@ -261,6 +267,8 @@ type: skill
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
+        average_block_time: ${ABT:int:5}
+        abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         mech_tool: ${MECH_TOOL:str:prediction-online}
         bet_amount_per_threshold: *id004
