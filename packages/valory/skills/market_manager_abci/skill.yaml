@@ -129,7 +129,22 @@ models:
       opening_margin: 300
       languages:
       - en_US
+      average_block_time: 5
+      abt_error_mult: 5
     class_name: MarketManagerParams
+  network_subgraph:
+    args:
+      api_id: network
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:blocks
+      response_index: 0
+      response_type: dict
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis
+    class_name: NetworkSubgraph
   omen_subgraph:
     args:
       api_id: omen

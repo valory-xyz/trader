@@ -48,6 +48,10 @@ class OmenSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
 
 
+class NetworkSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the network's subgraph specifications."""
+
+
 class MarketManagerParams(BaseParams):
     """Market manager's parameters."""
 
@@ -66,6 +70,8 @@ class MarketManagerParams(BaseParams):
 
         self.opening_margin: int = self._ensure("opening_margin", kwargs, int)
         self.languages: List[str] = self._ensure("languages", kwargs, List[str])
+        self.average_block_time: int = self._ensure("average_block_time", kwargs, int)
+        self.abt_error_mult: int = self._ensure("abt_error_mult", kwargs, int)
         super().__init__(*args, **kwargs)
 
     @property

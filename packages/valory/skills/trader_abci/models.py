@@ -37,6 +37,9 @@ from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
 )
 from packages.valory.skills.market_manager_abci.models import (
+    NetworkSubgraph as MarketManagerNetworkSubgraph,
+)
+from packages.valory.skills.market_manager_abci.models import (
     OmenSubgraph as MarketManagerOmenSubgraph,
 )
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -63,6 +66,7 @@ EventToTimeoutMappingType = Dict[
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
+NetworkSubgraph = MarketManagerNetworkSubgraph
 MechResponseSpecs = DecisionMakerMechResponseSpecs
 
 MARGIN = 5

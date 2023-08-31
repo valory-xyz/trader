@@ -50,6 +50,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 
 ZERO_BYTES_HEX = "0" * 64
 ZERO_BYTES = bytes.fromhex(ZERO_BYTES_HEX)
+DEFAULT_FROM_BLOCK = "earliest"
 
 
 class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -62,6 +63,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         super().__init__(**kwargs)
         self._already_resolved: bool = False
         self._payouts: Dict[str, int] = {}
+        self._from_block: Union[int, str] = DEFAULT_FROM_BLOCK
         self._built_data: Optional[HexBytes] = None
         self._redeem_info: List[RedeemInfo] = []
         self._current_redeem_info: Optional[RedeemInfo] = None
@@ -118,6 +120,19 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def payouts(self, payouts: Dict[str, int]) -> None:
         """Set the trades' transaction hashes mapped to payouts for the current market."""
         self._payouts = payouts
+
+    @property
+    def from_block(self) -> Union[int, str]:
+        """Get the fromBlock."""
+        return self._from_block
+
+    @from_block.setter
+    def from_block(self, from_block: str) -> None:
+        """Set the fromBlock."""
+        try:
+            self._from_block = int(from_block)
+        except ValueError:
+            self._from_block = DEFAULT_FROM_BLOCK
 
     @property
     def already_resolved(self) -> bool:
@@ -264,6 +279,23 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             data=HexBytes(self.built_data),
         )
         self.multisend_batches.append(batch)
+        return True
+
+    def _get_block_number(self) -> WaitableConditionType:
+        """Get the block number of the current position."""
+        market_timestamp = self.current_redeem_info.fpmm.creationTimestamp
+
+        while True:
+            block = yield from self._fetch_block_number(market_timestamp)
+            if self._fetch_status != FetchStatus.IN_PROGRESS:
+                break
+
+        if self._fetch_status == FetchStatus.SUCCESS:
+            self.from_block = block.get("id", DEFAULT_FROM_BLOCK)
+            self.context.logger.info(
+                f"Fetched block number {self.from_block!r} as closest to timestamp {market_timestamp!r}"
+            )
+
         return True
 
     def _build_claim_data(self) -> WaitableConditionType:

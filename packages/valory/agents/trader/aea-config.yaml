@@ -158,6 +158,8 @@ models:
       slot_count: ${int:2}
       opening_margin: ${int:300}
       languages: ${list:["en_US"]}
+      average_block_time: ${int:5}
+      abt_error_mult: ${int:5}
       mech_agent_address: ${str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
       mech_tool: ${str:prediction-online}
       bet_amount_per_threshold:
