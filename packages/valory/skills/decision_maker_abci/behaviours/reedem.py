@@ -237,11 +237,15 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Return whether the current position is winning."""
         our_answer = self.current_redeem_info.outcomeIndex
         correct_answer = self.current_redeem_info.fpmm.current_answer_index
-        return our_answer == correct_answer
+        is_winning = our_answer == correct_answer
+        self.context.logger.info(f"Is winning position: {is_winning}")
+        return is_winning
 
     def _is_dust(self) -> bool:
         """Return whether the current claimable amount is dust or not."""
-        return self.current_redeem_info.claimable_amount < self.params.dust_threshold
+        is_dust = self.current_redeem_info.claimable_amount < self.params.dust_threshold
+        self.context.logger.info(f"Is dust position: {is_dust}")
+        return is_dust
 
     def _check_already_resolved(self) -> WaitableConditionType:
         """Check whether someone has already resolved for this market."""
@@ -343,13 +347,13 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _prepare_single_redeem(self) -> Generator:
         """Prepare a multisend transaction for a single redeeming action."""
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
-        steps = [] if self.already_resolved else [self._build_resolve_data]
-        steps.extend(
-            [
+        steps = [self._build_redeem_data]
+        if not self.already_resolved:
+            steps[:0] = [
+                self._build_resolve_data,
+                self._get_block_number,
                 self._build_claim_data,
-                self._build_redeem_data,
             ]
-        )
 
         for build_step in steps:
             yield from self.wait_for_condition_with_sleep(build_step)
@@ -393,32 +397,39 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if len(self._redeem_info) > 0:
             self.context.logger.info("Preparing a multisend tx to redeem payout...")
 
-        winnings_found = False
+        winnings_found = 0
 
         for redeem_candidate in self._redeem_info:
+            msg = f"Processing position with tx hash {redeem_candidate.transactionHash!r}..."
+            self.context.logger.info(msg)
             is_non_dust_winning = yield from self._process_candidate(redeem_candidate)
             if not is_non_dust_winning:
+                msg = "Not redeeming position. Moving to the next one..."
+                self.context.logger.info(msg)
                 continue
 
-            winnings_found = True
+            self.context.logger.info("Adding position to the multisend batch...")
+            winnings_found += 1
 
-            if len(self.multisend_batches) == self.params.redeeming_batch_size:
+            if winnings_found == self.params.redeeming_batch_size:
                 break
 
-        if not winnings_found:
+        if winnings_found == 0:
             self.context.logger.info("No winnings to redeem.")
             return None
 
+        winnings = self.wei_to_native(self._expected_winnings)
+        self.context.logger.info(
+            "Preparing the multisend transaction to redeem winnings of "
+            f"{winnings} wxDAI for {winnings_found} positions."
+        )
         for build_step in (
             self._build_multisend_data,
             self._build_multisend_safe_tx_hash,
         ):
             yield from self.wait_for_condition_with_sleep(build_step)
 
-        winnings = self.wei_to_native(self._expected_winnings)
-        self.context.logger.info(
-            f"Prepared a multisend transaction to redeem winnings of {winnings} wxDAI."
-        )
+        self.context.logger.info(f"Transaction successfully prepared.")
         return self.tx_hex
 
     def async_act(self) -> Generator:
