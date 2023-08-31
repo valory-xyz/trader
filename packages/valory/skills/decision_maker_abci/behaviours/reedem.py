@@ -19,7 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Union
 
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
@@ -66,7 +66,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self._payouts: Dict[str, int] = {}
         self._from_block: Union[int, str] = DEFAULT_FROM_BLOCK
         self._built_data: Optional[HexBytes] = None
-        self._redeem_info: List[RedeemInfo] = []
+        self._redeem_info: Set[RedeemInfo] = set()
         self._current_redeem_info: Optional[RedeemInfo] = None
         self._expected_winnings: int = 0
 
@@ -168,11 +168,11 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 # because no more than one answer is given to each question.
                 # if this were to change, then the multisend transaction prepared below could be incorrect
                 # because it would have conflicting calls.
-                redeem_updates = [RedeemInfo(**trade) for trade in trades_market_chunk]
-                self._redeem_info.extend(redeem_updates)
+                redeem_updates = {RedeemInfo(**trade) for trade in trades_market_chunk}
+                self._redeem_info.update(redeem_updates)
 
         if self._fetch_status != FetchStatus.SUCCESS:
-            self._redeem_info = []
+            self._redeem_info = set()
 
         self.context.logger.info(f"Fetched redeeming information: {self._redeem_info}")
 
@@ -225,11 +225,11 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
         payout_so_far = sum(self.payouts.values())
         if payout_so_far > 0:
-            self._redeem_info = [
+            self._redeem_info = {
                 info
                 for info in self._redeem_info
                 if info.transactionHash not in self.payouts.keys()
-            ]
+            }
             msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
             self.context.logger.info(msg)
 
@@ -429,7 +429,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(build_step)
 
-        self.context.logger.info(f"Transaction successfully prepared.")
+        self.context.logger.info("Transaction successfully prepared.")
         return self.tx_hex
 
     def async_act(self) -> Generator:
