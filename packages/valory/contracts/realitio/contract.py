@@ -44,6 +44,18 @@ class RealitioContract(Contract):
     contract_id = PublicId.from_str("valory/realitio:0.1.0")
 
     @classmethod
+    def check_finalized(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_id: bytes,
+    ) -> JSONLike:
+        """Check whether a market has been finalized."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        is_finalized = contract_instance.functions.isFinalized(question_id).call()
+        return dict(finalized=is_finalized)
+
+    @classmethod
     def _get_claim_params(
         cls,
         ledger_api: LedgerApi,

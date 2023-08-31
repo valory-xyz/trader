@@ -80,6 +80,7 @@ class Question:
 class FPMM:
     """A structure for an OMEN FPMM."""
 
+    answerFinalizedTimestamp: int
     collateralToken: str
     condition: Condition
     creator: str
@@ -90,6 +91,9 @@ class FPMM:
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
+        super().__setattr__(
+            "answerFinalizedTimestamp", int(self.answerFinalizedTimestamp)
+        )
         super().__setattr__("templateId", int(self.templateId))
         super().__setattr__("creationTimestamp", int(self.creationTimestamp))
 

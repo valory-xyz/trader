@@ -68,6 +68,7 @@ trades = Template(
         orderDirection: asc
       ){
         fpmm {
+          answerFinalizedTimestamp
           collateralToken
           condition {
             id
@@ -82,9 +83,9 @@ trades = Template(
           }
           templateId
         }
-        outcomeIndex,
-        outcomeTokenMarginalPrice,
-        outcomeTokensTraded,
+        outcomeIndex
+        outcomeTokenMarginalPrice
+        outcomeTokensTraded
         transactionHash
       }
     }

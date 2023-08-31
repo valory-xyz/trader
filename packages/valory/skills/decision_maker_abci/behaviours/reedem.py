@@ -19,6 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
+from sys import maxsize
 from typing import Any, Dict, Generator, List, Optional, Set, Union
 
 from hexbytes import HexBytes
@@ -62,6 +63,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
+        self._finalized: bool = False
         self._already_resolved: bool = False
         self._payouts: Dict[str, int] = {}
         self._from_block: Union[int, str] = DEFAULT_FROM_BLOCK
@@ -69,6 +71,11 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self._redeem_info: Set[RedeemInfo] = set()
         self._current_redeem_info: Optional[RedeemInfo] = None
         self._expected_winnings: int = 0
+
+    @property
+    def synced_timestamp(self) -> int:
+        """Return the synchronized timestamp across the agents."""
+        return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
     @property
     def current_redeem_info(self) -> RedeemInfo:
@@ -131,6 +138,16 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self._from_block = DEFAULT_FROM_BLOCK
 
     @property
+    def finalized(self) -> bool:
+        """Get whether the current market has been finalized."""
+        return self._finalized
+
+    @finalized.setter
+    def finalized(self, flag: bool) -> None:
+        """Set whether the current market has been finalized."""
+        self._finalized = flag
+
+    @property
     def already_resolved(self) -> bool:
         """Get whether the current market has already been resolved."""
         return self._already_resolved
@@ -168,7 +185,14 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 # because no more than one answer is given to each question.
                 # if this were to change, then the multisend transaction prepared below could be incorrect
                 # because it would have conflicting calls.
-                redeem_updates = {RedeemInfo(**trade) for trade in trades_market_chunk}
+                redeem_updates = {
+                    RedeemInfo(**trade)
+                    for trade in trades_market_chunk
+                    if int(
+                        trade.get("fpmm", {}).get("answerFinalizedTimestamp", maxsize)
+                    )
+                    <= self.synced_timestamp
+                }
                 self._redeem_info.update(redeem_updates)
 
         if self._fetch_status != FetchStatus.SUCCESS:
@@ -232,6 +256,31 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             }
             msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
             self.context.logger.info(msg)
+
+    def _realitio_interact(
+        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
+    ) -> WaitableConditionType:
+        """Interact with the realitio contract."""
+        status = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.realitio_address,
+            contract_public_id=RealitioContract.contract_id,
+            contract_callable=contract_callable,
+            data_key=data_key,
+            placeholder=placeholder,
+            **kwargs,
+        )
+        return status
+
+    def _check_finalized(self) -> WaitableConditionType:
+        """Check whether the question has been finalized."""
+        result = yield from self._realitio_interact(
+            contract_callable="check_finalized",
+            data_key="finalized",
+            placeholder=get_name(RedeemBehaviour.finalized),
+            question_id=self.current_question_id,
+        )
+        return result
 
     def _is_winning_position(self) -> bool:
         """Return whether the current position is winning."""
@@ -301,10 +350,7 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _build_claim_data(self) -> WaitableConditionType:
         """Prepare the safe tx to claim the winnings."""
-        result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.realitio_address,
-            contract_public_id=RealitioContract.contract_id,
+        result = yield from self._realitio_interact(
             contract_callable="build_claim_winnings",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
@@ -363,6 +409,18 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     ) -> Generator[None, None, bool]:
         """Process a redeeming candidate and return whether winnings were found."""
         self._current_redeem_info = redeem_candidate
+
+        # double check whether the market is finalized
+        yield from self.wait_for_condition_with_sleep(self._check_finalized)
+        if not self.finalized:
+            self.context.logger.warning(
+                f"Conflict found! The current market, with condition id {redeem_candidate.fpmm.condition.id!r}, "
+                f"is reported as not finalized by the realitio contract. "
+                f"However, an answer was finalized on {redeem_candidate.fpmm.answerFinalizedTimestamp}, "
+                f"and the last service transition occurred on {self.synced_timestamp}."
+            )
+            return False
+
         # in case of a non-winning position or the claimable amount is dust
         if not self._is_winning_position() or self._is_dust():
             return False
@@ -402,8 +460,8 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         for redeem_candidate in self._redeem_info:
             msg = f"Processing position with tx hash {redeem_candidate.transactionHash!r}..."
             self.context.logger.info(msg)
-            is_non_dust_winning = yield from self._process_candidate(redeem_candidate)
-            if not is_non_dust_winning:
+            is_claimable = yield from self._process_candidate(redeem_candidate)
+            if not is_claimable:
                 msg = "Not redeeming position. Moving to the next one..."
                 self.context.logger.info(msg)
                 continue
