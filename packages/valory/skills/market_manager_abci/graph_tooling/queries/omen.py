@@ -79,10 +79,6 @@ trades = Template(
           question {
             id
             data
-            answers {
-              answer
-              bondAggregate
-            }
           }
           templateId
         }

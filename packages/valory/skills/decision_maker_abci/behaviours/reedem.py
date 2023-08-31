@@ -300,7 +300,6 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _build_claim_data(self) -> WaitableConditionType:
         """Prepare the safe tx to claim the winnings."""
-        answer_data = self.current_fpmm.question.answer_data
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.realitio_address,
@@ -308,15 +307,8 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             contract_callable="build_claim_winnings",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
+            from_block=self.from_block,
             question_id=self.current_question_id,
-            # `history_hashes` is calculated as described here:
-            # https://realitio.github.io/docs/html/contract_explanation.html#answer-history-entries.
-            # however, the current implementation of the service does not place multiple answers for a single market.
-            # therefore, this value is always set to zero bytes
-            history_hashes=[ZERO_BYTES],
-            addresses=[self.safe_address_lower],
-            bonds=answer_data.bonds,
-            answers=answer_data.answers,
         )
 
         if not result:

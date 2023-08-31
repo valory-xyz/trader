@@ -19,12 +19,23 @@
 
 """This module contains the Realitio_v2_1 contract definition."""
 
-from typing import List
+from typing import List, Tuple
 
+import requests
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
+from eth_typing import ChecksumAddress
+from web3.constants import HASH_ZERO
+from web3.types import BlockIdentifier
+
+ZERO_HEX = HASH_ZERO[2:]
+ZERO_BYTES = bytes.fromhex(ZERO_HEX)
+
+
+class RPCTimedOutError(Exception):
+    """Exception to raise when the RPC times out."""
 
 
 class RealitioContract(Contract):
@@ -33,26 +44,75 @@ class RealitioContract(Contract):
     contract_id = PublicId.from_str("valory/realitio:0.1.0")
 
     @classmethod
+    def _get_claim_params(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        from_block: BlockIdentifier,
+        question_id: bytes,
+    ) -> Tuple[bytes, List[bytes], List[ChecksumAddress], List[int], List[bytes]]:
+        """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+
+        answer_filter = contract_instance.events.LogNewAnswer.build_filter()
+        answer_filter.fromBlock = from_block
+        answer_filter.toBlock = "latest"
+        answer_filter.args.question_id.match_single(question_id)
+
+        try:
+            answered = list(answer_filter.deploy(ledger_api.api).get_all_entries())
+        except requests.exceptions.ReadTimeout as exc:
+            msg = (
+                "The RPC timed out! This usually happens if the filtering is too wide. "
+                f"The service tried to filter from block {from_block} to latest, "
+                "as the market was created at this time. Did the market get created too long in the past?\n"
+                "Please consider manually redeeming for the market with question id "
+                f"{question_id!r} if this issue persists."
+            )
+            raise RPCTimedOutError(msg) from exc
+        else:
+            n_answered = len(answered)
+
+        if n_answered == 0:
+            msg = f"No answers have been given for question with id {question_id}!"
+            raise ValueError(msg)
+
+        history_hashes = []
+        addresses = []
+        bonds = []
+        answers = []
+        for i, answer in enumerate(reversed(answered)):
+            # history_hashes second-last-to-first, the hash of each history entry, calculated as described here:
+            # https://realitio.github.io/docs/html/contract_explanation.html#answer-history-entries.
+            if i == n_answered - 1:
+                history_hashes.append(ZERO_BYTES)
+            else:
+                history_hashes.append(answered[i + 1]["args"]["history_hash"])
+
+            # last-to-first, the address of each answerer or commitment sender
+            addresses.append(answer["args"]["user"])
+            # last-to-first, the bond supplied with each answer or commitment
+            bonds.append(answer["args"]["bond"])
+            # last-to-first, each answer supplied, or commitment ID if the answer was supplied with commit->reveal
+            answers.append(answer["args"]["answer"])
+
+        return question_id, history_hashes, addresses, bonds, answers
+
+    @classmethod
     def build_claim_winnings(
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
+        from_block: BlockIdentifier,
         question_id: bytes,
-        history_hashes: List[bytes],
-        addresses: List[str],
-        bonds: List[int],
-        answers: List[bytes],
     ) -> JSONLike:
         """Build `claimWinnings` transaction."""
         contract = cls.get_instance(ledger_api, contract_address)
+        claim_params = cls._get_claim_params(
+            ledger_api, contract_address, from_block, question_id
+        )
         data = contract.encodeABI(
             fn_name="claimWinnings",
-            args=[
-                question_id,
-                history_hashes,
-                [ledger_api.api.to_checksum_address(a) for a in addresses],
-                bonds,
-                answers,
-            ],
+            args=claim_params,
         )
         return dict(data=data)

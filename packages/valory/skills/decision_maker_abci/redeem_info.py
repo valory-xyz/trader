@@ -21,7 +21,7 @@
 """Structures for the redeeming."""
 
 import dataclasses
-from typing import List, cast
+from typing import List
 
 from hexbytes import HexBytes
 
@@ -64,38 +64,16 @@ class Answer:
 
 
 @dataclasses.dataclass
-class AnswerData:
-    """A structure for the answers' data."""
-
-    answers: List[bytes]
-    bonds: List[int]
-
-
-@dataclasses.dataclass
 class Question:
     """A structure for an OMEN question."""
 
     id: bytes
     data: str
-    answers: List[Answer]
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
-        if isinstance(self.answers, list):
-            self.answers = [Answer(**cast(dict, answer)) for answer in self.answers]
-
         if isinstance(self.id, str):
             self.id = bytes.fromhex(self.id[2:])
-
-    @property
-    def answer_data(self) -> AnswerData:
-        """Get the answers' data."""
-        answers, bonds = [], []
-        for answer in self.answers:
-            answers.append(answer.answer_bytes)
-            bonds.append(answer.bondAggregate)
-
-        return AnswerData(answers, bonds)
 
 
 @dataclasses.dataclass
