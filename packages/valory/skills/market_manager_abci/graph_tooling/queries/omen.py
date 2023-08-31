@@ -74,6 +74,7 @@ trades = Template(
             outcomeSlotCount
           }
           creator
+          creationTimestamp
           currentAnswer
           question {
             id

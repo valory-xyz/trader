@@ -105,6 +105,7 @@ class FPMM:
     collateralToken: str
     condition: Condition
     creator: str
+    creationTimestamp: int
     currentAnswer: str
     question: Question
     templateId: int
@@ -112,6 +113,7 @@ class FPMM:
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         self.templateId = int(self.templateId)
+        self.creationTimestamp = int(self.creationTimestamp)
 
         if isinstance(self.condition, dict):
             self.condition = Condition(**self.condition)
