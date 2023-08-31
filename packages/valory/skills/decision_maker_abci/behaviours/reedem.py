@@ -108,11 +108,6 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.current_condition.index_sets
 
     @property
-    def safe_address_lower(self) -> str:
-        """Get the safe's address converted to lower case."""
-        return self.synchronized_data.safe_contract_address.lower()
-
-    @property
     def payouts(self) -> Dict[str, int]:
         """Get the trades' transaction hashes mapped to payouts for the current market."""
         return self._payouts
@@ -215,11 +210,12 @@ class RedeemBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             kwargs["index_sets"].append(redeem_candidate.fpmm.condition.index_sets)
             kwargs["trade_tx_hashes"].append(redeem_candidate.transactionHash)
 
+        safe_address_lower = self.synchronized_data.safe_contract_address.lower()
         result = yield from self._conditional_tokens_interact(
             contract_callable="check_redeemed",
             data_key="payouts",
             placeholder=get_name(RedeemBehaviour.payouts),
-            redeemer=self.safe_address_lower,
+            redeemer=safe_address_lower,
             **kwargs,
         )
         return result
