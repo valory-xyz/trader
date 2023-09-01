@@ -47,6 +47,9 @@ class Event(Enum):
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
+    NO_REDEEMING = "no_redeeming"
+    BLACKLIST = "blacklist"
+    NO_OP = "no_op"
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
 

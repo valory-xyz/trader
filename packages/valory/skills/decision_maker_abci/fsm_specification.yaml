@@ -1,10 +1,13 @@
 alphabet_in:
+- BLACKLIST
 - DONE
 - FETCH_ERROR
 - INSUFFICIENT_BALANCE
 - MECH_RESPONSE_ERROR
 - NONE
 - NO_MAJORITY
+- NO_OP
+- NO_REDEEMING
 - ROUND_TIMEOUT
 - SLOTS_UNSUPPORTED_ERROR
 - TIE
@@ -13,12 +16,14 @@ default_start_state: SamplingRound
 final_states:
 - FinishedDecisionMakerRound
 - FinishedWithoutDecisionRound
+- FinishedWithoutRedeemingRound
 - ImpossibleRound
 - RefillRequiredRound
 label: DecisionMakerAbciApp
 start_states:
-- BlacklistingRound
 - DecisionReceiveRound
+- HandleFailedTxRound
+- RedeemRound
 - SamplingRound
 states:
 - BetPlacementRound
@@ -27,7 +32,10 @@ states:
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedWithoutDecisionRound
+- FinishedWithoutRedeemingRound
+- HandleFailedTxRound
 - ImpossibleRound
+- RedeemRound
 - RefillRequiredRound
 - SamplingRound
 transition_func:
@@ -52,6 +60,14 @@ transition_func:
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (HandleFailedTxRound, BLACKLIST): BlacklistingRound
+    (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
+    (HandleFailedTxRound, NO_OP): RedeemRound
+    (RedeemRound, DONE): FinishedDecisionMakerRound
+    (RedeemRound, NONE): ImpossibleRound
+    (RedeemRound, NO_MAJORITY): RedeemRound
+    (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
+    (RedeemRound, ROUND_TIMEOUT): RedeemRound
     (SamplingRound, DONE): DecisionRequestRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound

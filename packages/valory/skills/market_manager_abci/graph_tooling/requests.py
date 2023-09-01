@@ -27,8 +27,12 @@ from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.network import (
+    block_number,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import (
     questions,
+    trades,
 )
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
@@ -99,7 +103,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """Get a subgraph by prediction market's name."""
         return getattr(self.context, self._current_market)
 
-    def _prepare_bets_fetching(self) -> bool:
+    def _prepare_fetching(self) -> bool:
         """Prepare for fetching a bet."""
         if self._fetch_status in (FetchStatus.SUCCESS, FetchStatus.NONE):
             res = next(self._creators_iterator, None)
@@ -115,12 +119,14 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
     def _handle_response(
         self,
+        subgraph: ApiSpecs,
         res: Optional[Dict],
         res_context: str,
         sleep_on_fail: bool = True,
     ) -> Generator[None, None, Optional[Any]]:
         """Handle a response from a subgraph.
 
+        :param subgraph: the subgraph to handle the response for.
         :param res: the response to handle.
         :param res_context: the context of the current response.
         :param sleep_on_fail: whether we want to sleep if we fail to get the response's result.
@@ -129,22 +135,22 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """
         if res is None:
             self.context.logger.error(
-                f"Could not get {res_context} from {self.current_subgraph.api_id}"
+                f"Could not get {res_context} from {subgraph.api_id}"
             )
             self._call_failed = True
-            self.current_subgraph.increment_retries()
+            subgraph.increment_retries()
 
-            if self.current_subgraph.is_retries_exceeded():
+            if subgraph.is_retries_exceeded():
                 self._fetch_status = FetchStatus.FAIL
 
             if sleep_on_fail:
-                sleep_time = self.current_subgraph.retries_info.suggested_sleep_time
+                sleep_time = subgraph.retries_info.suggested_sleep_time
                 yield from self.sleep(sleep_time)
             return None
 
         self.context.logger.info(f"Retrieved {res_context}: {res}.")
         self._call_failed = False
-        self.current_subgraph.reset_retries()
+        subgraph.reset_retries()
         self._fetch_status = FetchStatus.SUCCESS
         return res
 
@@ -166,8 +172,61 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         res = self.current_subgraph.process_response(res_raw)
 
         bets = yield from self._handle_response(
+            self.current_subgraph,
             res,
             res_context="questions",
         )
 
         return bets
+
+    def _fetch_redeem_info(self) -> Generator[None, None, Optional[list]]:
+        """Fetch redeeming information from the current subgraph."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+
+        safe = self.synchronized_data.safe_contract_address
+        query = trades.substitute(creator=safe.lower())
+
+        # workaround because we cannot have multiple response keys for a single `ApiSpec`
+        res_key_backup = self.current_subgraph.response_info.response_key
+        self.current_subgraph.response_info.response_key = "data:fpmmTrades"
+
+        res_raw = yield from self.get_http_response(
+            content=to_content(query),
+            **self.current_subgraph.get_spec(),
+        )
+        res = self.current_subgraph.process_response(res_raw)
+        self.current_subgraph.response_info.response_key = res_key_backup
+
+        redeem_info = yield from self._handle_response(
+            self.current_subgraph,
+            res,
+            res_context="trades",
+        )
+
+        return redeem_info
+
+    def _fetch_block_number(
+        self, timestamp: int
+    ) -> Generator[None, None, Dict[str, str]]:
+        """Get a block number by its timestamp."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+
+        margin = self.params.average_block_time * self.params.abt_error_mult
+        query = block_number.substitute(
+            timestamp_from=timestamp, timestamp_to=timestamp + margin
+        )
+
+        current_subgraph = self.context.network_subgraph
+        res_raw = yield from self.get_http_response(
+            content=to_content(query),
+            **current_subgraph.get_spec(),
+        )
+        res = current_subgraph.process_response(res_raw)
+
+        block = yield from self._handle_response(
+            current_subgraph,
+            res,
+            res_context="block number",
+        )
+
+        return {} if block is None else block

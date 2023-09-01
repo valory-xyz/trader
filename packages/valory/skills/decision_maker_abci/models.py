@@ -109,6 +109,17 @@ class DecisionMakerParams(MarketManagerParams):
         multisend_address = kwargs.get("multisend_address", None)
         enforce(multisend_address is not None, "Multisend address not specified!")
         self.multisend_address = multisend_address
+        self.dust_threshold = self._ensure("dust_threshold", kwargs, int)
+        self.conditional_tokens_address = self._ensure(
+            "conditional_tokens_address", kwargs, str
+        )
+        self.realitio_proxy_address = self._ensure(
+            "realitio_proxy_address", kwargs, str
+        )
+        self.realitio_address = self._ensure("realitio_address", kwargs, str)
+        # this is the max number of redeeming operations that will be batched on a single multisend transaction.
+        # increasing this number equals fewer fees but more chances for the transaction to fail
+        self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
         super().__init__(*args, **kwargs)
 
     @property

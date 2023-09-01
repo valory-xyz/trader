@@ -10,17 +10,17 @@ fingerprint:
   __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
   behaviours.py: bafybeiafrhq7vtj2nrhrcvwi4d4r6w4pn4yoq2ria7lfakn6x4p4dcne4m
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeihfdgb7k7mwyr3f65xhk6cusyqdvu4jux5ysmqfgon2ubwyqz6yse
+  fsm_specification.yaml: bafybeibeas5ovngfhfox4dkkwdvhogpuzkmwj6r33ez2xxvvmvmesa3xvm
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
   models.py: bafybeiahojnn52s762zitwx6k5s4ef5qw7hwjf3orlklqwuz3zi7k2o7bi
-  rounds.py: bafybeigjz4nxhedctn4b6aaglnnedohqfz6s6cs7c6hfxfmlgprfzj2euu
+  rounds.py: bafybeifotgp5zr6vrgfhursm7dwkju74qdrruw7ui7zmbl5t34om4fnapa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
-- valory/decision_maker_abci:0.1.0:bafybeigircx36tx3nw3r6dgym357e3wyzabb7y7zhahhttwbkgnxinsgre
+- valory/decision_maker_abci:0.1.0:bafybeidneiledqt3ffj36432ajswzufdvebtg7hgw2ijpbbc7ubdzthdb4
 behaviours:
   main:
     args: {}

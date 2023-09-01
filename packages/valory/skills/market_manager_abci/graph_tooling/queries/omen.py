@@ -51,3 +51,42 @@ questions = Template(
     }
     """
 )
+
+trades = Template(
+    """
+    {
+      fpmmTrades (
+        where: {
+          type: Buy,
+          creator: "${creator}",
+          fpmm_: {
+            answerFinalizedTimestamp_not: null,
+            isPendingArbitration: false
+          }
+        }
+        orderBy: fpmm__creationTimestamp
+        orderDirection: asc
+      ){
+        fpmm {
+          answerFinalizedTimestamp
+          collateralToken
+          condition {
+            id
+            outcomeSlotCount
+          }
+          creator
+          creationTimestamp
+          currentAnswer
+          question {
+            id
+            data
+          }
+          templateId
+        }
+        outcomeIndex
+        outcomeTokenMarginalPrice
+        outcomeTokensTraded
+      }
+    }
+    """
+)

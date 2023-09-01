@@ -26,6 +26,10 @@ class FinishedDecisionMakerRound(DegenerateRound):
     """A round representing that decision-making has finished."""
 
 
+class FinishedWithoutRedeemingRound(DegenerateRound):
+    """A round representing that decision-making has finished without redeeming."""
+
+
 class FinishedWithoutDecisionRound(DegenerateRound):
     """A round representing that decision-making has finished without deciding on a bet."""
 
