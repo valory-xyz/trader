@@ -167,8 +167,8 @@ class Mech(Contract):
         n_delivered = len(delivered)
 
         if n_delivered == 0:
-            error = f"The mech ({contract_address}) has not delivered a response yet for request with id {request_id}."
-            return {"error": error}
+            info = f"The mech ({contract_address}) has not delivered a response yet for request with id {request_id}."
+            return {"info": info}
 
         if n_delivered != 1:
             error = (
