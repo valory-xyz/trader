@@ -18,7 +18,7 @@ fingerprint:
   behaviours/decision_receive.py: bafybeigjct7st66x7n3go5vdp62wtdxgmgw233hyyvd3a63ly4x3ptdqbq
   behaviours/decision_request.py: bafybeienx5mvflzrgbocqdnqwkyvi3s5xxcgwcaxcrzd2vqazqntn3pyfi
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeiablscptzfe2s4fzlgkkqed2hhcoow4hk7qrn3cdzmjzce7uu3nkq
+  behaviours/reedem.py: bafybeians77pl4tc6enkf4vmkzeg4kjjnjugtm5to36ma4z6x4a5hurmuq
   behaviours/round_behaviour.py: bafybeifk5utwuaneima4rdeow7tcpbe6hcc2utlzxcw3w7vsm5zw7zpamm
   behaviours/sampling.py: bafybeiesza5cols7opbpp3g3ozyqmskl5g6cqdjow4vsq4r7tet2xkyruq
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
@@ -26,7 +26,7 @@ fingerprint:
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
   models.py: bafybeibyfpucv2e6kltxpjkwobeg3u2ejrceba6cyuecuwbmpv4q7zmu3m
   payloads.py: bafybeigate7v3haokrquzojwl6ycgf3zosclgjhmiuqhrx3kpbnj6hacte
-  redeem_info.py: bafybeidkrlkocjrby24izqs3lpspeiblobcgu7pnvobmp6rvdzrdgitgda
+  redeem_info.py: bafybeie3s7syjr5dfwg33l4663zhkeiokvpulenndwboiyv4imzxr4bdyy
   rounds.py: bafybeihpstybessozkb3hjxhf3gvf323zw4d575ihmxrsuzcyhqtbsruoq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeigyicytkdcho5l4i6a6b724zv7otwekecvztbf7wvx7zh6crugbny
@@ -46,14 +46,14 @@ contracts:
 - valory/erc20:0.1.0:bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeid62uorgjwj7bzeptykawh2jr2bxloaalk65tm3kchth4gnfq2q2u
-- valory/conditional_tokens:0.1.0:bafybeie6nnaehmchkl2aewoz2vtthythen5pttmuzj3pl4j5t76eowimxa
+- valory/conditional_tokens:0.1.0:bafybeiftqtsn6yygfhubzcsc2jluhhx5pt2udzvh4cjr26a4qxmp4bjqba
 - valory/realitio:0.1.0:bafybeid5cdncqui3egi57eh6ptz2yqxsjpnmwzdc2siewuown3gktdwm6m
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
-- valory/market_manager_abci:0.1.0:bafybeifmtdyb7sxpbu23traeuthmycygrv35xf2ql3y7sf5iyswizlqpzu
+- valory/market_manager_abci:0.1.0:bafybeiact2llxzj545tboagajqknvpujqixf63r3f4hk6ywqubbvfyhgu4
 - valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
 behaviours:
   main:
