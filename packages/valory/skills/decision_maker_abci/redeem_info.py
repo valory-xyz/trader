@@ -47,23 +47,6 @@ class Condition:
 
 
 @dataclasses.dataclass(frozen=True)
-class Answer:
-    """A structure for an OMEN answer."""
-
-    answer: str
-    bondAggregate: int
-
-    def __post_init__(self) -> None:
-        """Post initialization to adjust the values."""
-        super().__setattr__("bondAggregate", int(self.bondAggregate))
-
-    @property
-    def answer_bytes(self) -> bytes:
-        """Get the answer in bytes."""
-        return bytes.fromhex(self.answer[2:])
-
-
-@dataclasses.dataclass(frozen=True)
 class Question:
     """A structure for an OMEN question."""
 
@@ -110,14 +93,13 @@ class FPMM:
 
 
 @dataclasses.dataclass(frozen=True)
-class RedeemInfo:
-    """A structure with redeeming information."""
+class Trade:
+    """A structure for an OMEN trade."""
 
     fpmm: FPMM
     outcomeIndex: int
     outcomeTokenMarginalPrice: float
     outcomeTokensTraded: int
-    transactionHash: str
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -132,12 +114,23 @@ class RedeemInfo:
 
     def __eq__(self, other: Any) -> bool:
         """Check equality."""
-        return (
-            isinstance(other, RedeemInfo)
-            and self.fpmm.condition.id == other.fpmm.condition.id
+        return isinstance(other, Trade) and (
+            self.fpmm.condition.id == other.fpmm.condition.id
+            or self.fpmm.question.id == other.fpmm.question.id
         )
+
+    def __hash__(self) -> int:
+        """Custom hashing operator."""
+        return hash(self.fpmm.condition.id) + hash(self.fpmm.question.id)
 
     @property
     def claimable_amount(self) -> int:
         """Get the claimable amount of the current market."""
         return int(self.outcomeTokenMarginalPrice * self.outcomeTokensTraded)
+
+    @property
+    def is_winning(self) -> bool:
+        """Return whether the current position is winning."""
+        our_answer = self.outcomeIndex
+        correct_answer = self.fpmm.current_answer_index
+        return our_answer == correct_answer

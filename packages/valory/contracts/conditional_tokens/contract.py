@@ -19,8 +19,7 @@
 
 """This module contains the conditional tokens contract definition."""
 
-import sys
-from typing import List
+from typing import List, Dict
 
 import requests
 from aea.common import JSONLike
@@ -28,7 +27,11 @@ from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from hexbytes import HexBytes
-from web3.types import BlockData, TxReceipt
+from web3.types import BlockIdentifier
+
+
+DEFAULT_FROM_BLOCK = "earliest"
+DEFAULT_TO_BLOCK = "latest"
 
 
 class RPCTimedOutError(Exception):
@@ -50,30 +53,31 @@ class ConditionalTokensContract(Contract):
         parent_collection_ids: List[bytes],
         condition_ids: List[HexBytes],
         index_sets: List[List[int]],
-        trade_tx_hashes: List[str],
+        from_block_numbers: Dict[HexBytes, BlockIdentifier],
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
-        earliest_block = sys.maxsize
-        earliest_tx_hash = ""
+        earliest_block = DEFAULT_FROM_BLOCK
         earliest_condition_id = HexBytes("")
 
-        for i, tx_hash in enumerate(trade_tx_hashes):
-            receipt: TxReceipt = ledger_api.api.eth.get_transaction_receipt(tx_hash)
-            block: BlockData = ledger_api.api.eth.get_block(receipt["blockNumber"])
-            from_block = block.get("number", "earliest")
-            if earliest_block > from_block:
+        for condition_id, from_block in from_block_numbers.items():
+            if (
+                isinstance(earliest_block, int)
+                and earliest_block > from_block
+                or earliest_block == DEFAULT_FROM_BLOCK
+            ):
                 earliest_block = from_block
-                earliest_tx_hash = tx_hash
-                earliest_condition_id = condition_ids[i]
+                earliest_condition_id = condition_id
 
         contract_instance = cls.get_instance(ledger_api, contract_address)
         to_checksum = ledger_api.api.to_checksum_address
         redeemer_checksummed = to_checksum(redeemer)
-        collateral_tokens_checksummed = [to_checksum(token) for token in collateral_tokens]
+        collateral_tokens_checksummed = [
+            to_checksum(token) for token in collateral_tokens
+        ]
 
         payout_filter = contract_instance.events.PayoutRedemption.build_filter()
         payout_filter.fromBlock = earliest_block
-        payout_filter.toBlock = "latest"
+        payout_filter.toBlock = DEFAULT_TO_BLOCK
         payout_filter.args.redeemer.match_single(redeemer_checksummed)
         payout_filter.args.collateralToken.match_any(*collateral_tokens_checksummed)
         payout_filter.args.parentCollectionId.match_any(*parent_collection_ids)
@@ -86,8 +90,8 @@ class ConditionalTokensContract(Contract):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {earliest_block} to latest, "
-                f"as the trading transaction ({earliest_tx_hash}) took place at block {earliest_block}."
-                f"Did the trading happen too long in the past?\n"
+                f"as the earliest market creation transaction took place at block {earliest_block}."
+                f"Did the creation happen too long in the past?\n"
                 "Please consider manually redeeming for the market with condition id "
                 f"{earliest_condition_id!r} if this issue persists."
             )
@@ -99,9 +103,7 @@ class ConditionalTokensContract(Contract):
             condition_id = args.get("conditionId", None)
             payout = args.get("payout", 0)
             if condition_id is not None and payout > 0:
-                index = condition_ids.index(condition_id)
-                tx_hash = trade_tx_hashes[index]
-                payouts[tx_hash] = payout
+                payouts[condition_id] = payout
 
         return dict(payouts=payouts)
 
