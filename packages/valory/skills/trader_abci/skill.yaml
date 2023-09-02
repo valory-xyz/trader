@@ -8,8 +8,8 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeiaqm5cdrhdiavrcuop35dndttz2cgmt2emcs274l6swobfla2a3li
-  composition.py: bafybeibycneanofdfp4zjucgsn5nxr4rtcahewrmhebd4vgke3dcwlkady
+  behaviours.py: bafybeifhfrpbciajcxd5wwfo4shugug4hx6q2elbhrqrekrbtda66ptdpy
+  composition.py: bafybeie45dgneoggyavgdtswcygvz5o3klmtqf57zoxqnxrtneruutqevi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeiaekexc7erqmp3a2ff742pgy4r3tf3m5nxztdlpkvnzjtttodtmt4
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifoihgilpfr76hc5skzspm6qehkwivx7ld2cy3veipcsi4gr2c7na
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
 - valory/termination_abci:0.1.0:bafybeigcsls72uosoui2y5ppmnvsljjhnxakkeh3fdohklcg66aqq4g7xu
-- valory/market_manager_abci:0.1.0:bafybeifuqsefcuht7b4nsny2pieiaqbjis2ailrbdoffc4gmokca5sr4nq
-- valory/decision_maker_abci:0.1.0:bafybeif3zu3v7igpp74eoobulau6pziigodld24mzdivuef5k3xaoohl3a
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigj5yvvft6arwvt4lvkhgq35mzsuszospljtsm4g7cuyhpmzo75xe
+- valory/market_manager_abci:0.1.0:bafybeibwcm2wqoucpbep6pav4fb5mofhjahxiqszul4wcv4xr52dei6pe4
+- valory/decision_maker_abci:0.1.0:bafybeicl4aoamtxmixvd6azigrq3hdqqkrdlr2fqajlfykxfgqc3c6faty
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicwioojvq56vbhwwqewamf6wulxd52rnx2gpchocicmf5orl67lim
 behaviours:
   main:
     args: {}
@@ -110,6 +110,11 @@ models:
       reset_tendermint_after: 2
       retry_attempts: 400
       retry_timeout: 3
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null

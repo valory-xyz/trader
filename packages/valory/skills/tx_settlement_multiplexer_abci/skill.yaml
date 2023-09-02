@@ -20,7 +20,7 @@ contracts: []
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
-- valory/decision_maker_abci:0.1.0:bafybeif3zu3v7igpp74eoobulau6pziigodld24mzdivuef5k3xaoohl3a
+- valory/decision_maker_abci:0.1.0:bafybeicl4aoamtxmixvd6azigrq3hdqqkrdlr2fqajlfykxfgqc3c6faty
 behaviours:
   main:
     args: {}
@@ -99,6 +99,11 @@ models:
       reset_pause_duration: 10
       reset_tendermint_after: 2
       retry_attempts: 400
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
       retry_timeout: 3
       round_timeout_seconds: 350.0
       service_id: tx_settlement_multiplexer

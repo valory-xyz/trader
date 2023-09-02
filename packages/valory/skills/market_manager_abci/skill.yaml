@@ -124,6 +124,11 @@ models:
       termination_sleep: 900
       tx_timeout: 10.0
       use_termination: false
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
       creator_per_subgraph:
         omen_subgraph: []
       slot_count: 2

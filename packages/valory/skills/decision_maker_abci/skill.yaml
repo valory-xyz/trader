@@ -53,7 +53,7 @@ protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
-- valory/market_manager_abci:0.1.0:bafybeifuqsefcuht7b4nsny2pieiaqbjis2ailrbdoffc4gmokca5sr4nq
+- valory/market_manager_abci:0.1.0:bafybeibwcm2wqoucpbep6pav4fb5mofhjahxiqszul4wcv4xr52dei6pe4
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
 behaviours:
   main:
@@ -143,6 +143,11 @@ models:
         consensus_threshold: null
       share_tm_config_on_startup: false
       sleep_time: 1
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
       tendermint_check_sleep_delay: 3
       tendermint_com_url: http://localhost:8080
       tendermint_max_retries: 5
