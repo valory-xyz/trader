@@ -66,4 +66,4 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *TransactionSettlementRoundBehaviour.behaviours,
         *PostTxSettlementFullBehaviour.behaviours,
     }
-    background_behaviour_cls = BackgroundBehaviour
+    background_behaviour_cls = {BackgroundBehaviour}
