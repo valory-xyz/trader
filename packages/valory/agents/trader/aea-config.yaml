@@ -9,16 +9,16 @@ fingerprint:
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
 fingerprint_ignore_patterns: []
 connections:
-- valory/abci:0.1.0:bafybeicasheudousm2unmh5qmy5n3qdq5hmkg2j42fxfm2crxmgq3nzjkq
+- valory/abci:0.1.0:bafybeif7rsxcw72mbzwcui3ozfaay5qnqorj5c52zedpqf56zczsxox3xe
 - valory/http_client:0.23.0:bafybeieoeuy4brzimtnubmokwirhrx27ezls6cdnl5qik4rkykfle3nn2y
 - valory/ipfs:0.1.0:bafybeiau32pzy55ta6ugl2bebevlxudal6pnlfomhplfm5mph6reaw3krq
 - valory/ledger:0.19.0:bafybeigfoz7d7si7s4jehvloq2zmiiocpbxcaathl3bxkyarxoerxq7g3a
 - valory/p2p_libp2p_client:0.1.0:bafybeihdnfdth3qgltefgrem7xyi4b3ejzaz67xglm2hbma2rfvpl2annq
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeigvqg4lapdaa23dpc3pv67rdptdhey6e435mxqsw2gb2u74yw4yei
-- valory/gnosis_safe_proxy_factory:0.1.0:bafybeie4iivrxcd5dcwzj3y2t66mc5mdvtsuqu426gk2kcdc6fxbki6neu
-- valory/service_registry:0.1.0:bafybeif6x4zvsokwcetbrjdb4uyv4l3pqx756cg2ohv2zgcky5yuiwuqvi
-- valory/market_maker:0.1.0:bafybeighn4o263yxjxc46n5rckfnonwtyyhvjmegmkrqraixvswuyhcsp4
+- valory/gnosis_safe:0.1.0:bafybeih7gkbdtnhkc3i53mbsj7bcihqa7xau6ewsnew4kkul7phwb4ucjm
+- valory/gnosis_safe_proxy_factory:0.1.0:bafybeiaylgywx2qtoaddokexql3d4iqfz5l7rlm5q24lzbn36we3ovfjmi
+- valory/service_registry:0.1.0:bafybeihtsj4dpoi4iaml2jctlth2y26diam3npkfe736vpg67tgb6th53a
+- valory/market_maker:0.1.0:bafybeiftimqgvrbval2lxp7au6y72amioo4gtcdth2dflrbwa47i6opyb4
 - valory/erc20:0.1.0:bafybeigukunw5qnrbpwb3arqdbt2anducy7grpc5lcbbbagxzcixdmvwyy
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeie753wdqks6k4x5fqlpo7tgll2avutjcaodpwlptqvzefsi5xbvai
@@ -35,16 +35,16 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeigsvceac33asd6ecbqev34meyyjwu3rangenv6xp5rkxyz4krvcby
 - valory/tendermint:0.1.0:bafybeidjqmwvgi4rqgp65tbkhmi45fwn2odr5ecezw6q47hwitsgyw4jpa
 skills:
-- valory/abstract_abci:0.1.0:bafybeicg7dv7cff34nv2k2z47c4yp4kddsxp3wozonzow6tnvfvwndz3cy
-- valory/abstract_round_abci:0.1.0:bafybeigxjcci53vwytymzlhr37436yvenh7jup4astrn7dgyixo24aq2pq
-- valory/registration_abci:0.1.0:bafybeibc4kczqbh23sc6tufrzn3axmhp3vjav7fa3u6cnpvolrbbc2fd7i
-- valory/reset_pause_abci:0.1.0:bafybeid445uy6wwvugf3byzl7r73c7teu6xr5ezxb4h7cxbenghg3copvy
-- valory/termination_abci:0.1.0:bafybeiguy7pkrcptg6c754ioig4mlkr7truccym3fpv6jwpjx2tmpdbzhi
-- valory/transaction_settlement_abci:0.1.0:bafybeidpsnguxizkpihtkqzojr3em7yy7c6qc7gxpbh5vglmwws5wke7bi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibuu5jhlic4q4gkygpa3lcw7mmyllzb4jhnfa3ybnwyrt6bewwu3a
-- valory/market_manager_abci:0.1.0:bafybeiact2llxzj545tboagajqknvpujqixf63r3f4hk6ywqubbvfyhgu4
-- valory/decision_maker_abci:0.1.0:bafybeih3urljndkkrzlwtafhldjrm2zt4nu66iqynztlnw7iiz6umhqwdq
-- valory/trader_abci:0.1.0:bafybeihvjgjfzdzrk6nik2biub6b26m7undqwse4slla6cg6pfxplyifvi
+- valory/abstract_abci:0.1.0:bafybeibpe6ohnm4ritfnghdtpczdqlrcwufrxr5g75inkkgazeqhonyclu
+- valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
+- valory/registration_abci:0.1.0:bafybeifzdrmgiwx66cvxqg63uct6ul4hty6cg33i2hhwi7kkyljntfdopy
+- valory/reset_pause_abci:0.1.0:bafybeifoihgilpfr76hc5skzspm6qehkwivx7ld2cy3veipcsi4gr2c7na
+- valory/termination_abci:0.1.0:bafybeigcsls72uosoui2y5ppmnvsljjhnxakkeh3fdohklcg66aqq4g7xu
+- valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicyipxqpbrndrv7hrxkyvunemzrckb3ozoestozfw23ckzc3dksmm
+- valory/market_manager_abci:0.1.0:bafybeifuqsefcuht7b4nsny2pieiaqbjis2ailrbdoffc4gmokca5sr4nq
+- valory/decision_maker_abci:0.1.0:bafybeidojvfdax66wjxrvow2nefm6dsslvvmbhzquj4pvnbw72h6d3nrdi
+- valory/trader_abci:0.1.0:bafybeibbu6xa4cxa3bqfpfbcsycssmu5s6vv45l5fbhmwyytbxpjaoypjq
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -80,7 +80,7 @@ dependencies:
   open-aea-ledger-ethereum:
     version: ==1.38.0
   open-aea-test-autonomy:
-    version: ==0.11.1
+    version: ==0.12.0
 skill_exception_policy: stop_and_exit
 connection_exception_policy: just_log
 default_connection: null
