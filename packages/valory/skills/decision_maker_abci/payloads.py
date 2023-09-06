@@ -51,6 +51,13 @@ class MultisigTxPayload(BaseTxPayload):
 
 
 @dataclass(frozen=True)
+class RequestPayload(MultisigTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
+
+    price: Optional[int]
+
+
+@dataclass(frozen=True)
 class VotingPayload(BaseTxPayload):
     """Represents a transaction payload for voting."""
 
