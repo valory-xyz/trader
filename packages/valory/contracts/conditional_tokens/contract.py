@@ -87,10 +87,10 @@ class ConditionalTokensContract(Contract):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {earliest_block} to latest, "
-                f"as the earliest market creation transaction took place at block {earliest_block}."
+                f"as the earliest market creation transaction took place at block {earliest_block}. "
                 f"Did the creation happen too long in the past?\n"
-                "Please consider manually redeeming for the market with condition id "
-                f"{earliest_condition_id!r} if this issue persists."
+                f"The market with condition id {earliest_condition_id!r} "
+                f"is the oldest one and the block filtering was set based on it."
             )
             return dict(error=msg)
 
