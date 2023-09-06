@@ -21,7 +21,8 @@
 
 from typing import List, Tuple
 
-import requests
+from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
+from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
@@ -73,7 +74,7 @@ class RealitioContract(Contract):
 
         try:
             answered = list(answer_filter.deploy(ledger_api.api).get_all_entries())
-        except requests.exceptions.ReadTimeout as exc:
+        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError) as exc:
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {from_block} to latest, "
