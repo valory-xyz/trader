@@ -51,8 +51,8 @@ class Bet:
     fee: int
     openingTimestamp: int
     outcomeSlotCount: int
-    outcomeTokenAmounts: Optional[List[int]]
-    outcomeTokenMarginalPrices: Optional[List[float]]
+    outcomeTokenAmounts: List[int]
+    outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     scaledLiquidityMeasure: float
     status: BetStatus = BetStatus.UNPROCESSED
@@ -87,6 +87,8 @@ class Bet:
             self.outcomeSlotCount,
             self.outcomes,
             self.scaledLiquidityMeasure,
+            self.outcomeTokenAmounts,
+            self.outcomeTokenMarginalPrices,
         )
         nulls_exist = any(val is None or val == "null" for val in necessary_values)
 
