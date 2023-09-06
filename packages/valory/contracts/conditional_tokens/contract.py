@@ -35,10 +35,6 @@ DEFAULT_FROM_BLOCK = "earliest"
 DEFAULT_TO_BLOCK = "latest"
 
 
-class RPCTimedOutError(Exception):
-    """Exception to raise when the RPC times out."""
-
-
 class ConditionalTokensContract(Contract):
     """The ConditionalTokens smart contract."""
 
@@ -87,7 +83,7 @@ class ConditionalTokensContract(Contract):
 
         try:
             redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
-        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError) as exc:
+        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {earliest_block} to latest, "
@@ -96,7 +92,7 @@ class ConditionalTokensContract(Contract):
                 "Please consider manually redeeming for the market with condition id "
                 f"{earliest_condition_id!r} if this issue persists."
             )
-            raise RPCTimedOutError(msg) from exc
+            return dict(error=msg)
 
         payouts = {}
         for redeeming in redeemed:

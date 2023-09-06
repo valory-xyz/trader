@@ -19,7 +19,7 @@
 
 """This module contains the Realitio_v2_1 contract definition."""
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
@@ -33,10 +33,6 @@ from web3.types import BlockIdentifier
 
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
-
-
-class RPCTimedOutError(Exception):
-    """Exception to raise when the RPC times out."""
 
 
 class RealitioContract(Contract):
@@ -63,7 +59,7 @@ class RealitioContract(Contract):
         contract_address: str,
         from_block: BlockIdentifier,
         question_id: bytes,
-    ) -> Tuple[bytes, List[bytes], List[ChecksumAddress], List[int], List[bytes]]:
+    ) -> Union[str, Tuple[bytes, List[bytes], List[ChecksumAddress], List[int], List[bytes]]]:
         """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
 
@@ -74,7 +70,7 @@ class RealitioContract(Contract):
 
         try:
             answered = list(answer_filter.deploy(ledger_api.api).get_all_entries())
-        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError) as exc:
+        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {from_block} to latest, "
@@ -82,13 +78,13 @@ class RealitioContract(Contract):
                 "Please consider manually redeeming for the market with question id "
                 f"{question_id!r} if this issue persists."
             )
-            raise RPCTimedOutError(msg) from exc
+            return msg
         else:
             n_answered = len(answered)
 
         if n_answered == 0:
-            msg = f"No answers have been given for question with id {question_id}!"
-            raise ValueError(msg)
+            msg = f"No answers have been given for question with id {question_id.hex()}!"
+            return msg
 
         history_hashes = []
         addresses = []
@@ -124,6 +120,9 @@ class RealitioContract(Contract):
         claim_params = cls._get_claim_params(
             ledger_api, contract_address, from_block, question_id
         )
+        if isinstance(claim_params, str):
+            return dict(error=claim_params)
+
         data = contract.encodeABI(
             fn_name="claimWinnings",
             args=claim_params,
