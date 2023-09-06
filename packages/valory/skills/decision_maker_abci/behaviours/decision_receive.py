@@ -28,6 +28,7 @@ from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
+    remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import (
     MechInteractionResponse,
@@ -273,7 +274,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
         bet_amount = self.params.get_bet_amount(confidence)
-        net_bet_amount = int(bet_amount * (1 - self.wei_to_native(bet.fee)))
+        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         mech_price = self.synchronized_data.mech_price
         bet_threshold = self.params.bet_threshold
