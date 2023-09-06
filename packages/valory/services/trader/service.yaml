@@ -102,6 +102,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -164,6 +165,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: *id005
 2:
   models:
@@ -224,6 +226,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: *id005
 3:
   models:
@@ -284,6 +287,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0
