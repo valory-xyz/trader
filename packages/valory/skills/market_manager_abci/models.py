@@ -38,6 +38,9 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
 
+GNOSIS_RPC_TIMEOUT_DAYS = 25
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -72,7 +75,39 @@ class MarketManagerParams(BaseParams):
         self.languages: List[str] = self._ensure("languages", kwargs, List[str])
         self.average_block_time: int = self._ensure("average_block_time", kwargs, int)
         self.abt_error_mult: int = self._ensure("abt_error_mult", kwargs, int)
+        self._redeem_margin_days: int = 0
+        self.redeem_margin_days = self._ensure("redeem_margin_days", kwargs, int)
         super().__init__(*args, **kwargs)
+
+    @property
+    def redeem_margin_days(self) -> int:
+        """Get the margin in days of the redeeming information."""
+        return self._redeem_margin_days
+
+    @redeem_margin_days.setter
+    def redeem_margin_days(self, redeem_margin_days: int) -> None:
+        """Get the margin in days of the redeeming information."""
+        value_enforcement = (
+            f"The value needs to be in the exclusive range (0, {GNOSIS_RPC_TIMEOUT_DAYS}) "
+            f"and manual redeeming has to be performed for markets older than {GNOSIS_RPC_TIMEOUT_DAYS - 1} days."
+        )
+
+        if redeem_margin_days <= 0:
+            raise ValueError(
+                "The margin in days for the redeeming information (`redeem_margin_days`) "
+                f"cannot be set to {redeem_margin_days} <= 0. {value_enforcement}"
+            )
+        if redeem_margin_days >= GNOSIS_RPC_TIMEOUT_DAYS:
+            raise ValueError(
+                "Due to a constraint of the Gnosis RPCs, it is not possible to configure the redeeming "
+                f"information's time window to exceed {GNOSIS_RPC_TIMEOUT_DAYS - 1} days "
+                f"(currently {redeem_margin_days=}). To clarify, these RPCs experience timeouts "
+                "when attempting to filter for historical on-chain events. "
+                "Practical testing of the service has revealed that timeouts consistently occur for blocks "
+                f"approximately {GNOSIS_RPC_TIMEOUT_DAYS} days old. {value_enforcement}"
+            )
+
+        self._redeem_margin_days = redeem_margin_days
 
     @property
     def creators_iterator(self) -> Iterator[Tuple[str, List[str]]]:

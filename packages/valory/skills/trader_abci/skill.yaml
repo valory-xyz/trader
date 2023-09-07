@@ -168,6 +168,7 @@ models:
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
       redeeming_batch_size: 5
       slippage: 0.01
+      redeem_margin_days: 15
     class_name: TraderParams
   network_subgraph:
     args:
