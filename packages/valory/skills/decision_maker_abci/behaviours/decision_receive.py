@@ -276,7 +276,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         bet_amount = self.params.get_bet_amount(confidence)
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
-        mech_price = self.synchronized_data.mech_price
         bet_threshold = self.params.bet_threshold
 
         if bet_threshold <= 0:
@@ -286,7 +285,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             )
             bet_threshold = 0
 
-        potential_net_profit = num_shares - net_bet_amount - mech_price - bet_threshold
+        potential_net_profit = num_shares - net_bet_amount - bet_threshold
         is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
         shares_out = self.wei_to_native(num_shares)
         available_in = self.wei_to_native(available_shares)
