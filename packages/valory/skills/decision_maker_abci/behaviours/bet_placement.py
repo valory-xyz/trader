@@ -31,6 +31,7 @@ from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
+    remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
@@ -199,7 +200,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             )
             return False
 
-        self.buy_amount = int(buy_amount)
+        self.buy_amount = remove_fraction_wei(buy_amount, self.params.slippage)
         return True
 
     def _build_buy_tx(self) -> WaitableConditionType:

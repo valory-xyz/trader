@@ -41,10 +41,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifoihgilpfr76hc5skzspm6qehkwivx7ld2cy3veipcsi4gr2c7na
 - valory/termination_abci:0.1.0:bafybeigcsls72uosoui2y5ppmnvsljjhnxakkeh3fdohklcg66aqq4g7xu
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiebb35mjfl54woxgu2coald56v3wfgglm26tbdizhmzautquxw6fa
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiauossubd7ikfyuml4kot4motcxnn2tbe7xubelc3ut4hdyanwfvu
 - valory/market_manager_abci:0.1.0:bafybeih6tmi4blhdqkjgtvqkwbtbky5kzhl57h6ze4rtr3r2rh43pkhvyi
-- valory/decision_maker_abci:0.1.0:bafybeicmnirdfwyflzc23nvoejdux4cvuhfah4imzrwdcbvnmy3qumqlzy
-- valory/trader_abci:0.1.0:bafybeigjfwyknvwpevqqavbj57lncpdd3ehvg73vit4nflcu5e2ue4pd6e
+- valory/decision_maker_abci:0.1.0:bafybeihgz63nppx4qla6pu2gnndqfewt5forymbst6tbqzaquzj2ifxzva
+- valory/trader_abci:0.1.0:bafybeihcdi3ccfk5g24luowanzshx62mmvzgkodi5az3imjchsx3kioywa
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -185,6 +185,7 @@ models:
       realitio_proxy_address: ${str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
       realitio_address: ${str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
       redeeming_batch_size: ${int:5}
+      slippage: ${float:0.01}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
