@@ -46,14 +46,14 @@ contracts:
 - valory/erc20:0.1.0:bafybeifjwr6rwklgg2uk2zkfysn55qqy7dfi4jx7sek6lzdup37fynhpxe
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeie753wdqks6k4x5fqlpo7tgll2avutjcaodpwlptqvzefsi5xbvai
-- valory/conditional_tokens:0.1.0:bafybeiaqcyzbuhv4ey2h7hn2dq5zibf3pmkotx2t7fihdawf5h4u4uu65e
+- valory/conditional_tokens:0.1.0:bafybeicxwjdbmjajgr5rsmadtkxxwmcm42r2htef3tvng73uzib4hmb6qa
 - valory/realitio:0.1.0:bafybeigb722aznqhc5lsbt3dn4bpyaqe5hnl5onmnestqmzliwtvl3eaom
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
-- valory/market_manager_abci:0.1.0:bafybeih6tmi4blhdqkjgtvqkwbtbky5kzhl57h6ze4rtr3r2rh43pkhvyi
+- valory/market_manager_abci:0.1.0:bafybeia3d2eri2fll6cu2ksg5riyhgn2i3ofn767sdj5xhwnfyidnaolpu
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
 behaviours:
   main:
