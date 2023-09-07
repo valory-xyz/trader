@@ -22,8 +22,8 @@ contracts:
 - valory/erc20:0.1.0:bafybeifjwr6rwklgg2uk2zkfysn55qqy7dfi4jx7sek6lzdup37fynhpxe
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeie753wdqks6k4x5fqlpo7tgll2avutjcaodpwlptqvzefsi5xbvai
-- valory/conditional_tokens:0.1.0:bafybeiftqtsn6yygfhubzcsc2jluhhx5pt2udzvh4cjr26a4qxmp4bjqba
-- valory/realitio:0.1.0:bafybeid5cdncqui3egi57eh6ptz2yqxsjpnmwzdc2siewuown3gktdwm6m
+- valory/conditional_tokens:0.1.0:bafybeiaqcyzbuhv4ey2h7hn2dq5zibf3pmkotx2t7fihdawf5h4u4uu65e
+- valory/realitio:0.1.0:bafybeigb722aznqhc5lsbt3dn4bpyaqe5hnl5onmnestqmzliwtvl3eaom
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - open_aea/signing:1.0.0:bafybeifuxs7gdg2okbn7uofymenjlmnih2wxwkym44lsgwmklgwuckxm2m
@@ -41,10 +41,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifoihgilpfr76hc5skzspm6qehkwivx7ld2cy3veipcsi4gr2c7na
 - valory/termination_abci:0.1.0:bafybeigcsls72uosoui2y5ppmnvsljjhnxakkeh3fdohklcg66aqq4g7xu
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiekmihdxbomflh7baa4nnh73hgigd4taqsld7swa4lmlltpcisn6u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiauossubd7ikfyuml4kot4motcxnn2tbe7xubelc3ut4hdyanwfvu
 - valory/market_manager_abci:0.1.0:bafybeih6tmi4blhdqkjgtvqkwbtbky5kzhl57h6ze4rtr3r2rh43pkhvyi
-- valory/decision_maker_abci:0.1.0:bafybeiapptasim4es2d6c5y77xgdb4gxerptjrqs5yuk2f4j6jtgkjxnx4
-- valory/trader_abci:0.1.0:bafybeib6ftuul7xywf6jo3djf5oxbpf2v56mk5jo3apcrjw6b6t6jyeuyu
+- valory/decision_maker_abci:0.1.0:bafybeihgz63nppx4qla6pu2gnndqfewt5forymbst6tbqzaquzj2ifxzva
+- valory/trader_abci:0.1.0:bafybeihcdi3ccfk5g24luowanzshx62mmvzgkodi5az3imjchsx3kioywa
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -185,6 +185,7 @@ models:
       realitio_proxy_address: ${str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
       realitio_address: ${str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
       redeeming_batch_size: ${int:5}
+      slippage: ${float:0.01}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

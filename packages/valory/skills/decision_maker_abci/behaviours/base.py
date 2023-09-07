@@ -58,6 +58,14 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 
 
+def remove_fraction_wei(amount: int, fraction: float) -> int:
+    """Removes the given fraction from the given integer amount and returns the value as an integer."""
+    if 0 <= fraction <= 1:
+        keep_percentage = 1 - fraction
+        return int(amount * keep_percentage)
+    raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
+
+
 class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     """Represents the base class for the decision-making FSM behaviour."""
 

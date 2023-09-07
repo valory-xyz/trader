@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigqa5m2glgteznsq5u7b6xozxacxwdc3fzqszjydur7jggdvz4bti
+agent: valory/trader:0.1.0:bafybeidwaaelw6pjl4azfhbvr2k5reywazy244k3tj74fl523lswzhvgeq
 number_of_agents: 4
 deployment: {}
 ---
@@ -102,6 +102,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -164,6 +165,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: *id005
 2:
   models:
@@ -224,6 +226,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: *id005
 3:
   models:
@@ -284,6 +287,7 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+        slippage: ${SLIPPAGE:float:0.01}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0
