@@ -73,7 +73,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         idx = self._sampled_bet_idx(available_bets)
 
-        if self.synchronized_data.bets[idx].usdLiquidityMeasure == 0:
+        if self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
             return None, None

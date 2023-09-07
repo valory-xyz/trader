@@ -267,6 +267,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _check_already_redeemed(self) -> WaitableConditionType:
         """Check whether we have already redeemed for this bet."""
+        if len(self.trades) == 0:
+            return True
+
         kwargs: Dict[str, Any] = {
             key: []
             for key in (

@@ -51,10 +51,10 @@ class Bet:
     fee: int
     openingTimestamp: int
     outcomeSlotCount: int
-    outcomeTokenAmounts: Optional[List[int]]
-    outcomeTokenMarginalPrices: Optional[List[float]]
+    outcomeTokenAmounts: List[int]
+    outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
-    usdLiquidityMeasure: float
+    scaledLiquidityMeasure: float
     status: BetStatus = BetStatus.UNPROCESSED
     blacklist_expiration: float = -1
 
@@ -66,7 +66,7 @@ class Bet:
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
-        return self.usdLiquidityMeasure < other.usdLiquidityMeasure
+        return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
 
     def _blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
@@ -86,7 +86,9 @@ class Bet:
             self.openingTimestamp,
             self.outcomeSlotCount,
             self.outcomes,
-            self.usdLiquidityMeasure,
+            self.scaledLiquidityMeasure,
+            self.outcomeTokenAmounts,
+            self.outcomeTokenMarginalPrices,
         )
         nulls_exist = any(val is None or val == "null" for val in necessary_values)
 
@@ -124,7 +126,7 @@ class Bet:
 
     def _check_usefulness(self) -> None:
         """If the bet is deemed unhelpful, then blacklist it."""
-        if self.usdLiquidityMeasure == 0:
+        if self.scaledLiquidityMeasure == 0:
             self._blacklist_forever()
 
     def get_outcome(self, index: int) -> str:

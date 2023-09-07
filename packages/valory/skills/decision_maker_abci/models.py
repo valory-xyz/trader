@@ -120,6 +120,9 @@ class DecisionMakerParams(MarketManagerParams):
         # this is the max number of redeeming operations that will be batched on a single multisend transaction.
         # increasing this number equals fewer fees but more chances for the transaction to fail
         self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
+        # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
+        self._slippage = 0.0
+        self.slippage = self._ensure("slippage", kwargs, float)
         super().__init__(*args, **kwargs)
 
     @property
@@ -133,6 +136,20 @@ class DecisionMakerParams(MarketManagerParams):
     def prompt_template(self) -> PromptTemplate:
         """Get the prompt template as a string `PromptTemplate`."""
         return PromptTemplate(self._prompt_template)
+
+    @property
+    def slippage(self) -> float:
+        """Get the slippage."""
+        return self._slippage
+
+    @slippage.setter
+    def slippage(self, slippage: float) -> None:
+        """Set the slippage."""
+        if slippage < 0 or slippage > 1:
+            raise ValueError(
+                f"The configured slippage {slippage!r} is not in the range [0, 1]."
+            )
+        self._slippage = slippage
 
     def get_bet_amount(self, confidence: float) -> int:
         """Get the bet amount given a prediction's confidence."""

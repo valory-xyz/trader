@@ -21,7 +21,8 @@
 
 from typing import List, Dict
 
-import requests
+from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
+from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
@@ -32,10 +33,6 @@ from web3.types import BlockIdentifier
 
 DEFAULT_FROM_BLOCK = "earliest"
 DEFAULT_TO_BLOCK = "latest"
-
-
-class RPCTimedOutError(Exception):
-    """Exception to raise when the RPC times out."""
 
 
 class ConditionalTokensContract(Contract):
@@ -86,16 +83,16 @@ class ConditionalTokensContract(Contract):
 
         try:
             redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
-        except requests.exceptions.ReadTimeout as exc:
+        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {earliest_block} to latest, "
-                f"as the earliest market creation transaction took place at block {earliest_block}."
+                f"as the earliest market creation transaction took place at block {earliest_block}. "
                 f"Did the creation happen too long in the past?\n"
-                "Please consider manually redeeming for the market with condition id "
-                f"{earliest_condition_id!r} if this issue persists."
+                f"The market with condition id {earliest_condition_id!r} "
+                f"is the oldest one and the block filtering was set based on it."
             )
-            raise RPCTimedOutError(msg) from exc
+            return dict(error=msg)
 
         payouts = {}
         for redeeming in redeemed:

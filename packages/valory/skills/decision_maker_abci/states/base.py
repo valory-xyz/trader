@@ -20,7 +20,7 @@
 """This module contains the base functionality for the rounds of the decision-making abci app."""
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, Tuple
 
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
@@ -71,6 +71,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return self.bets[self.sampled_bet_index]
 
     @property
+    def mech_price(self) -> int:
+        """Get the mech's request price."""
+        return int(self.db.get_strict("mech_price"))
+
+    @property
     def vote(self) -> Optional[int]:
         """Get the bet's vote index."""
         vote = self.db.get_strict("vote")
@@ -115,7 +120,7 @@ class TxPreparationRound(CollectSameUntilThresholdRound):
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (
+    selection_key: Tuple[str, ...] = (
         get_name(SynchronizedData.tx_submitter),
         get_name(SynchronizedData.most_voted_tx_hash),
     )

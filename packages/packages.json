@@ -1,17 +1,17 @@
 {
     "dev": {
-        "skill/valory/market_manager_abci/0.1.0": "bafybeibwcm2wqoucpbep6pav4fb5mofhjahxiqszul4wcv4xr52dei6pe4",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiejy2zxj5wzriay2vwecgvxxprwvs6rt32627jtjfn7gtsy46eimy",
-        "skill/valory/trader_abci/0.1.0": "bafybeiexo6pdhhdipnceixtls47jonhflcqsxnbv2c333zmgfxmoygfwgu",
+        "skill/valory/market_manager_abci/0.1.0": "bafybeih6tmi4blhdqkjgtvqkwbtbky5kzhl57h6ze4rtr3r2rh43pkhvyi",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeibadjiuw4icm64rm5mrooht6he2xw6ery6yxu5qnwhqkpwlfhen2m",
+        "skill/valory/trader_abci/0.1.0": "bafybeif7zbal6iqiui3dwqfswnev6tcjsszixhrpv3m6kufgxfvh7veadi",
         "contract/valory/market_maker/0.1.0": "bafybeiftimqgvrbval2lxp7au6y72amioo4gtcdth2dflrbwa47i6opyb4",
-        "agent/valory/trader/0.1.0": "bafybeidclpkg6uwii2d5gk74b4l6pv3vfgrg5tt3njumhk2ab3uidcogky",
-        "service/valory/trader/0.1.0": "bafybeidug5h7tac43yp5t6mfyl3qdmfwzh63otz63l547iiguosyyygmnq",
+        "agent/valory/trader/0.1.0": "bafybeietnokftb3klhladvtrrrwhizq7nj64s4tqxbw3xwylxpgulr4g5u",
+        "service/valory/trader/0.1.0": "bafybeiczvwvd7s2q7yc5lh4qxzolpga4f2xstme4rzq6sot7oefnz7dqim",
         "contract/valory/erc20/0.1.0": "bafybeifjwr6rwklgg2uk2zkfysn55qqy7dfi4jx7sek6lzdup37fynhpxe",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiffvwkifzq4eiqr4syfbbsfjcrsea5wj55ttismoxozt6trithu7u",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiez2gopga42empgxlgprmw34joobw3rx2h5ybnk2u35vdmpkjtjfq",
         "contract/valory/mech/0.1.0": "bafybeie753wdqks6k4x5fqlpo7tgll2avutjcaodpwlptqvzefsi5xbvai",
-        "contract/valory/realitio/0.1.0": "bafybeid5cdncqui3egi57eh6ptz2yqxsjpnmwzdc2siewuown3gktdwm6m",
+        "contract/valory/realitio/0.1.0": "bafybeigb722aznqhc5lsbt3dn4bpyaqe5hnl5onmnestqmzliwtvl3eaom",
         "contract/valory/realitio_proxy/0.1.0": "bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy",
-        "contract/valory/conditional_tokens/0.1.0": "bafybeiftqtsn6yygfhubzcsc2jluhhx5pt2udzvh4cjr26a4qxmp4bjqba"
+        "contract/valory/conditional_tokens/0.1.0": "bafybeiaqcyzbuhv4ey2h7hn2dq5zibf3pmkotx2t7fihdawf5h4u4uu65e"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeifuxs7gdg2okbn7uofymenjlmnih2wxwkym44lsgwmklgwuckxm2m",

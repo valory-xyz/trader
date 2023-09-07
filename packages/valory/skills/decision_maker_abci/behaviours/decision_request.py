@@ -38,7 +38,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SAFE_GAS,
     WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import RequestPayload
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
@@ -197,11 +197,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            tx_submitter = mech_tx_hex = None
+            tx_submitter = mech_tx_hex = price = None
             if self.n_slots_supported:
                 tx_submitter = self.matching_round.auto_round_id()
                 mech_tx_hex = yield from self._prepare_safe_tx()
+                price = self.price
             agent = self.context.agent_address
-            payload = MultisigTxPayload(agent, tx_submitter, mech_tx_hex)
-
+            payload = RequestPayload(agent, tx_submitter, mech_tx_hex, price)
         yield from self.finish_behaviour(payload)

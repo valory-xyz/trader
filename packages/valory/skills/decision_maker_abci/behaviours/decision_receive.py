@@ -19,6 +19,7 @@
 
 """This module contains the behaviour for the decision-making of the skill."""
 
+from math import prod
 from typing import Any, Generator, Optional, Tuple, Union
 
 from packages.valory.contracts.mech.contract import Mech
@@ -27,6 +28,7 @@ from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
+    remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import (
     MechInteractionResponse,
@@ -36,6 +38,7 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
+from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 
 
 IPFS_HASH_PREFIX = "f01701220"
@@ -221,20 +224,80 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return self.mech_response.result.vote, self.mech_response.result.confidence
 
-    def _is_profitable(self, confidence: float) -> bool:
+    def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
+        """Calculate the claimed shares. This calculation only works for binary markets."""
+        bet = self.synchronized_data.sampled_bet
+
+        # calculate the pool's k (x*y=k)
+        token_amounts = bet.outcomeTokenAmounts
+        if token_amounts is None:
+            return 0, 0
+        k = prod(token_amounts)
+
+        # the OMEN market trades an equal amount of the investment to each of the tokens in the pool
+        # here we calculate the bet amount per pool's token
+        bet_per_token = net_bet_amount / BINARY_N_SLOTS
+
+        # calculate the number of the traded tokens
+        prices = bet.outcomeTokenMarginalPrices
+        if prices is None:
+            return 0, 0
+        tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
+
+        # get the shares for the answer that the service has selected
+        selected_shares = tokens_traded.pop(vote)
+
+        # get the shares for the opposite answer
+        other_shares = tokens_traded.pop()
+
+        # get the number of tokens in the pool for the answer that the service has selected
+        selected_type_tokens_in_pool = token_amounts.pop(vote)
+
+        # get the number of tokens in the pool for the opposite answer
+        other_tokens_in_pool = token_amounts.pop()
+
+        # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
+        # preserving the balance of the pool
+        # here we calculate the number of shares that we get after trading the tokens for the opposite answer
+        tokens_remaining_in_pool = int(k / (other_tokens_in_pool + other_shares))
+        swapped_shares = selected_type_tokens_in_pool - tokens_remaining_in_pool
+
+        # calculate the resulting number of shares if the service would take that position
+        num_shares = selected_shares + swapped_shares
+        # calculate the available number of shares
+        price = prices[vote]
+        available_shares = int(selected_type_tokens_in_pool * price)
+
+        return num_shares, available_shares
+
+    def _is_profitable(self, confidence: float, vote: int) -> bool:
         """Whether the decision is profitable or not."""
+        bet = self.synchronized_data.sampled_bet
+        bet_amount = self.params.get_bet_amount(confidence)
+        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
+        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         bet_threshold = self.params.bet_threshold
 
-        if bet_threshold < 0:
+        if bet_threshold <= 0:
             self.context.logger.warning(
-                f"A negative bet threshold was given ({bet_threshold}), "
-                f"which means that the profitability check will be bypassed!"
+                f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
+                f"which means that any non-negative potential profit will be considered profitable!"
             )
-            return True
+            bet_threshold = 0
 
-        bet_amount = self.params.get_bet_amount(confidence)
-        fee = self.synchronized_data.sampled_bet.fee
-        return bet_amount - fee >= bet_threshold
+        potential_net_profit = num_shares - net_bet_amount - bet_threshold
+        is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
+        shares_out = self.wei_to_native(num_shares)
+        available_in = self.wei_to_native(available_shares)
+        shares_out_of = f"{shares_out} / {available_in}"
+        self.context.logger.info(
+            f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
+            f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
+            f"from buying {shares_out_of} shares for the option {bet.get_outcome(vote)}.\n"
+            f"Decision for profitability of this market: {is_profitable}."
+        )
+
+        return is_profitable
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -243,7 +306,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             vote, confidence = yield from self._get_decision()
             is_profitable = None
             if vote is not None and confidence is not None:
-                is_profitable = self._is_profitable(confidence)
+                is_profitable = self._is_profitable(confidence, vote)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,

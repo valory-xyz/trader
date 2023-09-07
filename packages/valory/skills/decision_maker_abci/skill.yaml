@@ -12,28 +12,28 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeibrqxw7jdslsew226tss3p3s7fhj6rkwz6fig46zgnp54ijyspgly
-  behaviours/bet_placement.py: bafybeicdmayxmxvydechibri7z45wrx7n354eny4s5aval5mk2pqdszh64
+  behaviours/base.py: bafybeiaxgbkrrskfod55lhynd4ttkwrn6qwzugfmmwikzod4ar6pmjmcu4
+  behaviours/bet_placement.py: bafybeifwwvvwh4qgf3jkyvza4wfvjv63il2xewsklsjtpyanp23y6hg2aa
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_receive.py: bafybeigjct7st66x7n3go5vdp62wtdxgmgw233hyyvd3a63ly4x3ptdqbq
-  behaviours/decision_request.py: bafybeienx5mvflzrgbocqdnqwkyvi3s5xxcgwcaxcrzd2vqazqntn3pyfi
+  behaviours/decision_receive.py: bafybeifn4xuv2z3niyhgd35ufncrdpaisw7pd4qkw2vv3cte5koqe2mxqy
+  behaviours/decision_request.py: bafybeifjlh5cfitjd6wjcvcgoji2bhsi4r5nzpqocotwprmn26eiphlmqq
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeians77pl4tc6enkf4vmkzeg4kjjnjugtm5to36ma4z6x4a5hurmuq
+  behaviours/reedem.py: bafybeib25frcafu6iikppidwqqovwjkzkxif6m3f4crmklohpj6yixprsq
   behaviours/round_behaviour.py: bafybeifk5utwuaneima4rdeow7tcpbe6hcc2utlzxcw3w7vsm5zw7zpamm
-  behaviours/sampling.py: bafybeiesza5cols7opbpp3g3ozyqmskl5g6cqdjow4vsq4r7tet2xkyruq
+  behaviours/sampling.py: bafybeiadikynvkaofbko72jc45xthhmmjfmlkpgramormhxwk5u47rnwdu
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigrljw66oxyvn5wqecfgkcx7ozkjg7xuv75zcjmo25fft37qyed6y
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeibyfpucv2e6kltxpjkwobeg3u2ejrceba6cyuecuwbmpv4q7zmu3m
-  payloads.py: bafybeigate7v3haokrquzojwl6ycgf3zosclgjhmiuqhrx3kpbnj6hacte
+  models.py: bafybeibqou3ryuszu2vbwdp5b7fkj5oxmflgh3z3a7tuajbdxgzdolgmee
+  payloads.py: bafybeifbnyviargcj5w5kbuuvc3o4y5sdogtuynd2b4ca4xsfbi3cqcwlm
   redeem_info.py: bafybeie3s7syjr5dfwg33l4663zhkeiokvpulenndwboiyv4imzxr4bdyy
   rounds.py: bafybeihpstybessozkb3hjxhf3gvf323zw4d575ihmxrsuzcyhqtbsruoq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeigyicytkdcho5l4i6a6b724zv7otwekecvztbf7wvx7zh6crugbny
+  states/base.py: bafybeif42mqu6wu55iyjyqxto3poyta22gdsswgtus55lo4qpmv74wvlmm
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
   states/decision_receive.py: bafybeifm3oyq2aji7f5yag6wpe4vr3ivi74pybdsk2jvmziiidx5nt7t4a
-  states/decision_request.py: bafybeiguje2p3qmqvg6bujf5n7ncr4ss63mviqp4rbnequel37ocuhhvgm
+  states/decision_request.py: bafybeic7otc3hjb753svbmur3yyk6szahc25yii3x4w4vcnpfz6jwvacuu
   states/final_states.py: bafybeidiwhuyd5zm2cq7vhv2owcrxdpm7fnvn3db6p6tql4jz5hgpalflu
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
   states/redeem.py: bafybeifl7qgs2xvm4nykloec5tq47sriqah3dzahv3gppvgtrrxzw5yyyq
@@ -46,14 +46,14 @@ contracts:
 - valory/erc20:0.1.0:bafybeifjwr6rwklgg2uk2zkfysn55qqy7dfi4jx7sek6lzdup37fynhpxe
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
 - valory/mech:0.1.0:bafybeie753wdqks6k4x5fqlpo7tgll2avutjcaodpwlptqvzefsi5xbvai
-- valory/conditional_tokens:0.1.0:bafybeiftqtsn6yygfhubzcsc2jluhhx5pt2udzvh4cjr26a4qxmp4bjqba
-- valory/realitio:0.1.0:bafybeid5cdncqui3egi57eh6ptz2yqxsjpnmwzdc2siewuown3gktdwm6m
+- valory/conditional_tokens:0.1.0:bafybeiaqcyzbuhv4ey2h7hn2dq5zibf3pmkotx2t7fihdawf5h4u4uu65e
+- valory/realitio:0.1.0:bafybeigb722aznqhc5lsbt3dn4bpyaqe5hnl5onmnestqmzliwtvl3eaom
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
-- valory/market_manager_abci:0.1.0:bafybeibwcm2wqoucpbep6pav4fb5mofhjahxiqszul4wcv4xr52dei6pe4
+- valory/market_manager_abci:0.1.0:bafybeih6tmi4blhdqkjgtvqkwbtbky5kzhl57h6ze4rtr3r2rh43pkhvyi
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
 behaviours:
   main:
@@ -180,6 +180,7 @@ models:
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
       redeeming_batch_size: 5
+      slippage: 0.01
     class_name: DecisionMakerParams
   mech_response:
     args:

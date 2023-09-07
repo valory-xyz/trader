@@ -48,6 +48,7 @@ eth-utils = "==2.2.0"
 eth-abi = "==4.0.0"
 pycryptodome = "==3.18.0"
 pytest = "==7.2.1"
+urllib3 = "==1.26.16"
 
 [tool.poetry.group.dev.dependencies.tomte]
 version = "==0.2.12"
