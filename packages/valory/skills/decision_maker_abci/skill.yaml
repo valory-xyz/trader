@@ -53,7 +53,7 @@ protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
-- valory/market_manager_abci:0.1.0:bafybeidzdb5fqrlbyzgqxx3rar3lrdnn3d6xk2dpbizg56zwctodsovlli
+- valory/market_manager_abci:0.1.0:bafybeibqn2lx7dcechwemvwja2kacoj6qkhqc2mt33p3f3i2unmgbecizq
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
 behaviours:
   main:
