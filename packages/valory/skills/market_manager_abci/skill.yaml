@@ -15,8 +15,8 @@ fingerprint:
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
-  graph_tooling/queries/omen.py: bafybeihfppuyr6pth3vpd7iuqzqt567j37fgyegubttp4v2wo6r2knwuwe
-  graph_tooling/requests.py: bafybeibaghhrjesca7dbjxyjct6jaak6ozpa4ltzd6c5sxbq5nlq22ulkq
+  graph_tooling/queries/omen.py: bafybeiajk65gvqkxvxekywqqy2kob3vobjsealqlyxis3z6mpwhyng7hh4
+  graph_tooling/requests.py: bafybeics4oueh3nemdvl366vqgnf3ltea2ab443qtfaoqgl63tmct227qa
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeiaplszooak63fo3i6agaoyol4tpof4q4tvoj4j6f2cr2corajnl3a
   payloads.py: bafybeiamavgddfbzofpsjthmw6j7g2dyxm7fb6hvdb47kweyrx4w2ihcfi

@@ -52,6 +52,7 @@ class Question:
 
     id: bytes
     data: str
+    answers: List
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
