@@ -209,8 +209,13 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         )
 
         filtered_redeem_info = [
-            entry for entry in redeem_info if len(entry.get("fpmm", {}).get("question", {}).get("answers", [])) == 1
+            entry
+            for entry in redeem_info  # type: ignore[union-attr]
+            if len(entry.get("fpmm", {}).get("question", {}).get("answers", [])) == 1
         ]
+
+        # FIXME Redeem functionality deactivated temporarily
+        filtered_redeem_info = []
 
         return filtered_redeem_info
 
