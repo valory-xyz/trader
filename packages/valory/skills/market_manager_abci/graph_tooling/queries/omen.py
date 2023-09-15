@@ -35,6 +35,7 @@ questions = Template(
         },
         orderBy: creationTimestamp
         orderDirection: desc
+        first: 1000
       ){
         id
         title
@@ -67,6 +68,7 @@ trades = Template(
         }
         orderBy: fpmm__creationTimestamp
         orderDirection: asc
+        first: 1000
       ){
         fpmm {
           answerFinalizedTimestamp

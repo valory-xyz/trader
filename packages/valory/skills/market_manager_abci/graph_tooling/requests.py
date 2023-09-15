@@ -208,7 +208,11 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res_context="trades",
         )
 
-        return redeem_info
+        filtered_redeem_info = [
+            entry for entry in redeem_info if len(entry.get("fpmm", {}).get("question", {}).get("answers", [])) == 1
+        ]
+
+        return filtered_redeem_info
 
     def _fetch_block_number(
         self, timestamp: int
