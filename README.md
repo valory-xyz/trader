@@ -90,6 +90,8 @@ export ALL_PARTICIPANTS='["YOUR_AGENT_ADDRESS"]'
 export SAFE_CONTRACT_ADDRESS="YOUR_SAFE_ADDRESS"
 export OMEN_CREATORS='["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]'
 
+export MECH_TOOL="prediction-online"
+
 export BET_AMOUNT_PER_THRESHOLD_000=0
 export BET_AMOUNT_PER_THRESHOLD_010=0
 export BET_AMOUNT_PER_THRESHOLD_020=0
@@ -115,6 +117,12 @@ These are the description of the variables used by the Trader service:
 - `SAFE_CONTRACT_ADDRESS`: address of the agents multisig wallet created [in the previous section](#prepare-the-keys-and-the-safe).
 - `OMEN_CREATORS`: addresses of the market creator(s) that the service will track
   for placing bets on Omen. The address `0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec` corresponds to the Market creator agent for the Hackathon.
+- `MECH_TOOL`: the tool that the service will use to get the prediction when performing requests to the AI Mech.
+  You may find all the available Mech scripts [here](https://github.com/valory-xyz/mech/tree/v0.5.0/tools) 
+  for Mech's version `v0.5.0`. 
+  Each script contains one or more tools. 
+  For example, you may find all the `prediction_request` tools 
+  [here](https://github.com/valory-xyz/mech/blob/v0.5.0/tools/prediction_request.py#L37-L40).
 - `BET_AMOUNT_PER_THRESHOLD_X`: amount (wei) to bet when the prediction returned by the AI Mech surpasses a threshold of `X`% confidence for a given prediction market. In the values provided above the amounts vary between 0.03 xDAI (60% confidence) and 0.1 xDAI (100% confidence).
 - `BET_THRESHOLD`: threshold (wei) for placing a bet. A bet will only be placed if `potential_net_profit - BET_THRESHOLD >= 0`. [See below](#some-notes-on-the-service).
 - `PROMPT_TEMPLATE`: prompt to be used with the prediction AI Mech. Please keep it as a single line including the placeholders `@{question}`, `@{yes}` and `@{no}`.
