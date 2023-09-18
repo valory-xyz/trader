@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-versions }}
@@ -40,10 +40,11 @@ jobs:
         DOCKER_USER: ${{secrets.DOCKER_USER}}
         DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
+            fetch-depth: 0
             image: valory/open-autonomy-user:latest
             options: -v ${{ github.workspace }}:/work
             run: |
