@@ -218,12 +218,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     @property
     def history_hash(self) -> bytes:
-        """Get whether the current market has been finalized."""
+        """Get the history hash for the current question."""
         return self._history_hash
 
     @history_hash.setter
     def history_hash(self, history_hash: bytes) -> None:
-        """Get whether the current market has been finalized."""
+        """Set the history hash for the current question."""
         self._history_hash = history_hash
 
     @property

@@ -18,7 +18,7 @@ fingerprint:
   behaviours/decision_receive.py: bafybeifn4xuv2z3niyhgd35ufncrdpaisw7pd4qkw2vv3cte5koqe2mxqy
   behaviours/decision_request.py: bafybeifjlh5cfitjd6wjcvcgoji2bhsi4r5nzpqocotwprmn26eiphlmqq
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeibewm5wzzydssbelcq47bpevfuoy2djiq7s6xyniyaheskhc54bgy
+  behaviours/reedem.py: bafybeidrk7lauummzwygtzc7hmpimlgnd7haia6lmm57z5spfdwu33rlbm
   behaviours/round_behaviour.py: bafybeifk5utwuaneima4rdeow7tcpbe6hcc2utlzxcw3w7vsm5zw7zpamm
   behaviours/sampling.py: bafybeiadikynvkaofbko72jc45xthhmmjfmlkpgramormhxwk5u47rnwdu
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
