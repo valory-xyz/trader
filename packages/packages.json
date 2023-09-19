@@ -1,15 +1,15 @@
 {
     "dev": {
-        "skill/valory/market_manager_abci/0.1.0": "bafybeicjqkzen2gvpnc3syojcf6ibr4kjaorcwktikqp2zzxec6vs64oky",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeic77zhxf5a53ngfzacklmm3nag4t4jeufdhoeg3ykrmvknojtwipi",
-        "skill/valory/trader_abci/0.1.0": "bafybeibi3rt3rdk4bvng3tlmwdxal3mk3bflq4cgq3fxyjwzpmhj3y6pmy",
+        "skill/valory/market_manager_abci/0.1.0": "bafybeiczk5fnffpeuxc3cmafwprffrqy5n2czsnsilmai2ejhjgty4ufsu",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeiezz2sajop24yluucy3nk5fsvdp23xwks3mxcvb26ipxelsgcufqa",
+        "skill/valory/trader_abci/0.1.0": "bafybeid3furulgsp3nnb64gkr5tw5gvxjnj6uvh5flhyay6hian2u3bjsi",
         "contract/valory/market_maker/0.1.0": "bafybeif6hivvhxqv4a3uqo2v3yszluzrmngsp624utdi466xwo5qbz5bsi",
-        "agent/valory/trader/0.1.0": "bafybeigoojaxpc7sz7vuswkxvpa5lp37lipuwc4qycztqk4hxdesmxqcda",
-        "service/valory/trader/0.1.0": "bafybeidyuzdmwrt66w32oppopviesvhinmwd76q73zv3dex2th7nldpbyi",
+        "agent/valory/trader/0.1.0": "bafybeia3j3f7ahajww2pg5igq42nqdbok32hwcz3tyz6dbdpjafhuinmva",
+        "service/valory/trader/0.1.0": "bafybeicp6eec2fjdkzlm4mpaosn2r4nbpxm5jyfrmzj5n3fdcw3h3cxv6a",
         "contract/valory/erc20/0.1.0": "bafybeiggo4u56drxusvcdruqrr7mlfzqbieg4hajalh4tkctxhh3c5lpdi",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidtrigrfjikl7tkbtowbp6mrdzxulayxnxcmviwy3gag557vnymlq",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifv2ezaqadnbi3diskm736gakvcobpfznmqeydvqqioehdmqt3yni",
         "contract/valory/mech/0.1.0": "bafybeibfikekaruskx6ui7u4qnls57i2namfxi45zhqslziqyxg4npjzxu",
-        "contract/valory/realitio/0.1.0": "bafybeigb722aznqhc5lsbt3dn4bpyaqe5hnl5onmnestqmzliwtvl3eaom",
+        "contract/valory/realitio/0.1.0": "bafybeicdgm2a7evjw6szcpo3uaam5mzd6axtevtzwvejr6uaeymbg437da",
         "contract/valory/realitio_proxy/0.1.0": "bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy",
         "contract/valory/conditional_tokens/0.1.0": "bafybeicxwjdbmjajgr5rsmadtkxxwmcm42r2htef3tvng73uzib4hmb6qa"
     },
