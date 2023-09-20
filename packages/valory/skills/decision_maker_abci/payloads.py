@@ -51,6 +51,13 @@ class MultisigTxPayload(BaseTxPayload):
 
 
 @dataclass(frozen=True)
+class RedeemPayload(MultisigTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
+
+    policy: Optional[str]
+
+
+@dataclass(frozen=True)
 class RequestPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
 
