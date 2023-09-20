@@ -21,7 +21,7 @@
 
 import json
 import random
-from dataclasses import is_dataclass, asdict, dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any, List, Optional
 
 
