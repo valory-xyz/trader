@@ -60,6 +60,7 @@ states:
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
 - SynchronizeLateMessagesRound
+- ToolSelectionRound
 - UpdateBetsRound
 - ValidateTransactionRound
 transition_func:
@@ -130,7 +131,7 @@ transition_func:
     (ResetRound, DONE): RandomnessTransactionSubmissionRound
     (ResetRound, NO_MAJORITY): HandleFailedTxRound
     (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
-    (SamplingRound, DONE): DecisionRequestRound
+    (SamplingRound, DONE): ToolSelectionRound
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
@@ -152,6 +153,10 @@ transition_func:
     (SynchronizeLateMessagesRound, NONE): SelectKeeperTransactionSubmissionBRound
     (SynchronizeLateMessagesRound, ROUND_TIMEOUT): SynchronizeLateMessagesRound
     (SynchronizeLateMessagesRound, SUSPICIOUS_ACTIVITY): HandleFailedTxRound
+    (ToolSelectionRound, DONE): DecisionRequestRound
+    (ToolSelectionRound, NONE): ToolSelectionRound
+    (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
+    (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
     (UpdateBetsRound, DONE): SamplingRound
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound

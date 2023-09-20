@@ -42,6 +42,7 @@ from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
     MultisendBatch,
 )
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
@@ -56,6 +57,7 @@ WaitableConditionType = Generator[None, None, bool]
 # which is what we want in most cases
 # more info here: https://safe-docs.dev.gnosisdev.com/safe/docs/contracts_tx_execution/
 SAFE_GAS = 0
+CID_PREFIX = "f01701220"
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -75,6 +77,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
         self._safe_tx_hash = ""
+        self._policy: Optional[EGreedyPolicy] = None
 
     @property
     def params(self) -> DecisionMakerParams:
@@ -128,6 +131,15 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             self.multisend_data,
             SafeOperation.DELEGATE_CALL.value,
         )
+
+    @property
+    def policy(self) -> EGreedyPolicy:
+        """Get the policy."""
+        if self._policy is None:
+            raise ValueError(
+                "Attempting to retrieve the policy before it has been established."
+            )
+        return self._policy
 
     @staticmethod
     def wei_to_native(wei: int) -> float:

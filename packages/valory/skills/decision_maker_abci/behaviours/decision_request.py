@@ -120,7 +120,8 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             question=sampled_bet.title, yes=sampled_bet.yes, no=sampled_bet.no
         )
         prompt = self.params.prompt_template.substitute(prompt_params)
-        self._metadata = MechMetadata(prompt=prompt, tool=self.params.mech_tool)
+        tool = self.synchronized_data.mech_tool
+        self._metadata = MechMetadata(prompt, tool)
         msg = f"Prepared metadata {self.metadata!r} for the request."
         self.context.logger.info(msg)
 
