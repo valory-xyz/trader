@@ -183,7 +183,7 @@ models:
       redeeming_batch_size: 5
       slippage: 0.01
       epsilon: 0.1
-      irrelevant_tools:
+      irrelevant_tools: !!set
         ? openai-text-davinci-002
         ? openai-text-davinci-003
         ? openai-gpt-3.5-turbo
