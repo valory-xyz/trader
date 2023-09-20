@@ -39,7 +39,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.redeem_info import (
     Condition,
     FPMM,
@@ -549,11 +549,11 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             yield from self._clean_redeem_info()
             agent = self.context.agent_address
             redeem_tx_hex = yield from self._prepare_safe_tx()
-            tx_submitter = (
-                self.matching_round.auto_round_id()
-                if redeem_tx_hex is not None
-                else None
-            )
-            payload = MultisigTxPayload(agent, tx_submitter, redeem_tx_hex)
+            tx_submitter = policy = None
+            if redeem_tx_hex is not None:
+                tx_submitter = self.matching_round.auto_round_id()
+                policy = self.policy.serialize()
+
+            payload = RedeemPayload(agent, tx_submitter, redeem_tx_hex, policy)
 
         yield from self.finish_behaviour(payload)
