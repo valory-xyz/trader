@@ -33,6 +33,9 @@ from packages.valory.skills.decision_maker_abci.models import DecisionMakerParam
 from packages.valory.skills.decision_maker_abci.models import (
     MechResponseSpecs as DecisionMakerMechResponseSpecs,
 )
+from packages.valory.skills.decision_maker_abci.models import (
+    AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
+)
 from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
 )
@@ -68,6 +71,7 @@ BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
 MechResponseSpecs = DecisionMakerMechResponseSpecs
+AgentToolsSpecs = DecisionMakerAgentToolsSpecs
 
 MARGIN = 5
 

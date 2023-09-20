@@ -147,6 +147,7 @@ models:
       multisend_address: ${str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:null}
+      agent_registry_address: ${str:null}
       share_tm_config_on_startup: ${bool:false}
       sleep_time: ${int:10}
       tendermint_p2p_url: ${str:localhost:26656}
@@ -161,7 +162,6 @@ models:
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
       mech_agent_address: ${str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
-      mech_tool: ${str:prediction-online}
       bet_amount_per_threshold:
         0.0: ${int:0}
         0.1: ${int:0}
@@ -187,6 +187,10 @@ models:
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
       redeem_margin_days: ${int:15}
+      epsilon: ${float:0.1}
+      irrelevant_tools: ${set:{"openai-text-davinci-002", "openai-text-davinci-003", "openai-gpt-3.5-turbo", 
+        "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", "stabilityai-stable-diffusion-xl-beta-v2-2-2", 
+        "stabilityai-stable-diffusion-512-v2-1", "stabilityai-stable-diffusion-768-v2-1"}}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
