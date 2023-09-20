@@ -112,7 +112,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def mech_response(self) -> MechInteractionResponse:
-        """Get the mech response api specs."""
+        """Get the mech's response."""
         if self._mech_response is None:
             error = "The mech's response has not been set!"
             return MechInteractionResponse(error=error)
