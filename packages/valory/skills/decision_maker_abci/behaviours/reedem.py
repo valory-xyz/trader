@@ -109,6 +109,24 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             f"Chose block number {self.from_block_mapping[condition_id]!r} as closest to timestamp {timestamp!r}"
         )
 
+    def _update_policy(self, update: Trade) -> None:
+        """Update the policy."""
+        claimable_xdai = self.wei_to_native(update.claimable_amount)
+        tool_index = self.synchronized_data.utilized_tools[update.transactionHash]
+        self.policy.add_reward(tool_index, claimable_xdai)
+
+    def _stats_report(self) -> None:
+        """Report policy statistics."""
+        stats_report = "Policy statistics so far:\n"
+        for i, tool in enumerate(self.synchronized_data.available_mech_tools):
+            stats_report += (
+                f"{tool} tool:\n"
+                f"\tTimes used: {self.policy.counts[i]}\n"
+                f"\tReward rate: {self.policy.reward_rates[i]}\n"
+            )
+        stats_report += f"Best tool so far is {self.policy.select_tool()}."
+        self.context.logger.info(stats_report)
+
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
         trades_updates: Iterator[Trade] = (
@@ -119,6 +137,8 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         )
 
         for update in trades_updates:
+            self._update_policy(update)
+
             # do not use the information if position is not winning
             if not update.is_winning:
                 continue
@@ -135,6 +155,8 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             for unique_obj in self.trades:
                 if update == unique_obj:
                     self.claimable_amounts[condition_id] += update.claimable_amount
+
+        self._stats_report()
 
 
 class RedeemBehaviour(RedeemInfoBehaviour):
