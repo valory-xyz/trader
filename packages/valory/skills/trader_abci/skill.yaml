@@ -11,9 +11,9 @@ fingerprint:
   behaviours.py: bafybeigwadq27e4cnklboorhitwzzve4xkcgjdu2upplbbweuqyl52fj3q
   composition.py: bafybeie45dgneoggyavgdtswcygvz5o3klmtqf57zoxqnxrtneruutqevi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeiasu522aq3xthvuyvajpvzxy33nu6l4esuyl2xmkslckldcomwfzu
+  fsm_specification.yaml: bafybeiaomt3gscv4pvxczc4scu6q6laza6bqhpvfi2bfiq37vksuchhqiy
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeih26gyqv24lc2mlz3kbdsifip3zlac3owcpqlyi7hg6du6y6ojdda
+  models.py: bafybeifj5y7qcoac72woe53zaz2lopkqir2472bbey3ypsqmprjmljms7i
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiblayblhp5wuirfomwcpgydg35ve5tfq3xxetlosjn47wva5ucmzy
 - valory/transaction_settlement_abci:0.1.0:bafybeicisazpyvnnzlqso3txiucxr5qhsa4ac7ius6b4mhouxr2wkadwfy
 - valory/termination_abci:0.1.0:bafybeieqfhvk6klnvxak3vo2ibslkrnnk2bfsn5l3gbaelcprd6cjngxki
-- valory/market_manager_abci:0.1.0:bafybeicjqkzen2gvpnc3syojcf6ibr4kjaorcwktikqp2zzxec6vs64oky
-- valory/decision_maker_abci:0.1.0:bafybeic77zhxf5a53ngfzacklmm3nag4t4jeufdhoeg3ykrmvknojtwipi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidtrigrfjikl7tkbtowbp6mrdzxulayxnxcmviwy3gag557vnymlq
+- valory/market_manager_abci:0.1.0:bafybeigvw5tqei5xb272jb7retxiryhuhxxzupddmbdixgsmxzco3n2dde
+- valory/decision_maker_abci:0.1.0:bafybeihm77vt53vu3xt6x7istsvaw75juptlynpriebgeltbil5evvhtue
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiey57caacd6d3ow25i6a2zuiinkx6kjtckdktannk7kijpd3p2zb4
 behaviours:
   main:
     args: {}
@@ -234,7 +234,7 @@ models:
       headers:
         Content-Type: application/json
       method: GET
-      parameters: { }
+      parameters: {}
       response_key: tools
       response_type: list
       retries: 5

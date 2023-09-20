@@ -30,11 +30,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.models import (
-    AgentToolsSpecs,
-)
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.models import AgentToolsSpecs
 from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPayload
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )

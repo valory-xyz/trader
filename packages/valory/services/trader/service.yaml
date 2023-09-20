@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigoojaxpc7sz7vuswkxvpa5lp37lipuwc4qycztqk4hxdesmxqcda
+agent: valory/trader:0.1.0:bafybeiba5eqawktwkpziiazxm5u6ftm7o3zytcbafqsjwt7zrr63o2yis4
 number_of_agents: 4
 deployment: {}
 ---
@@ -105,9 +105,9 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         redeem_margin_days: ${REDEEM_MARGIN_DAYS:int:15}
         epsilon: ${EPSILON:float:0.1}
-        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003", 
-          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", 
-          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1", 
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
+          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
     benchmark_tool: &id005
       args:
@@ -174,9 +174,9 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         redeem_margin_days: ${REDEEM_MARGIN_DAYS:int:15}
         epsilon: ${EPSILON:float:0.1}
-        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003", 
-          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", 
-          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1", 
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
+          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
     benchmark_tool: *id005
 2:
@@ -241,9 +241,9 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         redeem_margin_days: ${REDEEM_MARGIN_DAYS:int:15}
         epsilon: ${EPSILON:float:0.1}
-        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003", 
-          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", 
-          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1", 
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
+          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
     benchmark_tool: *id005
 3:
@@ -308,9 +308,9 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         redeem_margin_days: ${REDEEM_MARGIN_DAYS:int:15}
         epsilon: ${EPSILON:float:0.1}
-        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003", 
-          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", 
-          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1", 
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+          "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
+          "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
     benchmark_tool: *id005
 ---
