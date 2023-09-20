@@ -1,0 +1,26 @@
+name: agent_registry
+author: valory
+version: 0.1.0
+type: contract
+description: Agent Registry contract
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeidey4syohls5hxmso6qsp5p4uhtzle5txv2mlbym6ktjzknich6oa
+  build/AgentRegistry.json: bafybeia4qi2vstrutejzrxfpbb6eift7va5cjs7bparaal2fafiiczuiyy
+  build/AgentRegistryL2.json: bafybeic2jylwfod4nmdtbs4izyxyi246pd3f35aoqyahnmyrvzn7j3sv4e
+  contract.py: bafybeibqwl52cnz64cysjd2jnjijuakdvyrffapxq65cdzx6g65gu42deq
+  tests/__init__.py: bafybeicl2oklx774jomlt6wwwegfdzrxh6iazjxwcyc7h4gepjljkpl4ji
+  tests/test_contract.py: bafybeicj535veqf35zb3ycu5iqjvqgj4a2kdmogmx5ba7fiolt5chah42a
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: AgentRegistryContract
+contract_interface_paths:
+  ethereum: build/AgentRegistry.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==1.39.0
+  open-aea-test-autonomy:
+    version: ==0.12.1.post1
+  open-aea-web3:
+    version: ==6.0.1
