@@ -236,3 +236,8 @@ class DataclassEncoder(json.JSONEncoder):
         if is_dataclass(o):
             return asdict(o)
         return super().default(o)
+
+
+def argmax(li: List) -> int:
+    """Get the index of the max value within the provided list."""
+    return li.index((max(li)))
