@@ -19,8 +19,16 @@
 
 """This module contains the redeem state of the decision-making abci app."""
 
+from typing import Type
+
+from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.decision_maker_abci.payloads import (
+    MultisigTxPayload,
+    RedeemPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
+    SynchronizedData,
     TxPreparationRound,
 )
 
@@ -28,4 +36,8 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 class RedeemRound(TxPreparationRound):
     """A round in which the agents prepare a tx to redeem the winnings."""
 
+    payload_class: Type[MultisigTxPayload] = RedeemPayload
+    selection_key = TxPreparationRound.selection_key + (
+        get_name(SynchronizedData.policy),
+    )
     none_event = Event.NO_REDEEMING
