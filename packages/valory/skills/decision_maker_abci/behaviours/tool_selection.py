@@ -32,8 +32,8 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 )
 from packages.valory.skills.decision_maker_abci.models import (
     AgentToolsSpecs,
-    EGreedyPolicy,
 )
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPayload
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,

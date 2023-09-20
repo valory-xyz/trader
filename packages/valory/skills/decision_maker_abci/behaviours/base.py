@@ -40,9 +40,9 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 )
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
-    EGreedyPolicy,
     MultisendBatch,
 )
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
