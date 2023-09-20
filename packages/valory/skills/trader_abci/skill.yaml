@@ -144,7 +144,6 @@ models:
       average_block_time: 5
       abt_error_mult: 5
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
-      mech_tool: prediction-online
       bet_amount_per_threshold:
         0.0: 0
         0.1: 0

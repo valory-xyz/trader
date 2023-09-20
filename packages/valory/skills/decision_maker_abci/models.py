@@ -92,7 +92,6 @@ class DecisionMakerParams(MarketManagerParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
-        self.mech_tool: str = self._ensure("mech_tool", kwargs, str)
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
