@@ -40,6 +40,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 )
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
+    EGreedyPolicy,
     MultisendBatch,
 )
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
@@ -75,6 +76,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
         self._safe_tx_hash = ""
+        self._policy: Optional[EGreedyPolicy] = None
 
     @property
     def params(self) -> DecisionMakerParams:
@@ -128,6 +130,15 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             self.multisend_data,
             SafeOperation.DELEGATE_CALL.value,
         )
+
+    @property
+    def policy(self) -> EGreedyPolicy:
+        """Get the policy."""
+        if self._policy is None:
+            raise ValueError(
+                "Attempting to retrieve the policy before it has been established."
+            )
+        return self._policy
 
     @staticmethod
     def wei_to_native(wei: int) -> float:
