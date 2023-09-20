@@ -20,10 +20,11 @@
 """This module contains the models for the skill."""
 
 import json
+import random
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from string import Template
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from aea.exceptions import enforce
 from hexbytes import HexBytes
@@ -225,3 +226,13 @@ class MechInteractionResponse:
         response = cls()
         response.error = f"The response's format was unexpected: {res}"
         return response
+
+
+class DataclassEncoder(json.JSONEncoder):
+    """A custom JSON encoder for dataclasses."""
+
+    def default(self, o: Any) -> Any:
+        """The default JSON encoder."""
+        if is_dataclass(o):
+            return asdict(o)
+        return super().default(o)
