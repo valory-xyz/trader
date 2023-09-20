@@ -128,3 +128,15 @@ class RealitioContract(Contract):
             args=claim_params,
         )
         return dict(data=data)
+
+    @classmethod
+    def get_history_hash(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_id: bytes,
+    ) -> JSONLike:
+        """Get history hash for a question"""
+        contract = cls.get_instance(ledger_api, contract_address)
+        data = contract.functions.getHistoryHash(question_id).call()
+        return dict(data=data)

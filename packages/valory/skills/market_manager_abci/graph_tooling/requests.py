@@ -207,17 +207,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res,
             res_context="trades",
         )
-
-        filtered_redeem_info = [
-            entry
-            for entry in redeem_info  # type: ignore[union-attr]
-            if len(entry.get("fpmm", {}).get("question", {}).get("answers", [])) == 1
-        ]
-
-        # FIXME Redeem functionality deactivated temporarily
-        filtered_redeem_info = []
-
-        return filtered_redeem_info
+        return redeem_info
 
     def _fetch_block_number(
         self, timestamp: int
