@@ -122,7 +122,12 @@ class DecisionMakerParams(MarketManagerParams):
         self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage = 0.0
-        self.slippage = self._ensure("slippage", kwargs, float)
+        self.slippage: float = self._ensure("slippage", kwargs, float)
+        self.epsilon: float = self._ensure("epsilon", kwargs, float)
+        self.agent_registry_address: str = self._ensure(
+            "agent_registry_address", kwargs, str
+        )
+        self.irrelevant_tools: set = self._ensure("irrelevant_tools", kwargs, set)
         super().__init__(*args, **kwargs)
 
     @property
@@ -159,6 +164,10 @@ class DecisionMakerParams(MarketManagerParams):
 
 class MechResponseSpecs(ApiSpecs):
     """A model that wraps ApiSpecs for the Mech's response specifications."""
+
+
+class AgentToolsSpecs(ApiSpecs):
+    """A model that wraps ApiSpecs for the Mech agent's tools specifications."""
 
 
 @dataclass
