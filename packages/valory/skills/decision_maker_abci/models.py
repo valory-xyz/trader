@@ -269,7 +269,7 @@ class EGreedyPolicy:
     @property
     def random_tool(self) -> int:
         """Get the index of a tool randomly."""
-        return random.randrange(self.n_tools)
+        return random.randrange(self.n_tools)  # nosec
 
     @property
     def reward_rates(self) -> List[float]:
@@ -298,7 +298,7 @@ class EGreedyPolicy:
         if self.n_tools == 0:
             return None
 
-        if sum(self.counts) == 0 or random.random() < self.eps:
+        if sum(self.counts) == 0 or random.random() < self.eps:  # nosec
             return self.random_tool
 
         return argmax(self.reward_rates)
