@@ -55,6 +55,9 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.tool_selection import (
+    ToolSelectionRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
@@ -129,10 +132,16 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
-            Event.DONE: DecisionRequestRound,
+            Event.DONE: ToolSelectionRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
+        },
+        ToolSelectionRound: {
+            Event.DONE: DecisionRequestRound,
+            Event.NONE: ToolSelectionRound,
+            Event.NO_MAJORITY: ToolSelectionRound,
+            Event.ROUND_TIMEOUT: ToolSelectionRound,
         },
         DecisionRequestRound: {
             Event.DONE: FinishedDecisionMakerRound,
