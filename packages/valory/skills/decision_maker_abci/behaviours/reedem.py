@@ -86,6 +86,10 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
+    def setup(self) -> None:
+        """Setup the behaviour"""
+        self._policy = self.synchronized_data.policy
+
     def _set_block_number(self, trade: Trade) -> Generator:
         """Set the block number of the given trade's market."""
         timestamp = trade.fpmm.creationTimestamp
