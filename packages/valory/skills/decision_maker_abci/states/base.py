@@ -19,8 +19,9 @@
 
 """This module contains the base functionality for the rounds of the decision-making abci app."""
 
+import json
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
@@ -28,6 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
@@ -74,6 +76,38 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def mech_price(self) -> int:
         """Get the mech's request price."""
         return int(self.db.get_strict("mech_price"))
+
+    @property
+    def available_mech_tools(self) -> List[str]:
+        """Get all the available mech tools."""
+        tools = self.db.get_strict("available_mech_tools")
+        return json.loads(tools)
+
+    @property
+    def policy(self) -> EGreedyPolicy:
+        """Get the policy."""
+        policy = self.db.get_strict("policy")
+        return EGreedyPolicy.deserialize(policy)
+
+    @property
+    def mech_tool_idx(self) -> int:
+        """Get the mech tool's index."""
+        return int(self.db.get_strict("mech_tool_idx"))
+
+    @property
+    def mech_tool(self) -> str:
+        """Get the selected mech tool."""
+        try:
+            return self.available_mech_tools[self.mech_tool_idx]
+        except IndexError as exc:
+            error = f"{self.mech_tool_idx=} is not available in {self.available_mech_tools=}."
+            raise IndexError(error) from exc
+
+    @property
+    def utilized_tools(self) -> Dict[str, int]:
+        """Get a mapping of the utilized tools' indexes for each transaction."""
+        tools = str(self.db.get("utilized_tools", "{}"))
+        return json.loads(tools)
 
     @property
     def vote(self) -> Optional[int]:

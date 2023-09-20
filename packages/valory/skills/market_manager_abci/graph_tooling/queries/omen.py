@@ -94,6 +94,7 @@ trades = Template(
         outcomeIndex
         outcomeTokenMarginalPrice
         outcomeTokensTraded
+        transactionHash
       }
     }
     """

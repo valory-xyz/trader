@@ -126,7 +126,7 @@ class DecisionMakerParams(MarketManagerParams):
         self.agent_registry_address: str = self._ensure(
             "agent_registry_address", kwargs, str
         )
-        self.irrelevant_tools: set = self._ensure("irrelevant_tools", kwargs, set)
+        self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         super().__init__(*args, **kwargs)
 
     @property

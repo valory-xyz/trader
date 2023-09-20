@@ -74,6 +74,13 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
 
         synced_data = SynchronizedData(self.synchronized_data.db)
         event = submitter_to_event.get(synced_data.tx_submitter, Event.UNRECOGNIZED)
+
+        # if a bet was just placed, edit the utilized tools mapping
+        if event == Event.BET_PLACEMENT_DONE:
+            utilized_tools = synced_data.utilized_tools
+            utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool_idx
+            self.synchronized_data.update(utilized_tools=utilized_tools)
+
         return synced_data, event
 
 
