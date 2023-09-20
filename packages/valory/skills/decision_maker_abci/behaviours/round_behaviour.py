@@ -44,6 +44,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemB
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
+    ToolSelectionBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 
 
@@ -60,4 +63,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         BetPlacementBehaviour,  # type: ignore
         RedeemBehaviour,  # type: ignore
         HandleFailedTxBehaviour,  # type: ignore
+        ToolSelectionBehaviour,  # type: ignore
     }

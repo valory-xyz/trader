@@ -55,6 +55,9 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.tool_selection import (
+    ToolSelectionRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
@@ -70,49 +73,54 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 8.
+            - none: 9.
             - no majority: 0.
             - round timeout: 0.
-        1. DecisionRequestRound
-            - done: 7.
-            - slots unsupported error: 3.
+        1. ToolSelectionRound
+            - done: 2.
+            - none: 1.
             - no majority: 1.
             - round timeout: 1.
-            - none: 11.
-        2. DecisionReceiveRound
-            - done: 4.
-            - mech response error: 3.
-            - no majority: 2.
-            - tie: 3.
-            - unprofitable: 3.
-            - round timeout: 2.
-        3. BlacklistingRound
+        2. DecisionRequestRound
             - done: 8.
-            - none: 11.
+            - slots unsupported error: 4.
+            - no majority: 2.
+            - round timeout: 2.
+            - none: 12.
+        3. DecisionReceiveRound
+            - done: 5.
+            - mech response error: 4.
             - no majority: 3.
+            - tie: 4.
+            - unprofitable: 4.
             - round timeout: 3.
-            - fetch error: 11.
-        4. BetPlacementRound
-            - done: 7.
-            - insufficient balance: 10.
+        4. BlacklistingRound
+            - done: 9.
+            - none: 12.
             - no majority: 4.
             - round timeout: 4.
-            - none: 11.
-        5. RedeemRound
-            - done: 7.
-            - no redeeming: 9.
+            - fetch error: 12.
+        5. BetPlacementRound
+            - done: 8.
+            - insufficient balance: 11.
             - no majority: 5.
             - round timeout: 5.
-            - none: 11.
-        6. HandleFailedTxRound
-            - blacklist: 3.
-            - no op: 5.
+            - none: 12.
+        6. RedeemRound
+            - done: 8.
+            - no redeeming: 10.
             - no majority: 6.
-        7. FinishedDecisionMakerRound
-        8. FinishedWithoutDecisionRound
-        9. FinishedWithoutRedeemingRound
-        10. RefillRequiredRound
-        11. ImpossibleRound
+            - round timeout: 6.
+            - none: 12.
+        7. HandleFailedTxRound
+            - blacklist: 4.
+            - no op: 6.
+            - no majority: 7.
+        8. FinishedDecisionMakerRound
+        9. FinishedWithoutDecisionRound
+        10. FinishedWithoutRedeemingRound
+        11. RefillRequiredRound
+        12. ImpossibleRound
 
     Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
@@ -129,10 +137,16 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
-            Event.DONE: DecisionRequestRound,
+            Event.DONE: ToolSelectionRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
+        },
+        ToolSelectionRound: {
+            Event.DONE: DecisionRequestRound,
+            Event.NONE: ToolSelectionRound,
+            Event.NO_MAJORITY: ToolSelectionRound,
+            Event.ROUND_TIMEOUT: ToolSelectionRound,
         },
         DecisionRequestRound: {
             Event.DONE: FinishedDecisionMakerRound,
