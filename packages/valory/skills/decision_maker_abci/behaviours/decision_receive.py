@@ -26,6 +26,7 @@ from packages.valory.contracts.mech.contract import Mech
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    CID_PREFIX,
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
     remove_fraction_wei,
@@ -41,7 +42,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 
 
-IPFS_HASH_PREFIX = "f01701220"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -103,7 +103,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def set_mech_response_specs(self) -> None:
         """Set the mech's response specs."""
-        full_ipfs_hash = IPFS_HASH_PREFIX + self.response_hex
+        full_ipfs_hash = CID_PREFIX + self.response_hex
         ipfs_link = self.params.ipfs_address + full_ipfs_hash + f"/{self.request_id}"
         # The url must be dynamically generated as it depends on the ipfs hash
         self.mech_response_api.__dict__["_frozen"] = False

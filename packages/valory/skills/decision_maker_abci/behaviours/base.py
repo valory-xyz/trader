@@ -57,6 +57,7 @@ WaitableConditionType = Generator[None, None, bool]
 # which is what we want in most cases
 # more info here: https://safe-docs.dev.gnosisdev.com/safe/docs/contracts_tx_execution/
 SAFE_GAS = 0
+CID_PREFIX = "f01701220"
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
