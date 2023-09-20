@@ -69,3 +69,12 @@ class VotingPayload(BaseTxPayload):
     """Represents a transaction payload for voting."""
 
     vote: bool
+
+
+@dataclass(frozen=True)
+class ToolSelectionPayload(BaseTxPayload):
+    """Represents a transaction payload for selecting a mech tool."""
+
+    mech_tools: Optional[str]
+    policy: Optional[str]
+    index: Optional[int]
