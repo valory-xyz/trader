@@ -26,6 +26,7 @@ from packages.valory.contracts.agent_registry.contract import AgentRegistryContr
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    CID_PREFIX,
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
@@ -46,7 +47,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Initialize Behaviour."""
         super().__init__(**kwargs)
         self._mech_id: int = 0
-        self._mech_token_uri: str = ""
+        self._mech_hash: str = ""
         self._mech_tools: Optional[List[str]] = None
 
     @property
@@ -60,14 +61,14 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self._mech_id = mech_id
 
     @property
-    def mech_token_uri(self) -> str:
-        """Get the token URI of the mech agent."""
-        return self._mech_token_uri
+    def mech_hash(self) -> str:
+        """Get the hash of the mech agent."""
+        return self._mech_hash
 
-    @mech_token_uri.setter
-    def mech_token_uri(self, mech_hash: str) -> None:
-        """Set the token URI of the mech agent."""
-        self._mech_token_uri = mech_hash
+    @mech_hash.setter
+    def mech_hash(self, mech_hash: str) -> None:
+        """Set the hash of the mech agent."""
+        self._mech_hash = mech_hash
 
     @property
     def mech_tools(self) -> List[str]:
@@ -88,9 +89,11 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def set_mech_agent_specs(self) -> None:
         """Set the mech's agent specs."""
+        full_ipfs_hash = CID_PREFIX + self.mech_hash
+        ipfs_link = self.params.ipfs_address + full_ipfs_hash
         # The url needs to be dynamically generated as it depends on the ipfs hash
         self.mech_tools_api.__dict__["_frozen"] = False
-        self.mech_tools_api.url = self.mech_token_uri
+        self.mech_tools_api.url = ipfs_link
         self.mech_tools_api.__dict__["_frozen"] = True
 
     def _get_mech_id(self) -> WaitableConditionType:
@@ -103,23 +106,18 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
         return result
 
-    def _get_mech_uri(self) -> WaitableConditionType:
-        """Get the mech's token URI."""
-        contract_id = str(AgentRegistryContract.contract_id)
-        contract_callable = "get_token_uri"
-        response_msg = yield from self.get_contract_api_response(
+    def _get_mech_hash(self) -> WaitableConditionType:
+        """Get the mech's hash."""
+        result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.agent_registry_address,
-            contract_id=contract_id,
-            contract_callable=contract_callable,
-            token_id=self.mech_id,
+            contract_public_id=AgentRegistryContract.contract_id,
+            contract_callable="get_hash",
+            data_key="hash",
+            placeholder=get_name(ToolSelectionBehaviour.mech_hash),
+            agent_id=self.mech_id,
         )
-        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
-            self.default_error(contract_id, contract_callable, response_msg)
-            return False
-
-        self.mech_token_uri = response_msg.raw_transaction.body
-        return True
+        return result
 
     def _get_mech_tools(self) -> WaitableConditionType:
         """Get the mech agent's tools from IPFS."""
@@ -159,7 +157,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Get the Mech's tools."""
         for step in (
             self._get_mech_id,
-            self._get_mech_uri,
+            self._get_mech_hash,
             self._get_mech_tools,
         ):
             yield from self.wait_for_condition_with_sleep(step)
