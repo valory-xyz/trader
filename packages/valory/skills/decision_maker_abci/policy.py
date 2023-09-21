@@ -77,7 +77,10 @@ class EGreedyPolicy:
     @property
     def reward_rates(self) -> List[float]:
         """Get the reward rates."""
-        return [reward / count for reward, count in zip(self.rewards, self.counts)]
+        return [
+            reward / count if count > 0 else 0
+            for reward, count in zip(self.rewards, self.counts)
+        ]
 
     def add_new_tools(self, n_new: int) -> None:
         """Add new tools to the current policy."""
