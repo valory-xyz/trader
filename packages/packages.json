@@ -11,8 +11,7 @@
         "contract/valory/mech/0.1.0": "bafybeiehjnwd63xp6ttfsskhxsphnvpjpwrfqzfltjvqn6mjqkemoo2qge",
         "contract/valory/realitio/0.1.0": "bafybeicdgm2a7evjw6szcpo3uaam5mzd6axtevtzwvejr6uaeymbg437da",
         "contract/valory/realitio_proxy/0.1.0": "bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy",
-        "contract/valory/conditional_tokens/0.1.0": "bafybeicxwjdbmjajgr5rsmadtkxxwmcm42r2htef3tvng73uzib4hmb6qa",
-        "contract/valory/agent_registry/0.1.0": "bafybeid3knh7d7uzvtkbdg7xxdjajjb3lhusxju46iydkt5p4wklc4gz5e"
+        "contract/valory/conditional_tokens/0.1.0": "bafybeicxwjdbmjajgr5rsmadtkxxwmcm42r2htef3tvng73uzib4hmb6qa"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeifuxs7gdg2okbn7uofymenjlmnih2wxwkym44lsgwmklgwuckxm2m",
@@ -35,6 +34,7 @@
         "contract/valory/gnosis_safe_proxy_factory/0.1.0": "bafybeiaylgywx2qtoaddokexql3d4iqfz5l7rlm5q24lzbn36we3ovfjmi",
         "contract/valory/gnosis_safe/0.1.0": "bafybeih7gkbdtnhkc3i53mbsj7bcihqa7xau6ewsnew4kkul7phwb4ucjm",
         "contract/valory/service_registry/0.1.0": "bafybeihtsj4dpoi4iaml2jctlth2y26diam3npkfe736vpg67tgb6th53a",
+        "contract/valory/agent_registry/0.1.0": "bafybeielrs5qih3r6qhnily6x4h4j4j6kux6eqr546homow4c5ljgfyljq",
         "skill/valory/transaction_settlement_abci/0.1.0": "bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi",
         "contract/valory/multisend/0.1.0": "bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a",
         "skill/valory/termination_abci/0.1.0": "bafybeigcsls72uosoui2y5ppmnvsljjhnxakkeh3fdohklcg66aqq4g7xu"
