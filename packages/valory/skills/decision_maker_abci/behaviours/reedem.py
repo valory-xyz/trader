@@ -124,7 +124,7 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
 
     def _stats_report(self) -> None:
         """Report policy statistics."""
-        stats_report = "Policy statistics so far:\n"
+        stats_report = "Policy statistics so far (only for resolved markets):\n"
         for i, tool in enumerate(self.synchronized_data.available_mech_tools):
             stats_report += (
                 f"{tool} tool:\n"
