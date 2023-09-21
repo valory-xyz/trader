@@ -45,7 +45,6 @@ class EGreedyPolicy:
     """An e-Greedy policy for the tool selection."""
 
     eps: float
-    n_tools: int
     counts: List[int]
     rewards: List[float]
     initial_value = 0
@@ -59,7 +58,6 @@ class EGreedyPolicy:
 
         return EGreedyPolicy(
             eps,
-            n_tools,
             [cls.initial_value] * n_tools,
             [float(cls.initial_value)] * n_tools,
         )
@@ -68,6 +66,11 @@ class EGreedyPolicy:
     def deserialize(cls, policy: str) -> "EGreedyPolicy":
         """Deserialize a string to an `EGreedyPolicy` object."""
         return EGreedyPolicy(**json.loads(policy))
+
+    @property
+    def n_tools(self) -> int:
+        """Get the number of the policy's tools."""
+        return len(self.counts)
 
     @property
     def random_tool(self) -> int:
@@ -84,7 +87,6 @@ class EGreedyPolicy:
 
     def add_new_tools(self, n_new: int) -> None:
         """Add new tools to the current policy."""
-        self.n_tools += n_new
         self.counts.extend([0] * n_new)
         self.rewards.extend([0.0] * n_new)
 
