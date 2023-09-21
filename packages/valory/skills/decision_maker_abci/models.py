@@ -122,7 +122,7 @@ class DecisionMakerParams(MarketManagerParams):
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
-        self.epsilon: float = self._ensure("epsilon", kwargs, float)
+        self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = self._ensure(
             "agent_registry_address", kwargs, str
         )

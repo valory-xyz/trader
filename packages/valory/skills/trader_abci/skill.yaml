@@ -169,7 +169,7 @@ models:
       redeeming_batch_size: 5
       slippage: 0.01
       redeem_margin_days: 15
-      epsilon: 0.1
+      policy_epsilon: 0.1
       irrelevant_tools:
       - openai-text-davinci-002
       - openai-text-davinci-003

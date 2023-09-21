@@ -185,7 +185,7 @@ models:
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
       redeeming_batch_size: 5
       slippage: 0.01
-      epsilon: 0.1
+      policy_epsilon: 0.1
       irrelevant_tools:
       - openai-text-davinci-002
       - openai-text-davinci-003
