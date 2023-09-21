@@ -48,6 +48,7 @@ class EGreedyPolicy:
     n_tools: int
     counts: List[int]
     rewards: List[float]
+    initial_value = 0
 
     @classmethod
     def initial_state(cls, eps: float, n_tools: int) -> "EGreedyPolicy":
@@ -56,7 +57,12 @@ class EGreedyPolicy:
             error = f"Cannot initialize an e Greedy Policy with {n_tools=}"
             raise ValueError(error)
 
-        return EGreedyPolicy(eps, n_tools, [0] * n_tools, [0.0] * n_tools)
+        return EGreedyPolicy(
+            eps,
+            n_tools,
+            [cls.initial_value] * n_tools,
+            [float(cls.initial_value)] * n_tools,
+        )
 
     @classmethod
     def deserialize(cls, policy: str) -> "EGreedyPolicy":
