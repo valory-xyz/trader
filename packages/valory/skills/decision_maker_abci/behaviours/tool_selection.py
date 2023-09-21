@@ -162,23 +162,21 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _adjust_policy_tools(self, tools: List[str]) -> None:
+    def _adjust_policy_tools(self) -> None:
         """Add or remove tools from the policy to match the remote tools."""
+        local = self.synchronized_data.available_mech_tools
+
         # remove tools if they are not available anymore
-        local = set(self.synchronized_data.available_mech_tools)
-        remote = set(tools)
-        relevant_remote = remote - self.params.irrelevant_tools
-        removed_tools_idx = [
-            idx for idx, tool in enumerate(local) if tool not in relevant_remote
-        ]
-        if len(removed_tools_idx) > 0:
-            self.policy.remove_tools(removed_tools_idx)
+        # process the indices in reverse order to avoid index shifting when removing the unavailable tools later
+        reversed_idx = range(len(local) - 1, -1, -1)
+        removed_idx = [idx for idx in reversed_idx if local[idx] not in self.mech_tools]
+        self.policy.remove_tools(removed_idx)
 
         # add tools if there are new ones available
-        new_tools = remote - local
-        n_new_tools = len(new_tools)
-        if n_new_tools > 0:
-            self.policy.add_new_tools(n_new_tools)
+        # process the indices in reverse order to avoid index shifting when adding the new tools later
+        reversed_idx = range(len(self.mech_tools) - 1, -1, -1)
+        new_idx = [idx for idx in reversed_idx if self.mech_tools[idx] not in local]
+        self.policy.add_new_tools(new_idx)
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
@@ -187,7 +185,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             self._policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
         else:
             self._policy = self.synchronized_data.policy
-            self._adjust_policy_tools(tools)
+            self._adjust_policy_tools()
 
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
