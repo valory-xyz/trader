@@ -121,6 +121,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_mech_tools(self) -> WaitableConditionType:
         """Get the mech agent's tools from IPFS."""
+        self.set_mech_agent_specs()
         specs = self.mech_tools_api.get_spec()
         res_raw = yield from self.get_http_response(**specs)
         res = self.mech_tools_api.process_response(res_raw)
