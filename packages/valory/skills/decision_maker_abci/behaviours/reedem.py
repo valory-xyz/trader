@@ -173,6 +173,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._built_data: Optional[HexBytes] = None
         self._current_redeem_info: Optional[Trade] = None
         self._expected_winnings: int = 0
+        self._history_hash: bytes = ZERO_BYTES
 
     @property
     def current_redeem_info(self) -> Trade:
@@ -240,6 +241,21 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def finalized(self, flag: bool) -> None:
         """Set whether the current market has been finalized."""
         self._finalized = flag
+
+    @property
+    def history_hash(self) -> bytes:
+        """Get the history hash for the current question."""
+        return self._history_hash
+
+    @history_hash.setter
+    def history_hash(self, history_hash: bytes) -> None:
+        """Set the history hash for the current question."""
+        self._history_hash = history_hash
+
+    @property
+    def is_history_hash_null(self) -> bool:
+        """Return whether the current history hash is null."""
+        return self.history_hash == b"\x00" * 32
 
     @property
     def already_resolved(self) -> bool:
@@ -362,6 +378,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         )
         return result
 
+    def _get_history_hash(self) -> WaitableConditionType:
+        """Get the history hash for the current question id."""
+        result = yield from self._realitio_interact(
+            contract_callable="get_history_hash",
+            data_key="data",
+            placeholder=get_name(RedeemBehaviour.history_hash),
+            question_id=self.current_question_id,
+        )
+        return result
+
     def _check_already_resolved(self) -> WaitableConditionType:
         """Check whether someone has already resolved for this market."""
         result = yield from self._conditional_tokens_interact(
@@ -442,13 +468,18 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def _prepare_single_redeem(self) -> Generator:
         """Prepare a multisend transaction for a single redeeming action."""
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
-        steps = [self._build_redeem_data]
+        steps = []
         if not self.already_resolved:
-            steps[:0] = [
-                self._build_resolve_data,
-                self._build_claim_data,
-            ]
+            # 1. resolve the question if it hasn't been resolved yet
+            steps.append(self._build_resolve_data)
 
+        yield from self.wait_for_condition_with_sleep(self._get_history_hash)
+        if not self.is_history_hash_null:
+            # 2. claim the winnings if claiming has not been done yet
+            steps.append(self._build_claim_data)
+
+        # 3. we always redeem the position
+        steps.append(self._build_redeem_data)
         for build_step in steps:
             yield from self.wait_for_condition_with_sleep(build_step)
 

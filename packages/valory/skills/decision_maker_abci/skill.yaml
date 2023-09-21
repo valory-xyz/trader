@@ -18,7 +18,7 @@ fingerprint:
   behaviours/decision_receive.py: bafybeid54jwjs4lulcl2n2w7taxne3wqgsey6ppaidwr2up6bztyf35ghm
   behaviours/decision_request.py: bafybeidlyl2ojmpfs2zkewoacraya2cbampo4ynqbqaocsoq7v2nif3ahi
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeif2sby2nfvvecpynbaek452pqhkl7gexno4max6wzw7ofuopfg4iu
+  behaviours/reedem.py: bafybeig3ikits3r5ldjhfqyyn74t3osmnm72htbuibmo5syfc7url2qtaq
   behaviours/round_behaviour.py: bafybeig4tdktyu6hapoqymnxh2bgpds547st6a44heue657wkctwe4gjvm
   behaviours/sampling.py: bafybeiadikynvkaofbko72jc45xthhmmjfmlkpgramormhxwk5u47rnwdu
   behaviours/tool_selection.py: bafybeib3vzj25c5hzpitznpe6jkbgbh7cdfmt3aa3zxyuftutikd67eniq
@@ -44,21 +44,21 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeicetxwbgfqxcaoack7knljqo4i6up4nqgvm272eyqdqii4hcis5ri
-- valory/market_maker:0.1.0:bafybeif6hivvhxqv4a3uqo2v3yszluzrmngsp624utdi466xwo5qbz5bsi
-- valory/erc20:0.1.0:bafybeiggo4u56drxusvcdruqrr7mlfzqbieg4hajalh4tkctxhh3c5lpdi
-- valory/multisend:0.1.0:bafybeidfktuprydtmi4umolfles5qaf7s3t26puvvs44hvkq6uwwr3ia3a
-- valory/mech:0.1.0:bafybeidtezc4ubsyqdltiojvqe5eeh77ejte7vqbojspiej5quivgap3ae
+- valory/gnosis_safe:0.1.0:bafybeih7gkbdtnhkc3i53mbsj7bcihqa7xau6ewsnew4kkul7phwb4ucjm
+- valory/market_maker:0.1.0:bafybeiftimqgvrbval2lxp7au6y72amioo4gtcdth2dflrbwa47i6opyb4
+- valory/erc20:0.1.0:bafybeifjwr6rwklgg2uk2zkfysn55qqy7dfi4jx7sek6lzdup37fynhpxe
+- valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
+- valory/mech:0.1.0:bafybeiehjnwd63xp6ttfsskhxsphnvpjpwrfqzfltjvqn6mjqkemoo2qge
 - valory/conditional_tokens:0.1.0:bafybeicxwjdbmjajgr5rsmadtkxxwmcm42r2htef3tvng73uzib4hmb6qa
-- valory/realitio:0.1.0:bafybeigb722aznqhc5lsbt3dn4bpyaqe5hnl5onmnestqmzliwtvl3eaom
+- valory/realitio:0.1.0:bafybeicdgm2a7evjw6szcpo3uaam5mzd6axtevtzwvejr6uaeymbg437da
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
-- valory/agent_registry:0.1.0:bafybeib6odummk6qqietjekpljkmhqfxk7kv56kv6pyfsnnanews625ncy
+- valory/agent_registry:0.1.0:bafybeid3knh7d7uzvtkbdg7xxdjajjb3lhusxju46iydkt5p4wklc4gz5e
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeicqwr73cs3vndzafrjrjpw63vvqbbjsur7ptek77hsw3lurnood5y
-- valory/market_manager_abci:0.1.0:bafybeigvw5tqei5xb272jb7retxiryhuhxxzupddmbdixgsmxzco3n2dde
-- valory/transaction_settlement_abci:0.1.0:bafybeicisazpyvnnzlqso3txiucxr5qhsa4ac7ius6b4mhouxr2wkadwfy
+- valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
+- valory/market_manager_abci:0.1.0:bafybeibwe3tmsonkej2v5cnclsyfi4bfd5ievxzkrpc4lg6fqqk6s7hcny
+- valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
 behaviours:
   main:
     args: {}
