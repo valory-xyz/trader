@@ -88,9 +88,11 @@ class EGreedyPolicy:
         self.counts.extend([0] * n_new)
         self.rewards.extend([0.0] * n_new)
 
-    def remove_tools(self, indexes: List[int]) -> None:
+    def remove_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
         """Remove the knowledge for the tools corresponding to the given indexes."""
-        self.n_tools -= len(indexes)
+        if avoid_shift:
+            indexes = sorted(indexes, reverse=True)
+
         for i in indexes:
             try:
                 del self.counts[i]
