@@ -48,7 +48,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         super().__init__(**kwargs)
         self._mech_id: int = 0
         self._mech_hash: str = ""
-        self.mech_tools: Optional[List[str]] = None
+        self._mech_tools: Optional[List[str]] = None
 
     @property
     def mech_id(self) -> int:
@@ -69,6 +69,18 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def mech_hash(self, mech_hash: str) -> None:
         """Set the hash of the mech agent."""
         self._mech_hash = mech_hash
+
+    @property
+    def mech_tools(self) -> List[str]:
+        """Get the mech agent's tools."""
+        if self._mech_tools is None:
+            raise ValueError("The mech's tools have not been set.")
+        return self._mech_tools
+
+    @mech_tools.setter
+    def mech_tools(self, mech_tools: List[str]) -> None:
+        """Set the mech agent's tools."""
+        self._mech_tools = mech_tools
 
     @property
     def mech_tools_api(self) -> AgentToolsSpecs:
@@ -126,8 +138,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
         if len(res) == 0:
-            res = None
             self.context.logger.error("The mech agent's tools are empty!")
+            return False
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
         return True
@@ -161,7 +173,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         if n_new_tools > 0:
             self.policy.add_new_tools(n_new_tools)
 
-    def _set_policy(self, tools: List[str]) -> None:
+    def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
         if self.synchronized_data.period_count == 0:
             self._policy = EGreedyPolicy.initial_state(self.params.epsilon, len(tools))
@@ -172,11 +184,10 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         yield from self._get_tools()
-        if self.mech_tools is None:
-            return None
-
-        self._set_policy(self.mech_tools)
-        return self.policy.select_tool()
+        self._set_policy()
+        selected = self.policy.select_tool()
+        self.context.logger.info(f"Selected the mech tool {selected!r}.")
+        return selected
 
     def async_act(self) -> Generator:
         """Do the action."""
