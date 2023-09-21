@@ -137,8 +137,14 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
+        # keep only the relevant mech tools, sorted
+        # we sort the tools to avoid using dictionaries in the policy implementation,
+        # so that we can easily assess which index corresponds to which tool
+        res = sorted(set(res) - self.params.irrelevant_tools)
+        self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
+
         if len(res) == 0:
-            self.context.logger.error("The mech agent's tools are empty!")
+            self.context.logger.error("The relevant mech agent's tools are empty!")
             return False
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
@@ -176,7 +182,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
         if self.synchronized_data.period_count == 0:
-            self._policy = EGreedyPolicy.initial_state(self.params.epsilon, len(tools))
+            n_relevant = len(self.mech_tools)
+            self._policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
         else:
             self._policy = self.synchronized_data.policy
             self._adjust_policy_tools(tools)
