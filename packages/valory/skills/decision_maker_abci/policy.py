@@ -85,10 +85,14 @@ class EGreedyPolicy:
             for reward, count in zip(self.rewards, self.counts)
         ]
 
-    def add_new_tools(self, n_new: int) -> None:
+    def add_new_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
         """Add new tools to the current policy."""
-        self.counts.extend([0] * n_new)
-        self.rewards.extend([0.0] * n_new)
+        if avoid_shift:
+            indexes = sorted(indexes, reverse=True)
+
+        for i in indexes:
+            self.counts.insert(i, self.initial_value)
+            self.rewards.insert(i, float(self.initial_value))
 
     def remove_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
         """Remove the knowledge for the tools corresponding to the given indexes."""
