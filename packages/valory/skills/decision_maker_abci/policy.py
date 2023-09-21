@@ -52,8 +52,8 @@ class EGreedyPolicy:
     @classmethod
     def initial_state(cls, eps: float, n_tools: int) -> "EGreedyPolicy":
         """Return an instance on its initial state."""
-        if n_tools == 0:
-            error = f"Cannot initialize an e Greedy Policy with {n_tools=}"
+        if n_tools <= 0 or eps > 1 or eps < 0:
+            error = f"Cannot initialize an e Greedy Policy with {eps=} and {n_tools=}"
             raise ValueError(error)
 
         return EGreedyPolicy(
