@@ -85,6 +85,11 @@ class EGreedyPolicy:
             for reward, count in zip(self.rewards, self.counts)
         ]
 
+    @property
+    def best_tool(self) -> int:
+        """Get the best tool."""
+        return argmax(self.reward_rates)
+
     def add_new_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
         """Add new tools to the current policy."""
         if avoid_shift:
@@ -115,7 +120,7 @@ class EGreedyPolicy:
         if sum(self.counts) == 0 or random.random() < self.eps:  # nosec
             return self.random_tool
 
-        return argmax(self.reward_rates)
+        return self.best_tool
 
     def add_reward(self, index: int, reward: float) -> None:
         """Add a reward for the tool corresponding to the given index."""

@@ -124,7 +124,7 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
                 f"\tTimes used: {self.policy.counts[i]}\n"
                 f"\tReward rate: {self.policy.reward_rates[i]}\n"
             )
-        stats_report += f"Best tool so far is {self.policy.select_tool()}."
+        stats_report += f"Best tool so far is {self.policy.best_tool}."
         self.context.logger.info(stats_report)
 
     def update_redeem_info(self, chunk: list) -> Generator:
