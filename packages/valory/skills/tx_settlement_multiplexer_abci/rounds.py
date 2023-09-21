@@ -19,6 +19,7 @@
 
 """This package contains the rounds of `TxSettlementMultiplexerAbciApp`."""
 
+import json
 from enum import Enum
 from typing import Any, Dict, Optional, Set, Tuple
 
@@ -79,7 +80,8 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         if event == Event.BET_PLACEMENT_DONE:
             utilized_tools = synced_data.utilized_tools
             utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool_idx
-            self.synchronized_data.update(utilized_tools=utilized_tools)
+            tools_update = json.dumps(utilized_tools)
+            self.synchronized_data.update(utilized_tools=tools_update)
 
         return synced_data, event
 
