@@ -39,5 +39,6 @@ class RedeemRound(TxPreparationRound):
     payload_class: Type[MultisigTxPayload] = RedeemPayload
     selection_key = TxPreparationRound.selection_key + (
         get_name(SynchronizedData.policy),
+        get_name(SynchronizedData.utilized_tools),
     )
     none_event = Event.NO_REDEEMING

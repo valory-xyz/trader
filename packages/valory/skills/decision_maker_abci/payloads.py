@@ -55,6 +55,7 @@ class RedeemPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
 
     policy: Optional[str]
+    utilized_tools: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -77,4 +78,5 @@ class ToolSelectionPayload(BaseTxPayload):
 
     mech_tools: Optional[str]
     policy: Optional[str]
+    utilized_tools: Optional[str]
     index: Optional[int]

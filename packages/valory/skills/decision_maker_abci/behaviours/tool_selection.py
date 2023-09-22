@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for selecting a mech tool."""
 
 import json
-from typing import Any, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -48,7 +48,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         super().__init__(**kwargs)
         self._mech_id: int = 0
         self._mech_hash: str = ""
-        self.mech_tools: Optional[List[str]] = None
+        self._mech_tools: Optional[List[str]] = None
 
     @property
     def mech_id(self) -> int:
@@ -69,6 +69,25 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def mech_hash(self, mech_hash: str) -> None:
         """Set the hash of the mech agent."""
         self._mech_hash = mech_hash
+
+    @property
+    def mech_tools(self) -> List[str]:
+        """Get the mech agent's tools."""
+        if self._mech_tools is None:
+            raise ValueError("The mech's tools have not been set.")
+        return self._mech_tools
+
+    @mech_tools.setter
+    def mech_tools(self, mech_tools: List[str]) -> None:
+        """Set the mech agent's tools."""
+        self._mech_tools = mech_tools
+
+    @property
+    def utilized_tools(self) -> Dict[str, int]:
+        """Get the utilized tools."""
+        if self.is_first_period:
+            return {}
+        return self.synchronized_data.utilized_tools
 
     @property
     def mech_tools_api(self) -> AgentToolsSpecs:
@@ -109,6 +128,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_mech_tools(self) -> WaitableConditionType:
         """Get the mech agent's tools from IPFS."""
+        self.set_mech_agent_specs()
         specs = self.mech_tools_api.get_spec()
         res_raw = yield from self.get_http_response(**specs)
         res = self.mech_tools_api.process_response(res_raw)
@@ -125,9 +145,15 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
+        # keep only the relevant mech tools, sorted
+        # we sort the tools to avoid using dictionaries in the policy implementation,
+        # so that we can easily assess which index corresponds to which tool
+        res = sorted(set(res) - self.params.irrelevant_tools)
+        self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
+
         if len(res) == 0:
-            res = None
-            self.context.logger.error("The mech agent's tools are empty!")
+            self.context.logger.error("The relevant mech agent's tools are empty!")
+            return False
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
         return True
@@ -143,55 +169,55 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _adjust_policy_tools(self, tools: List[str]) -> None:
+    def _adjust_policy_tools(self) -> None:
         """Add or remove tools from the policy to match the remote tools."""
+        local = self.synchronized_data.available_mech_tools
+
         # remove tools if they are not available anymore
-        local = set(self.synchronized_data.available_mech_tools)
-        remote = set(tools)
-        relevant_remote = remote - self.params.irrelevant_tools
-        removed_tools_idx = [
-            idx for idx, tool in enumerate(local) if tool not in relevant_remote
-        ]
-        if len(removed_tools_idx) > 0:
-            self.policy.remove_tools(removed_tools_idx)
+        # process the indices in reverse order to avoid index shifting when removing the unavailable tools later
+        reversed_idx = range(len(local) - 1, -1, -1)
+        removed_idx = [idx for idx in reversed_idx if local[idx] not in self.mech_tools]
+        self.policy.remove_tools(removed_idx)
 
         # add tools if there are new ones available
-        new_tools = remote - local
-        n_new_tools = len(new_tools)
-        if n_new_tools > 0:
-            self.policy.add_new_tools(n_new_tools)
+        # process the indices in reverse order to avoid index shifting when adding the new tools later
+        reversed_idx = range(len(self.mech_tools) - 1, -1, -1)
+        new_idx = [idx for idx in reversed_idx if self.mech_tools[idx] not in local]
+        self.policy.add_new_tools(new_idx)
 
-    def _set_policy(self, tools: List[str]) -> None:
+    def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
-        if self.synchronized_data.period_count == 0:
-            self._policy = EGreedyPolicy.initial_state(self.params.epsilon, len(tools))
+        if self.is_first_period:
+            n_relevant = len(self.mech_tools)
+            self._policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
         else:
             self._policy = self.synchronized_data.policy
-            self._adjust_policy_tools(tools)
+            self._adjust_policy_tools()
 
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         yield from self._get_tools()
-        if self.mech_tools is None:
-            return None
-
-        self._set_policy(self.mech_tools)
-        return self.policy.select_tool()
+        self._set_policy()
+        selected = self.policy.select_tool()
+        self.context.logger.info(f"Selected the mech tool {selected!r}.")
+        return selected
 
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            mech_tools = policy = None
+            mech_tools = policy = utilized_tools = None
             selected_tool = yield from self._select_tool()
             if selected_tool is not None:
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
+                utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
 
             payload = ToolSelectionPayload(
                 self.context.agent_address,
                 mech_tools,
                 policy,
+                utilized_tools,
                 selected_tool,
             )
 

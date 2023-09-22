@@ -45,18 +45,22 @@ class EGreedyPolicy:
     """An e-Greedy policy for the tool selection."""
 
     eps: float
-    n_tools: int
     counts: List[int]
     rewards: List[float]
+    initial_value = 0
 
     @classmethod
     def initial_state(cls, eps: float, n_tools: int) -> "EGreedyPolicy":
         """Return an instance on its initial state."""
-        if n_tools == 0:
-            error = f"Cannot initialize an e Greedy Policy with {n_tools=}"
+        if n_tools <= 0 or eps > 1 or eps < 0:
+            error = f"Cannot initialize an e Greedy Policy with {eps=} and {n_tools=}"
             raise ValueError(error)
 
-        return EGreedyPolicy(eps, n_tools, [0] * n_tools, [0.0] * n_tools)
+        return EGreedyPolicy(
+            eps,
+            [cls.initial_value] * n_tools,
+            [float(cls.initial_value)] * n_tools,
+        )
 
     @classmethod
     def deserialize(cls, policy: str) -> "EGreedyPolicy":
@@ -64,24 +68,47 @@ class EGreedyPolicy:
         return EGreedyPolicy(**json.loads(policy))
 
     @property
+    def n_tools(self) -> int:
+        """Get the number of the policy's tools."""
+        return len(self.counts)
+
+    @property
     def random_tool(self) -> int:
         """Get the index of a tool randomly."""
         return random.randrange(self.n_tools)  # nosec
 
     @property
+    def has_updated(self) -> bool:
+        """Whether the policy has ever been updated since its genesis or not."""
+        return sum(self.counts) > 0
+
+    @property
     def reward_rates(self) -> List[float]:
         """Get the reward rates."""
-        return [reward / count for reward, count in zip(self.rewards, self.counts)]
+        return [
+            reward / count if count > 0 else 0
+            for reward, count in zip(self.rewards, self.counts)
+        ]
 
-    def add_new_tools(self, n_new: int) -> None:
+    @property
+    def best_tool(self) -> int:
+        """Get the best tool."""
+        return argmax(self.reward_rates)
+
+    def add_new_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
         """Add new tools to the current policy."""
-        self.n_tools += n_new
-        self.counts.extend([0] * n_new)
-        self.rewards.extend([0.0] * n_new)
+        if avoid_shift:
+            indexes = sorted(indexes, reverse=True)
 
-    def remove_tools(self, indexes: List[int]) -> None:
+        for i in indexes:
+            self.counts.insert(i, self.initial_value)
+            self.rewards.insert(i, float(self.initial_value))
+
+    def remove_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
         """Remove the knowledge for the tools corresponding to the given indexes."""
-        self.n_tools -= len(indexes)
+        if avoid_shift:
+            indexes = sorted(indexes, reverse=True)
+
         for i in indexes:
             try:
                 del self.counts[i]
@@ -98,7 +125,7 @@ class EGreedyPolicy:
         if sum(self.counts) == 0 or random.random() < self.eps:  # nosec
             return self.random_tool
 
-        return argmax(self.reward_rates)
+        return self.best_tool
 
     def add_reward(self, index: int, reward: float) -> None:
         """Add a reward for the tool corresponding to the given index."""

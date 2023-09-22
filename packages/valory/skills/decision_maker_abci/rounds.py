@@ -199,6 +199,13 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         RefillRequiredRound: {},
         ImpossibleRound: {},
     }
+    cross_period_persisted_keys = frozenset(
+        {
+            get_name(SynchronizedData.available_mech_tools),
+            get_name(SynchronizedData.policy),
+            get_name(SynchronizedData.utilized_tools),
+        }
+    )
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
         FinishedWithoutDecisionRound,
