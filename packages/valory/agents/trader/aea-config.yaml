@@ -21,7 +21,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeiftimqgvrbval2lxp7au6y72amioo4gtcdth2dflrbwa47i6opyb4
 - valory/erc20:0.1.0:bafybeifjwr6rwklgg2uk2zkfysn55qqy7dfi4jx7sek6lzdup37fynhpxe
 - valory/multisend:0.1.0:bafybeie7m7pjbnw7cccpbvmbgkut24dtlt4cgvug3tbac7gej37xvwbv3a
-- valory/mech:0.1.0:bafybeie753wdqks6k4x5fqlpo7tgll2avutjcaodpwlptqvzefsi5xbvai
+- valory/mech:0.1.0:bafybeiehjnwd63xp6ttfsskhxsphnvpjpwrfqzfltjvqn6mjqkemoo2qge
 - valory/conditional_tokens:0.1.0:bafybeicxwjdbmjajgr5rsmadtkxxwmcm42r2htef3tvng73uzib4hmb6qa
 - valory/realitio:0.1.0:bafybeicdgm2a7evjw6szcpo3uaam5mzd6axtevtzwvejr6uaeymbg437da
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
@@ -41,10 +41,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifoihgilpfr76hc5skzspm6qehkwivx7ld2cy3veipcsi4gr2c7na
 - valory/termination_abci:0.1.0:bafybeigcsls72uosoui2y5ppmnvsljjhnxakkeh3fdohklcg66aqq4g7xu
 - valory/transaction_settlement_abci:0.1.0:bafybeiglsnh2hvfau5gab7requh34k4sbqwbjvrhhqjpes4hakcwq46cpi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiab2iz65fsus7h3kk5j3unw6guzvtpfe6ytrcmayay5x2phqsxdlu
-- valory/market_manager_abci:0.1.0:bafybeicqrgxbf2pocfh7332qzhcshwsarpwjkj3zroveklsrovozcppsvq
-- valory/decision_maker_abci:0.1.0:bafybeihwjudh7pngsgflbrfe2kcvzkaq2edl5j3l3wb463eeagcwpaluay
-- valory/trader_abci:0.1.0:bafybeihgug7lpiuqoxjabfsqc337skofs67iljxs5ounvbqlu5e7ny3e4u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidel3rxm55y2qqewhmwroybs5j7t6ma6awmxbo7xjv3jvhmb6dv7m
+- valory/market_manager_abci:0.1.0:bafybeig223xrxbtfx5adwhc7m6rpdbevsqm5osfq66oijucs2gzn4hehsm
+- valory/decision_maker_abci:0.1.0:bafybeieqyd5jek55q57lg77hey3oapppoosaphhyxxlulx52gg2ahkqdba
+- valory/trader_abci:0.1.0:bafybeighllbhqgeryjaew2heequ4iyaghevr3vnvvpx2pl3foqopk4k4zi
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -147,6 +147,7 @@ models:
       multisend_address: ${str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:null}
+      agent_registry_address: ${str:null}
       share_tm_config_on_startup: ${bool:false}
       sleep_time: ${int:10}
       tendermint_p2p_url: ${str:localhost:26656}
@@ -161,7 +162,6 @@ models:
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
       mech_agent_address: ${str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
-      mech_tool: ${str:prediction-online}
       bet_amount_per_threshold:
         0.0: ${int:0}
         0.1: ${int:0}
@@ -187,6 +187,11 @@ models:
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
       redeem_margin_days: ${int:15}
+      policy_epsilon: ${float:0.1}
+      irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
+        "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
+        "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
+        "stabilityai-stable-diffusion-768-v2-1"]}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

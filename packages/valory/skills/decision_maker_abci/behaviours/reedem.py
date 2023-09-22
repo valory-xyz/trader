@@ -19,6 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
+import json
 from abc import ABC
 from collections import defaultdict
 from sys import maxsize
@@ -39,7 +40,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.redeem_info import (
     Condition,
     FPMM,
@@ -66,6 +67,7 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize a `RedeemInfo` object."""
         super().__init__(**kwargs)
+        self.utilized_tools: Dict[str, int] = {}
         self.trades: Set[Trade] = set()
 
         # blocks in which the markets were created mapped to the corresponding condition ids
@@ -86,6 +88,11 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
+    def setup(self) -> None:
+        """Setup the behaviour"""
+        self._policy = self.synchronized_data.policy
+        self.utilized_tools = self.synchronized_data.utilized_tools
+
     def _set_block_number(self, trade: Trade) -> Generator:
         """Set the block number of the given trade's market."""
         timestamp = trade.fpmm.creationTimestamp
@@ -105,6 +112,30 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             f"Chose block number {self.from_block_mapping[condition_id]!r} as closest to timestamp {timestamp!r}"
         )
 
+    def _update_policy(self, update: Trade) -> None:
+        """Update the policy."""
+        claimable_xdai = self.wei_to_native(update.claimable_amount)
+        # the mapping might not contain a tool for a bet placement because it might have happened on a previous run
+        tool_index = self.utilized_tools.get(update.transactionHash, None)
+        if tool_index is not None:
+            # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
+            del self.utilized_tools[update.transactionHash]
+            self.policy.add_reward(tool_index, claimable_xdai)
+
+    def _stats_report(self) -> None:
+        """Report policy statistics."""
+        stats_report = "Policy statistics so far (only for resolved markets):\n"
+        available_tools = self.synchronized_data.available_mech_tools
+        for i, tool in enumerate(available_tools):
+            stats_report += (
+                f"{tool} tool:\n"
+                f"\tTimes used: {self.policy.counts[i]}\n"
+                f"\tReward rate: {self.policy.reward_rates[i]}\n"
+            )
+        best_tool = available_tools[self.policy.best_tool]
+        stats_report += f"Best tool so far is {best_tool!r}."
+        self.context.logger.info(stats_report)
+
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
         trades_updates: Iterator[Trade] = (
@@ -115,6 +146,8 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         )
 
         for update in trades_updates:
+            self._update_policy(update)
+
             # do not use the information if position is not winning
             if not update.is_winning:
                 continue
@@ -131,6 +164,9 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             for unique_obj in self.trades:
                 if update == unique_obj:
                     self.claimable_amounts[condition_id] += update.claimable_amount
+
+        if self.policy.has_updated:
+            self._stats_report()
 
 
 class RedeemBehaviour(RedeemInfoBehaviour):
@@ -554,11 +590,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             yield from self._clean_redeem_info()
             agent = self.context.agent_address
             redeem_tx_hex = yield from self._prepare_safe_tx()
-            tx_submitter = (
-                self.matching_round.auto_round_id()
-                if redeem_tx_hex is not None
-                else None
+            tx_submitter = policy = utilized_tools = None
+            if redeem_tx_hex is not None:
+                tx_submitter = self.matching_round.auto_round_id()
+                policy = self.policy.serialize()
+                utilized_tools = json.dumps(self.utilized_tools)
+
+            payload = RedeemPayload(
+                agent, tx_submitter, redeem_tx_hex, policy, utilized_tools
             )
-            payload = MultisigTxPayload(agent, tx_submitter, redeem_tx_hex)
 
         yield from self.finish_behaviour(payload)

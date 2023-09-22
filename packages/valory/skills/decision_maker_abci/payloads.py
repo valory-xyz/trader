@@ -51,6 +51,14 @@ class MultisigTxPayload(BaseTxPayload):
 
 
 @dataclass(frozen=True)
+class RedeemPayload(MultisigTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
+
+    policy: Optional[str]
+    utilized_tools: Optional[str]
+
+
+@dataclass(frozen=True)
 class RequestPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
 
@@ -62,3 +70,13 @@ class VotingPayload(BaseTxPayload):
     """Represents a transaction payload for voting."""
 
     vote: bool
+
+
+@dataclass(frozen=True)
+class ToolSelectionPayload(BaseTxPayload):
+    """Represents a transaction payload for selecting a mech tool."""
+
+    mech_tools: Optional[str]
+    policy: Optional[str]
+    utilized_tools: Optional[str]
+    index: Optional[int]

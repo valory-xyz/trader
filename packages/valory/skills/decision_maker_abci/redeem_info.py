@@ -52,7 +52,6 @@ class Question:
 
     id: bytes
     data: str
-    answers: List
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -101,6 +100,7 @@ class Trade:
     outcomeIndex: int
     outcomeTokenMarginalPrice: float
     outcomeTokensTraded: int
+    transactionHash: str
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -125,13 +125,16 @@ class Trade:
         return hash(self.fpmm.condition.id) + hash(self.fpmm.question.id)
 
     @property
-    def claimable_amount(self) -> int:
-        """Get the claimable amount of the current market."""
-        return int(self.outcomeTokenMarginalPrice * self.outcomeTokensTraded)
-
-    @property
     def is_winning(self) -> bool:
         """Return whether the current position is winning."""
         our_answer = self.outcomeIndex
         correct_answer = self.fpmm.current_answer_index
         return our_answer == correct_answer
+
+    @property
+    def claimable_amount(self) -> int:
+        """Get the claimable amount of the current market."""
+        amount = int(self.outcomeTokenMarginalPrice * self.outcomeTokensTraded)
+        if self.is_winning:
+            return amount
+        return -amount

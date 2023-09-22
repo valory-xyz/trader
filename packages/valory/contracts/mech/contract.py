@@ -184,3 +184,14 @@ class Mech(Contract):
             return {"error": error}
 
         return dict(data=deliver_args["data"])
+
+    @classmethod
+    def get_mech_id(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Get the price of a request."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        mech_id = ledger_api.contract_method_call(contract_instance, "tokenId")
+        return dict(id=mech_id)

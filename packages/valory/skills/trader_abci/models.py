@@ -29,6 +29,9 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.decision_maker_abci.models import (
+    AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
+)
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.models import (
     MechResponseSpecs as DecisionMakerMechResponseSpecs,
@@ -68,6 +71,7 @@ BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
 MechResponseSpecs = DecisionMakerMechResponseSpecs
+AgentToolsSpecs = DecisionMakerAgentToolsSpecs
 
 MARGIN = 5
 

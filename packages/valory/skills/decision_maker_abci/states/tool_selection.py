@@ -17,28 +17,31 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the redeem state of the decision-making abci app."""
+"""This module contains the tool selection state of the decision-making abci app."""
 
-from typing import Type
-
-from packages.valory.skills.abstract_round_abci.base import get_name
-from packages.valory.skills.decision_maker_abci.payloads import (
-    MultisigTxPayload,
-    RedeemPayload,
+from packages.valory.skills.abstract_round_abci.base import (
+    CollectSameUntilThresholdRound,
+    get_name,
 )
+from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
-    TxPreparationRound,
 )
 
 
-class RedeemRound(TxPreparationRound):
-    """A round in which the agents prepare a tx to redeem the winnings."""
+class ToolSelectionRound(CollectSameUntilThresholdRound):
+    """A round for selecting a Mech tool."""
 
-    payload_class: Type[MultisigTxPayload] = RedeemPayload
-    selection_key = TxPreparationRound.selection_key + (
+    payload_class = ToolSelectionPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = (
+        get_name(SynchronizedData.available_mech_tools),
         get_name(SynchronizedData.policy),
         get_name(SynchronizedData.utilized_tools),
+        get_name(SynchronizedData.mech_tool_idx),
     )
-    none_event = Event.NO_REDEEMING
+    collection_key = get_name(SynchronizedData.participant_to_selection)
