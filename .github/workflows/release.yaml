@@ -41,10 +41,11 @@ jobs:
         DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     steps:
       - uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-            fetch-depth: 0
             image: valory/open-autonomy-user:latest
             options: -v ${{ github.workspace }}:/work
             run: |
