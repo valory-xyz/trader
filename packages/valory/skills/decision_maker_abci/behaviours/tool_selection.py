@@ -180,7 +180,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
-        if self.synchronized_data.period_count == 0:
+        if self.is_first_period:
             n_relevant = len(self.mech_tools)
             self._policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
         else:
