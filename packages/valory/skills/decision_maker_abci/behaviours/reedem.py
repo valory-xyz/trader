@@ -165,7 +165,8 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
                 if update == unique_obj:
                     self.claimable_amounts[condition_id] += update.claimable_amount
 
-        self._stats_report()
+        if self.policy.has_updated:
+            self._stats_report()
 
 
 class RedeemBehaviour(RedeemInfoBehaviour):

@@ -78,6 +78,11 @@ class EGreedyPolicy:
         return random.randrange(self.n_tools)  # nosec
 
     @property
+    def has_updated(self) -> bool:
+        """Whether the policy has ever been updated since its genesis or not."""
+        return sum(self.counts) > 0
+
+    @property
     def reward_rates(self) -> List[float]:
         """Get the reward rates."""
         return [
