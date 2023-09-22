@@ -125,13 +125,15 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
     def _stats_report(self) -> None:
         """Report policy statistics."""
         stats_report = "Policy statistics so far (only for resolved markets):\n"
-        for i, tool in enumerate(self.synchronized_data.available_mech_tools):
+        available_tools = self.synchronized_data.available_mech_tools
+        for i, tool in enumerate(available_tools):
             stats_report += (
                 f"{tool} tool:\n"
                 f"\tTimes used: {self.policy.counts[i]}\n"
                 f"\tReward rate: {self.policy.reward_rates[i]}\n"
             )
-        stats_report += f"Best tool so far is {self.policy.best_tool}."
+        best_tool = available_tools[self.policy.best_tool]
+        stats_report += f"Best tool so far is {best_tool!r}."
         self.context.logger.info(stats_report)
 
     def update_redeem_info(self, chunk: list) -> Generator:
