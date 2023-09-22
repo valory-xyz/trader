@@ -13,14 +13,14 @@ fingerprint:
   fsm_specification.yaml: bafybeibeas5ovngfhfox4dkkwdvhogpuzkmwj6r33ez2xxvvmvmesa3xvm
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
   models.py: bafybeiahojnn52s762zitwx6k5s4ef5qw7hwjf3orlklqwuz3zi7k2o7bi
-  rounds.py: bafybeifcqo6t7vhkclwj6lncfirglvayd7oqdwinca2ipndizgin7alm5q
+  rounds.py: bafybeigyok6qh5firjs5osarsmtcugqhcibishulr6zzdfsnesm6jcxqqa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeif3cqkks5qx3lqi6nwwhebcirhazt2vidw3sueeqsyxvjeszjt3om
-- valory/decision_maker_abci:0.1.0:bafybeifssrmowov77evtvevc7qophahlcskuxik573y2y4nmf64xz7oinm
+- valory/decision_maker_abci:0.1.0:bafybeieqyd5jek55q57lg77hey3oapppoosaphhyxxlulx52gg2ahkqdba
 behaviours:
   main:
     args: {}
