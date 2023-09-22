@@ -106,7 +106,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def utilized_tools(self) -> Dict[str, int]:
         """Get a mapping of the utilized tools' indexes for each transaction."""
-        tools = str(self.db.get("utilized_tools", "{}"))
+        tools = str(self.db.get_strict("utilized_tools"))
         return json.loads(tools)
 
     @property

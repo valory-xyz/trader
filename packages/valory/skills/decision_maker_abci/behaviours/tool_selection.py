@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for selecting a mech tool."""
 
 import json
-from typing import Any, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -81,6 +81,13 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def mech_tools(self, mech_tools: List[str]) -> None:
         """Set the mech agent's tools."""
         self._mech_tools = mech_tools
+
+    @property
+    def utilized_tools(self) -> Dict[str, int]:
+        """Get the utilized tools."""
+        if self.is_first_period:
+            return {}
+        return self.synchronized_data.utilized_tools
 
     @property
     def mech_tools_api(self) -> AgentToolsSpecs:
@@ -199,16 +206,18 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            mech_tools = policy = None
+            mech_tools = policy = utilized_tools = None
             selected_tool = yield from self._select_tool()
             if selected_tool is not None:
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
+                utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
 
             payload = ToolSelectionPayload(
                 self.context.agent_address,
                 mech_tools,
                 policy,
+                utilized_tools,
                 selected_tool,
             )
 
