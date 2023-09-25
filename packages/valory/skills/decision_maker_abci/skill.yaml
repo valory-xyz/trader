@@ -184,6 +184,7 @@ models:
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
       redeeming_batch_size: 5
+      policy_store_path: /data/
       slippage: 0.01
       policy_epsilon: 0.1
       irrelevant_tools:

@@ -174,6 +174,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     matching_round = RedeemRound
 
+    UTILIZED_TOOLS_PATH = "utilized_tools.json"
+
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
@@ -583,6 +585,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.context.logger.info("Transaction successfully prepared.")
         return self.tx_hex
 
+    def _store_utilized_tools(self) -> None:
+        """Store the tools utilized by the behaviour."""
+        path = self.params.policy_store_path / self.UTILIZED_TOOLS_PATH
+        with path.open("w") as f:
+            json.dump(self.utilized_tools, f)
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -599,5 +607,5 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             payload = RedeemPayload(
                 agent, tx_submitter, redeem_tx_hex, policy, utilized_tools
             )
-
+        self._store_utilized_tools()
         yield from self.finish_behaviour(payload)
