@@ -54,7 +54,11 @@ def load_pyproject_toml(pyproject_toml_path: str = "./pyproject.toml") -> dict:
 def get_package_dependencies() -> Dict[str, Any]:
     """Returns a list of package dependencies."""
     package_manager = PackageManagerV1.from_dir(
-        Path(os.environ.get("PACKAGES_DIR", str(Path.cwd() / "packages")))
+        Path(
+            os.environ.get(  # pylint: disable=no-member
+                "PACKAGES_DIR", str(Path.cwd() / "packages")
+            )
+        )
     )
     dependencies: Dict[str, Dependency] = {}
     for package in package_manager.iter_dependency_tree():

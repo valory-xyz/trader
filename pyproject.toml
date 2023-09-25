@@ -10,12 +10,12 @@ authors = [ "David Minarsch <david.minarsch@googlemail.com>", "Jose Moreira Sanc
 readme = "README.md"
 repository = "https://github.com/valory-xyz/trader"
 keywords = [ "trader", "autonomy", "autonomous", "autonolas", "service", "multi", "agent",]
-classifiers = [ "Environment :: Console", "Environment :: Web Environment", "Development Status :: 2 - Pre-Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: Apache Software License", "Natural Language :: English", "Operating System :: MacOS", "Operating System :: Microsoft", "Operating System :: Unix", "Programming Language :: Python :: 3.10", "Topic :: Communications", "Topic :: Internet", "Topic :: Scientific/Engineering", "Topic :: Software Development", "Topic :: System",]
+classifiers = [ "Environment :: Console", "Environment :: Web Environment", "Development Status :: 2 - Pre-Alpha", "Intended Audience :: Developers", "License :: OSI Approved :: Apache Software License", "Natural Language :: English", "Operating System :: MacOS", "Operating System :: Microsoft", "Operating System :: Unix", "Programming Language :: Python :: 3.11", "Topic :: Communications", "Topic :: Internet", "Topic :: Scientific/Engineering", "Topic :: Software Development", "Topic :: System",]
 [[tool.poetry.packages]]
 include = "packages"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.11"
+python = ">=3.11, <3.12"
 open-autonomy = "==0.12.0"
 requests = "==2.28.2"
 py-multibase = "==1.0.3"
