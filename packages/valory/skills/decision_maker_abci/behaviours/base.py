@@ -20,7 +20,6 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
-import json
 from abc import ABC
 from datetime import datetime, timedelta
 from typing import Any, Callable, Generator, List, Optional, cast
