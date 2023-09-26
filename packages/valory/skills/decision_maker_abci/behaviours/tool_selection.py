@@ -266,7 +266,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Store the policy"""
         policy_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
         with open(policy_path, "w") as f:
-            json.dump(self.utilized_tools, f)
+            json.dump(self.mech_tools, f)
 
     def async_act(self) -> Generator:
         """Do the action."""
