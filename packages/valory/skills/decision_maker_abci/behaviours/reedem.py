@@ -350,6 +350,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         )
         return result
 
+    def _get_redeemed_positions(self) -> Generator:
+        """Get the redeemed positions."""
+
     def _clean_redeem_info(self) -> Generator:
         """Clean the redeeming information based on whether any positions have already been redeemed."""
         yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
