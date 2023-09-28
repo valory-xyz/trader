@@ -322,14 +322,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         """Clean the redeeming information based on whether any positions have already been redeemed."""
         data = yield from self._fetch_redeemed_markets()
         redeemed_conditions = {
-            condition_id
+            condition_id.lower()
             for item in data
             for condition_id in item["position"]["conditionIds"]
         }
         self.trades = {
             trade
             for trade in self.trades
-            if trade.fpmm.condition.id not in redeemed_conditions
+            if trade.fpmm.condition.id.hex().lower() not in redeemed_conditions
         }
         self.context.logger.info(f"Cleaned redeeming information: {self.trades}")
 

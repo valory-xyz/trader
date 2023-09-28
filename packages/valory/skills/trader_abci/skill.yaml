@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeia7rzsbea3ch4gcafyp3z6uvqh4npws2xpdwbkkdbrqqpjops7nui
 - valory/termination_abci:0.1.0:bafybeigqpij2sgrpnilqjljfciixop4fldq5qceixc7534q6af4potdmdm
 - valory/market_manager_abci:0.1.0:bafybeihtw4felfxouvvbeoc7fqc35glf7ewsbv7ainozlgyhjb75vjdxze
-- valory/decision_maker_abci:0.1.0:bafybeicdllkjhzrkp47ythhskd7xooz4hd2nkxvlm4luszh4j5qnmqeimm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigs72vbszfvilkntfaaf3pqmmootgrwzqcvxa66wfpxzx5vejsmoy
+- valory/decision_maker_abci:0.1.0:bafybeibmzpyrpzru4c33opozq4hx4pslssmfsfjukdfkgf6komuy7e64qq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih5oxuqnsk5ujhwtvuog4swoenehem25cmhdio6rs5d6kin3i53gq
 behaviours:
   main:
     args: {}
@@ -213,7 +213,7 @@ models:
         Content-Type: application/json
       method: POST
       parameters: {}
-      response_key: data:user
+      response_key: data:user:userPositions
       response_type: list
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc
