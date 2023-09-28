@@ -14,11 +14,12 @@ fingerprint:
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
+  graph_tooling/queries/conditional_tokens.py: bafybeiha3zkdqa6ewfzoa76asvler6vn2wnhhiu3r3iumij4m7rpzjcu5m
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
   graph_tooling/queries/omen.py: bafybeicatte7cinlzcmubkoyne7fgvuedimvotf4pvhacozsy7ndftmmdy
-  graph_tooling/requests.py: bafybeicv7hdo4a56pqteaxoxi5tskfbb34u2ajmhu7canoco3mi3jv6fmy
+  graph_tooling/requests.py: bafybeiat5vu4jejps75sox7piiihcuqcrupivc5q75dsqi4y6urb7oxqjy
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeiaplszooak63fo3i6agaoyol4tpof4q4tvoj4j6f2cr2corajnl3a
+  models.py: bafybeifiwficoxg2h65qrrwt6vg7npjat2oqj22qtno2ouiw6lrbms2pfa
   payloads.py: bafybeiamavgddfbzofpsjthmw6j7g2dyxm7fb6hvdb47kweyrx4w2ihcfi
   rounds.py: bafybeib2jkzzpnmx6eebw3cw6t2hlzxktumbzrerjlowlpv532eink6g7e
 fingerprint_ignore_patterns: []
@@ -170,7 +171,7 @@ models:
       headers:
         Content-Type: application/json
       method: POST
-      parameters: { }
+      parameters: {}
       response_key: data:user
       response_type: list
       retries: 5

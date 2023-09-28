@@ -41,6 +41,7 @@ from packages.valory.skills.decision_maker_abci.rounds import (
 )
 from packages.valory.skills.market_manager_abci.models import (
     NetworkSubgraph as MarketManagerNetworkSubgraph,
+    ConditionalTokensSubgraph as MarketManagerConditionalTokensSubgraph,
 )
 from packages.valory.skills.market_manager_abci.models import (
     OmenSubgraph as MarketManagerOmenSubgraph,
@@ -72,6 +73,7 @@ OmenSubgraph = MarketManagerOmenSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
 MechResponseSpecs = DecisionMakerMechResponseSpecs
 AgentToolsSpecs = DecisionMakerAgentToolsSpecs
+ConditionalTokensSubgraph = MarketManagerConditionalTokensSubgraph
 
 MARGIN = 5
 
