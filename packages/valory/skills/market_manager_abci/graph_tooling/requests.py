@@ -230,7 +230,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res,
             res_context="redeemed_markets",
         )
-        return redeemed_market
+        return redeemed_market["userPositions"]
 
     def _fetch_block_number(
         self, timestamp: int
