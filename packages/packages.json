@@ -1,17 +1,17 @@
 {
     "dev": {
         "skill/valory/market_manager_abci/0.1.0": "bafybeidnqerwkljbjgog73qaa5duu5ymsfjs6jsszeupseshx7go3n6afq",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeihu4vrh2qyujh3rfguwrvekc76en4lo4rn3u6jsgnmxjbmxngzy2y",
-        "skill/valory/trader_abci/0.1.0": "bafybeiglomtffddoqdwerxdlujeakrdpcaawqt7v26kl4vpb5on7uskl7u",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeig4cuozgv2mimaaxi3nnwz5xkcmgqjcdx4h5zonte6ekgwwmrdbci",
+        "skill/valory/trader_abci/0.1.0": "bafybeidy6veal2qwolydhvu7hbcpv5j7znetssfyzbjuzivznqn2srvfhe",
         "contract/valory/market_maker/0.1.0": "bafybeidaz4dol7qsrwitw5jwasjtvd2vtlxhxizwkzen5kurblwacz4biu",
-        "agent/valory/trader/0.1.0": "bafybeiczas2owldbgyavccypfdue725wthmejw3syofellnfiuf7i37oxq",
-        "service/valory/trader/0.1.0": "bafybeihuhbcocor32ssgne7qxe7zrstuho54oh6gv33mwypcer2q5uktgm",
+        "agent/valory/trader/0.1.0": "bafybeicfbza7idwflcv4tzwdvj5fmojbr65xzmok4q6lepqmz5vm2c3d4u",
+        "service/valory/trader/0.1.0": "bafybeie56ret3dtsnra4466pqf7mq5jd4bj7d6etqbzgjtvftgnypwkgpa",
         "contract/valory/erc20/0.1.0": "bafybeid6p64a6tnovatbwybc6ocdd4u7bqkxsb4ks52rvf7ozcxxl6iaf4",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeigqaswq3uvitzthww3zdulwbaefaxrn5vrmxwutxco7hq5fztk6ay",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifa6a2o26pt5h4vletqdzehkvme4jrjdca3sdsqrw3g5v47tr6jd4",
         "contract/valory/mech/0.1.0": "bafybeiddc6pgurpyja2k64wzsb3jgcvl254s7rplgt5iooftsyfalqlbfq",
         "contract/valory/realitio/0.1.0": "bafybeicdgm2a7evjw6szcpo3uaam5mzd6axtevtzwvejr6uaeymbg437da",
         "contract/valory/realitio_proxy/0.1.0": "bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy",
-        "contract/valory/conditional_tokens/0.1.0": "bafybeifb5qvzhzuiqmfb7vowynxyia4jyuov7gjyqgdhyw7yvebu6utsvy",
+        "contract/valory/conditional_tokens/0.1.0": "bafybeig26ktayat3m32to3riescg7plsahdylmpf3ubsguiosqixdwjm6m",
         "contract/valory/agent_registry/0.1.0": "bafybeigpd6wvnbb7fbf6yd77rugepv5hrbb6l3qfodstwgemagtcgne3bm"
     },
     "third_party": {
