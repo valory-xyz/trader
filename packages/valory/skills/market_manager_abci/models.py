@@ -55,6 +55,10 @@ class NetworkSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the network's subgraph specifications."""
 
 
+class ConditionalTokensSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the ConditionalTokens subgraph specifications."""
+
+
 class MarketManagerParams(BaseParams):
     """Market manager's parameters."""
 

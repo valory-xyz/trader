@@ -206,6 +206,18 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
+  conditional_tokens_subgraph:
+    args:
+      api_id: conditional_tokens
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: { }
+      response_key: data:user
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc
+    class_name: ConditionalTokensSubgraph
   randomness_api:
     args:
       api_id: cloudflare

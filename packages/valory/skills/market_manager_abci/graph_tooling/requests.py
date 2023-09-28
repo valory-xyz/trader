@@ -27,6 +27,9 @@ from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.conditional_tokens import (
+    redeemed_markets,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.network import (
     block_number,
 )
@@ -208,6 +211,26 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res_context="trades",
         )
         return redeem_info
+
+    def _fetch_redeemed_markets(self) -> Generator[None, None, Optional[list]]:
+        """Fetch redeemed markets from the current subgraph."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+
+        safe = self.synchronized_data.safe_contract_address
+        current_subgraph = self.context.conditional_tokens_subgraph
+        query = redeemed_markets.substitute(creator=safe.lower())
+
+        res_raw = yield from self.get_http_response(
+            content=to_content(query),
+            **current_subgraph.get_spec(),
+        )
+        res = current_subgraph.process_response(res_raw)
+        redeemed_market = yield from self._handle_response(
+            current_subgraph,
+            res,
+            res_context="redeemed_markets",
+        )
+        return redeemed_market
 
     def _fetch_block_number(
         self, timestamp: int

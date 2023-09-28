@@ -22,6 +22,7 @@
 import json
 from abc import ABC
 from collections import defaultdict
+from copy import copy
 from sys import maxsize
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
 
@@ -317,51 +318,20 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         )
         return status
 
-    def _check_already_redeemed(self) -> WaitableConditionType:
-        """Check whether we have already redeemed for this bet."""
-        if len(self.trades) == 0:
-            return True
-
-        kwargs: Dict[str, Any] = {
-            key: []
-            for key in (
-                "collateral_tokens",
-                "parent_collection_ids",
-                "condition_ids",
-                "index_sets",
-                "from_block_numbers",
-            )
-        }
-        for trade in self.trades:
-            kwargs["collateral_tokens"].append(trade.fpmm.collateralToken)
-            kwargs["parent_collection_ids"].append(ZERO_BYTES)
-            kwargs["condition_ids"].append(trade.fpmm.condition.id)
-            kwargs["index_sets"].append(trade.fpmm.condition.index_sets)
-
-        kwargs["from_block_numbers"] = self.from_block_mapping
-
-        safe_address_lower = self.synchronized_data.safe_contract_address.lower()
-        result = yield from self._conditional_tokens_interact(
-            contract_callable="check_redeemed",
-            data_key="payouts",
-            placeholder=get_name(RedeemBehaviour.payouts),
-            redeemer=safe_address_lower,
-            **kwargs,
-        )
-        return result
-
     def _clean_redeem_info(self) -> Generator:
         """Clean the redeeming information based on whether any positions have already been redeemed."""
-        yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
-        payout_so_far = sum(self.payouts.values())
-        if payout_so_far > 0:
-            self.trades = {
-                trade
-                for trade in self.trades
-                if trade.fpmm.condition.id not in self.payouts.keys()
-            }
-            msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
-            self.context.logger.info(msg)
+        data = yield from self._fetch_redeemed_markets()
+        redeemed_conditions = {
+            condition_id
+            for item in data
+            for condition_id in item["position"]["conditionIds"]
+        }
+        self.trades = {
+            trade
+            for trade in self.trades
+            if trade.fpmm.condition.id not in redeemed_conditions
+        }
+        self.context.logger.info(f"Cleaned redeeming information: {self.trades}")
 
     def _realitio_interact(
         self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
