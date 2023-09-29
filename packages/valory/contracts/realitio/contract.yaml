@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeictahkgfmlqv5kksvj6klmxtmjdpeq4sp3x7dp2yr5x4kmzbcihse
   build/Realitio.json: bafybeiagi7zoeoy5s7duhg4oeuekj2s6z5mad2z6g2pn3n5elsvze25qiu
-  contract.py: bafybeicvb4v6iw7dkjhnlgaiewkrdmkozxxxu24zqnmya5aiahnttnjhwa
+  contract.py: bafybeibjkaeoqthdg6wzp2lauvb4laxifm66iszuawljl4vnqw4d6sbh3i
 fingerprint_ignore_patterns: []
 class_name: RealitioContract
 contract_interface_paths:
