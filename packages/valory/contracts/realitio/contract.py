@@ -59,17 +59,20 @@ class RealitioContract(Contract):
         contract_address: str,
         from_block: BlockIdentifier,
         question_id: bytes,
+        chunk_size: int = 10_000,
     ) -> Union[str, Tuple[bytes, List[bytes], List[ChecksumAddress], List[int], List[bytes]]]:
         """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-
-        answer_filter = contract_instance.events.LogNewAnswer.build_filter()
-        answer_filter.fromBlock = from_block
-        answer_filter.toBlock = "latest"
-        answer_filter.args.question_id.match_single(question_id)
+        to_block = ledger_api.api.eth.block_number
 
         try:
-            answered = list(answer_filter.deploy(ledger_api.api).get_all_entries())
+            answered = []
+            for chunk in range(from_block, to_block, chunk_size):
+                answer_filter = contract_instance.events.LogNewAnswer.build_filter()
+                answer_filter.fromBlock = chunk
+                answer_filter.toBlock = min(chunk + chunk_size, to_block)
+                answer_filter.args.question_id.match_single(question_id)
+                answered.extend(list(answer_filter.deploy(ledger_api.api).get_all_entries()))
         except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
