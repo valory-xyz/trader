@@ -49,8 +49,8 @@ contracts:
 - valory/erc20:0.1.0:bafybeid6p64a6tnovatbwybc6ocdd4u7bqkxsb4ks52rvf7ozcxxl6iaf4
 - valory/multisend:0.1.0:bafybeieg4tywd5lww2vygvpkilg3hcepa4rmhehjuamyvdf6vazt554v6u
 - valory/mech:0.1.0:bafybeiddc6pgurpyja2k64wzsb3jgcvl254s7rplgt5iooftsyfalqlbfq
-- valory/conditional_tokens:0.1.0:bafybeigryh3d4iuyj4nruwekvurnnbzyj77flmn4vtgatwdpvbn2erpffa
-- valory/realitio:0.1.0:bafybeiewpazpi2wgixmiu64kauwn7qes3xzphqid4pxvznm2himv4tciee
+- valory/conditional_tokens:0.1.0:bafybeigdarm2ssng3uuehlxto75um4hbp47rdi5si6bvv7asdopqsidbhq
+- valory/realitio:0.1.0:bafybeibzyfaeaxgyqnygtduhprs47fhtskh2vnmw2cvpemqhkgc72q4wpm
 - valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
 - valory/agent_registry:0.1.0:bafybeigpd6wvnbb7fbf6yd77rugepv5hrbb6l3qfodstwgemagtcgne3bm
 protocols:
