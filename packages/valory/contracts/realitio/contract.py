@@ -59,7 +59,7 @@ class RealitioContract(Contract):
         contract_address: str,
         from_block: BlockIdentifier,
         question_id: bytes,
-        chunk_size: int = 10_000,
+        chunk_size: int = 5_000,
     ) -> Union[str, Tuple[bytes, List[bytes], List[ChecksumAddress], List[int], List[bytes]]]:
         """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
         contract_instance = cls.get_instance(ledger_api, contract_address)

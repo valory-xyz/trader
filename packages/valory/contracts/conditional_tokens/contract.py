@@ -51,7 +51,7 @@ class ConditionalTokensContract(Contract):
         condition_ids: List[HexBytes],
         index_sets: List[List[int]],
         from_block_numbers: Dict[HexBytes, BlockIdentifier],
-        chunk_size: int = 10_000,
+        chunk_size: int = 5_000,
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
         earliest_block = DEFAULT_FROM_BLOCK
