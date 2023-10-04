@@ -159,6 +159,11 @@ class DecisionMakerParams(MarketManagerParams):
         """Get the bet amount given a prediction's confidence."""
         threshold = round(confidence, 1)
         return self.bet_amount_per_threshold[threshold]
+    
+    # def get_bet_amount(self, confidence: float) -> int:
+    #     """Get the bet amount given a specified trading strategy."""
+    #     threshold = round(confidence, 1)
+    #     return self.bet_amount_per_threshold[threshold]
 
 
 class MechResponseSpecs(ApiSpecs):

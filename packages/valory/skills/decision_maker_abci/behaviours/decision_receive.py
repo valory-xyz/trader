@@ -268,12 +268,34 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         price = prices[vote]
         available_shares = int(selected_type_tokens_in_pool * price)
 
+        self.context.logger.info(
+            f"Token amounts: {token_amounts}\n"
+            f"k: {k}\n"
+            f"Bet per token: {bet_per_token}\n"
+            f"Prices: {prices}\n"
+            f"Tokens traded: {tokens_traded}\n"
+            f"Selected shares: {selected_shares}\n"
+            f"Other shares: {other_shares}\n"
+            f"Selected type tokens in pool: {selected_type_tokens_in_pool}\n"
+            f"Other tokens in pool: {other_tokens_in_pool}\n"
+            f"Tokens remaining in pool: {tokens_remaining_in_pool}\n"
+            f"Swapped shares: {swapped_shares}\n"
+            f"Number of shares: {num_shares}\n"
+            f"Price: {price[vote]}\n"
+            f"Available shares: {available_shares}\n"
+        )
+
         return num_shares, available_shares
 
     def _is_profitable(self, confidence: float, vote: int) -> bool:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
         bet_amount = self.params.get_bet_amount(confidence)
+        self.context.logger.info(
+            f"Bet amount: {self.wei_to_native(bet_amount)} xDAI\n"
+            f"Fee: {self.wei_to_native(bet.fee)} xDAI\n"
+            f"Net bet amount: {self.wei_to_native(remove_fraction_wei(bet_amount, bet.fee))} xDAI\n"
+        )
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         bet_threshold = self.params.bet_threshold
