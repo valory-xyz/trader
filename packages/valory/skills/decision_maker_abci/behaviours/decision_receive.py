@@ -291,11 +291,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
         bet_amount = self.params.get_bet_amount(confidence)
-        self.context.logger.info(
-            f"Bet amount: {self.wei_to_native(bet_amount)} xDAI\n"
-            f"Fee: {self.wei_to_native(bet.fee)} xDAI\n"
-            f"Net bet amount: {self.wei_to_native(remove_fraction_wei(bet_amount, bet.fee))} xDAI\n"
-        )
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         bet_threshold = self.params.bet_threshold
