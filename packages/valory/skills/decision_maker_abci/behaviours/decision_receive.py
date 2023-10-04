@@ -83,6 +83,16 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(msg)
 
     @property
+    def mech_price(self) -> int:
+        """Get the mech price."""
+        return self._mech_price
+
+    @mech_price.setter
+    def mech_price(self, price: int) -> None:
+        """Set the mech price."""
+        self._mech_price = price
+
+    @property
     def response_hex(self) -> str:
         """Get the hash of the response data."""
         return self._response_hex
@@ -230,71 +240,85 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
-        self.context.logger.info(f"Token amounts: {token_amounts}\n")
+        self.context.logger.info(f"Token amounts: {[x/(10**18) for x in token_amounts]}")
         if token_amounts is None:
             return 0, 0
         k = prod(token_amounts)
-        self.context.logger.info(f"k: {k}\n")
+        self.context.logger.info(f"k: {k}")
 
         # the OMEN market trades an equal amount of the investment to each of the tokens in the pool
         # here we calculate the bet amount per pool's token
         bet_per_token = net_bet_amount / BINARY_N_SLOTS
-        self.context.logger.info(f"Bet per token: {bet_per_token}\n")
+        self.context.logger.info(f"Bet per token: {bet_per_token/(10**18)}")
 
         # calculate the number of the traded tokens
         prices = bet.outcomeTokenMarginalPrices
-        self.context.logger.info(f"Prices: {prices}\n")
+        self.context.logger.info(f"Prices: {prices}")
 
         if prices is None:
             return 0, 0
         tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
-        self.context.logger.info(f"Tokens traded: {tokens_traded}\n")
+        self.context.logger.info(f"Tokens traded: {[x/(10**18) for x in tokens_traded]}")
 
         # get the shares for the answer that the service has selected
         selected_shares = tokens_traded.pop(vote)
-        self.context.logger.info(f"Selected shares: {selected_shares}\n")
+        self.context.logger.info(f"Selected shares: {selected_shares/(10**18)}")
 
         # get the shares for the opposite answer
         other_shares = tokens_traded.pop()
-        self.context.logger.info(f"Other shares: {other_shares}\n")
+        self.context.logger.info(f"Other shares: {other_shares/(10**18)}")
 
         # get the number of tokens in the pool for the answer that the service has selected
         selected_type_tokens_in_pool = token_amounts.pop(vote)
-        self.context.logger.info(f"Selected type tokens in pool: {selected_type_tokens_in_pool}\n")
+        self.context.logger.info(f"Selected type tokens in pool: {selected_type_tokens_in_pool/(10**18)}")
 
         # get the number of tokens in the pool for the opposite answer
         other_tokens_in_pool = token_amounts.pop()
-        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool}\n")
+        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool/(10**18)}")
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
         # here we calculate the number of shares that we get after trading the tokens for the opposite answer
         tokens_remaining_in_pool = int(k / (other_tokens_in_pool + other_shares))
-        self.context.logger.info(f"Tokens remaining in pool: {tokens_remaining_in_pool}\n")
+        self.context.logger.info(f"Tokens remaining in pool: {tokens_remaining_in_pool/(10**18)}")
         
         swapped_shares = selected_type_tokens_in_pool - tokens_remaining_in_pool
-        self.context.logger.info(f"Swapped shares: {swapped_shares}\n")
+        self.context.logger.info(f"Swapped shares: {swapped_shares/(10**18)}")
 
         # calculate the resulting number of shares if the service would take that position
         num_shares = selected_shares + swapped_shares
-        self.context.logger.info(f"Number of shares: {num_shares}\n")
+        self.context.logger.info(f"Number of shares: {num_shares/(10**18)}")
 
         # calculate the available number of shares
         price = prices[vote]
-        self.context.logger.info(f"Price: {prices[vote]}\n")
+        self.context.logger.info(f"Price: {prices[vote]}")
 
         available_shares = int(selected_type_tokens_in_pool * price)
-        self.context.logger.info(f"Available shares: {available_shares}\n")
+        self.context.logger.info(f"Available shares: {available_shares/(10**18)}")
 
         return num_shares, available_shares
+
+    def _get_mech_price(self) -> WaitableConditionType:
+        """Get the price of the mech request."""
+        result = yield from self._mech_contract_interact(
+            "get_price", "price", get_name(DecisionReceiveBehaviour.mech_price)
+        )
+        return result
 
     def _is_profitable(self, confidence: float, vote: int) -> bool:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
+        self.context.logger.info(f"Sampled bet: {bet}")
+
         bet_amount = self.params.get_bet_amount(confidence)
+        self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
+        self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
+
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
+        self.context.logger.info(f"Net bet amount: {net_bet_amount/(10**18)}")
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         bet_threshold = self.params.bet_threshold
+        self.context.logger.info(f"Bet threshold: {bet_threshold/(10**18)}")
 
         if bet_threshold <= 0:
             self.context.logger.warning(
@@ -303,11 +327,18 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             )
             bet_threshold = 0
 
-        potential_net_profit = num_shares - net_bet_amount - bet_threshold
+        yield from self.wait_for_condition_with_sleep(self._get_mech_price)
+        self.context.logger.info(f"Mech price: {self.mech_price/(10**18)}")
+        potential_net_profit = num_shares - net_bet_amount - self.mech_price - bet_threshold
+        self.context.logger.info(f"Potential net profit: {potential_net_profit/(10**18)}")
         is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
+        self.context.logger.info(f"Is profitable: {is_profitable}")
         shares_out = self.wei_to_native(num_shares)
+        self.context.logger.info(f"Shares out: {shares_out}")
         available_in = self.wei_to_native(available_shares)
+        self.context.logger.info(f"Available in: {available_in}")
         shares_out_of = f"{shares_out} / {available_in}"
+        self.context.logger.info(f"Shares out of: {shares_out_of}")
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
             f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
@@ -324,7 +355,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             vote, confidence = yield from self._get_decision()
             is_profitable = None
             if vote is not None and confidence is not None:
-                is_profitable = self._is_profitable(confidence, vote)
+                is_profitable = yield from self._is_profitable(confidence, vote)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
