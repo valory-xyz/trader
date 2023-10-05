@@ -32,6 +32,7 @@ class DecisionReceivePayload(BaseTxPayload):
 
     is_profitable: Optional[bool]
     vote: Optional[int]
+    win_probability: Optional[float]
     confidence: Optional[float]
 
 

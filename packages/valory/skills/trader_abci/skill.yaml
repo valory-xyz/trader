@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeia7rzsbea3ch4gcafyp3z6uvqh4npws2xpdwbkkdbrqqpjops7nui
 - valory/termination_abci:0.1.0:bafybeigqpij2sgrpnilqjljfciixop4fldq5qceixc7534q6af4potdmdm
 - valory/market_manager_abci:0.1.0:bafybeidnqerwkljbjgog73qaa5duu5ymsfjs6jsszeupseshx7go3n6afq
-- valory/decision_maker_abci:0.1.0:bafybeibqdpkmfzjzhw6j2utfe47cikthcfyftkbg5f4kyd6x3t726wonvi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihfk6ckzpjjbugtklmfnrk43xvpa36g6wtc5lvlcru5iw3augky4q
+- valory/decision_maker_abci:0.1.0:bafybeigqpadxmtivc7qwyfy2d7gnaam54fy4tgpf2v36ccz4u5smctjsby
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidoi32fu5odle4i5hfbzcvfksjuzsadteswa4vq2a4cyp7oq2xqfi
 behaviours:
   main:
     args: {}
@@ -144,6 +144,7 @@ models:
       average_block_time: 5
       abt_error_mult: 5
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
+      trading_strategy: bet_amount_per_conf_threshold
       bet_amount_per_threshold:
         0.0: 0
         0.1: 0

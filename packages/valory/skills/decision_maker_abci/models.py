@@ -92,6 +92,8 @@ class DecisionMakerParams(MarketManagerParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
+        # the trading strategy to use for placing bets
+        self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
@@ -155,17 +157,26 @@ class DecisionMakerParams(MarketManagerParams):
             )
         self._slippage = slippage
 
-    def get_bet_amount(self, confidence: float) -> int:
-        """Get the bet amount given a prediction's confidence."""
-        threshold = round(confidence, 1)
-        return self.bet_amount_per_threshold[threshold]
-    
     # def get_bet_amount(self, confidence: float) -> int:
-    #     """Get the bet amount given a specified trading strategy."""
+    #     """Get the bet amount given a prediction's confidence."""
     #     threshold = round(confidence, 1)
     #     return self.bet_amount_per_threshold[threshold]
-
-
+    
+    def get_bet_amount(self, strategy: str, win_probability: float, confidence: float) -> int:
+        """Get the bet amount given a specified trading strategy."""
+        
+        if strategy == "bet_amount_per_conf_threshold":
+            self.context.logger.info(f"Used trading strategy: {strategy}")
+            threshold = round(confidence, 1)
+            return self.bet_amount_per_threshold[threshold]
+        elif strategy == "kelly_criterion":
+            self.context.logger.info(f"Used trading strategy: {strategy}")
+            threshold = round(confidence, 1)
+            return self.bet_amount_per_threshold[threshold]
+            # TODO: Implement Kelly Criterion
+        else:
+            raise ValueError(f"Invalid trading strategy: {strategy}")
+        
 class MechResponseSpecs(ApiSpecs):
     """A model that wraps ApiSpecs for the Mech's response specifications."""
 
@@ -208,6 +219,13 @@ class PredictionResponse:
         """Return the vote. `0` represents "yes" and `1` represents "no"."""
         if self.p_no != self.p_yes:
             return int(self.p_no > self.p_yes)
+        return None
+    
+    @property
+    def win_probability(self) -> Optional[float]:
+        """Return the probability estimation for winning with vote."""
+        if self.p_no != self.p_yes:
+            return max(self.p_no, self.p_yes)
         return None
 
 
