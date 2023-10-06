@@ -134,7 +134,7 @@ class Trade:
     @property
     def claimable_amount(self) -> int:
         """Get the claimable amount of the current market."""
-        amount = int(self.outcomeTokenMarginalPrice * self.outcomeTokensTraded)
+        amount = self.outcomeTokensTraded
         if self.is_winning:
             return amount
         return -amount
