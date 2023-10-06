@@ -51,6 +51,7 @@ class ConditionalTokensContract(Contract):
         condition_ids: List[HexBytes],
         index_sets: List[List[int]],
         from_block_numbers: Dict[HexBytes, BlockIdentifier],
+        chunk_size: int = 5_000,
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
         earliest_block = DEFAULT_FROM_BLOCK
@@ -71,18 +72,21 @@ class ConditionalTokensContract(Contract):
         collateral_tokens_checksummed = [
             to_checksum(token) for token in collateral_tokens
         ]
-
-        payout_filter = contract_instance.events.PayoutRedemption.build_filter()
-        payout_filter.fromBlock = earliest_block
-        payout_filter.toBlock = DEFAULT_TO_BLOCK
-        payout_filter.args.redeemer.match_single(redeemer_checksummed)
-        payout_filter.args.collateralToken.match_any(*collateral_tokens_checksummed)
-        payout_filter.args.parentCollectionId.match_any(*parent_collection_ids)
-        payout_filter.args.conditionId.match_any(*condition_ids)
-        payout_filter.args.indexSets.match_any(*index_sets)
-
+        latest_block = ledger_api.api.eth.block_number
         try:
-            redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
+            redeemed = []
+            for from_block in range(earliest_block, latest_block, chunk_size):
+                to_block = min(from_block + chunk_size, latest_block)
+                payout_filter = contract_instance.events.PayoutRedemption.build_filter()
+                payout_filter.args.redeemer.match_single(redeemer_checksummed)
+                payout_filter.args.collateralToken.match_any(*collateral_tokens_checksummed)
+                payout_filter.args.parentCollectionId.match_any(*parent_collection_ids)
+                payout_filter.args.conditionId.match_any(*condition_ids)
+                payout_filter.args.indexSets.match_any(*index_sets)
+                payout_filter.fromBlock = from_block
+                payout_filter.toBlock = to_block
+                redeemed_chunk = list(payout_filter.deploy(ledger_api.api).get_all_entries())
+                redeemed.extend(redeemed_chunk)
         except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
