@@ -252,9 +252,10 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Select a Mech tool based on an e-greedy policy and return its index."""
         yield from self._get_tools()
         self._set_policy()
-        selected = self.policy.select_tool()
+        selected_idx = self.policy.select_tool()
+        selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
         self.context.logger.info(f"Selected the mech tool {selected!r}.")
-        return selected
+        return selected_idx
 
     def _store_policy(self) -> None:
         """Store the policy"""

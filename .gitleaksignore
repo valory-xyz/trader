@@ -7,3 +7,4 @@ cb7b8233efe65445b5835dd2ea6c93eac3364d39:packages/valory/skills/tx_settlement_mu
 e601530b1b2503589126e99070459e3e46a789d5:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:166
 e601530b1b2503589126e99070459e3e46a789d5:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:159
 9150ab78d5e30f576226cf38fb4cc62d73b09752:packages/valory/contracts/conditional_tokens/contract.yaml:generic-api-key:10
+cd8a3159e660a5eb6838657db4d7537912e657bf:packages/valory/skills/market_manager_abci/skill.yaml:generic-api-key:17
