@@ -162,7 +162,7 @@ class DecisionMakerParams(MarketManagerParams):
     #     threshold = round(confidence, 1)
     #     return self.bet_amount_per_threshold[threshold]
     
-    def get_bet_amount(self, strategy: str, win_probability: float, confidence: float) -> int:
+    def get_bet_amount(self, balance_sum: int, strategy: str, odds: float, win_probability: float, confidence: float) -> int:
         """Get the bet amount given a specified trading strategy."""
         
         if strategy == "bet_amount_per_conf_threshold":
@@ -219,6 +219,13 @@ class PredictionResponse:
         """Return the vote. `0` represents "yes" and `1` represents "no"."""
         if self.p_no != self.p_yes:
             return int(self.p_no > self.p_yes)
+        return None
+    
+    @property
+    def odds(self) -> Optional[float]:
+        """Return the odds estimation for winning with vote."""
+        if self.p_no != self.p_yes:
+            return self.p_no / self.p_yes
         return None
     
     @property

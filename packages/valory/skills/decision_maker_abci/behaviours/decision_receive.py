@@ -244,7 +244,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             )
             return None, None, None
 
-        return self.mech_response.result.vote, self.mech_response.result.win_probability, self.mech_response.result.confidence
+        return self.mech_response.result.vote, self.mech_response.result.odds, self.mech_response.result.win_probability, self.mech_response.result.confidence
 
     def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
@@ -356,13 +356,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
-    def _is_profitable(self, vote: int, win_probability: float, confidence: float) -> bool:
+    def _is_profitable(self, vote: int, odds: float, win_probability: float, confidence: float) -> bool:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
         self.context.logger.info(f"Sampled bet: {bet}")
-        strategy = self.params.trading_strategy
-        self.context.logger.info(f"Trading strategy: {strategy}")
-        bet_amount = self.params.get_bet_amount(strategy, win_probability, confidence)
+        self.context.logger.info(f"Trading strategy: {self.params.trading_strategy}")
+        balance_sum = self.wallet_balance + self.token_balance
+        bet_amount = self.params.get_bet_amount(balance_sum, self.params.trading_strategy, odds, win_probability, confidence)
         self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
 
@@ -404,14 +404,15 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            vote, win_probability, confidence = yield from self._get_decision()
+            vote, odds, win_probability, confidence = yield from self._get_decision()
             is_profitable = None
-            if vote is not None and confidence is not None:
-                is_profitable = yield from self._is_profitable(vote, win_probability, confidence)
+            if vote is not None and confidence is not None and odds is not None and win_probability is not None:
+                is_profitable = yield from self._is_profitable(vote, odds, win_probability, confidence)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
                 vote,
+                odds,
                 win_probability,
                 confidence,
             )

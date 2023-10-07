@@ -73,8 +73,13 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     @property
     def investment_amount(self) -> int:
         """Get the investment amount of the bet."""
+        balance_sum = self.wallet_balance + self.token_balance
         return self.params.get_bet_amount(
-            self.params.trading_strategy, self.synchronized_data.win_probability, self.synchronized_data.confidence
+            balance_sum, 
+            self.params.trading_strategy,
+            self.synchronized_data.odds,
+            self.synchronized_data.win_probability,
+            self.synchronized_data.confidence,
         )
 
     @property

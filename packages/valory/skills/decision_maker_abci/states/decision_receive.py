@@ -44,6 +44,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
     selection_key = (
         get_name(SynchronizedData.is_profitable),
         get_name(SynchronizedData.vote),
+        get_name(SynchronizedData.odds),
         get_name(SynchronizedData.win_probability),
         get_name(SynchronizedData.confidence),
     )
