@@ -245,8 +245,22 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return None, None, None
 
         return self.mech_response.result.vote, self.mech_response.result.odds, self.mech_response.result.win_probability, self.mech_response.result.confidence
+    
+    def _get_kelly_bet_amount(self, x, y, p, c, b) -> int:
+        """Calculate the Kelly bet amount."""
+        if b == 0 or x**2 == y**2:
+            self.context.logger.error(
+                "Could not calculate Kelly bet amount. Either bankroll is 0 or pool token amount is distributed as x^2 - y^2 = 0:\n"
+                f"Bankroll: {b}\n"
+                f"Pool token amounts: {x}, {y}"
+            )
+            return None
+        kelly_bet_amount = (-4*x**2*y + b*y**2*p + 2*b*x*y*p + b*x**2*p - 2*b*x**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p - 2*b*x*y*p - b*x**2*p + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p - 4*b*x**2*y*p + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
+        self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount: {kelly_bet_amount}")
+        return int(kelly_bet_amount)
 
-    def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
+
+    def _calc_binary_shares(self, net_bet_amount: int, win_probability: float, confidence: float, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
         bet = self.synchronized_data.sampled_bet
 
@@ -287,6 +301,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # get the number of tokens in the pool for the opposite answer
         other_tokens_in_pool = token_amounts.pop()
         self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool/(10**18)}")
+
+        bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
+        kelly_bet_amount = self._get_kelly_bet_amount(
+            selected_shares, other_shares, win_probability, confidence, bankroll
+        )
+        self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
+        self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
+
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
@@ -368,7 +390,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         self.context.logger.info(f"Net bet amount: {net_bet_amount/(10**18)}")
-        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
+        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, win_probability, confidence, vote)
         bet_threshold = self.params.bet_threshold
         self.context.logger.info(f"Bet threshold: {bet_threshold/(10**18)}")
 
