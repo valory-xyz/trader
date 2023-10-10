@@ -22,11 +22,11 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeih2fyfb6kkf7r45pvdk7pyyebr5xloia4xiqxtb3qsrasnstqmepq
 - valory/registration_abci:0.1.0:bafybeibndt6vxiwc2edgtaxpjbhwto3eyu33ujz3zmvtygvo2qz7xme5li
 - valory/reset_pause_abci:0.1.0:bafybeigeoc363gv3wp2rrmk6p2fdxney33nxd3owtpfugzapgruwe4klyu
-- valory/transaction_settlement_abci:0.1.0:bafybeihggaeyqyh5dho6uyirlhoujhoff6jhe4lcdcnyiwpa6tlafawqsi
-- valory/termination_abci:0.1.0:bafybeih7myqjqpkry3mc6fqnlkg7fo54x32u3ejengqwbdouzggipsnxpu
+- valory/transaction_settlement_abci:0.1.0:bafybeia7rzsbea3ch4gcafyp3z6uvqh4npws2xpdwbkkdbrqqpjops7nui
+- valory/termination_abci:0.1.0:bafybeigqpij2sgrpnilqjljfciixop4fldq5qceixc7534q6af4potdmdm
 - valory/market_manager_abci:0.1.0:bafybeidnqerwkljbjgog73qaa5duu5ymsfjs6jsszeupseshx7go3n6afq
-- valory/decision_maker_abci:0.1.0:bafybeig2ied4556e4zxqhrt5735yw77jrddwfxkp5wh35vroqxazkklthi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib42rkufh6ezl5jzvclzabqw3laml7jxeyjpq2uyokgwaxmdonofu
+- valory/decision_maker_abci:0.1.0:bafybeihlnphqhxlg6qatssx52bxp3qpmfpjjhh72rubc4si6duwedq7nhi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiggpn4zqcnvdiih42pdxh6ewnhtk6wlz433ls2ihlrrvpok5b2esi
 behaviours:
   main:
     args: {}
