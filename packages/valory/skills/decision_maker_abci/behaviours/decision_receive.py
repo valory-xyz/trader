@@ -242,7 +242,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(
                 f"There was an error on the mech's response: {self.mech_response.error}"
             )
-            return None, None, None
+            return None, None, None, None
 
         return self.mech_response.result.vote, self.mech_response.result.odds, self.mech_response.result.win_probability, self.mech_response.result.confidence
     
@@ -255,8 +255,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 f"Pool token amounts: {x}, {y}"
             )
             return None
-        kelly_bet_amount = (-4*x**2*y + b*y**2*p + 2*b*x*y*p + b*x**2*p - 2*b*x**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p - 2*b*x*y*p - b*x**2*p + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p - 4*b*x**2*y*p + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
-        self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount: {kelly_bet_amount}")
+        # TODO: Add Fee variable
+        kelly_bet_amount = (-4*x**2*y + b*y**2*p + 2*b*x*y*p + b*x**2*p - 2*b*y**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p - 2*b*x*y*p - b*x**2*p + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p - 4*b*x**2*y*p + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
+        self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
         return int(kelly_bet_amount)
 
 
@@ -303,12 +304,16 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool/(10**18)}")
 
         bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
+        self.context.logger.info(f"Wallet balance: {self.wallet_balance}")
+        self.context.logger.info(f"Token balance: {self.token_balance}")
+        self.context.logger.info(f"Bankroll: {bankroll}")
         kelly_bet_amount = self._get_kelly_bet_amount(
-            selected_shares, other_shares, win_probability, confidence, bankroll
+            selected_type_tokens_in_pool, other_tokens_in_pool, win_probability, confidence, bankroll
         )
-        self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
-        self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
-
+        if kelly_bet_amount != None:
+            self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
+            self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
+        self.context.logger.info(f"Added None check!")
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
@@ -383,6 +388,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         bet = self.synchronized_data.sampled_bet
         self.context.logger.info(f"Sampled bet: {bet}")
         self.context.logger.info(f"Trading strategy: {self.params.trading_strategy}")
+        yield from self._check_balance()
         balance_sum = self.wallet_balance + self.token_balance
         bet_amount = self.params.get_bet_amount(balance_sum, self.params.trading_strategy, odds, win_probability, confidence)
         self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
