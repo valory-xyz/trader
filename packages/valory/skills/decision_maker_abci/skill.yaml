@@ -240,6 +240,6 @@ dependencies:
     version: ==1.0.3
   py-multicodec:
     version: ==0.2.1
-  open-aea-web3:
-    version: ==6.0.1
+  web3:
+    version: <7,>=6.0.0
 is_abstract: true

@@ -21,11 +21,11 @@ dependencies:
   eth_typing: {}
   hexbytes: {}
   open-aea-ledger-ethereum:
-    version: ==1.39.0.post1
+    version: ==1.41.0
   open-aea-test-autonomy:
-    version: ==0.12.1.post4
+    version: ==0.13.1
   packaging: {}
   py-eth-sig-utils: {}
   requests: {}
-  open-aea-web3:
-    version: ==6.0.1
+  web3:
+    version: <7,>=6.0.0

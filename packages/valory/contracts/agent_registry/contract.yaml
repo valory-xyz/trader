@@ -4,7 +4,7 @@ version: 0.1.0
 type: contract
 description: Agent Registry contract
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: ">=1.0.0, <2.0.0"
 fingerprint:
   __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
   build/AgentRegistry.json: bafybeicoe5elvvsv2neiirsdn4uddrilizmyib3x4mvpklr7olhj2kh4ue
@@ -16,8 +16,8 @@ contract_interface_paths:
   ethereum: build/AgentRegistry.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.39.0.post1
+    version: ==1.41.0
   open-aea-test-autonomy:
-    version: ==0.12.1.post4
-  open-aea-web3:
-    version: ==6.0.1
+    version: ==0.13.1
+  web3:
+    version: <7,>=6.0.0
