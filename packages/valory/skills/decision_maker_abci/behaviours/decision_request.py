@@ -28,7 +28,9 @@ from uuid import uuid4
 import multibase
 import multicodec
 from aea.helpers.cid import to_v1
+from hexbytes import HexBytes
 
+from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
@@ -36,8 +38,10 @@ from packages.valory.skills.abstract_round_abci.io_.store import SupportedFilety
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     SAFE_GAS,
+    WXDAI,
     WaitableConditionType,
 )
+from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import RequestPayload
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
@@ -110,6 +114,16 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Whether the behaviour supports the current number of slots as it currently only supports binary decisions."""
         return self.params.slot_count == BINARY_N_SLOTS
 
+    @property
+    def xdai_deficit(self) -> int:
+        """Get the amount of missing xDAI for sending the request."""
+        return self.price - self.wallet_balance
+
+    @property
+    def multisend_optional(self) -> bool:
+        """Whether a multisend transaction does not need to be prepared."""
+        return len(self.multisend_batches) == 0
+
     def setup(self) -> None:
         """Setup behaviour."""
         if not self.n_slots_supported:
@@ -144,6 +158,62 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         self._v1_hex_truncated = Ox + v1_file_hash_hex[9:]
         return True
 
+    def _get_price(self) -> WaitableConditionType:
+        """Get the price of the mech request."""
+        result = yield from self._mech_contract_interact(
+            "get_price", "price", get_name(DecisionRequestBehaviour.price)
+        )
+        return result
+
+    def _build_unwrap_tx(self) -> WaitableConditionType:
+        """Exchange wxDAI to xDAI."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=WXDAI,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_withdraw_tx",
+            amount=self.xdai_deficit,
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build withdraw tx: {response_msg}")
+            return False
+
+        withdraw_data = response_msg.state.body.get("data")
+        if withdraw_data is None:
+            self.context.logger.info(f"Could not build withdraw tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=self.collateral_token,
+            data=HexBytes(withdraw_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
+
+    def _check_unwrap(self) -> WaitableConditionType:
+        """Check whether the payment for the mech request is possible and unwrap some wxDAI if needed."""
+        yield from self.wait_for_condition_with_sleep(self.check_balance)
+        missing = self.xdai_deficit
+        if missing <= 0:
+            return True
+
+        # if the collateral token is wxDAI, subtract the wxDAI balance from the xDAI that is missing for paying the mech
+        if self.is_wxdai:
+            missing -= self.token_balance
+
+        # if we can cover the required amount by unwrapping some wxDAI, proceed to add this to a multisend tx
+        if missing <= 0:
+            yield from self.wait_for_condition_with_sleep(self._build_unwrap_tx)
+            return True
+
+        self.context.logger.warning(
+            "The balance is not enough to pay for the mech's price. "
+            f"Please refill the safe with at least {missing} xDAI."
+        )
+        self.sleep(self.params.sleep_time)
+        return False
+
     def _build_request_data(self) -> Generator[None, None, bool]:
         """Get the request tx data encoded."""
         result = yield from self._mech_contract_interact(
@@ -152,14 +222,20 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             get_name(DecisionRequestBehaviour.request_data),
             request_data=self._v1_hex_truncated,
         )
-        return result
 
-    def _get_price(self) -> WaitableConditionType:
-        """Get the price of the mech request."""
-        result = yield from self._mech_contract_interact(
-            "get_price", "price", get_name(DecisionRequestBehaviour.price)
+        if not result:
+            return False
+
+        if self.multisend_optional:
+            return True
+
+        batch = MultisendBatch(
+            to=self.params.mech_agent_address,
+            data=HexBytes(self.request_data),
+            value=self.price,
         )
-        return result
+        self.multisend_batches.append(batch)
+        return True
 
     def _get_safe_tx_hash(self) -> Generator[None, None, bool]:
         """Prepares and returns the safe tx hash."""
@@ -176,16 +252,9 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         )
         return status
 
-    def _prepare_safe_tx(self) -> Generator[None, None, str]:
-        """Prepare the safe transaction for sending a request to mech and return the hex for the tx settlement skill."""
-        for step in (
-            self._send_metadata_to_ipfs,
-            self._build_request_data,
-            self._get_price,
-            self._get_safe_tx_hash,
-        ):
-            yield from self.wait_for_condition_with_sleep(step)
-
+    def _single_tx(self) -> Generator[None, None, str]:
+        """Prepare a hex for a single transaction."""
+        yield from self.wait_for_condition_with_sleep(self._get_safe_tx_hash)
         return hash_payload_to_hex(
             self.safe_tx_hash,
             self.price,
@@ -194,9 +263,34 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             self.request_data,
         )
 
+    def _multisend_tx(self) -> Generator[None, None, str]:
+        """Prepare a hex for a multisend transaction."""
+        for step in (
+            self._build_multisend_data,
+            self._build_multisend_safe_tx_hash,
+        ):
+            yield from self.wait_for_condition_with_sleep(step)
+        return self.tx_hex
+
+    def _prepare_safe_tx(self) -> Generator[None, None, str]:
+        """Prepare the safe transaction for sending a request to mech and return the hex for the tx settlement skill."""
+        for step in (
+            self._send_metadata_to_ipfs,
+            self._get_price,
+            self._check_unwrap,
+            self._build_request_data,
+        ):
+            yield from self.wait_for_condition_with_sleep(step)
+
+        if self.multisend_optional:
+            tx_hex = yield from self._single_tx()
+        else:
+            tx_hex = yield from self._multisend_tx()
+
+        return tx_hex
+
     def async_act(self) -> Generator:
         """Do the action."""
-
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             tx_submitter = mech_tx_hex = price = None
             if self.n_slots_supported:
