@@ -12,11 +12,11 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiato4qxnc2kjjdtttvqdna7dp4c5evlb6cus7h6eci7tj73tqnpey
-  behaviours/bet_placement.py: bafybeifwwvvwh4qgf3jkyvza4wfvjv63il2xewsklsjtpyanp23y6hg2aa
+  behaviours/base.py: bafybeidny4y4w4jbjbp5d5qivur6jm37fnuik4mqzchzshiuvpozxe7vwy
+  behaviours/bet_placement.py: bafybeiauzdizqawjgzc3ugx33vuh726e25juhacqdr7c6uztpn6tra5dva
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_receive.py: bafybeid54jwjs4lulcl2n2w7taxne3wqgsey6ppaidwr2up6bztyf35ghm
-  behaviours/decision_request.py: bafybeidlyl2ojmpfs2zkewoacraya2cbampo4ynqbqaocsoq7v2nif3ahi
+  behaviours/decision_receive.py: bafybeibfnucc444uqcythgsn4cawluubbi4u4q7ab4aqc4ts3lu4qnvhdq
+  behaviours/decision_request.py: bafybeiajbv3t6w4vz3u3bbqzaufjfi2znwsly4cvf55farwvp7y7c2jefm
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/reedem.py: bafybeiccrnttqwf5vuf3lr55k5c6tsqsrekoypoag5gntyimjhbmuokkga
   behaviours/round_behaviour.py: bafybeig4tdktyu6hapoqymnxh2bgpds547st6a44heue657wkctwe4gjvm
@@ -46,7 +46,7 @@ connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeibt7arvjzz4ah24omst74f4sfjpzrdef76yti6ml7dopsauhdzeci
 - valory/market_maker:0.1.0:bafybeif4mm2s3gxtvp227yypkcnna5ftec7vajcftvtbdmqddh7nprah5m
-- valory/erc20:0.1.0:bafybeig53maqwplpbzd63niffnslqcwsr3wse6lytwg772373s33mbpmaa
+- valory/erc20:0.1.0:bafybeibysifjwhlcn7nntsjkowdmja53ed6urfzypi6sxfc7chtheecvpi
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeifaavuqr2bz7nypapjwkufc5c6vwxm5ifucmtd3w7sh42tne35nga
 - valory/conditional_tokens:0.1.0:bafybeif5jwc6owfe6brmqq5sfnhrwo2ajdtt4glrmyhlqxcvtkyofahwsa
