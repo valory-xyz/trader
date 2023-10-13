@@ -43,6 +43,7 @@ from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+SLIPPAGE = 1.05
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -286,14 +287,19 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_threshold = 0
 
         potential_net_profit = num_shares - net_bet_amount - bet_threshold
-        is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
-        shares_out = self.wei_to_native(num_shares)
-        available_in = self.wei_to_native(available_shares)
-        shares_out_of = f"{shares_out} / {available_in}"
+        is_profitable = potential_net_profit >= 0
+
+        if num_shares > available_shares * SLIPPAGE:
+            self.context.logger.warning(
+                "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
+                "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
+                "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
+            )
+
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
             f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
-            f"from buying {shares_out_of} shares for the option {bet.get_outcome(vote)}.\n"
+            f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
 
