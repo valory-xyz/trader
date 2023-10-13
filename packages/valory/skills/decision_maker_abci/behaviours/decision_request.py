@@ -270,7 +270,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             self._build_multisend_safe_tx_hash,
         ):
             yield from self.wait_for_condition_with_sleep(step)
-        return self.tx_hex
+
+        tx_hex = self.tx_hex
+        if tx_hex is None:
+            raise ValueError("The multisend transaction was not prepared properly.")
+        return tx_hex
 
     def _prepare_safe_tx(self) -> Generator[None, None, str]:
         """Prepare the safe transaction for sending a request to mech and return the hex for the tx settlement skill."""
