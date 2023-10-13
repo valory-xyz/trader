@@ -63,7 +63,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def w_xdai_deficit(self) -> int:
-        """Get the amount of missing wxDAI fo placing the bet."""
+        """Get the amount of missing wxDAI for placing the bet."""
         return self.investment_amount - self.token_balance
 
     @property
