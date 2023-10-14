@@ -61,6 +61,18 @@ class ERC20(Contract):
         return {"data": bytes.fromhex(data[2:])}
 
     @classmethod
+    def build_withdraw_tx(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+        amount: int,
+    ) -> Dict[str, bytes]:
+        """Build a deposit transaction."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        data = contract_instance.encodeABI("withdraw", args=(amount,))
+        return {"data": bytes.fromhex(data[2:])}
+
+    @classmethod
     def build_approval_tx(
         cls,
         ledger_api: LedgerApi,

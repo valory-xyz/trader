@@ -30,6 +30,7 @@ from packages.valory.contracts.market_maker.contract import (
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+    WXDAI,
     WaitableConditionType,
     remove_fraction_wei,
 )
@@ -40,9 +41,6 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 )
 
 
-WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-
-
 class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
@@ -51,19 +49,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the bet placement behaviour."""
         super().__init__(**kwargs)
-        self.token_balance = 0
-        self.wallet_balance = 0
         self.buy_amount = 0
-
-    @property
-    def collateral_token(self) -> str:
-        """Get the contract address of the token that the market maker supports."""
-        return self.synchronized_data.sampled_bet.collateralToken
-
-    @property
-    def is_wxdai(self) -> bool:
-        """Get whether the collateral address is wxDAI."""
-        return self.collateral_token.lower() == WXDAI.lower()
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -84,52 +70,13 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def w_xdai_deficit(self) -> int:
-        """Get the amount of missing wxDAI fo placing the bet."""
+        """Get the amount of missing wxDAI for placing the bet."""
         return self.investment_amount - self.token_balance
 
     @property
     def outcome_index(self) -> int:
         """Get the index of the outcome that the service is going to place a bet on."""
         return cast(int, self.synchronized_data.vote)
-
-    def _collateral_amount_info(self, amount: int) -> str:
-        """Get a description of the collateral token's amount."""
-        return (
-            f"{self.wei_to_native(amount)} wxDAI"
-            if self.is_wxdai
-            else f"{amount} WEI of the collateral token with address {self.collateral_token}"
-        )
-
-    def _check_balance(self) -> WaitableConditionType:
-        """Check the safe's balance."""
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.collateral_token,
-            contract_id=str(ERC20.contract_id),
-            contract_callable="check_balance",
-            account=self.synchronized_data.safe_contract_address,
-        )
-        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
-            self.context.logger.error(
-                f"Could not calculate the balance of the safe: {response_msg}"
-            )
-            return False
-
-        token = response_msg.raw_transaction.body.get("token", None)
-        wallet = response_msg.raw_transaction.body.get("wallet", None)
-        if token is None or wallet is None:
-            self.context.logger.error(
-                f"Something went wrong while trying to get the balance of the safe: {response_msg}"
-            )
-            return False
-
-        self.token_balance = int(token)
-        self.wallet_balance = int(wallet)
-
-        native = self.wei_to_native(self.wallet_balance)
-        collateral = self._collateral_amount_info(self.token_balance)
-        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
-        return True
 
     def _build_exchange_tx(self) -> WaitableConditionType:
         """Exchange xDAI to wxDAI."""
@@ -265,7 +212,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            yield from self.wait_for_condition_with_sleep(self._check_balance)
+            yield from self.wait_for_condition_with_sleep(self.check_balance)
             tx_submitter = betting_tx_hex = None
 
             can_exchange = (

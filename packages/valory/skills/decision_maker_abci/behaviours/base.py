@@ -26,6 +26,7 @@ from typing import Any, Callable, Generator, List, Optional, cast
 
 from aea.configurations.data_types import PublicId
 
+from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
     SafeOperation,
@@ -58,6 +59,7 @@ WaitableConditionType = Generator[None, None, bool]
 # more info here: https://safe-docs.dev.gnosisdev.com/safe/docs/contracts_tx_execution/
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
+WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -74,6 +76,8 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the bet placement behaviour."""
         super().__init__(**kwargs)
+        self.token_balance = 0
+        self.wallet_balance = 0
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
         self._safe_tx_hash = ""
@@ -146,10 +150,59 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         """Return whether it is the first period of the service."""
         return self.synchronized_data.period_count == 0
 
+    @property
+    def collateral_token(self) -> str:
+        """Get the contract address of the token that the market maker supports."""
+        return self.synchronized_data.sampled_bet.collateralToken
+
+    @property
+    def is_wxdai(self) -> bool:
+        """Get whether the collateral address is wxDAI."""
+        return self.collateral_token.lower() == WXDAI.lower()
+
     @staticmethod
     def wei_to_native(wei: int) -> float:
         """Convert WEI to native token."""
         return wei / 10**18
+
+    def _collateral_amount_info(self, amount: int) -> str:
+        """Get a description of the collateral token's amount."""
+        return (
+            f"{self.wei_to_native(amount)} wxDAI"
+            if self.is_wxdai
+            else f"{amount} WEI of the collateral token with address {self.collateral_token}"
+        )
+
+    def check_balance(self) -> WaitableConditionType:
+        """Check the safe's balance."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="check_balance",
+            account=self.synchronized_data.safe_contract_address,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Could not calculate the balance of the safe: {response_msg}"
+            )
+            return False
+
+        token = response_msg.raw_transaction.body.get("token", None)
+        wallet = response_msg.raw_transaction.body.get("wallet", None)
+        if token is None or wallet is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to get the balance of the safe: {response_msg}"
+            )
+            return False
+
+        self.token_balance = int(token)
+        self.wallet_balance = int(wallet)
+
+        native = self.wei_to_native(self.wallet_balance)
+        collateral = self._collateral_amount_info(self.token_balance)
+        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
+        return True
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage

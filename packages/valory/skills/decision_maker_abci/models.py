@@ -20,8 +20,10 @@
 """This module contains the models for the skill."""
 
 import json
+import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from string import Template
 from typing import Any, Dict, Optional, Set
 
@@ -128,6 +130,7 @@ class DecisionMakerParams(MarketManagerParams):
         self.agent_registry_address: str = self._ensure(
             "agent_registry_address", kwargs, str
         )
+        self.policy_store_path: Path = self.get_policy_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         super().__init__(*args, **kwargs)
 
@@ -177,6 +180,21 @@ class DecisionMakerParams(MarketManagerParams):
         else:
             raise ValueError(f"Invalid trading strategy: {strategy}")
         
+    def get_policy_store_path(self, kwargs: Dict) -> Path:
+        """Get the path of the policy store."""
+        path = self._ensure("policy_store_path", kwargs, str)
+        # check if path exists, and we can write to it
+        if (
+            not os.path.isdir(path)
+            or not os.access(path, os.W_OK)
+            or not os.access(path, os.R_OK)
+        ):
+            raise ValueError(
+                f"Policy store path {path!r} is not a directory or is not writable."
+            )
+        return Path(path)
+
+
 class MechResponseSpecs(ApiSpecs):
     """A model that wraps ApiSpecs for the Mech's response specifications."""
 

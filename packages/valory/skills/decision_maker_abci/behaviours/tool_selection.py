@@ -43,6 +43,10 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     matching_round = ToolSelectionRound
 
+    POLICY_STORE = "policy_store.json"
+    AVAILABLE_TOOLS_STORE = "available_tools_store.json"
+    UTILIZED_TOOLS_STORE = "utilized_tools.json"
+
     def __init__(self, **kwargs: Any) -> None:
         """Initialize Behaviour."""
         super().__init__(**kwargs)
@@ -86,6 +90,9 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def utilized_tools(self) -> Dict[str, int]:
         """Get the utilized tools."""
         if self.is_first_period:
+            tools = self._try_recover_utilized_tools()
+            if tools is not None:
+                return tools
             return {}
         return self.synchronized_data.utilized_tools
 
@@ -188,23 +195,82 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
         if self.is_first_period:
-            n_relevant = len(self.mech_tools)
-            self._policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
+            self._policy = self._get_init_policy()
+            recovered_tools = self._try_recover_mech_tools()
+            self.mech_tools = list(set(self.mech_tools + recovered_tools))
         else:
             self._policy = self.synchronized_data.policy
             self._adjust_policy_tools()
+
+    def _get_init_policy(self) -> EGreedyPolicy:
+        """Get the initial policy"""
+        # try to read the policy from the policy store
+        policy = self._try_recover_policy()
+        if policy is not None:
+            # we successfully recovered the policy, so we return it
+            return policy
+
+        # we could not recover the policy, so we create a new one
+        n_relevant = len(self.mech_tools)
+        policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
+        return policy
+
+    def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
+        """Try to recover the policy from the policy store."""
+        try:
+            policy_path = self.params.policy_store_path / self.POLICY_STORE
+            with open(policy_path, "r") as f:
+                policy = f.read()
+                return EGreedyPolicy.deserialize(policy)
+        except Exception as e:
+            self.context.logger.warning(f"Could not recover the policy: {e}.")
+            return None
+
+    def _try_recover_utilized_tools(self) -> Optional[Dict[str, Any]]:
+        """Try to recover the available tools from the tools store."""
+        try:
+            tools_path = self.params.policy_store_path / self.UTILIZED_TOOLS_STORE
+            with open(tools_path, "r") as f:
+                tools = json.load(f)
+                return tools
+        except Exception as e:
+            self.context.logger.warning(f"Could not recover the tools: {e}.")
+            return None
+
+    def _try_recover_mech_tools(self) -> List[str]:
+        """Try to recover the available tools from the tools store."""
+        try:
+            tools_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+            with open(tools_path, "r") as f:
+                tools = json.load(f)
+                return tools
+        except Exception as e:
+            self.context.logger.warning(f"Could not recover the tools: {e}.")
+            return []
 
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         yield from self._get_tools()
         self._set_policy()
-        selected = self.policy.select_tool()
+        selected_idx = self.policy.select_tool()
+        selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
         self.context.logger.info(f"Selected the mech tool {selected!r}.")
-        return selected
+        return selected_idx
+
+    def _store_policy(self) -> None:
+        """Store the policy"""
+        policy_path = self.params.policy_store_path / self.POLICY_STORE
+        with open(policy_path, "w") as f:
+            f.write(self.policy.serialize())
+
+    def _store_available_mech_tools(self) -> None:
+        """Store the policy"""
+        policy_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+        with open(policy_path, "w") as f:
+            json.dump(self.mech_tools, f)
 
     def async_act(self) -> Generator:
         """Do the action."""
-
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             mech_tools = policy = utilized_tools = None
             selected_tool = yield from self._select_tool()
@@ -221,4 +287,6 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 selected_tool,
             )
 
+        self._store_policy()
+        self._store_available_mech_tools()
         yield from self.finish_behaviour(payload)
