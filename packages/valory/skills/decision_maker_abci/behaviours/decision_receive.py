@@ -315,6 +315,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
             self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
         self.context.logger.info(f"Added None check!")
+        self.context.logger.info(f"Added None check2!")
+        self.context.logger.info(f"Added None check3!")
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
