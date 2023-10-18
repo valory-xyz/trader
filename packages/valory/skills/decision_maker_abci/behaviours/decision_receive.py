@@ -30,7 +30,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     CID_PREFIX,
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
-    remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import WXDAI
 from packages.valory.skills.decision_maker_abci.models import (
@@ -261,8 +260,19 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
         return int(kelly_bet_amount)
 
+    def _get_bet_sample_info(bet, vote) -> Tuple[int, int]:
+        token_amounts = bet.outcomeTokenAmounts
+        if token_amounts is None:
+            return None, None, None
+        
+        selected_type_tokens_in_pool = token_amounts.pop(vote)
+        other_tokens_in_pool = token_amounts.pop()
+        bet_fee = bet.fee
+        
+        return selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee
 
-    def _calc_binary_shares(self, net_bet_amount: int, win_probability: float, confidence: float, vote: int) -> Tuple[int, int]:
+
+    def _calc_binary_shares(self, bet_amount: int, win_probability: float, confidence: float, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
         bet = self.synchronized_data.sampled_bet
 
@@ -276,7 +286,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # the OMEN market trades an equal amount of the investment to each of the tokens in the pool
         # here we calculate the bet amount per pool's token
-        bet_per_token = net_bet_amount / BINARY_N_SLOTS
+        bet_per_token = bet_amount / BINARY_N_SLOTS
         self.context.logger.info(f"Bet per token: {bet_per_token/(10**18)}")
 
         # calculate the number of the traded tokens
@@ -303,21 +313,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # get the number of tokens in the pool for the opposite answer
         other_tokens_in_pool = token_amounts.pop()
         self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool/(10**18)}")
-
-        bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
-        self.context.logger.info(f"Wallet balance: {self.wallet_balance}")
-        self.context.logger.info(f"Token balance: {self.token_balance}")
-        self.context.logger.info(f"Bankroll: {bankroll}")
-        kelly_bet_amount = self._get_kelly_bet_amount(
-            selected_type_tokens_in_pool, other_tokens_in_pool, win_probability, confidence, bankroll
-        )
-        if kelly_bet_amount != None:
-            self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
-            self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
-        self.context.logger.info(f"Added None check!")
-        self.context.logger.info(f"Added None check2!")
-        self.context.logger.info(f"Added None check3!")
-        self.context.logger.info(f"Added None check4!")
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
@@ -390,17 +385,25 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     def _is_profitable(self, vote: int, odds: float, win_probability: float, confidence: float) -> bool:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
-        self.context.logger.info(f"Sampled bet: {bet}")
-        self.context.logger.info(f"Trading strategy: {self.params.trading_strategy}")
         yield from self._check_balance()
-        balance_sum = self.wallet_balance + self.token_balance
-        bet_amount = self.params.get_bet_amount(balance_sum, self.params.trading_strategy, odds, win_probability, confidence)
+        bankroll = self.wallet_balance + self.token_balance
+        self.context.logger.info(f"Wallet balance: {self.wallet_balance}")
+        self.context.logger.info(f"Token balance: {self.token_balance}")
+        self.context.logger.info(f"Bankroll: {bankroll}")
+        selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee = self._get_bet_sample_info(bet, vote)
+        bet_amount = self.params.get_bet_amount(
+            bankroll,
+            self.params.trading_strategy,
+            win_probability,
+            confidence,
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool, 
+            bet_fee,
+        )
         self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
 
-        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
-        self.context.logger.info(f"Net bet amount: {net_bet_amount/(10**18)}")
-        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, win_probability, confidence, vote)
+        num_shares, available_shares = self._calc_binary_shares(bet_amount, win_probability, confidence, vote)
         bet_threshold = self.params.bet_threshold
         self.context.logger.info(f"Bet threshold: {bet_threshold/(10**18)}")
 
@@ -413,7 +416,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         yield from self.wait_for_condition_with_sleep(self._get_mech_price)
         self.context.logger.info(f"Mech price: {self.mech_price/(10**18)}")
-        potential_net_profit = num_shares - net_bet_amount - self.mech_price - bet_threshold
+        potential_net_profit = num_shares - bet_amount - self.mech_price - bet_threshold
         self.context.logger.info(f"Potential net profit: {potential_net_profit/(10**18)}")
         is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
         self.context.logger.info(f"Is profitable: {is_profitable}")
@@ -423,7 +426,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Available in: {available_in}")
         shares_out_of = f"{shares_out} / {available_in}"
         self.context.logger.info(f"Shares out of: {shares_out_of}")
-        potential_net_profit = num_shares - net_bet_amount - bet_threshold
+        potential_net_profit = num_shares - bet_amount - bet_threshold
         is_profitable = potential_net_profit >= 0
 
         if num_shares > available_shares * SLIPPAGE:

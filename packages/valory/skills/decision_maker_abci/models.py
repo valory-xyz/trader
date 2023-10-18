@@ -35,13 +35,17 @@ from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
+
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
-
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
+    remove_fraction_wei,
+)
 
 RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
 REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
@@ -165,18 +169,38 @@ class DecisionMakerParams(MarketManagerParams):
     #     threshold = round(confidence, 1)
     #     return self.bet_amount_per_threshold[threshold]
     
-    def get_bet_amount(self, balance_sum: int, strategy: str, odds: float, win_probability: float, confidence: float) -> int:
+    def get_bet_amount(
+        self,
+        bankroll: int,
+        strategy: str,
+        win_probability: float,
+        confidence: float,
+        selected_type_tokens_in_pool: int,
+        other_tokens_in_pool: int,
+        bet_fee: int,
+    ) -> int:
         """Get the bet amount given a specified trading strategy."""
         
         if strategy == "bet_amount_per_conf_threshold":
             self.context.logger.info(f"Used trading strategy: {strategy}")
             threshold = round(confidence, 1)
-            return self.bet_amount_per_threshold[threshold]
+            bet_amount = self.bet_amount_per_threshold[threshold]
+            self.context.logger.info(f"Bet amount: {bet_amount}")
+            net_bet_amount = remove_fraction_wei(bet_amount, DecisionMakerBaseBehaviour.wei_to_native(bet_fee))
+            self.context.logger.info(f"Net bet amount: {net_bet_amount}")
+            return net_bet_amount
+        
         elif strategy == "kelly_criterion":
             self.context.logger.info(f"Used trading strategy: {strategy}")
-            threshold = round(confidence, 1)
-            return self.bet_amount_per_threshold[threshold]
-            # TODO: Implement Kelly Criterion
+            bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
+            kelly_bet_amount = self._get_kelly_bet_amount(
+                selected_type_tokens_in_pool, other_tokens_in_pool, win_probability, confidence, bankroll
+            )
+            if kelly_bet_amount != None:
+                self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
+                self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
+            return kelly_bet_amount
+        
         else:
             raise ValueError(f"Invalid trading strategy: {strategy}")
         
