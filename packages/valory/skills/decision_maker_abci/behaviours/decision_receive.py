@@ -246,19 +246,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return self.mech_response.result.vote, self.mech_response.result.odds, self.mech_response.result.win_probability, self.mech_response.result.confidence
     
-    def _get_kelly_bet_amount(self, x, y, p, c, b) -> int:
-        """Calculate the Kelly bet amount."""
-        if b == 0 or x**2 == y**2:
-            self.context.logger.error(
-                "Could not calculate Kelly bet amount. Either bankroll is 0 or pool token amount is distributed as x^2 - y^2 = 0:\n"
-                f"Bankroll: {b}\n"
-                f"Pool token amounts: {x}, {y}"
-            )
-            return None
-        # TODO: Add Fee variable
-        kelly_bet_amount = (-4*x**2*y + b*y**2*p + 2*b*x*y*p + b*x**2*p - 2*b*y**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p - 2*b*x*y*p - b*x**2*p + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p - 4*b*x**2*y*p + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
-        self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
-        return int(kelly_bet_amount)
 
     def _get_bet_sample_info(bet, vote) -> Tuple[int, int]:
         token_amounts = bet.outcomeTokenAmounts
@@ -391,6 +378,21 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Token balance: {self.token_balance}")
         self.context.logger.info(f"Bankroll: {bankroll}")
         selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee = self._get_bet_sample_info(bet, vote)
+        
+        # Testing and printing kelly bet amount
+        self.context.logger.info("Start kelly bet amount calculation")
+        bet_amount = self.params.get_bet_amount(
+            bankroll,
+            "kelly_criterion",
+            win_probability,
+            confidence,
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool, 
+            bet_fee,
+        )
+        
+        # Actual bet amount
+        self.context.logger.info("Start bet amount per conf threshold calculation")
         bet_amount = self.params.get_bet_amount(
             bankroll,
             self.params.trading_strategy,
@@ -400,6 +402,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             other_tokens_in_pool, 
             bet_fee,
         )
+
         self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
 
