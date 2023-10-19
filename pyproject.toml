@@ -27,7 +27,6 @@ open-aea-ledger-ethereum = "==1.39.0.post1"
 open-aea-ledger-cosmos = "==1.39.0.post1"
 protobuf = "<=3.20.1,>=3.19"
 hypothesis = "==6.21.6"
-open-aea-test-autonomy = "==0.12.1.post4"
 open-aea-web3 = "==6.0.1"
 ipfshttpclient = "==0.8.0a2"
 open-aea-cli-ipfs = "==1.39.0.post1"
@@ -50,6 +49,16 @@ pycryptodome = "==3.18.0"
 pytest = "==7.2.1"
 urllib3 = "==1.26.16"
 jsonschema = "<=4.19.0,>=4.16.0"
+open-aea-test-autonomy = "0.12.1.post4"
+
+[tool.poetry.dev-dependencies]
+asn1crypto = "1.4.0"
+open-aea-cosmpy = "0.6.6"
+open-aea = { path = "/open-aea", extras = ["all"], develop = true }
+open-aea-cli-ipfs = { path = "/open-aea/plugins/aea-cli-ipfs", develop = true }
+open-aea-ledger-cosmos = { path = "/open-aea/plugins/aea-ledger-cosmos", develop = true }
+open-aea-ledger-ethereum = { path = "/open-aea/plugins/aea-ledger-ethereum", develop = true }
+py_eth_sig_utils = "0.4.0"
 
 [tool.poetry.group.dev.dependencies.tomte]
 version = "==0.2.12"
