@@ -45,14 +45,14 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeih6d3vxz3jlgodxm5b2qcwsmansqj4xobuyd6hjnhzremuvd65yrm
-- valory/market_maker:0.1.0:bafybeif4mm2s3gxtvp227yypkcnna5ftec7vajcftvtbdmqddh7nprah5m
-- valory/erc20:0.1.0:bafybeibysifjwhlcn7nntsjkowdmja53ed6urfzypi6sxfc7chtheecvpi
+- valory/market_maker:0.1.0:bafybeidaz4dol7qsrwitw5jwasjtvd2vtlxhxizwkzen5kurblwacz4biu
+- valory/erc20:0.1.0:bafybeicsvxv6anl5zdlovfboftqknzqyzisyuxlkcqlespvbyv7ubga3te
 - valory/multisend:0.1.0:bafybeieg4tywd5lww2vygvpkilg3hcepa4rmhehjuamyvdf6vazt554v6u
-- valory/mech:0.1.0:bafybeifaavuqr2bz7nypapjwkufc5c6vwxm5ifucmtd3w7sh42tne35nga
-- valory/conditional_tokens:0.1.0:bafybeif5jwc6owfe6brmqq5sfnhrwo2ajdtt4glrmyhlqxcvtkyofahwsa
-- valory/realitio:0.1.0:bafybeic3wihpzz4deguslpzlnsgrlrabclq3njwuagyaiiv6rzqujfrs6e
-- valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeifwdtwxdc2jdlhzdyxctqdmoz6zroxf5o4nhuok5l4luvnofqavty
+- valory/mech:0.1.0:bafybeiddc6pgurpyja2k64wzsb3jgcvl254s7rplgt5iooftsyfalqlbfq
+- valory/conditional_tokens:0.1.0:bafybeigdarm2ssng3uuehlxto75um4hbp47rdi5si6bvv7asdopqsidbhq
+- valory/realitio:0.1.0:bafybeibzyfaeaxgyqnygtduhprs47fhtskh2vnmw2cvpemqhkgc72q4wpm
+- valory/realitio_proxy:0.1.0:bafybeibvndq6756qck7forgeavhdbn6ykgqs2ufyg7n5g6qdfpveatxuwy
+- valory/agent_registry:0.1.0:bafybeigpd6wvnbb7fbf6yd77rugepv5hrbb6l3qfodstwgemagtcgne3bm
 protocols:
 - valory/contract_api:1.0.0:bafybeiasywsvax45qmugus5kxogejj66c5taen27h4voriodz7rgushtqa
 skills:
@@ -241,6 +241,6 @@ dependencies:
     version: ==1.0.3
   py-multicodec:
     version: ==0.2.1
-  web3:
-    version: <7,>=6.0.0
+  open-aea-web3:
+    version: ==6.0.1
 is_abstract: true
