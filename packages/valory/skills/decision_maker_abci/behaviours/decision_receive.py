@@ -381,7 +381,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         
         # Testing and printing kelly bet amount
         self.context.logger.info("Start kelly bet amount calculation")
-        bet_amount = self.params.get_bet_amount(
+        bet_amount = self.get_bet_amount(
             bankroll,
             "kelly_criterion",
             win_probability,
@@ -393,7 +393,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         
         # Actual bet amount
         self.context.logger.info("Start bet amount per conf threshold calculation")
-        bet_amount = self.params.get_bet_amount(
+        bet_amount = self.get_bet_amount(
             bankroll,
             self.params.trading_strategy,
             win_probability,

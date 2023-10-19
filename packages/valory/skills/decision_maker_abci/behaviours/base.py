@@ -203,6 +203,55 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         collateral = self._collateral_amount_info(self.token_balance)
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
+    
+    def _calculate_kelly_bet_amount(self, x, y, p, c, b) -> int:
+        """Calculate the Kelly bet amount."""
+        if b == 0 or x**2 == y**2:
+            self.context.logger.error(
+                "Could not calculate Kelly bet amount. Either bankroll is 0 or pool token amount is distributed as x^2 - y^2 = 0:\n"
+                f"Bankroll: {b}\n"
+                f"Pool token amounts: {x}, {y}"
+            )
+            return None
+        # TODO: Add Fee variable
+        kelly_bet_amount = (-4*x**2*y + b*y**2*p + 2*b*x*y*p + b*x**2*p - 2*b*y**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p - 2*b*x*y*p - b*x**2*p + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p - 4*b*x**2*y*p + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
+        self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
+        return int(kelly_bet_amount)
+
+    def get_bet_amount(
+        self,
+        bankroll: int,
+        strategy: str,
+        win_probability: float,
+        confidence: float,
+        selected_type_tokens_in_pool: int,
+        other_tokens_in_pool: int,
+        bet_fee: int,
+    ) -> int:
+        """Get the bet amount given a specified trading strategy."""
+        
+        if strategy == "bet_amount_per_conf_threshold":
+            self.context.logger.info(f"Used trading strategy: {strategy}")
+            threshold = round(confidence, 1)
+            bet_amount = self.bet_amount_per_threshold[threshold]
+            self.context.logger.info(f"Bet amount: {bet_amount}")
+            net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
+            self.context.logger.info(f"Net bet amount: {net_bet_amount}")
+            return net_bet_amount
+        
+        elif strategy == "kelly_criterion":
+            self.context.logger.info(f"Used trading strategy: {strategy}")
+            bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
+            kelly_bet_amount = self._calculate_kelly_bet_amount(
+                selected_type_tokens_in_pool, other_tokens_in_pool, win_probability, confidence, bankroll
+            )
+            if kelly_bet_amount != None:
+                self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
+                self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
+            return kelly_bet_amount
+        
+        else:
+            raise ValueError(f"Invalid trading strategy: {strategy}")
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
