@@ -73,6 +73,13 @@ class VotingPayload(BaseTxPayload):
 
 
 @dataclass(frozen=True)
+class BlacklistingPayload(UpdateBetsPayload):
+    """Represents a transaction payload for blacklisting."""
+
+    policy: str
+
+
+@dataclass(frozen=True)
 class ToolSelectionPayload(BaseTxPayload):
     """Represents a transaction payload for selecting a mech tool."""
 

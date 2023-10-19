@@ -19,15 +19,26 @@
 
 """This module contains the blacklisting state of the decision-making abci app."""
 
-from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.market_manager_abci.rounds import (
-    UpdateBetsRound as BaseUpdateBetsRound,
+from typing import Any, Type
+
+from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
 )
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
-class BlacklistingRound(BaseUpdateBetsRound):
+class BlacklistingRound(UpdateBetsRound):
     """A round for updating the bets after blacklisting the sampled one."""
 
+    payload_class: Type[UpdateBetsPayload] = BlacklistingPayload
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+    selection_key: Any = (
+        UpdateBetsRound.selection_key,
+        get_name(SynchronizedData.policy),
+    )
