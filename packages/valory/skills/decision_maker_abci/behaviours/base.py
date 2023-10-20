@@ -204,17 +204,17 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
     
-    def _calculate_kelly_bet_amount(self, x, y, p, c, b) -> int:
+    def _calculate_kelly_bet_amount(self, x, y, p, c, b, f) -> int:
         """Calculate the Kelly bet amount."""
-        if b == 0 or x**2 == y**2:
+        if b == 0 or x**2*f == y**2*f:
             self.context.logger.error(
-                "Could not calculate Kelly bet amount. Either bankroll is 0 or pool token amount is distributed as x^2 - y^2 = 0:\n"
+                "Could not calculate Kelly bet amount. Either bankroll is 0 or pool token amount is distributed as x^2*f - y^2*f = 0:\n"
                 f"Bankroll: {b}\n"
                 f"Pool token amounts: {x}, {y}"
+                f"Fee, fee fraction f: {1-f}, {f}"
             )
             return None
-        # TODO: Add Fee variable
-        kelly_bet_amount = (-4*x**2*y + b*y**2*p*c + 2*b*x*y*p*c + b*x**2*p*c - 2*b*y**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p*c - 2*b*x*y*p*c - b*x**2*p*c + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p*c - 4*b*x**2*y*p*c + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
+        kelly_bet_amount = (-4*x**2*y + b*y**2*p*c*f + 2*b*x*y*p*c*f + b*x**2*p*c*f - 2*b*y**2*f - 2*b*x*y*f + ((4*x**2*y - b*y**2*p*c*f - 2*b*x*y*p*c*f - b*x**2*p*c*f + 2*b*y**2*f + 2*b*x*y*f)**2 - (4*(x**2*f - y**2*f) * (-4*b*x*y**2*p*c - 4*b*x**2*y*p*c + 4*b*x*y**2)))**(1/2))/(2*(x**2*f - y**2*f))
         self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
         return int(kelly_bet_amount)
 
@@ -240,15 +240,26 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             return net_bet_amount
         
         elif strategy == "kelly_criterion":
+            
             self.context.logger.info(f"Used trading strategy: {strategy}")
             bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
+            fee_fraction = 1 - self.wei_to_native(bet_fee)
+            self.context.logger.info(f"Fee fraction: {fee_fraction}")
             kelly_bet_amount = self._calculate_kelly_bet_amount(
-                selected_type_tokens_in_pool, other_tokens_in_pool, win_probability, confidence, bankroll
+                selected_type_tokens_in_pool, 
+                other_tokens_in_pool,
+                win_probability,
+                confidence,
+                bankroll,
+                fee_fraction,
             )
+            
             if kelly_bet_amount != None:
                 self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
                 self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
-            return kelly_bet_amount
+            adj_kelly_bet_amount = kelly_bet_amount * self.params.bet_kelly_fraction
+            self.context.logger.info(f"Adjusted Kelly bet amount with bet_kelly_fraction factor: {kelly_bet_amount/(10**18)} xDAI")
+            return adj_kelly_bet_amount
         
         else:
             raise ValueError(f"Invalid trading strategy: {strategy}")

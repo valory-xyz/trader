@@ -372,6 +372,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     def _is_profitable(self, vote: int, odds: float, win_probability: float, confidence: float) -> bool:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
+        self.context.logger.info(f"Bet: {bet}")
         yield from self._check_balance()
         bankroll = self.wallet_balance + self.token_balance
         self.context.logger.info(f"Wallet balance: {self.wallet_balance}")
@@ -380,7 +381,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee = self._get_bet_sample_info(bet, vote)
         
         # Testing and printing kelly bet amount
-        self.context.logger.info("Start kelly bet amount calculation")
+        self.context.logger.info("\nStart kelly bet amount calculation")
         bet_amount = self.get_bet_amount(
             bankroll,
             "kelly_criterion",
@@ -392,7 +393,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         )
         
         # Actual bet amount
-        self.context.logger.info("Start bet amount per conf threshold calculation")
+        self.context.logger.info("\nStart bet amount per conf threshold calculation")
         bet_amount = self.get_bet_amount(
             bankroll,
             self.params.trading_strategy,
