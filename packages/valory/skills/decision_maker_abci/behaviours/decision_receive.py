@@ -247,7 +247,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return self.mech_response.result.vote, self.mech_response.result.odds, self.mech_response.result.win_probability, self.mech_response.result.confidence
     
 
-    def _get_bet_sample_info(bet, vote) -> Tuple[int, int, int]:
+    def _get_bet_sample_info(self, bet, vote) -> Tuple[int, int, int]:
         token_amounts = bet.outcomeTokenAmounts
         if token_amounts is None:
             return None, None, None
