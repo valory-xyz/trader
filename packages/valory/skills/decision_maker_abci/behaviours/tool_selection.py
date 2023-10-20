@@ -176,10 +176,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _adjust_policy_tools(self) -> None:
+    def _adjust_policy_tools(self, local: List[str]) -> None:
         """Add or remove tools from the policy to match the remote tools."""
-        local = self.synchronized_data.available_mech_tools
-
         # remove tools if they are not available anymore
         # process the indices in reverse order to avoid index shifting when removing the unavailable tools later
         reversed_idx = range(len(local) - 1, -1, -1)
@@ -196,11 +194,12 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Set the E Greedy Policy."""
         if self.is_first_period:
             self._policy = self._get_init_policy()
-            recovered_tools = self._try_recover_mech_tools()
-            self.mech_tools = list(set(self.mech_tools + recovered_tools))
+            local_tools = self._try_recover_mech_tools()
         else:
             self._policy = self.synchronized_data.policy
-            self._adjust_policy_tools()
+            local_tools = self.synchronized_data.available_mech_tools
+
+        self._adjust_policy_tools(local_tools)
 
     def _get_init_policy(self) -> EGreedyPolicy:
         """Get the initial policy"""
