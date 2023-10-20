@@ -58,7 +58,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """
         # Get only bets that close in the next 48 hours
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
-        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + 172800), bets) 
+        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + 172800), bets)
+        self.context.logger.info(f"Short term bets: {short_term_bets}")
         return self.synchronized_data.bets.index(max(short_term_bets))
 
     def _set_processed(self, idx: int) -> Optional[str]:
