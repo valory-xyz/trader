@@ -214,7 +214,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             )
             return None
         # TODO: Add Fee variable
-        kelly_bet_amount = (-4*x**2*y + b*y**2*p + 2*b*x*y*p + b*x**2*p - 2*b*y**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p - 2*b*x*y*p - b*x**2*p + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p - 4*b*x**2*y*p + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
+        kelly_bet_amount = (-4*x**2*y + b*y**2*p*c + 2*b*x*y*p*c + b*x**2*p*c - 2*b*y**2 - 2*b*x*y + ((4*x**2*y - b*y**2*p*c - 2*b*x*y*p*c - b*x**2*p*c + 2*b*y**2 + 2*b*x*y)**2 - (4*(x**2 - y**2) * (-4*b*x*y**2*p*c - 4*b*x**2*y*p*c + 4*b*x*y**2)))**(1/2))/(2*(x**2 - y**2))
         self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
         return int(kelly_bet_amount)
 

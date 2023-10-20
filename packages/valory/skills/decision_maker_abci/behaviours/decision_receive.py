@@ -429,7 +429,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Available in: {available_in}")
         shares_out_of = f"{shares_out} / {available_in}"
         self.context.logger.info(f"Shares out of: {shares_out_of}")
-        potential_net_profit = num_shares - bet_amount - bet_threshold
+        potential_net_profit = num_shares - bet_amount - self.mech_price - bet_threshold
         is_profitable = potential_net_profit >= 0
 
         if num_shares > available_shares * SLIPPAGE:
