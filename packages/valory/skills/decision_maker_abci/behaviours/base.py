@@ -272,6 +272,13 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             )
             if kelly_bet_amount == None:
                 return 0
+            if kelly_bet_amount < 0:
+                self.context.logger.error(
+                    "Could not calculate Kelly bet amount. Negative value:\n"
+                    f"Kelly bet amount: {kelly_bet_amount}"
+                    "Set bet amount to 0."
+                )
+                return 0
             else:
                 self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
                 self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")

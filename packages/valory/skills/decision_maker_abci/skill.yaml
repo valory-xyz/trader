@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiduo2t3o7gmf7eatl5a22pk5l5lbfifhs7olbko3h2ec3pvnxnoza
+  behaviours/base.py: bafybeid3hmx5utbm2rs2aq4gzdds3sd5yih3avtgvr4tganaqbi3afv2d4
   behaviours/bet_placement.py: bafybeihbsgejf57mdcwhkt7vv7lcf6wf2hxlzctdyznr4qvymzwdohmmmi
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
   behaviours/decision_receive.py: bafybeiekb3q2avpffr6xdkfpr6foxsi4k3wmozqrjvx3rvf5mj2kywcshy
