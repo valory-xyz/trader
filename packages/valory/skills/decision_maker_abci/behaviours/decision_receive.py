@@ -384,7 +384,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info("\nStart kelly bet amount calculation")
         bet_amount = self.get_bet_amount(
             bankroll,
-            "kelly_criterion",
+            self.params.trading_strategy,
             win_probability,
             confidence,
             selected_type_tokens_in_pool,
@@ -392,11 +392,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_fee,
         )
         
-        # Actual bet amount
+        # Safety fallback to bet amount per conf threshold
+        # Only remove if you are sure that kelly bet amount is working as expected
         self.context.logger.info("\nStart bet amount per conf threshold calculation")
         bet_amount = self.get_bet_amount(
             bankroll,
-            self.params.trading_strategy,
+            "bet_amount_per_conf_threshold",
             win_probability,
             confidence,
             selected_type_tokens_in_pool,
@@ -408,6 +409,34 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
 
         num_shares, available_shares = self._calc_binary_shares(bet_amount, win_probability, confidence, vote)
+        if num_shares > available_shares * SLIPPAGE:
+            self.context.logger.warning(
+                "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
+                "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
+                "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
+            )
+            if self.params.trading_strategy == "kelly_criterion":
+                self.context.logger.warning(
+                    "Reducing kelly bet amount so the bought shares don't exceed available shares"
+                )
+                prev_bet_amount = bet_amount
+                bet_amount = self.get_max_bet_amount(
+                    available_shares,
+                    selected_type_tokens_in_pool,
+                    other_tokens_in_pool, 
+                    bet_fee,
+                )
+                if bet_amount >= prev_bet_amount:
+                    bet_amount = 0
+                    self.context.logger.warning(
+                        "The new bet amount is >= the previous one. There might be a calculation error. \
+                        No bet will be placed."
+                    )
+                else:
+                    self.context.logger.info(
+                        f"New bet amount: {bet_amount/(10**18)}"
+                        f"Betting {round(100*bet_amount/prev_bet_amount, 2)}% of the calculated kelly bet amount."
+                    )
         bet_threshold = self.params.bet_threshold
         self.context.logger.info(f"Bet threshold: {bet_threshold/(10**18)}")
 
@@ -432,13 +461,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Shares out of: {shares_out_of}")
         potential_net_profit = num_shares - bet_amount - self.mech_price - bet_threshold
         is_profitable = potential_net_profit >= 0
-
-        if num_shares > available_shares * SLIPPAGE:
-            self.context.logger.warning(
-                "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
-                "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
-                "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
-            )
 
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
