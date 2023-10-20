@@ -233,7 +233,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         if strategy == "bet_amount_per_conf_threshold":
             self.context.logger.info(f"Used trading strategy: {strategy}")
             threshold = round(confidence, 1)
-            bet_amount = self.bet_amount_per_threshold[threshold]
+            bet_amount = self.params.bet_amount_per_threshold[threshold]
             self.context.logger.info(f"Bet amount: {bet_amount}")
             net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
             self.context.logger.info(f"Net bet amount: {net_bet_amount}")
