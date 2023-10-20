@@ -19,6 +19,8 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+import time
+
 from typing import Generator, Iterator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -54,7 +56,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :param bets: the bets' values to compare for the sampling.
         :return: the id of the sampled bet, out of all the available bets, not only the given ones.
         """
-        return self.synchronized_data.bets.index(max(bets))
+        # Get only bets that close in the next 48 hours
+        # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
+        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + 172800), bets) 
+        return self.synchronized_data.bets.index(max(short_term_bets))
 
     def _set_processed(self, idx: int) -> Optional[str]:
         """Update the bet's status for the given id to `PROCESSED`, and return the updated bets list, serialized."""

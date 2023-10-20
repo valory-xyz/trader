@@ -161,11 +161,6 @@ class DecisionMakerParams(MarketManagerParams):
                 f"The configured slippage {slippage!r} is not in the range [0, 1]."
             )
         self._slippage = slippage
-
-    # def get_bet_amount(self, confidence: float) -> int:
-    #     """Get the bet amount given a prediction's confidence."""
-    #     threshold = round(confidence, 1)
-    #     return self.bet_amount_per_threshold[threshold]
         
     def get_policy_store_path(self, kwargs: Dict) -> Path:
         """Get the path of the policy store."""
