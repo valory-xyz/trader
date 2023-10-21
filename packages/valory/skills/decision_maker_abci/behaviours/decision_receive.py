@@ -260,7 +260,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee
 
 
-    def _calc_binary_shares(self, bet_amount: int, vote: int) -> Tuple[int, int]:
+    def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
         bet = self.synchronized_data.sampled_bet
 
@@ -274,7 +274,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # the OMEN market trades an equal amount of the investment to each of the tokens in the pool
         # here we calculate the bet amount per pool's token
-        bet_per_token = bet_amount / BINARY_N_SLOTS
+        bet_per_token = net_bet_amount / BINARY_N_SLOTS
         self.context.logger.info(f"Bet per token: {bet_per_token/(10**18)}")
 
         # calculate the number of the traded tokens
@@ -370,7 +370,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
-    def _is_profitable(self, vote: int, odds: float, win_probability: float, confidence: float) -> bool:
+    def _is_profitable(self, vote: int, win_probability: float, confidence: float) -> Tuple[bool, int]:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
         self.context.logger.info(f"Bet: {bet}")
@@ -401,11 +401,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             other_tokens_in_pool, 
             bet_fee,
         )
-        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
-        self.context.logger.info(f"Net bet amount: {net_bet_amount}")
-
         self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
+        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
+        self.context.logger.info(f"Net bet amount: {net_bet_amount}")
+        
 
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         
@@ -469,7 +469,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             f"from buying {int(self.wei_to_native(num_shares))} shares for the option {bet.get_outcome(vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
-
         return is_profitable, bet_amount
 
     def async_act(self) -> Generator:
@@ -479,7 +478,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             vote, odds, win_probability, confidence = yield from self._get_decision()
             is_profitable = None
             if vote is not None and confidence is not None and odds is not None and win_probability is not None:
-                is_profitable, bet_amount = yield from self._is_profitable(vote, odds, win_probability, confidence)
+                is_profitable, bet_amount = yield from self._is_profitable(vote, win_probability, confidence)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,

@@ -251,7 +251,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             self.context.logger.info(f"Used trading strategy: Bet amount per confidence threshold")
             threshold = round(confidence, 1)
             bet_amount = self.params.bet_amount_per_threshold[threshold]
-            self.context.logger.info(f"Bet amount: {bet_amount}")
             return bet_amount
         
         elif strategy == "kelly_criterion":
