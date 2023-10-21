@@ -284,43 +284,43 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if prices is None:
             return 0, 0
         tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
-        self.context.logger.info(f"Tokens traded: {[x/(10**18) for x in tokens_traded]}")
+        self.context.logger.info(f"Tokens traded: {[x for x in tokens_traded]}")
 
         # get the shares for the answer that the service has selected
         selected_shares = tokens_traded.pop(vote)
-        self.context.logger.info(f"Selected shares: {selected_shares/(10**18)}")
+        self.context.logger.info(f"Selected shares: {selected_shares}")
 
         # get the shares for the opposite answer
         other_shares = tokens_traded.pop()
-        self.context.logger.info(f"Other shares: {other_shares/(10**18)}")
+        self.context.logger.info(f"Other shares: {other_shares}")
 
         # get the number of tokens in the pool for the answer that the service has selected
         selected_type_tokens_in_pool = token_amounts.pop(vote)
-        self.context.logger.info(f"Selected type tokens in pool: {selected_type_tokens_in_pool/(10**18)}")
+        self.context.logger.info(f"Selected type tokens in pool: {selected_type_tokens_in_pool}")
 
         # get the number of tokens in the pool for the opposite answer
         other_tokens_in_pool = token_amounts.pop()
-        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool/(10**18)}")
+        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool}")
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
         # here we calculate the number of shares that we get after trading the tokens for the opposite answer
         tokens_remaining_in_pool = int(k / (other_tokens_in_pool + other_shares))
-        self.context.logger.info(f"Tokens remaining in pool: {tokens_remaining_in_pool/(10**18)}")
+        self.context.logger.info(f"Tokens remaining in pool: {tokens_remaining_in_pool}")
         
         swapped_shares = selected_type_tokens_in_pool - tokens_remaining_in_pool
-        self.context.logger.info(f"Swapped shares: {int(swapped_shares/(10**18))}")
+        self.context.logger.info(f"Swapped shares: {swapped_shares}")
 
         # calculate the resulting number of shares if the service would take that position
         num_shares = selected_shares + swapped_shares
-        self.context.logger.info(f"Number of shares: {int(num_shares/(10**18))}")
+        self.context.logger.info(f"Number of shares: {num_shares}")
 
         # calculate the available number of shares
         price = prices[vote]
         self.context.logger.info(f"Price: {prices[vote]}")
 
         available_shares = int(selected_type_tokens_in_pool * price)
-        self.context.logger.info(f"Available shares: {available_shares/(10**18)}")
+        self.context.logger.info(f"Available shares: {available_shares}")
 
         return num_shares, available_shares
 
