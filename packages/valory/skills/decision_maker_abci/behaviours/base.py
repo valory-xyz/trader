@@ -283,7 +283,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
                 self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
                 self.context.logger.info(f"bet_kelly_fraction factor: {self.params.bet_kelly_fraction}")
-                adj_kelly_bet_amount = kelly_bet_amount * self.params.bet_kelly_fraction
+                adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
                 self.context.logger.info(f"Adjusted Kelly bet amount with bet_kelly_fraction factor: {adj_kelly_bet_amount/(10**18)} xDAI")
                 return adj_kelly_bet_amount
         else:

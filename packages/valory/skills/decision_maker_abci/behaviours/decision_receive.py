@@ -409,6 +409,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
 
         num_shares, available_shares = self._calc_binary_shares(bet_amount, win_probability, confidence, vote)
+        
+        # Set available shares to 1/3 of the total available shares to prevent the bot from buying all shares in this test scenario
+        available_shares = int(available_shares / 3)
         if num_shares > available_shares * SLIPPAGE:
             self.context.logger.warning(
                 "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
