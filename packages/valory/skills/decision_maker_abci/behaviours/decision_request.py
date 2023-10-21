@@ -304,9 +304,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             agent = self.context.agent_address
             # log the payload
             self.context.logger.info(
-                f"Sending request to mech with payload: {
-                    agent, tx_submitter, mech_tx_hex, price
-                }"
+                f"Sending request to mech with payload: {agent, tx_submitter, mech_tx_hex, price}"
             )
             payload = RequestPayload(agent, tx_submitter, mech_tx_hex, price)
         yield from self.finish_behaviour(payload)
