@@ -477,7 +477,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             vote, odds, win_probability, confidence = yield from self._get_decision()
             is_profitable = None
-            if vote is not None and confidence is not None and odds is not None and win_probability is not None:
+            bet_amount = 0
+            if vote is not None and confidence is not None and win_probability is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(vote, win_probability, confidence)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
