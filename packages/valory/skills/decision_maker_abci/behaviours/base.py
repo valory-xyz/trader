@@ -215,7 +215,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             )
             return None
         kelly_bet_amount = (-4*x**2*y + b*y**2*p*c*f + 2*b*x*y*p*c*f + b*x**2*p*c*f - 2*b*y**2*f - 2*b*x*y*f + ((4*x**2*y - b*y**2*p*c*f - 2*b*x*y*p*c*f - b*x**2*p*c*f + 2*b*y**2*f + 2*b*x*y*f)**2 - (4*(x**2*f - y**2*f) * (-4*b*x*y**2*p*c - 4*b*x**2*y*p*c + 4*b*x*y**2)))**(1/2))/(2*(x**2*f - y**2*f))
-        self.context.logger.info(f"Kelly bet amount _get_kelly_bet_amount X1: {kelly_bet_amount}")
         return int(kelly_bet_amount)
     
     def get_max_bet_amount(self, a, x, y, f) -> int:
@@ -249,16 +248,14 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         """Get the bet amount given a specified trading strategy."""
         
         if strategy == "bet_amount_per_conf_threshold":
-            self.context.logger.info(f"Used trading strategy: {strategy}")
+            self.context.logger.info(f"Used trading strategy: Bet amount per confidence threshold")
             threshold = round(confidence, 1)
             bet_amount = self.params.bet_amount_per_threshold[threshold]
             self.context.logger.info(f"Bet amount: {bet_amount}")
-            net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
-            self.context.logger.info(f"Net bet amount: {net_bet_amount}")
-            return net_bet_amount
+            return bet_amount
         
         elif strategy == "kelly_criterion":
-            self.context.logger.info(f"Used trading strategy: {strategy}")
+            self.context.logger.info(f"Used trading strategy: Kelly Criterion")
             bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
             fee_fraction = 1 - self.wei_to_native(bet_fee)
             self.context.logger.info(f"Fee fraction: {fee_fraction}")
@@ -273,18 +270,16 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             if kelly_bet_amount == None:
                 return 0
             if kelly_bet_amount < 0:
-                self.context.logger.error(
-                    "Could not calculate Kelly bet amount. Negative value:\n"
-                    f"Kelly bet amount: {kelly_bet_amount}"
+                self.context.logger.info(
+                    f"Negative value for kelly bet amount: {kelly_bet_amount}\n"
                     "Set bet amount to 0."
                 )
                 return 0
             else:
-                self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
                 self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
-                self.context.logger.info(f"bet_kelly_fraction factor: {self.params.bet_kelly_fraction}")
+                self.context.logger.info(f"Bet kelly fraction: {self.params.bet_kelly_fraction}")
                 adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
-                self.context.logger.info(f"Adjusted Kelly bet amount with bet_kelly_fraction factor: {adj_kelly_bet_amount/(10**18)} xDAI")
+                self.context.logger.info(f"Adjusted Kelly bet: {adj_kelly_bet_amount/(10**18)} xDAI")
                 return adj_kelly_bet_amount
         else:
             raise ValueError(f"Invalid trading strategy: {strategy}")

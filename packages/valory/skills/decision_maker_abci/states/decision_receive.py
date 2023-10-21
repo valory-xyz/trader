@@ -47,6 +47,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.odds),
         get_name(SynchronizedData.win_probability),
         get_name(SynchronizedData.confidence),
+        get_name(SynchronizedData.bet_amount),
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)
 
