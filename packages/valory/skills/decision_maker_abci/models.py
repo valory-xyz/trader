@@ -222,13 +222,6 @@ class PredictionResponse:
         return None
     
     @property
-    def odds(self) -> Optional[float]:
-        """Return the odds estimation for winning with vote."""
-        if self.p_no != self.p_yes:
-            return self.p_no / self.p_yes
-        return None
-    
-    @property
     def win_probability(self) -> Optional[float]:
         """Return the probability estimation for winning with vote."""
         if self.p_no != self.p_yes:

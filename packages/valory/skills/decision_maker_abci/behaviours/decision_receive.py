@@ -243,9 +243,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(
                 f"There was an error on the mech's response: {self.mech_response.error}"
             )
-            return None, None, None, None
+            return None, None, None
 
-        return self.mech_response.result.vote, self.mech_response.result.odds, self.mech_response.result.win_probability, self.mech_response.result.confidence
+        return self.mech_response.result.vote, self.mech_response.result.win_probability, self.mech_response.result.confidence
     
 
     def _get_bet_sample_info(self, bet, vote) -> Tuple[int, int, int]:
@@ -475,14 +475,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            vote, odds, win_probability, confidence = yield from self._get_decision()
+            vote, win_probability, confidence = yield from self._get_decision()
             is_profitable = None
-            bet_amount = 0
+            bet_amount = None
             if vote is not None and confidence is not None and win_probability is not None:
                 self.context.logger.info(
                     "All should be not none:"
                     f"Vote: {vote}"
-                    f"Odds: {odds}"
                     f"Win probability: {win_probability}"
                     f"Confidence: {confidence}"
                 )
@@ -497,7 +496,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 f"Agent address: {self.context.agent_address}"
                 f"Is profitable: {is_profitable}"
                 f"Vote: {vote}"
-                f"Odds: {odds}"
                 f"Win probability: {win_probability}"
                 f"Confidence: {confidence}"
                 f"Bet amount: {bet_amount}"
@@ -506,7 +504,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self.context.agent_address,
                 is_profitable,
                 vote,
-                odds,
                 win_probability,
                 confidence,
                 bet_amount,
