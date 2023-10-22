@@ -60,6 +60,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
         short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + 172800), bets)
         short_term_bets_list = list(short_term_bets)
+        if len(short_term_bets_list) == 0:
+            return None
         self.context.logger.info(f"Short term bets: {short_term_bets_list}")
         return self.synchronized_data.bets.index(max(short_term_bets_list))
 
@@ -79,8 +81,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             return None, None
 
         idx = self._sampled_bet_idx(available_bets)
-
-        if self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
+        
+        if idx is None:
+            msg = "There were no unprocessed bets that close within the next 48 hours available to sample from!"
+            self.context.logger.warning(msg)
+            return None, None
+        elif self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
             return None, None
