@@ -266,7 +266,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
-        self.context.logger.info(f"Token amounts: {[x/(10**18) for x in token_amounts]}")
+        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
         if token_amounts is None:
             return 0, 0
         k = prod(token_amounts)
@@ -275,7 +275,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # the OMEN market trades an equal amount of the investment to each of the tokens in the pool
         # here we calculate the bet amount per pool's token
         bet_per_token = net_bet_amount / BINARY_N_SLOTS
-        self.context.logger.info(f"Bet per token: {bet_per_token/(10**18)}")
+        self.context.logger.info(f"Bet per token: {bet_per_token}")
 
         # calculate the number of the traded tokens
         prices = bet.outcomeTokenMarginalPrices
@@ -401,8 +401,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         #     other_tokens_in_pool,
         #     bet_fee,
         # )
-        self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
-        self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
+        self.context.logger.info(f"Bet amount: {bet_amount}")
+        self.context.logger.info(f"Bet fee: {bet.fee}")
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
         
@@ -437,11 +437,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     )
                 else:
                     self.context.logger.info(
-                        f"New bet amount: {bet_amount/(10**18)}"
+                        f"New bet amount: {bet_amount}"
                         f"Betting {round(100*bet_amount/prev_bet_amount, 2)}% of the calculated kelly bet amount."
                     )
         bet_threshold = self.params.bet_threshold
-        self.context.logger.info(f"Bet threshold: {bet_threshold/(10**18)}")
+        self.context.logger.info(f"Bet threshold: {bet_threshold}")
 
         if bet_threshold <= 0:
             self.context.logger.warning(
@@ -451,9 +451,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_threshold = 0
 
         yield from self.wait_for_condition_with_sleep(self._get_mech_price)
-        self.context.logger.info(f"Mech price: {self.mech_price/(10**18)}")
+        self.context.logger.info(f"Mech price: {self.mech_price}")
         potential_net_profit = num_shares - bet_amount - self.mech_price - bet_threshold
-        self.context.logger.info(f"Potential net profit: {potential_net_profit/(10**18)}")
+        self.context.logger.info(f"Potential net profit: {potential_net_profit}")
         is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
         self.context.logger.info(f"Is profitable: {is_profitable}")
         shares_out = self.wei_to_native(num_shares)
@@ -466,7 +466,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
             f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
-            f"from buying {int(self.wei_to_native(num_shares))} shares for the option {bet.get_outcome(vote)}.\n"
+            f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
         return is_profitable, bet_amount
@@ -479,27 +479,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             is_profitable = None
             bet_amount = None
             if vote is not None and confidence is not None and win_probability is not None:
-                self.context.logger.info(
-                    "All should be not none:"
-                    f"Vote: {vote}"
-                    f"Win probability: {win_probability}"
-                    f"Confidence: {confidence}"
-                )
                 is_profitable, bet_amount = yield from self._is_profitable(vote, win_probability, confidence)
-                self.context.logger.info(
-                    "Resulting profitability and bet amount:"
-                    f"Is profitable: {is_profitable}"
-                    f"Bet amount: {bet_amount}"
-                )
-            self.context.logger.info(
-                "Give to DecisionReceivePayload:"
-                f"Agent address: {self.context.agent_address}"
-                f"Is profitable: {is_profitable}"
-                f"Vote: {vote}"
-                f"Win probability: {win_probability}"
-                f"Confidence: {confidence}"
-                f"Bet amount: {bet_amount}"
-            )
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
