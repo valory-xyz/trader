@@ -390,17 +390,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_fee,
         )
         
-        # Safety fallback to bet amount per conf threshold
-        # Only remove if you are sure that kelly bet amount is working as expected
-        bet_amount = self.get_bet_amount(
-            bankroll,
-            "bet_amount_per_conf_threshold",
-            win_probability,
-            confidence,
-            selected_type_tokens_in_pool,
-            other_tokens_in_pool,
-            bet_fee,
-        )
+        # # Safety fallback to bet amount per conf threshold
+        # # Only remove if you are sure that kelly bet amount is working as expected
+        # bet_amount = self.get_bet_amount(
+        #     bankroll,
+        #     "bet_amount_per_conf_threshold",
+        #     win_probability,
+        #     confidence,
+        #     selected_type_tokens_in_pool,
+        #     other_tokens_in_pool,
+        #     bet_fee,
+        # )
         self.context.logger.info(f"Bet amount: {bet_amount/(10**18)}")
         self.context.logger.info(f"Bet fee: {bet.fee/(10**18)}")
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
