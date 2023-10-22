@@ -255,8 +255,16 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         
         elif strategy == "kelly_criterion":
             self.context.logger.info(f"Used trading strategy: Kelly Criterion")
-            bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
-            bankroll_adj = bankroll - 500000000000000000 # keep 0.5 xDAI in the bankroll
+            bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of DAI available to trade
+            floor_balance = 500000000000000000
+            bankroll_adj = bankroll - floor_balance # keep 0.5 xDAI in the bankroll
+            self.context.logger.info(f"Adjusted bankroll: {bankroll_adj} DAI")
+            if bankroll_adj <= 0:
+                self.context.logger.info(
+                    f"Bankroll is less than {floor_balance}: {bankroll_adj}. Set bet amount to 0."
+                    f"Top up safe with DAI or wait for redeeming."
+                )
+                return 0
             fee_fraction = 1 - self.wei_to_native(bet_fee)
             self.context.logger.info(f"Fee fraction: {fee_fraction}")
             kelly_bet_amount = self._calculate_kelly_bet_amount(
