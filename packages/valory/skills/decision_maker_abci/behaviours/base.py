@@ -256,6 +256,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         elif strategy == "kelly_criterion":
             self.context.logger.info(f"Used trading strategy: Kelly Criterion")
             bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
+            bankroll_adj = bankroll - 500000000000000000 # keep 0.5 xDAI in the bankroll
             fee_fraction = 1 - self.wei_to_native(bet_fee)
             self.context.logger.info(f"Fee fraction: {fee_fraction}")
             kelly_bet_amount = self._calculate_kelly_bet_amount(
@@ -263,9 +264,10 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 other_tokens_in_pool,
                 win_probability,
                 confidence,
-                bankroll,
+                bankroll_adj,
                 fee_fraction,
             )
+            
             if kelly_bet_amount == None:
                 return 0
             if kelly_bet_amount < 0:
