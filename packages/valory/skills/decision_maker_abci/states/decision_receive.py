@@ -58,6 +58,11 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        self.context.logger.info(
+            f"Synced data: {synced_data}"
+            f"Event: {event}"
+        )
+
 
         if event == Event.DONE and synced_data.vote is None:
             return synced_data, Event.TIE

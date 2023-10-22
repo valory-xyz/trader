@@ -479,7 +479,29 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             is_profitable = None
             bet_amount = 0
             if vote is not None and confidence is not None and win_probability is not None:
+                self.context.logger.info(
+                    "All should be not none:"
+                    f"Vote: {vote}"
+                    f"Odds: {odds}"
+                    f"Win probability: {win_probability}"
+                    f"Confidence: {confidence}"
+                )
                 is_profitable, bet_amount = yield from self._is_profitable(vote, win_probability, confidence)
+                self.context.logger.info(
+                    "Resulting profitability and bet amount:"
+                    f"Is profitable: {is_profitable}"
+                    f"Bet amount: {bet_amount}"
+                )
+            self.context.logger.info(
+                "Give to DecisionReceivePayload:"
+                f"Agent address: {self.context.agent_address}"
+                f"Is profitable: {is_profitable}"
+                f"Vote: {vote}"
+                f"Odds: {odds}"
+                f"Win probability: {win_probability}"
+                f"Confidence: {confidence}"
+                f"Bet amount: {bet_amount}"
+            )
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,

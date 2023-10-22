@@ -1,13 +1,13 @@
 {
     "dev": {
         "skill/valory/market_manager_abci/0.1.0": "bafybeigmy3g2klkzdhttti2ouxf575ua5y7ajmh4a3yfpukeukqxjky47m",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeibuwkc76sko3oojspxv2s3fjtahaxfb6slz3flb3lcdv75m4k4zce",
-        "skill/valory/trader_abci/0.1.0": "bafybeielgbp4xaortxlcpjl5p6lknvogijusckwph3sz6l3fiwhtyubnlu",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeiapv52i3mkxwfhgqlgqvzw3uuifzbwt7oiuwrb6xh62fnnrbkjcne",
+        "skill/valory/trader_abci/0.1.0": "bafybeibxgl5fc2ychrhkukmpharb6rpnwjahhmmtdqtdxb75ktfullpbgi",
         "contract/valory/market_maker/0.1.0": "bafybeif4mm2s3gxtvp227yypkcnna5ftec7vajcftvtbdmqddh7nprah5m",
-        "agent/valory/trader/0.1.0": "bafybeicu62uobww5rrkqkpfgfadi3pucsyksro62y2cdeg6ef36hgjo4hy",
-        "service/valory/trader/0.1.0": "bafybeih45bzt7tfinaqb3fxdwhg6thmfevhvpi3yoboy4nxoo44sud3rpq",
+        "agent/valory/trader/0.1.0": "bafybeie6sa36tta3kxq3f36nqxtch5tudhlajga3coqehb6teasub424na",
+        "service/valory/trader/0.1.0": "bafybeie6ujrnmevajc6hqi6hcdkwa5fso2jt4hxewgwzzft2uiv4gdyq3a",
         "contract/valory/erc20/0.1.0": "bafybeibysifjwhlcn7nntsjkowdmja53ed6urfzypi6sxfc7chtheecvpi",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeigdmzlilolxfn7fuoui7xtn3gxzc4a3r6ehz7twi7cnigpefwtndu",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeif2halgb2eg2v47ddk3nc5axcir5vhkefhgjaj22d7v7gdtj7xnuy",
         "contract/valory/mech/0.1.0": "bafybeifaavuqr2bz7nypapjwkufc5c6vwxm5ifucmtd3w7sh42tne35nga",
         "contract/valory/realitio/0.1.0": "bafybeic3wihpzz4deguslpzlnsgrlrabclq3njwuagyaiiv6rzqujfrs6e",
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
