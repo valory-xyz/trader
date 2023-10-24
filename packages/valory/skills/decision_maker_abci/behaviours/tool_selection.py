@@ -195,6 +195,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         if self.is_first_period:
             self._policy = self._get_init_policy()
             local_tools = self._try_recover_mech_tools()
+            if local_tools is None:
+                local_tools = self.mech_tools
         else:
             self._policy = self.synchronized_data.policy
             local_tools = self.synchronized_data.available_mech_tools
@@ -236,7 +238,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.warning(f"Could not recover the tools: {e}.")
             return None
 
-    def _try_recover_mech_tools(self) -> List[str]:
+    def _try_recover_mech_tools(self) -> Optional[List[str]]:
         """Try to recover the available tools from the tools store."""
         try:
             tools_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
@@ -245,7 +247,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 return tools
         except Exception as e:
             self.context.logger.warning(f"Could not recover the tools: {e}.")
-            return []
+            return None
 
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
