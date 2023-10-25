@@ -35,16 +35,16 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeigsvceac33asd6ecbqev34meyyjwu3rangenv6xp5rkxyz4krvcby
 - valory/tendermint:0.1.0:bafybeidjqmwvgi4rqgp65tbkhmi45fwn2odr5ecezw6q47hwitsgyw4jpa
 skills:
-- valory/abstract_abci:0.1.0:bafybeigafjci7m7ezwzasav5xqo7v2mbxxn7qb4y7vnuc2wr2irzvn7wsy
-- valory/abstract_round_abci:0.1.0:bafybeih2fyfb6kkf7r45pvdk7pyyebr5xloia4xiqxtb3qsrasnstqmepq
-- valory/registration_abci:0.1.0:bafybeibndt6vxiwc2edgtaxpjbhwto3eyu33ujz3zmvtygvo2qz7xme5li
-- valory/reset_pause_abci:0.1.0:bafybeigeoc363gv3wp2rrmk6p2fdxney33nxd3owtpfugzapgruwe4klyu
-- valory/termination_abci:0.1.0:bafybeigqpij2sgrpnilqjljfciixop4fldq5qceixc7534q6af4potdmdm
-- valory/transaction_settlement_abci:0.1.0:bafybeia7rzsbea3ch4gcafyp3z6uvqh4npws2xpdwbkkdbrqqpjops7nui
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicjghsfbez3qgpwlwrrelepbhqsqmvc5q7vdhzp6ryqnjavugdxsm
-- valory/market_manager_abci:0.1.0:bafybeidnqerwkljbjgog73qaa5duu5ymsfjs6jsszeupseshx7go3n6afq
-- valory/decision_maker_abci:0.1.0:bafybeidplpifszhmzhlgaukjfkztoydzfjy4piutpl26el2gns7iau52fe
-- valory/trader_abci:0.1.0:bafybeid4ywlzf4yop7ieptxbhjj6brysp7ysjuucjc27p6sgmq54pfilwm
+- valory/abstract_abci:0.1.0:bafybeihgemn2gwjc2wyxuh7rttg5pk5gec7dxhet3ih2tmg75vsdbgad7a
+- valory/abstract_round_abci:0.1.0:bafybeid7neqpxxe4ualp23gxgrtpf6r5u3myr2mmc4uvwameyqshfdoydq
+- valory/registration_abci:0.1.0:bafybeidbirkdjus6wbpynmyv6ffb6uevsi3zeuhokiqokuw42o7ar5j7hm
+- valory/reset_pause_abci:0.1.0:bafybeicpxn2khtaesuf4cq6ypwdmdmonlqroj2q2i6cxvpizc2y4cw66pe
+- valory/termination_abci:0.1.0:bafybeieqm46zuccaagnko3qlw6p3nvoohdrfgvpmw467r5lyil2dqrzjsy
+- valory/transaction_settlement_abci:0.1.0:bafybeia6cdxdlqrcwk2maw25fo7dafzd2p3rs7syropvufophk2pitzbwy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib6dvgbls4z3rmqc26t4vu645irf6kjhm7ifjmv7e3ikzjcvul64u
+- valory/market_manager_abci:0.1.0:bafybeigmy3g2klkzdhttti2ouxf575ua5y7ajmh4a3yfpukeukqxjky47m
+- valory/decision_maker_abci:0.1.0:bafybeig7zb4w4ohmzxccwp2x4xxyqz3tmierzb42xlfil2n4cvpk66iaii
+- valory/trader_abci:0.1.0:bafybeidwasoawrqbgenhhln7ngdhnedirdv7kljrxa2w2fau6uejjttaiu
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -163,6 +163,7 @@ models:
       abt_error_mult: ${int:5}
       mech_agent_address: ${str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
       trading_strategy: ${str:bet_amount_per_conf_threshold}
+      bet_kelly_fraction: ${float:1.0}
       bet_amount_per_threshold:
         0.0: ${int:0}
         0.1: ${int:0}

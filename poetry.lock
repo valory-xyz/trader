@@ -2120,8 +2120,8 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "protobuf"
-version = "3.19.5"
-description = "Protocol Buffers"
+version = "4.24.4"
+description = ""
 optional = false
 python-versions = ">=3.5"
 files = [
@@ -2559,6 +2559,16 @@ python-versions = "*"
 files = [
     {file = "pytz-2022.2.1-py2.py3-none-any.whl", hash = "sha256:220f481bdafa09c3955dfbdddb7b57780e9a94f5127e35456a48589b9e0c0197"},
     {file = "pytz-2022.2.1.tar.gz", hash = "sha256:cea221417204f2d1a2aa03ddae3e867921971d0d76f14d87abb4414415bbdcf5"},
+]
+
+[[package]]
+name = "pyunormalize"
+version = "15.0.0"
+description = "Unicode normalization forms (NFC, NFKC, NFD, NFKD). A library independent from the Python core Unicode database."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pyunormalize-15.0.0.tar.gz", hash = "sha256:e63fdba0d85ea04579dde2fc29a072dba773dcae600b04faf6cc90714c8b1302"},
 ]
 
 [[package]]
@@ -3194,6 +3204,41 @@ files = [
 watchmedo = ["PyYAML (>=3.10)"]
 
 [[package]]
+name = "web3"
+version = "6.11.1"
+description = "web3.py"
+optional = false
+python-versions = ">=3.7.2"
+files = [
+    {file = "web3-6.11.1-py3-none-any.whl", hash = "sha256:0d39f58cbb0c652b45e711f01e01ec655117b47ba4eefd1f9550c52d205afa8c"},
+    {file = "web3-6.11.1.tar.gz", hash = "sha256:d301d7120922d5b9e5c9535ef9780012ea25ea4011c2b177490ba7d3ef886b92"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.7.4.post0"
+eth-abi = ">=4.0.0"
+eth-account = ">=0.8.0"
+eth-hash = {version = ">=0.5.1", extras = ["pycryptodome"]}
+eth-typing = ">=3.0.0"
+eth-utils = ">=2.1.0"
+hexbytes = ">=0.1.0,<0.4.0"
+jsonschema = ">=4.0.0"
+lru-dict = ">=1.1.6"
+protobuf = ">=4.21.6"
+pyunormalize = ">=15.0.0"
+pywin32 = {version = ">=223", markers = "platform_system == \"Windows\""}
+requests = ">=2.16.0"
+typing-extensions = ">=4.0.1"
+websockets = ">=10.0.0"
+
+[package.extras]
+dev = ["black (>=22.1.0)", "build (>=0.9.0)", "bumpversion", "eth-tester[py-evm] (==v0.9.1-b.1)", "flake8 (==3.8.3)", "flaky (>=3.7.0)", "hypothesis (>=3.31.2)", "importlib-metadata (<5.0)", "ipfshttpclient (==0.8.0a2)", "isort (>=5.11.0)", "mypy (==1.4.1)", "py-geth (>=3.11.0)", "pytest (>=7.0.0)", "pytest-asyncio (>=0.18.1)", "pytest-mock (>=1.10)", "pytest-watch (>=4.2)", "pytest-xdist (>=1.29)", "setuptools (>=38.6.0)", "sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.0.0)", "towncrier (>=21,<22)", "tox (>=3.18.0)", "tqdm (>4.32)", "twine (>=1.13)", "types-protobuf (==3.19.13)", "types-requests (>=2.26.1)", "types-setuptools (>=57.4.4)", "when-changed (>=0.3.0)"]
+docs = ["sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.0.0)", "towncrier (>=21,<22)"]
+ipfs = ["ipfshttpclient (==0.8.0a2)"]
+linter = ["black (>=22.1.0)", "flake8 (==3.8.3)", "isort (>=5.11.0)", "mypy (==1.4.1)", "types-protobuf (==3.19.13)", "types-requests (>=2.26.1)", "types-setuptools (>=57.4.4)"]
+tester = ["eth-tester[py-evm] (==v0.9.1-b.1)", "py-geth (>=3.11.0)"]
+
+[[package]]
 name = "websocket-client"
 version = "0.59.0"
 description = "WebSocket client for Python with low level API options"
@@ -3404,4 +3449,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.11"
-content-hash = "7b6de2b7c3192e09ee5f687e659f7a2fd21fc2d0f7dca3430d3f1780c743597a"
+content-hash = "f53486b8efbd8d73778e007a5ca81df29c30879ba06d4b45d0c431db06fb05f0"

@@ -12,29 +12,29 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeidny4y4w4jbjbp5d5qivur6jm37fnuik4mqzchzshiuvpozxe7vwy
-  behaviours/bet_placement.py: bafybeihbsgejf57mdcwhkt7vv7lcf6wf2hxlzctdyznr4qvymzwdohmmmi
+  behaviours/base.py: bafybeiakjp65ts3do3wi5bvpizt4vel7sgy5znbtr4obsu4i7h437gob6m
+  behaviours/bet_placement.py: bafybeigtz4uimsqjjwq4r5p3a5v6niqdtqezbuf2ghy6o7syhsh4k5gjfa
   behaviours/blacklisting.py: bafybeicvespraci44y2dtddy4wi7cdhjuyk6crjs7ztnssm2rcrovha3hm
-  behaviours/decision_receive.py: bafybeig6uf5uonbrcutoboplxagqsssh2prlzrlplzkmnoiqrzukzpgumi
-  behaviours/decision_request.py: bafybeiajbv3t6w4vz3u3bbqzaufjfi2znwsly4cvf55farwvp7y7c2jefm
+  behaviours/decision_receive.py: bafybeie6wl3bpnbexgqtw5ahvhonvo6ph5yr4av5qrnffyssgqtybmgjr4
+  behaviours/decision_request.py: bafybeift3ec4uwsccvx7ehtmpypsq7w2625qspbpvu7t2iyv6hdv2scxly
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/reedem.py: bafybeiccrnttqwf5vuf3lr55k5c6tsqsrekoypoag5gntyimjhbmuokkga
   behaviours/round_behaviour.py: bafybeig4tdktyu6hapoqymnxh2bgpds547st6a44heue657wkctwe4gjvm
-  behaviours/sampling.py: bafybeiadikynvkaofbko72jc45xthhmmjfmlkpgramormhxwk5u47rnwdu
+  behaviours/sampling.py: bafybeiarw643pcvh7xk4pp7ytxqbif4ocp5smydrkqv2nnwnlocxpwwyt4
   behaviours/tool_selection.py: bafybeigbxgm6rl6jnexxzjhb7thsdaqr56wfhxpve25yxlr7eyswf6lsey
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeifnob3ceim2mj7lqagtnpwqjqqxs5eg3oiwc73gwm6x5i2dvvlcya
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeiag5eajdmxavqsne3n74uthi3umzwtpuwc6bjbai633ich3kza6he
-  payloads.py: bafybeifjwiv2wtjur73diflcui7neclwtcu76or74udofxyvursu3rgy4i
+  models.py: bafybeihdmbhpjfluyb5pueiqumik2q7l7pe3sibhj7p24jpwbduc2ku6tq
+  payloads.py: bafybeien7rnk27f6j3dfytn45k4gzky5kqlkz5u7npja3zrsdgmgtigjnm
   policy.py: bafybeiftviqwq6lapfxj6ykxyh64z72vauqrgmsoho7zo2lvsdvu32kw3m
   redeem_info.py: bafybeibddfxwp3577c3dl2utaowwltquu5fg6crezpumoebw563wxpbfrm
   rounds.py: bafybeihopxmhzrpipc6r5x2vqf2tcixzuf5xdpqfsr7gr3n756n3ssft5q
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeicbhqfspe7gnhrgabpy5ijbvkuxwjruyk3fiep64t3sjv7xvbxzry
+  states/base.py: bafybeicolcsto2ue5iif36gh4ggjo5kaq4234xrsp2llgvynhbvt53gliy
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiao747i4z7owk6dmwfuzdijag55m3ryj3nowfoggvczpgk3koza44
-  states/decision_receive.py: bafybeifcrtxrcvafqc6cexh7tobzedlqufp4dionb7hvc27y37gniofax4
+  states/decision_receive.py: bafybeiasj5uaixpqau6hcxpw5vyevqrufd3ubkwvgbgy37gcwfom3bl3iq
   states/decision_request.py: bafybeic7otc3hjb753svbmur3yyk6szahc25yii3x4w4vcnpfz6jwvacuu
   states/final_states.py: bafybeidiwhuyd5zm2cq7vhv2owcrxdpm7fnvn3db6p6tql4jz5hgpalflu
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
@@ -162,6 +162,7 @@ models:
       use_termination: false
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       trading_strategy: bet_amount_per_conf_threshold
+      bet_kelly_fraction: 1.0
       bet_amount_per_threshold:
         0.0: 0
         0.1: 0

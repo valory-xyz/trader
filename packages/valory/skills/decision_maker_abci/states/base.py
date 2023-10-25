@@ -116,11 +116,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return int(vote) if vote is not None else None
     
     @property
-    def odds(self) -> float:
-        """Get the vote's odds."""
-        return float(self.db.get_strict("odds"))
-    
-    @property
     def win_probability(self) -> float:
         """Get the vote's win probability."""
         return float(self.db.get_strict("win_probability"))
@@ -129,6 +124,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def confidence(self) -> float:
         """Get the vote's confidence."""
         return float(self.db.get_strict("confidence"))
+    
+    @property
+    def bet_amount(self) -> int:
+        """Get the calculated bet amount."""
+        return int(self.db.get_strict("bet_amount"))
 
     @property
     def is_profitable(self) -> bool:

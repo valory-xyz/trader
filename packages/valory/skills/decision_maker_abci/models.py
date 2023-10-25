@@ -42,10 +42,6 @@ from packages.valory.skills.abstract_round_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
-    remove_fraction_wei,
-)
 
 RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
 REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
@@ -90,7 +86,7 @@ def check_prompt_template(bet_prompt_template: PromptTemplate) -> None:
             f"For example, to parametrize {example_key!r} you may use "
             f"'{delimiter}{{{example_key}}}'"
         )
-
+    
 
 class DecisionMakerParams(MarketManagerParams):
     """Decision maker's parameters."""
@@ -100,6 +96,8 @@ class DecisionMakerParams(MarketManagerParams):
         self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
+        # the factor of calculated kelly bet to use for placing bets
+        self.bet_kelly_fraction: float = self._ensure("bet_kelly_fraction", kwargs, float)
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
@@ -163,46 +161,6 @@ class DecisionMakerParams(MarketManagerParams):
                 f"The configured slippage {slippage!r} is not in the range [0, 1]."
             )
         self._slippage = slippage
-
-    # def get_bet_amount(self, confidence: float) -> int:
-    #     """Get the bet amount given a prediction's confidence."""
-    #     threshold = round(confidence, 1)
-    #     return self.bet_amount_per_threshold[threshold]
-    
-    def get_bet_amount(
-        self,
-        bankroll: int,
-        strategy: str,
-        win_probability: float,
-        confidence: float,
-        selected_type_tokens_in_pool: int,
-        other_tokens_in_pool: int,
-        bet_fee: int,
-    ) -> int:
-        """Get the bet amount given a specified trading strategy."""
-        
-        if strategy == "bet_amount_per_conf_threshold":
-            self.context.logger.info(f"Used trading strategy: {strategy}")
-            threshold = round(confidence, 1)
-            bet_amount = self.bet_amount_per_threshold[threshold]
-            self.context.logger.info(f"Bet amount: {bet_amount}")
-            net_bet_amount = remove_fraction_wei(bet_amount, DecisionMakerBaseBehaviour.wei_to_native(bet_fee))
-            self.context.logger.info(f"Net bet amount: {net_bet_amount}")
-            return net_bet_amount
-        
-        elif strategy == "kelly_criterion":
-            self.context.logger.info(f"Used trading strategy: {strategy}")
-            bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of xDAI available to trade
-            kelly_bet_amount = self._get_kelly_bet_amount(
-                selected_type_tokens_in_pool, other_tokens_in_pool, win_probability, confidence, bankroll
-            )
-            if kelly_bet_amount != None:
-                self.context.logger.info(f"Kelly bet amount wei: {kelly_bet_amount}")
-                self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
-            return kelly_bet_amount
-        
-        else:
-            raise ValueError(f"Invalid trading strategy: {strategy}")
         
     def get_policy_store_path(self, kwargs: Dict) -> Path:
         """Get the path of the policy store."""
@@ -261,13 +219,6 @@ class PredictionResponse:
         """Return the vote. `0` represents "yes" and `1` represents "no"."""
         if self.p_no != self.p_yes:
             return int(self.p_no > self.p_yes)
-        return None
-    
-    @property
-    def odds(self) -> Optional[float]:
-        """Return the odds estimation for winning with vote."""
-        if self.p_no != self.p_yes:
-            return self.p_no / self.p_yes
         return None
     
     @property

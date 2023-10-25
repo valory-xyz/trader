@@ -19,6 +19,8 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+import time
+
 from typing import Generator, Iterator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -54,7 +56,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :param bets: the bets' values to compare for the sampling.
         :return: the id of the sampled bet, out of all the available bets, not only the given ones.
         """
-        return self.synchronized_data.bets.index(max(bets))
+        # Get only bets that close in the next 48 hours
+        # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
+        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + 172800), bets)
+        short_term_bets_list = list(short_term_bets)
+        if len(short_term_bets_list) == 0:
+            return None
+        self.context.logger.info(f"Short term bets: {short_term_bets_list}")
+        return self.synchronized_data.bets.index(max(short_term_bets_list))
 
     def _set_processed(self, idx: int) -> Optional[str]:
         """Update the bet's status for the given id to `PROCESSED`, and return the updated bets list, serialized."""
@@ -72,8 +81,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             return None, None
 
         idx = self._sampled_bet_idx(available_bets)
-
-        if self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
+        
+        if idx is None:
+            msg = "There were no unprocessed bets that close within the next 48 hours available to sample from!"
+            self.context.logger.warning(msg)
+            return None, None
+        elif self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
             return None, None
