@@ -50,8 +50,11 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         sampled_bet.status = BetStatus.BLACKLISTED
         blacklist_expiration = self.synced_time + self.params.blacklisting_duration
         sampled_bet.blacklist_expiration = blacklist_expiration
-        # add a zero reward to the tool that has lead to the blacklisting of the market
-        self.policy.add_reward(self.synchronized_data.mech_tool_idx)
+        if self.synchronized_data.is_mech_price_set:
+            # impose a penalty equivalent to the mech's price on the tool responsible for blacklisting the market
+            tool_idx = self.synchronized_data.mech_tool_idx
+            penalty = -self.synchronized_data.mech_price
+            self.policy.add_reward(tool_idx, penalty)
 
         return serialize_bets(bets)
 
