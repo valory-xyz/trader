@@ -122,7 +122,7 @@ class EGreedyPolicy:
         if self.n_tools == 0:
             return None
 
-        if sum(self.counts) == 0 or random.random() < self.eps:  # nosec
+        if sum(self.reward_rates) == 0 or random.random() < self.eps:  # nosec
             return self.random_tool
 
         return self.best_tool
