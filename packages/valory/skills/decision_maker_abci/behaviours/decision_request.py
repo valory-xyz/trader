@@ -209,7 +209,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
 
         self.context.logger.warning(
             "The balance is not enough to pay for the mech's price. "
-            f"Please refill the safe with at least {missing} xDAI."
+            f"Please refill the safe with at least {self.wei_to_native(missing)} xDAI or wxDAI."
         )
         self.sleep(self.params.sleep_time)
         return False

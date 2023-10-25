@@ -176,10 +176,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _adjust_policy_tools(self) -> None:
+    def _adjust_policy_tools(self, local: List[str]) -> None:
         """Add or remove tools from the policy to match the remote tools."""
-        local = self.synchronized_data.available_mech_tools
-
         # remove tools if they are not available anymore
         # process the indices in reverse order to avoid index shifting when removing the unavailable tools later
         reversed_idx = range(len(local) - 1, -1, -1)
@@ -196,11 +194,14 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         """Set the E Greedy Policy."""
         if self.is_first_period:
             self._policy = self._get_init_policy()
-            recovered_tools = self._try_recover_mech_tools()
-            self.mech_tools = list(set(self.mech_tools + recovered_tools))
+            local_tools = self._try_recover_mech_tools()
+            if local_tools is None:
+                local_tools = self.mech_tools
         else:
             self._policy = self.synchronized_data.policy
-            self._adjust_policy_tools()
+            local_tools = self.synchronized_data.available_mech_tools
+
+        self._adjust_policy_tools(local_tools)
 
     def _get_init_policy(self) -> EGreedyPolicy:
         """Get the initial policy"""
@@ -237,7 +238,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.warning(f"Could not recover the tools: {e}.")
             return None
 
-    def _try_recover_mech_tools(self) -> List[str]:
+    def _try_recover_mech_tools(self) -> Optional[List[str]]:
         """Try to recover the available tools from the tools store."""
         try:
             tools_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
@@ -246,7 +247,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 return tools
         except Exception as e:
             self.context.logger.warning(f"Could not recover the tools: {e}.")
-            return []
+            return None
 
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""

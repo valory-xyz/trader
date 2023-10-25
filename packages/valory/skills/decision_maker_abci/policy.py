@@ -127,7 +127,7 @@ class EGreedyPolicy:
 
         return self.best_tool
 
-    def add_reward(self, index: int, reward: float) -> None:
+    def add_reward(self, index: int, reward: float = 0) -> None:
         """Add a reward for the tool corresponding to the given index."""
         self.counts[index] += 1
         self.rewards[index] += reward

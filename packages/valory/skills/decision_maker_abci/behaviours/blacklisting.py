@@ -24,11 +24,11 @@ from typing import Generator, Optional
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
 from packages.valory.skills.market_manager_abci.bets import BetStatus, serialize_bets
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
@@ -50,13 +50,21 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         sampled_bet.status = BetStatus.BLACKLISTED
         blacklist_expiration = self.synced_time + self.params.blacklisting_duration
         sampled_bet.blacklist_expiration = blacklist_expiration
+        # add a zero reward to the tool that has lead to the blacklisting of the market
+        self.policy.add_reward(self.synchronized_data.mech_tool_idx)
 
         return serialize_bets(bets)
+
+    def setup(self) -> None:
+        """Setup the behaviour"""
+        self._policy = self.synchronized_data.policy
 
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            payload = UpdateBetsPayload(self.context.agent_address, self._blacklist())
+            bets = self._blacklist()
+            policy = self.policy.serialize()
+            payload = BlacklistingPayload(self.context.agent_address, bets, policy)
 
         yield from self.finish_behaviour(payload)
