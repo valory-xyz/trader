@@ -114,13 +114,15 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
 
     def _update_policy(self, update: Trade) -> None:
         """Update the policy."""
-        claimable_xdai = self.wei_to_native(update.claimable_amount)
         # the mapping might not contain a tool for a bet placement because it might have happened on a previous run
         tool_index = self.utilized_tools.get(update.transactionHash, None)
         if tool_index is not None:
             # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
             del self.utilized_tools[update.transactionHash]
-            self.policy.add_reward(tool_index, claimable_xdai)
+            claimable_xdai = self.wei_to_native(update.claimable_amount)
+            mech_price = self.wei_to_native(self.synchronized_data.mech_price)
+            reward = claimable_xdai - mech_price
+            self.policy.add_reward(tool_index, reward)
 
     def _stats_report(self) -> None:
         """Report policy statistics."""
