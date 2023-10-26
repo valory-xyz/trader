@@ -195,7 +195,7 @@ class MultisendBatch:
     operation: MultiSendOperation = MultiSendOperation.CALL
 
 
-@dataclass
+@dataclass(init=False)
 class PredictionResponse:
     """A response of a prediction."""
 
@@ -204,9 +204,14 @@ class PredictionResponse:
     confidence: float
     info_utility: float
 
-    def __post_init__(self) -> None:
-        """Runs checks on whether the current prediction response is valid or not."""
-        # all the fields are probabilities
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the mech's prediction ignoring extra keys."""
+        self.p_yes = float(kwargs.pop("p_yes"))
+        self.p_no = float(kwargs.pop("p_no"))
+        self.confidence = float(kwargs.pop("confidence"))
+        self.info_utility = float(kwargs.pop("info_utility"))
+
+        # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
         probabilities = (getattr(self, field) for field in self.__annotations__)
         if (
             any(not (0 <= prob <= 1) for prob in probabilities)
@@ -229,16 +234,20 @@ class PredictionResponse:
         return None
 
 
-@dataclass
+@dataclass(init=False)
 class MechInteractionResponse:
     """A structure for the response of a mech interaction task."""
 
-    requestId: int = 0
-    result: Optional[PredictionResponse] = None
-    error: str = "Unknown"
+    request_id: int
+    result: Optional[PredictionResponse]
+    error: str
 
-    def __post_init__(self) -> None:
-        """Parses the nested part of the mech interaction response to a `PredictionResponse`."""
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the mech's response ignoring extra keys."""
+        self.request_id = kwargs.pop("requestId", 0)
+        self.error = kwargs.pop("error", "Unknown")
+        self.result = kwargs.pop("result", None)
+
         if isinstance(self.result, str):
             self.result = PredictionResponse(**json.loads(self.result))
 

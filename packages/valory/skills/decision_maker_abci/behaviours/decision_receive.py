@@ -221,7 +221,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         try:
             self._mech_response = MechInteractionResponse(**res)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, KeyError):
             self._mech_response = MechInteractionResponse.incorrect_format(res)
 
         return True
