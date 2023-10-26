@@ -207,10 +207,10 @@ class PredictionResponse:
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the mech's prediction ignoring extra keys."""
-        self.p_yes = kwargs.pop("p_yes")
-        self.p_no = kwargs.pop("p_no")
-        self.confidence = kwargs.pop("confidence")
-        self.info_utility = kwargs.pop("info_utility")
+        self.p_yes = float(kwargs.pop("p_yes"))
+        self.p_no = float(kwargs.pop("p_no"))
+        self.confidence = float(kwargs.pop("confidence"))
+        self.info_utility = float(kwargs.pop("info_utility"))
 
         # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
         probabilities = (getattr(self, field) for field in self.__annotations__)
@@ -240,10 +240,10 @@ class MechInteractionResponse:
         """Initialize the mech's response ignoring extra keys."""
         self.request_id = kwargs.pop("requestId", 0)
         self.error = kwargs.pop("error", "Unknown")
-        result = kwargs.pop("result", None)
+        self.result = kwargs.pop("result", None)
 
-        if isinstance(result, str):
-            self.result = PredictionResponse(**json.loads(result))
+        if isinstance(self.result, str):
+            self.result = PredictionResponse(**json.loads(self.result))
 
     @classmethod
     def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
