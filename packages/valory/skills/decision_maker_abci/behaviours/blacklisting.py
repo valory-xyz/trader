@@ -53,7 +53,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         if self.synchronized_data.is_mech_price_set:
             # impose a penalty equivalent to the mech's price on the tool responsible for blacklisting the market
             tool_idx = self.synchronized_data.mech_tool_idx
-            penalty = -self.synchronized_data.mech_price
+            penalty = -self.wei_to_native(self.synchronized_data.mech_price)
             self.policy.add_reward(tool_idx, penalty)
 
         return serialize_bets(bets)
