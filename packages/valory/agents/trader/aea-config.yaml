@@ -41,10 +41,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicpxn2khtaesuf4cq6ypwdmdmonlqroj2q2i6cxvpizc2y4cw66pe
 - valory/termination_abci:0.1.0:bafybeieqm46zuccaagnko3qlw6p3nvoohdrfgvpmw467r5lyil2dqrzjsy
 - valory/transaction_settlement_abci:0.1.0:bafybeia6cdxdlqrcwk2maw25fo7dafzd2p3rs7syropvufophk2pitzbwy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihjoetoipbyivp52xwpbfpvgqazzyrhh3djgi552xbpr7enlezpmi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigk645ypegx6niauycxgvzvomyrfb4h5qvnht6hlmpqwwl5mb7eei
 - valory/market_manager_abci:0.1.0:bafybeigmy3g2klkzdhttti2ouxf575ua5y7ajmh4a3yfpukeukqxjky47m
-- valory/decision_maker_abci:0.1.0:bafybeih4aa6rxd625clmccuz2dyhmnrsj4gxzo3pobu3l4gyopzsn7keeq
-- valory/trader_abci:0.1.0:bafybeifeaukjvguqqjh6fxfutujcc4khe6dvfx4u55duf76dvchxjootp4
+- valory/decision_maker_abci:0.1.0:bafybeibwkfuzcqcgzhkca5dts3jqyx5lcxdaglxezxitys2stcrnfpegkq
+- valory/trader_abci:0.1.0:bafybeidhtfdxqfommouxrx35ur6hr7xfqms6xdmeslldadybjru7jj3dri
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -162,6 +162,7 @@ models:
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
       mech_agent_address: ${str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+      sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:bet_amount_per_conf_threshold}
       bet_kelly_fraction: ${float:1.0}
       bet_amount_per_threshold:

@@ -58,7 +58,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """
         # Get only bets that close in the next 48 hours
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
-        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + 172800), bets)
+        if self.params.sample_bets_closing_days <= 0:
+            msg = "The number of days to sample bets from must be positive!"
+            self.context.logger.warning(msg)
+            return None
+        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + self.params.sample_bets_closing_days*60*60*24), bets)
         short_term_bets_list = list(short_term_bets)
         if len(short_term_bets_list) == 0:
             return None
