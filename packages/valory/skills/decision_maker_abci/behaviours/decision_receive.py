@@ -390,17 +390,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_fee,
         )
         
-        # # Safety fallback to bet amount per conf threshold
-        # # Only remove if you are sure that kelly bet amount is working as expected
-        # bet_amount = self.get_bet_amount(
-        #     bankroll,
-        #     "bet_amount_per_conf_threshold",
-        #     win_probability,
-        #     confidence,
-        #     selected_type_tokens_in_pool,
-        #     other_tokens_in_pool,
-        #     bet_fee,
-        # )
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
@@ -409,7 +398,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
         
-        # Set available shares to 1/3 of the total available shares to prevent the bot from buying all shares in this test scenario
+        # Set available shares to 1/3 of the total available shares to prevent the bot from consuming too much liquidity
+        # Deactivate if bet strategy is kelly and it is no test scenario as kelly counts liquidity in already.
+        available_shares = int(available_shares / 3)
         self.context.logger.info(f"Adjusted available shares: {available_shares}")
         if num_shares > available_shares * SLIPPAGE:
             self.context.logger.warning(
@@ -417,6 +408,29 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
                 "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
             )
+            if self.params.trading_strategy == "kelly_criterion":
+                self.context.logger.warning(
+                    "Reducing kelly bet amount so the bought shares don't exceed available shares"
+                )
+                prev_bet_amount = bet_amount
+                bet_amount = self.get_max_bet_amount(
+                    available_shares,
+                    selected_type_tokens_in_pool,
+                    other_tokens_in_pool, 
+                    bet_fee,
+                )
+                if bet_amount >= prev_bet_amount:
+                    bet_amount = 0
+                    self.context.logger.warning(
+                        "The new bet amount is >= the previous one. There might be a calculation error. \
+                        No bet will be placed."
+                    )
+                else:
+                    self.context.logger.info(
+                        f"New bet amount: {bet_amount}"
+                        f"Betting {round(100*bet_amount/prev_bet_amount, 2)}% of the calculated kelly bet amount."
+                    )
+
         bet_threshold = self.params.bet_threshold
         self.context.logger.info(f"Bet threshold: {bet_threshold}")
         if bet_threshold <= 0:
