@@ -58,6 +58,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """
         # Get only bets that close in the next 48 hours
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
+        
         if self.params.sample_bets_closing_days <= 0:
             msg = "The number of days to sample bets from must be positive!"
             self.context.logger.warning(msg)
