@@ -15,7 +15,7 @@ fingerprint:
   behaviours/base.py: bafybeiakjp65ts3do3wi5bvpizt4vel7sgy5znbtr4obsu4i7h437gob6m
   behaviours/bet_placement.py: bafybeigtz4uimsqjjwq4r5p3a5v6niqdtqezbuf2ghy6o7syhsh4k5gjfa
   behaviours/blacklisting.py: bafybeicl6b4hcmqmekta2mcuhkkydnzk7jmic6k44e6ns3u2ibad3awzvu
-  behaviours/decision_receive.py: bafybeid5yzjer3vacvrjz6rwksbuu5eqivwvpa2ag6wzwcceqagg2m3niy
+  behaviours/decision_receive.py: bafybeifscx27fxwdqqrh7ne7ncczzsnqhm3qhu4xvsyfpzosppb3df3xme
   behaviours/decision_request.py: bafybeia7ko3nryzcnsihh4ab7vnrgtyjm3w7tvmkxhqzr2a65hcfo5fzye
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/reedem.py: bafybeihywv5332ngbz4hhcwjbaglctblwjbfhdenppznnlxbsgnxdhrrim
@@ -25,7 +25,7 @@ fingerprint:
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeifnob3ceim2mj7lqagtnpwqjqqxs5eg3oiwc73gwm6x5i2dvvlcya
   handlers.py: bafybeihj33szgrcxnpd73s4nvluyxwwsvhjum2cuq3ilhhe6vfola3k7vy
-  models.py: bafybeifimsvv37emaffsc7zqhg5rkps5q6e7ah7xwjzap7znb2k65ailva
+  models.py: bafybeih4t43cod4mi4hper4w4jwttenhdzh653cmhzmybaqocuwcpuh5ri
   payloads.py: bafybeifq7mz5jbb6lqhdlrlr5kpqb2ghvr3xlt7usegaimree7yryeh2na
   policy.py: bafybeidpmx4ek3qze63zpuwixyf6t7bdv62ewgkzt3ljrzadiwdw64cueq
   redeem_info.py: bafybeibddfxwp3577c3dl2utaowwltquu5fg6crezpumoebw563wxpbfrm
