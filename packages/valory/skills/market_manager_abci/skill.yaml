@@ -137,7 +137,6 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      redeem_margin_days: 15
     class_name: MarketManagerParams
   network_subgraph:
     args:

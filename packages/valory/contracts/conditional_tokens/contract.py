@@ -95,8 +95,6 @@ class ConditionalTokensContract(Contract):
                 f"Did the creation happen too long in the past?\n"
                 f"The market with condition id {earliest_condition_id!r} "
                 f"is the oldest one and the block filtering was set based on it."
-                "If the issue persists, try to decrease the value of `redeem_margin_days` "
-                f"in the agent's configuration, based on the date corresponding to the block number {earliest_block}."
             )
             return dict(error=msg)
 

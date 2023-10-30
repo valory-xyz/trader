@@ -186,7 +186,6 @@ models:
       realitio_address: ${str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
-      redeem_margin_days: ${int:15}
       policy_epsilon: ${float:0.1}
       policy_store_path: ${str:/data/}
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
