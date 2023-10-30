@@ -55,7 +55,6 @@ class ConditionalTokensContract(Contract):
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
         earliest_block = DEFAULT_FROM_BLOCK
-        earliest_condition_id = HexBytes("")
 
         for condition_id, from_block in from_block_numbers.items():
             if (
@@ -64,7 +63,6 @@ class ConditionalTokensContract(Contract):
                 or earliest_block == DEFAULT_FROM_BLOCK
             ):
                 earliest_block = from_block
-                earliest_condition_id = condition_id
 
         contract_instance = cls.get_instance(ledger_api, contract_address)
         to_checksum = ledger_api.api.to_checksum_address
@@ -90,11 +88,9 @@ class ConditionalTokensContract(Contract):
         except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
-                f"The service tried to filter from block {earliest_block} to latest, "
+                f"The service tried to filter from block {earliest_block} to latest, with a step {chunk_size},"
                 f"as the earliest market creation transaction took place at block {earliest_block}. "
-                f"Did the creation happen too long in the past?\n"
-                f"The market with condition id {earliest_condition_id!r} "
-                f"is the oldest one and the block filtering was set based on it."
+                f"If this issue persists, please try lowering the step size!"
             )
             return dict(error=msg)
 
