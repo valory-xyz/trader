@@ -1,17 +1,17 @@
 {
     "dev": {
-        "skill/valory/market_manager_abci/0.1.0": "bafybeigmy3g2klkzdhttti2ouxf575ua5y7ajmh4a3yfpukeukqxjky47m",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeichzmhpgyhk5gc6gepocdaghdwyoutq4x3ul4w7av4lasp7bxfb3y",
-        "skill/valory/trader_abci/0.1.0": "bafybeifrvvhiaioqqjzyouhi3ga37jk7ataxz5sox275mccqqszcsiehju",
+        "skill/valory/market_manager_abci/0.1.0": "bafybeidropskas24c4lcekzdbwoflhnzaglmeqxvpyuoa7cf7q2rf2yex4",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeihcwzgpl5cgxmbi2ttqum5khnryxnp3cdrxm64q6dgerjr7weqk2m",
+        "skill/valory/trader_abci/0.1.0": "bafybeic7ztyme3wlzdykvnnpxvaxxpy4byqjxt6uunoalbz7etzo6uhfza",
         "contract/valory/market_maker/0.1.0": "bafybeif4mm2s3gxtvp227yypkcnna5ftec7vajcftvtbdmqddh7nprah5m",
-        "agent/valory/trader/0.1.0": "bafybeidfoajq7jno5ojcgvdkcacialgqr4rsayivkspjdyhcd2povbkiri",
-        "service/valory/trader/0.1.0": "bafybeihwzztpxd5g3pq5awpdtvbirdkwzt66bj26lpulzay2afsrzubfnq",
+        "agent/valory/trader/0.1.0": "bafybeid2e66zg5gx33xskdxmfcw7vtluvy4bwnoda3ouchu6rsmhtlkgsi",
+        "service/valory/trader/0.1.0": "bafybeicdmgkvyefq4fn4amoqhtfi4h5bgbidwt57fwerlpziaon3rsvmzi",
         "contract/valory/erc20/0.1.0": "bafybeibysifjwhlcn7nntsjkowdmja53ed6urfzypi6sxfc7chtheecvpi",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeib5s5ubudn67phubygrx7lmlzfrhwhy4lo6biusef7ffk2jyipn6a",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeif22r6jg3lptvm2jwyxpozr4wdk63j52rpnmkq7fepst4s4dt4auq",
         "contract/valory/mech/0.1.0": "bafybeifaavuqr2bz7nypapjwkufc5c6vwxm5ifucmtd3w7sh42tne35nga",
         "contract/valory/realitio/0.1.0": "bafybeic3wihpzz4deguslpzlnsgrlrabclq3njwuagyaiiv6rzqujfrs6e",
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
-        "contract/valory/conditional_tokens/0.1.0": "bafybeif5jwc6owfe6brmqq5sfnhrwo2ajdtt4glrmyhlqxcvtkyofahwsa",
+        "contract/valory/conditional_tokens/0.1.0": "bafybeicbkivacygycd26mqwvsp4c7velo2lpbxzwmrsgxg65prnvri6yoi",
         "contract/valory/agent_registry/0.1.0": "bafybeifwdtwxdc2jdlhzdyxctqdmoz6zroxf5o4nhuok5l4luvnofqavty"
     },
     "third_party": {
