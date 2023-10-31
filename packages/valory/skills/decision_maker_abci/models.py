@@ -26,7 +26,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Optional, Set, Union
+from typing import Any, Dict, Optional, Set, Type, Union
 
 from aea.exceptions import enforce
 from aea.skills.base import SkillContext
@@ -34,6 +34,7 @@ from hexbytes import HexBytes
 from web3.types import BlockIdentifier
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
+from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
@@ -91,7 +92,7 @@ class RedeemingProgress:
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
-    abci_app_cls = DecisionMakerAbciApp
+    abci_app_cls: Type[AbciApp] = DecisionMakerAbciApp
 
     def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
         """Initialize the state."""
