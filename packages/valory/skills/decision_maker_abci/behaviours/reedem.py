@@ -63,7 +63,6 @@ ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_TIMESTAMP_KEY = "timestamp"
 DEFAULT_TO_BLOCK = "latest"
-EVENT_FILTERING_BATCH_SIZE = 5000
 
 
 class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
@@ -420,12 +419,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.redeeming_progress.to_block = self.latest_block_timestamp
             self.redeeming_progress.started = True
 
+        batch_size = self.params.event_filtering_batch_size
         for from_block in range(
             self.redeeming_progress.from_block,
             self.redeeming_progress.to_block,
-            EVENT_FILTERING_BATCH_SIZE,
+            batch_size,
         ):
-            max_to_block = from_block + EVENT_FILTERING_BATCH_SIZE
+            max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.to_block)
             result = yield from self._conditional_tokens_interact(
                 contract_callable="check_redeemed",

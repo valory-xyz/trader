@@ -69,7 +69,6 @@ class ConditionalTokensContract(Contract):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
                 f"The service tried to filter from block {from_block} to {to_block}."
-                # TODO add EVENT_FILTERING_BATCH_SIZE to params
                 f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
             )
             return dict(error=msg)

@@ -154,6 +154,12 @@ class DecisionMakerParams(MarketManagerParams):
             "realitio_proxy_address", kwargs, str
         )
         self.realitio_address = self._ensure("realitio_address", kwargs, str)
+        # this is the maximum batch size that will be used when filtering blocks for events.
+        # increasing this number allows for faster filtering operations,
+        # but also increases the chances of getting a timeout error from the RPC
+        self.event_filtering_batch_size = self._ensure(
+            "event_filtering_batch_size", kwargs, int
+        )
         # this is the max number of redeeming operations that will be batched on a single multisend transaction.
         # increasing this number equals fewer fees but more chances for the transaction to fail
         self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
