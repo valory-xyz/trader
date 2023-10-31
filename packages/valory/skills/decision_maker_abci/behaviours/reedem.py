@@ -34,6 +34,7 @@ from packages.valory.contracts.conditional_tokens.contract import (
 from packages.valory.contracts.realitio.contract import RealitioContract
 from packages.valory.contracts.realitio_proxy.contract import RealitioProxyContract
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -55,10 +56,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
-DEFAULT_FROM_BLOCK = "earliest"
-
-
-FromBlockMappingType = Dict[HexBytes, Union[int, str]]
+BLOCK_TIMESTAMP_KEY = "timestamp"
+DEFAULT_TO_BLOCK = "latest"
 
 
 class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
@@ -181,6 +180,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
+        self._latest_block_timestamp: Optional[int] = None
         self._finalized: bool = False
         self._already_resolved: bool = False
         self._payouts: Dict[str, int] = {}
@@ -188,6 +188,23 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._current_redeem_info: Optional[Trade] = None
         self._expected_winnings: int = 0
         self._history_hash: bytes = ZERO_BYTES
+
+    @property
+    def latest_block_timestamp(self) -> int:
+        """Get the latest block timestamp."""
+        if self._latest_block_timestamp is None:
+            error = "Attempting to retrieve the latest block number, but it hasn't been set yet."
+            raise ValueError(error)
+        return self._latest_block_timestamp
+
+    @latest_block_timestamp.setter
+    def latest_block_timestamp(self, latest_block_timestamp: str) -> None:
+        """Set the latest block timestamp."""
+        try:
+            self._latest_block_timestamp = int(latest_block_timestamp)
+        except (TypeError, ValueError) as exc:
+            error = f"{latest_block_timestamp=} cannot be converted to a valid integer."
+            raise ValueError(error) from exc
 
     @property
     def current_redeem_info(self) -> Trade:
@@ -320,6 +337,21 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             **kwargs,
         )
         return status
+
+    def _get_latest_block(self) -> WaitableConditionType:
+        """Get the latest block's timestamp."""
+        ledger_api_response = yield from self.get_ledger_api_response(
+            performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
+            ledger_callable="get_block",
+            block_identifier=DEFAULT_TO_BLOCK,
+        )
+        if ledger_api_response.performative != LedgerApiMessage.Performative.STATE:
+            self.context.logger.error(f"Failed to get block: {ledger_api_response}")
+            return False
+        self.latest_block_timestamp = ledger_api_response.state.body.get(
+            BLOCK_TIMESTAMP_KEY
+        )
+        return True
 
     def _check_already_redeemed(self) -> WaitableConditionType:
         """Check whether we have already redeemed for this bet."""
