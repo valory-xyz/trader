@@ -22,13 +22,16 @@
 import json
 import os
 import re
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set, Union
 
 from aea.exceptions import enforce
+from aea.skills.base import SkillContext
 from hexbytes import HexBytes
+from web3.types import BlockIdentifier
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
@@ -39,12 +42,18 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 
 
 RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
 REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
+DEFAULT_FROM_BLOCK = "earliest"
+
+
+FromBlockMappingType = Dict[HexBytes, Union[int, str]]
 
 
 class PromptTemplate(Template):
@@ -55,6 +64,28 @@ class PromptTemplate(Template):
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
+
+
+@dataclass
+class RedeemingProgress:
+    """A structure to keep track of the redeeming check progress."""
+
+    trades: Set[Trade] = field(default_factory=lambda: set())
+    utilized_tools: Dict[str, int] = field(default_factory=lambda: {})
+    policy: Optional[EGreedyPolicy] = None
+    claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
+    from_block_mapping: FromBlockMappingType = field(
+        default_factory=lambda: defaultdict(lambda: DEFAULT_FROM_BLOCK)
+    )
+    from_block: BlockIdentifier = "earliest"
+    to_block: BlockIdentifier = "latest"
+    payouts: Dict[str, int] = field(default_factory=lambda: {})
+    started: bool = False
+
+    @property
+    def finished(self) -> bool:
+        """Whether the check has finished."""
+        return self.started and self.from_block == self.to_block
 
 
 class SharedState(BaseSharedState):
