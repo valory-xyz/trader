@@ -35,7 +35,7 @@ from packages.valory.contracts.realitio.contract import RealitioContract
 from packages.valory.contracts.realitio_proxy.contract import RealitioProxyContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload, get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
@@ -683,6 +683,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         with path.open("w") as f:
             json.dump(self.utilized_tools, f)
 
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        self.redeeming_progress = RedeemingProgress()
+        self._store_utilized_tools()
+        yield from super().finish_behaviour(payload)
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -710,8 +716,3 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
 
         yield from self.finish_behaviour(payload)
-
-    def clean_up(self) -> None:
-        """Clean up operations."""
-        self.redeeming_progress = RedeemingProgress()
-        self._store_utilized_tools()
