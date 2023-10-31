@@ -61,7 +61,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
-BLOCK_TIMESTAMP_KEY = "timestamp"
+BLOCK_NUMBER_KEY = "number"
 DEFAULT_TO_BLOCK = "latest"
 
 
@@ -185,7 +185,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
-        self._latest_block_timestamp: Optional[int] = None
+        self._latest_block_number: Optional[int] = None
         self._finalized: bool = False
         self._already_resolved: bool = False
         self._payouts: Dict[str, int] = {}
@@ -205,20 +205,20 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.shared_state.redeeming_progress = payouts
 
     @property
-    def latest_block_timestamp(self) -> int:
-        """Get the latest block timestamp."""
-        if self._latest_block_timestamp is None:
+    def latest_block_number(self) -> int:
+        """Get the latest block number."""
+        if self._latest_block_number is None:
             error = "Attempting to retrieve the latest block number, but it hasn't been set yet."
             raise ValueError(error)
-        return self._latest_block_timestamp
+        return self._latest_block_number
 
-    @latest_block_timestamp.setter
-    def latest_block_timestamp(self, latest_block_timestamp: str) -> None:
-        """Set the latest block timestamp."""
+    @latest_block_number.setter
+    def latest_block_number(self, latest_block_number: str) -> None:
+        """Set the latest block number."""
         try:
-            self._latest_block_timestamp = int(latest_block_timestamp)
+            self._latest_block_number = int(latest_block_number)
         except (TypeError, ValueError) as exc:
-            error = f"{latest_block_timestamp=} cannot be converted to a valid integer."
+            error = f"{latest_block_number=} cannot be converted to a valid integer."
             raise ValueError(error) from exc
 
     @property
@@ -379,8 +379,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if ledger_api_response.performative != LedgerApiMessage.Performative.STATE:
             self.context.logger.error(f"Failed to get block: {ledger_api_response}")
             return False
-        self.latest_block_timestamp = ledger_api_response.state.body.get(
-            BLOCK_TIMESTAMP_KEY
+        self.latest_block_number = ledger_api_response.state.body.get(
+            BLOCK_NUMBER_KEY
         )
         return True
 
@@ -416,7 +416,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if not self.redeeming_progress.started:
             self.redeeming_progress.from_block = earliest_block
             yield from self.wait_for_condition_with_sleep(self._get_latest_block)
-            self.redeeming_progress.to_block = self.latest_block_timestamp
+            self.redeeming_progress.to_block = self.latest_block_number
             self.redeeming_progress.started = True
 
         batch_size = self.params.event_filtering_batch_size
