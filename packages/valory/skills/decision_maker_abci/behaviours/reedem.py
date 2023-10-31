@@ -181,6 +181,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
+        self._claim_params_batch: list = []
         self._latest_block_number: Optional[int] = None
         self._finalized: bool = False
         self._already_resolved: bool = False
@@ -310,6 +311,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._already_resolved = flag
 
     @property
+    def claim_params_batch(self) -> list:
+        """Get the current batch of the claim parameters."""
+        return self._claim_params_batch
+
+    @claim_params_batch.setter
+    def claim_params_batch(self, claim_params_batch: list) -> None:
+        """Set the current batch of the claim parameters."""
+        self._claim_params_batch = claim_params_batch
+
+    @property
     def built_data(self) -> HexBytes:
         """Get the built transaction's data."""
         return self._built_data
@@ -375,9 +386,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if ledger_api_response.performative != LedgerApiMessage.Performative.STATE:
             self.context.logger.error(f"Failed to get block: {ledger_api_response}")
             return False
-        self.latest_block_number = ledger_api_response.state.body.get(
-            BLOCK_NUMBER_KEY
-        )
+        self.latest_block_number = ledger_api_response.state.body.get(BLOCK_NUMBER_KEY)
         return True
 
     def _check_already_redeemed(self) -> WaitableConditionType:
@@ -401,20 +410,20 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             kwargs["condition_ids"].append(trade.fpmm.condition.id)
             kwargs["index_sets"].append(trade.fpmm.condition.index_sets)
 
-        if not self.redeeming_progress.started:
-            self.redeeming_progress.from_block = self.earliest_block_number
+        if not self.redeeming_progress.check_started:
+            self.redeeming_progress.check_from_block = self.earliest_block_number
             yield from self.wait_for_condition_with_sleep(self._get_latest_block)
-            self.redeeming_progress.to_block = self.latest_block_number
-            self.redeeming_progress.started = True
+            self.redeeming_progress.check_to_block = self.latest_block_number
+            self.redeeming_progress.check_started = True
 
         batch_size = self.params.event_filtering_batch_size
         for from_block in range(
-            self.redeeming_progress.from_block,
-            self.redeeming_progress.to_block,
+            self.redeeming_progress.check_from_block,
+            self.redeeming_progress.check_to_block,
             batch_size,
         ):
             max_to_block = from_block + batch_size
-            to_block = min(max_to_block, self.redeeming_progress.to_block)
+            to_block = min(max_to_block, self.redeeming_progress.check_to_block)
             result = yield from self._conditional_tokens_interact(
                 contract_callable="check_redeemed",
                 data_key="payouts",
@@ -427,7 +436,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not result:
                 return False
             self.redeeming_progress.payouts.update(self.payouts_batch)
-            self.redeeming_progress.from_block = to_block
+            self.redeeming_progress.check_from_block = to_block
 
         return True
 
@@ -515,14 +524,49 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.multisend_batches.append(batch)
         return True
 
+    def get_claim_params(self) -> WaitableConditionType:
+        """Get the claim parameters using batches for the filtering events."""
+        if not self.redeeming_progress.claim_started:
+            self.redeeming_progress.claim_from_block = self.earliest_block_number
+            self.redeeming_progress.claim_to_block = (
+                self.redeeming_progress.check_to_block
+            )
+            self.redeeming_progress.claim_started = True
+
+        batch_size = self.params.event_filtering_batch_size
+        for from_block in range(
+            self.redeeming_progress.claim_from_block,
+            self.redeeming_progress.claim_to_block,
+            batch_size,
+        ):
+            max_to_block = from_block + batch_size
+            to_block = min(max_to_block, self.redeeming_progress.claim_to_block)
+            result = yield from self._conditional_tokens_interact(
+                contract_callable="get_claim_params",
+                data_key="claim_params",
+                placeholder=get_name(RedeemBehaviour.claim_params_batch),
+                from_block=from_block,
+                to_block=to_block,
+                question_id=self.current_question_id,
+            )
+            if not result:
+                return False
+            self.redeeming_progress.answered.extend(self.claim_params_batch)
+            self.redeeming_progress.claim_from_block = to_block
+
+        return True
+
     def _build_claim_data(self) -> WaitableConditionType:
         """Prepare the safe tx to claim the winnings."""
+        if not self.redeeming_progress.claim_finished:
+            yield from self.wait_for_condition_with_sleep(self.get_claim_params)
+
         result = yield from self._realitio_interact(
             contract_callable="build_claim_winnings",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
-            from_block=self.earliest_block_number,
             question_id=self.current_question_id,
+            claim_params=self.redeeming_progress.claim_params,
         )
 
         if not result:
@@ -680,7 +724,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            if not self.redeeming_progress.started:
+            if not self.redeeming_progress.check_started:
                 yield from self._get_redeem_info()
                 self._store_progress()
             else:
@@ -688,7 +732,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 self.context.logger.info(msg)
                 self._load_progress()
 
-            if not self.redeeming_progress.finished:
+            if not self.redeeming_progress.check_finished:
                 yield from self._clean_redeem_info()
 
             agent = self.context.agent_address

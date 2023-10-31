@@ -25,11 +25,12 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Optional, Set, Type, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 from aea.exceptions import enforce
 from aea.skills.base import SkillContext
 from hexbytes import HexBytes
+from web3.constants import HASH_ZERO
 from web3.types import BlockIdentifier
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
@@ -48,12 +49,15 @@ from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciA
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 
 
+FromBlockMappingType = Dict[HexBytes, Union[int, str]]
+ClaimParamsType = Tuple[List[bytes], List[str], List[int], List[bytes]]
+
+
 RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
 REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
 DEFAULT_FROM_BLOCK = "earliest"
-
-
-FromBlockMappingType = Dict[HexBytes, Union[int, str]]
+ZERO_HEX = HASH_ZERO[2:]
+ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 
 
 class PromptTemplate(Template):
@@ -75,15 +79,48 @@ class RedeemingProgress:
     policy: Optional[EGreedyPolicy] = None
     claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
     earliest_block_number: int = 0
-    from_block: BlockIdentifier = "earliest"
-    to_block: BlockIdentifier = "latest"
+    check_started: bool = False
+    check_from_block: BlockIdentifier = "earliest"
+    check_to_block: BlockIdentifier = "latest"
     payouts: Dict[str, int] = field(default_factory=lambda: {})
-    started: bool = False
+    claim_started: bool = False
+    claim_from_block: BlockIdentifier = "earliest"
+    claim_to_block: BlockIdentifier = "latest"
+    answered: list = field(default_factory=lambda: [])
 
     @property
-    def finished(self) -> bool:
+    def check_finished(self) -> bool:
         """Whether the check has finished."""
-        return self.started and self.from_block == self.to_block
+        return self.check_started and self.check_from_block == self.check_to_block
+
+    @property
+    def claim_finished(self) -> bool:
+        """Whether the claiming has finished."""
+        return self.claim_started and self.claim_from_block == self.claim_to_block
+
+    @property
+    def claim_params(self) -> ClaimParamsType:
+        """The claim parameters, prepared for the `claimWinnings` call."""
+        history_hashes = []
+        addresses = []
+        bonds = []
+        answers = []
+        for i, answer in enumerate(reversed(self.answered)):
+            # history_hashes second-last-to-first, the hash of each history entry, calculated as described here:
+            # https://realitio.github.io/docs/html/contract_explanation.html#answer-history-entries.
+            if i == len(self.answered) - 1:
+                history_hashes.append(ZERO_BYTES)
+            else:
+                history_hashes.append(self.answered[i + 1]["args"]["history_hash"])
+
+            # last-to-first, the address of each answerer or commitment sender
+            addresses.append(answer["args"]["user"])
+            # last-to-first, the bond supplied with each answer or commitment
+            bonds.append(answer["args"]["bond"])
+            # last-to-first, each answer supplied, or commitment ID if the answer was supplied with commit->reveal
+            answers.append(answer["args"]["answer"])
+
+        return history_hashes, addresses, bonds, answers
 
 
 class SharedState(BaseSharedState):
