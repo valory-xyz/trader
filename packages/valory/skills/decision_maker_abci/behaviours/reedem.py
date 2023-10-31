@@ -21,7 +21,6 @@
 
 import json
 from abc import ABC
-from collections import defaultdict
 from sys import maxsize
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
 
@@ -41,8 +40,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import (
-    DEFAULT_FROM_BLOCK,
-    FromBlockMappingType,
     MultisendBatch,
     RedeemingProgress,
 )
@@ -73,11 +70,7 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         super().__init__(**kwargs)
         self.utilized_tools: Dict[str, int] = {}
         self.trades: Set[Trade] = set()
-
-        # blocks in which the markets were created mapped to the corresponding condition ids
-        self.from_block_mapping: FromBlockMappingType = defaultdict(
-            lambda: DEFAULT_FROM_BLOCK
-        )
+        self.earliest_block_number: int = 0
 
         # this is a mapping from condition id to amount
         # the purpose of this attribute is to rectify the claimable amount within a redeeming information object.
@@ -106,14 +99,13 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             if self._fetch_status != FetchStatus.IN_PROGRESS:
                 break
 
-        condition_id = trade.fpmm.condition.id
         if self._fetch_status == FetchStatus.SUCCESS:
             block_number = block.get("id", "")
             if block_number.isdigit():
-                self.from_block_mapping[condition_id] = int(block_number)
+                self.earliest_block_number = int(block_number)
 
         self.context.logger.info(
-            f"Chose block number {self.from_block_mapping[condition_id]!r} as closest to timestamp {timestamp!r}"
+            f"Chose block number {self.earliest_block_number!r} as closest to timestamp {timestamp!r}"
         )
 
     def _update_policy(self, update: Trade) -> None:
@@ -151,6 +143,7 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             <= self.synced_timestamp
         )
 
+        is_first_update = True
         for update in trades_updates:
             self._update_policy(update)
 
@@ -158,11 +151,14 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             if not update.is_winning:
                 continue
 
+            if is_first_update:
+                yield from self._set_block_number(update)
+                is_first_update = False
+
             condition_id = update.fpmm.condition.id
-            # If not in the trades, add it as is, along with its corresponding block number and claimable amount
+            # If not in the trades, add it as is, along with its claimable amount
             if update not in self.trades:
                 self.trades.add(update)
-                yield from self._set_block_number(update)
                 self.claimable_amounts[condition_id] = update.claimable_amount
                 continue
 
@@ -329,7 +325,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.redeeming_progress.utilized_tools = self.utilized_tools
         self.redeeming_progress.policy = self.policy
         self.redeeming_progress.claimable_amounts = self.claimable_amounts
-        self.redeeming_progress.from_block_mapping = self.from_block_mapping
+        self.redeeming_progress.earliest_block_number = self.earliest_block_number
 
     def _load_progress(self) -> None:
         """Load the redeeming progress."""
@@ -337,7 +333,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.utilized_tools = self.redeeming_progress.utilized_tools
         self._policy = self.redeeming_progress.policy
         self.claimable_amounts = self.redeeming_progress.claimable_amounts
-        self.from_block_mapping = self.redeeming_progress.from_block_mapping
+        self.earliest_block_number = self.redeeming_progress.earliest_block_number
 
     def _get_redeem_info(
         self,
@@ -405,15 +401,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             kwargs["condition_ids"].append(trade.fpmm.condition.id)
             kwargs["index_sets"].append(trade.fpmm.condition.index_sets)
 
-        blocks = [
-            block
-            for block in self.from_block_mapping.values()
-            if block != DEFAULT_FROM_BLOCK
-        ]
-        earliest_block = DEFAULT_FROM_BLOCK if len(blocks) == 0 else min(blocks)
-
         if not self.redeeming_progress.started:
-            self.redeeming_progress.from_block = earliest_block
+            self.redeeming_progress.from_block = self.earliest_block_number
             yield from self.wait_for_condition_with_sleep(self._get_latest_block)
             self.redeeming_progress.to_block = self.latest_block_number
             self.redeeming_progress.started = True
@@ -532,7 +521,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             contract_callable="build_claim_winnings",
             data_key="data",
             placeholder=get_name(RedeemBehaviour.built_data),
-            from_block=self.from_block_mapping[self.current_condition_id],
+            from_block=self.earliest_block_number,
             question_id=self.current_question_id,
         )
 

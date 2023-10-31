@@ -22,7 +22,6 @@
 import json
 import os
 import re
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
@@ -75,9 +74,7 @@ class RedeemingProgress:
     utilized_tools: Dict[str, int] = field(default_factory=lambda: {})
     policy: Optional[EGreedyPolicy] = None
     claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
-    from_block_mapping: FromBlockMappingType = field(
-        default_factory=lambda: defaultdict(lambda: DEFAULT_FROM_BLOCK)
-    )
+    earliest_block_number: int = 0
     from_block: BlockIdentifier = "earliest"
     to_block: BlockIdentifier = "latest"
     payouts: Dict[str, int] = field(default_factory=lambda: {})
