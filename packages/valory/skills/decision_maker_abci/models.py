@@ -93,6 +93,11 @@ class SharedState(BaseSharedState):
 
     abci_app_cls = DecisionMakerAbciApp
 
+    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
+        """Initialize the state."""
+        super().__init__(*args, skill_context=skill_context, **kwargs)
+        self.redeeming_progress: RedeemingProgress = RedeemingProgress()
+
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
     """Extract the keys from a string template, given the delimiter."""
