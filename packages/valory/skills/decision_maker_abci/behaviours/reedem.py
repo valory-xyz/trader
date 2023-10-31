@@ -397,7 +397,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 "parent_collection_ids",
                 "condition_ids",
                 "index_sets",
-                "from_block_numbers",
             )
         }
         for trade in self.trades:
