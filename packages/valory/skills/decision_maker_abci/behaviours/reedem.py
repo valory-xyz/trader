@@ -40,7 +40,12 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.models import MultisendBatch
+from packages.valory.skills.decision_maker_abci.models import (
+    DEFAULT_FROM_BLOCK,
+    FromBlockMappingType,
+    MultisendBatch,
+    RedeemingProgress,
+)
 from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.redeem_info import (
     Condition,
@@ -58,6 +63,7 @@ ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_TIMESTAMP_KEY = "timestamp"
 DEFAULT_TO_BLOCK = "latest"
+EVENT_FILTERING_BATCH_SIZE = 5000
 
 
 class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
@@ -190,6 +196,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._history_hash: bytes = ZERO_BYTES
 
     @property
+    def redeeming_progress(self) -> RedeemingProgress:
+        """Get the redeeming check progress from the shared state."""
+        return self.shared_state.redeeming_progress
+
+    @redeeming_progress.setter
+    def redeeming_progress(self, payouts: RedeemingProgress) -> None:
+        """Set the redeeming check progress in the shared state."""
+        self.shared_state.redeeming_progress = payouts
+
+    @property
     def latest_block_timestamp(self) -> int:
         """Get the latest block timestamp."""
         if self._latest_block_timestamp is None:
@@ -254,12 +270,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         return self.current_claimable_amount < self.params.dust_threshold
 
     @property
-    def payouts(self) -> Dict[str, int]:
+    def payouts_batch(self) -> Dict[str, int]:
         """Get the trades' transaction hashes mapped to payouts for the current market."""
         return self._payouts
 
-    @payouts.setter
-    def payouts(self, payouts: Dict[str, int]) -> None:
+    @payouts_batch.setter
+    def payouts_batch(self, payouts: Dict[str, int]) -> None:
         """Set the trades' transaction hashes mapped to payouts for the current market."""
         self._payouts = payouts
 
@@ -307,6 +323,22 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def built_data(self, built_data: Union[str, bytes]) -> None:
         """Set the built transaction's data."""
         self._built_data = HexBytes(built_data)
+
+    def _store_progress(self) -> None:
+        """Store the redeeming progress."""
+        self.redeeming_progress.trades = self.trades
+        self.redeeming_progress.utilized_tools = self.utilized_tools
+        self.redeeming_progress.policy = self.policy
+        self.redeeming_progress.claimable_amounts = self.claimable_amounts
+        self.redeeming_progress.from_block_mapping = self.from_block_mapping
+
+    def _load_progress(self) -> None:
+        """Load the redeeming progress."""
+        self.trades = self.redeeming_progress.trades
+        self.utilized_tools = self.redeeming_progress.utilized_tools
+        self._policy = self.redeeming_progress.policy
+        self.claimable_amounts = self.redeeming_progress.claimable_amounts
+        self.from_block_mapping = self.redeeming_progress.from_block_mapping
 
     def _get_redeem_info(
         self,
@@ -358,6 +390,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if len(self.trades) == 0:
             return True
 
+        safe_address_lower = self.synchronized_data.safe_contract_address.lower()
         kwargs: Dict[str, Any] = {
             key: []
             for key in (
@@ -374,28 +407,53 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             kwargs["condition_ids"].append(trade.fpmm.condition.id)
             kwargs["index_sets"].append(trade.fpmm.condition.index_sets)
 
-        kwargs["from_block_numbers"] = self.from_block_mapping
+        blocks = [
+            block
+            for block in self.from_block_mapping.values()
+            if block != DEFAULT_FROM_BLOCK
+        ]
+        earliest_block = DEFAULT_FROM_BLOCK if len(blocks) == 0 else min(blocks)
 
-        safe_address_lower = self.synchronized_data.safe_contract_address.lower()
-        result = yield from self._conditional_tokens_interact(
-            contract_callable="check_redeemed",
-            data_key="payouts",
-            placeholder=get_name(RedeemBehaviour.payouts),
-            redeemer=safe_address_lower,
-            **kwargs,
-        )
-        return result
+        if not self.redeeming_progress.started:
+            self.redeeming_progress.from_block = earliest_block
+            yield from self.wait_for_condition_with_sleep(self._get_latest_block)
+            self.redeeming_progress.to_block = self.latest_block_timestamp
+            self.redeeming_progress.started = True
+
+        for from_block in range(
+            self.redeeming_progress.from_block,
+            self.redeeming_progress.to_block,
+            EVENT_FILTERING_BATCH_SIZE,
+        ):
+            max_to_block = from_block + EVENT_FILTERING_BATCH_SIZE
+            to_block = min(max_to_block, self.redeeming_progress.to_block)
+            result = yield from self._conditional_tokens_interact(
+                contract_callable="check_redeemed",
+                data_key="payouts",
+                placeholder=get_name(RedeemBehaviour.payouts_batch),
+                redeemer=safe_address_lower,
+                from_block=from_block,
+                to_block=to_block,
+                **kwargs,
+            )
+            if not result:
+                return False
+            self.redeeming_progress.payouts.update(self.payouts_batch)
+            self.redeeming_progress.from_block = to_block
+
+        return True
 
     def _clean_redeem_info(self) -> Generator:
         """Clean the redeeming information based on whether any positions have already been redeemed."""
         yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
-        payout_so_far = sum(self.payouts.values())
+        payout_so_far = sum(self.redeeming_progress.payouts.values())
         if payout_so_far > 0:
             self.trades = {
                 trade
                 for trade in self.trades
-                if trade.fpmm.condition.id not in self.payouts.keys()
+                if trade.fpmm.condition.id not in self.redeeming_progress.payouts.keys()
             }
+            self.redeeming_progress.trades = self.trades
             msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
             self.context.logger.info(msg)
 
@@ -628,8 +686,17 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            yield from self._get_redeem_info()
-            yield from self._clean_redeem_info()
+            if not self.redeeming_progress.started:
+                yield from self._get_redeem_info()
+                self._store_progress()
+            else:
+                msg = "Picking up progress from where it was left off before the timeout occurred."
+                self.context.logger.info(msg)
+                self._load_progress()
+
+            if not self.redeeming_progress.finished:
+                yield from self._clean_redeem_info()
+
             agent = self.context.agent_address
             redeem_tx_hex = yield from self._prepare_safe_tx()
             tx_submitter = policy = utilized_tools = None
@@ -641,5 +708,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             payload = RedeemPayload(
                 agent, tx_submitter, redeem_tx_hex, policy, utilized_tools
             )
-        self._store_utilized_tools()
+
         yield from self.finish_behaviour(payload)
+
+    def clean_up(self) -> None:
+        """Clean up operations."""
+        self.redeeming_progress = RedeemingProgress()
+        self._store_utilized_tools()
