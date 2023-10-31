@@ -55,7 +55,6 @@ class ServiceStakingTokenContract(Contract):
         data = contract_instance.encodeABI("stake", args=[service_id])
         return dict(data=bytes.fromhex(data[2:]))
 
-
     @classmethod
     def build_checkpoint_tx(
         cls,
@@ -66,7 +65,6 @@ class ServiceStakingTokenContract(Contract):
         contract_instance = cls.get_instance(ledger_api, contract_address)
         data = contract_instance.encodeABI("checkpoint")
         return dict(data=bytes.fromhex(data[2:]))
-
 
     @classmethod
     def build_unstake_tx(
@@ -91,3 +89,26 @@ class ServiceStakingTokenContract(Contract):
         contract_instance = cls.get_instance(ledger_api, contract_address)
         res = contract_instance.functions.availableRewards().call()
         return dict(data=res)
+
+    @classmethod
+    def get_staking_rewards(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        service_id: int,
+    ) -> JSONLike:
+        """Retrieve an operator given its agent instance."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        reward = contract.functions.calculateServiceStakingReward(service_id).call()
+        return dict(data=reward)
+
+    @classmethod
+    def get_next_checkpoint_ts(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve an operator given its agent instance."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        ts = contract.functions.getNextRewardCheckpointTimestamp().call()
+        return dict(data=ts)
