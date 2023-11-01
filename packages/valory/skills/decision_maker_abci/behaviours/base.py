@@ -218,7 +218,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 f"Pool token amounts: {x}, {y}"
                 f"Fee, fee fraction f: {1-f}, {f}"
             )
-            return None
+            return 0
         kelly_bet_amount = (-4*x**2*y + b*y**2*p*c*f + 2*b*x*y*p*c*f + b*x**2*p*c*f - 2*b*y**2*f - 2*b*x*y*f + ((4*x**2*y - b*y**2*p*c*f - 2*b*x*y*p*c*f - b*x**2*p*c*f + 2*b*y**2*f + 2*b*x*y*f)**2 - (4*(x**2*f - y**2*f) * (-4*b*x*y**2*p*c - 4*b*x**2*y*p*c + 4*b*x*y**2)))**(1/2))/(2*(x**2*f - y**2*f))
         return int(kelly_bet_amount)
     
@@ -231,7 +231,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 f"Pool token amounts: {x}, {y}\n"
                 f"Fee, fee fraction f: {1-f}, {f}"
             )
-            return None
+            return 0
         else:
             pre_root = -2*x**2 + a*x - 2*x*y
             sqrt = 4*x**4 + 8*x**3*y + a**2*x**2 + 4*x**2*y**2 + 2*a**2*x*y + a**2*y**2
