@@ -21,7 +21,6 @@
 
 from math import prod
 from typing import Any, Generator, Optional, Tuple, Union
-from packages.valory.contracts.erc20.contract import ERC20
 
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -32,7 +31,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
     remove_fraction_wei
 )
-from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import WXDAI
 from packages.valory.skills.decision_maker_abci.models import (
     MechInteractionResponse,
     MechResponseSpecs,
@@ -84,26 +82,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         except ValueError:
             msg = f"Request id {request_id} is not a valid integer!"
             self.context.logger.error(msg)
-
-    @property
-    def collateral_token(self) -> str:
-        """Get the contract address of the token that the market maker supports."""
-        return self.synchronized_data.sampled_bet.collateralToken
-    
-    @property
-    def is_wxdai(self) -> bool:
-        """Get whether the collateral address is wxDAI."""
-        return self.collateral_token.lower() == WXDAI.lower()
-
-    @property
-    def mech_price(self) -> int:
-        """Get the mech price."""
-        return self._mech_price
-
-    @mech_price.setter
-    def mech_price(self, price: int) -> None:
-        """Set the mech price."""
-        self._mech_price = price
 
     @property
     def response_hex(self) -> str:
@@ -267,8 +245,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
         self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
-        if token_amounts is None:
-            return 0, 0
         k = prod(token_amounts)
         self.context.logger.info(f"k: {k}")
 
@@ -324,74 +300,23 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
-    def _get_mech_price(self) -> WaitableConditionType:
-        """Get the price of the mech request."""
-        result = yield from self._mech_contract_interact(
-            "get_price", "price", get_name(DecisionReceiveBehaviour.mech_price)
-        )
-        return result
-    
-    def _collateral_amount_info(self, amount: int) -> str:
-        """Get a description of the collateral token's amount."""
-        return (
-            f"{self.wei_to_native(amount)} wxDAI"
-            if self.is_wxdai
-            else f"{amount} WEI of the collateral token with address {self.collateral_token}"
-        )
-
-    def _check_balance(self) -> WaitableConditionType:
-        """Check the safe's balance."""
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.collateral_token,
-            contract_id=str(ERC20.contract_id),
-            contract_callable="check_balance",
-            account=self.synchronized_data.safe_contract_address,
-        )
-        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
-            self.context.logger.error(
-                f"Could not calculate the balance of the safe: {response_msg}"
-            )
-            return False
-
-        token = response_msg.raw_transaction.body.get("token", None)
-        wallet = response_msg.raw_transaction.body.get("wallet", None)
-        if token is None or wallet is None:
-            self.context.logger.error(
-                f"Something went wrong while trying to get the balance of the safe: {response_msg}"
-            )
-            return False
-
-        self.token_balance = int(token)
-        self.wallet_balance = int(wallet)
-
-        native = self.wei_to_native(self.wallet_balance)
-        collateral = self._collateral_amount_info(self.token_balance)
-        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
-        return True
-
     def _is_profitable(self, vote: int, win_probability: float, confidence: float) -> Tuple[bool, int]:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
-        self.context.logger.info(f"Bet: {bet}")
-        yield from self._check_balance()
-        bankroll = self.wallet_balance + self.token_balance
-        self.context.logger.info(f"Bankroll wei: {bankroll}")
-        selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee = self._get_bet_sample_info(bet, vote)
-        
-        # Testing and printing kelly bet amount
+        selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(bet, vote)
+
         bet_amount = self.get_bet_amount(
             self.params.trading_strategy,
             win_probability,
             confidence,
             selected_type_tokens_in_pool,
             other_tokens_in_pool,
-            bet_fee,
+            bet.fee,
         )
         
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
-        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet_fee))
+        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
         
 
@@ -442,7 +367,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             is_profitable = None
             bet_amount = None
             if vote is not None and confidence is not None and win_probability is not None:
-                is_profitable, bet_amount = yield from self._is_profitable(vote, win_probability, confidence)
+                is_profitable, bet_amount = self._is_profitable(vote, win_probability, confidence)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
