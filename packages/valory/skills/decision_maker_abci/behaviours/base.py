@@ -208,36 +208,76 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         collateral = self._collateral_amount_info(self.token_balance)
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
-    
-    def _calculate_kelly_bet_amount(self, x, y, p, c, b, f) -> int:
+
+    def _calculate_kelly_bet_amount(
+        self, x: int, y: int, p: float, c: float, b: int, f: float
+    ) -> int:
         """Calculate the Kelly bet amount."""
-        if b == 0 or x**2*f == y**2*f:
+        if b == 0 or x**2 * f == y**2 * f:
             self.context.logger.error(
-                "Could not calculate Kelly bet amount. Either bankroll is 0 or pool token amount is distributed as x^2*f - y^2*f = 0:\n"
+                "Could not calculate Kelly bet amount. "
+                "Either bankroll is 0 or pool token amount is distributed as x^2*f - y^2*f = 0:\n"
                 f"Bankroll: {b}\n"
                 f"Pool token amounts: {x}, {y}"
                 f"Fee, fee fraction f: {1-f}, {f}"
             )
             return 0
-        kelly_bet_amount = (-4*x**2*y + b*y**2*p*c*f + 2*b*x*y*p*c*f + b*x**2*p*c*f - 2*b*y**2*f - 2*b*x*y*f + ((4*x**2*y - b*y**2*p*c*f - 2*b*x*y*p*c*f - b*x**2*p*c*f + 2*b*y**2*f + 2*b*x*y*f)**2 - (4*(x**2*f - y**2*f) * (-4*b*x*y**2*p*c - 4*b*x**2*y*p*c + 4*b*x*y**2)))**(1/2))/(2*(x**2*f - y**2*f))
+        kelly_bet_amount = (
+            -4 * x**2 * y
+            + b * y**2 * p * c * f
+            + 2 * b * x * y * p * c * f
+            + b * x**2 * p * c * f
+            - 2 * b * y**2 * f
+            - 2 * b * x * y * f
+            + (
+                (
+                    4 * x**2 * y
+                    - b * y**2 * p * c * f
+                    - 2 * b * x * y * p * c * f
+                    - b * x**2 * p * c * f
+                    + 2 * b * y**2 * f
+                    + 2 * b * x * y * f
+                )
+                ** 2
+                - (
+                    4
+                    * (x**2 * f - y**2 * f)
+                    * (
+                        -4 * b * x * y**2 * p * c
+                        - 4 * b * x**2 * y * p * c
+                        + 4 * b * x * y**2
+                    )
+                )
+            )
+            ** (1 / 2)
+        ) / (2 * (x**2 * f - y**2 * f))
         return int(kelly_bet_amount)
-    
-    def get_max_bet_amount(self, a, x, y, f) -> int:
+
+    def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
         """Get max bet amount based on available shares."""
-        if x**2*f**2 + 2*x*y*f**2 + y**2*f**2 == 0:
+        if x**2 * f**2 + 2 * x * y * f**2 + y**2 * f**2 == 0:
             self.context.logger.error(
-                "Could not recalculate. Either bankroll is 0 or pool token amount is distributed such as x**2*f**2 + 2*x*y*f**2 + y**2*f**2 == 0:\n"
+                "Could not recalculate. "
+                "Either bankroll is 0 or pool token amount is distributed such as "
+                "x**2*f**2 + 2*x*y*f**2 + y**2*f**2 == 0:\n"
                 f"Available tokens: {a}\n"
                 f"Pool token amounts: {x}, {y}\n"
                 f"Fee, fee fraction f: {1-f}, {f}"
             )
             return 0
         else:
-            pre_root = -2*x**2 + a*x - 2*x*y
-            sqrt = 4*x**4 + 8*x**3*y + a**2*x**2 + 4*x**2*y**2 + 2*a**2*x*y + a**2*y**2
-            numerator = y*(pre_root + (sqrt)**0.5 + a*y)
-            denominator = f*(x**2 + 2*x*y + y**2)
-            new_bet_amount = numerator/denominator
+            pre_root = -2 * x**2 + a * x - 2 * x * y
+            sqrt = (
+                4 * x**4
+                + 8 * x**3 * y
+                + a**2 * x**2
+                + 4 * x**2 * y**2
+                + 2 * a**2 * x * y
+                + a**2 * y**2
+            )
+            numerator = y * (pre_root + sqrt**0.5 + a * y)
+            denominator = f * (x**2 + 2 * x * y + y**2)
+            new_bet_amount = numerator / denominator
             return int(new_bet_amount)
 
     def get_bet_amount(
@@ -252,7 +292,9 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         """Get the bet amount given a specified trading strategy."""
 
         if strategy == "bet_amount_per_conf_threshold":
-            self.context.logger.info(f"Used trading strategy: Bet amount per confidence threshold")
+            self.context.logger.info(
+                "Used trading strategy: Bet amount per confidence threshold"
+            )
             threshold = round(confidence, 1)
             bet_amount = self.params.bet_amount_per_threshold[threshold]
             return bet_amount
@@ -260,7 +302,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         if strategy != "kelly_criterion":
             raise ValueError(f"Invalid trading strategy: {strategy}")
 
-        self.context.logger.info(f"Used trading strategy: Kelly Criterion")
+        self.context.logger.info("Used trading strategy: Kelly Criterion")
         # bankroll: the max amount of DAI available to trade
         bankroll = self.token_balance + self.wallet_balance
         # keep `floor_balance` xDAI in the bankroll
@@ -292,10 +334,16 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             )
             return 0
 
-        self.context.logger.info(f"Kelly bet amount: {self.wei_to_native(kelly_bet_amount)} xDAI")
-        self.context.logger.info(f"Bet kelly fraction: {self.params.bet_kelly_fraction}")
+        self.context.logger.info(
+            f"Kelly bet amount: {self.wei_to_native(kelly_bet_amount)} xDAI"
+        )
+        self.context.logger.info(
+            f"Bet kelly fraction: {self.params.bet_kelly_fraction}"
+        )
         adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
-        self.context.logger.info(f"Adjusted Kelly bet amount: {self.wei_to_native(adj_kelly_bet_amount)} xDAI")
+        self.context.logger.info(
+            f"Adjusted Kelly bet amount: {self.wei_to_native(adj_kelly_bet_amount)} xDAI"
+        )
         return adj_kelly_bet_amount
 
     def default_error(

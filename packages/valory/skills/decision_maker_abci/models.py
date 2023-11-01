@@ -35,13 +35,13 @@ from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
-
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
+
 
 RE_CONTENT_IN_BRACKETS = r"\{([^}]*)\}"
 REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
@@ -86,7 +86,7 @@ def check_prompt_template(bet_prompt_template: PromptTemplate) -> None:
             f"For example, to parametrize {example_key!r} you may use "
             f"'{delimiter}{{{example_key}}}'"
         )
-    
+
 
 class DecisionMakerParams(MarketManagerParams):
     """Decision maker's parameters."""
@@ -95,7 +95,9 @@ class DecisionMakerParams(MarketManagerParams):
         """Initialize the parameters' object."""
         self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
         # the number of days to sample bets from
-        self.sample_bets_closing_days: int = self._ensure("sample_bets_closing_days", kwargs, int)
+        self.sample_bets_closing_days: int = self._ensure(
+            "sample_bets_closing_days", kwargs, int
+        )
         if self.sample_bets_closing_days <= 0:
             msg = "The number of days to sample bets from must be positive!"
             raise ValueError(msg)
@@ -103,7 +105,9 @@ class DecisionMakerParams(MarketManagerParams):
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
         # the factor of calculated kelly bet to use for placing bets
-        self.bet_kelly_fraction: float = self._ensure("bet_kelly_fraction", kwargs, float)
+        self.bet_kelly_fraction: float = self._ensure(
+            "bet_kelly_fraction", kwargs, float
+        )
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
@@ -167,7 +171,7 @@ class DecisionMakerParams(MarketManagerParams):
                 f"The configured slippage {slippage!r} is not in the range [0, 1]."
             )
         self._slippage = slippage
-        
+
     def get_policy_store_path(self, kwargs: Dict) -> Path:
         """Get the path of the policy store."""
         path = self._ensure("policy_store_path", kwargs, str)
@@ -231,7 +235,7 @@ class PredictionResponse:
         if self.p_no != self.p_yes:
             return int(self.p_no > self.p_yes)
         return None
-    
+
     @property
     def win_probability(self) -> Optional[float]:
         """Return the probability estimation for winning with vote."""

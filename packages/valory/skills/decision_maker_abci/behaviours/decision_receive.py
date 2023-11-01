@@ -29,7 +29,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     CID_PREFIX,
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
-    remove_fraction_wei
+    remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import (
     MechInteractionResponse,
@@ -39,7 +39,7 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
+from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS, Bet
 
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -223,7 +223,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             )
             return None, None, None
 
-        return self.mech_response.result.vote, self.mech_response.result.win_probability, self.mech_response.result.confidence
+        return (
+            self.mech_response.result.vote,
+            self.mech_response.result.win_probability,
+            self.mech_response.result.confidence,
+        )
 
     @staticmethod
     def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
@@ -269,7 +273,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # get the number of tokens in the pool for the answer that the service has selected
         selected_type_tokens_in_pool = token_amounts.pop(vote)
-        self.context.logger.info(f"Selected type tokens in pool: {selected_type_tokens_in_pool}")
+        self.context.logger.info(
+            f"Selected type tokens in pool: {selected_type_tokens_in_pool}"
+        )
 
         # get the number of tokens in the pool for the opposite answer
         other_tokens_in_pool = token_amounts.pop()
@@ -279,8 +285,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # preserving the balance of the pool
         # here we calculate the number of shares that we get after trading the tokens for the opposite answer
         tokens_remaining_in_pool = int(k / (other_tokens_in_pool + other_shares))
-        self.context.logger.info(f"Tokens remaining in pool: {tokens_remaining_in_pool}")
-        
+        self.context.logger.info(
+            f"Tokens remaining in pool: {tokens_remaining_in_pool}"
+        )
+
         swapped_shares = selected_type_tokens_in_pool - tokens_remaining_in_pool
         self.context.logger.info(f"Swapped shares: {swapped_shares}")
 
@@ -297,10 +305,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
-    def _is_profitable(self, vote: int, win_probability: float, confidence: float) -> Tuple[bool, int]:
+    def _is_profitable(
+        self, vote: int, win_probability: float, confidence: float
+    ) -> Tuple[bool, int]:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
-        selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(bet, vote)
+        selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
+            bet, vote
+        )
 
         bet_amount = self.get_bet_amount(
             self.params.trading_strategy,
@@ -310,15 +322,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             other_tokens_in_pool,
             bet.fee,
         )
-        
+
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
-        
 
         num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
-        
+
         self.context.logger.info(f"Adjusted available shares: {available_shares}")
         if num_shares > available_shares * SLIPPAGE:
             self.context.logger.warning(
@@ -327,7 +338,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
             )
         bet_threshold = self.params.bet_threshold
-        self.context.logger.info(f"Bet threshold: {bet_threshold}")
         if bet_threshold <= 0:
             self.context.logger.warning(
                 f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
@@ -353,8 +363,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             vote, win_probability, confidence = yield from self._get_decision()
             is_profitable = None
             bet_amount = None
-            if vote is not None and confidence is not None and win_probability is not None:
-                is_profitable, bet_amount = self._is_profitable(vote, win_probability, confidence)
+            if (
+                vote is not None
+                and confidence is not None
+                and win_probability is not None
+            ):
+                is_profitable, bet_amount = self._is_profitable(
+                    vote, win_probability, confidence
+                )
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,

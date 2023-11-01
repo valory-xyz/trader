@@ -19,8 +19,6 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import time
-
 from typing import Generator, Iterator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -51,7 +49,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
         if self.params.trading_strategy == "kelly_criterion":
             # get only bets that close in the next 48 hours
-            bets = [bet for bet in bets if bet.openingTimestamp <= (self.synced_timestamp + self.params.sample_bets_closing_days * UNIX_DAY)]
+            bets = [
+                bet
+                for bet in bets
+                if bet.openingTimestamp
+                <= (
+                    self.synced_timestamp
+                    + self.params.sample_bets_closing_days * UNIX_DAY
+                )
+            ]
 
         return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, bets)
 
