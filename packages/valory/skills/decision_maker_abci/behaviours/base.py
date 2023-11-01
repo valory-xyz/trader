@@ -94,6 +94,11 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         return SynchronizedData(super().synchronized_data.db)
 
     @property
+    def synced_timestamp(self) -> int:
+        """Return the synchronized timestamp across the agents."""
+        return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+
+    @property
     def safe_tx_hash(self) -> str:
         """Get the safe_tx_hash."""
         return self._safe_tx_hash

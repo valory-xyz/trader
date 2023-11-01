@@ -35,6 +35,9 @@ from packages.valory.skills.market_manager_abci.bets import (
 )
 
 
+UNIX_DAY = 60 * 60 * 24
+
+
 class SamplingBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
@@ -44,31 +47,25 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def available_bets(self) -> Iterator[Bet]:
         """Get an iterator of the unprocessed bets."""
         bets = self.synchronized_data.bets
+
+        # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
+        if self.params.trading_strategy == "kelly_criterion":
+            # get only bets that close in the next 48 hours
+            bets = [bet for bet in bets if bet.openingTimestamp <= (self.synced_timestamp + self.params.sample_bets_closing_days * UNIX_DAY)]
+
         return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, bets)
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
         Sample a bet and return its id.
 
-        The sampling logic is relatively simple at the moment
+        The sampling logic is relatively simple at the moment.
         It simply selects the unprocessed bet with the largest liquidity.
 
         :param bets: the bets' values to compare for the sampling.
         :return: the id of the sampled bet, out of all the available bets, not only the given ones.
         """
-        # Get only bets that close in the next 48 hours
-        # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
-        
-        if self.params.sample_bets_closing_days <= 0:
-            msg = "The number of days to sample bets from must be positive!"
-            self.context.logger.warning(msg)
-            return None
-        short_term_bets = filter(lambda bet: bet.openingTimestamp <= (time.time() + self.params.sample_bets_closing_days*60*60*24), bets)
-        short_term_bets_list = list(short_term_bets)
-        if len(short_term_bets_list) == 0:
-            return None
-        self.context.logger.info(f"Short term bets: {short_term_bets_list}")
-        return self.synchronized_data.bets.index(max(short_term_bets_list))
+        return self.synchronized_data.bets.index(max(bets))
 
     def _set_processed(self, idx: int) -> Optional[str]:
         """Update the bet's status for the given id to `PROCESSED`, and return the updated bets list, serialized."""
@@ -86,12 +83,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             return None, None
 
         idx = self._sampled_bet_idx(available_bets)
-        
-        if idx is None:
-            msg = "There were no unprocessed bets that close within the next 48 hours available to sample from!"
-            self.context.logger.warning(msg)
-            return None, None
-        elif self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
+
+        if self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
             return None, None

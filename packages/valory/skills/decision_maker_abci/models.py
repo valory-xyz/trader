@@ -96,6 +96,10 @@ class DecisionMakerParams(MarketManagerParams):
         self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure("sample_bets_closing_days", kwargs, int)
+        if self.sample_bets_closing_days <= 0:
+            msg = "The number of days to sample bets from must be positive!"
+            raise ValueError(msg)
+
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
         # the factor of calculated kelly bet to use for placing bets

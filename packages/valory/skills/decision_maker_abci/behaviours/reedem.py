@@ -83,11 +83,6 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         # from all trades associated with it.
         self.claimable_amounts: Dict[HexBytes, int] = {}
 
-    @property
-    def synced_timestamp(self) -> int:
-        """Return the synchronized timestamp across the agents."""
-        return int(self.round_sequence.last_round_transition_timestamp.timestamp())
-
     def setup(self) -> None:
         """Setup the behaviour"""
         self._policy = self.synchronized_data.policy
