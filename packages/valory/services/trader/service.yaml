@@ -162,6 +162,9 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
+        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
         bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -230,6 +233,9 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
+        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
         bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -298,6 +304,9 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
+        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
         bet_amount_per_threshold: *id004
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
