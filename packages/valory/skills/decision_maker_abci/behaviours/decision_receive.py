@@ -448,7 +448,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self.context.agent_address,
                 is_profitable,
                 vote,
-                win_probability,
                 confidence,
                 bet_amount,
             )

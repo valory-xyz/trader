@@ -119,11 +119,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the bet's vote index."""
         vote = self.db.get_strict("vote")
         return int(vote) if vote is not None else None
-    
-    @property
-    def win_probability(self) -> float:
-        """Get the vote's win probability."""
-        return float(self.db.get_strict("win_probability"))
 
     @property
     def confidence(self) -> float:
