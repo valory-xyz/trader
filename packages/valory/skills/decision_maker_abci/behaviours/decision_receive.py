@@ -338,17 +338,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             )
             bet_threshold = 0
 
-        yield from self.wait_for_condition_with_sleep(self._get_mech_price)
-        self.context.logger.info(f"Mech price: {self.mech_price}")
-        potential_net_profit = num_shares - bet_amount - self.mech_price - bet_threshold
-        self.context.logger.info(f"Potential net profit: {potential_net_profit}")
-        is_profitable = potential_net_profit >= 0 and num_shares <= available_shares
-        self.context.logger.info(f"Is profitable: {is_profitable}")
-        shares_out = self.wei_to_native(num_shares)
-        available_in = self.wei_to_native(available_shares)
-        shares_out_of = f"{shares_out} / {available_in}"
-        self.context.logger.info(f"Shares out of: {shares_out_of}")
-        potential_net_profit = num_shares - bet_amount - self.mech_price - bet_threshold
+        potential_net_profit = num_shares - net_bet_amount - bet_threshold
         is_profitable = potential_net_profit >= 0
 
         self.context.logger.info(
