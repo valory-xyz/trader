@@ -224,19 +224,16 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return None, None, None
 
         return self.mech_response.result.vote, self.mech_response.result.win_probability, self.mech_response.result.confidence
-    
 
-    def _get_bet_sample_info(self, bet, vote) -> Tuple[int, int, int]:
+    @staticmethod
+    def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
+        """Get the bet sample information."""
         token_amounts = bet.outcomeTokenAmounts
-        if token_amounts is None:
-            return None, None, None
-        
-        selected_type_tokens_in_pool = token_amounts.pop(vote)
-        other_tokens_in_pool = token_amounts.pop()
-        bet_fee = bet.fee
-        
-        return selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee
+        selected_type_tokens_in_pool = token_amounts[vote]
+        opposite_vote = vote ^ 1
+        other_tokens_in_pool = token_amounts[opposite_vote]
 
+        return selected_type_tokens_in_pool, other_tokens_in_pool
 
     def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
