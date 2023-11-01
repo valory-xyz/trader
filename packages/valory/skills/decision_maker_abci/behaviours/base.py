@@ -42,6 +42,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
     MultisendBatch,
+    SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
@@ -87,6 +88,11 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     def params(self) -> DecisionMakerParams:
         """Return the params."""
         return cast(DecisionMakerParams, self.context.params)
+
+    @property
+    def shared_state(self) -> SharedState:
+        """Get the shared state."""
+        return cast(SharedState, self.context.state)
 
     @property
     def synchronized_data(self) -> SynchronizedData:

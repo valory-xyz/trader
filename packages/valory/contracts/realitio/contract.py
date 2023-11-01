@@ -19,20 +19,19 @@
 
 """This module contains the Realitio_v2_1 contract definition."""
 
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
-from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
-from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from eth_typing import ChecksumAddress
-from web3.constants import HASH_ZERO
-from web3.types import BlockIdentifier
+from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
+from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 
-ZERO_HEX = HASH_ZERO[2:]
-ZERO_BYTES = bytes.fromhex(ZERO_HEX)
+ClaimParamsType = Tuple[
+    List[bytes], List[ChecksumAddress], List[int], List[bytes]
+]
 
 
 class RealitioContract(Contract):
@@ -53,82 +52,53 @@ class RealitioContract(Contract):
         return dict(finalized=is_finalized)
 
     @classmethod
-    def _get_claim_params(
+    def get_claim_params(
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
-        from_block: BlockIdentifier,
+        from_block: int,
+        to_block: int,
         question_id: bytes,
-        chunk_size: int = 5_000,
-    ) -> Union[str, Tuple[bytes, List[bytes], List[ChecksumAddress], List[int], List[bytes]]]:
+    ) -> Dict[str, Union[str, list]]:
         """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        to_block = ledger_api.api.eth.block_number
 
         try:
-            answered = []
-            for chunk in range(from_block, to_block, chunk_size):
-                answer_filter = contract_instance.events.LogNewAnswer.build_filter()
-                answer_filter.fromBlock = chunk
-                answer_filter.toBlock = min(chunk + chunk_size, to_block)
-                answer_filter.args.question_id.match_single(question_id)
-                answered.extend(list(answer_filter.deploy(ledger_api.api).get_all_entries()))
+            answer_filter = contract_instance.events.LogNewAnswer.build_filter()
+            answer_filter.fromBlock = from_block
+            answer_filter.toBlock = to_block
+            answer_filter.args.question_id.match_single(question_id)
+            answered = list(answer_filter.deploy(ledger_api.api).get_all_entries())
         except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
-                f"The service tried to filter from block {from_block} to latest, "
-                "as the market was created at this time. Did the market get created too long in the past?\n"
-                "Please consider manually redeeming for the market with question id "
-                f"{question_id!r} if this issue persists."
+                f"The service tried to filter from block {from_block} to {to_block}."
+                f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
             )
-            return msg
-        else:
-            n_answered = len(answered)
+            return dict(error=msg)
 
-        if n_answered == 0:
-            msg = f"No answers have been given for question with id {question_id.hex()}!"
-            return msg
+        if len(answered) == 0:
+            msg = (
+                f"No answers have been given for question with id {question_id.hex()} "
+                f"between blocks {from_block} and {to_block}."
+            )
+            return dict(info=msg)
 
-        history_hashes = []
-        addresses = []
-        bonds = []
-        answers = []
-        for i, answer in enumerate(reversed(answered)):
-            # history_hashes second-last-to-first, the hash of each history entry, calculated as described here:
-            # https://realitio.github.io/docs/html/contract_explanation.html#answer-history-entries.
-            if i == n_answered - 1:
-                history_hashes.append(ZERO_BYTES)
-            else:
-                history_hashes.append(answered[i + 1]["args"]["history_hash"])
-
-            # last-to-first, the address of each answerer or commitment sender
-            addresses.append(answer["args"]["user"])
-            # last-to-first, the bond supplied with each answer or commitment
-            bonds.append(answer["args"]["bond"])
-            # last-to-first, each answer supplied, or commitment ID if the answer was supplied with commit->reveal
-            answers.append(answer["args"]["answer"])
-
-        return question_id, history_hashes, addresses, bonds, answers
+        return dict(answered=answered)
 
     @classmethod
     def build_claim_winnings(
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
-        from_block: BlockIdentifier,
         question_id: bytes,
+        claim_params: ClaimParamsType,
     ) -> JSONLike:
         """Build `claimWinnings` transaction."""
         contract = cls.get_instance(ledger_api, contract_address)
-        claim_params = cls._get_claim_params(
-            ledger_api, contract_address, from_block, question_id
-        )
-        if isinstance(claim_params, str):
-            return dict(error=claim_params)
-
         data = contract.encodeABI(
             fn_name="claimWinnings",
-            args=claim_params,
+            args=(question_id, *claim_params),
         )
         return dict(data=data)
 
