@@ -242,7 +242,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
     def get_bet_amount(
         self,
-        bankroll: int,
         strategy: str,
         win_probability: float,
         confidence: float,

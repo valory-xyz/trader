@@ -381,7 +381,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         
         # Testing and printing kelly bet amount
         bet_amount = self.get_bet_amount(
-            bankroll,
             self.params.trading_strategy,
             win_probability,
             confidence,
