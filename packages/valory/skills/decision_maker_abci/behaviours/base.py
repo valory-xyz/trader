@@ -251,52 +251,53 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         bet_fee: int,
     ) -> int:
         """Get the bet amount given a specified trading strategy."""
-        
+
         if strategy == "bet_amount_per_conf_threshold":
             self.context.logger.info(f"Used trading strategy: Bet amount per confidence threshold")
             threshold = round(confidence, 1)
             bet_amount = self.params.bet_amount_per_threshold[threshold]
             return bet_amount
-        
-        elif strategy == "kelly_criterion":
-            self.context.logger.info(f"Used trading strategy: Kelly Criterion")
-            bankroll = self.token_balance + self.wallet_balance # bankroll: the max amount of DAI available to trade
-            floor_balance = 500000000000000000
-            bankroll_adj = bankroll - floor_balance # keep 0.5 xDAI in the bankroll
-            self.context.logger.info(f"Adjusted bankroll: {bankroll_adj} DAI")
-            if bankroll_adj <= 0:
-                self.context.logger.info(
-                    f"Bankroll is less than {floor_balance}: {bankroll_adj}. Set bet amount to 0."
-                    f"Top up safe with DAI or wait for redeeming."
-                )
-                return 0
-            fee_fraction = 1 - self.wei_to_native(bet_fee)
-            self.context.logger.info(f"Fee fraction: {fee_fraction}")
-            kelly_bet_amount = self._calculate_kelly_bet_amount(
-                selected_type_tokens_in_pool, 
-                other_tokens_in_pool,
-                win_probability,
-                confidence,
-                bankroll_adj,
-                fee_fraction,
-            )
-            
-            if kelly_bet_amount == None:
-                return 0
-            if kelly_bet_amount < 0:
-                self.context.logger.info(
-                    f"Negative value for kelly bet amount: {kelly_bet_amount}\n"
-                    "Set bet amount to 0."
-                )
-                return 0
-            else:
-                self.context.logger.info(f"Kelly bet amount xDAI: {kelly_bet_amount/(10**18)}")
-                self.context.logger.info(f"Bet kelly fraction: {self.params.bet_kelly_fraction}")
-                adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
-                self.context.logger.info(f"Adjusted Kelly bet: {adj_kelly_bet_amount/(10**18)} xDAI")
-                return adj_kelly_bet_amount
-        else:
+
+        if strategy != "kelly_criterion":
             raise ValueError(f"Invalid trading strategy: {strategy}")
+
+        self.context.logger.info(f"Used trading strategy: Kelly Criterion")
+        # bankroll: the max amount of DAI available to trade
+        bankroll = self.token_balance + self.wallet_balance
+        # keep `floor_balance` xDAI in the bankroll
+        floor_balance = 500000000000000000
+        bankroll_adj = bankroll - floor_balance
+        self.context.logger.info(f"Adjusted bankroll: {bankroll_adj} DAI")
+        if bankroll_adj <= 0:
+            self.context.logger.info(
+                f"Bankroll ({bankroll_adj}) is less than the floor balance ({floor_balance}). "
+                "Set bet amount to 0."
+                "Top up safe with DAI or wait for redeeming."
+            )
+            return 0
+
+        fee_fraction = 1 - self.wei_to_native(bet_fee)
+        self.context.logger.info(f"Fee fraction: {fee_fraction}")
+        kelly_bet_amount = self._calculate_kelly_bet_amount(
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            win_probability,
+            confidence,
+            bankroll_adj,
+            fee_fraction,
+        )
+        if kelly_bet_amount < 0:
+            self.context.logger.info(
+                f"Invalid value for kelly bet amount: {kelly_bet_amount}\n"
+                "Set bet amount to 0."
+            )
+            return 0
+
+        self.context.logger.info(f"Kelly bet amount: {self.wei_to_native(kelly_bet_amount)} xDAI")
+        self.context.logger.info(f"Bet kelly fraction: {self.params.bet_kelly_fraction}")
+        adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
+        self.context.logger.info(f"Adjusted Kelly bet amount: {self.wei_to_native(adj_kelly_bet_amount)} xDAI")
+        return adj_kelly_bet_amount
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
