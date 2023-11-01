@@ -26,6 +26,7 @@ contracts:
 - valory/realitio:0.1.0:bafybeid6kh4tiqswpeufkr7eowmq7seoyhkssnedgzw6pe4h7wswui6dlm
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeifwdtwxdc2jdlhzdyxctqdmoz6zroxf5o4nhuok5l4luvnofqavty
+- valory/service_staking_token:0.1.0:bafybeibifxmoeaiptovouispl5jdgm4lduzcfgsx723zlw45cfpllecuwy
 protocols:
 - open_aea/signing:1.0.0:bafybeie7xyems76v5b4wc2lmaidcujizpxfzjnnwdeokmhje53g7ym25ii
 - valory/abci:0.1.0:bafybeihmzlmmb4pdo3zkhg6ehuyaa4lhw7bfpclln2o2z7v3o6fcep26iu
