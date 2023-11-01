@@ -33,6 +33,9 @@ from packages.valory.skills.market_manager_abci.bets import (
 )
 
 
+UNIX_DAY = 60 * 60 * 24
+
+
 class SamplingBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
@@ -42,13 +45,27 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def available_bets(self) -> Iterator[Bet]:
         """Get an iterator of the unprocessed bets."""
         bets = self.synchronized_data.bets
+
+        # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
+        if self.params.trading_strategy == "kelly_criterion":
+            # get only bets that close in the next 48 hours
+            bets = [
+                bet
+                for bet in bets
+                if bet.openingTimestamp
+                <= (
+                    self.synced_timestamp
+                    + self.params.sample_bets_closing_days * UNIX_DAY
+                )
+            ]
+
         return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, bets)
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
         Sample a bet and return its id.
 
-        The sampling logic is relatively simple at the moment
+        The sampling logic is relatively simple at the moment.
         It simply selects the unprocessed bet with the largest liquidity.
 
         :param bets: the bets' values to compare for the sampling.

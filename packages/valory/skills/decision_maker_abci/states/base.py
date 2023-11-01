@@ -126,6 +126,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return float(self.db.get_strict("confidence"))
 
     @property
+    def bet_amount(self) -> int:
+        """Get the calculated bet amount."""
+        return int(self.db.get_strict("bet_amount"))
+
+    @property
     def is_profitable(self) -> bool:
         """Get whether the current vote is profitable or not."""
         return bool(self.db.get_strict("is_profitable"))

@@ -33,6 +33,7 @@ class DecisionReceivePayload(BaseTxPayload):
     is_profitable: Optional[bool]
     vote: Optional[int]
     confidence: Optional[float]
+    bet_amount: Optional[int]
 
 
 @dataclass(frozen=True)

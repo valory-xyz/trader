@@ -165,6 +165,20 @@ class DecisionMakerParams(MarketManagerParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
+        # the number of days to sample bets from
+        self.sample_bets_closing_days: int = self._ensure(
+            "sample_bets_closing_days", kwargs, int
+        )
+        if self.sample_bets_closing_days <= 0:
+            msg = "The number of days to sample bets from must be positive!"
+            raise ValueError(msg)
+
+        # the trading strategy to use for placing bets
+        self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
+        # the factor of calculated kelly bet to use for placing bets
+        self.bet_kelly_fraction: float = self._ensure(
+            "bet_kelly_fraction", kwargs, float
+        )
         # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
         self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
             "bet_amount_per_threshold", kwargs, Dict[float, int]
@@ -235,11 +249,6 @@ class DecisionMakerParams(MarketManagerParams):
             )
         self._slippage = slippage
 
-    def get_bet_amount(self, confidence: float) -> int:
-        """Get the bet amount given a prediction's confidence."""
-        threshold = round(confidence, 1)
-        return self.bet_amount_per_threshold[threshold]
-
     def get_policy_store_path(self, kwargs: Dict) -> Path:
         """Get the path of the policy store."""
         path = self._ensure("policy_store_path", kwargs, str)
@@ -303,6 +312,11 @@ class PredictionResponse:
         if self.p_no != self.p_yes:
             return int(self.p_no > self.p_yes)
         return None
+
+    @property
+    def win_probability(self) -> Optional[float]:
+        """Return the probability estimation for winning with vote."""
+        return max(self.p_no, self.p_yes)
 
 
 @dataclass(init=False)

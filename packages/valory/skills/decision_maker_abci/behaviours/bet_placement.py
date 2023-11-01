@@ -59,7 +59,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     @property
     def investment_amount(self) -> int:
         """Get the investment amount of the bet."""
-        return self.params.get_bet_amount(self.synchronized_data.confidence)
+        return self.synchronized_data.bet_amount
 
     @property
     def w_xdai_deficit(self) -> int:

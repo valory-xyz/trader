@@ -39,7 +39,7 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
+from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS, Bet
 
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -206,8 +206,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_decision(
         self,
-    ) -> Generator[None, None, Tuple[Optional[int], Optional[float]]]:
-        """Get the vote and it's confidence."""
+    ) -> Generator[None, None, Tuple[Optional[int], Optional[float], Optional[float]]]:
+        """Get vote, win probability and confidence."""
         for step in (
             self._get_block_number,
             self._get_request_id,
@@ -221,9 +221,23 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(
                 f"There was an error on the mech's response: {self.mech_response.error}"
             )
-            return None, None
+            return None, None, None
 
-        return self.mech_response.result.vote, self.mech_response.result.confidence
+        return (
+            self.mech_response.result.vote,
+            self.mech_response.result.win_probability,
+            self.mech_response.result.confidence,
+        )
+
+    @staticmethod
+    def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
+        """Get the bet sample information."""
+        token_amounts = bet.outcomeTokenAmounts
+        selected_type_tokens_in_pool = token_amounts[vote]
+        opposite_vote = vote ^ 1
+        other_tokens_in_pool = token_amounts[opposite_vote]
+
+        return selected_type_tokens_in_pool, other_tokens_in_pool
 
     def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
@@ -231,54 +245,99 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
-        if token_amounts is None:
-            return 0, 0
+        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
         k = prod(token_amounts)
+        self.context.logger.info(f"k: {k}")
 
         # the OMEN market trades an equal amount of the investment to each of the tokens in the pool
         # here we calculate the bet amount per pool's token
         bet_per_token = net_bet_amount / BINARY_N_SLOTS
+        self.context.logger.info(f"Bet per token: {bet_per_token}")
 
         # calculate the number of the traded tokens
         prices = bet.outcomeTokenMarginalPrices
+        self.context.logger.info(f"Prices: {prices}")
+
         if prices is None:
             return 0, 0
         tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
+        self.context.logger.info(f"Tokens traded: {[x for x in tokens_traded]}")
 
         # get the shares for the answer that the service has selected
         selected_shares = tokens_traded.pop(vote)
+        self.context.logger.info(f"Selected shares: {selected_shares}")
 
         # get the shares for the opposite answer
         other_shares = tokens_traded.pop()
+        self.context.logger.info(f"Other shares: {other_shares}")
 
         # get the number of tokens in the pool for the answer that the service has selected
         selected_type_tokens_in_pool = token_amounts.pop(vote)
+        self.context.logger.info(
+            f"Selected type tokens in pool: {selected_type_tokens_in_pool}"
+        )
 
         # get the number of tokens in the pool for the opposite answer
         other_tokens_in_pool = token_amounts.pop()
+        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool}")
 
         # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
         # preserving the balance of the pool
         # here we calculate the number of shares that we get after trading the tokens for the opposite answer
         tokens_remaining_in_pool = int(k / (other_tokens_in_pool + other_shares))
+        self.context.logger.info(
+            f"Tokens remaining in pool: {tokens_remaining_in_pool}"
+        )
+
         swapped_shares = selected_type_tokens_in_pool - tokens_remaining_in_pool
+        self.context.logger.info(f"Swapped shares: {swapped_shares}")
 
         # calculate the resulting number of shares if the service would take that position
         num_shares = selected_shares + swapped_shares
+        self.context.logger.info(f"Number of shares: {num_shares}")
+
         # calculate the available number of shares
         price = prices[vote]
+        self.context.logger.info(f"Price: {prices[vote]}")
+
         available_shares = int(selected_type_tokens_in_pool * price)
+        self.context.logger.info(f"Available shares: {available_shares}")
 
         return num_shares, available_shares
 
-    def _is_profitable(self, confidence: float, vote: int) -> bool:
+    def _is_profitable(
+        self, vote: int, win_probability: float, confidence: float
+    ) -> Tuple[bool, int]:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
-        bet_amount = self.params.get_bet_amount(confidence)
-        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
-        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
-        bet_threshold = self.params.bet_threshold
+        selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
+            bet, vote
+        )
 
+        bet_amount = self.get_bet_amount(
+            self.params.trading_strategy,
+            win_probability,
+            confidence,
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            bet.fee,
+        )
+
+        self.context.logger.info(f"Bet amount: {bet_amount}")
+        self.context.logger.info(f"Bet fee: {bet.fee}")
+        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
+        self.context.logger.info(f"Net bet amount: {net_bet_amount}")
+
+        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
+
+        self.context.logger.info(f"Adjusted available shares: {available_shares}")
+        if num_shares > available_shares * SLIPPAGE:
+            self.context.logger.warning(
+                "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
+                "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
+                "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
+            )
+        bet_threshold = self.params.bet_threshold
         if bet_threshold <= 0:
             self.context.logger.warning(
                 f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
@@ -289,35 +348,35 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         potential_net_profit = num_shares - net_bet_amount - bet_threshold
         is_profitable = potential_net_profit >= 0
 
-        if num_shares > available_shares * SLIPPAGE:
-            self.context.logger.warning(
-                "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
-                "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
-                "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
-            )
-
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
             f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
             f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
-
-        return is_profitable
+        return is_profitable, bet_amount
 
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            vote, confidence = yield from self._get_decision()
+            vote, win_probability, confidence = yield from self._get_decision()
             is_profitable = None
-            if vote is not None and confidence is not None:
-                is_profitable = self._is_profitable(confidence, vote)
+            bet_amount = None
+            if (
+                vote is not None
+                and confidence is not None
+                and win_probability is not None
+            ):
+                is_profitable, bet_amount = self._is_profitable(
+                    vote, win_probability, confidence
+                )
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
                 vote,
                 confidence,
+                bet_amount,
             )
 
         yield from self.finish_behaviour(payload)
