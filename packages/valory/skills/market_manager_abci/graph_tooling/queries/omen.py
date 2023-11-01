@@ -62,7 +62,6 @@ trades = Template(
           creator: "${creator}",
           fpmm_: {
             answerFinalizedTimestamp_not: null,
-            creationTimestamp_gt: "${from_timestamp}",
             isPendingArbitration: false
           }
         }

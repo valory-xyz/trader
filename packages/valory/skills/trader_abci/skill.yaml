@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeiaomt3gscv4pvxczc4scu6q6laza6bqhpvfi2bfiq37vksuchhqiy
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeifj5y7qcoac72woe53zaz2lopkqir2472bbey3ypsqmprjmljms7i
+  models.py: bafybeihdsszlbuvustazamlav3zvaupxnsmmdv4qo526m4d6lbedaverge
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicpxn2khtaesuf4cq6ypwdmdmonlqroj2q2i6cxvpizc2y4cw66pe
 - valory/transaction_settlement_abci:0.1.0:bafybeia6cdxdlqrcwk2maw25fo7dafzd2p3rs7syropvufophk2pitzbwy
 - valory/termination_abci:0.1.0:bafybeieqm46zuccaagnko3qlw6p3nvoohdrfgvpmw467r5lyil2dqrzjsy
-- valory/market_manager_abci:0.1.0:bafybeigmy3g2klkzdhttti2ouxf575ua5y7ajmh4a3yfpukeukqxjky47m
-- valory/decision_maker_abci:0.1.0:bafybeidzc26z7vudomj3gh7jyiain3erca2nejxxhl5v37rp22zfj5xwki
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicoe4vpnminp2nwuyxbwcs2mnantvsgxrjfd7ogbgjkumuozotndy
+- valory/market_manager_abci:0.1.0:bafybeidropskas24c4lcekzdbwoflhnzaglmeqxvpyuoa7cf7q2rf2yex4
+- valory/decision_maker_abci:0.1.0:bafybeia6qyuwmuhadhqls4vzk4iesipybit43fmdgm6qh4drnzd3vulcqm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif42r2cks5fqdwuuf6u3tdn4drugnyepd4kng6il6scejegi6h6sq
 behaviours:
   main:
     args: {}
@@ -166,9 +166,9 @@ models:
       conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
+      event_filtering_batch_size: 5000
       redeeming_batch_size: 5
       slippage: 0.01
-      redeem_margin_days: 15
       policy_epsilon: 0.1
       policy_store_path: /data/
       irrelevant_tools:

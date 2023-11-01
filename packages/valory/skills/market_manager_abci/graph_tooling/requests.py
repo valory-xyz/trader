@@ -41,9 +41,6 @@ from packages.valory.skills.market_manager_abci.models import (
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
 
 
-DAY_UNIX = 24 * 60 * 60
-
-
 def to_content(query: str) -> bytes:
     """Convert the given query string to payload content, i.e., add it under a `queries` key and convert it to bytes."""
     finalized_query = {"query": query}
@@ -187,9 +184,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.IN_PROGRESS
 
         safe = self.synchronized_data.safe_contract_address
-        redeem_margin = self.params.redeem_margin_days * DAY_UNIX
-        from_timestamp = self.synced_time - redeem_margin
-        query = trades.substitute(creator=safe.lower(), from_timestamp=from_timestamp)
+        query = trades.substitute(creator=safe.lower())
 
         # workaround because we cannot have multiple response keys for a single `ApiSpec`
         res_key_backup = self.current_subgraph.response_info.response_key
