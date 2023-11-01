@@ -235,9 +235,7 @@ class PredictionResponse:
     @property
     def win_probability(self) -> Optional[float]:
         """Return the probability estimation for winning with vote."""
-        if self.p_no != self.p_yes:
-            return max(self.p_no, self.p_yes)
-        return None
+        return max(self.p_no, self.p_yes)
 
 
 @dataclass(init=False)
