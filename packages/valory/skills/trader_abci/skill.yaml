@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeiaomt3gscv4pvxczc4scu6q6laza6bqhpvfi2bfiq37vksuchhqiy
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeifj5y7qcoac72woe53zaz2lopkqir2472bbey3ypsqmprjmljms7i
+  models.py: bafybeihdsszlbuvustazamlav3zvaupxnsmmdv4qo526m4d6lbedaverge
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -169,9 +169,9 @@ models:
       conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
+      event_filtering_batch_size: 5000
       redeeming_batch_size: 5
       slippage: 0.01
-      redeem_margin_days: 15
       policy_epsilon: 0.1
       policy_store_path: /data/
       irrelevant_tools:
