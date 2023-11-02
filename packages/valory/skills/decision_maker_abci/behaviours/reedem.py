@@ -536,7 +536,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         ):
             max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.claim_to_block)
-            result = yield from self._conditional_tokens_interact(
+            result = yield from self._realitio_interact(
                 contract_callable="get_claim_params",
                 data_key="claim_params",
                 placeholder=get_name(RedeemBehaviour.claim_params_batch),
