@@ -307,14 +307,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _is_profitable(
         self, vote: int, win_probability: float, confidence: float
-    ) -> Tuple[bool, int]:
+    ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
         bet = self.synchronized_data.sampled_bet
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, vote
         )
 
-        bet_amount = self.get_bet_amount(
+        bet_amount = yield from self.get_bet_amount(
             self.params.trading_strategy,
             win_probability,
             confidence,
@@ -368,7 +368,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 and confidence is not None
                 and win_probability is not None
             ):
-                is_profitable, bet_amount = self._is_profitable(
+                is_profitable, bet_amount = yield from self._is_profitable(
                     vote, win_probability, confidence
                 )
             payload = DecisionReceivePayload(
