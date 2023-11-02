@@ -77,14 +77,11 @@ class RealitioContract(Contract):
             )
             return dict(error=msg)
 
-        if len(answered) == 0:
-            msg = (
-                f"No answers have been given for question with id {question_id.hex()} "
-                f"between blocks {from_block} and {to_block}."
-            )
-            return dict(info=msg)
-
-        return dict(answered=answered)
+        msg = (
+            f"Found {len(answered)} answers for question with id {question_id.hex()} "
+            f"between blocks {from_block} and {to_block}."
+        )
+        return dict(info=msg, answered=answered)
 
     @classmethod
     def build_claim_winnings(
