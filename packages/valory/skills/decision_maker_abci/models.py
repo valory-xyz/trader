@@ -99,26 +99,29 @@ class RedeemingProgress:
         return self.claim_started and self.claim_from_block == self.claim_to_block
 
     @property
-    def claim_params(self) -> ClaimParamsType:
+    def claim_params(self) -> Optional[ClaimParamsType]:
         """The claim parameters, prepared for the `claimWinnings` call."""
         history_hashes = []
         addresses = []
         bonds = []
         answers = []
-        for i, answer in enumerate(reversed(self.answered)):
-            # history_hashes second-last-to-first, the hash of each history entry, calculated as described here:
-            # https://realitio.github.io/docs/html/contract_explanation.html#answer-history-entries.
-            if i == len(self.answered) - 1:
-                history_hashes.append(ZERO_BYTES)
-            else:
-                history_hashes.append(self.answered[i + 1]["args"]["history_hash"])
+        try:
+            for i, answer in enumerate(reversed(self.answered)):
+                # history_hashes second-last-to-first, the hash of each history entry, calculated as described here:
+                # https://realitio.github.io/docs/html/contract_explanation.html#answer-history-entries.
+                if i == len(self.answered) - 1:
+                    history_hashes.append(ZERO_BYTES)
+                else:
+                    history_hashes.append(self.answered[i + 1]["args"]["history_hash"])
 
-            # last-to-first, the address of each answerer or commitment sender
-            addresses.append(answer["args"]["user"])
-            # last-to-first, the bond supplied with each answer or commitment
-            bonds.append(answer["args"]["bond"])
-            # last-to-first, each answer supplied, or commitment ID if the answer was supplied with commit->reveal
-            answers.append(answer["args"]["answer"])
+                # last-to-first, the address of each answerer or commitment sender
+                addresses.append(answer["args"]["user"])
+                # last-to-first, the bond supplied with each answer or commitment
+                bonds.append(answer["args"]["bond"])
+                # last-to-first, each answer supplied, or commitment ID if the answer was supplied with commit->reveal
+                answers.append(answer["args"]["answer"])
+        except KeyError:
+            return None
 
         return history_hashes, addresses, bonds, answers
 

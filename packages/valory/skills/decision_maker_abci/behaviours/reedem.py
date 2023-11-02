@@ -556,6 +556,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if not self.redeeming_progress.claim_finished:
             yield from self.wait_for_condition_with_sleep(self.get_claim_params)
 
+        claim_params = self.redeeming_progress.claim_params
+        if claim_params is None:
+            self.context.logger.error(
+                f"Cannot parse incorrectly formatted realitio `LogNewAnswer` events: {self.redeeming_progress.answered}"
+            )
+            return False
+
         result = yield from self._realitio_interact(
             contract_callable="build_claim_winnings",
             data_key="data",
