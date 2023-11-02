@@ -12,13 +12,13 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiffvzohjzr6rubdccfcbhgbjyyxxx2flldavubwtjuac2hai2nrdy
+  behaviours/base.py: bafybeidlbdyrcd2sifjmbxql4mdki3mpzxbu6bug2e2ljmd7lnliycc7hm
   behaviours/bet_placement.py: bafybeigtz4uimsqjjwq4r5p3a5v6niqdtqezbuf2ghy6o7syhsh4k5gjfa
   behaviours/blacklisting.py: bafybeicl6b4hcmqmekta2mcuhkkydnzk7jmic6k44e6ns3u2ibad3awzvu
   behaviours/decision_receive.py: bafybeifacce2ke7oltnwnpdjdqfd74eaaw5wxnjfzk6c5tqdsxsmbzjj3m
   behaviours/decision_request.py: bafybeibrk6jxalkgspinmjboqr3o6d6hl6mxtlkif74a5p32vp2zzhhzua
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeig3x76f3o3g5dbt6nhvbwo7bd4ykc2znz3vybqoje4vg5blzbbgja
+  behaviours/reedem.py: bafybeiepr4sellesn37csr7tmd4yhdsnn6y2jmy6kaculty6pffjc6tawe
   behaviours/round_behaviour.py: bafybeig4tdktyu6hapoqymnxh2bgpds547st6a44heue657wkctwe4gjvm
   behaviours/sampling.py: bafybeieu4obvwhsquvgmdi7moo4eajdh376oqlzb4zu3wsznovg2o5x2de
   behaviours/tool_selection.py: bafybeigfr2frkljrxyfxs5p3j42equzehgaqtkyuxk6eiujyudr6ajqakm
@@ -50,7 +50,7 @@ contracts:
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeihvc6btuk3nvernzcx4qpezvuhiw2wwnagqj5nkeljvszghv7mq64
 - valory/conditional_tokens:0.1.0:bafybeifov35k2ifwagzyfvl7km6je6tmyvcqgrccldob3zmbx2af2wzque
-- valory/realitio:0.1.0:bafybeid6kh4tiqswpeufkr7eowmq7seoyhkssnedgzw6pe4h7wswui6dlm
+- valory/realitio:0.1.0:bafybeiamgkwwqhray4fs2hlipwxkq7mosmi7ev7jut4vneetaaycc4ruji
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeifwdtwxdc2jdlhzdyxctqdmoz6zroxf5o4nhuok5l4luvnofqavty
 protocols:
