@@ -78,7 +78,7 @@ class RealitioContract(Contract):
             return dict(error=msg)
 
         msg = (
-            f"Found {len(answered)} answers for question with id {question_id.hex()} "
+            f"Found {len(answered)} answer(s) for question with id {question_id.hex()} "
             f"between blocks {from_block} and {to_block}."
         )
         return dict(info=msg, answered=answered)
