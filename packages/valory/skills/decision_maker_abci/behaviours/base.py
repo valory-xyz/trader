@@ -362,19 +362,20 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             f"using {contract_callable!r}: {response_msg}"
         )
 
-    def contract_interaction_error(
-        self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
-    ) -> None:
-        """Return a contract interaction error message."""
-        # contracts can only return one message, i.e., multiple levels cannot exist.
+    def _propagate_contract_messages(self, response_msg: ContractApiMessage) -> None:
+        """Propagate the contract's message to the logger, if exists.
+
+        Contracts can only return one message at a time.
+
+        :param response_msg: the response message from the contract method.
+        :return: None
+        """
         for level in ("info", "warning", "error"):
             msg = response_msg.raw_transaction.body.get(level, None)
-            logger = getattr(self.context.logger, level)
             if msg is not None:
+                logger = getattr(self.context.logger, level)
                 logger(msg)
                 return
-
-        self.default_error(contract_id, contract_callable, response_msg)
 
     def contract_interact(
         self,
@@ -399,11 +400,11 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             self.default_error(contract_id, contract_callable, response_msg)
             return False
 
+        self._propagate_contract_messages(response_msg)
+
         data = response_msg.raw_transaction.body.get(data_key, None)
         if data is None:
-            self.contract_interaction_error(
-                contract_id, contract_callable, response_msg
-            )
+            self.default_error(contract_id, contract_callable, response_msg)
             return False
 
         setattr(self, placeholder, data)
