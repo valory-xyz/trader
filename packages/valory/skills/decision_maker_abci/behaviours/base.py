@@ -294,7 +294,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         selected_type_tokens_in_pool: int,
         other_tokens_in_pool: int,
         bet_fee: int,
-    ) -> int:
+    ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
 
         if strategy == "bet_amount_per_conf_threshold":
@@ -310,6 +310,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
         self.context.logger.info("Used trading strategy: Kelly Criterion")
         # bankroll: the max amount of DAI available to trade
+        yield from self.wait_for_condition_with_sleep(self.check_balance)
         bankroll = self.token_balance + self.wallet_balance
         # keep `floor_balance` xDAI in the bankroll
         floor_balance = 500000000000000000
