@@ -538,7 +538,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             to_block = min(max_to_block, self.redeeming_progress.claim_to_block)
             result = yield from self._realitio_interact(
                 contract_callable="get_claim_params",
-                data_key="claim_params",
+                data_key="answered",
                 placeholder=get_name(RedeemBehaviour.claim_params_batch),
                 from_block=from_block,
                 to_block=to_block,
