@@ -114,7 +114,7 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
         if event != Event.FETCH_ERROR:
             return res
 
-        synced_data.update(SynchronizedData, bets=synced_data.bets)
+        synced_data.update(SynchronizedData, bets=synced_data.db.get("bets", ""))
         return synced_data, event
 
 
