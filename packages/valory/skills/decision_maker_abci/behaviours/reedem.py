@@ -536,9 +536,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         ):
             max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.claim_to_block)
-            result = yield from self._conditional_tokens_interact(
+            result = yield from self._realitio_interact(
                 contract_callable="get_claim_params",
-                data_key="claim_params",
+                data_key="answered",
                 placeholder=get_name(RedeemBehaviour.claim_params_batch),
                 from_block=from_block,
                 to_block=to_block,
@@ -555,6 +555,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         """Prepare the safe tx to claim the winnings."""
         if not self.redeeming_progress.claim_finished:
             yield from self.wait_for_condition_with_sleep(self.get_claim_params)
+
+        claim_params = self.redeeming_progress.claim_params
+        if claim_params is None:
+            self.context.logger.error(
+                f"Cannot parse incorrectly formatted realitio `LogNewAnswer` events: {self.redeeming_progress.answered}"
+            )
+            return False
 
         result = yield from self._realitio_interact(
             contract_callable="build_claim_winnings",
