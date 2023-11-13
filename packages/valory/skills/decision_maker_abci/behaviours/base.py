@@ -61,6 +61,7 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+EPSILON = 1e-7
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -219,14 +220,9 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self, x: int, y: int, p: float, c: float, b: int, f: float
     ) -> int:
         """Calculate the Kelly bet amount."""
-        if b == 0 or x**2 * f == y**2 * f:
-            self.context.logger.error(
-                "Could not calculate Kelly bet amount. "
-                "Either bankroll is 0 or pool token amount is distributed as x^2*f - y^2*f = 0:\n"
-                f"Bankroll: {b}\n"
-                f"Pool token amounts: {x}, {y}"
-                f"Fee, fee fraction f: {1-f}, {f}"
-            )
+        if b == 0:
+            error = "Cannot calculate Kelly bet amount with no bankroll."
+            self.context.logger.error(error)
             return 0
         kelly_bet_amount = (
             -4 * x**2 * y
@@ -256,7 +252,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 )
             )
             ** (1 / 2)
-        ) / (2 * (x**2 * f - y**2 * f))
+        ) / (2 * (x**2 * f - y**2 * f)) + EPSILON
         return int(kelly_bet_amount)
 
     def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
@@ -362,20 +358,21 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             f"using {contract_callable!r}: {response_msg}"
         )
 
-    def _propagate_contract_messages(self, response_msg: ContractApiMessage) -> None:
+    def _propagate_contract_messages(self, response_msg: ContractApiMessage) -> bool:
         """Propagate the contract's message to the logger, if exists.
 
         Contracts can only return one message at a time.
 
         :param response_msg: the response message from the contract method.
-        :return: None
+        :return: whether a message has been propagated.
         """
         for level in ("info", "warning", "error"):
             msg = response_msg.raw_transaction.body.get(level, None)
             if msg is not None:
                 logger = getattr(self.context.logger, level)
                 logger(msg)
-                return
+                return True
+        return False
 
     def contract_interact(
         self,
@@ -400,11 +397,11 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             self.default_error(contract_id, contract_callable, response_msg)
             return False
 
-        self._propagate_contract_messages(response_msg)
-
+        propagated = self._propagate_contract_messages(response_msg)
         data = response_msg.raw_transaction.body.get(data_key, None)
         if data is None:
-            self.default_error(contract_id, contract_callable, response_msg)
+            if not propagated:
+                self.default_error(contract_id, contract_callable, response_msg)
             return False
 
         setattr(self, placeholder, data)
