@@ -252,7 +252,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
                 )
             )
             ** (1 / 2)
-        ) / (2 * (x**2 * f - y**2 * f)) + EPSILON
+        ) / (2 * (x**2 * f - y**2 * f) + EPSILON)
         return int(kelly_bet_amount)
 
     def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
