@@ -47,6 +47,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeibrjre5yka3sbvb6lsefgc5yutovb6h4ffzrpecplfkjwtl5i36te
 - valory/decision_maker_abci:0.1.0:bafybeiguvfiaytb7i3p5sluubvehvzcu4wdzch4avdyxhj6332mkohv674
 - valory/trader_abci:0.1.0:bafybeigjkkphi7y2nlq7nc4unookfvyn5vwfqus27g2qtldctuan6fiipa
+- valory/staking_abci:0.1.0:bafybeidxkvr6iogmdsktse4owx7bt64vi6glnzqvwqoork4atwzt2g5yp4
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -198,6 +199,7 @@ models:
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
         "stabilityai-stable-diffusion-768-v2-1"]}
+      staking_contract_address: ${str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

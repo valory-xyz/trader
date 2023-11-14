@@ -38,6 +38,7 @@ from packages.valory.skills.registration_abci.behaviours import (
 from packages.valory.skills.reset_pause_abci.behaviours import (
     ResetPauseABCIConsensusBehaviour,
 )
+from packages.valory.skills.staking_abci.behaviours import StakingRoundBehaviour
 from packages.valory.skills.termination_abci.behaviours import (
     BackgroundBehaviour,
     TerminationAbciBehaviours,
@@ -65,5 +66,6 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *TerminationAbciBehaviours.behaviours,
         *TransactionSettlementRoundBehaviour.behaviours,
         *PostTxSettlementFullBehaviour.behaviours,
+        *StakingRoundBehaviour.behaviours,
     }
     background_behaviours_cls = {BackgroundBehaviour}  # type: ignore
