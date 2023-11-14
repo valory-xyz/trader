@@ -311,7 +311,8 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         # keep `floor_balance` xDAI in the bankroll
         floor_balance = 500000000000000000
         bankroll_adj = bankroll - floor_balance
-        self.context.logger.info(f"Adjusted bankroll: {bankroll_adj} DAI")
+        bankroll_adj_xdai = self.wei_to_native(bankroll_adj)
+        self.context.logger.info(f"Adjusted bankroll: {bankroll_adj_xdai} xDAI.")
         if bankroll_adj <= 0:
             self.context.logger.info(
                 f"Bankroll ({bankroll_adj}) is less than the floor balance ({floor_balance}). "
