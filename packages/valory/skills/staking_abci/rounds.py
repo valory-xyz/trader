@@ -70,7 +70,7 @@ class SynchronizedData(TxSettlementSyncedData):
     @property
     def is_service_staked(self) -> bool:
         """Whether the service is staked or not."""
-        return bool(self.db.get("is_staked", False))
+        return bool(self.db.get("is_service_staked", False))
 
     @property
     def participant_to_checkpoint(self) -> DeserializedCollection:
