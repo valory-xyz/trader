@@ -229,13 +229,21 @@ class CallCheckpointBehaviour(BaseBehaviour):
         """Check whether the service is staked."""
         if self.synchronized_data.period_count != 0:
             self.is_service_staked = self.synchronized_data.is_service_staked
-            status = True
-        else:
-            status = yield from self._staking_contract_interact(
-                contract_callable="is_service_staked",
-                placeholder=get_name(CallCheckpointBehaviour.is_service_staked),
-                service_id=self.params.service_id,
+            return True
+
+        service_id = self.params.on_chain_service_id
+        if service_id is None:
+            self.context.logger.warning(
+                "Cannot perform any staking-related operations without a configured on-chain service id. "
+                "Setting status to 'not staked'."
             )
+            return True
+
+        status = yield from self._staking_contract_interact(
+            contract_callable="is_service_staked",
+            placeholder=get_name(CallCheckpointBehaviour.is_service_staked),
+            service_id=service_id,
+        )
 
         return status
 
