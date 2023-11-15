@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
   build/ServiceStakingToken.json: bafybeie2xbccvzmjuptqfqumctv6gtyyeoxe7fkx3t7fgbto7wbdugbqxm
-  contract.py: bafybeihyuap3ndb7ov7fkqr5ybsazikph47oeallykzbs6wdbyvvwruerq
+  contract.py: bafybeiddcci5w72vnvclr7muyijn2mrowmx73mx66fkpttqm2a5nnso2me
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: ServiceStakingTokenContract

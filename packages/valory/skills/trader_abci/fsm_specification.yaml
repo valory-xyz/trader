@@ -79,10 +79,10 @@ transition_func:
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
     (CallCheckpointRound, DONE): RandomnessTransactionSubmissionRound
-    (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): RandomnessTransactionSubmissionRound
+    (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
     (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
-    (CallCheckpointRound, SERVICE_NOT_STAKED): RandomnessTransactionSubmissionRound
+    (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
     (CheckLateTxHashesRound, DONE): PostTxSettlementRound

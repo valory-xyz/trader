@@ -130,9 +130,14 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     Transition states:
         0. CallCheckpointRound
             - done: 1.
-        1. FinishedStakingRound
+            - service not staked: 2.
+            - next checkpoint not reached yet: 2.
+            - round timeout: 0.
+            - no majority: 0.
+        1. CheckpointCallPreparedRound
+        2. FinishedStakingRound
 
-    Final states: {FinishedStakingRound}
+    Final states: {CheckpointCallPreparedRound, FinishedStakingRound}
 
     Timeouts:
         round timeout: 30.0
