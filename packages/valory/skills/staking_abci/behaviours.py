@@ -272,6 +272,7 @@ class CallCheckpointBehaviour(BaseBehaviour):
 
     def _prepare_safe_tx(self) -> Generator[None, None, str]:
         """Prepare the safe transaction for calling the checkpoint and return the hex for the tx settlement skill."""
+        yield from self.wait_for_condition_with_sleep(self._build_checkpoint_tx)
         yield from self.wait_for_condition_with_sleep(self._get_safe_tx_hash)
         return hash_payload_to_hex(
             self.safe_tx_hash,
