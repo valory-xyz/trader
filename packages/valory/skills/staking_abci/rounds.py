@@ -112,6 +112,10 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         return res
 
 
+class CheckpointCallPreparedRound(DegenerateRound, ABC):
+    """A round that represents staking has finished with a checkpoint call safe tx prepared."""
+
+
 class FinishedStakingRound(DegenerateRound, ABC):
     """A round that represents staking has finished."""
 
@@ -137,26 +141,30 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     initial_round_cls: Type[AbstractRound] = CallCheckpointRound
     transition_function: AbciAppTransitionFunction = {
         CallCheckpointRound: {
-            Event.DONE: FinishedStakingRound,
+            Event.DONE: CheckpointCallPreparedRound,
             Event.SERVICE_NOT_STAKED: FinishedStakingRound,
             Event.NEXT_CHECKPOINT_NOT_REACHED_YET: FinishedStakingRound,
             Event.ROUND_TIMEOUT: CallCheckpointRound,
             Event.NO_MAJORITY: CallCheckpointRound,
         },
+        CheckpointCallPreparedRound: {},
         FinishedStakingRound: {},
     }
     cross_period_persisted_keys = frozenset(
         {get_name(SynchronizedData.is_service_staked)}
     )
-    final_states: Set[AppState] = {FinishedStakingRound}
+    final_states: Set[AppState] = {CheckpointCallPreparedRound, FinishedStakingRound}
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {CallCheckpointRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
-        FinishedStakingRound: {
+        CheckpointCallPreparedRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
+            get_name(SynchronizedData.is_service_staked),
+        },
+        FinishedStakingRound: {
             get_name(SynchronizedData.is_service_staked),
         },
     }

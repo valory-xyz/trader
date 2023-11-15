@@ -58,6 +58,7 @@ from packages.valory.skills.reset_pause_abci.rounds import (
 )
 from packages.valory.skills.staking_abci.rounds import (
     CallCheckpointRound,
+    CheckpointCallPreparedRound,
     FinishedStakingRound,
     StakingAbciApp,
 )
@@ -97,7 +98,8 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRedeemingTxRound: CallCheckpointRound,
     FinishedWithoutDecisionRound: RedeemRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,
-    FinishedStakingRound: RandomnessTransactionSubmissionRound,
+    FinishedStakingRound: ResetAndPauseRound,
+    CheckpointCallPreparedRound: RandomnessTransactionSubmissionRound,
     FinishedStakingTxRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
     FinishedResetAndPauseErrorRound: RegistrationRound,
