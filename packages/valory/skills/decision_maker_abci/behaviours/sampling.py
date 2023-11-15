@@ -47,7 +47,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         bets = self.synchronized_data.bets
 
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
-        if self.params.trading_strategy == "kelly_criterion":
+        if self.params.using_kelly:
             # get only bets that close in the next 48 hours
             bets = [
                 bet
