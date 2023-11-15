@@ -287,12 +287,11 @@ class CallCheckpointBehaviour(BaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self._check_service_staked)
 
+            checkpoint_tx_hex = None
             if self.is_service_staked:
                 yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-
-            checkpoint_tx_hex = None
-            if self.is_checkpoint_reached:
-                checkpoint_tx_hex = yield from self._prepare_safe_tx()
+                if self.is_checkpoint_reached:
+                    checkpoint_tx_hex = yield from self._prepare_safe_tx()
 
             tx_submitter = self.matching_round.auto_round_id()
             payload = CallCheckpointPayload(
