@@ -132,25 +132,31 @@ class FailedMultiplexerRound(DegenerateRound):
 class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
     """TxSettlementMultiplexerAbciApp
 
-    Initial round: PostTxSettlementRound
+    Initial round: PreTxSettlementRound
 
-    Initial states: {PostTxSettlementRound}
+    Initial states: {PostTxSettlementRound, PreTxSettlementRound}
 
     Transition states:
-        0. PostTxSettlementRound
-            - decision requesting done: 1.
-            - bet placement done: 2.
-            - redeeming done: 3.
-            - staking done: 4.
+        0. PreTxSettlementRound
+            - checks passed: 2.
+            - refill required: 0.
+            - no majority: 0.
             - round timeout: 0.
-            - unrecognized: 5.
-        1. FinishedDecisionRequestTxRound
-        2. FinishedBetPlacementTxRound
-        3. FinishedRedeemingTxRound
-        4. FinishedStakingTxRound
-        5. FailedMultiplexerRound
+        1. PostTxSettlementRound
+            - decision requesting done: 3.
+            - bet placement done: 4.
+            - redeeming done: 5.
+            - staking done: 6.
+            - round timeout: 1.
+            - unrecognized: 7.
+        2. ChecksPassedRound
+        3. FinishedDecisionRequestTxRound
+        4. FinishedBetPlacementTxRound
+        5. FinishedRedeemingTxRound
+        6. FinishedStakingTxRound
+        7. FailedMultiplexerRound
 
-    Final states: {FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound}
 
     Timeouts:
         round timeout: 30.0
