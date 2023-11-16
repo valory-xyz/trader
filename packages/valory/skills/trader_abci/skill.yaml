@@ -189,6 +189,7 @@ models:
       staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
+      tool_punishment_multiplier: 1
     class_name: TraderParams
   network_subgraph:
     args:
