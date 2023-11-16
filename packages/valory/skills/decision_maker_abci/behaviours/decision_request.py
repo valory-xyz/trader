@@ -116,8 +116,9 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def xdai_deficit(self) -> int:
-        """Get the amount of missing xDAI for sending the request."""
-        return self.price - self.wallet_balance
+        """Get the amount of missing xDAI for sending the request plus betting the maximum amount."""
+        max_bet_amount = 0 if self.params.using_kelly else self.params.max_bet_amount
+        return (self.price + max_bet_amount) - self.wallet_balance
 
     @property
     def multisend_optional(self) -> bool:
@@ -207,10 +208,14 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             yield from self.wait_for_condition_with_sleep(self._build_unwrap_tx)
             return True
 
-        self.context.logger.warning(
-            "The balance is not enough to pay for the mech's price. "
-            f"Please refill the safe with at least {self.wei_to_native(missing)} xDAI or wxDAI."
-        )
+        balance_info = "The balance is not enough to pay for the mech's price"
+        refill_info = f". Please refill the safe with at least {self.wei_to_native(missing)} xDAI or wxDAI."
+        if not self.params.using_kelly:
+            balance_info += " and place the maximum bet amount"
+            refill_info += (
+                " Alternatively, you could decrease the configured bet amounts."
+            )
+        self.context.logger.warning(balance_info + refill_info)
         self.sleep(self.params.sleep_time)
         return False
 
