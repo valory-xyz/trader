@@ -112,3 +112,26 @@ class ServiceStakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         ts = contract.functions.getNextRewardCheckpointTimestamp().call()
         return dict(data=ts)
+
+    @classmethod
+    def get_liveness_period(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the liveness period."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        liveness_period = contract.functions.livenessPeriod().call()
+        return dict(data=liveness_period)
+
+    @classmethod
+    def get_service_info(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        service_id: int,
+    ) -> JSONLike:
+        """Retrieve the service info for a service."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        info = contract.functions.mapServiceInfo(service_id).call()
+        return dict(data=info)
