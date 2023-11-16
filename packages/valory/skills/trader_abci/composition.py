@@ -56,6 +56,12 @@ from packages.valory.skills.reset_pause_abci.rounds import (
     ResetAndPauseRound,
     ResetPauseAbciApp,
 )
+from packages.valory.skills.staking_abci.rounds import (
+    CallCheckpointRound,
+    CheckpointCallPreparedRound,
+    FinishedStakingRound,
+    StakingAbciApp,
+)
 from packages.valory.skills.termination_abci.rounds import (
     BackgroundRound,
     Event,
@@ -73,6 +79,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
     FinishedDecisionRequestTxRound,
     FinishedRedeemingTxRound,
+    FinishedStakingTxRound,
     PostTxSettlementRound,
     TxSettlementMultiplexerAbciApp,
 )
@@ -88,9 +95,12 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FailedTransactionSubmissionRound: HandleFailedTxRound,
     FinishedDecisionRequestTxRound: DecisionReceiveRound,
     FinishedBetPlacementTxRound: RedeemRound,
-    FinishedRedeemingTxRound: ResetAndPauseRound,
+    FinishedRedeemingTxRound: CallCheckpointRound,
     FinishedWithoutDecisionRound: RedeemRound,
-    FinishedWithoutRedeemingRound: ResetAndPauseRound,
+    FinishedWithoutRedeemingRound: CallCheckpointRound,
+    FinishedStakingRound: ResetAndPauseRound,
+    CheckpointCallPreparedRound: RandomnessTransactionSubmissionRound,
+    FinishedStakingTxRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
     FinishedResetAndPauseErrorRound: RegistrationRound,
 }
@@ -110,6 +120,7 @@ TraderAbciApp = chain(
         TransactionSubmissionAbciApp,
         TxSettlementMultiplexerAbciApp,
         ResetPauseAbciApp,
+        StakingAbciApp,
     ),
     abci_app_transition_mapping,
 ).add_background_app(termination_config)

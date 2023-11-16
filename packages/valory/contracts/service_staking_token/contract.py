@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the class to connect to the Agent Registry contract."""
+"""This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -26,7 +26,7 @@ from aea.crypto.base import LedgerApi
 
 
 class ServiceStakingTokenContract(Contract):
-    """The Agent Registry contract."""
+    """The Service Staking contract."""
 
     contract_id = PublicId.from_str("valory/service_staking_token:0.1.0")
 
@@ -37,8 +37,7 @@ class ServiceStakingTokenContract(Contract):
         contract_address: str,
         service_id: int,
     ) -> JSONLike:
-        """Retrieve an operator given its agent instance."""
-
+        """Check whether the service is staked."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         res = contract_instance.functions.isServiceStaked(service_id).call()
         return dict(data=res)
@@ -61,7 +60,7 @@ class ServiceStakingTokenContract(Contract):
         ledger_api: LedgerApi,
         contract_address: str,
     ) -> JSONLike:
-        """Build stake tx."""
+        """Build checkpoint tx."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         data = contract_instance.encodeABI("checkpoint")
         return dict(data=bytes.fromhex(data[2:]))
@@ -73,7 +72,7 @@ class ServiceStakingTokenContract(Contract):
         contract_address: str,
         service_id: int,
     ) -> JSONLike:
-        """Build stake tx."""
+        """Build unstake tx."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         data = contract_instance.encodeABI("unstake", args=[service_id])
         return dict(data=bytes.fromhex(data[2:]))
@@ -84,8 +83,7 @@ class ServiceStakingTokenContract(Contract):
         ledger_api: LedgerApi,
         contract_address: str,
     ) -> JSONLike:
-        """Retrieve an operator given its agent instance."""
-
+        """Get the available rewards."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         res = contract_instance.functions.availableRewards().call()
         return dict(data=res)
@@ -97,7 +95,7 @@ class ServiceStakingTokenContract(Contract):
         contract_address: str,
         service_id: int,
     ) -> JSONLike:
-        """Retrieve an operator given its agent instance."""
+        """Get the service's staking rewards."""
         contract = cls.get_instance(ledger_api, contract_address)
         reward = contract.functions.calculateServiceStakingReward(service_id).call()
         return dict(data=reward)
@@ -108,7 +106,7 @@ class ServiceStakingTokenContract(Contract):
         ledger_api: LedgerApi,
         contract_address: str,
     ) -> JSONLike:
-        """Retrieve an operator given its agent instance."""
+        """Get the next checkpoint's timestamp."""
         contract = cls.get_instance(ledger_api, contract_address)
         ts = contract.functions.getNextRewardCheckpointTimestamp().call()
         return dict(data=ts)

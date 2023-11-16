@@ -10,3 +10,5 @@ e601530b1b2503589126e99070459e3e46a789d5:packages/valory/skills/trader_abci/skil
 cd8a3159e660a5eb6838657db4d7537912e657bf:packages/valory/skills/market_manager_abci/skill.yaml:generic-api-key:17
 ce811dab0e95cdd63ea00e1ed8207801f464d773:packages/valory/contracts/service_staking_token/contract.yaml:generic-api-key:10
 61e62bd62dcaae666f1bf25981d068e360d32322:packages/valory/skills/staking_abci/skill.yaml:generic-api-key:78
+b520b0c67a9ae55ba501e1e9a99abfc0738e8d49:packages/valory/skills/staking_abci/skill.yaml:generic-api-key:78
+61e62bd62dcaae666f1bf25981d068e360d32322:packages/valory/skills/staking_abci/skill.yaml:generic-api-key:78
