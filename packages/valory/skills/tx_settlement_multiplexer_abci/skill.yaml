@@ -17,7 +17,8 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
-protocols: []
+protocols:
+- valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeid7neqpxxe4ualp23gxgrtpf6r5u3myr2mmc4uvwameyqshfdoydq
 - valory/decision_maker_abci:0.1.0:bafybeighimm45dlkagx5uig2i4wa7ikmiajlcyqkpms64amm5osxrnzroi
@@ -124,7 +125,9 @@ models:
       termination_sleep: 900
       tx_timeout: 10.0
       use_termination: false
-    class_name: Params
+      agent_balance_threshold: 10000000000000000
+      refill_check_interval: 10
+    class_name: TxSettlementMultiplexerParams
   requests:
     args: {}
     class_name: Requests

@@ -20,6 +20,8 @@
 
 """Custom objects for the TxSettlementMultiplexer ABCI application."""
 
+from typing import Any
+
 from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
@@ -35,7 +37,20 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
-Params = BaseParams
+
+
+class TxSettlementMultiplexerParams(BaseParams):
+    """Staking parameters."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the parameters' object."""
+        self.agent_balance_threshold: int = self._ensure(
+            "agent_balance_threshold", kwargs, int
+        )
+        self.refill_check_interval: int = self._ensure(
+            "refill_check_interval", kwargs, int
+        )
+        super().__init__(*args, **kwargs)
 
 
 class SharedState(BaseSharedState):

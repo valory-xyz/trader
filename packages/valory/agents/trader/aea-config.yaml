@@ -202,6 +202,8 @@ models:
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
         "stabilityai-stable-diffusion-768-v2-1"]}
       staking_contract_address: ${str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+      agent_balance_threshold: ${int:10000000000000000}
+      refill_check_interval: ${int:10}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
