@@ -96,6 +96,7 @@ all-checks: format code-checks security generators common-checks-1 common-checks
 
 .PHONY: fix-abci-app-specs
 fix-abci-app-specs:
+	autonomy analyse fsm-specs --update --app-class StakingAbciApp --package packages/valory/skills/staking_abci
 	autonomy analyse fsm-specs --update --app-class MarketManagerAbciApp --package packages/valory/skills/market_manager_abci
 	autonomy analyse fsm-specs --update --app-class DecisionMakerAbciApp --package packages/valory/skills/decision_maker_abci
 	autonomy analyse fsm-specs --update --app-class TraderAbciApp --package packages/valory/skills/trader_abci

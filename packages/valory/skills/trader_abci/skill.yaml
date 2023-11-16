@@ -8,12 +8,12 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeigwadq27e4cnklboorhitwzzve4xkcgjdu2upplbbweuqyl52fj3q
-  composition.py: bafybeie45dgneoggyavgdtswcygvz5o3klmtqf57zoxqnxrtneruutqevi
+  behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
+  composition.py: bafybeif4gsc2kfpsyy7rol74v3ir6ckgrm76jygy3rrcnjt3pen32pgcoi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeiaomt3gscv4pvxczc4scu6q6laza6bqhpvfi2bfiq37vksuchhqiy
+  fsm_specification.yaml: bafybeihh7qkvge7srvrc25hvo6qwtezhewjcegbrqk5rukwpbrx4a2fq3m
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeihdsszlbuvustazamlav3zvaupxnsmmdv4qo526m4d6lbedaverge
+  models.py: bafybeifrz6dfncsxksvyh4jhbl4am2uzivfv6fyqs5mhw4qdpy5ruik7fm
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,9 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeia6cdxdlqrcwk2maw25fo7dafzd2p3rs7syropvufophk2pitzbwy
 - valory/termination_abci:0.1.0:bafybeieqm46zuccaagnko3qlw6p3nvoohdrfgvpmw467r5lyil2dqrzjsy
 - valory/market_manager_abci:0.1.0:bafybeibrjre5yka3sbvb6lsefgc5yutovb6h4ffzrpecplfkjwtl5i36te
-- valory/decision_maker_abci:0.1.0:bafybeiguvfiaytb7i3p5sluubvehvzcu4wdzch4avdyxhj6332mkohv674
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidkeozxuznavfqotsuaahmaajciz7lpro5wxe5y6um2w5k2ag6ohe
+- valory/decision_maker_abci:0.1.0:bafybeiejunyhbfzk3tqn22xmyvpyn75xyjsbeg7grjrywhecak3phbwwem
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibixthabcfuz3ttgjiy2sfdurrefb2gzkaqxcznmngxtr37kbqmvu
+- valory/staking_abci:0.1.0:bafybeichs6yhjv24mgccqt6hlcqakpfcxit6gvowziz7pb2w6hxfc5wyem
 behaviours:
   main:
     args: {}
@@ -183,6 +184,7 @@ models:
       - stabilityai-stable-diffusion-xl-beta-v2-2-2
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
+      staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
     class_name: TraderParams
   network_subgraph:
     args:

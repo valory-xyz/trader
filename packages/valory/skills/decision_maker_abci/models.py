@@ -227,6 +227,16 @@ class DecisionMakerParams(MarketManagerParams):
         super().__init__(*args, **kwargs)
 
     @property
+    def using_kelly(self) -> bool:
+        """Get the max bet amount if the `bet_amount_per_conf_threshold` strategy is used."""
+        return self.trading_strategy == "kelly_criterion"
+
+    @property
+    def max_bet_amount(self) -> int:
+        """Get the max bet amount for the `bet_amount_per_conf_threshold` strategy."""
+        return max(self.bet_amount_per_threshold.values())
+
+    @property
     def ipfs_address(self) -> str:
         """Get the IPFS address."""
         if self._ipfs_address.endswith("/"):

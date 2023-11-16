@@ -1,19 +1,20 @@
 {
     "dev": {
         "skill/valory/market_manager_abci/0.1.0": "bafybeibrjre5yka3sbvb6lsefgc5yutovb6h4ffzrpecplfkjwtl5i36te",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiguvfiaytb7i3p5sluubvehvzcu4wdzch4avdyxhj6332mkohv674",
-        "skill/valory/trader_abci/0.1.0": "bafybeigjkkphi7y2nlq7nc4unookfvyn5vwfqus27g2qtldctuan6fiipa",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeiejunyhbfzk3tqn22xmyvpyn75xyjsbeg7grjrywhecak3phbwwem",
+        "skill/valory/trader_abci/0.1.0": "bafybeid3uohgff4mv6qdaed477c2bvrlo72nq7lzfyfkfki2snyhdgntxu",
         "contract/valory/market_maker/0.1.0": "bafybeif4mm2s3gxtvp227yypkcnna5ftec7vajcftvtbdmqddh7nprah5m",
-        "agent/valory/trader/0.1.0": "bafybeiege455u6bfg42amizcfmxgz5hzdkuwzx3rt5q6oogf3gqaqmfyfi",
-        "service/valory/trader/0.1.0": "bafybeieh2ttygh6rkfuxvqhvpyahar2dstwlqe64xwrb4q4f2ukcnrcgaq",
+        "agent/valory/trader/0.1.0": "bafybeig7ccohw2wommcnhunepnjageyssxx335pgvvpn4g6bnoyfhhl36m",
+        "service/valory/trader/0.1.0": "bafybeidd3vf3jnidjkce6zfzoabrfmh5dc2qnnyb2arexqedxis3olmnqu",
         "contract/valory/erc20/0.1.0": "bafybeieqj7dea4tcv6z2yqkgtmhd23vbiycsr5trhwxdvlbwulpl6vhmam",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidkeozxuznavfqotsuaahmaajciz7lpro5wxe5y6um2w5k2ag6ohe",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibixthabcfuz3ttgjiy2sfdurrefb2gzkaqxcznmngxtr37kbqmvu",
         "contract/valory/mech/0.1.0": "bafybeihvc6btuk3nvernzcx4qpezvuhiw2wwnagqj5nkeljvszghv7mq64",
         "contract/valory/realitio/0.1.0": "bafybeiamgkwwqhray4fs2hlipwxkq7mosmi7ev7jut4vneetaaycc4ruji",
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
         "contract/valory/conditional_tokens/0.1.0": "bafybeifov35k2ifwagzyfvl7km6je6tmyvcqgrccldob3zmbx2af2wzque",
         "contract/valory/agent_registry/0.1.0": "bafybeifwdtwxdc2jdlhzdyxctqdmoz6zroxf5o4nhuok5l4luvnofqavty",
-        "contract/valory/service_staking_token/0.1.0": "bafybeibifxmoeaiptovouispl5jdgm4lduzcfgsx723zlw45cfpllecuwy"
+        "contract/valory/service_staking_token/0.1.0": "bafybeideljvdcgahtaufdwyopgclcpbtx53z3ki3rx56jlauneoqy2d2vy",
+        "skill/valory/staking_abci/0.1.0": "bafybeichs6yhjv24mgccqt6hlcqakpfcxit6gvowziz7pb2w6hxfc5wyem"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeie7xyems76v5b4wc2lmaidcujizpxfzjnnwdeokmhje53g7ym25ii",
