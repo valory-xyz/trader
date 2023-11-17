@@ -212,6 +212,10 @@ class DecisionMakerParams(MarketManagerParams):
         self.event_filtering_batch_size = self._ensure(
             "event_filtering_batch_size", kwargs, int
         )
+        self.reduce_factor: float = self._ensure("reduce_factor", kwargs, float)
+        self.max_filtering_retries: int = self._ensure(
+            "max_filtering_retries", kwargs, int
+        )
         # this is the max number of redeeming operations that will be batched on a single multisend transaction.
         # increasing this number equals fewer fees but more chances for the transaction to fail
         self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
