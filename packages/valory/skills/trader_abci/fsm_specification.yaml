@@ -14,6 +14,7 @@ alphabet_in:
 - INSUFFICIENT_FUNDS
 - MECH_RESPONSE_ERROR
 - NEGATIVE
+- NEXT_CHECKPOINT_NOT_REACHED_YET
 - NONE
 - NO_MAJORITY
 - NO_OP
@@ -22,7 +23,9 @@ alphabet_in:
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
 - ROUND_TIMEOUT
+- SERVICE_NOT_STAKED
 - SLOTS_UNSUPPORTED_ERROR
+- STAKING_DONE
 - SUSPICIOUS_ACTIVITY
 - TIE
 - UNPROFITABLE
@@ -39,6 +42,7 @@ start_states:
 states:
 - BetPlacementRound
 - BlacklistingRound
+- CallCheckpointRound
 - CheckLateTxHashesRound
 - CheckTransactionHistoryRound
 - CollectSignatureRound
@@ -74,6 +78,11 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
+    (CallCheckpointRound, DONE): RandomnessTransactionSubmissionRound
+    (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
+    (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
+    (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
+    (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
     (CheckLateTxHashesRound, DONE): PostTxSettlementRound
@@ -111,8 +120,9 @@ transition_func:
     (HandleFailedTxRound, NO_OP): RedeemRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PostTxSettlementRound, DECISION_REQUESTING_DONE): DecisionReceiveRound
-    (PostTxSettlementRound, REDEEMING_DONE): ResetAndPauseRound
+    (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
+    (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
     (RandomnessTransactionSubmissionRound, DONE): SelectKeeperTransactionSubmissionARound
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
@@ -120,7 +130,7 @@ transition_func:
     (RedeemRound, DONE): RandomnessTransactionSubmissionRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
-    (RedeemRound, NO_REDEEMING): ResetAndPauseRound
+    (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, ROUND_TIMEOUT): RedeemRound
     (RegistrationRound, DONE): UpdateBetsRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound

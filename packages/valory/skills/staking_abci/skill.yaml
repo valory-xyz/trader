@@ -1,35 +1,38 @@
-name: tx_settlement_multiplexer_abci
+name: staking_abci
 author: valory
 version: 0.1.0
 type: skill
-description: This skill implements a multiplexer for the transaction settlement skill.
+description: This skill implements the Staking for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeiegcjg2wjrsqhrmvyulioch3d67rnbzkx5af3ztkaw7kxathjreda
-  __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
-  behaviours.py: bafybeiafrhq7vtj2nrhrcvwi4d4r6w4pn4yoq2ria7lfakn6x4p4dcne4m
+  README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
+  __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
+  behaviours.py: bafybeig434yvsiy4j7zpirfjiovj44dabndev4ncfimvp2d6ddonjhigya
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeigv7xvetjboivqebq7wrfg3vp4kvhoxfadyvwyayphkh5g54x7rxe
-  handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
-  models.py: bafybeiahojnn52s762zitwx6k5s4ef5qw7hwjf3orlklqwuz3zi7k2o7bi
-  rounds.py: bafybeiezpvap43sl2acpym6cccdm3wh2mqb4ad2dwt34ij4nchy655wjma
+  fsm_specification.yaml: bafybeifk5z72ep4mbxrm47be2ml3xyjvuka4yooeawqe6wnhuuxgifbkea
+  handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
+  models.py: bafybeidznu5ci73f34mcvjc4i7pgzrhjuc3z56hczhbvr2o74unioliqre
+  payloads.py: bafybeicj4mi5iiac6yak22ixczbf6a3xui7j77fyovygnwrh7a3qnlnqgy
+  rounds.py: bafybeiccidra3m4c5rblogpi2nagcodkzmcx5e5l7mqiyhtgv6xuogz54q
 fingerprint_ignore_patterns: []
 connections: []
-contracts: []
-protocols: []
+contracts:
+- valory/gnosis_safe:0.1.0:bafybeie7qpo4sue4i54pzsg6nx365q6d3i4sl6ygdilwldqqxwroukbkiu
+- valory/service_staking_token:0.1.0:bafybeieytw4rvsddgan2zot2246v7dwy3amif6ghal3b7at4unmxtpmw6y
+protocols:
+- valory/contract_api:1.0.0:bafybeialhbjvwiwcnqq3ysxcyemobcbie7xza66gaofcvla5njezkvhcka
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifcq2nwd6m5tgxooe7436bc6lwo73xcreedmhcwauzhp5jic6jeq4
-- valory/decision_maker_abci:0.1.0:bafybeia6hnoitsqqxjvkyxunaxtn6unktq35ej2omszf5g7daalhjnhz4u
-- valory/staking_abci:0.1.0:bafybeiasziqxldcdaeqwjtyue5xyskeygrddrw5dwlg3zua4b56adakkna
+- valory/transaction_settlement_abci:0.1.0:bafybeifqase6vqfrakahogdl4h2hpxntug5ckioicfqlw2og5tn6htru3q
 behaviours:
   main:
     args: {}
-    class_name: PostTxSettlementFullBehaviour
+    class_name: StakingRoundBehaviour
 handlers:
   abci:
     args: {}
-    class_name: TxSettlementMultiplexerHandler
+    class_name: ABCIStakingHandler
   contract_api:
     args: {}
     class_name: ContractApiHandler
@@ -100,14 +103,9 @@ models:
       reset_pause_duration: 10
       reset_tendermint_after: 2
       retry_attempts: 400
-      use_slashing: false
-      slash_cooldown_hours: 3
-      slash_threshold_amount: 10000000000000000
-      light_slash_unit_amount: 5000000000000000
-      serious_slash_unit_amount: 8000000000000000
       retry_timeout: 3
       round_timeout_seconds: 350.0
-      service_id: tx_settlement_multiplexer
+      service_id: staking
       service_registry_address: null
       setup:
         all_participants:
@@ -124,7 +122,13 @@ models:
       termination_sleep: 900
       tx_timeout: 10.0
       use_termination: false
-    class_name: Params
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
+      staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
+    class_name: StakingParams
   requests:
     args: {}
     class_name: Requests
