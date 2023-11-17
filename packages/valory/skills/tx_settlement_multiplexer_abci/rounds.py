@@ -30,8 +30,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
     CollectSameUntilThresholdRound,
     DegenerateRound,
+    VotingRound,
     get_name,
 )
+from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
@@ -46,12 +48,26 @@ from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 class Event(Enum):
     """Multiplexing events."""
 
+    CHECKS_PASSED = "checks_passed"
+    REFILL_REQUIRED = "refill_required"
     DECISION_REQUESTING_DONE = "decision_requesting_done"
     BET_PLACEMENT_DONE = "bet_placement_done"
     REDEEMING_DONE = "redeeming_done"
     STAKING_DONE = "staking_done"
     ROUND_TIMEOUT = "round_timeout"
     UNRECOGNIZED = "unrecognized"
+    NO_MAJORITY = "no_majority"
+
+
+class PreTxSettlementRound(VotingRound):
+    """A round that will be called before the tx settlement."""
+
+    payload_class = VotingPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.CHECKS_PASSED
+    negative_event = Event.REFILL_REQUIRED
+    no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(SynchronizedData.participant_to_votes)
 
 
 class PostTxSettlementRound(CollectSameUntilThresholdRound):
@@ -89,6 +105,10 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         return synced_data, event
 
 
+class ChecksPassedRound(DegenerateRound):
+    """Round that represents all the pre tx settlement checks have passed."""
+
+
 class FinishedDecisionRequestTxRound(DegenerateRound):
     """Finished decision requesting round."""
 
@@ -112,33 +132,45 @@ class FailedMultiplexerRound(DegenerateRound):
 class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
     """TxSettlementMultiplexerAbciApp
 
-    Initial round: PostTxSettlementRound
+    Initial round: PreTxSettlementRound
 
-    Initial states: {PostTxSettlementRound}
+    Initial states: {PostTxSettlementRound, PreTxSettlementRound}
 
     Transition states:
-        0. PostTxSettlementRound
-            - decision requesting done: 1.
-            - bet placement done: 2.
-            - redeeming done: 3.
-            - staking done: 4.
+        0. PreTxSettlementRound
+            - checks passed: 2.
+            - refill required: 0.
+            - no majority: 0.
             - round timeout: 0.
-            - unrecognized: 5.
-        1. FinishedDecisionRequestTxRound
-        2. FinishedBetPlacementTxRound
-        3. FinishedRedeemingTxRound
-        4. FinishedStakingTxRound
-        5. FailedMultiplexerRound
+        1. PostTxSettlementRound
+            - decision requesting done: 3.
+            - bet placement done: 4.
+            - redeeming done: 5.
+            - staking done: 6.
+            - round timeout: 1.
+            - unrecognized: 7.
+        2. ChecksPassedRound
+        3. FinishedDecisionRequestTxRound
+        4. FinishedBetPlacementTxRound
+        5. FinishedRedeemingTxRound
+        6. FinishedStakingTxRound
+        7. FailedMultiplexerRound
 
-    Final states: {FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound}
 
     Timeouts:
         round timeout: 30.0
     """
 
-    initial_round_cls: AppState = PostTxSettlementRound
-    initial_states: Set[AppState] = {PostTxSettlementRound}
+    initial_round_cls: AppState = PreTxSettlementRound
+    initial_states: Set[AppState] = {PreTxSettlementRound, PostTxSettlementRound}
     transition_function: AbciAppTransitionFunction = {
+        PreTxSettlementRound: {
+            Event.CHECKS_PASSED: ChecksPassedRound,
+            Event.REFILL_REQUIRED: PreTxSettlementRound,
+            Event.NO_MAJORITY: PreTxSettlementRound,
+            Event.ROUND_TIMEOUT: PreTxSettlementRound,
+        },
         PostTxSettlementRound: {
             Event.DECISION_REQUESTING_DONE: FinishedDecisionRequestTxRound,
             Event.BET_PLACEMENT_DONE: FinishedBetPlacementTxRound,
@@ -147,6 +179,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: PostTxSettlementRound,
             Event.UNRECOGNIZED: FailedMultiplexerRound,
         },
+        ChecksPassedRound: {},
         FinishedDecisionRequestTxRound: {},
         FinishedBetPlacementTxRound: {},
         FinishedRedeemingTxRound: {},
@@ -157,6 +190,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         Event.ROUND_TIMEOUT: 30.0,
     }
     final_states: Set[AppState] = {
+        ChecksPassedRound,
         FinishedDecisionRequestTxRound,
         FinishedBetPlacementTxRound,
         FinishedRedeemingTxRound,
@@ -164,9 +198,11 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FailedMultiplexerRound,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
-        PostTxSettlementRound: {get_name(SynchronizedData.tx_submitter)}
+        PreTxSettlementRound: {get_name(SynchronizedData.tx_submitter)},
+        PostTxSettlementRound: {get_name(SynchronizedData.tx_submitter)},
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
+        ChecksPassedRound: set(),
         FinishedDecisionRequestTxRound: set(),
         FinishedBetPlacementTxRound: set(),
         FinishedRedeemingTxRound: set(),

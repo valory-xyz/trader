@@ -9,11 +9,11 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
-  composition.py: bafybeif4gsc2kfpsyy7rol74v3ir6ckgrm76jygy3rrcnjt3pen32pgcoi
+  composition.py: bafybeifakbd6n3lqvmxhb2svdst7wbagrplw23yf45zdexw34abtglxqke
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeihh7qkvge7srvrc25hvo6qwtezhewjcegbrqk5rukwpbrx4a2fq3m
+  fsm_specification.yaml: bafybeifduigketlvdwyhn47jfwf77otixljibl45firz5ijyhdgilhcyja
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeifrz6dfncsxksvyh4jhbl4am2uzivfv6fyqs5mhw4qdpy5ruik7fm
+  models.py: bafybeifxiptjrnv4hbw5l3mfxvb7hksmxf726kvab5lcms5btuc3vaahem
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifqase6vqfrakahogdl4h2hpxntug5ckioicfqlw2og5tn6htru3q
 - valory/termination_abci:0.1.0:bafybeia73cl2vqj2uawt5lnoej3fzlhhum72i2p6ld4bbudd67lxb7f3cu
 - valory/market_manager_abci:0.1.0:bafybeihmz35htfojgocmmilhnve7cofdnqsb2sf3lnegefrvrcavux2gt4
-- valory/decision_maker_abci:0.1.0:bafybeia6hnoitsqqxjvkyxunaxtn6unktq35ej2omszf5g7daalhjnhz4u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic4zu3sf4r4fkdvtsbcijwja54ewb6ereu4e4662ozyibmgrfpdse
+- valory/decision_maker_abci:0.1.0:bafybeihgh6fhhct4vyondradugbzb2h7fy4t7mzal35hfndhnyuy55nkui
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeievurlx6ef2h7fpu6defynfihedsfhhrx5ta7eomk6sq2knx2fkya
 - valory/staking_abci:0.1.0:bafybeiasziqxldcdaeqwjtyue5xyskeygrddrw5dwlg3zua4b56adakkna
 behaviours:
   main:
@@ -171,6 +171,8 @@ models:
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
       event_filtering_batch_size: 5000
+      reduce_factor: 0.25
+      max_filtering_retries: 6
       redeeming_batch_size: 5
       slippage: 0.01
       policy_epsilon: 0.1
@@ -185,6 +187,8 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
+      agent_balance_threshold: 10000000000000000
+      refill_check_interval: 10
     class_name: TraderParams
   network_subgraph:
     args:

@@ -53,6 +53,9 @@ from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.termination_abci.models import TerminationParams
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
 from packages.valory.skills.transaction_settlement_abci.rounds import Event as TSEvent
+from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
+    TxSettlementMultiplexerParams,
+)
 
 
 EventType = Union[
@@ -81,7 +84,9 @@ class RandomnessApi(ApiSpecs):
     """A model for randomness api specifications."""
 
 
-class TraderParams(DecisionMakerParams, TerminationParams, StakingParams):
+class TraderParams(
+    DecisionMakerParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams
+):
     """A model to represent the trader params."""
 
 

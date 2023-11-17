@@ -411,12 +411,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.redeeming_progress.check_to_block = self.latest_block_number
             self.redeeming_progress.check_started = True
 
+        n_retries = 0
+        from_block = self.redeeming_progress.check_from_block
         batch_size = self.params.event_filtering_batch_size
-        for from_block in range(
-            self.redeeming_progress.check_from_block,
-            self.redeeming_progress.check_to_block,
-            batch_size,
-        ):
+        while from_block < self.redeeming_progress.check_to_block:
             max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.check_to_block)
             result = yield from self._conditional_tokens_interact(
@@ -428,16 +426,33 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 to_block=to_block,
                 **kwargs,
             )
-            if not result:
+
+            if not result and n_retries == self.params.max_filtering_retries:
+                err = "Skipping the redeeming round as the RPC is misbehaving."
+                self.context.logger.error(err)
                 return False
+
+            if not result:
+                n_retries += 1
+                keep_fraction = (1 - self.params.reduce_factor) ** n_retries
+                step = int(batch_size * keep_fraction)
+                msg = f"Repeating this call with a decreased batch size of {step}."
+                self.context.logger.warning(msg)
+                from_block += step
+                continue
+
             self.redeeming_progress.payouts.update(self.payouts_batch)
             self.redeeming_progress.check_from_block = to_block
+            from_block += batch_size
 
         return True
 
-    def _clean_redeem_info(self) -> Generator:
+    def _clean_redeem_info(self) -> WaitableConditionType:
         """Clean the redeeming information based on whether any positions have already been redeemed."""
-        yield from self.wait_for_condition_with_sleep(self._check_already_redeemed)
+        success = yield from self._check_already_redeemed()
+        if not success:
+            return False
+
         payout_so_far = sum(self.redeeming_progress.payouts.values())
         if payout_so_far > 0:
             self.trades = {
@@ -448,6 +463,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.redeeming_progress.trades = self.trades
             msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
             self.context.logger.info(msg)
+
+        return True
 
     def _realitio_interact(
         self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
@@ -528,12 +545,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
             self.redeeming_progress.claim_started = True
 
+        n_retries = 0
+        from_block = self.redeeming_progress.claim_from_block
         batch_size = self.params.event_filtering_batch_size
-        for from_block in range(
-            self.redeeming_progress.claim_from_block,
-            self.redeeming_progress.claim_to_block,
-            batch_size,
-        ):
+        while from_block < self.redeeming_progress.claim_to_block:
             max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.claim_to_block)
             result = yield from self._realitio_interact(
@@ -544,18 +559,29 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 to_block=to_block,
                 question_id=self.current_question_id,
             )
-            if not result:
+
+            if not result and n_retries == self.params.max_filtering_retries:
+                err = "Skipping redeeming for the current position as the RPC is misbehaving."
+                self.context.logger.error(err)
                 return False
+
+            if not result:
+                n_retries += 1
+                keep_fraction = (1 - self.params.reduce_factor) ** n_retries
+                step = int(batch_size * keep_fraction)
+                msg = f"Repeating this call with a decreased batch size of {step}."
+                self.context.logger.warning(msg)
+                from_block += step
+                continue
+
             self.redeeming_progress.answered.extend(self.claim_params_batch)
             self.redeeming_progress.claim_from_block = to_block
+            from_block += batch_size
 
         return True
 
     def _build_claim_data(self) -> WaitableConditionType:
         """Prepare the safe tx to claim the winnings."""
-        if not self.redeeming_progress.claim_finished:
-            yield from self.wait_for_condition_with_sleep(self.get_claim_params)
-
         claim_params = self.redeeming_progress.claim_params
         if claim_params is None:
             self.context.logger.error(
@@ -603,7 +629,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.multisend_batches.append(batch)
         return True
 
-    def _prepare_single_redeem(self) -> Generator:
+    def _prepare_single_redeem(self) -> WaitableConditionType:
         """Prepare a multisend transaction for a single redeeming action."""
         yield from self.wait_for_condition_with_sleep(self._check_already_resolved)
         steps = []
@@ -614,12 +640,18 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         yield from self.wait_for_condition_with_sleep(self._get_history_hash)
         if not self.is_history_hash_null:
             # 2. claim the winnings if claiming has not been done yet
+            if not self.redeeming_progress.claim_finished:
+                success = yield from self.get_claim_params()
+                if not success:
+                    return False
             steps.append(self._build_claim_data)
 
         # 3. we always redeem the position
         steps.append(self._build_redeem_data)
         for build_step in steps:
             yield from self.wait_for_condition_with_sleep(build_step)
+
+        return True
 
     def _process_candidate(
         self, redeem_candidate: Trade
@@ -646,7 +678,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.context.logger.info("Position's redeeming amount is dust.")
             return False
 
-        yield from self._prepare_single_redeem()
+        success = yield from self._prepare_single_redeem()
+        if not success:
+            return False
+
         self._expected_winnings += self.current_claimable_amount
         return True
 
@@ -735,15 +770,17 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 self._load_progress()
 
             if not self.redeeming_progress.check_finished:
-                yield from self._clean_redeem_info()
+                success = yield from self._clean_redeem_info()
 
             agent = self.context.agent_address
-            redeem_tx_hex = yield from self._prepare_safe_tx()
-            tx_submitter = policy = utilized_tools = None
-            if redeem_tx_hex is not None:
-                tx_submitter = self.matching_round.auto_round_id()
-                policy = self.policy.serialize()
-                utilized_tools = json.dumps(self.utilized_tools)
+            tx_submitter = policy = utilized_tools = redeem_tx_hex = None
+
+            if success:
+                redeem_tx_hex = yield from self._prepare_safe_tx()
+                if redeem_tx_hex is not None:
+                    tx_submitter = self.matching_round.auto_round_id()
+                    policy = self.policy.serialize()
+                    utilized_tools = json.dumps(self.utilized_tools)
 
             payload = RedeemPayload(
                 agent, tx_submitter, redeem_tx_hex, policy, utilized_tools
