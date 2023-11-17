@@ -76,11 +76,13 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
     TransactionSubmissionAbciApp,
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedDecisionRequestTxRound,
     FinishedRedeemingTxRound,
     FinishedStakingTxRound,
     PostTxSettlementRound,
+    PreTxSettlementRound,
     TxSettlementMultiplexerAbciApp,
 )
 
@@ -89,7 +91,8 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
     FinishedMarketManagerRound: SamplingRound,
     FailedMarketManagerRound: ResetAndPauseRound,
-    FinishedDecisionMakerRound: RandomnessTransactionSubmissionRound,
+    FinishedDecisionMakerRound: PreTxSettlementRound,
+    ChecksPassedRound: RandomnessTransactionSubmissionRound,
     RefillRequiredRound: ResetAndPauseRound,
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
@@ -99,7 +102,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedWithoutDecisionRound: RedeemRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,
-    CheckpointCallPreparedRound: RandomnessTransactionSubmissionRound,
+    CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
     FinishedResetAndPauseErrorRound: RegistrationRound,

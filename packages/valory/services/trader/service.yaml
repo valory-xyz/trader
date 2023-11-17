@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiccr6adm3ijuyp7so7js4qqnvkdrljylbjc4svc65xt75la6jykpm
+agent: valory/trader:0.1.0:bafybeignnn4urnckjui37jyrjk5336ccnqa7wgjnrevglnxruvoggi6af4
 number_of_agents: 4
 deployment: {}
 ---
@@ -105,6 +105,8 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         event_filtering_batch_size: ${EVENT_FILTERING_BATCH_SIZE:int:5000}
+        reduce_factor: ${REDUCE_FACTOR:float:0.25}
+        max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
@@ -114,6 +116,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -179,6 +183,8 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         event_filtering_batch_size: ${EVENT_FILTERING_BATCH_SIZE:int:5000}
+        reduce_factor: ${REDUCE_FACTOR:float:0.25}
+        max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
@@ -188,6 +194,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: *id005
 2:
   models:
@@ -251,6 +259,8 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         event_filtering_batch_size: ${EVENT_FILTERING_BATCH_SIZE:int:5000}
+        reduce_factor: ${REDUCE_FACTOR:float:0.25}
+        max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
@@ -260,6 +270,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: *id005
 3:
   models:
@@ -323,6 +335,8 @@ type: skill
         realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
         realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
         event_filtering_batch_size: ${EVENT_FILTERING_BATCH_SIZE:int:5000}
+        reduce_factor: ${REDUCE_FACTOR:float:0.25}
+        max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
@@ -332,6 +346,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0
