@@ -1,6 +1,7 @@
 alphabet_in:
 - BET_PLACEMENT_DONE
 - BLACKLIST
+- CHECKS_PASSED
 - CHECK_HISTORY
 - CHECK_LATE_ARRIVING_MESSAGE
 - CHECK_TIMEOUT
@@ -20,6 +21,7 @@ alphabet_in:
 - NO_OP
 - NO_REDEEMING
 - REDEEMING_DONE
+- REFILL_REQUIRED
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
 - ROUND_TIMEOUT
@@ -53,6 +55,7 @@ states:
 - HandleFailedTxRound
 - ImpossibleRound
 - PostTxSettlementRound
+- PreTxSettlementRound
 - RandomnessTransactionSubmissionRound
 - RedeemRound
 - RegistrationRound
@@ -68,7 +71,7 @@ states:
 - UpdateBetsRound
 - ValidateTransactionRound
 transition_func:
-    (BetPlacementRound, DONE): RandomnessTransactionSubmissionRound
+    (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
@@ -78,7 +81,7 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
-    (CallCheckpointRound, DONE): RandomnessTransactionSubmissionRound
+    (CallCheckpointRound, DONE): PreTxSettlementRound
     (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
     (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
@@ -104,7 +107,7 @@ transition_func:
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
-    (DecisionRequestRound, DONE): RandomnessTransactionSubmissionRound
+    (DecisionRequestRound, DONE): PreTxSettlementRound
     (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
@@ -124,10 +127,14 @@ transition_func:
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
+    (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
+    (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
+    (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
+    (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound
     (RandomnessTransactionSubmissionRound, DONE): SelectKeeperTransactionSubmissionARound
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
-    (RedeemRound, DONE): RandomnessTransactionSubmissionRound
+    (RedeemRound, DONE): PreTxSettlementRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound

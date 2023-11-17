@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigt2t6okczlbwsx7vwydq7c4cqniettxmmtidvdibvjkngadpk2wa
+agent: valory/trader:0.1.0:bafybeignnn4urnckjui37jyrjk5336ccnqa7wgjnrevglnxruvoggi6af4
 number_of_agents: 4
 deployment: {}
 ---
@@ -116,6 +116,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -192,6 +194,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: *id005
 2:
   models:
@@ -266,6 +270,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: *id005
 3:
   models:
@@ -340,6 +346,8 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+        agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+        refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0

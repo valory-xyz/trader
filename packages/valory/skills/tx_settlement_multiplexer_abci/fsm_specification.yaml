@@ -1,12 +1,16 @@
 alphabet_in:
 - BET_PLACEMENT_DONE
+- CHECKS_PASSED
 - DECISION_REQUESTING_DONE
+- NO_MAJORITY
 - REDEEMING_DONE
+- REFILL_REQUIRED
 - ROUND_TIMEOUT
 - STAKING_DONE
 - UNRECOGNIZED
-default_start_state: PostTxSettlementRound
+default_start_state: PreTxSettlementRound
 final_states:
+- ChecksPassedRound
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedDecisionRequestTxRound
@@ -15,13 +19,16 @@ final_states:
 label: TxSettlementMultiplexerAbciApp
 start_states:
 - PostTxSettlementRound
+- PreTxSettlementRound
 states:
+- ChecksPassedRound
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedDecisionRequestTxRound
 - FinishedRedeemingTxRound
 - FinishedStakingTxRound
 - PostTxSettlementRound
+- PreTxSettlementRound
 transition_func:
     (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementTxRound
     (PostTxSettlementRound, DECISION_REQUESTING_DONE): FinishedDecisionRequestTxRound
@@ -29,3 +36,7 @@ transition_func:
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): FinishedStakingTxRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
+    (PreTxSettlementRound, CHECKS_PASSED): ChecksPassedRound
+    (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
+    (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
+    (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound

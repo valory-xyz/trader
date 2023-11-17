@@ -8,16 +8,17 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiegcjg2wjrsqhrmvyulioch3d67rnbzkx5af3ztkaw7kxathjreda
   __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
-  behaviours.py: bafybeiafrhq7vtj2nrhrcvwi4d4r6w4pn4yoq2ria7lfakn6x4p4dcne4m
+  behaviours.py: bafybeihmhpvorg4tgdhrhtv6ks6uxza4k5qxvnxanfhil75t54rfb5ykta
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeigv7xvetjboivqebq7wrfg3vp4kvhoxfadyvwyayphkh5g54x7rxe
+  fsm_specification.yaml: bafybeidwxjna36auqbtqlehx73kyb6o74suhzj5bothgtiapcj35b7gzve
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
-  models.py: bafybeiahojnn52s762zitwx6k5s4ef5qw7hwjf3orlklqwuz3zi7k2o7bi
-  rounds.py: bafybeiezpvap43sl2acpym6cccdm3wh2mqb4ad2dwt34ij4nchy655wjma
+  models.py: bafybeigtmxoecoow663hgqnyinxarlrttyyt5ghpbdamdv4tc4kikcfx3a
+  rounds.py: bafybeihb3cnxd4zdlrrxkdzjmtgdozr6evkhvm7ndqry4lzkdisqanusie
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
-protocols: []
+protocols:
+- valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeid7neqpxxe4ualp23gxgrtpf6r5u3myr2mmc4uvwameyqshfdoydq
 - valory/decision_maker_abci:0.1.0:bafybeighimm45dlkagx5uig2i4wa7ikmiajlcyqkpms64amm5osxrnzroi
@@ -124,7 +125,9 @@ models:
       termination_sleep: 900
       tx_timeout: 10.0
       use_termination: false
-    class_name: Params
+      agent_balance_threshold: 10000000000000000
+      refill_check_interval: 10
+    class_name: TxSettlementMultiplexerParams
   requests:
     args: {}
     class_name: Requests
