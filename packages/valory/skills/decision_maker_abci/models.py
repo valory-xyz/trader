@@ -197,19 +197,19 @@ class DecisionMakerParams(MarketManagerParams):
         check_prompt_template(self.prompt_template)
         multisend_address = kwargs.get("multisend_address", None)
         enforce(multisend_address is not None, "Multisend address not specified!")
-        self.multisend_address = multisend_address
-        self.dust_threshold = self._ensure("dust_threshold", kwargs, int)
-        self.conditional_tokens_address = self._ensure(
+        self.multisend_address: str = multisend_address
+        self.dust_threshold: int = self._ensure("dust_threshold", kwargs, int)
+        self.conditional_tokens_address: str = self._ensure(
             "conditional_tokens_address", kwargs, str
         )
-        self.realitio_proxy_address = self._ensure(
+        self.realitio_proxy_address: str = self._ensure(
             "realitio_proxy_address", kwargs, str
         )
-        self.realitio_address = self._ensure("realitio_address", kwargs, str)
+        self.realitio_address: str = self._ensure("realitio_address", kwargs, str)
         # this is the maximum batch size that will be used when filtering blocks for events.
         # increasing this number allows for faster filtering operations,
         # but also increases the chances of getting a timeout error from the RPC
-        self.event_filtering_batch_size = self._ensure(
+        self.event_filtering_batch_size: int = self._ensure(
             "event_filtering_batch_size", kwargs, int
         )
         self.reduce_factor: float = self._ensure("reduce_factor", kwargs, float)
@@ -218,9 +218,11 @@ class DecisionMakerParams(MarketManagerParams):
         )
         # this is the max number of redeeming operations that will be batched on a single multisend transaction.
         # increasing this number equals fewer fees but more chances for the transaction to fail
-        self.redeeming_batch_size = self._ensure("redeeming_batch_size", kwargs, int)
+        self.redeeming_batch_size: int = self._ensure(
+            "redeeming_batch_size", kwargs, int
+        )
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
-        self._slippage = 0.0
+        self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = self._ensure(
