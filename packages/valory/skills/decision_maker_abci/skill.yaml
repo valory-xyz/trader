@@ -44,22 +44,22 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeibt7arvjzz4ah24omst74f4sfjpzrdef76yti6ml7dopsauhdzeci
-- valory/market_maker:0.1.0:bafybeif4mm2s3gxtvp227yypkcnna5ftec7vajcftvtbdmqddh7nprah5m
-- valory/erc20:0.1.0:bafybeieqj7dea4tcv6z2yqkgtmhd23vbiycsr5trhwxdvlbwulpl6vhmam
+- valory/gnosis_safe:0.1.0:bafybeie7qpo4sue4i54pzsg6nx365q6d3i4sl6ygdilwldqqxwroukbkiu
+- valory/market_maker:0.1.0:bafybeih4r35d3plsjw56ham6xvi6dn4semmuihc53lh3qofpwj242rnjkq
+- valory/erc20:0.1.0:bafybeidpjppgs7jlig2gdpdr3a6q3etbejpxrifjhzlcufpo5zf23dqv7y
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeihvc6btuk3nvernzcx4qpezvuhiw2wwnagqj5nkeljvszghv7mq64
+- valory/mech:0.1.0:bafybeigjn4q6mxal2hxzjyzldl4t4aykkpxjnbsgnli2c3xwf6binkmn74
 - valory/conditional_tokens:0.1.0:bafybeifov35k2ifwagzyfvl7km6je6tmyvcqgrccldob3zmbx2af2wzque
 - valory/realitio:0.1.0:bafybeiamgkwwqhray4fs2hlipwxkq7mosmi7ev7jut4vneetaaycc4ruji
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeifwdtwxdc2jdlhzdyxctqdmoz6zroxf5o4nhuok5l4luvnofqavty
+- valory/agent_registry:0.1.0:bafybeiekjzqwbhhuev7queedksnsyj6glzwn5ag5youjzv6zdz2xsr427a
 protocols:
 - valory/contract_api:1.0.0:bafybeialhbjvwiwcnqq3ysxcyemobcbie7xza66gaofcvla5njezkvhcka
 - valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeid7neqpxxe4ualp23gxgrtpf6r5u3myr2mmc4uvwameyqshfdoydq
-- valory/market_manager_abci:0.1.0:bafybeibrjre5yka3sbvb6lsefgc5yutovb6h4ffzrpecplfkjwtl5i36te
-- valory/transaction_settlement_abci:0.1.0:bafybeia6cdxdlqrcwk2maw25fo7dafzd2p3rs7syropvufophk2pitzbwy
+- valory/abstract_round_abci:0.1.0:bafybeifcq2nwd6m5tgxooe7436bc6lwo73xcreedmhcwauzhp5jic6jeq4
+- valory/market_manager_abci:0.1.0:bafybeihmz35htfojgocmmilhnve7cofdnqsb2sf3lnegefrvrcavux2gt4
+- valory/transaction_settlement_abci:0.1.0:bafybeifqase6vqfrakahogdl4h2hpxntug5ckioicfqlw2og5tn6htru3q
 behaviours:
   main:
     args: {}
