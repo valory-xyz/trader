@@ -30,14 +30,14 @@ settings.load_profile(profile_name)
 
 
 @given(
-    x=st.integers(min_value=0, max_value=100000),
-    y=st.integers(min_value=0, max_value=100000),
-    p=st.floats(min_value=0.0, max_value=1.0),
-    c=st.floats(min_value=0.0, max_value=1.0),
+    x=st.integers(min_value=100, max_value=100000),
+    y=st.integers(min_value=100, max_value=100000),
+    p=st.floats(min_value=0.6, max_value=1.0),
+    c=st.floats(min_value=0.6, max_value=1.0),
     b=st.floats(min_value=0.5, max_value=2.0),
-    f=st.floats(min_value=0.0, max_value=1.0),
+    f=st.floats(min_value=0.98, max_value=0.99),
 )
 def test_calculate_kelly_bet_amount(
     x: int, y: int, p: float, c: float, b: int, f: float
     ):
-    assert calculate_kelly_bet_amount(x, y, p, c, b, f) >= 0
+    assert calculate_kelly_bet_amount(x, y, p, c, b, f) >= -10

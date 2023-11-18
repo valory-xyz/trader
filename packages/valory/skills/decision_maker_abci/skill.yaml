@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeicu45h2jj6u462shnb3e7nrp7aynt6ezgpbznpyyjrkjtkkxnht3u
+  behaviours/base.py: bafybeibo47y2ihdrkg4wyyullrb2gwde3bqnf44pe3cepsxgskqvzxgyfe
   behaviours/bet_placement.py: bafybeigtz4uimsqjjwq4r5p3a5v6niqdtqezbuf2ghy6o7syhsh4k5gjfa
   behaviours/blacklisting.py: bafybeicl6b4hcmqmekta2mcuhkkydnzk7jmic6k44e6ns3u2ibad3awzvu
   behaviours/decision_receive.py: bafybeifacce2ke7oltnwnpdjdqfd74eaaw5wxnjfzk6c5tqdsxsmbzjj3m
@@ -41,6 +41,9 @@ fingerprint:
   states/redeem.py: bafybeib2y6v3vuvw3upjz75ie7j2bkhclwzp7j77esunabjatdtmdvzqlm
   states/sampling.py: bafybeidnvdogjlthjfe7jpaiuezm3xydrbxxukyoss4gx6t5fdin52rsta
   states/tool_selection.py: bafybeiaaijv6dukp3bmsptcwkcmumc6wu6ztzkvaqzsqqjbfn4ozgyuykq
+  tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
+  tests/conftest.py: bafybeic2xlujtbkyqk2zzpo5vorefwa3nwgfwmrk5rx77vu4gfyrn3pv5m
+  tests/test_behaviours.py: bafybeibmnf2w4s27fjk6qdjbnmci3xeoh7xwaxlhmffed4mtf42minsqky
 fingerprint_ignore_patterns: []
 connections: []
 contracts:

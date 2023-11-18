@@ -62,7 +62,6 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-EPSILON = 1e-5
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -73,8 +72,9 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
 
 
-def perturb_y_if_x_equals_y(x: int, y: int, epsilon: float = EPSILON) -> float:
+def perturb_y_if_x_equals_y(x: int, y: int) -> float:
     """Introduce perturbation to the y value if x equals y."""
+    epsilon = (x + y) / 10000
     y += epsilon if random.choice([True, False]) else -epsilon
     return y
 
@@ -88,7 +88,7 @@ def calculate_kelly_bet_amount(
     if x == y:
         # o/w kelly traders will never be the first to bet in a new market
         y = perturb_y_if_x_equals_y(x, y)
-    kelly_bet_amount = (
+    numerator = (
         -4 * x**2 * y
         + b * y**2 * p * c * f
         + 2 * b * x * y * p * c * f
@@ -116,7 +116,9 @@ def calculate_kelly_bet_amount(
             )
         )
         ** (1 / 2)
-    ) / (2 * (x**2 * f - y**2 * f))
+    )
+    denominator = (2 * (x**2 * f - y**2 * f))
+    kelly_bet_amount = numerator / denominator
     return int(kelly_bet_amount)
 
 
