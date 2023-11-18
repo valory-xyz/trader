@@ -19,11 +19,13 @@
 
 """This module contains the tests for valory/decision_maker_abci's behaviours."""
 
-from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
-from packages.valory.skills.decision_maker_abci.behaviours.base import calculate_kelly_bet_amount
-
 from hypothesis import given, settings
 from hypothesis import strategies as st
+
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    calculate_kelly_bet_amount,
+)
+from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
 
 
 settings.load_profile(profile_name)
@@ -39,5 +41,6 @@ settings.load_profile(profile_name)
 )
 def test_calculate_kelly_bet_amount(
     x: int, y: int, p: float, c: float, b: int, f: float
-    ):
+) -> None:
+    """Test the calculate_kelly_bet_amount function."""
     assert calculate_kelly_bet_amount(x, y, p, c, b, f) >= -10

@@ -20,7 +20,6 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
-import random
 from abc import ABC
 from datetime import datetime, timedelta
 from typing import Any, Callable, Generator, List, Optional, cast
@@ -43,6 +42,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
     MultisendBatch,
+    STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
     SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
@@ -72,22 +72,12 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
 
 
-def perturb_y_if_x_equals_y(x: int, y: int) -> float:
-    """Introduce perturbation to the y value if x equals y."""
-    epsilon = (x + y) / 10000
-    y += epsilon if random.choice([True, False]) else -epsilon  # nosec
-    return y
-
-
 def calculate_kelly_bet_amount(
     x: int, y: int, p: float, c: float, b: int, f: float
 ) -> int:
     """Calculate the Kelly bet amount."""
     if b == 0:
         return 0
-    if x == y:
-        # o/w kelly traders will never be the first to bet in a new market
-        y = perturb_y_if_x_equals_y(x, y)
     numerator = (
         -4 * x**2 * y
         + b * y**2 * p * c * f
@@ -117,7 +107,7 @@ def calculate_kelly_bet_amount(
         )
         ** (1 / 2)
     )
-    denominator = (2 * (x**2 * f - y**2 * f))
+    denominator = 2 * (x**2 * f - y**2 * f)
     kelly_bet_amount = numerator / denominator
     return int(kelly_bet_amount)
 
@@ -304,16 +294,17 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
 
-        if strategy == "bet_amount_per_conf_threshold":
+        # Kelly Criterion does not trade for equally weighted pools.
+        if (
+            strategy == STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD
+            or selected_type_tokens_in_pool == other_tokens_in_pool
+        ):
             self.context.logger.info(
                 "Used trading strategy: Bet amount per confidence threshold"
             )
             threshold = round(confidence, 1)
             bet_amount = self.params.bet_amount_per_threshold[threshold]
             return bet_amount
-
-        if strategy != "kelly_criterion":
-            raise ValueError(f"Invalid trading strategy: {strategy}")
 
         self.context.logger.info("Used trading strategy: Kelly Criterion")
         # bankroll: the max amount of DAI available to trade
