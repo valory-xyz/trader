@@ -75,7 +75,7 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
 def perturb_y_if_x_equals_y(x: int, y: int) -> float:
     """Introduce perturbation to the y value if x equals y."""
     epsilon = (x + y) / 10000
-    y += epsilon if random.choice([True, False]) else -epsilon
+    y += epsilon if random.choice([True, False]) else -epsilon  # nosec
     return y
 
 
