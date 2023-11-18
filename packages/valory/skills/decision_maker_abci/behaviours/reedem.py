@@ -769,6 +769,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 self.context.logger.info(msg)
                 self._load_progress()
 
+            success = False
             if not self.redeeming_progress.check_finished:
                 success = yield from self._clean_redeem_info()
 
