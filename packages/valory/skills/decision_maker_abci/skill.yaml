@@ -243,6 +243,8 @@ models:
 dependencies:
   hexbytes:
     version: ==0.3.1
+  hypothesis:
+    version: ==6.21.6
   py-multibase:
     version: ==1.0.3
   py-multicodec:

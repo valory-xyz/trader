@@ -20,6 +20,7 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
+import random
 from abc import ABC
 from datetime import datetime, timedelta
 from typing import Any, Callable, Generator, List, Optional, cast
@@ -61,7 +62,7 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-EPSILON = 1e-7
+EPSILON = 1e-5
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -70,6 +71,53 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
         keep_percentage = 1 - fraction
         return int(amount * keep_percentage)
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
+
+
+def perturb_y_if_x_equals_y(x: int, y: int, epsilon: float = EPSILON) -> float:
+    """Introduce perturbation to the y value if x equals y."""
+    y += epsilon if random.choice([True, False]) else -epsilon
+    return y
+
+
+def calculate_kelly_bet_amount(
+    x: int, y: int, p: float, c: float, b: int, f: float
+) -> int:
+    """Calculate the Kelly bet amount."""
+    if b == 0:
+        return 0
+    if x == y:
+        # o/w kelly traders will never be the first to bet in a new market
+        y = perturb_y_if_x_equals_y(x, y)
+    kelly_bet_amount = (
+        -4 * x**2 * y
+        + b * y**2 * p * c * f
+        + 2 * b * x * y * p * c * f
+        + b * x**2 * p * c * f
+        - 2 * b * y**2 * f
+        - 2 * b * x * y * f
+        + (
+            (
+                4 * x**2 * y
+                - b * y**2 * p * c * f
+                - 2 * b * x * y * p * c * f
+                - b * x**2 * p * c * f
+                + 2 * b * y**2 * f
+                + 2 * b * x * y * f
+            )
+            ** 2
+            - (
+                4
+                * (x**2 * f - y**2 * f)
+                * (
+                    -4 * b * x * y**2 * p * c
+                    - 4 * b * x**2 * y * p * c
+                    + 4 * b * x * y**2
+                )
+            )
+        )
+        ** (1 / 2)
+    ) / (2 * (x**2 * f - y**2 * f))
+    return int(kelly_bet_amount)
 
 
 class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
@@ -216,45 +264,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
-    def _calculate_kelly_bet_amount(
-        self, x: int, y: int, p: float, c: float, b: int, f: float
-    ) -> int:
-        """Calculate the Kelly bet amount."""
-        if b == 0:
-            error = "Cannot calculate Kelly bet amount with no bankroll."
-            self.context.logger.error(error)
-            return 0
-        kelly_bet_amount = (
-            -4 * x**2 * y
-            + b * y**2 * p * c * f
-            + 2 * b * x * y * p * c * f
-            + b * x**2 * p * c * f
-            - 2 * b * y**2 * f
-            - 2 * b * x * y * f
-            + (
-                (
-                    4 * x**2 * y
-                    - b * y**2 * p * c * f
-                    - 2 * b * x * y * p * c * f
-                    - b * x**2 * p * c * f
-                    + 2 * b * y**2 * f
-                    + 2 * b * x * y * f
-                )
-                ** 2
-                - (
-                    4
-                    * (x**2 * f - y**2 * f)
-                    * (
-                        -4 * b * x * y**2 * p * c
-                        - 4 * b * x**2 * y * p * c
-                        + 4 * b * x * y**2
-                    )
-                )
-            )
-            ** (1 / 2)
-        ) / (2 * (x**2 * f - y**2 * f) + EPSILON)
-        return int(kelly_bet_amount)
-
     def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
         """Get max bet amount based on available shares."""
         if x**2 * f**2 + 2 * x * y * f**2 + y**2 * f**2 == 0:
@@ -323,7 +332,10 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
         fee_fraction = 1 - self.wei_to_native(bet_fee)
         self.context.logger.info(f"Fee fraction: {fee_fraction}")
-        kelly_bet_amount = self._calculate_kelly_bet_amount(
+        if bankroll_adj == 0:
+            error = "Cannot calculate Kelly bet amount with no bankroll."
+            self.context.logger.error(error)
+        kelly_bet_amount = calculate_kelly_bet_amount(
             selected_type_tokens_in_pool,
             other_tokens_in_pool,
             win_probability,
