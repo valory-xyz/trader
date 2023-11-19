@@ -435,10 +435,11 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not result:
                 n_retries += 1
                 keep_fraction = (1 - self.params.reduce_factor) ** n_retries
-                step = int(batch_size * keep_fraction)
-                msg = f"Repeating this call with a decreased batch size of {step}."
+                batch_size = int(self.params.event_filtering_batch_size * keep_fraction)
+                msg = (
+                    f"Repeating this call with a decreased batch size of {batch_size}."
+                )
                 self.context.logger.warning(msg)
-                from_block += step
                 continue
 
             self.redeeming_progress.payouts.update(self.payouts_batch)
@@ -568,10 +569,11 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not result:
                 n_retries += 1
                 keep_fraction = (1 - self.params.reduce_factor) ** n_retries
-                step = int(batch_size * keep_fraction)
-                msg = f"Repeating this call with a decreased batch size of {step}."
+                batch_size = int(self.params.event_filtering_batch_size * keep_fraction)
+                msg = (
+                    f"Repeating this call with a decreased batch size of {batch_size}."
+                )
                 self.context.logger.warning(msg)
-                from_block += step
                 continue
 
             self.redeeming_progress.answered.extend(self.claim_params_batch)
@@ -769,6 +771,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 self.context.logger.info(msg)
                 self._load_progress()
 
+            success = False
             if not self.redeeming_progress.check_finished:
                 success = yield from self._clean_redeem_info()
 
