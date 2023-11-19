@@ -42,6 +42,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
     MultisendBatch,
+    STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
     SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
@@ -61,7 +62,6 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-EPSILON = 1e-7
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -70,6 +70,46 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
         keep_percentage = 1 - fraction
         return int(amount * keep_percentage)
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
+
+
+def calculate_kelly_bet_amount(
+    x: int, y: int, p: float, c: float, b: int, f: float
+) -> int:
+    """Calculate the Kelly bet amount."""
+    if b == 0:
+        return 0
+    numerator = (
+        -4 * x**2 * y
+        + b * y**2 * p * c * f
+        + 2 * b * x * y * p * c * f
+        + b * x**2 * p * c * f
+        - 2 * b * y**2 * f
+        - 2 * b * x * y * f
+        + (
+            (
+                4 * x**2 * y
+                - b * y**2 * p * c * f
+                - 2 * b * x * y * p * c * f
+                - b * x**2 * p * c * f
+                + 2 * b * y**2 * f
+                + 2 * b * x * y * f
+            )
+            ** 2
+            - (
+                4
+                * (x**2 * f - y**2 * f)
+                * (
+                    -4 * b * x * y**2 * p * c
+                    - 4 * b * x**2 * y * p * c
+                    + 4 * b * x * y**2
+                )
+            )
+        )
+        ** (1 / 2)
+    )
+    denominator = 2 * (x**2 * f - y**2 * f)
+    kelly_bet_amount = numerator / denominator
+    return int(kelly_bet_amount)
 
 
 class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
@@ -216,45 +256,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
-    def _calculate_kelly_bet_amount(
-        self, x: int, y: int, p: float, c: float, b: int, f: float
-    ) -> int:
-        """Calculate the Kelly bet amount."""
-        if b == 0:
-            error = "Cannot calculate Kelly bet amount with no bankroll."
-            self.context.logger.error(error)
-            return 0
-        kelly_bet_amount = (
-            -4 * x**2 * y
-            + b * y**2 * p * c * f
-            + 2 * b * x * y * p * c * f
-            + b * x**2 * p * c * f
-            - 2 * b * y**2 * f
-            - 2 * b * x * y * f
-            + (
-                (
-                    4 * x**2 * y
-                    - b * y**2 * p * c * f
-                    - 2 * b * x * y * p * c * f
-                    - b * x**2 * p * c * f
-                    + 2 * b * y**2 * f
-                    + 2 * b * x * y * f
-                )
-                ** 2
-                - (
-                    4
-                    * (x**2 * f - y**2 * f)
-                    * (
-                        -4 * b * x * y**2 * p * c
-                        - 4 * b * x**2 * y * p * c
-                        + 4 * b * x * y**2
-                    )
-                )
-            )
-            ** (1 / 2)
-        ) / (2 * (x**2 * f - y**2 * f) + EPSILON)
-        return int(kelly_bet_amount)
-
     def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
         """Get max bet amount based on available shares."""
         if x**2 * f**2 + 2 * x * y * f**2 + y**2 * f**2 == 0:
@@ -293,16 +294,17 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
 
-        if strategy == "bet_amount_per_conf_threshold":
+        # Kelly Criterion does not trade for equally weighted pools.
+        if (
+            strategy == STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD
+            or selected_type_tokens_in_pool == other_tokens_in_pool
+        ):
             self.context.logger.info(
                 "Used trading strategy: Bet amount per confidence threshold"
             )
             threshold = round(confidence, 1)
             bet_amount = self.params.bet_amount_per_threshold[threshold]
             return bet_amount
-
-        if strategy != "kelly_criterion":
-            raise ValueError(f"Invalid trading strategy: {strategy}")
 
         self.context.logger.info("Used trading strategy: Kelly Criterion")
         # bankroll: the max amount of DAI available to trade
@@ -323,7 +325,10 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
         fee_fraction = 1 - self.wei_to_native(bet_fee)
         self.context.logger.info(f"Fee fraction: {fee_fraction}")
-        kelly_bet_amount = self._calculate_kelly_bet_amount(
+        if bankroll_adj == 0:
+            error = "Cannot calculate Kelly bet amount with no bankroll."
+            self.context.logger.error(error)
+        kelly_bet_amount = calculate_kelly_bet_amount(
             selected_type_tokens_in_pool,
             other_tokens_in_pool,
             win_probability,

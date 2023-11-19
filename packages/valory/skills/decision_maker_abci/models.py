@@ -58,6 +58,8 @@ REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
 DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
+STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD = "bet_amount_per_conf_threshold"
+STRATEGY_KELLY_CRITERION = "kelly_criterion"
 
 
 class PromptTemplate(Template):
@@ -178,6 +180,13 @@ class DecisionMakerParams(MarketManagerParams):
 
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
+        if self.trading_strategy not in [
+            STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
+            STRATEGY_KELLY_CRITERION,
+        ]:
+            raise ValueError(
+                f"The trading strategy {self.trading_strategy} is not supported!"
+            )
         # the factor of calculated kelly bet to use for placing bets
         self.bet_kelly_fraction: float = self._ensure(
             "bet_kelly_fraction", kwargs, float
@@ -235,7 +244,7 @@ class DecisionMakerParams(MarketManagerParams):
     @property
     def using_kelly(self) -> bool:
         """Get the max bet amount if the `bet_amount_per_conf_threshold` strategy is used."""
-        return self.trading_strategy == "kelly_criterion"
+        return self.trading_strategy == STRATEGY_KELLY_CRITERION
 
     @property
     def max_bet_amount(self) -> int:
