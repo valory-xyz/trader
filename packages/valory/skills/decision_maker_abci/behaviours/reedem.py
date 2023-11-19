@@ -436,7 +436,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 n_retries += 1
                 keep_fraction = (1 - self.params.reduce_factor) ** n_retries
                 batch_size = int(self.params.event_filtering_batch_size * keep_fraction)
-                msg = f"Repeating this call with a decreased batch size of {batch_size}."
+                msg = (
+                    f"Repeating this call with a decreased batch size of {batch_size}."
+                )
                 self.context.logger.warning(msg)
                 continue
 
@@ -568,7 +570,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 n_retries += 1
                 keep_fraction = (1 - self.params.reduce_factor) ** n_retries
                 batch_size = int(self.params.event_filtering_batch_size * keep_fraction)
-                msg = f"Repeating this call with a decreased batch size of {batch_size}."
+                msg = (
+                    f"Repeating this call with a decreased batch size of {batch_size}."
+                )
                 self.context.logger.warning(msg)
                 continue
 
