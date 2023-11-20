@@ -788,14 +788,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 self.context.logger.info(msg)
                 self._load_progress()
 
-            success = False
             if not self.redeeming_progress.check_finished:
-                success = yield from self._clean_redeem_info()
+                self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
 
             agent = self.context.agent_address
             payload = RedeemPayload(agent)
 
-            if success:
+            if self.redeeming_progress.cleaned:
                 redeem_tx_hex = yield from self._prepare_safe_tx()
                 if redeem_tx_hex is not None:
                     tx_submitter = self.matching_round.auto_round_id()

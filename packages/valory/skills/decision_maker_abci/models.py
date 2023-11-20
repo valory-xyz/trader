@@ -84,6 +84,7 @@ class RedeemingProgress:
     check_started: bool = False
     check_from_block: BlockIdentifier = "earliest"
     check_to_block: BlockIdentifier = "latest"
+    cleaned: bool = False
     payouts: Dict[str, int] = field(default_factory=lambda: {})
     claim_started: bool = False
     claim_from_block: BlockIdentifier = "earliest"
