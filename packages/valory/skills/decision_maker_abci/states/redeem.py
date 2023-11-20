@@ -19,9 +19,13 @@
 
 """This module contains the redeem state of the decision-making abci app."""
 
-from typing import Type
+from enum import Enum
+from typing import Optional, Tuple, Type, cast
 
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import (
     MultisigTxPayload,
     RedeemPayload,
@@ -40,5 +44,25 @@ class RedeemRound(TxPreparationRound):
     selection_key = TxPreparationRound.selection_key + (
         get_name(SynchronizedData.policy),
         get_name(SynchronizedData.utilized_tools),
+        get_name(SynchronizedData.redeemed_condition_ids),
+        get_name(SynchronizedData.payout_so_far),
     )
     none_event = Event.NO_REDEEMING
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        if synced_data.period_count == 0:
+            # necessary for persisted keys to function properly and not raise an exception when the first period ends
+            update = {
+                db_key: getattr(synced_data, db_key)
+                for db_key in RedeemRound.selection_key
+            }
+            synced_data.db.update(**update)
+
+        return synced_data, event

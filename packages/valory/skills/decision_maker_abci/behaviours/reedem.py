@@ -69,6 +69,8 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         """Initialize a `RedeemInfo` object."""
         super().__init__(**kwargs)
         self.utilized_tools: Dict[str, int] = {}
+        self.redeemed_condition_ids: Set[str] = set()
+        self.payout_so_far: int = 0
         self.trades: Set[Trade] = set()
         self.earliest_block_number: int = 0
 
@@ -84,6 +86,8 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
         """Setup the behaviour"""
         self._policy = self.synchronized_data.policy
         self.utilized_tools = self.synchronized_data.utilized_tools
+        self.redeemed_condition_ids = self.synchronized_data.redeemed_condition_ids
+        self.payout_so_far = self.synchronized_data.payout_so_far
 
     def _set_block_number(self, trade: Trade) -> Generator:
         """Set the block number of the given trade's market."""
@@ -356,6 +360,15 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         self.context.logger.info(f"Fetched redeeming information: {self.trades}")
 
+    def _filter_trades(self) -> None:
+        """Filter the trades, removing the redeemed condition ids."""
+        self.trades = {
+            trade
+            for trade in self.trades
+            if trade.fpmm.condition.id.hex()[2:] not in self.redeemed_condition_ids
+        }
+        self.redeeming_progress.trades = self.trades
+
     def _conditional_tokens_interact(
         self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
     ) -> WaitableConditionType:
@@ -450,19 +463,23 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _clean_redeem_info(self) -> WaitableConditionType:
         """Clean the redeeming information based on whether any positions have already been redeemed."""
+        if self.payout_so_far > 0:
+            # filter the trades to avoid checking positions that we are already aware have been redeemed.
+            self._filter_trades()
+
         success = yield from self._check_already_redeemed()
         if not success:
             return False
 
-        payout_so_far = sum(self.redeeming_progress.payouts.values())
-        if payout_so_far > 0:
-            self.trades = {
-                trade
-                for trade in self.trades
-                if trade.fpmm.condition.id not in self.redeeming_progress.payouts.keys()
-            }
-            self.redeeming_progress.trades = self.trades
-            msg = f"The total payout so far has been {self.wei_to_native(payout_so_far)} wxDAI."
+        payouts = self.redeeming_progress.payouts
+        payouts_amount = sum(payouts.values())
+        if payouts_amount > 0:
+            self.redeemed_condition_ids |= set(payouts.keys())
+            self.payout_so_far += payouts_amount
+            # filter the trades again if new payouts have been found
+            self._filter_trades()
+            wxdai_amount = self.wei_to_native(self.payout_so_far)
+            msg = f"The total payout so far has been {wxdai_amount} wxDAI."
             self.context.logger.info(msg)
 
         return True
@@ -776,7 +793,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 success = yield from self._clean_redeem_info()
 
             agent = self.context.agent_address
-            tx_submitter = policy = utilized_tools = redeem_tx_hex = None
+            payload = RedeemPayload(agent)
 
             if success:
                 redeem_tx_hex = yield from self._prepare_safe_tx()
@@ -784,9 +801,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                     tx_submitter = self.matching_round.auto_round_id()
                     policy = self.policy.serialize()
                     utilized_tools = json.dumps(self.utilized_tools)
-
-            payload = RedeemPayload(
-                agent, tx_submitter, redeem_tx_hex, policy, utilized_tools
-            )
+                    condition_ids = json.dumps(list(self.redeemed_condition_ids))
+                    payout = self.payout_so_far
+                    payload = RedeemPayload(
+                        agent,
+                        tx_submitter,
+                        redeem_tx_hex,
+                        policy,
+                        utilized_tools,
+                        condition_ids,
+                        payout,
+                    )
 
         yield from self.finish_behaviour(payload)

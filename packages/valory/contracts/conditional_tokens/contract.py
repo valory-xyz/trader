@@ -79,6 +79,8 @@ class ConditionalTokensContract(Contract):
             condition_id = args.get("conditionId", None)
             payout = args.get("payout", 0)
             if condition_id is not None and payout > 0:
+                if isinstance(condition_id, bytes):
+                    condition_id = condition_id.hex()
                 payouts[condition_id] = payout
 
         return dict(payouts=payouts)

@@ -21,7 +21,7 @@
 
 import json
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
@@ -113,6 +113,20 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get a mapping of the utilized tools' indexes for each transaction."""
         tools = str(self.db.get_strict("utilized_tools"))
         return json.loads(tools)
+
+    @property
+    def redeemed_condition_ids(self) -> Set[str]:
+        """Get the condition ids of all the redeemed positions."""
+        ids = str(self.db.get("redeemed_condition_ids", "[]"))
+        return set(json.loads(ids))
+
+    @property
+    def payout_so_far(self) -> int:
+        """Get the payout of all the redeemed positions so far."""
+        payout = self.db.get("payout_so_far", None)
+        if payout is None:
+            payout = 0
+        return int(payout)
 
     @property
     def vote(self) -> Optional[int]:
