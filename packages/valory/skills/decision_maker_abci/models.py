@@ -239,6 +239,9 @@ class DecisionMakerParams(MarketManagerParams):
         )
         self.policy_store_path: Path = self.get_policy_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
+        self.tool_punishment_multiplier: int = self._ensure(
+            "tool_punishment_multiplier", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

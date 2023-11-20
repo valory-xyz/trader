@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigxkdujugzvve2dszkwr5kgfx4uhz2epofo4lorbcnthmzfjegwzi
 - valory/termination_abci:0.1.0:bafybeifazwrksp756h7z42qqfcgi6lya6wmhbx46l7ghlaooe45gqnju7q
 - valory/market_manager_abci:0.1.0:bafybeigesvgfjjtzxnsofhwutsp4pyclxnn62z2luy4xt7yarm64u6pbti
-- valory/decision_maker_abci:0.1.0:bafybeifr5sqhtsnj2z4jv2lgcridolfbl23plqdbrdjmg2wyltmgr3zsui
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig6nwyji7tkrpmc227z6p32gu5l3cge3jznjv5j3wzg4jh6x2rj7y
+- valory/decision_maker_abci:0.1.0:bafybeidfalvm6xvnx6s5iu5rkmewmencmco6yncgwrvawc6ysswv72cz34
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidy3uz3di6xb32p7bzn47c2ofd4nzs4t5lgiipxspffnmapyoirxm
 - valory/staking_abci:0.1.0:bafybeifoejd5q6wgmqohhwp46uwk3g4ysr7f5mf2fbmjhxulwzwdy2udui
 behaviours:
   main:
@@ -189,6 +189,7 @@ models:
       staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
+      tool_punishment_multiplier: 1
     class_name: TraderParams
   network_subgraph:
     args:
