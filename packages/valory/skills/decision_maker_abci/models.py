@@ -81,6 +81,7 @@ class RedeemingProgress:
     policy: Optional[EGreedyPolicy] = None
     claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
     earliest_block_number: int = 0
+    event_filtering_batch_size: int = 0
     check_started: bool = False
     check_from_block: BlockIdentifier = "earliest"
     check_to_block: BlockIdentifier = "latest"
@@ -138,6 +139,13 @@ class SharedState(BaseSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
         self.redeeming_progress: RedeemingProgress = RedeemingProgress()
+
+    def setup(self) -> None:
+        """Set up the model."""
+        super().setup()
+        self.redeeming_progress.event_filtering_batch_size = (
+            self.context.params.event_filtering_batch_size
+        )
 
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
