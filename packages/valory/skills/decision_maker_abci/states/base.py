@@ -117,7 +117,9 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def redeemed_condition_ids(self) -> Set[str]:
         """Get the condition ids of all the redeemed positions."""
-        ids = str(self.db.get("redeemed_condition_ids", "[]"))
+        ids = self.db.get("redeemed_condition_ids", None)
+        if ids is None:
+            return set()
         return set(json.loads(ids))
 
     @property
@@ -125,7 +127,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the payout of all the redeemed positions so far."""
         payout = self.db.get("payout_so_far", None)
         if payout is None:
-            payout = 0
+            return 0
         return int(payout)
 
     @property

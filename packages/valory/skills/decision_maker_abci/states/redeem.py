@@ -60,7 +60,7 @@ class RedeemRound(TxPreparationRound):
         if synced_data.period_count == 0:
             # necessary for persisted keys to function properly and not raise an exception when the first period ends
             update = {
-                db_key: getattr(synced_data, db_key)
+                db_key: getattr(synced_data.db, db_key, None)
                 for db_key in RedeemRound.selection_key
             }
             synced_data.db.update(**update)
