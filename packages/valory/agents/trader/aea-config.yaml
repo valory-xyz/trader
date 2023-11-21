@@ -22,8 +22,8 @@ contracts:
 - valory/erc20:0.1.0:bafybeiepg5ymxhtylgijs3mf3lezz6cwcsougbrv2gr4xcq3bp5wxusi64
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeieo65rtidzgrx22la7z7azoqbisd35hnoqfw7l3xxctotvctjlkju
-- valory/conditional_tokens:0.1.0:bafybeihnhs4ttjttlba2vqwyufsundne4oazblbvwwlq5x7isklnslczju
-- valory/realitio:0.1.0:bafybeiejybwx4d3iwaxumxuox7vbub2syyzycqnxaflnjakrgcf4z5gcle
+- valory/conditional_tokens:0.1.0:bafybeifu5axib5ifzq6bomfscs7nnx5qknkzymlz6gfn7ohjsb2shghrei
+- valory/realitio:0.1.0:bafybeieoily22pasgkzzcyawhqyrsko7b52lghnvwuskhomavb7tlb6pxa
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeibezt4xtzgf25eidmwev6moki74eufmb4hx7cpvd6odbyoxo42hxi
 - valory/service_staking_token:0.1.0:bafybeig2pnb3f4y65hlhhva52fsrwb6k3dqkqttq43sxd5kb4drgob65oy
@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiencz2uytz6fqj5wg7mcunevxjh4xg5gd6pqcgkshgqywhcimweyi
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig6pwr7zcou53qehlytced5rdltue7phfttt4ms55hk2bk3brfpve
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6bveoijtjzvquphekmset7sondro4iknljf5qnylkadeeusiwp4
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeiezxeb4vwsuzbfbka5emvzqlzs4zghcqyt6ilatdakokiuwqkejoy
-- valory/trader_abci:0.1.0:bafybeiaxrpftik5wf6x3avulcc5n4wvpis3kmroggjoet2bs4q7lbizr5e
+- valory/decision_maker_abci:0.1.0:bafybeigdp4pgm4ons5pzptmclyglyxyqut266s4zutpmqj2e22wdpdkt5y
+- valory/trader_abci:0.1.0:bafybeib3ennterz5yrqflnsu6asy2yat4s35n72pvqsm2wv37l7434oyoa
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 default_ledger: ethereum
 required_ledgers:
