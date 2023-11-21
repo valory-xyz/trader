@@ -161,7 +161,7 @@ if __name__ == "__main__":
     update = len(sys.argv[1:]) > 0
     package_dependencies = get_package_dependencies()
     # temp hack
-    package_dependencies["requests"] = "==2.28.2"
+    package_dependencies["requests"] = "==2.28.1"
     listed_package_dependencies = load_pyproject_toml()
     original_listed_package_dependencies = deepcopy(listed_package_dependencies)
     listed_package_dependencies.update(package_dependencies)

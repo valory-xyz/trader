@@ -19,7 +19,7 @@ dependencies:
   web3:
     version: <7,>=6.0.0
   requests:
-    version: ==2.28.2
+    version: ==2.28.1
   urllib3:
     version: ==1.26.16
 contracts: []
