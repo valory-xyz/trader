@@ -72,7 +72,7 @@ class RealitioContract(Contract):
         except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
             msg = (
                 "The RPC timed out! This usually happens if the filtering is too wide. "
-                f"The service tried to filter from block {from_block} to {to_block}."
+                f"The service tried to filter from block {from_block} to {to_block}. "
                 f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
             )
             return dict(error=msg)

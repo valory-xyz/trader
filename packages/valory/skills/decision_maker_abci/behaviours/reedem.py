@@ -426,7 +426,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         n_retries = 0
         from_block = self.redeeming_progress.check_from_block
-        batch_size = self.params.event_filtering_batch_size
+        batch_size = self.redeeming_progress.event_filtering_batch_size
         while from_block < self.redeeming_progress.check_to_block:
             max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.check_to_block)
@@ -447,12 +447,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
             if not result:
                 n_retries += 1
-                keep_fraction = (1 - self.params.reduce_factor) ** n_retries
-                batch_size = int(self.params.event_filtering_batch_size * keep_fraction)
-                msg = (
+                keep_fraction = 1 - self.params.reduce_factor
+                batch_size = int(batch_size * keep_fraction)
+                self.redeeming_progress.event_filtering_batch_size = batch_size
+                self.context.logger.warning(
                     f"Repeating this call with a decreased batch size of {batch_size}."
                 )
-                self.context.logger.warning(msg)
                 continue
 
             self.redeeming_progress.payouts.update(self.payouts_batch)
@@ -565,7 +565,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         n_retries = 0
         from_block = self.redeeming_progress.claim_from_block
-        batch_size = self.params.event_filtering_batch_size
+        batch_size = self.redeeming_progress.event_filtering_batch_size
         while from_block < self.redeeming_progress.claim_to_block:
             max_to_block = from_block + batch_size
             to_block = min(max_to_block, self.redeeming_progress.claim_to_block)
@@ -585,12 +585,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
             if not result:
                 n_retries += 1
-                keep_fraction = (1 - self.params.reduce_factor) ** n_retries
-                batch_size = int(self.params.event_filtering_batch_size * keep_fraction)
-                msg = (
+                keep_fraction = 1 - self.params.reduce_factor
+                batch_size = int(batch_size * keep_fraction)
+                self.redeeming_progress.event_filtering_batch_size = batch_size
+                self.context.logger.warning(
                     f"Repeating this call with a decreased batch size of {batch_size}."
                 )
-                self.context.logger.warning(msg)
                 continue
 
             self.redeeming_progress.answered.extend(self.claim_params_batch)
