@@ -26,6 +26,7 @@ from typing import Any, Callable, Generator, List, Optional, cast
 
 from aea.configurations.data_types import PublicId
 
+from packages.jhehemann.skills.kelly_strategy.models import get_bet_amount_kelly
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -70,46 +71,6 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
         keep_percentage = 1 - fraction
         return int(amount * keep_percentage)
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
-
-
-def calculate_kelly_bet_amount(
-    x: int, y: int, p: float, c: float, b: int, f: float
-) -> int:
-    """Calculate the Kelly bet amount."""
-    if b == 0:
-        return 0
-    numerator = (
-        -4 * x**2 * y
-        + b * y**2 * p * c * f
-        + 2 * b * x * y * p * c * f
-        + b * x**2 * p * c * f
-        - 2 * b * y**2 * f
-        - 2 * b * x * y * f
-        + (
-            (
-                4 * x**2 * y
-                - b * y**2 * p * c * f
-                - 2 * b * x * y * p * c * f
-                - b * x**2 * p * c * f
-                + 2 * b * y**2 * f
-                + 2 * b * x * y * f
-            )
-            ** 2
-            - (
-                4
-                * (x**2 * f - y**2 * f)
-                * (
-                    -4 * b * x * y**2 * p * c
-                    - 4 * b * x**2 * y * p * c
-                    + 4 * b * x * y**2
-                )
-            )
-        )
-        ** (1 / 2)
-    )
-    denominator = 2 * (x**2 * f - y**2 * f)
-    kelly_bet_amount = numerator / denominator
-    return int(kelly_bet_amount)
 
 
 class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
@@ -256,33 +217,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
-    def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
-        """Get max bet amount based on available shares."""
-        if x**2 * f**2 + 2 * x * y * f**2 + y**2 * f**2 == 0:
-            self.context.logger.error(
-                "Could not recalculate. "
-                "Either bankroll is 0 or pool token amount is distributed such as "
-                "x**2*f**2 + 2*x*y*f**2 + y**2*f**2 == 0:\n"
-                f"Available tokens: {a}\n"
-                f"Pool token amounts: {x}, {y}\n"
-                f"Fee, fee fraction f: {1-f}, {f}"
-            )
-            return 0
-        else:
-            pre_root = -2 * x**2 + a * x - 2 * x * y
-            sqrt = (
-                4 * x**4
-                + 8 * x**3 * y
-                + a**2 * x**2
-                + 4 * x**2 * y**2
-                + 2 * a**2 * x * y
-                + a**2 * y**2
-            )
-            numerator = y * (pre_root + sqrt**0.5 + a * y)
-            denominator = f * (x**2 + 2 * x * y + y**2)
-            new_bet_amount = numerator / denominator
-            return int(new_bet_amount)
-
     def get_bet_amount(
         self,
         strategy: str,
@@ -294,11 +228,15 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
 
+        yield from self.wait_for_condition_with_sleep(self.check_balance)
+        bankroll = self.token_balance + self.wallet_balance
+
         # Kelly Criterion does not trade for equally weighted pools.
         if (
             strategy == STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD
             or selected_type_tokens_in_pool == other_tokens_in_pool
         ):
+
             self.context.logger.info(
                 "Used trading strategy: Bet amount per confidence threshold"
             )
@@ -307,53 +245,22 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             return bet_amount
 
         self.context.logger.info("Used trading strategy: Kelly Criterion")
-        # bankroll: the max amount of DAI available to trade
-        yield from self.wait_for_condition_with_sleep(self.check_balance)
-        bankroll = self.token_balance + self.wallet_balance
-        # keep `floor_balance` xDAI in the bankroll
-        floor_balance = 500000000000000000
-        bankroll_adj = bankroll - floor_balance
-        bankroll_adj_xdai = self.wei_to_native(bankroll_adj)
-        self.context.logger.info(f"Adjusted bankroll: {bankroll_adj_xdai} xDAI.")
-        if bankroll_adj <= 0:
-            self.context.logger.info(
-                f"Bankroll ({bankroll_adj}) is less than the floor balance ({floor_balance}). "
-                "Set bet amount to 0."
-                "Top up safe with DAI or wait for redeeming."
-            )
-            return 0
-
-        fee_fraction = 1 - self.wei_to_native(bet_fee)
-        self.context.logger.info(f"Fee fraction: {fee_fraction}")
-        if bankroll_adj == 0:
-            error = "Cannot calculate Kelly bet amount with no bankroll."
-            self.context.logger.error(error)
-        kelly_bet_amount = calculate_kelly_bet_amount(
-            selected_type_tokens_in_pool,
-            other_tokens_in_pool,
+        bet_amount, info, error = get_bet_amount_kelly(
+            self.params.bet_kelly_fraction,
+            bankroll,
             win_probability,
             confidence,
-            bankroll_adj,
-            fee_fraction,
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            bet_fee,
         )
-        if kelly_bet_amount < 0:
-            self.context.logger.info(
-                f"Invalid value for kelly bet amount: {kelly_bet_amount}\n"
-                "Set bet amount to 0."
-            )
-            return 0
-
-        self.context.logger.info(
-            f"Kelly bet amount: {self.wei_to_native(kelly_bet_amount)} xDAI"
-        )
-        self.context.logger.info(
-            f"Bet kelly fraction: {self.params.bet_kelly_fraction}"
-        )
-        adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
-        self.context.logger.info(
-            f"Adjusted Kelly bet amount: {self.wei_to_native(adj_kelly_bet_amount)} xDAI"
-        )
-        return adj_kelly_bet_amount
+        if len(info) > 0:
+            for info_ in info:
+                self.context.logger.info(info_)
+        if len(error) > 0:
+            for error_ in error:
+                self.context.logger.error(error_)
+        return bet_amount
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
