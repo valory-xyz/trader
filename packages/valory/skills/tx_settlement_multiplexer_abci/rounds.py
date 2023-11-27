@@ -84,6 +84,8 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         There is no need to send a tx through, nor to check for a majority.
         We simply use this round to check which round submitted the tx,
         and move to the next state in accordance with that.
+
+        :return: the synchronized data and the event, otherwise `None` if the round is still running.
         """
         submitter_to_event: Dict[str, Event] = {
             DecisionRequestRound.auto_round_id(): Event.DECISION_REQUESTING_DONE,
