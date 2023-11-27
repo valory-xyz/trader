@@ -283,6 +283,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
+                self._store_policy()
+                self._store_available_mech_tools()
 
             payload = ToolSelectionPayload(
                 self.context.agent_address,
@@ -292,6 +294,4 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 selected_tool,
             )
 
-        self._store_policy()
-        self._store_available_mech_tools()
         yield from self.finish_behaviour(payload)
