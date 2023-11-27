@@ -236,7 +236,6 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             strategy == STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD
             or selected_type_tokens_in_pool == other_tokens_in_pool
         ):
-
             self.context.logger.info(
                 "Used trading strategy: Bet amount per confidence threshold"
             )
