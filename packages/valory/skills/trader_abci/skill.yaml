@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
-  composition.py: bafybeifakbd6n3lqvmxhb2svdst7wbagrplw23yf45zdexw34abtglxqke
+  composition.py: bafybeiajga2m7pv7v4bxsjsnncavdns6gujg7qg7opfjyznlzip3gbd3nm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeifduigketlvdwyhn47jfwf77otixljibl45firz5ijyhdgilhcyja
+  fsm_specification.yaml: bafybeihlhdsmmihnvwtggc2t2neqkm5uduw5krpgcxpz7m7xp5kjkf6jsm
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
   models.py: bafybeifxiptjrnv4hbw5l3mfxvb7hksmxf726kvab5lcms5btuc3vaahem
 fingerprint_ignore_patterns: []
@@ -19,15 +19,15 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigrqhygo2hl2owisj5rqyh3acdvee773ajije64snlzalcgtaac7q
-- valory/registration_abci:0.1.0:bafybeib2whqixp5265d53sa6szkz7woet4awuqr4dekb2hokpgps5codme
-- valory/reset_pause_abci:0.1.0:bafybeiflxcl2dtzayyzzddc4f2astzxunyp66meutornanrgeemicdea5q
-- valory/transaction_settlement_abci:0.1.0:bafybeigxkdujugzvve2dszkwr5kgfx4uhz2epofo4lorbcnthmzfjegwzi
-- valory/termination_abci:0.1.0:bafybeifazwrksp756h7z42qqfcgi6lya6wmhbx46l7ghlaooe45gqnju7q
-- valory/market_manager_abci:0.1.0:bafybeigesvgfjjtzxnsofhwutsp4pyclxnn62z2luy4xt7yarm64u6pbti
-- valory/decision_maker_abci:0.1.0:bafybeifr5sqhtsnj2z4jv2lgcridolfbl23plqdbrdjmg2wyltmgr3zsui
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig6nwyji7tkrpmc227z6p32gu5l3cge3jznjv5j3wzg4jh6x2rj7y
-- valory/staking_abci:0.1.0:bafybeifoejd5q6wgmqohhwp46uwk3g4ysr7f5mf2fbmjhxulwzwdy2udui
+- valory/abstract_round_abci:0.1.0:bafybeidau7loztcfy3mxvoqrv7otbpciemd2wf3lsxyjraq4dcvuvib25e
+- valory/registration_abci:0.1.0:bafybeif4tgr7zqzguknrjzxr4h766fxp7vr4tod25xii4jzzwsbvyzdzkq
+- valory/reset_pause_abci:0.1.0:bafybeiencz2uytz6fqj5wg7mcunevxjh4xg5gd6pqcgkshgqywhcimweyi
+- valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
+- valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
+- valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
+- valory/decision_maker_abci:0.1.0:bafybeihnjjfzoiihujnjd2gzbvmayz7avo5myslvl24wvyqj7zq4ufkvw4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaqh4pujl2o2ginl5lbe7p7en7t2ncs25gohysxdks5kd4lmqav3q
+- valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 behaviours:
   main:
     args: {}
@@ -189,6 +189,7 @@ models:
       staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
+      tool_punishment_multiplier: 1
     class_name: TraderParams
   network_subgraph:
     args:

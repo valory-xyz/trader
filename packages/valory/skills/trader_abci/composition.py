@@ -48,7 +48,6 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.registration_abci.rounds import (
     AgentRegistrationAbciApp,
     FinishedRegistrationRound,
-    RegistrationRound,
 )
 from packages.valory.skills.reset_pause_abci.rounds import (
     FinishedResetAndPauseErrorRound,
@@ -105,7 +104,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: UpdateBetsRound,
-    FinishedResetAndPauseErrorRound: RegistrationRound,
+    FinishedResetAndPauseErrorRound: ResetAndPauseRound,
 }
 
 termination_config = BackgroundAppConfig(

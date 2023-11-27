@@ -81,9 +81,11 @@ class RedeemingProgress:
     policy: Optional[EGreedyPolicy] = None
     claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
     earliest_block_number: int = 0
+    event_filtering_batch_size: int = 0
     check_started: bool = False
     check_from_block: BlockIdentifier = "earliest"
     check_to_block: BlockIdentifier = "latest"
+    cleaned: bool = False
     payouts: Dict[str, int] = field(default_factory=lambda: {})
     claim_started: bool = False
     claim_from_block: BlockIdentifier = "earliest"
@@ -137,6 +139,13 @@ class SharedState(BaseSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
         self.redeeming_progress: RedeemingProgress = RedeemingProgress()
+
+    def setup(self) -> None:
+        """Set up the model."""
+        super().setup()
+        self.redeeming_progress.event_filtering_batch_size = (
+            self.context.params.event_filtering_batch_size
+        )
 
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
@@ -239,6 +248,9 @@ class DecisionMakerParams(MarketManagerParams):
         )
         self.policy_store_path: Path = self.get_policy_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
+        self.tool_punishment_multiplier: int = self._ensure(
+            "tool_punishment_multiplier", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

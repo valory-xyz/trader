@@ -47,23 +47,25 @@ class SamplingPayload(UpdateBetsPayload):
 class MultisigTxPayload(BaseTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction to be sent via the agents' multisig."""
 
-    tx_submitter: Optional[str]
-    tx_hash: Optional[str]
+    tx_submitter: Optional[str] = None
+    tx_hash: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class RedeemPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
 
-    policy: Optional[str]
-    utilized_tools: Optional[str]
+    policy: Optional[str] = None
+    utilized_tools: Optional[str] = None
+    redeemed_condition_ids: Optional[str] = None
+    payout_so_far: Optional[int] = None
 
 
 @dataclass(frozen=True)
 class RequestPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
 
-    price: Optional[int]
+    price: Optional[int] = None
 
 
 @dataclass(frozen=True)
