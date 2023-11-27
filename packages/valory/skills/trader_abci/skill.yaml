@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
-  composition.py: bafybeifakbd6n3lqvmxhb2svdst7wbagrplw23yf45zdexw34abtglxqke
+  composition.py: bafybeiajga2m7pv7v4bxsjsnncavdns6gujg7qg7opfjyznlzip3gbd3nm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeifduigketlvdwyhn47jfwf77otixljibl45firz5ijyhdgilhcyja
+  fsm_specification.yaml: bafybeihlhdsmmihnvwtggc2t2neqkm5uduw5krpgcxpz7m7xp5kjkf6jsm
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
   models.py: bafybeifxiptjrnv4hbw5l3mfxvb7hksmxf726kvab5lcms5btuc3vaahem
 fingerprint_ignore_patterns: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeigdp4pgm4ons5pzptmclyglyxyqut266s4zutpmqj2e22wdpdkt5y
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6bveoijtjzvquphekmset7sondro4iknljf5qnylkadeeusiwp4
+- valory/decision_maker_abci:0.1.0:bafybeihnjjfzoiihujnjd2gzbvmayz7avo5myslvl24wvyqj7zq4ufkvw4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaqh4pujl2o2ginl5lbe7p7en7t2ncs25gohysxdks5kd4lmqav3q
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 behaviours:
   main:
