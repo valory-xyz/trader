@@ -143,6 +143,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         if self.mech_tools_api.is_retries_exceeded():
             error = "Retries were exceeded while trying to get the mech agent's data."
             self.context.logger.error(error)
+            self.mech_tools_api.reset_retries()
             return True
 
         if res is None:
