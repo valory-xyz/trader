@@ -143,10 +143,12 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         if self.mech_tools_api.is_retries_exceeded():
             error = "Retries were exceeded while trying to get the mech agent's data."
             self.context.logger.error(error)
+            self.mech_tools_api.reset_retries()
             return True
 
         if res is None:
-            msg = f"Could not get the mech agent's tools from {self.mech_tools_api.api_id}"
+            url = self.mech_tools_api.url
+            msg = f"Could not get the mech agent's tools from {url}."
             self.context.logger.error(msg)
             self.mech_tools_api.increment_retries()
             return False
@@ -252,6 +254,9 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         yield from self._get_tools()
+        if self._mech_tools is None:
+            return None
+
         self._set_policy()
         selected_idx = self.policy.select_tool()
         selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
@@ -279,6 +284,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
+                self._store_policy()
+                self._store_available_mech_tools()
 
             payload = ToolSelectionPayload(
                 self.context.agent_address,
@@ -288,6 +295,4 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
                 selected_tool,
             )
 
-        self._store_policy()
-        self._store_available_mech_tools()
         yield from self.finish_behaviour(payload)
