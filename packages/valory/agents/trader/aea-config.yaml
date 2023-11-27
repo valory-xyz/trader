@@ -46,7 +46,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6bveoijtjzvquphekmset7sondro4iknljf5qnylkadeeusiwp4
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
 - valory/decision_maker_abci:0.1.0:bafybeigdp4pgm4ons5pzptmclyglyxyqut266s4zutpmqj2e22wdpdkt5y
-- valory/trader_abci:0.1.0:bafybeib3ennterz5yrqflnsu6asy2yat4s35n72pvqsm2wv37l7434oyoa
+- valory/trader_abci:0.1.0:bafybeiej7tgi23eihevyw6t4uvia63afwq7qyxosupvlpooi3hyeiot4vq
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 default_ledger: ethereum
 required_ledgers:
