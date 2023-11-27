@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeifwz5zbbaia4q4oll6cldtvt47w2hw2qadptkmmtovmitzgpizyki
+  behaviours/base.py: bafybeidbmniih6bligblmybtxd55ve5gg5hy773vx2omok4r4xyv73vxri
   behaviours/bet_placement.py: bafybeigtz4uimsqjjwq4r5p3a5v6niqdtqezbuf2ghy6o7syhsh4k5gjfa
   behaviours/blacklisting.py: bafybeierwdzn6vav54l6zym77hhx2vdx3jtnnwpbhwmwwyrqzncwjwkxu4
   behaviours/decision_receive.py: bafybeifacce2ke7oltnwnpdjdqfd74eaaw5wxnjfzk6c5tqdsxsmbzjj3m
@@ -43,7 +43,7 @@ fingerprint:
   states/tool_selection.py: bafybeiaaijv6dukp3bmsptcwkcmumc6wu6ztzkvaqzsqqjbfn4ozgyuykq
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
   tests/conftest.py: bafybeic2xlujtbkyqk2zzpo5vorefwa3nwgfwmrk5rx77vu4gfyrn3pv5m
-  tests/test_behaviours.py: bafybeigfrzuqlxok7zmkyjd4t2p6wovmenx7n3zo7xu5jprv46jkzp2kqa
+  tests/test_behaviours.py: bafybeif5cb3kvmaytv77ur6mbc7uyoiyjbon7vpqv6xo7m4dy634wlbsku
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -60,10 +60,10 @@ protocols:
 - valory/contract_api:1.0.0:bafybeialhbjvwiwcnqq3ysxcyemobcbie7xza66gaofcvla5njezkvhcka
 - valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigrqhygo2hl2owisj5rqyh3acdvee773ajije64snlzalcgtaac7q
-- valory/market_manager_abci:0.1.0:bafybeigesvgfjjtzxnsofhwutsp4pyclxnn62z2luy4xt7yarm64u6pbti
-- valory/transaction_settlement_abci:0.1.0:bafybeigxkdujugzvve2dszkwr5kgfx4uhz2epofo4lorbcnthmzfjegwzi
-- jhehemann/kelly_strategy:0.1.0:bafybeinotgeneratedyetttttttttttttttttttttttttttttttttttttt
+- valory/abstract_round_abci:0.1.0:bafybeidau7loztcfy3mxvoqrv7otbpciemd2wf3lsxyjraq4dcvuvib25e
+- valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
+- valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
+- jhehemann/kelly_strategy:0.1.0:bafybeiblziqq774voze5s3xu4bkw3v7e67nfkl76elo555nchnlgx7tgky
 behaviours:
   main:
     args: {}
