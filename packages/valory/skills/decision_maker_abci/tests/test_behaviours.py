@@ -22,9 +22,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    calculate_kelly_bet_amount,
-)
+from packages.jhehemann.skills.kelly_strategy.models import calculate_kelly_bet_amount
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
 
 
