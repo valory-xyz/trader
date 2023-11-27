@@ -37,23 +37,23 @@ def get_max_bet_amount(a: int, x: int, y: int, f: float) -> tuple[int, str]:
             f"Fee, fee fraction f: {1-f}, {f}"
         )
         return 0, error
-    else:
-        pre_root = -2 * x**2 + a * x - 2 * x * y
-        sqrt = (
-            4 * x**4
-            + 8 * x**3 * y
-            + a**2 * x**2
-            + 4 * x**2 * y**2
-            + 2 * a**2 * x * y
-            + a**2 * y**2
-        )
-        numerator = y * (pre_root + sqrt**0.5 + a * y)
-        denominator = f * (x**2 + 2 * x * y + y**2)
-        new_bet_amount = numerator / denominator
-        return int(new_bet_amount), ""
+
+    pre_root = -2 * x**2 + a * x - 2 * x * y
+    sqrt = (
+        4 * x**4
+        + 8 * x**3 * y
+        + a**2 * x**2
+        + 4 * x**2 * y**2
+        + 2 * a**2 * x * y
+        + a**2 * y**2
+    )
+    numerator = y * (pre_root + sqrt**0.5 + a * y)
+    denominator = f * (x**2 + 2 * x * y + y**2)
+    new_bet_amount = numerator / denominator
+    return int(new_bet_amount), ""
 
 
-def calculate_kelly_bet_amount(
+def calculate_kelly_bet_amount(  # pylint: disable=too-many-arguments
     x: int, y: int, p: float, c: float, b: int, f: float
 ) -> int:
     """Calculate the Kelly bet amount."""
@@ -93,7 +93,7 @@ def calculate_kelly_bet_amount(
     return int(kelly_bet_amount)
 
 
-def get_bet_amount_kelly(
+def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     bet_kelly_fraction: float,
     bankroll: int,
     win_probability: float,
