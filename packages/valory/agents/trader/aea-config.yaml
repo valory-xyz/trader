@@ -48,6 +48,7 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeifr5sqhtsnj2z4jv2lgcridolfbl23plqdbrdjmg2wyltmgr3zsui
 - valory/trader_abci:0.1.0:bafybeih72cnauzvc4lhpxjwyqxhx2vfxoztucfast7jyl6oqgbaqcctop4
 - valory/staking_abci:0.1.0:bafybeifoejd5q6wgmqohhwp46uwk3g4ysr7f5mf2fbmjhxulwzwdy2udui
+- jhehemann/kelly_strategy:0.1.0:bafybeinotgeneratedyetttttttttttttttttttttttttttttttttttttt
 default_ledger: ethereum
 required_ledgers:
 - ethereum
