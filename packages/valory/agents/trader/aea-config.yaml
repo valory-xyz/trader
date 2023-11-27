@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiencz2uytz6fqj5wg7mcunevxjh4xg5gd6pqcgkshgqywhcimweyi
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieyveyz6m7vdpmlanyfrxfg2va4ldwv7k7cnizyrh6r2j5h2evfui
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaufmwkixphmda3jax4vprbdjn57axe655cbougexwml5ymsc6si4
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeibwy64sil72jsut2epq5erabsqznyq6zjx7f4fbfb6wyw6uks6kfa
-- valory/trader_abci:0.1.0:bafybeicorcnqoykfgwcbnkz35h666r4rpd26sjlkujgrbgfxj46tmhegce
+- valory/decision_maker_abci:0.1.0:bafybeialhiifvrhehvh7gtmkirrodcywrpztxxcz6e4grrfwkxdsv7wody
+- valory/trader_abci:0.1.0:bafybeibov6x4ifi4775dmqq74ngvjxtsu56stkpaxfzkapk5nsdjqonfcq
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 - jhehemann/kelly_strategy:0.1.0:bafybeiblziqq774voze5s3xu4bkw3v7e67nfkl76elo555nchnlgx7tgky
 default_ledger: ethereum
