@@ -253,6 +253,9 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _select_tool(self) -> Generator[None, None, Optional[int]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         yield from self._get_tools()
+        if self._mech_tools is None:
+            return None
+
         self._set_policy()
         selected_idx = self.policy.select_tool()
         selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
