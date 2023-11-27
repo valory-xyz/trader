@@ -147,7 +147,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             return True
 
         if res is None:
-            msg = f"Could not get the mech agent's tools from {self.mech_tools_api.api_id}"
+            msg = f"Could not get the mech agent's tools from {self.mech_tools_api.url}."
             self.context.logger.error(msg)
             self.mech_tools_api.increment_retries()
             return False
