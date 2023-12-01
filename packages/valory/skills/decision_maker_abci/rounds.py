@@ -219,6 +219,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
+        Event.REDEEM_ROUND_TIMEOUT: 3600.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRound: set(),
