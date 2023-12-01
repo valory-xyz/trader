@@ -448,11 +448,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not result:
                 n_retries += 1
                 keep_fraction = 1 - self.params.reduce_factor
-                batch_size = int(batch_size * keep_fraction)
+                reduced_batch_size = int(batch_size * keep_fraction)
+                # ensure that the batch size is at least the minimum batch size
+                batch_size = max(reduced_batch_size, self.params.minimum_batch_size)
                 self.redeeming_progress.event_filtering_batch_size = batch_size
                 self.context.logger.warning(
                     f"Repeating this call with a decreased batch size of {batch_size}."
                 )
+
                 continue
 
             self.redeeming_progress.payouts.update(self.payouts_batch)

@@ -231,6 +231,8 @@ class DecisionMakerParams(MarketManagerParams):
             "event_filtering_batch_size", kwargs, int
         )
         self.reduce_factor: float = self._ensure("reduce_factor", kwargs, float)
+        # the minimum batch size for redeeming operations, this is added to avoid the batch size to be too small
+        self.minimum_batch_size: int = self._ensure("minimum_batch_size", kwargs, int)
         self.max_filtering_retries: int = self._ensure(
             "max_filtering_retries", kwargs, int
         )
