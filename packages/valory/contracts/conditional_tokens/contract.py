@@ -53,17 +53,7 @@ class ConditionalTokensContract(Contract):
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
 
-        def get_redeem_events(
-            ledger_api: LedgerApi,
-            contract_address: str,
-            redeemer: str,
-            from_block: int,
-            to_block: int,
-            collateral_tokens: List[str],
-            parent_collection_ids: List[bytes],
-            condition_ids: List[HexBytes],
-            index_sets: List[List[int]],
-        ) -> Union[List[Dict[str, Any]], str]:
+        def get_redeem_events() -> Union[List[Dict[str, Any]], str]:
             """Get the redeem events."""
             contract_instance = cls.get_instance(ledger_api, contract_address)
             to_checksum = ledger_api.api.to_checksum_address
@@ -92,19 +82,10 @@ class ConditionalTokensContract(Contract):
                 return msg
 
         # Create a ProcessPoolExecutor with a maximum of 1 worker (process)
-        with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # Submit the function to the executor
             future = executor.submit(
                 get_redeem_events,
-                ledger_api,
-                contract_address,
-                redeemer,
-                from_block,
-                to_block,
-                collateral_tokens,
-                parent_collection_ids,
-                condition_ids,
-                index_sets,
             )
 
             try:
@@ -124,7 +105,7 @@ class ConditionalTokensContract(Contract):
             args = redeeming.get("args", {})
             condition_id = args.get("conditionId", None)
             payout = args.get("payout", 0)
-            if condition_id is not None and payout > 0:
+            if condition_id isg not None and payout > 0:
                 if isinstance(condition_id, bytes):
                     condition_id = condition_id.hex()
                 payouts[condition_id] = payout
