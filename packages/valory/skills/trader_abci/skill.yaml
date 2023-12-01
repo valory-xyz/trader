@@ -190,6 +190,9 @@ models:
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       tool_punishment_multiplier: 1
+      file_hash_to_strategies_json:
+        - - hash
+          - - strategy_name
     class_name: TraderParams
   network_subgraph:
     args:

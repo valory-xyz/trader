@@ -208,6 +208,9 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       tool_punishment_multiplier: 1
+      file_hash_to_strategies_json:
+        - - hash
+          - - strategy_name
     class_name: DecisionMakerParams
   mech_response:
     args:
