@@ -28,6 +28,7 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.models import RedeemingProgress
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
     TxSettlementMultiplexerParams,
@@ -128,10 +129,26 @@ class PostTxSettlementBehaviour(BaseBehaviour):
         """Return the synchronized data."""
         return SynchronizedData(super().synchronized_data.db)
 
+    def _on_redeem_round_tx_settled(self) -> None:
+        """Handle the redeem round."""
+        self.context.logger.info("Redeeming transaction was settled. Resetting the redeeming progress.")
+        self.shared_state.redeeming_progress = RedeemingProgress()
+
+    def _on_tx_settled(self) -> None:
+        """Handle the tx settled event."""
+        tx_submitter = self.synchronized_data.tx_submitter
+        handler_name = f"_on_{tx_submitter}_tx_settled"
+        handler = getattr(self, handler_name, None)
+        if handler is None:
+            self.context.logger.info(f"No post tx settlement handler exists for {tx_submitter} txs.")
+            return
+        handler()
+
     def async_act(self) -> Generator:
         """Simply log that a tx is settled and wait for the round end."""
         msg = f"The transaction submitted by {self.synchronized_data.tx_submitter} was successfully settled."
         self.context.logger.info(msg)
+        self._on_tx_settled()
         yield from self.wait_until_round_end()
         self.set_done()
 

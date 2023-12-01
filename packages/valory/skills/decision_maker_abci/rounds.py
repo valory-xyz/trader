@@ -186,7 +186,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: RedeemRound,
             # in case of a round timeout, there likely is something wrong with redeeming
             # it could be the RPC, or some other issue. We don't want to be stuck trying to redeem.
-            Event.ROUND_TIMEOUT: FinishedWithoutRedeemingRound,
+            Event.REDEEM_ROUND_TIMEOUT: FinishedWithoutRedeemingRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },

@@ -776,7 +776,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""
-        self.redeeming_progress = RedeemingProgress()
         self._store_utilized_tools()
         yield from super().finish_behaviour(payload)
 

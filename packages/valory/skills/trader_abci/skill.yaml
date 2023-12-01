@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeiecxat37q634mgmv3hwgevulr726k3cc6ild3kylititnf3w7gl5m
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeifxiptjrnv4hbw5l3mfxvb7hksmxf726kvab5lcms5btuc3vaahem
+  models.py: bafybeifyk4dmnpq2vblrj3ldoaicsamidww6am4zvbind6ijlpbdawcz4m
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeibpftqsvijeysldhuqte2gvr3e5lfzm44lt5lepamqy3nczyez2pe
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigvxa2cfueh5ytwcpzszalw2gznyg2ctmbjq46krqewy7cxsvq2gi
+- valory/decision_maker_abci:0.1.0:bafybeigrtd3td5b5ibq4tz7vzokan72h62fppfs75il7epxkm7l4afi2f4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiayt5mk22qmba74qhcszy6oaukewl2glscf4fsh6aai2klac6tege
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 behaviours:
   main:
@@ -190,6 +190,7 @@ models:
       staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
+      redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
     class_name: TraderParams
   network_subgraph:
