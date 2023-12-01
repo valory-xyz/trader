@@ -22,7 +22,7 @@ contracts:
 - valory/erc20:0.1.0:bafybeiepg5ymxhtylgijs3mf3lezz6cwcsougbrv2gr4xcq3bp5wxusi64
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeieo65rtidzgrx22la7z7azoqbisd35hnoqfw7l3xxctotvctjlkju
-- valory/conditional_tokens:0.1.0:bafybeicphtdu4oab6v5ocpn44sbvwmu4o6riftlxtg6axrwjdwmx4y375e
+- valory/conditional_tokens:0.1.0:bafybeigvz2ozwly3vhfv4nrcmkm5uhr6uxsf5dewuibdhczwhwavbxykce
 - valory/realitio:0.1.0:bafybeieoily22pasgkzzcyawhqyrsko7b52lghnvwuskhomavb7tlb6pxa
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeibezt4xtzgf25eidmwev6moki74eufmb4hx7cpvd6odbyoxo42hxi
@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiencz2uytz6fqj5wg7mcunevxjh4xg5gd6pqcgkshgqywhcimweyi
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif3dfduvr2ney6q77wdmlqrbrtahhfbi2dw3uad5bf5rtixoeftri
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigzqa43ohdu66ojly36rp3z2lidgmezzuetp2mt6finmd6i7jvjxi
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeie2gmfc2rnptmgojiv2nqwfyzmkzgb63na4et5slx3emdx5bhsnom
-- valory/trader_abci:0.1.0:bafybeiffwyrejr3r5gdfp4eofs6gulfkwrewfgilbpgdsk7grngm2x4rai
+- valory/decision_maker_abci:0.1.0:bafybeia7rebxcqvguozpfoaabvjwkarvkzbbus3tkj7qajfmx544xbzhxe
+- valory/trader_abci:0.1.0:bafybeifwkuvptiwqaocw4mmrhbajqcvngdlf5wyw7iohzmvglq564o5q4e
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 default_ledger: ethereum
 required_ledgers:

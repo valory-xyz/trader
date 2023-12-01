@@ -105,7 +105,7 @@ class ConditionalTokensContract(Contract):
             args = redeeming.get("args", {})
             condition_id = args.get("conditionId", None)
             payout = args.get("payout", 0)
-            if condition_id isg not None and payout > 0:
+            if condition_id is not None and payout > 0:
                 if isinstance(condition_id, bytes):
                     condition_id = condition_id.hex()
                 payouts[condition_id] = payout
