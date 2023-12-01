@@ -126,6 +126,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Timeouts:
         round timeout: 30.0
+        redeem round timeout: 3600.0
     """
 
     initial_round_cls: AppState = SamplingRound
