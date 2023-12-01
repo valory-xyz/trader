@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifneutrvfu462ebebzoi7belih7j2jjaxex7f4tsaum4tzl42rus4
+agent: valory/trader:0.1.0:bafybeidtogranucwerhl5ftntfgwi6julfzvwy3vt3pitrjtzr2itfmkii
 number_of_agents: 4
 deployment: {}
 ---
@@ -121,6 +121,7 @@ type: skill
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+        check_redeemed_timeout: ${CHECK_REDEEMED_TIMEOUT:float:300.0}
     benchmark_tool: &id005
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -202,6 +203,7 @@ type: skill
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+        check_redeemed_timeout: ${CHECK_REDEEMED_TIMEOUT:float:300.0}
     benchmark_tool: *id005
 2:
   models:
@@ -281,6 +283,7 @@ type: skill
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+        check_redeemed_timeout: ${CHECK_REDEEMED_TIMEOUT:float:300.0}
     benchmark_tool: *id005
 3:
   models:
@@ -360,6 +363,7 @@ type: skill
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+        check_redeemed_timeout: ${CHECK_REDEEMED_TIMEOUT:float:300.0}
     benchmark_tool: *id005
 ---
 public_id: valory/ledger:0.19.0

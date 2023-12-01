@@ -437,6 +437,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 redeemer=safe_address_lower,
                 from_block=from_block,
                 to_block=to_block,
+                timeout=self.params.check_redeemed_timeout,
                 **kwargs,
             )
 

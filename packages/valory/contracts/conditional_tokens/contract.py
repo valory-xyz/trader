@@ -18,8 +18,8 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the conditional tokens contract definition."""
-
-from typing import List
+import concurrent.futures
+from typing import List, Any, Dict, Union
 
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
@@ -29,6 +29,8 @@ from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from hexbytes import HexBytes
 
+
+FIVE_MINUTES = 300.0
 
 class ConditionalTokensContract(Contract):
     """The ConditionalTokens smart contract."""
@@ -47,6 +49,7 @@ class ConditionalTokensContract(Contract):
         parent_collection_ids: List[bytes],
         condition_ids: List[HexBytes],
         index_sets: List[List[int]],
+        timeout: float = FIVE_MINUTES,
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
@@ -55,23 +58,45 @@ class ConditionalTokensContract(Contract):
         collateral_tokens_checksummed = [
             to_checksum(token) for token in collateral_tokens
         ]
-        try:
-            payout_filter = contract_instance.events.PayoutRedemption.build_filter()
-            payout_filter.args.redeemer.match_single(redeemer_checksummed)
-            payout_filter.args.collateralToken.match_any(*collateral_tokens_checksummed)
-            payout_filter.args.parentCollectionId.match_any(*parent_collection_ids)
-            payout_filter.args.conditionId.match_any(*condition_ids)
-            payout_filter.args.indexSets.match_any(*index_sets)
-            payout_filter.fromBlock = from_block
-            payout_filter.toBlock = to_block
-            redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
-        except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
-            msg = (
-                "The RPC timed out! This usually happens if the filtering is too wide. "
-                f"The service tried to filter from block {from_block} to {to_block}. "
-                f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
-            )
-            return dict(error=msg)
+
+        def get_redeem_events() -> Union[List[Dict[str, Any]], str]:
+            """Get the redeem events."""
+            try:
+                payout_filter = contract_instance.events.PayoutRedemption.build_filter()
+                payout_filter.args.redeemer.match_single(redeemer_checksummed)
+                payout_filter.args.collateralToken.match_any(*collateral_tokens_checksummed)
+                payout_filter.args.parentCollectionId.match_any(*parent_collection_ids)
+                payout_filter.args.conditionId.match_any(*condition_ids)
+                payout_filter.args.indexSets.match_any(*index_sets)
+                payout_filter.fromBlock = from_block
+                payout_filter.toBlock = to_block
+                redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
+                return redeemed
+
+            except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
+                msg = (
+                    "The RPC timed out! This usually happens if the filtering is too wide. "
+                    f"The service tried to filter from block {from_block} to {to_block}. "
+                    f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
+                )
+                return msg
+
+        # Create a ProcessPoolExecutor with a maximum of 1 worker (process)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+            # Submit the function to the executor
+            future = executor.submit(get_redeem_events)
+
+            try:
+                # Wait for the result with a 5-minute timeout
+                redeemed = future.result(timeout=timeout)
+            except TimeoutError:
+                # Handle the case where the execution times out
+                msg = f"The RPC didn't respond in {timeout}."
+                return dict(error=msg)
+
+            # Check if an error occurred
+            if isinstance(redeemed, str):
+                return dict(error=redeemed)
 
         payouts = {}
         for redeeming in redeemed:

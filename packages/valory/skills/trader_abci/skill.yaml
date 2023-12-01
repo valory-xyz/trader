@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeicbv5yf6rfabezmxjpwm7tjufop2yrquby6tq6kimo2tppvknhlym
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicgaji7zj2zqjq4ppvurd3ecdfdjtyhrxzn3meyncji74ndivubdu
+- valory/decision_maker_abci:0.1.0:bafybeiaxqgb7ovgnz4c7aau2iyuoyqfnzmey7w5gfxukaqr7hsjd36v7tu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibpvgcxi5clvprcxxbaaey26pwamkmt7j3l2blb46bm2ra22nr2eq
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 behaviours:
   main:
@@ -192,6 +192,7 @@ models:
       refill_check_interval: 10
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
+      check_redeemed_timeout: 300.0
     class_name: TraderParams
   network_subgraph:
     args:
