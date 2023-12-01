@@ -1,17 +1,17 @@
 {
     "dev": {
         "skill/valory/market_manager_abci/0.1.0": "bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiaxqgb7ovgnz4c7aau2iyuoyqfnzmey7w5gfxukaqr7hsjd36v7tu",
-        "skill/valory/trader_abci/0.1.0": "bafybeifwtzx4cioprrqunh2i7vvheuzqntdqo3ghg4znxhldjwyl5oduoy",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeigfc73xma2k767cyb7rf7nxwlng2se24huf3u7ivsypcjc73a5kum",
+        "skill/valory/trader_abci/0.1.0": "bafybeigxwjuoqi3xts2xa6qf6qo34csptruxjn2agmv3fvzlkjfj4as54y",
         "contract/valory/market_maker/0.1.0": "bafybeid5jnetbsusgxkpqzwyiqlwut55xktfbeloipxcemcuu5oopmqtl4",
-        "agent/valory/trader/0.1.0": "bafybeidtogranucwerhl5ftntfgwi6julfzvwy3vt3pitrjtzr2itfmkii",
-        "service/valory/trader/0.1.0": "bafybeih4rri7hje4alzu47hf3ek7ax7ldved4dgxch6ueu5s5htyxche3a",
+        "agent/valory/trader/0.1.0": "bafybeibu7mijugx4ca5jwjjme4s24tkr7rvdmczad6f2xbqt7yux2xoqt4",
+        "service/valory/trader/0.1.0": "bafybeiht3ed5lr4kqp77itni7rrlku52pvoxaqzairw3plluqgmdg3ciji",
         "contract/valory/erc20/0.1.0": "bafybeiepg5ymxhtylgijs3mf3lezz6cwcsougbrv2gr4xcq3bp5wxusi64",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibpvgcxi5clvprcxxbaaey26pwamkmt7j3l2blb46bm2ra22nr2eq",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifnjghnly3ztbhzb22lhrctybiv2lhqdpbsgvtfdqlcnvgi4b7gme",
         "contract/valory/mech/0.1.0": "bafybeieo65rtidzgrx22la7z7azoqbisd35hnoqfw7l3xxctotvctjlkju",
         "contract/valory/realitio/0.1.0": "bafybeieoily22pasgkzzcyawhqyrsko7b52lghnvwuskhomavb7tlb6pxa",
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
-        "contract/valory/conditional_tokens/0.1.0": "bafybeigjzzanv7pvhhkpbsf7neoq3ti5ilvitkafmsabmbtxcxffukqey4",
+        "contract/valory/conditional_tokens/0.1.0": "bafybeigma7b6umu75pc6gzj23hqjrsyjdb4on4rkj2manoef2mmbkjogxa",
         "contract/valory/agent_registry/0.1.0": "bafybeibezt4xtzgf25eidmwev6moki74eufmb4hx7cpvd6odbyoxo42hxi",
         "contract/valory/service_staking_token/0.1.0": "bafybeig2pnb3f4y65hlhhva52fsrwb6k3dqkqttq43sxd5kb4drgob65oy",
         "skill/valory/staking_abci/0.1.0": "bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe"

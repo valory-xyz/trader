@@ -52,15 +52,25 @@ class ConditionalTokensContract(Contract):
         timeout: float = FIVE_MINUTES,
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
-        contract_instance = cls.get_instance(ledger_api, contract_address)
-        to_checksum = ledger_api.api.to_checksum_address
-        redeemer_checksummed = to_checksum(redeemer)
-        collateral_tokens_checksummed = [
-            to_checksum(token) for token in collateral_tokens
-        ]
 
-        def get_redeem_events() -> Union[List[Dict[str, Any]], str]:
+        def get_redeem_events(
+            ledger_api: LedgerApi,
+            contract_address: str,
+            redeemer: str,
+            from_block: int,
+            to_block: int,
+            collateral_tokens: List[str],
+            parent_collection_ids: List[bytes],
+            condition_ids: List[HexBytes],
+            index_sets: List[List[int]],
+        ) -> Union[List[Dict[str, Any]], str]:
             """Get the redeem events."""
+            contract_instance = cls.get_instance(ledger_api, contract_address)
+            to_checksum = ledger_api.api.to_checksum_address
+            redeemer_checksummed = to_checksum(redeemer)
+            collateral_tokens_checksummed = [
+                to_checksum(token) for token in collateral_tokens
+            ]
             try:
                 payout_filter = contract_instance.events.PayoutRedemption.build_filter()
                 payout_filter.args.redeemer.match_single(redeemer_checksummed)
@@ -84,7 +94,18 @@ class ConditionalTokensContract(Contract):
         # Create a ProcessPoolExecutor with a maximum of 1 worker (process)
         with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
             # Submit the function to the executor
-            future = executor.submit(get_redeem_events)
+            future = executor.submit(
+                get_redeem_events,
+                ledger_api,
+                contract_address,
+                redeemer,
+                from_block,
+                to_block,
+                collateral_tokens,
+                parent_collection_ids,
+                condition_ids,
+                index_sets,
+            )
 
             try:
                 # Wait for the result with a 5-minute timeout
