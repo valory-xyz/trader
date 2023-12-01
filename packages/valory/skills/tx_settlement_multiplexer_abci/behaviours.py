@@ -131,8 +131,10 @@ class PostTxSettlementBehaviour(BaseBehaviour):
 
     def _on_redeem_round_tx_settled(self) -> None:
         """Handle the redeem round."""
-        self.context.logger.info("Redeeming transaction was settled. Resetting the redeeming progress.")
-        self.shared_state.redeeming_progress = RedeemingProgress()
+        self.context.logger.info(
+            "Redeeming transaction was settled. Resetting the redeeming progress."
+        )
+        self.shared_state.redeeming_progress = RedeemingProgress()  # type: ignore
 
     def _on_tx_settled(self) -> None:
         """Handle the tx settled event."""
@@ -140,7 +142,9 @@ class PostTxSettlementBehaviour(BaseBehaviour):
         handler_name = f"_on_{tx_submitter}_tx_settled"
         handler = getattr(self, handler_name, None)
         if handler is None:
-            self.context.logger.info(f"No post tx settlement handler exists for {tx_submitter} txs.")
+            self.context.logger.info(
+                f"No post tx settlement handler exists for {tx_submitter} txs."
+            )
             return
         handler()
 

@@ -110,7 +110,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 8.
             - no redeeming: 10.
             - no majority: 6.
-            - round timeout: 10.
+            - redeem round timeout: 10.
             - none: 12.
         7. HandleFailedTxRound
             - blacklist: 4.

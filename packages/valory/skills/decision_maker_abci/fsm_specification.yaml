@@ -8,6 +8,7 @@ alphabet_in:
 - NO_MAJORITY
 - NO_OP
 - NO_REDEEMING
+- REDEEM_ROUND_TIMEOUT
 - ROUND_TIMEOUT
 - SLOTS_UNSUPPORTED_ERROR
 - TIE
@@ -68,7 +69,7 @@ transition_func:
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
-    (RedeemRound, ROUND_TIMEOUT): FinishedWithoutRedeemingRound
+    (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
     (SamplingRound, DONE): ToolSelectionRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound

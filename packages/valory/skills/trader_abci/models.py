@@ -53,7 +53,6 @@ from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.termination_abci.models import TerminationParams
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
 from packages.valory.skills.transaction_settlement_abci.rounds import Event as TSEvent
-from packages.valory.skills.decision_maker_abci.rounds import Event as DecisionMakerEvent
 from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
     TxSettlementMultiplexerParams,
 )
