@@ -21,6 +21,7 @@ alphabet_in:
 - NO_OP
 - NO_REDEEMING
 - REDEEMING_DONE
+- REDEEM_ROUND_TIMEOUT
 - REFILL_REQUIRED
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
@@ -138,7 +139,7 @@ transition_func:
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
-    (RedeemRound, ROUND_TIMEOUT): RedeemRound
+    (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
     (RegistrationRound, DONE): UpdateBetsRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
     (RegistrationStartupRound, DONE): UpdateBetsRound

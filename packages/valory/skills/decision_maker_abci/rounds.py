@@ -110,7 +110,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 8.
             - no redeeming: 10.
             - no majority: 6.
-            - round timeout: 6.
+            - redeem round timeout: 10.
             - none: 12.
         7. HandleFailedTxRound
             - blacklist: 4.
@@ -126,6 +126,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Timeouts:
         round timeout: 30.0
+        redeem round timeout: 3600.0
     """
 
     initial_round_cls: AppState = SamplingRound
@@ -184,7 +185,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: FinishedDecisionMakerRound,
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.NO_MAJORITY: RedeemRound,
-            Event.ROUND_TIMEOUT: RedeemRound,
+            # in case of a round timeout, there likely is something wrong with redeeming
+            # it could be the RPC, or some other issue. We don't want to be stuck trying to redeem.
+            Event.REDEEM_ROUND_TIMEOUT: FinishedWithoutRedeemingRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
@@ -217,6 +220,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
+        Event.REDEEM_ROUND_TIMEOUT: 3600.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRound: set(),
