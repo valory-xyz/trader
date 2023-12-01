@@ -138,7 +138,7 @@ transition_func:
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
-    (RedeemRound, ROUND_TIMEOUT): RedeemRound
+    (RedeemRound, ROUND_TIMEOUT): CallCheckpointRound
     (RegistrationRound, DONE): UpdateBetsRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
     (RegistrationStartupRound, DONE): UpdateBetsRound

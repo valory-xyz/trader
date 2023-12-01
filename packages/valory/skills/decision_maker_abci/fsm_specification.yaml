@@ -68,7 +68,7 @@ transition_func:
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
-    (RedeemRound, ROUND_TIMEOUT): RedeemRound
+    (RedeemRound, ROUND_TIMEOUT): FinishedWithoutRedeemingRound
     (SamplingRound, DONE): ToolSelectionRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
