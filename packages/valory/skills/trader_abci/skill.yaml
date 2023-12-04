@@ -11,9 +11,9 @@ fingerprint:
   behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
   composition.py: bafybeiajga2m7pv7v4bxsjsnncavdns6gujg7qg7opfjyznlzip3gbd3nm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeihlhdsmmihnvwtggc2t2neqkm5uduw5krpgcxpz7m7xp5kjkf6jsm
+  fsm_specification.yaml: bafybeib3ycl5bjo5uilyaly7uoovvc3b3gpjrkuvdos5ffsgmrs73j6bkm
   handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
-  models.py: bafybeifxiptjrnv4hbw5l3mfxvb7hksmxf726kvab5lcms5btuc3vaahem
+  models.py: bafybeicn2hiu22rwbprphl7zftgxeeehsuj6nirydmyugwiqay6avvjbna
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiaefgqbs7zsn5xe5kdwrujj7ivygkn3ujpw6crnvi3knvxw75qmja
 - valory/termination_abci:0.1.0:bafybeie4zvjfxvdu7qrulmur3chpjz3kpj5m4bjsxvpk4gvj5zbyyayfaa
 - valory/market_manager_abci:0.1.0:bafybeietothjpt3472icsfoelihq437dclsckldsstz4sui46lblxfugsq
-- valory/decision_maker_abci:0.1.0:bafybeihv5fozi4bixqjbwhgoy74husv7sf5uwufraftdvkamo24ag7pdhi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibm6r5kmn6zvz6kjonllxalbfb3nyixsoebmd5nxr2yjxi7ktpioy
+- valory/decision_maker_abci:0.1.0:bafybeic474g73pukavqdpqu5pocsyhfa4eididi6v36jbzo53c3lo4tmfy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihkjceuiw6cwaul5a5ngydma7gik46cgp2cinhibhsysv7qvc3mba
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 behaviours:
   main:
@@ -173,6 +173,7 @@ models:
       event_filtering_batch_size: 5000
       reduce_factor: 0.25
       max_filtering_retries: 6
+      minimum_batch_size: 500
       redeeming_batch_size: 5
       slippage: 0.01
       policy_epsilon: 0.1
@@ -189,6 +190,7 @@ models:
       staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
+      redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
     class_name: TraderParams
   network_subgraph:

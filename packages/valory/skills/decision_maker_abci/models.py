@@ -231,6 +231,8 @@ class DecisionMakerParams(MarketManagerParams):
             "event_filtering_batch_size", kwargs, int
         )
         self.reduce_factor: float = self._ensure("reduce_factor", kwargs, float)
+        # the minimum batch size for redeeming operations, this is added to avoid the batch size to be too small
+        self.minimum_batch_size: int = self._ensure("minimum_batch_size", kwargs, int)
         self.max_filtering_retries: int = self._ensure(
             "max_filtering_retries", kwargs, int
         )
@@ -238,6 +240,9 @@ class DecisionMakerParams(MarketManagerParams):
         # increasing this number equals fewer fees but more chances for the transaction to fail
         self.redeeming_batch_size: int = self._ensure(
             "redeeming_batch_size", kwargs, int
+        )
+        self.redeem_round_timeout: float = self._ensure(
+            "redeem_round_timeout", kwargs, float
         )
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage: float = 0.0
