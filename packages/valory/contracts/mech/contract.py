@@ -18,8 +18,8 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the class to connect to a Mech contract."""
-
-from typing import Dict, Optional, cast, List, Any
+import concurrent.futures
+from typing import Dict, Optional, cast, List, Any, Callable
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -30,12 +30,39 @@ from eth_typing import HexStr
 from web3.types import TxReceipt, EventData, BlockIdentifier, BlockData
 
 PUBLIC_ID = PublicId.from_str("valory/mech:0.1.0")
+FIVE_MINUTES = 300.0
 
 
 class Mech(Contract):
     """The Mech contract."""
 
     contract_id = PUBLIC_ID
+
+    @staticmethod
+    def execute_with_timeout(func: Callable, timeout: float) -> Any:
+        """Execute a function with a timeout."""
+
+        # Create a ProcessPoolExecutor with a maximum of 1 worker (process)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            # Submit the function to the executor
+            future = executor.submit(
+                func,
+            )
+
+            try:
+                # Wait for the result with a 5-minute timeout
+                data = future.result(timeout=timeout)
+            except TimeoutError:
+                # Handle the case where the execution times out
+                err = f"The RPC didn't respond in {timeout}."
+                return None, err
+
+            # Check if an error occurred
+            if isinstance(data, str):
+                # Handle the case where the execution failed
+                return None, data
+
+            return data, None
 
     @classmethod
     def get_price(
@@ -154,36 +181,43 @@ class Mech(Contract):
         request_id: int,
         from_block: BlockIdentifier = "earliest",
         to_block: BlockIdentifier = "latest",
+        timeout: float = FIVE_MINUTES,
     ) -> JSONLike:
         """Filter the `Deliver` events emitted by the contract and get the data of the given `request_id`."""
-        ledger_api = cast(EthereumApi, ledger_api)
-        contract_instance = cls.get_instance(ledger_api, contract_address)
+        def get_responses() -> Any:
+            """Get the responses from the contract."""
+            contract_instance = cls.get_instance(ledger_api, contract_address)
+            deliver_filter = contract_instance.events.Deliver.build_filter()
+            deliver_filter.fromBlock = from_block
+            deliver_filter.toBlock = to_block
+            deliver_filter.args.requestId.match_single(request_id)
+            delivered = list(deliver_filter.deploy(ledger_api.api).get_all_entries())
+            n_delivered = len(delivered)
 
-        deliver_filter = contract_instance.events.Deliver.build_filter()
-        deliver_filter.fromBlock = from_block
-        deliver_filter.toBlock = to_block
-        deliver_filter.args.requestId.match_single(request_id)
-        delivered = list(deliver_filter.deploy(ledger_api.api).get_all_entries())
-        n_delivered = len(delivered)
+            if n_delivered == 0:
+                info = f"The mech ({contract_address}) has not delivered a response yet for request with id {request_id}."
+                return {"info": info}
 
-        if n_delivered == 0:
-            info = f"The mech ({contract_address}) has not delivered a response yet for request with id {request_id}."
-            return {"info": info}
+            if n_delivered != 1:
+                error = (
+                    f"A single response was expected by the mech ({contract_address}) for request with id {request_id}. "
+                    f"Received {n_delivered} responses: {delivered}."
+                )
+                return error
 
-        if n_delivered != 1:
-            error = (
-                f"A single response was expected by the mech ({contract_address}) for request with id {request_id}. "
-                f"Received {n_delivered} responses: {delivered}."
-            )
-            return {"error": error}
+            delivered_event = delivered.pop()
+            deliver_args = delivered_event.get("args", None)
+            if deliver_args is None or "data" not in deliver_args:
+                error = f"The mech's response does not match the expected format: {delivered_event}"
+                return error
 
-        delivered_event = delivered.pop()
-        deliver_args = delivered_event.get("args", None)
-        if deliver_args is None or "data" not in deliver_args:
-            error = f"The mech's response does not match the expected format: {delivered_event}"
-            return {"error": error}
+            return {"data": deliver_args["data"]}
 
-        return dict(data=deliver_args["data"])
+        data, err = cls.execute_with_timeout(get_responses, timeout=timeout)
+        if err is not None:
+            return {"error": err}
+
+        return data
 
     @classmethod
     def get_mech_id(

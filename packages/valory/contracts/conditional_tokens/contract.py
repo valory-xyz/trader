@@ -19,7 +19,7 @@
 
 """This module contains the conditional tokens contract definition."""
 import concurrent.futures
-from typing import List, Any, Dict, Union
+from typing import List, Any, Dict, Union, Callable
 
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
@@ -36,6 +36,32 @@ class ConditionalTokensContract(Contract):
     """The ConditionalTokens smart contract."""
 
     contract_id = PublicId.from_str("valory/conditional_tokens:0.1.0")
+
+    @staticmethod
+    def execute_with_timeout(func: Callable, timeout: float) -> Any:
+        """Execute a function with a timeout."""
+
+        # Create a ProcessPoolExecutor with a maximum of 1 worker (process)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            # Submit the function to the executor
+            future = executor.submit(
+                func,
+            )
+
+            try:
+                # Wait for the result with a 5-minute timeout
+                data = future.result(timeout=timeout)
+            except TimeoutError:
+                # Handle the case where the execution times out
+                err = f"The RPC didn't respond in {timeout}."
+                return None, err
+
+            # Check if an error occurred
+            if isinstance(data, str):
+                # Handle the case where the execution failed
+                return None, data
+
+            return data, None
 
     @classmethod
     def check_redeemed(
@@ -81,24 +107,9 @@ class ConditionalTokensContract(Contract):
                 )
                 return msg
 
-        # Create a ProcessPoolExecutor with a maximum of 1 worker (process)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            # Submit the function to the executor
-            future = executor.submit(
-                get_redeem_events,
-            )
-
-            try:
-                # Wait for the result with a 5-minute timeout
-                redeemed = future.result(timeout=timeout)
-            except TimeoutError:
-                # Handle the case where the execution times out
-                msg = f"The RPC didn't respond in {timeout}."
-                return dict(error=msg)
-
-            # Check if an error occurred
-            if isinstance(redeemed, str):
-                return dict(error=redeemed)
+        redeemed, err = cls.execute_with_timeout(get_redeem_events, timeout)
+        if err is not None:
+            return dict(error=err)
 
         payouts = {}
         for redeeming in redeemed:

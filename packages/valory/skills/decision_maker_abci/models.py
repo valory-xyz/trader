@@ -256,9 +256,7 @@ class DecisionMakerParams(MarketManagerParams):
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
         )
-        self.check_redeemed_timeout: float = self._ensure(
-            "check_redeemed_timeout", kwargs, float
-        )
+        self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
         super().__init__(*args, **kwargs)
 
     @property
