@@ -437,6 +437,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 redeemer=safe_address_lower,
                 from_block=from_block,
                 to_block=to_block,
+                timeout=self.params.contract_timeout,
                 **kwargs,
             )
 
@@ -579,6 +580,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 from_block=from_block,
                 to_block=to_block,
                 question_id=self.current_question_id,
+                timeout=self.params.contract_timeout,
             )
 
             if not result and n_retries == self.params.max_filtering_retries:
