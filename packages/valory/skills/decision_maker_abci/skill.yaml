@@ -63,7 +63,6 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeidau7loztcfy3mxvoqrv7otbpciemd2wf3lsxyjraq4dcvuvib25e
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
-- jhehemann/kelly_strategy:0.1.0:bafybeiblziqq774voze5s3xu4bkw3v7e67nfkl76elo555nchnlgx7tgky
 behaviours:
   main:
     args: {}

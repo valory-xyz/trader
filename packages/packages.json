@@ -14,8 +14,7 @@
         "contract/valory/conditional_tokens/0.1.0": "bafybeifu5axib5ifzq6bomfscs7nnx5qknkzymlz6gfn7ohjsb2shghrei",
         "contract/valory/agent_registry/0.1.0": "bafybeibezt4xtzgf25eidmwev6moki74eufmb4hx7cpvd6odbyoxo42hxi",
         "contract/valory/service_staking_token/0.1.0": "bafybeig2pnb3f4y65hlhhva52fsrwb6k3dqkqttq43sxd5kb4drgob65oy",
-        "skill/valory/staking_abci/0.1.0": "bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe",
-        "skill/jhehemann/kelly_strategy/0.1.0": "bafybeiblziqq774voze5s3xu4bkw3v7e67nfkl76elo555nchnlgx7tgky"
+        "skill/valory/staking_abci/0.1.0": "bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeie7xyems76v5b4wc2lmaidcujizpxfzjnnwdeokmhje53g7ym25ii",

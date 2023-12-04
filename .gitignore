@@ -45,5 +45,3 @@ trader/
 !/packages/valory/agents/trader/
 !/packages/valory/services/trader/
 /trader_service/
-
-kelly_strategy_explanation.md
