@@ -146,20 +146,7 @@ models:
       abt_error_mult: 5
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       sample_bets_closing_days: 10
-      trading_strategy: bet_amount_per_conf_threshold
-      bet_kelly_fraction: 1.0
-      bet_amount_per_threshold:
-        0.0: 0
-        0.1: 0
-        0.2: 0
-        0.3: 0
-        0.4: 0
-        0.5: 0
-        0.6: 0
-        0.7: 0
-        0.8: 0
-        0.9: 0
-        1.0: 0
+      trading_strategy: strategy_name
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
@@ -193,6 +180,13 @@ models:
       file_hash_to_strategies_json:
         - - hash
           - - strategy_name
+      strategies_kwargs:
+        - - bet_kelly_fraction
+          - 1.0
+        - - floor_balance
+          - 500000000000000000
+        - - bet_amount_per_threshold
+          - { 0.0: 0, 0.1: 0, 0.2: 0, 0.3: 0, 0.4: 0, 0.5: 0, 0.6: 0, 0.7: 0, 0.8: 0, 0.9: 0, 1.0: 0 }
     class_name: TraderParams
   network_subgraph:
     args:
