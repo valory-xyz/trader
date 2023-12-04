@@ -116,9 +116,8 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def xdai_deficit(self) -> int:
-        """Get the amount of missing xDAI for sending the request plus betting the maximum amount."""
-        max_bet_amount = 0 if self.params.using_kelly else self.params.max_bet_amount
-        return (self.price + max_bet_amount) - self.wallet_balance
+        """Get the amount of missing xDAI for sending the request."""
+        return self.price - self.wallet_balance
 
     @property
     def multisend_optional(self) -> bool:
