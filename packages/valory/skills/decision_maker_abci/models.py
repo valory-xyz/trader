@@ -151,6 +151,7 @@ class SharedState(BaseSharedState):
         super().__init__(*args, skill_context=skill_context, **kwargs)
         self.redeeming_progress: RedeemingProgress = RedeemingProgress()
         self.strategy_to_filehash: Dict[str, str] = {}
+        self.strategies_executables: Dict[str, str] = {}
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
 

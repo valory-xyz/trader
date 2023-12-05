@@ -90,12 +90,11 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self._safe_tx_hash = ""
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
-        self._strategies_executables: Dict[str, str] = {}
 
     @property
     def strategy_exec(self) -> str:
         """Get the executable strategy file's content."""
-        return self._strategies_executables[self.params.trading_strategy]
+        return self.shared_state.strategies_executables[self.params.trading_strategy]
 
     def execute_strategy(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Execute the strategy and return the results."""
@@ -251,7 +250,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.shared_state.in_flight_req = True
 
     def _handle_get_strategy(self, message: IpfsMessage, _: Dialogue) -> None:
-        """Handle get strategy response"""
+        """Handle get strategy response."""
         strategy_req = self._inflight_strategy_req
         if strategy_req is None:
             self.context.logger.error(f"No strategy request to handle for {message=}.")
@@ -267,7 +266,7 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
         # store the executable and remove the hash from the mapping because we have downloaded it
         strategy_exec = files[0]
-        self._strategies_executables[strategy_req] = strategy_exec
+        self.shared_state.strategies_executables[strategy_req] = strategy_exec
         self.shared_state.strategy_to_filehash.pop(strategy_req)
         self._inflight_strategy_req = None
 
