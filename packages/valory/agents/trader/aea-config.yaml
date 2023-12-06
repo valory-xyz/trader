@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidzajbe3erygeh2xbd6lrjv7nsptznjuzrt24ykgvhgotdeyhfnba
 - valory/termination_abci:0.1.0:bafybeie4zvjfxvdu7qrulmur3chpjz3kpj5m4bjsxvpk4gvj5zbyyayfaa
 - valory/transaction_settlement_abci:0.1.0:bafybeiaefgqbs7zsn5xe5kdwrujj7ivygkn3ujpw6crnvi3knvxw75qmja
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihvwp3rlxaepfggkzi6ptcojbpayaul2hrruawz4pcjpuqfutcjqi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaiqcjjiwi42bjd5vih25c774yvslia2qeuzhlls5wmokpln4kfda
 - valory/market_manager_abci:0.1.0:bafybeietothjpt3472icsfoelihq437dclsckldsstz4sui46lblxfugsq
-- valory/decision_maker_abci:0.1.0:bafybeiepex3nukg5w6x75xngdiimjettpakpti64mnpfmjoapomt2hxqam
-- valory/trader_abci:0.1.0:bafybeibuaonngf33m63co5ezcerovfvjdfdit4gz3l44a3c5dl52nskfxq
+- valory/decision_maker_abci:0.1.0:bafybeiejxeftyxqurudsabs2udmf6yrl4xuihlebkq3uthd7g6rxgeremm
+- valory/trader_abci:0.1.0:bafybeieylj6mfjy3fooxhjemgk3ct4fwa7gn2qacslgyvww74p7fwr4dtu
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 default_ledger: ethereum
 required_ledgers:
@@ -164,22 +164,9 @@ models:
       languages: ${list:["en_US"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
-      mech_agent_address: ${str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+      mech_agent_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       sample_bets_closing_days: ${int:10}
-      trading_strategy: ${str:bet_amount_per_conf_threshold}
-      bet_kelly_fraction: ${float:1.0}
-      bet_amount_per_threshold:
-        0.0: ${int:0}
-        0.1: ${int:0}
-        0.2: ${int:0}
-        0.3: ${int:0}
-        0.4: ${int:0}
-        0.5: ${int:0}
-        0.6: ${int:600000000000000000}
-        0.7: ${int:900000000000000000}
-        0.8: ${int:1000000000000000000}
-        0.9: ${int:10000000000000000000}
-        1.0: ${int:100000000000000000000}
+      trading_strategy: ${str:kelly_criterion}
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
@@ -208,6 +195,8 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
+      file_hash_to_strategies_json: ${list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeidbmi5zgp2ygprb3br6xpfvmty474cy3eeib5ynslispp4iijwpoe",["kelly_criterion"]]]}
+      strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

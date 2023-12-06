@@ -22,9 +22,11 @@
 import dataclasses
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, List, Optional, cast
+from typing import Any, Callable, Dict, Generator, List, Optional, cast
 
 from aea.configurations.data_types import PublicId
+from aea.protocols.base import Message
+from aea.protocols.dialogue.base import Dialogue
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
@@ -34,6 +36,7 @@ from packages.valory.contracts.gnosis_safe.contract import (
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     BaseBehaviour,
@@ -42,7 +45,6 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
     MultisendBatch,
-    STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
     SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
@@ -62,6 +64,9 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+STRATEGY_RUN_METHOD = "run"
+BET_AMOUNT_FIELD = "bet_amount"
+SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -70,46 +75,6 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
         keep_percentage = 1 - fraction
         return int(amount * keep_percentage)
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
-
-
-def calculate_kelly_bet_amount(
-    x: int, y: int, p: float, c: float, b: int, f: float
-) -> int:
-    """Calculate the Kelly bet amount."""
-    if b == 0:
-        return 0
-    numerator = (
-        -4 * x**2 * y
-        + b * y**2 * p * c * f
-        + 2 * b * x * y * p * c * f
-        + b * x**2 * p * c * f
-        - 2 * b * y**2 * f
-        - 2 * b * x * y * f
-        + (
-            (
-                4 * x**2 * y
-                - b * y**2 * p * c * f
-                - 2 * b * x * y * p * c * f
-                - b * x**2 * p * c * f
-                + 2 * b * y**2 * f
-                + 2 * b * x * y * f
-            )
-            ** 2
-            - (
-                4
-                * (x**2 * f - y**2 * f)
-                * (
-                    -4 * b * x * y**2 * p * c
-                    - 4 * b * x**2 * y * p * c
-                    + 4 * b * x * y**2
-                )
-            )
-        )
-        ** (1 / 2)
-    )
-    denominator = 2 * (x**2 * f - y**2 * f)
-    kelly_bet_amount = numerator / denominator
-    return int(kelly_bet_amount)
 
 
 class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
@@ -124,6 +89,25 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.multisend_data = b""
         self._safe_tx_hash = ""
         self._policy: Optional[EGreedyPolicy] = None
+        self._inflight_strategy_req: Optional[str] = None
+
+    @property
+    def strategy_exec(self) -> str:
+        """Get the executable strategy file's content."""
+        return self.shared_state.strategies_executables[self.params.trading_strategy]
+
+    def execute_strategy(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        """Execute the strategy and return the results."""
+        if STRATEGY_RUN_METHOD in globals():
+            del globals()[STRATEGY_RUN_METHOD]
+        exec(self.strategy_exec, globals())  # pylint: disable=W0122  # nosec
+        method = globals().get(STRATEGY_RUN_METHOD, None)
+        if method is None:
+            self.context.logger.error(
+                f"No {STRATEGY_RUN_METHOD!r} method was found in {self.params.trading_strategy} strategy's executable."
+            )
+            return {BET_AMOUNT_FIELD: 0}
+        return method(*args, **kwargs)
 
     @property
     def params(self) -> DecisionMakerParams:
@@ -256,36 +240,69 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
         return True
 
-    def get_max_bet_amount(self, a: int, x: int, y: int, f: float) -> int:
-        """Get max bet amount based on available shares."""
-        if x**2 * f**2 + 2 * x * y * f**2 + y**2 * f**2 == 0:
+    def send_message(
+        self, msg: Message, dialogue: Dialogue, callback: Callable
+    ) -> None:
+        """Send a message."""
+        self.context.outbox.put_message(message=msg)
+        nonce = dialogue.dialogue_label.dialogue_reference[0]
+        self.shared_state.req_to_callback[nonce] = callback
+        self.shared_state.in_flight_req = True
+
+    def _handle_get_strategy(self, message: IpfsMessage, _: Dialogue) -> None:
+        """Handle get strategy response."""
+        strategy_req = self._inflight_strategy_req
+        if strategy_req is None:
+            self.context.logger.error(f"No strategy request to handle for {message=}.")
+            return
+
+        files = list(message.files.values())
+        n_files = len(files)
+        if n_files != 1:
             self.context.logger.error(
-                "Could not recalculate. "
-                "Either bankroll is 0 or pool token amount is distributed such as "
-                "x**2*f**2 + 2*x*y*f**2 + y**2*f**2 == 0:\n"
-                f"Available tokens: {a}\n"
-                f"Pool token amounts: {x}, {y}\n"
-                f"Fee, fee fraction f: {1-f}, {f}"
+                f"Executables for strategies should be in single files. "
+                f"Found {n_files} files for strategy {strategy_req} instead."
             )
-            return 0
-        else:
-            pre_root = -2 * x**2 + a * x - 2 * x * y
-            sqrt = (
-                4 * x**4
-                + 8 * x**3 * y
-                + a**2 * x**2
-                + 4 * x**2 * y**2
-                + 2 * a**2 * x * y
-                + a**2 * y**2
-            )
-            numerator = y * (pre_root + sqrt**0.5 + a * y)
-            denominator = f * (x**2 + 2 * x * y + y**2)
-            new_bet_amount = numerator / denominator
-            return int(new_bet_amount)
+
+        # store the executable and remove the hash from the mapping because we have downloaded it
+        strategy_exec = files[0]
+        self.shared_state.strategies_executables[strategy_req] = strategy_exec
+        self.shared_state.strategy_to_filehash.pop(strategy_req)
+        self._inflight_strategy_req = None
+
+    def download_next_strategy(self) -> None:
+        """Download the strategies one by one.
+
+        The next strategy in the list is downloaded each time this method is called.
+
+        We download all the strategies,
+        because in the future we will perform some complicated logic,
+        where we utilize more than one, e.g., in case the default fails
+        or is weaker than another depending on the situation.
+
+        :return: None
+        """
+        if self._inflight_strategy_req is not None:
+            # there already is a req in flight
+            return
+        if len(self.shared_state.strategy_to_filehash) == 0:
+            # no strategies pending to be fetched
+            return
+        for strategy, file_hash in self.shared_state.strategy_to_filehash.items():
+            self.context.logger.info(f"Fetching {strategy} strategy...")
+            ipfs_msg, message = self._build_ipfs_get_file_req(file_hash)
+            self._inflight_strategy_req = strategy
+            self.send_message(ipfs_msg, message, self._handle_get_strategy)
+            return
+
+    def download_strategies(self) -> Generator:
+        """Download all the strategies, if not yet downloaded."""
+        while len(self.shared_state.strategy_to_filehash) > 0:
+            self.download_next_strategy()
+            yield from self.sleep(self.params.sleep_time)
 
     def get_bet_amount(
         self,
-        strategy: str,
         win_probability: float,
         confidence: float,
         selected_type_tokens_in_pool: int,
@@ -293,67 +310,37 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         bet_fee: int,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
-
-        # Kelly Criterion does not trade for equally weighted pools.
-        if (
-            strategy == STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD
-            or selected_type_tokens_in_pool == other_tokens_in_pool
-        ):
-            self.context.logger.info(
-                "Used trading strategy: Bet amount per confidence threshold"
-            )
-            threshold = round(confidence, 1)
-            bet_amount = self.params.bet_amount_per_threshold[threshold]
-            return bet_amount
-
-        self.context.logger.info("Used trading strategy: Kelly Criterion")
-        # bankroll: the max amount of DAI available to trade
+        yield from self.download_strategies()
         yield from self.wait_for_condition_with_sleep(self.check_balance)
-        bankroll = self.token_balance + self.wallet_balance
-        # keep `floor_balance` xDAI in the bankroll
-        floor_balance = 500000000000000000
-        bankroll_adj = bankroll - floor_balance
-        bankroll_adj_xdai = self.wei_to_native(bankroll_adj)
-        self.context.logger.info(f"Adjusted bankroll: {bankroll_adj_xdai} xDAI.")
-        if bankroll_adj <= 0:
-            self.context.logger.info(
-                f"Bankroll ({bankroll_adj}) is less than the floor balance ({floor_balance}). "
-                "Set bet amount to 0."
-                "Top up safe with DAI or wait for redeeming."
+        self.context.logger.info(
+            f"Used trading strategy: {self.params.trading_strategy}"
+        )
+        # the following are always passed to a strategy script, which may choose to ignore any
+        kwargs: Dict[str, Any] = self.params.strategies_kwargs
+        kwargs.update(
+            {
+                "bankroll": self.token_balance + self.wallet_balance,
+                "win_probability": win_probability,
+                "confidence": confidence,
+                "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
+                "other_tokens_in_pool": other_tokens_in_pool,
+                "bet_fee": bet_fee,
+            }
+        )
+        results = self.execute_strategy(**kwargs)
+        for level in SUPPORTED_STRATEGY_LOG_LEVELS:
+            logger = getattr(self.context.logger, level, None)
+            if logger is not None:
+                for log in results.get(level, []):
+                    logger(log)
+        bet_amount = results.get(BET_AMOUNT_FIELD, None)
+        if bet_amount is None:
+            self.context.logger.error(
+                f"Required field {BET_AMOUNT_FIELD!r} was not returned by {self.params.trading_strategy} strategy."
+                "Setting bet amount to 0."
             )
             return 0
-
-        fee_fraction = 1 - self.wei_to_native(bet_fee)
-        self.context.logger.info(f"Fee fraction: {fee_fraction}")
-        if bankroll_adj == 0:
-            error = "Cannot calculate Kelly bet amount with no bankroll."
-            self.context.logger.error(error)
-        kelly_bet_amount = calculate_kelly_bet_amount(
-            selected_type_tokens_in_pool,
-            other_tokens_in_pool,
-            win_probability,
-            confidence,
-            bankroll_adj,
-            fee_fraction,
-        )
-        if kelly_bet_amount < 0:
-            self.context.logger.info(
-                f"Invalid value for kelly bet amount: {kelly_bet_amount}\n"
-                "Set bet amount to 0."
-            )
-            return 0
-
-        self.context.logger.info(
-            f"Kelly bet amount: {self.wei_to_native(kelly_bet_amount)} xDAI"
-        )
-        self.context.logger.info(
-            f"Bet kelly fraction: {self.params.bet_kelly_fraction}"
-        )
-        adj_kelly_bet_amount = int(kelly_bet_amount * self.params.bet_kelly_fraction)
-        self.context.logger.info(
-            f"Adjusted Kelly bet amount: {self.wei_to_native(adj_kelly_bet_amount)} xDAI"
-        )
-        return adj_kelly_bet_amount
+        return bet_amount
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage

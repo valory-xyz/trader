@@ -316,7 +316,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         )
 
         bet_amount = yield from self.get_bet_amount(
-            self.params.trading_strategy,
             win_probability,
             confidence,
             selected_type_tokens_in_pool,

@@ -19,17 +19,18 @@
 
 """This module contains the handler for the 'decision_maker_abci' skill."""
 
+from typing import cast
+
+from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
+from packages.valory.skills.abstract_round_abci.handlers import AbstractResponseHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
     HttpHandler as BaseHttpHandler,
-)
-from packages.valory.skills.abstract_round_abci.handlers import (
-    IpfsHandler as BaseIpfsHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
     LedgerApiHandler as BaseLedgerApiHandler,
@@ -40,6 +41,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.decision_maker_abci.models import SharedState
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -48,4 +50,34 @@ SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
 ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
-IpfsHandler = BaseIpfsHandler
+
+
+class IpfsHandler(AbstractResponseHandler):
+    """IPFS message handler."""
+
+    SUPPORTED_PROTOCOL = IpfsMessage.protocol_id
+    allowed_response_performatives = frozenset({IpfsMessage.Performative.IPFS_HASH})
+    custom_support_performative = IpfsMessage.Performative.FILES
+
+    @property
+    def shared_state(self) -> SharedState:
+        """Get the parameters."""
+        return cast(SharedState, self.context.state)
+
+    def handle(self, message: IpfsMessage) -> None:
+        """
+        Implement the reaction to an IPFS message.
+
+        :param message: the message
+        :return: None
+        """
+        self.context.logger.debug(f"Received message: {message}")
+        self.shared_state.in_flight_req = False
+
+        if message.performative != self.custom_support_performative:
+            return super().handle(message)
+
+        dialogue = self.context.ipfs_dialogues.update(message)
+        nonce = dialogue.dialogue_label.dialogue_reference[0]
+        callback = self.shared_state.req_to_callback.pop(nonce)
+        callback(message, dialogue)

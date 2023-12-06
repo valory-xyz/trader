@@ -25,7 +25,18 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 from aea.exceptions import enforce
 from aea.skills.base import SkillContext
@@ -139,13 +150,30 @@ class SharedState(BaseSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
         self.redeeming_progress: RedeemingProgress = RedeemingProgress()
+        self.strategy_to_filehash: Dict[str, str] = {}
+        self.strategies_executables: Dict[str, str] = {}
+        self.in_flight_req: bool = False
+        self.req_to_callback: Dict[str, Callable] = {}
 
     def setup(self) -> None:
         """Set up the model."""
         super().setup()
+        params = self.context.params
         self.redeeming_progress.event_filtering_batch_size = (
-            self.context.params.event_filtering_batch_size
+            params.event_filtering_batch_size
         )
+        self.strategy_to_filehash = {
+            value: key
+            for key, values in params.file_hash_to_strategies.items()
+            for value in values
+        }
+        selected_strategy = params.trading_strategy
+        strategy_exec = self.strategy_to_filehash.keys()
+        if selected_strategy not in strategy_exec:
+            raise ValueError(
+                f"The selected trading strategy {selected_strategy} "
+                f"is not in the strategies' executables {strategy_exec}."
+            )
 
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
@@ -173,6 +201,29 @@ def check_prompt_template(bet_prompt_template: PromptTemplate) -> None:
         )
 
 
+def _raise_incorrect_config(key: str, values: Any) -> None:
+    """Raise a `ValueError` for incorrect configuration of a nested_list workaround."""
+    raise ValueError(
+        f"The given configuration for {key!r} is incorrectly formatted: {values}!"
+        "The value is expected to be a list of lists that can be represented as a dictionary."
+    )
+
+
+def nested_list_todict_workaround(
+    kwargs: Dict,
+    key: str,
+) -> Dict:
+    """Get a nested list from the kwargs and convert it to a dictionary."""
+    values = list(kwargs.get(key, []))
+    if len(values) == 0:
+        raise ValueError(f"No {key!r} specified in agent's configurations: {kwargs}!")
+    if any(not issubclass(type(nested_values), Iterable) for nested_values in values):
+        _raise_incorrect_config(key, values)
+    if any(len(nested_values) % 2 == 1 for nested_values in values):
+        _raise_incorrect_config(key, values)
+    return {value[0]: value[1] for value in values}
+
+
 class DecisionMakerParams(MarketManagerParams):
     """Decision maker's parameters."""
 
@@ -196,14 +247,6 @@ class DecisionMakerParams(MarketManagerParams):
             raise ValueError(
                 f"The trading strategy {self.trading_strategy} is not supported!"
             )
-        # the factor of calculated kelly bet to use for placing bets
-        self.bet_kelly_fraction: float = self._ensure(
-            "bet_kelly_fraction", kwargs, float
-        )
-        # this is a mapping from the confidence of a bet's choice to the amount we are willing to bet
-        self.bet_amount_per_threshold: Dict[float, int] = self._ensure(
-            "bet_amount_per_threshold", kwargs, Dict[float, int]
-        )
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
@@ -257,17 +300,21 @@ class DecisionMakerParams(MarketManagerParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
+        self.file_hash_to_strategies: Dict[
+            str, List[str]
+        ] = nested_list_todict_workaround(
+            kwargs,
+            "file_hash_to_strategies_json",
+        )
+        self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
+            kwargs, "strategies_kwargs"
+        )
         super().__init__(*args, **kwargs)
 
     @property
     def using_kelly(self) -> bool:
         """Get the max bet amount if the `bet_amount_per_conf_threshold` strategy is used."""
         return self.trading_strategy == STRATEGY_KELLY_CRITERION
-
-    @property
-    def max_bet_amount(self) -> int:
-        """Get the max bet amount for the `bet_amount_per_conf_threshold` strategy."""
-        return max(self.bet_amount_per_threshold.values())
 
     @property
     def ipfs_address(self) -> str:
@@ -345,7 +392,7 @@ class PredictionResponse:
         self.info_utility = float(kwargs.pop("info_utility"))
 
         # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
-        probabilities = (getattr(self, field) for field in self.__annotations__)
+        probabilities = (getattr(self, field_) for field_ in self.__annotations__)
         if (
             any(not (0 <= prob <= 1) for prob in probabilities)
             or self.p_yes + self.p_no != 1
