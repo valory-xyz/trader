@@ -21,17 +21,22 @@
 
 from typing import Dict, Any, List, Union
 
-REQUIRED_FIELDS = (
-    # the fraction of the calculated kelly bet amount to use for placing the bet
-    "bet_kelly_fraction",
-    "bankroll",
-    "win_probability",
-    "confidence",
-    "selected_type_tokens_in_pool",
-    "other_tokens_in_pool",
-    "bet_fee",
-    "floor_balance",
+REQUIRED_FIELDS = frozenset(
+    {
+        # the fraction of the calculated kelly bet amount to use for placing the bet
+        "bet_kelly_fraction",
+        "bankroll",
+        "win_probability",
+        "confidence",
+        "selected_type_tokens_in_pool",
+        "other_tokens_in_pool",
+        "bet_fee",
+        "floor_balance",
+    }
 )
+OPTIONAL_FIELDS = frozenset({"max_bet"})
+ALL_FIELDS = REQUIRED_FIELDS.union(OPTIONAL_FIELDS)
+DEFAULT_MAX_BET = 8e17
 
 
 def check_missing_fields(kwargs: Dict[str, Any]) -> List[str]:
@@ -45,7 +50,7 @@ def check_missing_fields(kwargs: Dict[str, Any]) -> List[str]:
 
 def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
     """Remove the irrelevant fields from the given kwargs."""
-    return {key: value for key, value in kwargs.items() if key in REQUIRED_FIELDS}
+    return {key: value for key, value in kwargs.items() if key in ALL_FIELDS}
 
 
 def calculate_kelly_bet_amount(
@@ -102,10 +107,12 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     other_tokens_in_pool: int,
     bet_fee: int,
     floor_balance: int,
+    max_bet: int = DEFAULT_MAX_BET,
 ) -> Dict[str, Union[int, List[str]]]:
     """Calculate the Kelly bet amount."""
     # keep `floor_balance` xDAI in the bankroll
     bankroll_adj = bankroll - floor_balance
+    bankroll_adj = min(bankroll_adj, max_bet)
     bankroll_adj_xdai = wei_to_native(bankroll_adj)
     info = [f"Adjusted bankroll: {bankroll_adj_xdai} xDAI."]
     error = []

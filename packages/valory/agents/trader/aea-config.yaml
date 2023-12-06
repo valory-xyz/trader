@@ -192,7 +192,7 @@ models:
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
-      file_hash_to_strategies_json: ${list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeid7xyoqfskjumerc7tj2ykmfprem63oyxj5hyy2ts2zckfq7zutte",["kelly_criterion"]]]}
+      file_hash_to_strategies_json: ${list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeidbmi5zgp2ygprb3br6xpfvmty474cy3eeib5ynslispp4iijwpoe",["kelly_criterion"]]]}
       strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
