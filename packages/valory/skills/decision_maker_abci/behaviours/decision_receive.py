@@ -156,6 +156,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             placeholder=get_name(DecisionReceiveBehaviour.response_hex),
             request_id=self.request_id,
             from_block=self.from_block,
+            timeout=self.params.contract_timeout,
         )
 
         if result:

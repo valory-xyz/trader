@@ -116,6 +116,7 @@ class SharedState(BaseSharedState):
             TSEvent.VALIDATE_TIMEOUT: self.params.validate_timeout,
             TSEvent.FINALIZE_TIMEOUT: self.params.finalize_timeout,
             TSEvent.CHECK_TIMEOUT: self.params.history_check_timeout,
+            DecisionMakerEvent.REDEEM_ROUND_TIMEOUT: self.params.redeem_round_timeout,
             ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT: reset_pause_timeout,
         }
 

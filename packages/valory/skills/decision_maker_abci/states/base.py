@@ -53,6 +53,7 @@ class Event(Enum):
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
     ROUND_TIMEOUT = "round_timeout"
+    REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
 
 
