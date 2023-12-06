@@ -41,6 +41,10 @@ fingerprint:
   states/redeem.py: bafybeie63laufsdxhf4vngmon5lne7cpmvvosqervp6l2riysqnwuotzim
   states/sampling.py: bafybeidnvdogjlthjfe7jpaiuezm3xydrbxxukyoss4gx6t5fdin52rsta
   states/tool_selection.py: bafybeiaaijv6dukp3bmsptcwkcmumc6wu6ztzkvaqzsqqjbfn4ozgyuykq
+  tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
+  tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
+  tests/behaviours/test_base.py: bafybeidemmwjhtr6i4tq66jyqkpmb425ersfmk7k7zzjmeaz2idqnpcwve
+  tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
