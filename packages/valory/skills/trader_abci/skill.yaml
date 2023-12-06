@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeiajga2m7pv7v4bxsjsnncavdns6gujg7qg7opfjyznlzip3gbd3nm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeihlhdsmmihnvwtggc2t2neqkm5uduw5krpgcxpz7m7xp5kjkf6jsm
-  handlers.py: bafybeicamc6vmozij5dwvkxmbxjazsgf3sacojhstbjtq7vfggszxugvey
+  handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
   models.py: bafybeifxiptjrnv4hbw5l3mfxvb7hksmxf726kvab5lcms5btuc3vaahem
 fingerprint_ignore_patterns: []
 connections: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigk3debp6dswutqsuls2lqfvyj4ghe6kwjc2zfinnsvj6hujynxtq
 - valory/termination_abci:0.1.0:bafybeigainmpy37gb33ogbrpggjbkuasodhthh5oz4vbzjdfjozerpf224
 - valory/market_manager_abci:0.1.0:bafybeic7o4pclkhnugyn7js5g3asxuqhkxpvunlp3mpup7aovhg2fto22i
-- valory/decision_maker_abci:0.1.0:bafybeialhiifvrhehvh7gtmkirrodcywrpztxxcz6e4grrfwkxdsv7wody
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaufmwkixphmda3jax4vprbdjn57axe655cbougexwml5ymsc6si4
+- valory/decision_maker_abci:0.1.0:bafybeiftg2nzs3lelkxka7wxc2f6zzmzq6sxq5ng5ix5zkkdkqutapx3ku
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigesnu3d4slpj7gpsn7kbjsafk7xnwoplef7fvsuxg245wphkn66a
 - valory/staking_abci:0.1.0:bafybeia3acxumkjg566dvgagv3swz7htf5xpvwq6ovmecvp5j2zdxdoabe
 behaviours:
   main:
@@ -146,20 +146,7 @@ models:
       abt_error_mult: 5
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       sample_bets_closing_days: 10
-      trading_strategy: bet_amount_per_conf_threshold
-      bet_kelly_fraction: 1.0
-      bet_amount_per_threshold:
-        0.0: 0
-        0.1: 0
-        0.2: 0
-        0.3: 0
-        0.4: 0
-        0.5: 0
-        0.6: 0
-        0.7: 0
-        0.8: 0
-        0.9: 0
-        1.0: 0
+      trading_strategy: strategy_name
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
@@ -190,6 +177,26 @@ models:
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       tool_punishment_multiplier: 1
+      file_hash_to_strategies_json:
+      - - hash
+        - - strategy_name
+      strategies_kwargs:
+      - - bet_kelly_fraction
+        - 1.0
+      - - floor_balance
+        - 500000000000000000
+      - - bet_amount_per_threshold
+        - 0.0: 0
+          0.1: 0
+          0.2: 0
+          0.3: 0
+          0.4: 0
+          0.5: 0
+          0.6: 0
+          0.7: 0
+          0.8: 0
+          0.9: 0
+          1.0: 0
     class_name: TraderParams
   network_subgraph:
     args:

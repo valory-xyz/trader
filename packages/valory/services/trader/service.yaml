@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihspfzzsl4rx2x2zijgunoiqizmeqj64lxepnrcqzcefophwpfofq
+agent: valory/trader:0.1.0:bafybeihrk63u6imk3pywsj3wnxrljabtouid4mh724gr5ahaasip7bokti
 number_of_agents: 4
 deployment: {}
 ---
@@ -79,20 +79,7 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
-        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
-        bet_amount_per_threshold: &id004
-          0.0: ${BET_AMOUNT_PER_THRESHOLD_000:int:0}
-          0.1: ${BET_AMOUNT_PER_THRESHOLD_010:int:0}
-          0.2: ${BET_AMOUNT_PER_THRESHOLD_020:int:0}
-          0.3: ${BET_AMOUNT_PER_THRESHOLD_030:int:0}
-          0.4: ${BET_AMOUNT_PER_THRESHOLD_040:int:0}
-          0.5: ${BET_AMOUNT_PER_THRESHOLD_050:int:0}
-          0.6: ${BET_AMOUNT_PER_THRESHOLD_060:int:600000000000000000}
-          0.7: ${BET_AMOUNT_PER_THRESHOLD_070:int:900000000000000000}
-          0.8: ${BET_AMOUNT_PER_THRESHOLD_080:int:1000000000000000000}
-          0.9: ${BET_AMOUNT_PER_THRESHOLD_090:int:10000000000000000000}
-          1.0: ${BET_AMOUNT_PER_THRESHOLD_100:int:100000000000000000000}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -119,7 +106,9 @@ type: skill
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
-    benchmark_tool: &id005
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeid7xyoqfskjumerc7tj2ykmfprem63oyxj5hyy2ts2zckfq7zutte",["kelly_criterion"]]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+    benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
 1:
@@ -169,9 +158,7 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
-        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
-        bet_amount_per_threshold: *id004
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -198,7 +185,9 @@ type: skill
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
-    benchmark_tool: *id005
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeid7xyoqfskjumerc7tj2ykmfprem63oyxj5hyy2ts2zckfq7zutte",["kelly_criterion"]]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+    benchmark_tool: *id004
 2:
   models:
     params:
@@ -246,9 +235,7 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
-        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
-        bet_amount_per_threshold: *id004
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -275,7 +262,9 @@ type: skill
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
-    benchmark_tool: *id005
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeid7xyoqfskjumerc7tj2ykmfprem63oyxj5hyy2ts2zckfq7zutte",["kelly_criterion"]]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+    benchmark_tool: *id004
 3:
   models:
     params:
@@ -323,9 +312,7 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_conf_threshold}
-        bet_kelly_fraction: ${BET_KELLY_FRACTION:float:1.0}
-        bet_amount_per_threshold: *id004
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -352,7 +339,9 @@ type: skill
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
-    benchmark_tool: *id005
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeid7xyoqfskjumerc7tj2ykmfprem63oyxj5hyy2ts2zckfq7zutte",["kelly_criterion"]]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+    benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0
 type: connection

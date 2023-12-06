@@ -17,43 +17,43 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the helper functions for the kelly strategy."""
+"""This module contains the kelly criterion strategy."""
+
+from typing import Dict, Any, List, Union
+
+REQUIRED_FIELDS = frozenset(
+    {
+        # the fraction of the calculated kelly bet amount to use for placing the bet
+        "bet_kelly_fraction",
+        "bankroll",
+        "win_probability",
+        "confidence",
+        "selected_type_tokens_in_pool",
+        "other_tokens_in_pool",
+        "bet_fee",
+        "floor_balance",
+    }
+)
+OPTIONAL_FIELDS = frozenset({"max_bet"})
+ALL_FIELDS = REQUIRED_FIELDS.union(OPTIONAL_FIELDS)
+DEFAULT_MAX_BET = 8e17
 
 
-def wei_to_native(wei: int) -> float:
-    """Convert WEI to native token."""
-    return wei / 10**18
+def check_missing_fields(kwargs: Dict[str, Any]) -> List[str]:
+    """Check for missing fields and return them, if any."""
+    missing = []
+    for field in REQUIRED_FIELDS:
+        if kwargs.get(field, None) is None:
+            missing.append(field)
+    return missing
 
 
-def get_max_bet_amount(a: int, x: int, y: int, f: float) -> tuple[int, str]:
-    """Get max bet amount based on available shares."""
-    if x**2 * f**2 + 2 * x * y * f**2 + y**2 * f**2 == 0:
-        error = (
-            "Could not recalculate. "
-            "Either bankroll is 0 or pool token amount is distributed such as "
-            "x**2*f**2 + 2*x*y*f**2 + y**2*f**2 == 0:\n"
-            f"Available tokens: {a}\n"
-            f"Pool token amounts: {x}, {y}\n"
-            f"Fee, fee fraction f: {1-f}, {f}"
-        )
-        return 0, error
-
-    pre_root = -2 * x**2 + a * x - 2 * x * y
-    sqrt = (
-        4 * x**4
-        + 8 * x**3 * y
-        + a**2 * x**2
-        + 4 * x**2 * y**2
-        + 2 * a**2 * x * y
-        + a**2 * y**2
-    )
-    numerator = y * (pre_root + sqrt**0.5 + a * y)
-    denominator = f * (x**2 + 2 * x * y + y**2)
-    new_bet_amount = numerator / denominator
-    return int(new_bet_amount), ""
+def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove the irrelevant fields from the given kwargs."""
+    return {key: value for key, value in kwargs.items() if key in ALL_FIELDS}
 
 
-def calculate_kelly_bet_amount(  # pylint: disable=too-many-arguments
+def calculate_kelly_bet_amount(
     x: int, y: int, p: float, c: float, b: int, f: float
 ) -> int:
     """Calculate the Kelly bet amount."""
@@ -93,6 +93,11 @@ def calculate_kelly_bet_amount(  # pylint: disable=too-many-arguments
     return int(kelly_bet_amount)
 
 
+def wei_to_native(wei: int) -> float:
+    """Convert WEI to native token."""
+    return wei / 10**18
+
+
 def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     bet_kelly_fraction: float,
     bankroll: int,
@@ -101,11 +106,13 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     selected_type_tokens_in_pool: int,
     other_tokens_in_pool: int,
     bet_fee: int,
-) -> tuple[int, list[str], list[str]]:
+    floor_balance: int,
+    max_bet: int = DEFAULT_MAX_BET,
+) -> Dict[str, Union[int, List[str]]]:
     """Calculate the Kelly bet amount."""
     # keep `floor_balance` xDAI in the bankroll
-    floor_balance = 500000000000000000
     bankroll_adj = bankroll - floor_balance
+    bankroll_adj = min(bankroll_adj, max_bet)
     bankroll_adj_xdai = wei_to_native(bankroll_adj)
     info = [f"Adjusted bankroll: {bankroll_adj_xdai} xDAI."]
     error = []
@@ -115,7 +122,7 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
         )
         error.append("Set bet amount to 0.")
         error.append("Top up safe with DAI or wait for redeeming.")
-        return 0, info, error
+        return {"bet_amount": 0, "info": info, "error": error}
 
     fee_fraction = 1 - wei_to_native(bet_fee)
     info.append(f"Fee fraction: {fee_fraction}")
@@ -131,7 +138,7 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
         info.append(
             f"Invalid value for kelly bet amount: {kelly_bet_amount}\nSet bet amount to 0."
         )
-        return 0, info, error
+        return {"bet_amount": 0, "info": info, "error": error}
 
     info.append(f"Kelly bet amount: {wei_to_native(kelly_bet_amount)} xDAI")
     info.append(f"Bet kelly fraction: {bet_kelly_fraction}")
@@ -139,4 +146,14 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     info.append(
         f"Adjusted Kelly bet amount: {wei_to_native(adj_kelly_bet_amount)} xDAI"
     )
-    return adj_kelly_bet_amount, info, error
+    return {"bet_amount": adj_kelly_bet_amount, "info": info, "error": error}
+
+
+def run(*_args, **kwargs) -> Dict[str, Union[int, List[str]]]:
+    """Run the strategy."""
+    missing = check_missing_fields(kwargs)
+    if len(missing) > 0:
+        return {"error": [f"Required kwargs {missing} were not provided."]}
+
+    kwargs = remove_irrelevant_fields(kwargs)
+    return get_bet_amount_kelly(**kwargs)

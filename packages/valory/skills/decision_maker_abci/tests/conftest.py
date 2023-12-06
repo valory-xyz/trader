@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Conftest module for io tests."""
+"""Conftest module for decision maker tests."""
 
 import os
 from pathlib import Path
