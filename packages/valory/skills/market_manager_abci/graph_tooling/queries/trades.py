@@ -30,7 +30,6 @@ trades = Template(
                     type: Buy,
                     creator: "${creator}",
                     fpmm_: {
-                        creator: "${fpmm_creator}"
                         creationTimestamp_gte: "${creationTimestamp_gte}",
                         creationTimestamp_lt: "${creationTimestamp_lte}"
                     },

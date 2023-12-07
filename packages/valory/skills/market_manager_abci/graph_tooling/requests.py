@@ -284,7 +284,6 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def fetch_trades(
         self,
         creator: str,
-        fpmm_creator: str,
         from_timestamp: float,
         to_timestamp: float,
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
@@ -300,7 +299,6 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         while True:
             query = trades_query.substitute(
                 creator=creator.lower(),
-                fpmm_creator=fpmm_creator.lower(),
                 from_timestamp=int(from_timestamp),
                 to_timestamp=int(to_timestamp),
                 first=QUERY_BATCH_SIZE,
