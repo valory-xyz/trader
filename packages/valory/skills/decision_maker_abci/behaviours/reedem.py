@@ -56,7 +56,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
-    get_condition_id_to_payout, filter_claimed_payouts,
+    filter_claimed_payouts,
+    get_condition_id_to_payout,
 )
 
 
@@ -489,7 +490,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         # process the positions
         unfiltered_payouts = get_condition_id_to_payout(trades, user_positions)
         # filter out positions that are already claimed
-        payouts = filter_claimed_payouts(unfiltered_payouts, self.redeeming_progress.claimed_condition_ids)
+        payouts = filter_claimed_payouts(
+            unfiltered_payouts, self.redeeming_progress.claimed_condition_ids
+        )
         self.redeeming_progress.payouts = payouts
 
         return True
@@ -806,7 +809,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             # self.redeeming_progress.claiming_condition_ids, and will no longer be taken into
             # consideration. This is done to avoid cases where the subgraph is not up-to date
             # and the same condition id is returned multiple times.
-            claiming_condition_id = '0x' + redeem_candidate.fpmm.condition.id.hex()
+            claiming_condition_id = "0x" + redeem_candidate.fpmm.condition.id.hex()
             self.redeeming_progress.claiming_condition_ids.append(claiming_condition_id)
 
             if winnings_found == self.params.redeeming_batch_size:

@@ -148,7 +148,9 @@ class PostTxSettlementBehaviour(BaseBehaviour):
         claimed_condition_ids.extend(self.redeeming_progress.claiming_condition_ids)
         self.redeeming_progress = RedeemingProgress()
         self.redeeming_progress.claimed_condition_ids = claimed_condition_ids
-        self.context.logger.info(f"The following condition ids were claimed so far: {claimed_condition_ids}")
+        self.context.logger.info(
+            f"The following condition ids were claimed so far: {claimed_condition_ids}"
+        )
 
     def _on_tx_settled(self) -> None:
         """Handle the tx settled event."""

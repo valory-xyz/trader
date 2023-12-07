@@ -274,7 +274,9 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 "args": {
                     "answer": bytes.fromhex(answer["answer"][2:]),
                     "question_id": bytes.fromhex(answer["question"]["questionId"][2:]),
-                    "history_hash": bytes.fromhex(answer["question"]["historyHash"][2:]),
+                    "history_hash": bytes.fromhex(
+                        answer["question"]["historyHash"][2:]
+                    ),
                     "user": Web3.to_checksum_address(answer["question"]["user"]),
                     "bond": int(answer["bondAggregate"]),
                     "timestamp": int(answer["timestamp"]),
@@ -295,7 +297,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.IN_PROGRESS
         current_subgraph = self.context.trades_subgraph
 
-        all_trades = []
+        all_trades: List[Dict[str, Any]] = []
         creation_timestamp_gt = (
             0  # used to allow for batching based on creation timestamp
         )
@@ -324,6 +326,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 self.context.logger.error("Failed to process all trades.")
                 return all_trades
 
+            trades = cast(List[Dict[str, Any]], trades)
             if len(trades) == 0:
                 # no more trades to fetch
                 return all_trades
@@ -344,7 +347,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         user_positions_id_gt = (
             0  # used to allow for batching based on user positions id
         )
-        all_positions = []
+        all_positions: List[Dict[str, Any]] = []
         while True:
             query = user_positions_query.substitute(
                 id=user.lower(),
@@ -367,6 +370,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 self.context.logger.error("Failed to process all positions.")
                 return all_positions
 
+            positions = cast(List[Dict[str, Any]], positions)
             if len(positions) == 0:
                 # no more positions to fetch
                 return all_positions
