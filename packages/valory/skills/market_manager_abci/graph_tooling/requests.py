@@ -25,6 +25,8 @@ from abc import ABC
 from enum import Enum, auto
 from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
+from web3 import Web3
+
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.conditional_tokens import (
@@ -269,13 +271,15 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             return None
         answers = [
             {
-                "answer": bytes.fromhex(answer["answer"][2:]),
-                "question_id": bytes.fromhex(answer["question"]["questionId"][2:]),
-                "history_hash": bytes.fromhex(answer["question"]["historyHash"][2:]),
-                "user": answer["question"]["user"],
-                "bond": int(answer["bondAggregate"]),
-                "timestamp": int(answer["timestamp"]),
-                "is_commitment": False,
+                "args": {
+                    "answer": bytes.fromhex(answer["answer"][2:]),
+                    "question_id": bytes.fromhex(answer["question"]["questionId"][2:]),
+                    "history_hash": bytes.fromhex(answer["question"]["historyHash"][2:]),
+                    "user": Web3.to_checksum_address(answer["question"]["user"]),
+                    "bond": int(answer["bondAggregate"]),
+                    "timestamp": int(answer["timestamp"]),
+                    "is_commitment": False,
+                }
             }
             for answer in raw_answers
         ]
@@ -299,8 +303,8 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         while True:
             query = trades_query.substitute(
                 creator=creator.lower(),
-                from_timestamp=int(from_timestamp),
-                to_timestamp=int(to_timestamp),
+                creationTimestamp_lte=int(to_timestamp),
+                creationTimestamp_gte=int(from_timestamp),
                 first=QUERY_BATCH_SIZE,
                 creationTimestamp_gt=creation_timestamp_gt,
             )

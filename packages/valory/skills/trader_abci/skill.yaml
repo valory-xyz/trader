@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeib3ycl5bjo5uilyaly7uoovvc3b3gpjrkuvdos5ffsgmrs73j6bkm
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeicn2hiu22rwbprphl7zftgxeeehsuj6nirydmyugwiqay6avvjbna
+  models.py: bafybeibrxivgpzamfmrl6bdngi67g72i32lmu5vgdn3jbwka265blk7ire
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidzajbe3erygeh2xbd6lrjv7nsptznjuzrt24ykgvhgotdeyhfnba
 - valory/transaction_settlement_abci:0.1.0:bafybeiaefgqbs7zsn5xe5kdwrujj7ivygkn3ujpw6crnvi3knvxw75qmja
 - valory/termination_abci:0.1.0:bafybeie4zvjfxvdu7qrulmur3chpjz3kpj5m4bjsxvpk4gvj5zbyyayfaa
-- valory/market_manager_abci:0.1.0:bafybeietothjpt3472icsfoelihq437dclsckldsstz4sui46lblxfugsq
-- valory/decision_maker_abci:0.1.0:bafybeiejxeftyxqurudsabs2udmf6yrl4xuihlebkq3uthd7g6rxgeremm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaiqcjjiwi42bjd5vih25c774yvslia2qeuzhlls5wmokpln4kfda
+- valory/market_manager_abci:0.1.0:bafybeicnf3g6c5hv7iwtdilpz447r2lrkggsjgnomjuprqccor7gavu7he
+- valory/decision_maker_abci:0.1.0:bafybeih7az7wjxaw2vfpktr2pr4atnz322jc5tfjy5s4ofx7blv7op5hqi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibxiah6oiwlrkonal7iabvpmqmukpmkkq2ggfqquqqdxs2fk7a6bu
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 behaviours:
   main:
@@ -165,6 +165,7 @@ models:
       slippage: 0.01
       policy_epsilon: 0.1
       policy_store_path: /data/
+      use_subgraph_for_redeeming: true
       irrelevant_tools:
       - openai-text-davinci-002
       - openai-text-davinci-003
@@ -261,6 +262,42 @@ models:
       retries: 5
       url: ''
     class_name: AgentToolsSpecs
+  trades_subgraph:
+    args:
+      api_id: trades
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fpmmTrades
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
+    class_name: TradesSubgraph
+  conditional_tokens_subgraph:
+    args:
+      api_id: conditional_tokens
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:user:userPositions
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc
+    class_name: ConditionalTokensSubgraph
+  realitio_subgraph:
+    args:
+      api_id: realitio
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:answers
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis
+    class_name: RealitioSubgraph
   requests:
     args: {}
     class_name: Requests

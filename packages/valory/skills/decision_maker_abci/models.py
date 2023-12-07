@@ -309,6 +309,11 @@ class DecisionMakerParams(MarketManagerParams):
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
         )
+        self.use_subgraph_for_redeeming = self._ensure(
+            "use_subgraph_for_redeeming",
+            kwargs,
+            bool,
+        )
         super().__init__(*args, **kwargs)
 
     @property
@@ -435,3 +440,15 @@ class MechInteractionResponse:
         response = cls()
         response.error = f"The response's format was unexpected: {res}"
         return response
+
+
+class TradesSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
+
+
+class ConditionalTokensSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the Coniditonal Tokens's subgraph specifications."""
+
+
+class RealitioSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the Realitio's subgraph specifications."""
