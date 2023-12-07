@@ -83,3 +83,14 @@ def get_condition_id_to_payout(
                     condition_id_to_payout[condition_id] = payout
 
     return condition_id_to_payout
+
+
+def filter_claimed_payouts(payouts: Dict[str, int], claimed_condition_ids: List[str]) -> Dict[str, int]:
+    """Filter out the claimed payouts."""
+    claimed_condition_ids = [condition_id.lower() for condition_id in claimed_condition_ids]
+    # filter out the claimed payouts, in a case-insensitive way
+    return {
+        condition_id: payout
+        for condition_id, payout in payouts.items()
+        if condition_id.lower() not in claimed_condition_ids
+    }

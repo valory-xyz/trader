@@ -102,6 +102,8 @@ class RedeemingProgress:
     claim_from_block: BlockIdentifier = "earliest"
     claim_to_block: BlockIdentifier = "latest"
     answered: list = field(default_factory=lambda: [])
+    claiming_condition_ids: List[str] = field(default_factory=lambda: [])
+    claimed_condition_ids: List[str] = field(default_factory=lambda: [])
 
     @property
     def check_finished(self) -> bool:

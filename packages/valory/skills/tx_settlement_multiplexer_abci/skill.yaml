@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiegcjg2wjrsqhrmvyulioch3d67rnbzkx5af3ztkaw7kxathjreda
   __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
-  behaviours.py: bafybeifboxplklx3eqaljkugio7y72thpb5jdboqcickefuklhverksw5y
+  behaviours.py: bafybeiaz4lesn5zgzy2qwknhfoa47l7pwplaulfdc4soz3nyu4xfri5yku
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeidwxjna36auqbtqlehx73kyb6o74suhzj5bothgtiapcj35b7gzve
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
@@ -21,7 +21,7 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiaqcl7h2famylusiffigwem7tevkcsyocdu5xd42jkmgq6kvowzgq
-- valory/decision_maker_abci:0.1.0:bafybeih7az7wjxaw2vfpktr2pr4atnz322jc5tfjy5s4ofx7blv7op5hqi
+- valory/decision_maker_abci:0.1.0:bafybeie23bxtfyg656qj34zfpwa3wbikevf5e2apsdc72czcfzj65gqtpa
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 behaviours:
   main:
