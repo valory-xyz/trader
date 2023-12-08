@@ -243,6 +243,9 @@ class DecisionMakerParams(MarketManagerParams):
 
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
+        self.use_fallback_strategy: bool = self._ensure(
+            "use_fallback_strategy", kwargs, bool
+        )
         if self.trading_strategy not in [
             STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
             STRATEGY_KELLY_CRITERION,

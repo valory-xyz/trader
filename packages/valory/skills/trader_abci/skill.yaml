@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiaefgqbs7zsn5xe5kdwrujj7ivygkn3ujpw6crnvi3knvxw75qmja
 - valory/termination_abci:0.1.0:bafybeie4zvjfxvdu7qrulmur3chpjz3kpj5m4bjsxvpk4gvj5zbyyayfaa
 - valory/market_manager_abci:0.1.0:bafybeiei62pni5gej5wzf3wp3olwnxxrahqvlnlupedgjwvwgj3v7pnraq
-- valory/decision_maker_abci:0.1.0:bafybeigzbi4zvsdrm2ozgrmdv6rnl5wfmdaqgu6dyawhpzwgvomdbwtyoe
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifugl5ula5jnmmfyr3grdvwpn5f5fuecf5hy3hzjafqbc47duutlu
+- valory/decision_maker_abci:0.1.0:bafybeigp3fmqwfvtrugdoxht3qedmu5rucu6y67s54sjchbhewu57c732q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig5o6o5u5p2dw5ziwu4irofyoc2xeqactldgvvldhfuw2k6tatijm
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 behaviours:
   main:
@@ -147,6 +147,7 @@ models:
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
+      use_fallback_strategy: true
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/

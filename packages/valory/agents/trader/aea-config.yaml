@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidzajbe3erygeh2xbd6lrjv7nsptznjuzrt24ykgvhgotdeyhfnba
 - valory/termination_abci:0.1.0:bafybeie4zvjfxvdu7qrulmur3chpjz3kpj5m4bjsxvpk4gvj5zbyyayfaa
 - valory/transaction_settlement_abci:0.1.0:bafybeiaefgqbs7zsn5xe5kdwrujj7ivygkn3ujpw6crnvi3knvxw75qmja
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifugl5ula5jnmmfyr3grdvwpn5f5fuecf5hy3hzjafqbc47duutlu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig5o6o5u5p2dw5ziwu4irofyoc2xeqactldgvvldhfuw2k6tatijm
 - valory/market_manager_abci:0.1.0:bafybeiei62pni5gej5wzf3wp3olwnxxrahqvlnlupedgjwvwgj3v7pnraq
-- valory/decision_maker_abci:0.1.0:bafybeigzbi4zvsdrm2ozgrmdv6rnl5wfmdaqgu6dyawhpzwgvomdbwtyoe
-- valory/trader_abci:0.1.0:bafybeih4iwji7nuskp2wgvzvj4a5iataocwlegrf2yma3ows26zmxonaoq
+- valory/decision_maker_abci:0.1.0:bafybeigp3fmqwfvtrugdoxht3qedmu5rucu6y67s54sjchbhewu57c732q
+- valory/trader_abci:0.1.0:bafybeiag7fmfecdbiv3gwsqat5ffa7jrkyfx6ffwoqfdkwz7uwqiqjej7a
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 default_ledger: ethereum
 required_ledgers:
@@ -167,6 +167,7 @@ models:
       mech_agent_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion}
+      use_fallback_strategy: ${bool:true}
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
@@ -196,8 +197,8 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies_json: ${list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
-      strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+      file_hash_to_strategies_json: ${list:[["bafybeid6px3gw2c3u7hnsb6p677f4l6gyr3xy7wohafwifzzsnw6dwcp6y",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
+      strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":600000000000000000,"0.7":900000000000000000,"0.8":1000000000000000000,"0.9":10000000000000000000,"1.0":100000000000000000000}]]}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

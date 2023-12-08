@@ -22,7 +22,7 @@
 import dataclasses
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Generator, List, Optional, cast
+from typing import Any, Callable, Dict, Generator, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -91,22 +91,35 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
 
-    @property
-    def strategy_exec(self) -> str:
+    def strategy_exec(self, strategy: str) -> Optional[str]:
         """Get the executable strategy file's content."""
-        return self.shared_state.strategies_executables[self.params.trading_strategy]
+        return self.shared_state.strategies_executables.get(strategy, None)
 
     def execute_strategy(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Execute the strategy and return the results."""
         if STRATEGY_RUN_METHOD in globals():
             del globals()[STRATEGY_RUN_METHOD]
-        exec(self.strategy_exec, globals())  # pylint: disable=W0122  # nosec
+
+        trading_strategy = kwargs.pop("trading_strategy", None)
+        if trading_strategy is None:
+            self.context.logger.error(f"No {trading_strategy!r} was given!")
+            return {BET_AMOUNT_FIELD: 0}
+
+        strategy_exec = self.strategy_exec(trading_strategy)
+        if strategy_exec is None:
+            self.context.logger.error(
+                f"No executable was found for {trading_strategy=}!"
+            )
+            return {BET_AMOUNT_FIELD: 0}
+
+        exec(strategy_exec, globals())  # pylint: disable=W0122  # nosec
         method = globals().get(STRATEGY_RUN_METHOD, None)
         if method is None:
             self.context.logger.error(
-                f"No {STRATEGY_RUN_METHOD!r} method was found in {self.params.trading_strategy} strategy's executable."
+                f"No {STRATEGY_RUN_METHOD!r} method was found in {trading_strategy} strategy's executable."
             )
             return {BET_AMOUNT_FIELD: 0}
+
         return method(*args, **kwargs)
 
     @property
@@ -312,34 +325,53 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
         yield from self.wait_for_condition_with_sleep(self.check_balance)
-        self.context.logger.info(
-            f"Used trading strategy: {self.params.trading_strategy}"
-        )
-        # the following are always passed to a strategy script, which may choose to ignore any
-        kwargs: Dict[str, Any] = self.params.strategies_kwargs
-        kwargs.update(
-            {
-                "bankroll": self.token_balance + self.wallet_balance,
-                "win_probability": win_probability,
-                "confidence": confidence,
-                "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
-                "other_tokens_in_pool": other_tokens_in_pool,
-                "bet_fee": bet_fee,
-            }
-        )
-        results = self.execute_strategy(**kwargs)
-        for level in SUPPORTED_STRATEGY_LOG_LEVELS:
-            logger = getattr(self.context.logger, level, None)
-            if logger is not None:
-                for log in results.get(level, []):
-                    logger(log)
-        bet_amount = results.get(BET_AMOUNT_FIELD, None)
-        if bet_amount is None:
-            self.context.logger.error(
-                f"Required field {BET_AMOUNT_FIELD!r} was not returned by {self.params.trading_strategy} strategy."
-                "Setting bet amount to 0."
+
+        next_strategy = self.params.trading_strategy
+        tried_strategies: Set[str] = set()
+        while True:
+            self.context.logger.info(f"Used trading strategy: {next_strategy}")
+            # the following are always passed to a strategy script, which may choose to ignore any
+            kwargs: Dict[str, Any] = self.params.strategies_kwargs
+            kwargs.update(
+                {
+                    "trading_strategy": next_strategy,
+                    "bankroll": self.token_balance + self.wallet_balance,
+                    "win_probability": win_probability,
+                    "confidence": confidence,
+                    "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
+                    "other_tokens_in_pool": other_tokens_in_pool,
+                    "bet_fee": bet_fee,
+                }
             )
-            return 0
+            results = self.execute_strategy(**kwargs)
+            for level in SUPPORTED_STRATEGY_LOG_LEVELS:
+                logger = getattr(self.context.logger, level, None)
+                if logger is not None:
+                    for log in results.get(level, []):
+                        logger(log)
+            bet_amount = results.get(BET_AMOUNT_FIELD, None)
+            if bet_amount is None:
+                self.context.logger.error(
+                    f"Required field {BET_AMOUNT_FIELD!r} was not returned by {next_strategy} strategy."
+                    "Setting bet amount to 0."
+                )
+                bet_amount = 0
+
+            tried_strategies.update({next_strategy})
+            strategies_names = set(self.shared_state.strategies_executables)
+            remaining_strategies = strategies_names - tried_strategies
+            if (
+                bet_amount > 0
+                or len(remaining_strategies) == 0
+                or not self.params.use_fallback_strategy
+            ):
+                break
+
+            next_strategy = remaining_strategies.pop()
+            self.context.logger.warning(
+                f"Using fallback strategy {next_strategy} as the previous one returned {bet_amount}."
+            )
+
         return bet_amount
 
     def default_error(
