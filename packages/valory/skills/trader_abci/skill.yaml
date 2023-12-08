@@ -147,6 +147,7 @@ models:
       mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
+      use_fallback_strategy: true
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/

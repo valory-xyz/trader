@@ -167,6 +167,7 @@ models:
       mech_agent_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion}
+      use_fallback_strategy: ${bool:true}
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}

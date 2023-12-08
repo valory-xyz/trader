@@ -80,6 +80,7 @@ type: skill
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -163,6 +164,7 @@ type: skill
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -244,6 +246,7 @@ type: skill
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -325,6 +328,7 @@ type: skill
         mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
