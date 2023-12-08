@@ -97,10 +97,11 @@ def get_condition_id_to_balances(
                 condition_id_to_balance[condition_id] = balance
                 # get the payout for this condition
                 payout = get_position_lifetime_value(user_positions, condition_id)
-                if payout > 0:
+                if payout > 0 and balance == 0:
                     condition_id_to_payout[condition_id] = payout
 
     return condition_id_to_payout, condition_id_to_balance
+
 
 def filter_claimed_conditions(
     payouts: Dict[str, int], claimed_condition_ids: List[str]

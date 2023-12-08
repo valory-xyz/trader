@@ -98,7 +98,7 @@ class RedeemingProgress:
     check_to_block: BlockIdentifier = "latest"
     cleaned: bool = False
     payouts: Dict[str, int] = field(default_factory=lambda: {})
-    unredeemed_trades: List[Trade] = field(default_factory=lambda: [])
+    unredeemed_trades: Dict[str, int] = field(default_factory=lambda: {})
     claim_started: bool = False
     claim_from_block: BlockIdentifier = "earliest"
     claim_to_block: BlockIdentifier = "latest"

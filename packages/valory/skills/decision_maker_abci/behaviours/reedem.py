@@ -194,6 +194,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._current_redeem_info: Optional[Trade] = None
         self._expected_winnings: int = 0
         self._history_hash: bytes = ZERO_BYTES
+        self._claim_winnings_simulation_ok: bool = False
 
     @property
     def redeeming_progress(self) -> RedeemingProgress:
@@ -334,6 +335,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         """Set the built transaction's data."""
         self._built_data = HexBytes(built_data)
 
+    @property
+    def claim_winnings_simulation_ok(self) -> bool:
+        """Get whether the claim winnings simulation is ok."""
+        return self._claim_winnings_simulation_ok
+
+    @claim_winnings_simulation_ok.setter
+    def claim_winnings_simulation_ok(self, claim_winnings_simulation_ok: bool) -> None:
+        """Get whether the claim winnings simulation is ok."""
+        self._claim_winnings_simulation_ok = claim_winnings_simulation_ok
+
     def _store_progress(self) -> None:
         """Store the redeeming progress."""
         self.redeeming_progress.trades = self.trades
@@ -367,7 +378,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _filter_trades(self) -> None:
         """Filter the trades, removing the redeemed condition ids."""
-        redeemed_condition_ids = [condition_id.lower() for condition_id in self.redeemed_condition_ids]
+        redeemed_condition_ids = [
+            condition_id.lower() for condition_id in self.redeemed_condition_ids
+        ]
         self.trades = {
             trade
             for trade in self.trades
@@ -599,6 +612,18 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.multisend_batches.append(batch)
         return True
 
+    def _simulate_claiming(self) -> WaitableConditionType:
+        """Check whether we have already claimed the winnings."""
+        result = yield from self._realitio_interact(
+            contract_callable="simulate_claim_winnings",
+            data_key="data",
+            placeholder=get_name(RedeemBehaviour.claim_winnings_simulation_ok),
+            question_id=self.current_question_id,
+            claim_params=self.redeeming_progress.claim_params,
+            sender_address=self.synchronized_data.safe_contract_address,
+        )
+        return result
+
     def _build_claim_data(self) -> WaitableConditionType:
         """Prepare the safe tx to claim the winnings."""
         claim_params = self.redeeming_progress.claim_params
@@ -726,7 +751,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 success = yield from self.get_claim_params()
                 if not success:
                     return False
-            steps.append(self._build_claim_data)
+
+                # simulate claiming to get the claim params
+                success = yield from self._simulate_claiming()
+                if not success:
+                    return False
+
+            if self.claim_winnings_simulation_ok:
+                steps.append(self._build_claim_data)
 
         # 3. we always redeem the position
         steps.append(self._build_redeem_data)
@@ -755,6 +787,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
             return False
 
+        if self.params.use_subgraph_for_redeeming:
+            condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
+            if (
+                condition_id not in self.redeeming_progress.unredeemed_trades
+                or self.redeeming_progress.unredeemed_trades[condition_id] == 0
+            ):
+                return False
+
         # in case that the claimable amount is dust
         if self.is_dust:
             self.context.logger.info("Position's redeeming amount is dust.")
@@ -763,8 +803,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if self.params.use_subgraph_for_redeeming:
             condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
             if (
-                    condition_id not in self.redeeming_progress.payouts
-                    or self.redeeming_progress.payouts[condition_id] == 0
+                condition_id not in self.redeeming_progress.unredeemed_trades
+                or self.redeeming_progress.unredeemed_trades[condition_id] == 0
             ):
                 return False
 

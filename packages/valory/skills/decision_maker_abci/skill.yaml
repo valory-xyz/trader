@@ -18,14 +18,14 @@ fingerprint:
   behaviours/decision_receive.py: bafybeigswz7g37c7wt2fvuseiisagauzeba2hwwuhz32qarxxpi54oyo5y
   behaviours/decision_request.py: bafybeidhmhjxt5xjhznxchqqqh6ohdssyyyzuqxv6dfdvpza7c2bxigajq
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/reedem.py: bafybeiapjbakhnt3qt2lw2r5why75mvhjsux2rd3awzhiwoiru73eqqvta
+  behaviours/reedem.py: bafybeiajaxrmyogqtvm4pjm6muyktehpfbrlslmorciv254nh23yzkbyqq
   behaviours/round_behaviour.py: bafybeig4tdktyu6hapoqymnxh2bgpds547st6a44heue657wkctwe4gjvm
   behaviours/sampling.py: bafybeifzhm4sspdvt227ksl5hjn26offgqpwempgbcwbr6dq7gyi2a46sm
   behaviours/tool_selection.py: bafybeifpvrrbftlkjsoiysnasihzttousk6hxnukzrln6z2d33e3zexkje
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeidqrxj3l3e555znk4wxx6spwaijz3bhc5yialhzbhd6ngk52w7jbq
   handlers.py: bafybeiggoetspwcvdojmbjdd67tmkoeedikmt6vsbcium3zjaljb6jzqu4
-  models.py: bafybeibhzx5holct4w3uh6mp7ptrinaueuahezqpjxjd42warrg3tgjx5q
+  models.py: bafybeicgkf73uf6imyhuxlmv66daczus533qxbksjqo7zigzipla4dtrv4
   payloads.py: bafybeigcic4vewdglakzpyqevhfwsolh4ywnbvxo5bgned7gl5uo3jif7m
   policy.py: bafybeidpmx4ek3qze63zpuwixyf6t7bdv62ewgkzt3ljrzadiwdw64cueq
   redeem_info.py: bafybeibddfxwp3577c3dl2utaowwltquu5fg6crezpumoebw563wxpbfrm
@@ -54,7 +54,7 @@ contracts:
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeigvha4ya64ccjl7tbroa3zjqlxm64wxsqx5k2cz2xs3a7igu5qgxa
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
-- valory/realitio:0.1.0:bafybeicllaewp72lf5mlohsgu2h2gqemaltn7lkbzotwlq3wyg3wk2nunm
+- valory/realitio:0.1.0:bafybeiblpni6gvg6vyw5tsyxwllfitnre7waz6eeoyutt2qmox7zvjat6q
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeicznp6b7t7n6gju35xa2mr2vo3vshtj72l5odwhtdvz3uard27csq
 protocols:
@@ -63,7 +63,7 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiedxeismnx3k5ty4mvvhlqideixlhqmi5mtcki4lxqfa7uqh7p33u
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiaqcl7h2famylusiffigwem7tevkcsyocdu5xd42jkmgq6kvowzgq
-- valory/market_manager_abci:0.1.0:bafybeighcxazzjiou6qvdm7yrrmihht65k65pcn5mwlvs77xqbrkgqkvcu
+- valory/market_manager_abci:0.1.0:bafybeiei62pni5gej5wzf3wp3olwnxxrahqvlnlupedgjwvwgj3v7pnraq
 - valory/transaction_settlement_abci:0.1.0:bafybeiaefgqbs7zsn5xe5kdwrujj7ivygkn3ujpw6crnvi3knvxw75qmja
 behaviours:
   main:
