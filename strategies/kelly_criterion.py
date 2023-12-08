@@ -89,6 +89,8 @@ def calculate_kelly_bet_amount(
         ** (1 / 2)
     )
     denominator = 2 * (x**2 * f - y**2 * f)
+    if denominator == 0:
+        return 0
     kelly_bet_amount = numerator / denominator
     return int(kelly_bet_amount)
 
