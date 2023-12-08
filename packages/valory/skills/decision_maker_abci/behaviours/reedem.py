@@ -20,6 +20,7 @@
 """This module contains the redeeming state of the decision-making abci app."""
 
 import json
+import time
 from abc import ABC
 from sys import maxsize
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
@@ -53,6 +54,10 @@ from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     QueryingBehaviour,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    filter_claimed_conditions,
+    get_condition_id_to_balances,
 )
 
 
@@ -189,6 +194,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._current_redeem_info: Optional[Trade] = None
         self._expected_winnings: int = 0
         self._history_hash: bytes = ZERO_BYTES
+        self._claim_winnings_simulation_ok: bool = False
 
     @property
     def redeeming_progress(self) -> RedeemingProgress:
@@ -329,6 +335,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         """Set the built transaction's data."""
         self._built_data = HexBytes(built_data)
 
+    @property
+    def claim_winnings_simulation_ok(self) -> bool:
+        """Get whether the claim winnings simulation is ok."""
+        return self._claim_winnings_simulation_ok
+
+    @claim_winnings_simulation_ok.setter
+    def claim_winnings_simulation_ok(self, claim_winnings_simulation_ok: bool) -> None:
+        """Get whether the claim winnings simulation is ok."""
+        self._claim_winnings_simulation_ok = claim_winnings_simulation_ok
+
     def _store_progress(self) -> None:
         """Store the redeeming progress."""
         self.redeeming_progress.trades = self.trades
@@ -362,10 +378,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _filter_trades(self) -> None:
         """Filter the trades, removing the redeemed condition ids."""
+        redeemed_condition_ids = [
+            condition_id.lower() for condition_id in self.redeemed_condition_ids
+        ]
         self.trades = {
             trade
             for trade in self.trades
-            if trade.fpmm.condition.id.hex()[2:] not in self.redeemed_condition_ids
+            if trade.fpmm.condition.id.hex().lower() not in redeemed_condition_ids
         }
         self.redeeming_progress.trades = self.trades
 
@@ -397,8 +416,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.latest_block_number = ledger_api_response.state.body.get(BLOCK_NUMBER_KEY)
         return True
 
-    def _check_already_redeemed(self) -> WaitableConditionType:
-        """Check whether we have already redeemed for this bet."""
+    def _check_already_redeemed_via_events(self) -> WaitableConditionType:
+        """Check whether the condition ids have already been redeemed via events."""
         if len(self.trades) == 0:
             return True
 
@@ -464,6 +483,41 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             from_block += batch_size
 
         return True
+
+    def _check_already_redeemed_via_subgraph(self) -> WaitableConditionType:
+        """Check whether the condition ids have already been redeemed via subgraph."""
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        from_timestamp, to_timestamp = 0.0, time.time()  # from begging to now
+
+        # get the trades
+        trades = yield from self.fetch_trades(
+            safe_address, from_timestamp, to_timestamp
+        )
+        if trades is None:
+            return False
+
+        # get the user positions
+        user_positions = yield from self.fetch_user_positions(safe_address)
+        if user_positions is None:
+            return False
+
+        # process the positions
+        payouts, unredeemed_raw = get_condition_id_to_balances(trades, user_positions)
+        # filter out positions that are already claimed
+        unredeemed = filter_claimed_conditions(
+            unredeemed_raw, self.redeeming_progress.claimed_condition_ids
+        )
+        self.redeeming_progress.payouts = payouts
+        self.redeeming_progress.unredeemed_trades = unredeemed
+
+        return True
+
+    def _check_already_redeemed(self) -> WaitableConditionType:
+        """Check whether we have already redeemed for this bet."""
+        if self.params.use_subgraph_for_redeeming:
+            return self._check_already_redeemed_via_subgraph()
+
+        return self._check_already_redeemed_via_events()
 
     def _clean_redeem_info(self) -> WaitableConditionType:
         """Clean the redeeming information based on whether any positions have already been redeemed."""
@@ -558,8 +612,54 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.multisend_batches.append(batch)
         return True
 
+    def _simulate_claiming(self) -> WaitableConditionType:
+        """Check whether we have already claimed the winnings."""
+        result = yield from self._realitio_interact(
+            contract_callable="simulate_claim_winnings",
+            data_key="data",
+            placeholder=get_name(RedeemBehaviour.claim_winnings_simulation_ok),
+            question_id=self.current_question_id,
+            claim_params=self.redeeming_progress.claim_params,
+            sender_address=self.synchronized_data.safe_contract_address,
+        )
+        return result
+
+    def _build_claim_data(self) -> WaitableConditionType:
+        """Prepare the safe tx to claim the winnings."""
+        claim_params = self.redeeming_progress.claim_params
+        if claim_params is None:
+            self.context.logger.error(
+                f"Cannot parse incorrectly formatted realitio `LogNewAnswer` events: {self.redeeming_progress.answered}"
+            )
+            return False
+
+        result = yield from self._realitio_interact(
+            contract_callable="build_claim_winnings",
+            data_key="data",
+            placeholder=get_name(RedeemBehaviour.built_data),
+            question_id=self.current_question_id,
+            claim_params=self.redeeming_progress.claim_params,
+        )
+
+        if not result:
+            return False
+
+        batch = MultisendBatch(
+            to=self.params.realitio_address,
+            data=HexBytes(self.built_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
+
     def get_claim_params(self) -> WaitableConditionType:
-        """Get the claim parameters using batches for the filtering events."""
+        """Get the claim params for the current question id."""
+        if self.params.use_subgraph_for_redeeming:
+            return self._get_claim_params_via_subgraph()
+
+        return self._get_claim_params_via_events()
+
+    def _get_claim_params_via_events(self) -> WaitableConditionType:
+        """Get claim params using an RPC to get the events."""
         if not self.redeeming_progress.claim_started:
             self.redeeming_progress.claim_from_block = self.earliest_block_number
             self.redeeming_progress.claim_to_block = (
@@ -604,31 +704,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         return True
 
-    def _build_claim_data(self) -> WaitableConditionType:
-        """Prepare the safe tx to claim the winnings."""
-        claim_params = self.redeeming_progress.claim_params
-        if claim_params is None:
-            self.context.logger.error(
-                f"Cannot parse incorrectly formatted realitio `LogNewAnswer` events: {self.redeeming_progress.answered}"
-            )
-            return False
-
-        result = yield from self._realitio_interact(
-            contract_callable="build_claim_winnings",
-            data_key="data",
-            placeholder=get_name(RedeemBehaviour.built_data),
-            question_id=self.current_question_id,
-            claim_params=self.redeeming_progress.claim_params,
-        )
-
+    def _get_claim_params_via_subgraph(self) -> WaitableConditionType:
+        """Get claim params using a subgraph."""
+        question_id_str = "0x" + self.current_question_id.hex()
+        result = yield from self.fetch_claim_params(question_id_str)
         if not result:
             return False
 
-        batch = MultisendBatch(
-            to=self.params.realitio_address,
-            data=HexBytes(self.built_data),
-        )
-        self.multisend_batches.append(batch)
+        self.redeeming_progress.answered = result
         return True
 
     def _build_redeem_data(self) -> WaitableConditionType:
@@ -668,7 +751,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 success = yield from self.get_claim_params()
                 if not success:
                     return False
-            steps.append(self._build_claim_data)
+
+                # simulate claiming to get the claim params
+                success = yield from self._simulate_claiming()
+                if not success:
+                    return False
+
+            if self.claim_winnings_simulation_ok:
+                steps.append(self._build_claim_data)
 
         # 3. we always redeem the position
         steps.append(self._build_redeem_data)
@@ -697,10 +787,26 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
             return False
 
+        if self.params.use_subgraph_for_redeeming:
+            condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
+            if (
+                condition_id not in self.redeeming_progress.unredeemed_trades
+                or self.redeeming_progress.unredeemed_trades[condition_id] == 0
+            ):
+                return False
+
         # in case that the claimable amount is dust
         if self.is_dust:
             self.context.logger.info("Position's redeeming amount is dust.")
             return False
+
+        if self.params.use_subgraph_for_redeeming:
+            condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
+            if (
+                condition_id not in self.redeeming_progress.unredeemed_trades
+                or self.redeeming_progress.unredeemed_trades[condition_id] == 0
+            ):
+                return False
 
         success = yield from self._prepare_single_redeem()
         if not success:
@@ -748,6 +854,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 self.context.logger.info("Adding position to the multisend batch...")
 
             winnings_found += 1
+            # we mark this condition id as being claimed.
+            # once the transaction gets successfully through, it will be moved to
+            # self.redeeming_progress.claiming_condition_ids, and will no longer be taken into
+            # consideration. This is done to avoid cases where the subgraph is not up-to date
+            # and the same condition id is returned multiple times.
+            claiming_condition_id = redeem_candidate.fpmm.condition.id.hex()
+            self.redeeming_progress.claiming_condition_ids.append(claiming_condition_id)
 
             if winnings_found == self.params.redeeming_batch_size:
                 break

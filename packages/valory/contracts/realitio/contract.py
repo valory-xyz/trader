@@ -19,6 +19,7 @@
 
 """This module contains the Realitio_v2_1 contract definition."""
 import concurrent.futures
+import logging
 from typing import List, Tuple, Union, Dict, Callable, Any
 
 from aea.common import JSONLike
@@ -35,11 +36,16 @@ ClaimParamsType = Tuple[
 
 FIVE_MINUTES = 300.0
 
+PUBLIC_ID = PublicId.from_str("valory/realitio:0.1.0")
+_logger = logging.getLogger(
+    f"aea.packages.{PUBLIC_ID.author}.contracts.{PUBLIC_ID.name}.contract"
+)
+
 
 class RealitioContract(Contract):
     """The Realitio_v2_1 smart contract."""
 
-    contract_id = PublicId.from_str("valory/realitio:0.1.0")
+    contract_id = PUBLIC_ID
 
     @staticmethod
     def execute_with_timeout(func: Callable, timeout: float) -> Any:
@@ -134,6 +140,31 @@ class RealitioContract(Contract):
             args=(question_id, *claim_params),
         )
         return dict(data=data)
+
+    @classmethod
+    def simulate_claim_winnings(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_id: bytes,
+        claim_params: ClaimParamsType,
+        sender_address: str,
+    ) -> JSONLike:
+        """Simulate `claimWinnings` transaction."""
+        data = cls.build_claim_winnings(ledger_api, contract_address, question_id, claim_params)["data"]
+        try:
+            ledger_api.api.eth.call(
+                {
+                    "from": ledger_api.api.to_checksum_address(sender_address),
+                    "to": ledger_api.api.to_checksum_address(contract_address),
+                    "data": data[2:],
+                }
+            )
+            simulation_ok = True
+        except ValueError as e:
+            _logger.info(f"Simulation failed: {str(e)}")
+            simulation_ok = False
+        return dict(data=simulation_ok)
 
     @classmethod
     def get_history_hash(
