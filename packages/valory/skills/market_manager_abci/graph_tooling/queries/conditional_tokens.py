@@ -38,6 +38,7 @@ user_positions = Template(
                 position {
                     id
                     conditionIds
+                    lifetimeValue
                 }
                 totalBalance
                 wrappedBalance

@@ -20,7 +20,7 @@
 """Utils for graph interactions."""
 import time
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 
 class MarketState(Enum):
@@ -51,12 +51,27 @@ def get_position_balance(
     return 0
 
 
-def get_condition_id_to_payout(
+def get_position_lifetime_value(
+    user_positions: List[Dict[str, Any]],
+    condition_id: str,
+) -> int:
+    """Get the balance of a position."""
+    for position in user_positions:
+        position_condition_ids = position["position"]["conditionIds"]
+        balance = int(position["position"]["lifetimeValue"])
+        if condition_id.lower() in position_condition_ids:
+            return balance
+
+    return 0
+
+
+def get_condition_id_to_balances(
     creator_trades: List[Dict[str, Any]],
     user_positions: List[Dict[str, Any]],
-) -> Dict[str, int]:
-    """Get the condition id to payout."""
+) -> Tuple[Dict[str, int], Dict[str, int]]:
+    """Get the condition id to balances."""
     condition_id_to_payout = {}
+    condition_id_to_balance = {}
     for fpmm_trade in creator_trades:
         outcome_index = int(fpmm_trade["outcomeIndex"])
         fpmm = fpmm_trade["fpmm"]
@@ -75,17 +90,19 @@ def get_condition_id_to_payout(
 
         if market_status == MarketState.CLOSED:
             current_answer = int(fpmm["currentAnswer"], 16)  # type: ignore
-            # we have the correct answer, and we haven't redeemed yet
+            # we have the correct answer
             if outcome_index == current_answer:
                 condition_id = fpmm_trade["fpmm"]["condition"]["id"]
-                payout = get_position_balance(user_positions, condition_id)
+                balance = get_position_balance(user_positions, condition_id)
+                condition_id_to_balance[condition_id] = balance
+                # get the payout for this condition
+                payout = get_position_lifetime_value(user_positions, condition_id)
                 if payout > 0:
                     condition_id_to_payout[condition_id] = payout
 
-    return condition_id_to_payout
+    return condition_id_to_payout, condition_id_to_balance
 
-
-def filter_claimed_payouts(
+def filter_claimed_conditions(
     payouts: Dict[str, int], claimed_condition_ids: List[str]
 ) -> Dict[str, int]:
     """Filter out the claimed payouts."""

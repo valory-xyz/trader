@@ -56,8 +56,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
-    filter_claimed_payouts,
-    get_condition_id_to_payout,
+    filter_claimed_conditions,
+    get_condition_id_to_balances,
 )
 
 
@@ -367,10 +367,11 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _filter_trades(self) -> None:
         """Filter the trades, removing the redeemed condition ids."""
+        redeemed_condition_ids = [condition_id.lower() for condition_id in self.redeemed_condition_ids]
         self.trades = {
             trade
             for trade in self.trades
-            if trade.fpmm.condition.id.hex()[2:] not in self.redeemed_condition_ids
+            if trade.fpmm.condition.id.hex().lower() not in redeemed_condition_ids
         }
         self.redeeming_progress.trades = self.trades
 
@@ -488,12 +489,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         # process the positions
-        unfiltered_payouts = get_condition_id_to_payout(trades, user_positions)
+        payouts, unredeemed_raw = get_condition_id_to_balances(trades, user_positions)
         # filter out positions that are already claimed
-        payouts = filter_claimed_payouts(
-            unfiltered_payouts, self.redeeming_progress.claimed_condition_ids
+        unredeemed = filter_claimed_conditions(
+            unredeemed_raw, self.redeeming_progress.claimed_condition_ids
         )
         self.redeeming_progress.payouts = payouts
+        self.redeeming_progress.unredeemed_trades = unredeemed
 
         return True
 
@@ -758,6 +760,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.context.logger.info("Position's redeeming amount is dust.")
             return False
 
+        if self.params.use_subgraph_for_redeeming:
+            condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
+            if (
+                    condition_id not in self.redeeming_progress.payouts
+                    or self.redeeming_progress.payouts[condition_id] == 0
+            ):
+                return False
+
         success = yield from self._prepare_single_redeem()
         if not success:
             return False
@@ -809,7 +819,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             # self.redeeming_progress.claiming_condition_ids, and will no longer be taken into
             # consideration. This is done to avoid cases where the subgraph is not up-to date
             # and the same condition id is returned multiple times.
-            claiming_condition_id = "0x" + redeem_candidate.fpmm.condition.id.hex()
+            claiming_condition_id = redeem_candidate.fpmm.condition.id.hex()
             self.redeeming_progress.claiming_condition_ids.append(claiming_condition_id)
 
             if winnings_found == self.params.redeeming_batch_size:
