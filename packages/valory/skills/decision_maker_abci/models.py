@@ -98,10 +98,13 @@ class RedeemingProgress:
     check_to_block: BlockIdentifier = "latest"
     cleaned: bool = False
     payouts: Dict[str, int] = field(default_factory=lambda: {})
+    unredeemed_trades: Dict[str, int] = field(default_factory=lambda: {})
     claim_started: bool = False
     claim_from_block: BlockIdentifier = "earliest"
     claim_to_block: BlockIdentifier = "latest"
     answered: list = field(default_factory=lambda: [])
+    claiming_condition_ids: List[str] = field(default_factory=lambda: [])
+    claimed_condition_ids: List[str] = field(default_factory=lambda: [])
 
     @property
     def check_finished(self) -> bool:
@@ -309,6 +312,11 @@ class DecisionMakerParams(MarketManagerParams):
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
         )
+        self.use_subgraph_for_redeeming = self._ensure(
+            "use_subgraph_for_redeeming",
+            kwargs,
+            bool,
+        )
         super().__init__(*args, **kwargs)
 
     @property
@@ -435,3 +443,15 @@ class MechInteractionResponse:
         response = cls()
         response.error = f"The response's format was unexpected: {res}"
         return response
+
+
+class TradesSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
+
+
+class ConditionalTokensSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the Coniditonal Tokens's subgraph specifications."""
+
+
+class RealitioSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the Realitio's subgraph specifications."""

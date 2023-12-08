@@ -25,8 +25,13 @@ from abc import ABC
 from enum import Enum, auto
 from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
+from web3 import Web3
+
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.conditional_tokens import (
+    user_positions as user_positions_query,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.network import (
     block_number,
 )
@@ -34,11 +39,20 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen impor
     questions,
     trades,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio import (
+    answers as answers_query,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades import (
+    trades as trades_query,
+)
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
     SharedState,
 )
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
+
+
+QUERY_BATCH_SIZE = 1000
 
 
 def to_content(query: str) -> bytes:
@@ -229,3 +243,137 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         )
 
         return {} if block is None else block
+
+    def fetch_claim_params(
+        self, question_id: str
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Fetch claim parameters from the subgraph."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+        current_subgraph = self.context.realitio_subgraph
+        query = answers_query.substitute(
+            question_id=question_id,
+        )
+        res_raw = yield from self.get_http_response(
+            content=to_content(query),
+            **current_subgraph.get_spec(),
+        )
+        res = current_subgraph.process_response(res_raw)
+        raw_answers = yield from self._handle_response(
+            current_subgraph,
+            res,
+            res_context="answers",
+        )
+        if raw_answers is None:
+            # we failed to get the answers
+            self.context.logger.error(
+                f"Failing to get answers for question {question_id} from {current_subgraph.api_id}"
+            )
+            return None
+        answers = [
+            {
+                "args": {
+                    "answer": bytes.fromhex(answer["answer"][2:]),
+                    "question_id": bytes.fromhex(answer["question"]["questionId"][2:]),
+                    "history_hash": bytes.fromhex(
+                        answer["question"]["historyHash"][2:]
+                    ),
+                    "user": Web3.to_checksum_address(answer["question"]["user"]),
+                    "bond": int(answer["bondAggregate"]),
+                    "timestamp": int(answer["timestamp"]),
+                    "is_commitment": False,
+                }
+            }
+            for answer in raw_answers
+        ]
+        return answers
+
+    def fetch_trades(
+        self,
+        creator: str,
+        from_timestamp: float,
+        to_timestamp: float,
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Fetch trades from the subgraph."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+        current_subgraph = self.context.trades_subgraph
+
+        all_trades: List[Dict[str, Any]] = []
+        creation_timestamp_gt = (
+            0  # used to allow for batching based on creation timestamp
+        )
+        # fetch trades in batches of `QUERY_BATCH_SIZE`
+        while True:
+            query = trades_query.substitute(
+                creator=creator.lower(),
+                creationTimestamp_lte=int(to_timestamp),
+                creationTimestamp_gte=int(from_timestamp),
+                first=QUERY_BATCH_SIZE,
+                creationTimestamp_gt=creation_timestamp_gt,
+            )
+
+            res_raw = yield from self.get_http_response(
+                content=to_content(query),
+                **current_subgraph.get_spec(),
+            )
+            res = current_subgraph.process_response(res_raw)
+            trades = yield from self._handle_response(
+                current_subgraph,
+                res,
+                res_context="trades",
+            )
+            if res is None:
+                # something went wrong
+                self.context.logger.error("Failed to process all trades.")
+                return all_trades
+
+            trades = cast(List[Dict[str, Any]], trades)
+            if len(trades) == 0:
+                # no more trades to fetch
+                return all_trades
+
+            # this is the last trade's creation timestamp
+            # they are sorted by creation timestamp in ascending order
+            # so we can use this to fetch the next batch
+            creation_timestamp_gt = trades[-1]["creationTimestamp"]
+            all_trades.extend(trades)
+
+    def fetch_user_positions(
+        self, user: str
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Fetch positions for a user from the subgraph."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+        current_subgraph = self.context.conditional_tokens_subgraph
+
+        user_positions_id_gt = (
+            0  # used to allow for batching based on user positions id
+        )
+        all_positions: List[Dict[str, Any]] = []
+        while True:
+            query = user_positions_query.substitute(
+                id=user.lower(),
+                first=QUERY_BATCH_SIZE,
+                userPositions_id_gt=user_positions_id_gt,
+            )
+            res_raw = yield from self.get_http_response(
+                content=to_content(query),
+                **current_subgraph.get_spec(),
+            )
+            res = current_subgraph.process_response(res_raw)
+
+            positions = yield from self._handle_response(
+                current_subgraph,
+                res,
+                res_context="positions",
+            )
+            if res is None:
+                # something went wrong
+                self.context.logger.error("Failed to process all positions.")
+                return all_positions
+
+            positions = cast(List[Dict[str, Any]], positions)
+            if len(positions) == 0:
+                # no more positions to fetch
+                return all_positions
+
+            all_positions.extend(positions)
+            user_positions_id_gt = positions[-1]["id"]

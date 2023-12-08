@@ -129,12 +129,28 @@ class PostTxSettlementBehaviour(BaseBehaviour):
         """Return the synchronized data."""
         return SynchronizedData(super().synchronized_data.db)
 
+    @property
+    def redeeming_progress(self) -> RedeemingProgress:
+        """Get the redeeming progress."""
+        return self.shared_state.redeeming_progress  # type: ignore
+
+    @redeeming_progress.setter
+    def redeeming_progress(self, value: RedeemingProgress) -> None:
+        """Set the redeeming progress."""
+        self.shared_state.redeeming_progress = value
+
     def _on_redeem_round_tx_settled(self) -> None:
         """Handle the redeem round."""
         self.context.logger.info(
             "Redeeming transaction was settled. Resetting the redeeming progress."
         )
-        self.shared_state.redeeming_progress = RedeemingProgress()  # type: ignore
+        claimed_condition_ids = self.redeeming_progress.claimed_condition_ids
+        claimed_condition_ids.extend(self.redeeming_progress.claiming_condition_ids)
+        self.redeeming_progress = RedeemingProgress()
+        self.redeeming_progress.claimed_condition_ids = claimed_condition_ids
+        self.context.logger.info(
+            f"The following condition ids were claimed so far: {claimed_condition_ids}"
+        )
 
     def _on_tx_settled(self) -> None:
         """Handle the tx settled event."""

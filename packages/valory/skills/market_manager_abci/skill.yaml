@@ -14,9 +14,13 @@ fingerprint:
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
+  graph_tooling/queries/conditional_tokens.py: bafybeic6ohkdp4rvkcfglieksv6gbzm4qocpgdjaz4sroutl37sxijthji
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
   graph_tooling/queries/omen.py: bafybeidza3jmqaapfjxuuxhil2t6ibdphyxdyfnz5f7ggrdz63wxphtvhy
-  graph_tooling/requests.py: bafybeicz4rszvcmdmc2jms6en5c65mfsdhwsj3qzg2sl7s5fz6einbgwha
+  graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
+  graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
+  graph_tooling/requests.py: bafybeidgqarihxzjwqnbrv6vwnrxd7sck6udevtu3nc23rkxeid5acejzy
+  graph_tooling/utils.py: bafybeib75lziydmni6fwqg2my63ioyor2gohe5pin62tu23at5p77nndni
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeifmb4cojxesv2lcw6j3pm3yqjpsiuwyxpuexjbz656fpapdqcj2ba
   payloads.py: bafybeiamavgddfbzofpsjthmw6j7g2dyxm7fb6hvdb47kweyrx4w2ihcfi
@@ -172,5 +176,7 @@ models:
   state:
     args: {}
     class_name: SharedState
-dependencies: {}
+dependencies:
+  web3:
+    version: <7,>=6.0.0
 is_abstract: true

@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidy6nkwe2plmkmnxeqnvzqgi2nlxv5mju6iqidbvwepxqeqik44xi
+agent: valory/trader:0.1.0:bafybeifzgeybvq4u53sia5joywd3ooksfjsivvcodeesvbgpkkkuizcjhu
 number_of_agents: 4
 deployment: {}
 ---
@@ -111,6 +111,7 @@ type: skill
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -193,6 +194,7 @@ type: skill
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
 2:
   models:
@@ -273,6 +275,7 @@ type: skill
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
 3:
   models:
@@ -353,6 +356,7 @@ type: skill
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeiauu6lecgrxlqlexaorsnpbzj6beto7kagdx6zawqx6z5fo5wmxhy",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0
