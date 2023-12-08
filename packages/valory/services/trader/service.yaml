@@ -111,7 +111,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeid6px3gw2c3u7hnsb6p677f4l6gyr3xy7wohafwifzzsnw6dwcp6y",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
-        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":600000000000000000,"0.7":900000000000000000,"0.8":1000000000000000000,"0.9":10000000000000000000,"1.0":100000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: &id004
       args:
@@ -195,7 +195,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeid6px3gw2c3u7hnsb6p677f4l6gyr3xy7wohafwifzzsnw6dwcp6y",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
-        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":600000000000000000,"0.7":900000000000000000,"0.8":1000000000000000000,"0.9":10000000000000000000,"1.0":100000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
 2:
@@ -277,7 +277,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeid6px3gw2c3u7hnsb6p677f4l6gyr3xy7wohafwifzzsnw6dwcp6y",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
-        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":600000000000000000,"0.7":900000000000000000,"0.8":1000000000000000000,"0.9":10000000000000000000,"1.0":100000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
 3:
@@ -359,7 +359,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeid6px3gw2c3u7hnsb6p677f4l6gyr3xy7wohafwifzzsnw6dwcp6y",["bet_amount_per_threshold"]],["bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy",["kelly_criterion"]]]}
-        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":0,"0.7":0,"0.8":0,"0.9":0,"1.0":0}]]}
+        strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":600000000000000000,"0.7":900000000000000000,"0.8":1000000000000000000,"0.9":10000000000000000000,"1.0":100000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
 ---
