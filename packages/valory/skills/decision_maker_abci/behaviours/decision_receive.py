@@ -31,6 +31,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
     remove_fraction_wei,
 )
+from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     MechInteractionResponse,
     MechResponseSpecs,
@@ -53,7 +54,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize Behaviour."""
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, loader_cls=ComponentPackageLoader)
         self._from_block: int = 0
         self._request_id: int = 0
         self._response_hex: str = ""
