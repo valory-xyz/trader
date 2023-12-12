@@ -22,7 +22,7 @@
 import dataclasses
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Generator, List, Optional, Set, cast
+from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -42,6 +42,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     BaseBehaviour,
     TimeoutException,
 )
+from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
     MultisendBatch,
@@ -64,7 +65,6 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-STRATEGY_RUN_METHOD = "run"
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 
@@ -91,32 +91,33 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
 
-    def strategy_exec(self, strategy: str) -> Optional[str]:
+    def strategy_exec(self, strategy: str) -> Optional[Tuple[str, str]]:
         """Get the executable strategy file's content."""
         return self.shared_state.strategies_executables.get(strategy, None)
 
     def execute_strategy(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Execute the strategy and return the results."""
-        if STRATEGY_RUN_METHOD in globals():
-            del globals()[STRATEGY_RUN_METHOD]
-
         trading_strategy = kwargs.pop("trading_strategy", None)
         if trading_strategy is None:
             self.context.logger.error(f"No {trading_strategy!r} was given!")
             return {BET_AMOUNT_FIELD: 0}
 
-        strategy_exec = self.strategy_exec(trading_strategy)
-        if strategy_exec is None:
+        strategy = self.strategy_exec(trading_strategy)
+        if strategy is None:
             self.context.logger.error(
                 f"No executable was found for {trading_strategy=}!"
             )
             return {BET_AMOUNT_FIELD: 0}
 
+        strategy_exec, callable_method = strategy
+        if callable_method in globals():
+            del globals()[callable_method]
+
         exec(strategy_exec, globals())  # pylint: disable=W0122  # nosec
-        method = globals().get(STRATEGY_RUN_METHOD, None)
+        method = globals().get(callable_method, None)
         if method is None:
             self.context.logger.error(
-                f"No {STRATEGY_RUN_METHOD!r} method was found in {trading_strategy} strategy's executable."
+                f"No {callable_method!r} method was found in {trading_strategy} strategy's executable."
             )
             return {BET_AMOUNT_FIELD: 0}
 
@@ -269,17 +270,15 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             self.context.logger.error(f"No strategy request to handle for {message=}.")
             return
 
-        files = list(message.files.values())
-        n_files = len(files)
-        if n_files != 1:
-            self.context.logger.error(
-                f"Executables for strategies should be in single files. "
-                f"Found {n_files} files for strategy {strategy_req} instead."
-            )
-
         # store the executable and remove the hash from the mapping because we have downloaded it
-        strategy_exec = files[0]
-        self.shared_state.strategies_executables[strategy_req] = strategy_exec
+        _component_yaml, strategy_exec, callable_method = ComponentPackageLoader.load(
+            message.files
+        )
+
+        self.shared_state.strategies_executables[strategy_req] = (
+            strategy_exec,
+            callable_method,
+        )
         self.shared_state.strategy_to_filehash.pop(strategy_req)
         self._inflight_strategy_req = None
 
