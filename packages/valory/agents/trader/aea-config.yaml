@@ -198,7 +198,7 @@ models:
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
       file_hash_to_strategies_json: ${list:[["bafybeifr5cr2pbvhiwpqyqmuh7cfztaph2vzblxan7fclxawndipnehv3i",["bet_amount_per_threshold"]],["bafybeigqgurbw3rsr7ick4pk46iz2zusdbnriac3hteopdj2gm5bpisew4",["kelly_criterion"]]]}
-      strategies_kwargs: ${list:[["bet_kelly_fraction",0.25],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
+      strategies_kwargs: ${list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
