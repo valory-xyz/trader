@@ -1,5 +1,5 @@
 name: kelly_criterion
-author: valory
+author: jhehemann
 version: 0.1.0
 type: custom_component
 description: The kelly criterion trading strategy.
