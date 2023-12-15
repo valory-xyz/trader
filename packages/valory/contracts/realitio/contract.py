@@ -29,6 +29,7 @@ from aea.crypto.base import LedgerApi
 from eth_typing import ChecksumAddress
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
+from web3.exceptions import ContractLogicError
 
 ClaimParamsType = Tuple[
     List[bytes], List[ChecksumAddress], List[int], List[bytes]
@@ -161,7 +162,7 @@ class RealitioContract(Contract):
                 }
             )
             simulation_ok = True
-        except ValueError as e:
+        except (ValueError, ContractLogicError) as e:
             _logger.info(f"Simulation failed: {str(e)}")
             simulation_ok = False
         return dict(data=simulation_ok)
