@@ -205,7 +205,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         all_trades: List[Dict[str, Any]] = []
         # fetch trades in batches of `QUERY_BATCH_SIZE`
         while True:
-            query = trades_query.substitute(
+            query = trades.substitute(
                 creator=safe.lower(),
                 first=QUERY_BATCH_SIZE,
                 creationTimestamp_gt=creation_timestamp_gt,
@@ -216,7 +216,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 **current_subgraph.get_spec(),
             )
             res = current_subgraph.process_response(res_raw)
-            trades = yield from self._handle_response(
+            trades_chunk = yield from self._handle_response(
                 current_subgraph,
                 res,
                 res_context="trades",
@@ -226,16 +226,16 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 self.context.logger.error("Failed to process all trades.")
                 return all_trades
 
-            trades = cast(List[Dict[str, Any]], trades)
-            if len(trades) == 0:
+            trades_chunk = cast(List[Dict[str, Any]], trades_chunk)
+            if len(trades_chunk) == 0:
                 # no more trades to fetch
                 return all_trades
 
             # this is the last trade's creation timestamp
             # they are sorted by creation timestamp in ascending order
             # so we can use this to fetch the next batch
-            creation_timestamp_gt = trades[-1]["fpmm"]["creationTimestamp"]
-            all_trades.extend(trades)
+            creation_timestamp_gt = trades_chunk[-1]["fpmm"]["creationTimestamp"]
+            all_trades.extend(trades_chunk)
 
 
     def _fetch_block_number(
@@ -323,7 +323,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         )
         # fetch trades in batches of `QUERY_BATCH_SIZE`
         while True:
-            query = trades.substitute(
+            query = trades_query.substitute(
                 creator=creator.lower(),
                 creationTimestamp_lte=int(to_timestamp),
                 creationTimestamp_gte=int(from_timestamp),
