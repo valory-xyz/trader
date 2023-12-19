@@ -21,7 +21,7 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiaqcl7h2famylusiffigwem7tevkcsyocdu5xd42jkmgq6kvowzgq
-- valory/decision_maker_abci:0.1.0:bafybeiec3zfyxuo4v46wggqovxgshvoguab5z5eux377ce4a436vzq5uma
+- valory/decision_maker_abci:0.1.0:bafybeicmz7qm42txvj4433lokpzu4kdf2os6f2kbyy3ydfydrjii6bixjq
 - valory/staking_abci:0.1.0:bafybeiebu4qeblyjbacjvkiiiorxb4p3yy4nuhvsssgbailmqqtgrhwcca
 behaviours:
   main:
