@@ -237,7 +237,6 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             creation_timestamp_gt = trades_chunk[-1]["fpmm"]["creationTimestamp"]
             all_trades.extend(trades_chunk)
 
-
     def _fetch_block_number(
         self, timestamp: int
     ) -> Generator[None, None, Dict[str, str]]:
