@@ -61,13 +61,14 @@ trades = Template(
           type: Buy,
           creator: "${creator}",
           fpmm_: {
+            creationTimestamp_gt: "${creationTimestamp_gt}",
             answerFinalizedTimestamp_not: null,
             isPendingArbitration: false
           }
         }
         orderBy: fpmm__creationTimestamp
         orderDirection: asc
-        first: 1000
+        first: ${first}
       ){
         fpmm {
           answerFinalizedTimestamp

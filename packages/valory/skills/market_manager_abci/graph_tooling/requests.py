@@ -197,26 +197,45 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """Fetch redeeming information from the current subgraph."""
         self._fetch_status = FetchStatus.IN_PROGRESS
 
+        current_subgraph = self.context.trades_subgraph
         safe = self.synchronized_data.safe_contract_address
-        query = trades.substitute(creator=safe.lower())
-
-        # workaround because we cannot have multiple response keys for a single `ApiSpec`
-        res_key_backup = self.current_subgraph.response_info.response_key
-        self.current_subgraph.response_info.response_key = "data:fpmmTrades"
-
-        res_raw = yield from self.get_http_response(
-            content=to_content(query),
-            **self.current_subgraph.get_spec(),
+        creation_timestamp_gt = (
+            0  # used to allow for batching based on creation timestamp
         )
-        res = self.current_subgraph.process_response(res_raw)
-        self.current_subgraph.response_info.response_key = res_key_backup
+        all_trades: List[Dict[str, Any]] = []
+        # fetch trades in batches of `QUERY_BATCH_SIZE`
+        while True:
+            query = trades.substitute(
+                creator=safe.lower(),
+                first=QUERY_BATCH_SIZE,
+                creationTimestamp_gt=creation_timestamp_gt,
+            )
 
-        redeem_info = yield from self._handle_response(
-            self.current_subgraph,
-            res,
-            res_context="trades",
-        )
-        return redeem_info
+            res_raw = yield from self.get_http_response(
+                content=to_content(query),
+                **current_subgraph.get_spec(),
+            )
+            res = current_subgraph.process_response(res_raw)
+            trades_chunk = yield from self._handle_response(
+                current_subgraph,
+                res,
+                res_context="trades",
+            )
+            if res is None:
+                # something went wrong
+                self.context.logger.error("Failed to process all trades.")
+                return all_trades
+
+            trades_chunk = cast(List[Dict[str, Any]], trades_chunk)
+            if len(trades_chunk) == 0:
+                # no more trades to fetch
+                return all_trades
+
+            # this is the last trade's creation timestamp
+            # they are sorted by creation timestamp in ascending order
+            # so we can use this to fetch the next batch
+            creation_timestamp_gt = trades_chunk[-1]["fpmm"]["creationTimestamp"]
+            all_trades.extend(trades_chunk)
 
     def _fetch_block_number(
         self, timestamp: int
@@ -316,7 +335,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 **current_subgraph.get_spec(),
             )
             res = current_subgraph.process_response(res_raw)
-            trades = yield from self._handle_response(
+            trades_chunk = yield from self._handle_response(
                 current_subgraph,
                 res,
                 res_context="trades",
@@ -326,16 +345,16 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 self.context.logger.error("Failed to process all trades.")
                 return all_trades
 
-            trades = cast(List[Dict[str, Any]], trades)
-            if len(trades) == 0:
+            trades_chunk = cast(List[Dict[str, Any]], trades_chunk)
+            if len(trades_chunk) == 0:
                 # no more trades to fetch
                 return all_trades
 
             # this is the last trade's creation timestamp
             # they are sorted by creation timestamp in ascending order
             # so we can use this to fetch the next batch
-            creation_timestamp_gt = trades[-1]["creationTimestamp"]
-            all_trades.extend(trades)
+            creation_timestamp_gt = trades_chunk[-1]["creationTimestamp"]
+            all_trades.extend(trades_chunk)
 
     def fetch_user_positions(
         self, user: str
