@@ -79,7 +79,11 @@ def get_condition_id_to_balances(
         is_pending_arbitration = fpmm["isPendingArbitration"]
         opening_timestamp = fpmm["openingTimestamp"]
         market_status = MarketState.CLOSED
-        if fpmm["currentAnswer"] is None and time.time() >= float(opening_timestamp):
+        if (
+            fpmm["currentAnswer"] is None
+            and opening_timestamp is not None
+            and time.time() >= float(opening_timestamp)
+        ):
             market_status = MarketState.PENDING
         elif fpmm["currentAnswer"] is None:
             market_status = MarketState.OPEN
