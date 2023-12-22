@@ -65,7 +65,7 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiedxeismnx3k5ty4mvvhlqideixlhqmi5mtcki4lxqfa7uqh7p33u
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidbmd2cgffqqfwsyxws5dffsc6nbt5ijgkbhyzse5i42yddmwqlpy
-- valory/market_manager_abci:0.1.0:bafybeih6jgq5ys442uxi6ezrnyfxasrlhjgivmz6ffoyf6illv3ofb6mjq
+- valory/market_manager_abci:0.1.0:bafybeievf7r6kz4z3hz2po6tkugjcmlk56xbrb5ixpoqb45evz57zjuuka
 - valory/transaction_settlement_abci:0.1.0:bafybeidsfwslnbhhhplvgteeec7idrhm7gxpay4f36wwnkgl4mh7ogovke
 behaviours:
   main:
