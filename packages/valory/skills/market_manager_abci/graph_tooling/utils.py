@@ -23,9 +23,7 @@ from enum import Enum
 from typing import Any, Dict, List, Tuple
 
 
-INVALID_MARKET_ANSWER = int(
-    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16
-)
+INVALID_MARKET_ANSWER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 
 class MarketState(Enum):
