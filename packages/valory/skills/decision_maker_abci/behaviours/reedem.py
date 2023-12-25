@@ -502,18 +502,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         # process the positions
-        self.context.logger.info(
-            f"User positions: {json.dumps(user_positions, indent=2)}"
-        )
         payouts, unredeemed_raw = get_condition_id_to_balances(trades, user_positions)
-        self.context.logger.info(f"Unredeemed raw: {unredeemed_raw}")
 
-        self.context.logger.info(f"Claimed conditions ids: {self.redeeming_progress.claimed_condition_ids}")
         # filter out positions that are already claimed
         unredeemed = filter_claimed_conditions(
             unredeemed_raw, self.redeeming_progress.claimed_condition_ids
         )
-        self.context.logger.info(f"Unredeemed: {unredeemed_raw}")
 
         self.redeeming_progress.payouts = payouts
         self.redeeming_progress.unredeemed_trades = unredeemed

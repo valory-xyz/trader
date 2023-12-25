@@ -26,6 +26,11 @@ from typing import Any, List
 from hexbytes import HexBytes
 
 
+INVALID_MARKET_ANSWER = (
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+)
+
+
 @dataclasses.dataclass(frozen=True)
 class Condition:
     """A structure for an OMEN condition."""
@@ -129,7 +134,7 @@ class Trade:
         """Return whether the current position is winning."""
         our_answer = self.outcomeIndex
         correct_answer = self.fpmm.current_answer_index
-        return our_answer == correct_answer
+        return our_answer == correct_answer or correct_answer == INVALID_MARKET_ANSWER
 
     @property
     def claimable_amount(self) -> int:

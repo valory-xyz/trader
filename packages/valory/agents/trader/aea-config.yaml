@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeida6w2afp4m3dvnbkbwxz67ozjlry3wpsbkxwz7usalm3o2ghy46u
 - valory/termination_abci:0.1.0:bafybeid5ipudhwuiuhbzvpn4usgdm3a3ow3naafuefvetmgbbcy6ugyuwi
 - valory/transaction_settlement_abci:0.1.0:bafybeidsfwslnbhhhplvgteeec7idrhm7gxpay4f36wwnkgl4mh7ogovke
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiabqgmh7wts2lee7uz4efh7eff7jjiryxbw3ofjg5xkvywbtd23ka
-- valory/market_manager_abci:0.1.0:bafybeigzaxiyeix5jbdfvilohq5mo6zij4exdiljuygmrq4dbf73ygrh5m
-- valory/decision_maker_abci:0.1.0:bafybeihuvoctgsi6wlfheutyicg4ytaxc34a63mxjkkcjtyoerac7h775a
-- valory/trader_abci:0.1.0:bafybeigdsbg43zq35zv2eq27sutuglvbhawzmmo7ca5bzdgoprrerusbqa
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia4je5sswi5djvrvlscbms5opten5uxzdcs64rysje4an4ylgitri
+- valory/market_manager_abci:0.1.0:bafybeicqjiqq63bcb6colaq4adwsn7o6zhyd7n5ftwdv4kvt3rqxhnapw4
+- valory/decision_maker_abci:0.1.0:bafybeictykibll26pjydtfmg54hpyoebwx2linmiatohrwpgvd35lwmyha
+- valory/trader_abci:0.1.0:bafybeigcnnr2dgdqofgcn2vxaqigek2qbytparxvryzjndxrpk4vovpnra
 - valory/staking_abci:0.1.0:bafybeihmfcd3kp2jwt4zznoxcwyutyqmfg6myi3buehtaznpq6qfcu4l6u
 default_ledger: ethereum
 required_ledgers:
