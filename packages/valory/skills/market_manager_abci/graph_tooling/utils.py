@@ -23,6 +23,11 @@ from enum import Enum
 from typing import Any, Dict, List, Tuple
 
 
+INVALID_MARKET_ANSWER = int(
+    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16
+)
+
+
 class MarketState(Enum):
     """Market state"""
 
@@ -94,8 +99,11 @@ def get_condition_id_to_balances(
 
         if market_status == MarketState.CLOSED:
             current_answer = int(fpmm["currentAnswer"], 16)  # type: ignore
-            # we have the correct answer
-            if outcome_index == current_answer:
+            # we have the correct answer, or the market was invalid
+            if (
+                outcome_index == current_answer
+                or current_answer == INVALID_MARKET_ANSWER
+            ):
                 condition_id = fpmm_trade["fpmm"]["condition"]["id"]
                 balance = get_position_balance(user_positions, condition_id)
                 condition_id_to_balance[condition_id] = balance
