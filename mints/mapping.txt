@@ -6,9 +6,12 @@ token_id-"component_id"
 111-"skill/valory/decision_maker_abci/0.1.0"
 112-"skill/valory/tx_settlement_multiplexer_abci/0.1.0"
 113-"skill/valory/trader_abci/0.1.0"
+166-"custom/valory/bet_amount_per_threshold/0.1.0"
+167-"custom/jhehemann/kelly_criterion/0.1.0"
 ---
 token_id-"agent_id"
 14-"agent/valory/trader/0.1.0"
+25-"agent/valory/trader/0.1.0"
 ---
 token_id-"service_id" (Gnosis)
 10-"service/valory/trader/0.1.0"
