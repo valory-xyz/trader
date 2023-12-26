@@ -1,7 +1,7 @@
 name: bet_amount_per_threshold
 author: valory
 version: 0.1.0
-type: custom_component
+type: custom
 description: A simple strategy that bets a fixed amount when the confidence is of a given threshold.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'

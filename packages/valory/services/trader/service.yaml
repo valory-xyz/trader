@@ -110,7 +110,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeifr5cr2pbvhiwpqyqmuh7cfztaph2vzblxan7fclxawndipnehv3i",["bet_amount_per_threshold"]],["bafybeigqgurbw3rsr7ick4pk46iz2zusdbnriac3hteopdj2gm5bpisew4",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: &id004
@@ -194,7 +194,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeifr5cr2pbvhiwpqyqmuh7cfztaph2vzblxan7fclxawndipnehv3i",["bet_amount_per_threshold"]],["bafybeigqgurbw3rsr7ick4pk46iz2zusdbnriac3hteopdj2gm5bpisew4",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
@@ -276,7 +276,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeifr5cr2pbvhiwpqyqmuh7cfztaph2vzblxan7fclxawndipnehv3i",["bet_amount_per_threshold"]],["bafybeigqgurbw3rsr7ick4pk46iz2zusdbnriac3hteopdj2gm5bpisew4",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
@@ -358,7 +358,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeifr5cr2pbvhiwpqyqmuh7cfztaph2vzblxan7fclxawndipnehv3i",["bet_amount_per_threshold"]],["bafybeigqgurbw3rsr7ick4pk46iz2zusdbnriac3hteopdj2gm5bpisew4",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
     benchmark_tool: *id004
