@@ -503,10 +503,12 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         # process the positions
         payouts, unredeemed_raw = get_condition_id_to_balances(trades, user_positions)
+
         # filter out positions that are already claimed
         unredeemed = filter_claimed_conditions(
             unredeemed_raw, self.redeeming_progress.claimed_condition_ids
         )
+
         self.redeeming_progress.payouts = payouts
         self.redeeming_progress.unredeemed_trades = unredeemed
 
