@@ -1,0 +1,1 @@
+{"name":"custom/valory/bet_amount_per_threshold:0.1.0","description":"A simple strategy that bets a fixed amount when the confidence is of a given threshold.","code_uri":"ipfs://bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy","image":"ipfs://bafybeiekgqhuk4m65gxrxm7kdnroeychs35cg4qt62vev2qdsayanidrdq","attributes":[{"trait_type":"version","value":"0.1.0"}]}
