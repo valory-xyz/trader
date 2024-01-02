@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,12 @@
 
 """This module contains the behaviours for the MarketManager skill."""
 
+import json
+import os.path
+from abc import ABC
 from typing import Any, Generator, Iterator, List, Set, Tuple, Type
+
+from aea.helpers.ipfs.base import IPFSHashOnly
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
@@ -39,7 +44,47 @@ from packages.valory.skills.market_manager_abci.rounds import (
 )
 
 
-class UpdateBetsBehaviour(QueryingBehaviour):
+BETS_FILENAME = "bets.json"
+READ_MODE = "r"
+WRITE_MODE = "w"
+
+
+class BetsManagerBehaviour(BaseBehaviour, ABC):
+    """Abstract behaviour responsible for bets management, such as storing, hashing, reading."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize `BetsManagerBehaviour`."""
+        super().__init__(**kwargs)
+        self.bets: List[Bet] = []
+        self.bets_filepath: str = os.path.join(self.context.data_dir, BETS_FILENAME)
+
+    def store_bets(self) -> None:
+        """Store the bets to the agent's data dir as JSON."""
+        serialized = serialize_bets(self.bets)
+        if serialized is None:
+            return
+
+        with open(self.bets_filepath, WRITE_MODE) as bets_file:
+            bets_file.write(serialized)
+
+    def read_bets(self) -> None:
+        """Read the bets from the agent's data dir as JSON."""
+        if not os.path.isfile(self.bets_filepath):
+            self.context.logger.warning(
+                f"No stored bets file was detected in {self.bets_filepath}. Assuming bets are empty."
+            )
+            self.bets = []
+            return
+
+        with open(self.bets_filepath, READ_MODE) as bets_file:
+            self.bets = json.load(bets_file)
+
+    def hash_stored_bets(self) -> str:
+        """Get the hash of the stored bets' file."""
+        return IPFSHashOnly.hash_file(self.bets_filepath)
+
+
+class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets."""
 
     matching_round = UpdateBetsRound
@@ -47,7 +92,6 @@ class UpdateBetsBehaviour(QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `UpdateBetsBehaviour`."""
         super().__init__(**kwargs)
-        self.bets: List[Bet] = []
 
     def is_frozen_bet(self, bet: Bet) -> bool:
         """Return if a bet should not be updated."""
