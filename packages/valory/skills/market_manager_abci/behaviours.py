@@ -31,6 +31,7 @@ from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundB
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetStatus,
+    BetsDecoder,
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -77,7 +78,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             return
 
         with open(self.bets_filepath, READ_MODE) as bets_file:
-            self.bets = json.load(bets_file)
+            self.bets = json.load(bets_file, cls=BetsDecoder)
 
     def hash_stored_bets(self) -> str:
         """Get the hash of the stored bets' file."""
