@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ from packages.valory.skills.abstract_round_abci.base import (
 )
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
-from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
 )
@@ -67,11 +66,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def sampled_bet_index(self) -> int:
         """Get the sampled bet."""
         return int(self.db.get_strict("sampled_bet_index"))
-
-    @property
-    def sampled_bet(self) -> Bet:
-        """Get the sampled bet."""
-        return self.bets[self.sampled_bet_index]
 
     @property
     def is_mech_price_set(self) -> bool:
@@ -161,11 +155,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def participant_to_decision(self) -> DeserializedCollection:
         """Get the participants to decision-making."""
         return self._get_deserialized("participant_to_decision")
-
-    @property
-    def participant_to_sampling(self) -> DeserializedCollection:
-        """Get the participants to bet-sampling."""
-        return self._get_deserialized("participant_to_sampling")
 
     @property
     def participant_to_tx_prep(self) -> DeserializedCollection:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 """This module contains the behaviour for the blacklisting of the sampled bet."""
 
-from typing import Generator, Optional
+from typing import Generator
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -28,7 +28,7 @@ from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayl
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.market_manager_abci.bets import BetStatus, serialize_bets
+from packages.valory.skills.market_manager_abci.bets import BetStatus
 
 
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
@@ -42,11 +42,10 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
         return synced_time.timestamp()
 
-    def _blacklist(self) -> Optional[str]:
-        """Blacklist the sampled bet and return the updated version of the bets, serialized."""
-        bets = self.synchronized_data.bets
+    def _blacklist(self) -> None:
+        """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index
-        sampled_bet = bets[sampled_bet_index]
+        sampled_bet = self.bets[sampled_bet_index]
         sampled_bet.status = BetStatus.BLACKLISTED
         blacklist_expiration = self.synced_time + self.params.blacklisting_duration
         sampled_bet.blacklist_expiration = blacklist_expiration
@@ -57,8 +56,6 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
             penalty *= self.params.tool_punishment_multiplier
             self.policy.add_reward(tool_idx, penalty)
 
-        return serialize_bets(bets)
-
     def setup(self) -> None:
         """Setup the behaviour"""
         self._policy = self.synchronized_data.policy
@@ -67,8 +64,11 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            bets = self._blacklist()
+            self.read_bets()
+            self._blacklist()
+            self.store_bets()
+            bets_hash = self.hash_stored_bets()
             policy = self.policy.serialize()
-            payload = BlacklistingPayload(self.context.agent_address, bets, policy)
+            payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)
 
         yield from self.finish_behaviour(payload)

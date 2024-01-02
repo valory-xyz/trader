@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     @property
     def market_maker_contract_address(self) -> str:
         """Get the contract address of the market maker on which the service is going to place the bet."""
-        return self.synchronized_data.sampled_bet.id
+        return self.sampled_bet.id
 
     @property
     def investment_amount(self) -> int:
@@ -192,7 +192,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-        outcome = self.synchronized_data.sampled_bet.get_outcome(self.outcome_index)
+        outcome = self.sampled_bet.get_outcome(self.outcome_index)
         investment = self._collateral_amount_info(self.investment_amount)
         self.context.logger.info(
             f"Preparing a mutlisig transaction to place a bet for {outcome!r}, with confidence "

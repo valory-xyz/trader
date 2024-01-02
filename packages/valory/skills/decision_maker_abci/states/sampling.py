@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,27 +19,26 @@
 
 """This module contains the sampling state of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import (
-    CollectSameUntilThresholdRound,
-    get_name,
-)
+from typing import Any, Type
+
+from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
-class SamplingRound(CollectSameUntilThresholdRound):
+class SamplingRound(UpdateBetsRound):
     """A round for sampling a bet."""
 
-    payload_class = SamplingPayload
-    synchronized_data_class = SynchronizedData
+    payload_class: Type[UpdateBetsPayload] = SamplingPayload
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (
-        get_name(SynchronizedData.bets),
+    selection_key: Any = (
+        UpdateBetsRound.selection_key,
         get_name(SynchronizedData.sampled_bet_index),
     )
-    collection_key = get_name(SynchronizedData.participant_to_sampling)

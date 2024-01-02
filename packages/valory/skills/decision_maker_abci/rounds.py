@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -142,6 +142,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         ToolSelectionRound: {
             Event.DONE: DecisionRequestRound,
@@ -228,7 +230,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.final_tx_hash),
         },
         HandleFailedTxRound: {
-            get_name(SynchronizedData.bets),
+            get_name(SynchronizedData.bets_hash),
         },
         SamplingRound: set(),
     }

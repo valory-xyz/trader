@@ -103,7 +103,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     @property
     def frozen_local_bets(self) -> Iterator[Bet]:
         """Get the frozen, already existing, bets."""
-        return filter(self.is_frozen_bet, self.synchronized_data.bets)
+        return filter(self.is_frozen_bet, self.bets)
 
     @property
     def frozen_bets_and_ids(self) -> Tuple[List[Bet], Set[str]]:
@@ -143,10 +143,11 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            self.read_bets()
             yield from self._update_bets()
-            payload = UpdateBetsPayload(
-                self.context.agent_address, serialize_bets(self.bets)
-            )
+            self.store_bets()
+            bets_hash = self.hash_stored_bets()
+            payload = UpdateBetsPayload(self.context.agent_address, bets_hash)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)
