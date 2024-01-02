@@ -76,6 +76,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 9.
             - no majority: 0.
             - round timeout: 0.
+            - fetch error: 12.
         1. ToolSelectionRound
             - done: 2.
             - none: 1.
