@@ -53,6 +53,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
@@ -139,12 +140,17 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
-            Event.DONE: ToolSelectionRound,
+            Event.DONE: RandomnessRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
+        },
+        RandomnessRound: {
+            Event.DONE: ToolSelectionRound,
+            Event.ROUND_TIMEOUT: RandomnessRound,
+            Event.NO_MAJORITY: RandomnessRound,
         },
         ToolSelectionRound: {
             Event.DONE: DecisionRequestRound,
