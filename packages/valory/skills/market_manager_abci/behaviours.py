@@ -22,6 +22,7 @@
 import json
 import os.path
 from abc import ABC
+from json import JSONDecodeError
 from typing import Any, Generator, Iterator, List, Set, Tuple, Type
 
 from aea.helpers.ipfs.base import IPFSHashOnly
@@ -63,22 +64,44 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Store the bets to the agent's data dir as JSON."""
         serialized = serialize_bets(self.bets)
         if serialized is None:
+            self.context.logger.warning("No bets to store.")
             return
 
-        with open(self.bets_filepath, WRITE_MODE) as bets_file:
-            bets_file.write(serialized)
+        try:
+            with open(self.bets_filepath, WRITE_MODE) as bets_file:
+                try:
+                    bets_file.write(serialized)
+                    return
+                except (IOError, OSError):
+                    err = f"Error writing to file {self.bets_filepath!r}!"
+        except (FileNotFoundError, PermissionError, OSError):
+            err = f"Error opening file {self.bets_filepath!r} in write mode!"
+
+        self.context.logger.error(err)
 
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
+        self.bets = []
+
         if not os.path.isfile(self.bets_filepath):
             self.context.logger.warning(
                 f"No stored bets file was detected in {self.bets_filepath}. Assuming bets are empty."
             )
-            self.bets = []
             return
 
-        with open(self.bets_filepath, READ_MODE) as bets_file:
-            self.bets = json.load(bets_file, cls=BetsDecoder)
+        try:
+            with open(self.bets_filepath, READ_MODE) as bets_file:
+                try:
+                    self.bets = json.load(bets_file, cls=BetsDecoder)
+                    return
+                except (JSONDecodeError, TypeError):
+                    err = (
+                        f"Error decoding file {self.bets_filepath!r} to a list of bets!"
+                    )
+        except (FileNotFoundError, PermissionError, OSError):
+            err = f"Error opening file {self.bets_filepath!r} in read mode!"
+
+        self.context.logger.error(err)
 
     def hash_stored_bets(self) -> str:
         """Get the hash of the stored bets' file."""
