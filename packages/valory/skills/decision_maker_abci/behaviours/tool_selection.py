@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -258,7 +258,8 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             return None
 
         self._set_policy()
-        selected_idx = self.policy.select_tool()
+        randomness = self.synchronized_data.most_voted_randomness
+        selected_idx = self.policy.select_tool(randomness)
         selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
         self.context.logger.info(f"Selected the mech tool {selected!r}.")
         return selected_idx
