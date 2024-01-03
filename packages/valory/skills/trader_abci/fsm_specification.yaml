@@ -150,6 +150,7 @@ transition_func:
     (ResetRound, NO_MAJORITY): HandleFailedTxRound
     (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
     (SamplingRound, DONE): ToolSelectionRound
+    (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
