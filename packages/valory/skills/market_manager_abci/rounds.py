@@ -61,7 +61,7 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def bets_hash(self) -> str:
         """Get the most voted bets' hash."""
-        return str(self.db.get_strict("bets"))
+        return str(self.db.get_strict("bets_hash"))
 
     @property
     def participant_to_bets_hash(self) -> DeserializedCollection:
