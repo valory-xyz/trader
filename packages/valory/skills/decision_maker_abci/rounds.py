@@ -74,55 +74,59 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 9.
+            - none: 10.
             - no majority: 0.
             - round timeout: 0.
-            - fetch error: 12.
-        1. ToolSelectionRound
+            - fetch error: 13.
+        1. RandomnessRound
             - done: 2.
-            - none: 1.
-            - no majority: 1.
             - round timeout: 1.
-        2. DecisionRequestRound
-            - done: 8.
-            - slots unsupported error: 4.
+            - no majority: 1.
+        2. ToolSelectionRound
+            - done: 3.
+            - none: 2.
             - no majority: 2.
             - round timeout: 2.
-            - none: 12.
-        3. DecisionReceiveRound
-            - done: 5.
-            - mech response error: 4.
-            - no majority: 3.
-            - tie: 4.
-            - unprofitable: 4.
-            - round timeout: 3.
-        4. BlacklistingRound
+        3. DecisionRequestRound
             - done: 9.
-            - none: 12.
+            - slots unsupported error: 5.
+            - no majority: 3.
+            - round timeout: 3.
+            - none: 13.
+        4. DecisionReceiveRound
+            - done: 6.
+            - mech response error: 5.
             - no majority: 4.
+            - tie: 5.
+            - unprofitable: 5.
             - round timeout: 4.
-            - fetch error: 12.
-        5. BetPlacementRound
-            - done: 8.
-            - insufficient balance: 11.
+        5. BlacklistingRound
+            - done: 10.
+            - none: 13.
             - no majority: 5.
             - round timeout: 5.
-            - none: 12.
-        6. RedeemRound
-            - done: 8.
-            - no redeeming: 10.
+            - fetch error: 13.
+        6. BetPlacementRound
+            - done: 9.
+            - insufficient balance: 12.
             - no majority: 6.
-            - redeem round timeout: 10.
-            - none: 12.
-        7. HandleFailedTxRound
-            - blacklist: 4.
-            - no op: 6.
+            - round timeout: 6.
+            - none: 13.
+        7. RedeemRound
+            - done: 9.
+            - no redeeming: 11.
             - no majority: 7.
-        8. FinishedDecisionMakerRound
-        9. FinishedWithoutDecisionRound
-        10. FinishedWithoutRedeemingRound
-        11. RefillRequiredRound
-        12. ImpossibleRound
+            - redeem round timeout: 11.
+            - none: 13.
+        8. HandleFailedTxRound
+            - blacklist: 5.
+            - no op: 7.
+            - no majority: 8.
+        9. FinishedDecisionMakerRound
+        10. FinishedWithoutDecisionRound
+        11. FinishedWithoutRedeemingRound
+        12. RefillRequiredRound
+        13. ImpossibleRound
 
     Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
