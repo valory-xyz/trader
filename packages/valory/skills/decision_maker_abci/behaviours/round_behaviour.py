@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -40,6 +40,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
+    RandomnessBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
@@ -64,4 +67,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         RedeemBehaviour,  # type: ignore
         HandleFailedTxBehaviour,  # type: ignore
         ToolSelectionBehaviour,  # type: ignore
+        RandomnessBehaviour,  # type: ignore
     }
