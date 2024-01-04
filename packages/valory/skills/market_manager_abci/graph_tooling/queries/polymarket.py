@@ -29,16 +29,12 @@ questions = Template(
         where: {
           creator_in: ${creators},
           outcomeSlotCount: ${slot_count},
-          openingTimestamp_gt: ${opening_threshold},
-
-          isPendingArbitration: false
         },
         orderBy: creationTimestamp
         orderDirection: desc
         first: 1000
       ){
         id
-        title
         collateralToken {
           id
           name
@@ -50,6 +46,10 @@ questions = Template(
         outcomeTokenAmounts
         outcomeTokenPrices
         scaledLiquidityParameter
+        conditions {
+          id
+          questionId
+        }
       }
     }
     """

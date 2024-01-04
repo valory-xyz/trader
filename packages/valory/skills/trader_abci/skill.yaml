@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeib3ycl5bjo5uilyaly7uoovvc3b3gpjrkuvdos5ffsgmrs73j6bkm
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeibrxivgpzamfmrl6bdngi67g72i32lmu5vgdn3jbwka265blk7ire
+  models.py: bafybeibqxwlfy5z4sedpk4d27ftrxpv3rqti3gtvw6rkb63nbbuooejsma
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibnwjcjx4lluf4cwb6es5peelu3gm7vrzlieygrzpbjlubxpvbvzy
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 - valory/termination_abci:0.1.0:bafybeifdtxgldw33kwvsavcituzewwbr6iqfcsgk5qouqfhpwdrivyyyom
-- valory/market_manager_abci:0.1.0:bafybeify5v5pdhu5kikkcxtqejent6kzx3b2acmqk53nudvsntlmk3av2y
-- valory/decision_maker_abci:0.1.0:bafybeibd5x6s2rlqqrrp7iwerpnlfznstwyuwfkkf563kaw7qna2sp65xq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifxazxsi6hqg7qoq6mxta2oqapaz7sldo6n4feogz4w7vqdgzqubi
+- valory/market_manager_abci:0.1.0:bafybeiefbhojckblkkhj6ms4addd4rr6z7fb7dmhn5x3glcun4plojn76u
+- valory/decision_maker_abci:0.1.0:bafybeidjwi45cpmjlcjpcolap6ffhg4cvt37spwr4bvzevcl7752doll2e
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigczuund26tqjbvkoqiv6knk4rzxns53ti7z4vafoptn6zqixd5au
 - valory/staking_abci:0.1.0:bafybeiccopehegiiwxzghrttdhuxtnjp7zvuiclx5zchbtvqpy45rrvdxy
 behaviours:
   main:
@@ -229,6 +229,18 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
+  polymarket_subgraph:
+    args:
+      api_id: polymarket
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/polymarket/matic-markets
+    class_name: PolymarketSubgraph
   randomness_api:
     args:
       api_id: cloudflare

@@ -39,6 +39,9 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen impor
     questions,
     trades,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.polymarket import (
+    questions as polymarket_questions,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio import (
     answers as answers_query,
 )
@@ -170,14 +173,39 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
     def _fetch_bets(self) -> Generator[None, None, Optional[list]]:
         """Fetch questions from the current subgraph, for the current creators."""
-        print(self.current_subgraph.get_spec())
-        if self.current_subgraph == "omen_subgraph":
-            return self._fetch_bets_omen()
-        elif self.current_subgraph == "polymarket_subgraph":
-            return None
+        print(self.current_subgraph.api_id)
+        if self.current_subgraph.api_id == "omen":
+            yield from self._fetch_bets_omen()
+        elif self.current_subgraph.api_id == "polymarket":
+            yield from self._fetch_bets_polymarket()
         
         return None
 
+
+    def _fetch_bets_polymarket(self) -> Generator[None, None, Optional[list]]:
+        """Fetch questions from the current subgraph, for the current creators."""
+        self._fetch_status = FetchStatus.IN_PROGRESS
+
+        query = polymarket_questions.substitute(
+            creators=to_graphql_list(self._current_creators),
+            slot_count=self.params.slot_count,
+        )
+
+        res_raw = yield from self.get_http_response(
+            content=to_content(query),
+            **self.current_subgraph.get_spec(),
+        )
+        res = self.current_subgraph.process_response(res_raw)
+
+        bets = yield from self._handle_response(
+            self.current_subgraph,
+            res,
+            res_context="questions",
+        )
+
+        print(bets)
+
+        return bets
 
 
     def _fetch_bets_omen(self) -> Generator[None, None, Optional[list]]:

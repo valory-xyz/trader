@@ -17,10 +17,10 @@ fingerprint:
   graph_tooling/queries/conditional_tokens.py: bafybeic6ohkdp4rvkcfglieksv6gbzm4qocpgdjaz4sroutl37sxijthji
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
   graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
-  graph_tooling/queries/polymarket.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
+  graph_tooling/queries/polymarket.py: bafybeihszfy6bjaxauvs4s3oncmict2qe6igmmglyz4tzsckpl4ml2s63q
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeibolslldpvfks27wsg2voe45jjzpv3fdzgp5bjau3hix7c5lhmpty
+  graph_tooling/requests.py: bafybeiamo2pctqe43gilsbgsac7g5jqgly34o7kutzcyn5kycveiyoaewi
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeieg7hfldv7lumasttqojiptbpxvrerpoay3e43f6fqenu4h3u7xmy
@@ -171,7 +171,7 @@ models:
     class_name: OmenSubgraph
   polymarket_subgraph:
     args:
-      api_id: omen
+      api_id: polymarket
       headers:
         Content-Type: application/json
       method: POST
