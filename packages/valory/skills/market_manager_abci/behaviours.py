@@ -95,6 +95,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
             self.bets = []
 
         self.context.logger.info(f"Updated bets: {self.bets}")
+        exit(0)
 
     def async_act(self) -> Generator:
         """Do the action."""

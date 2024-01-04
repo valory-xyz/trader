@@ -48,6 +48,9 @@ class OmenSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
 
 
+class PolymarketSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
+
 class NetworkSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the network's subgraph specifications."""
 

@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibnwjcjx4lluf4cwb6es5peelu3gm7vrzlieygrzpbjlubxpvbvzy
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 - valory/termination_abci:0.1.0:bafybeifdtxgldw33kwvsavcituzewwbr6iqfcsgk5qouqfhpwdrivyyyom
-- valory/market_manager_abci:0.1.0:bafybeietn6vjbxbqvkf4rxodm3feh4ayaliltlxofnb5tiie5yo3cbspiq
-- valory/decision_maker_abci:0.1.0:bafybeierl6mzrv3t5syjhexsjlpp5yl4sudsefq7vuhqecjl34oimw2r3i
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidqlklypdnspvfu7rbaynwvgrwfwqcysddsyhb3gwj65nymqqr33q
+- valory/market_manager_abci:0.1.0:bafybeify5v5pdhu5kikkcxtqejent6kzx3b2acmqk53nudvsntlmk3av2y
+- valory/decision_maker_abci:0.1.0:bafybeibd5x6s2rlqqrrp7iwerpnlfznstwyuwfkkf563kaw7qna2sp65xq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifxazxsi6hqg7qoq6mxta2oqapaz7sldo6n4feogz4w7vqdgzqubi
 - valory/staking_abci:0.1.0:bafybeiccopehegiiwxzghrttdhuxtnjp7zvuiclx5zchbtvqpy45rrvdxy
 behaviours:
   main:
@@ -138,6 +138,7 @@ models:
       validate_timeout: 1205
       creator_per_subgraph:
         omen_subgraph: []
+        polymarket_subgraph: []
       slot_count: 2
       opening_margin: 300
       languages:

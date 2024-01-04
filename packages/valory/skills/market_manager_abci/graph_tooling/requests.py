@@ -170,6 +170,18 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
     def _fetch_bets(self) -> Generator[None, None, Optional[list]]:
         """Fetch questions from the current subgraph, for the current creators."""
+        print(self.current_subgraph.get_spec())
+        if self.current_subgraph == "omen_subgraph":
+            return self._fetch_bets_omen()
+        elif self.current_subgraph == "polymarket_subgraph":
+            return None
+        
+        return None
+
+
+
+    def _fetch_bets_omen(self) -> Generator[None, None, Optional[list]]:
+        """Fetch questions from the current subgraph, for the current creators."""
         self._fetch_status = FetchStatus.IN_PROGRESS
 
         query = questions.substitute(
