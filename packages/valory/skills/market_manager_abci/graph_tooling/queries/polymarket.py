@@ -22,12 +22,34 @@
 from string import Template
 
 
-questions = Template(
+questions_polymarket_gamma = Template(
+    """
+    {
+      markets(
+        where: "active=true AND closed=false AND outcomes='[\\\"Yes\\\", \\\"No\\\"]'"
+        order: "start_date DESC"
+        limit: 100
+      ) {
+        marketMakerAddress
+        question
+        denominationToken
+        createdBy
+        fee
+        endDate
+        outcomes
+        outcomePrices
+        liquidity
+      }
+    }
+    """
+)
+
+
+questions_polymarket = Template(
     """
     {
       fixedProductMarketMakers(
         where: {
-          creator_in: ${creators},
           outcomeSlotCount: ${slot_count},
         },
         orderBy: creationTimestamp

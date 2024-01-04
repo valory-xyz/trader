@@ -22,6 +22,7 @@
 
 import json
 from abc import ABC
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
@@ -40,7 +41,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen impor
     trades,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.polymarket import (
-    questions as polymarket_questions,
+    questions_polymarket_gamma,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio import (
     answers as answers_query,
@@ -175,19 +176,18 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """Fetch questions from the current subgraph, for the current creators."""
         print(self.current_subgraph.api_id)
         if self.current_subgraph.api_id == "omen":
-            yield from self._fetch_bets_omen()
-        elif self.current_subgraph.api_id == "polymarket":
-            yield from self._fetch_bets_polymarket()
-        
-        return None
+            return self._fetch_bets_omen()
+        elif self.current_subgraph.api_id == "polymarket_gamma":
+            return self._fetch_bets_polymarket_gamma()
+        else:
+            raise ValueError("Unknown api_id: {}".format(self.current_subgraph.api_id))
 
-
-    def _fetch_bets_polymarket(self) -> Generator[None, None, Optional[list]]:
+    def _fetch_bets_polymarket_gamma(self) -> Generator[None, None, Optional[list]]:
         """Fetch questions from the current subgraph, for the current creators."""
         self._fetch_status = FetchStatus.IN_PROGRESS
 
-        query = polymarket_questions.substitute(
-            creators=to_graphql_list(self._current_creators),
+        # TODO: we ignore 'creators' and simply fetch 100 latest markets.
+        query = questions_polymarket_gamma.substitute(
             slot_count=self.params.slot_count,
         )
 
@@ -203,9 +203,39 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res_context="questions",
         )
 
-        print(bets)
+        # Transform received list to match Omen format
+        transformed_bets:list = []
 
-        return bets
+        if bets is not None:
+            for bet in bets:
+                scaled_liquidity_measure = 10.0  # Replace this with the actual calculation for scaled liquidity measure
+                outcomes = eval(bet['outcomes'])
+                outcome_token_amounts = ["0"] * len(outcomes)
+
+                end_date = datetime.strptime(bet['endDate'], '%Y-%m-%dT%H:%M:%S.%fZ')
+                opening_timestamp = int(end_date.replace(tzinfo=timezone.utc).timestamp())
+
+                new_bet = {
+                    'id': bet['marketMakerAddress'],
+                    'title': bet['question'],
+                    'collateralToken': '0x2791bca1f2de4661ed88a30c99a7a9449aa84174', # TODO USDC
+                    'creator': bet['createdBy'] or '0x0000000000000000000000000000000000000000', # TODO Returns 'None'
+                    'fee': bet['fee'],
+                    'openingTimestamp': str(opening_timestamp),
+                    'outcomeSlotCount': len(outcomes),
+                    'outcomeTokenAmounts': outcome_token_amounts, # TODO Returns [0, 0]
+                    'outcomeTokenMarginalPrices': eval(bet['outcomePrices']),
+                    'outcomes': outcomes,
+                    'scaledLiquidityMeasure': bet['liquidity']
+                }
+
+                transformed_bets.append(new_bet)
+
+                #self.context.logger.info(json.dumps(transformed_bets, indent=2))
+                self.context.logger.info(f"fetched bets len={len(json.dumps(transformed_bets, indent=2))}")
+                self.context.logger.info(self._fetch_status)
+
+        return transformed_bets
 
 
     def _fetch_bets_omen(self) -> Generator[None, None, Optional[list]]:

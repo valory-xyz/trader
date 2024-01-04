@@ -27,7 +27,7 @@ fingerprint:
   handlers.py: bafybeiggoetspwcvdojmbjdd67tmkoeedikmt6vsbcium3zjaljb6jzqu4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeif63pruksc6fpvmg77jmsrphc36uiawypzzcrk6nbpzoglbpxnlfy
+  models.py: bafybeiekknd5xy3k3dgrbk3cx7fvj2htzpow7xtjl72je4x2ff3zg3cqtu
   payloads.py: bafybeigcic4vewdglakzpyqevhfwsolh4ywnbvxo5bgned7gl5uo3jif7m
   policy.py: bafybeidpmx4ek3qze63zpuwixyf6t7bdv62ewgkzt3ljrzadiwdw64cueq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -65,7 +65,7 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiedxeismnx3k5ty4mvvhlqideixlhqmi5mtcki4lxqfa7uqh7p33u
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeicrzndcdbue34yxwwb4hmmdhgzw4owcdcdag3ifj6thpx5wie3dp4
-- valory/market_manager_abci:0.1.0:bafybeiefbhojckblkkhj6ms4addd4rr6z7fb7dmhn5x3glcun4plojn76u
+- valory/market_manager_abci:0.1.0:bafybeia63r6jv34exkxpqneopp2abuxscsgnzcfhx2ttrjwanvkugnoohe
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 behaviours:
   main:

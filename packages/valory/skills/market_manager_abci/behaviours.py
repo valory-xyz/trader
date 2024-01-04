@@ -83,6 +83,7 @@ class UpdateBetsBehaviour(QueryingBehaviour):
                 break
 
             bets_market_chunk = yield from self._fetch_bets()
+
             if bets_market_chunk is not None:
                 bets_updates = (
                     Bet(**bet, market=self._current_market)
@@ -95,7 +96,6 @@ class UpdateBetsBehaviour(QueryingBehaviour):
             self.bets = []
 
         self.context.logger.info(f"Updated bets: {self.bets}")
-        exit(0)
 
     def async_act(self) -> Generator:
         """Do the action."""

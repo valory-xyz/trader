@@ -54,6 +54,7 @@ from packages.valory.skills.market_manager_abci.models import (
 from packages.valory.skills.market_manager_abci.models import (
     OmenSubgraph as MarketManagerOmenSubgraph,
     PolymarketSubgraph as MarketManagerPolymarketSubgraph,
+    PolymarketGammaSubgraph as MarketManagerPolyMarketGammaSubgraph
 )
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
@@ -84,6 +85,7 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
 PolymarketSubgraph = MarketManagerPolymarketSubgraph
+PolymarketGammaSubgraph = MarketManagerPolyMarketGammaSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
 MechResponseSpecs = DecisionMakerMechResponseSpecs
 AgentToolsSpecs = DecisionMakerAgentToolsSpecs

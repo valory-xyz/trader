@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeig2yejepycsajbiq4spopsdlizfxfngwwae3xxddqp2r5c5zpgkwe
+  behaviours.py: bafybeicbjpx53x3hgiegr5v75vk2l3zqj6lcxycqsgp6kiewmtmo65eog4
   bets.py: bafybeid5jw3o57bivq32ojphjmu3xoulf6y6r2pnzuhyp7u6nz3pojpbuu
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
@@ -17,13 +17,13 @@ fingerprint:
   graph_tooling/queries/conditional_tokens.py: bafybeic6ohkdp4rvkcfglieksv6gbzm4qocpgdjaz4sroutl37sxijthji
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
   graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
-  graph_tooling/queries/polymarket.py: bafybeihszfy6bjaxauvs4s3oncmict2qe6igmmglyz4tzsckpl4ml2s63q
+  graph_tooling/queries/polymarket.py: bafybeidbbqpwkh7diz4blwv7t7wtjyi5reb4haugqpodzb7rkwbyz2td24
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeiamo2pctqe43gilsbgsac7g5jqgly34o7kutzcyn5kycveiyoaewi
+  graph_tooling/requests.py: bafybeih7xfqo3usqv7lxowzktcwwc7ddmekey5y4raiepajmatxxxwezjm
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeieg7hfldv7lumasttqojiptbpxvrerpoay3e43f6fqenu4h3u7xmy
+  models.py: bafybeihdb272u5vpi4a3p6rzvec5tznweywghwrdpr3qzdmvtirszc44sq
   payloads.py: bafybeiamavgddfbzofpsjthmw6j7g2dyxm7fb6hvdb47kweyrx4w2ihcfi
   rounds.py: bafybeihsphyqat2sn46nukisxpvx5g2yfal4iyobhnoccbeavfz7xnhhri
 fingerprint_ignore_patterns: []
@@ -135,8 +135,7 @@ models:
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
       creator_per_subgraph:
-        omen_subgraph: []
-        polymarket_subgraph: []
+        polymarket_gamma_subgraph: []
       slot_count: 2
       opening_margin: 300
       languages:
@@ -181,6 +180,18 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/polymarket/matic-markets
     class_name: PolymarketSubgraph
+  polymarket_gamma_subgraph:
+    args:
+      api_id: polymarket_gamma
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:markets
+      response_type: list
+      retries: 5
+      url: https://gamma-api.polymarket.com/query
+    class_name: PolymarketGammaSubgraph
   requests:
     args: {}
     class_name: Requests

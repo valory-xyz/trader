@@ -69,7 +69,7 @@ REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
 DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
-STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD = "bet_amount_per_conf_threshold"
+STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD = "bet_amount_per_threshold"
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
 
 
