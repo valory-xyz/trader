@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries/polymarket.py: bafybeidbbqpwkh7diz4blwv7t7wtjyi5reb4haugqpodzb7rkwbyz2td24
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeih7xfqo3usqv7lxowzktcwwc7ddmekey5y4raiepajmatxxxwezjm
+  graph_tooling/requests.py: bafybeif5g2mgiki2gbpoifqhmtsa53c2a2iekmyrfcszh4xah27cybsvte
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeihdb272u5vpi4a3p6rzvec5tznweywghwrdpr3qzdmvtirszc44sq

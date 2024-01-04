@@ -63,4 +63,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         if event == Event.DONE and not synced_data.is_profitable:
             return synced_data, Event.UNPROFITABLE
 
+        # TODO 
+        print("EXITING THE SERVICE.")
+        exit(0)
         return synced_data, event

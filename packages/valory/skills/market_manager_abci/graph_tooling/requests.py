@@ -218,7 +218,8 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 new_bet = {
                     'id': bet['marketMakerAddress'],
                     'title': bet['question'],
-                    'collateralToken': '0x2791bca1f2de4661ed88a30c99a7a9449aa84174', # TODO USDC
+                    #'collateralToken': '0x2791bca1f2de4661ed88a30c99a7a9449aa84174', # TODO Not available on this subgraph. Usually, USDC
+                    'collateralToken': '0xe91d153e0b41518a2ce8dd3d7944fa863463a97d', # TODO WxDAI - this is use temporarily to test the service.
                     'creator': bet['createdBy'] or '0x0000000000000000000000000000000000000000', # TODO Returns 'None'
                     'fee': bet['fee'],
                     'openingTimestamp': str(opening_timestamp),
