@@ -52,6 +52,8 @@ class Event(Enum):
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
+    SUBSCRIPTION_ERROR = "subscription_error"
+    NO_SUBSCRIPTION = "no_subscription"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
