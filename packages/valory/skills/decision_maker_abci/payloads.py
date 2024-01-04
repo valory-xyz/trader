@@ -69,6 +69,11 @@ class RequestPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
+class SubscriptionPayload(MultisigTxPayload):
+    """Represents a transaction payload for subscribing."""
+
+
+@dataclass(frozen=True)
 class VotingPayload(BaseTxPayload):
     """Represents a transaction payload for voting."""
 

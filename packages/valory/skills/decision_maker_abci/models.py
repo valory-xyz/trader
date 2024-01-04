@@ -320,6 +320,10 @@ class DecisionMakerParams(MarketManagerParams):
             kwargs,
             bool,
         )
+        self.mech_to_subscription_params: Dict[str, Dict[str, Any]] = nested_list_todict_workaround(
+            kwargs,
+            "mech_to_subscription_params",
+        )
         super().__init__(*args, **kwargs)
 
     @property
