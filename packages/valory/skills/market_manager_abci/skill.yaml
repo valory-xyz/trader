@@ -9,7 +9,7 @@ fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
   behaviours.py: bafybeiahcgt4r3q33lcj46bcfojbozntacggnn7fmftc3xa5czepkvnfci
-  bets.py: bafybeiav3y7p2lnrjciyno35f32l672skatzk2qsak246w7pi4wg5ssgau
+  bets.py: bafybeifylnqxusdcamdbrehl7myt72ux6e6iqbrkri4adbeoywz2jtlgna
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -17,10 +17,10 @@ fingerprint:
   graph_tooling/queries/conditional_tokens.py: bafybeic6ohkdp4rvkcfglieksv6gbzm4qocpgdjaz4sroutl37sxijthji
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
   graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
-  graph_tooling/queries/polymarket.py: bafybeigpwlnykaikvqkaog3whw26kybl5uuiy7perk6px7tq5pczxo5yo4
+  graph_tooling/queries/polymarket.py: bafybeifksst3c54bjxedroe2gxtr7mga5f7ftuolj7jpdbbabn6m6xr3yy
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeigqbj5a6w5kwi4yqdsvhakon7bzvrj6btozx4efyoqwzuaplfiw5e
+  graph_tooling/requests.py: bafybeidhmj3ehool5bliavzjvnbsfvngcss5u2jsttngkpqgocwd4e2mai
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeid4u7za24nqa23bqpabfczwgnbwy552zx4htnwc5qdh3ax3abl67i

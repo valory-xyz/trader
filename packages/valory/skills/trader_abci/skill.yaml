@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibnwjcjx4lluf4cwb6es5peelu3gm7vrzlieygrzpbjlubxpvbvzy
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 - valory/termination_abci:0.1.0:bafybeifdtxgldw33kwvsavcituzewwbr6iqfcsgk5qouqfhpwdrivyyyom
-- valory/market_manager_abci:0.1.0:bafybeiahxfc7jrvp4rebgno6ujhu6j5fsg2tdjcim6z2z4ffmzppdtgyyu
-- valory/decision_maker_abci:0.1.0:bafybeibxkwnxgbnsjryuc6v46m5osy2olmqzg6s7eb436ulxfmdkk7t4ky
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifojwvs22tk6smk76743b5jrd3cda2dahcsimrdaf263nsiupu7cu
+- valory/market_manager_abci:0.1.0:bafybeia7vrpts3jeldxr4osltz5ekw7p3h2ib5ossutpviplkzqvfwhjua
+- valory/decision_maker_abci:0.1.0:bafybeihxo35ycripnuwcltfy64lxhaox43av7lbcozdgw2w3wupzzpdnn4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibal5o2ji3rxjf5plwsexpiafv6ufnntre2pikfd5qrykff3icaoi
 - valory/staking_abci:0.1.0:bafybeiccopehegiiwxzghrttdhuxtnjp7zvuiclx5zchbtvqpy45rrvdxy
 behaviours:
   main:
