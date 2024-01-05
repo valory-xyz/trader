@@ -47,11 +47,14 @@ class SharedState(BaseSharedState):
 class OmenSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
 
+
 class PolymarketSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the Polymarket subgraph specifications."""
 
+
 class PolymarketGammaSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the Polymarket Gamma subgraph specifications."""
+
 
 class NetworkSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the network's subgraph specifications."""

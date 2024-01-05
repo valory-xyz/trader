@@ -53,8 +53,12 @@ from packages.valory.skills.market_manager_abci.models import (
 )
 from packages.valory.skills.market_manager_abci.models import (
     OmenSubgraph as MarketManagerOmenSubgraph,
+)
+from packages.valory.skills.market_manager_abci.models import (
+    PolymarketGammaSubgraph as MarketManagerPolyMarketGammaSubgraph,
+)
+from packages.valory.skills.market_manager_abci.models import (
     PolymarketSubgraph as MarketManagerPolymarketSubgraph,
-    PolymarketGammaSubgraph as MarketManagerPolyMarketGammaSubgraph
 )
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
