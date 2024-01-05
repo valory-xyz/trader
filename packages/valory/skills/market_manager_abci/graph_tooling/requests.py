@@ -22,14 +22,14 @@
 
 import json
 from abc import ABC
-from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 from web3 import Web3
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.conditional_tokens import (
     user_positions as user_positions_query,
 )
@@ -37,9 +37,9 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.network im
     block_number,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import (
-    questions,
-    trades,
+    questions as questions_omen,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import trades
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.polymarket import (
     questions_polymarket_gamma,
 )
@@ -51,6 +51,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades imp
 )
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
+    OmenSubgraph,
+    PolymarketSubgraph,
     SharedState,
 )
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
@@ -172,24 +174,26 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.SUCCESS
         return res
 
-    def _fetch_bets(self) -> Generator[None, None, Optional[list]]:
+    def _fetch_bets(self) -> Generator[None, None, Tuple[Optional[list], Callable]]:
         """Fetch questions from the current subgraph, for the current creators."""
-        print(self.current_subgraph.api_id)
-        if self.current_subgraph.api_id == "omen":
-            return self._fetch_bets_omen()
-        elif self.current_subgraph.api_id == "polymarket_gamma":
-            return self._fetch_bets_polymarket_gamma()
+        self._fetch_status = FetchStatus.IN_PROGRESS
+
+        if isinstance(self.current_subgraph, OmenSubgraph):
+            # TODO: we ignore 'creators' and simply fetch 100 latest markets.
+            query = questions_polymarket_gamma.substitute(
+                slot_count=self.params.slot_count,
+            )
+            deserializer = Bet.from_gamma_subgraph
+        elif isinstance(self.current_subgraph, PolymarketSubgraph):
+            query = questions_omen.substitute(
+                creators=to_graphql_list(self._current_creators),
+                slot_count=self.params.slot_count,
+                opening_threshold=self.synced_time + self.params.opening_margin,
+                languages=to_graphql_list(self.params.languages),
+            )
+            deserializer = Bet
         else:
-            raise ValueError("Unknown api_id: {}".format(self.current_subgraph.api_id))
-
-    def _fetch_bets_polymarket_gamma(self) -> Generator[None, None, Optional[list]]:
-        """Fetch questions from the current subgraph, for the current creators."""
-        self._fetch_status = FetchStatus.IN_PROGRESS
-
-        # TODO: we ignore 'creators' and simply fetch 100 latest markets.
-        query = questions_polymarket_gamma.substitute(
-            slot_count=self.params.slot_count,
-        )
+            raise ValueError(f"Unknown API with id: {self.current_subgraph.api_id}!")
 
         res_raw = yield from self.get_http_response(
             content=to_content(query),
@@ -203,66 +207,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res_context="questions",
         )
 
-        # Transform received list to match Omen format
-        transformed_bets:list = []
-
-        if bets is not None:
-            for bet in bets:
-                scaled_liquidity_measure = 10.0  # Replace this with the actual calculation for scaled liquidity measure
-                outcomes = eval(bet['outcomes'])
-                outcome_token_amounts = ["0"] * len(outcomes)
-
-                end_date = datetime.strptime(bet['endDate'], '%Y-%m-%dT%H:%M:%S.%fZ')
-                opening_timestamp = int(end_date.replace(tzinfo=timezone.utc).timestamp())
-
-                new_bet = {
-                    'id': bet['marketMakerAddress'],
-                    'title': bet['question'],
-                    #'collateralToken': '0x2791bca1f2de4661ed88a30c99a7a9449aa84174', # TODO Not available on this subgraph. Usually, USDC
-                    'collateralToken': '0xe91d153e0b41518a2ce8dd3d7944fa863463a97d', # TODO WxDAI - this is use temporarily to test the service.
-                    'creator': bet['createdBy'] or '0x0000000000000000000000000000000000000000', # TODO Returns 'None'
-                    'fee': bet['fee'],
-                    'openingTimestamp': str(opening_timestamp),
-                    'outcomeSlotCount': len(outcomes),
-                    'outcomeTokenAmounts': outcome_token_amounts, # TODO Returns [0, 0]
-                    'outcomeTokenMarginalPrices': eval(bet['outcomePrices']),
-                    'outcomes': outcomes,
-                    'scaledLiquidityMeasure': bet['liquidity']
-                }
-
-                transformed_bets.append(new_bet)
-
-                #self.context.logger.info(json.dumps(transformed_bets, indent=2))
-                self.context.logger.info(f"fetched bets len={len(json.dumps(transformed_bets, indent=2))}")
-                self.context.logger.info(self._fetch_status)
-
-        return transformed_bets
-
-
-    def _fetch_bets_omen(self) -> Generator[None, None, Optional[list]]:
-        """Fetch questions from the current subgraph, for the current creators."""
-        self._fetch_status = FetchStatus.IN_PROGRESS
-
-        query = questions.substitute(
-            creators=to_graphql_list(self._current_creators),
-            slot_count=self.params.slot_count,
-            opening_threshold=self.synced_time + self.params.opening_margin,
-            languages=to_graphql_list(self.params.languages),
-        )
-
-        res_raw = yield from self.get_http_response(
-            content=to_content(query),
-            **self.current_subgraph.get_spec(),
-        )
-        res = self.current_subgraph.process_response(res_raw)
-
-        bets = yield from self._handle_response(
-            self.current_subgraph,
-            res,
-            res_context="questions",
-        )
-
-        return bets
+        return bets, deserializer
 
     def _fetch_redeem_info(self) -> Generator[None, None, Optional[list]]:
         """Fetch redeeming information from the current subgraph."""

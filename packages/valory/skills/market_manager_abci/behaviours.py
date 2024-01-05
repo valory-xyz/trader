@@ -82,11 +82,10 @@ class UpdateBetsBehaviour(QueryingBehaviour):
             if not can_proceed:
                 break
 
-            bets_market_chunk = yield from self._fetch_bets()
-
+            bets_market_chunk, deserializer = yield from self._fetch_bets()
             if bets_market_chunk is not None:
                 bets_updates = (
-                    Bet(**bet, market=self._current_market)
+                    deserializer(**bet, market=self._current_market)
                     for bet in bets_market_chunk
                     if bet.get("id", "") not in existing_ids
                 )
