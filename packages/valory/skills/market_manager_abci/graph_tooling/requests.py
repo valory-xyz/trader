@@ -52,7 +52,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades imp
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
     OmenSubgraph,
-    PolymarketSubgraph,
+    PolymarketGammaSubgraph,
     SharedState,
 )
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
@@ -178,13 +178,13 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """Fetch questions from the current subgraph, for the current creators."""
         self._fetch_status = FetchStatus.IN_PROGRESS
 
-        if isinstance(self.current_subgraph, OmenSubgraph):
+        if isinstance(self.current_subgraph, PolymarketGammaSubgraph):
             # TODO: we ignore 'creators' and simply fetch 100 latest markets.
             query = questions_polymarket_gamma.substitute(
                 slot_count=self.params.slot_count,
             )
             deserializer = Bet.from_gamma_subgraph
-        elif isinstance(self.current_subgraph, PolymarketSubgraph):
+        elif isinstance(self.current_subgraph, OmenSubgraph):
             query = questions_omen.substitute(
                 creators=to_graphql_list(self._current_creators),
                 slot_count=self.params.slot_count,
