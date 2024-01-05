@@ -126,10 +126,12 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def _prepare_fetching(self) -> bool:
         """Prepare for fetching a bet."""
         if self._fetch_status in (FetchStatus.SUCCESS, FetchStatus.NONE):
-            res = next(self._creators_iterator, None)
-            if res is None:
-                return False
-            self._current_market, self._current_creators = res
+            self._current_creators = []
+            while len(self._current_creators) == 0:
+                res = next(self._creators_iterator, None)
+                if res is None:
+                    return False
+                self._current_market, self._current_creators = res
 
         if self._fetch_status == FetchStatus.FAIL:
             return False
