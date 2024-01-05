@@ -26,7 +26,7 @@ questions_polymarket_gamma = Template(
     """
     {
       markets(
-        where: "active=true AND closed=false AND outcomes='[\\\"Yes\\\", \\\"No\\\"]'"
+        where: "active=true AND closed=false AND outcomes='[\\\"Yes\\\", \\\"No\\\"]' AND NOT market_maker_address=''"
         order: "start_date DESC"
         limit: 100
       ) {
