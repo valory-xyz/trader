@@ -71,12 +71,12 @@ class Bet:
     @classmethod
     def from_gamma_subgraph(cls, **kwargs: Any) -> "Bet":
         """Initialize a bet's instance from gamma subgraph's attributes."""
-        outcomes = eval(kwargs["outcomes"])
+        outcomes = eval(kwargs["outcomes"])  # nosec
         outcome_token_amounts = [0] * len(outcomes)
         end_date = datetime.strptime(kwargs["endDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
         opening_timestamp = int(end_date.replace(tzinfo=timezone.utc).timestamp())
         submitted_by = kwargs["submitted_by"] or NULL_ADDRESS
-        outcome_prices = eval(kwargs["outcomePrices"])
+        outcome_prices = eval(kwargs["outcomePrices"])  # nosec
 
         omen_to_polywrap_mapping = {
             omen_key: kwargs[polywrap_key]
