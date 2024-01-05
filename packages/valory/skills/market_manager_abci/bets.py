@@ -36,9 +36,7 @@ OMEN_TO_POLYWRAP = dict(
     id="marketMakerAddress",
     market="market",
     title="question",
-    creator="createdBy",
     fee="fee",
-    outcomeTokenMarginalPrices="outcomePrices",
     scaledLiquidityMeasure="liquidity",
 )
 
@@ -77,9 +75,8 @@ class Bet:
         outcome_token_amounts = [0] * len(outcomes)
         end_date = datetime.strptime(kwargs["endDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
         opening_timestamp = int(end_date.replace(tzinfo=timezone.utc).timestamp())
-
-        kwargs["createdBy"] = kwargs["createdBy"] or NULL_ADDRESS
-        kwargs["outcomePrices"] = eval(kwargs["outcomePrices"])
+        created_by = kwargs["createdBy"] or NULL_ADDRESS
+        outcome_prices = eval(kwargs["outcomePrices"])
 
         omen_to_polywrap_mapping = {
             omen_key: kwargs[polywrap_key]
@@ -88,9 +85,11 @@ class Bet:
 
         return cls(
             collateralToken=USDC,
+            creator=created_by,
             openingTimestamp=opening_timestamp,
             outcomeSlotCount=len(outcomes),
             outcomeTokenAmounts=outcome_token_amounts,
+            outcomeTokenMarginalPrices=outcome_prices,
             outcomes=outcomes,
             **omen_to_polywrap_mapping,
         )
