@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,18 +19,14 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-from typing import Generator, Iterator, List, Optional, Tuple
+from typing import Generator, Iterator, List, Optional
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
-from packages.valory.skills.market_manager_abci.bets import (
-    Bet,
-    BetStatus,
-    serialize_bets,
-)
+from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus
 
 
 UNIX_DAY = 60 * 60 * 24
@@ -44,14 +40,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     @property
     def available_bets(self) -> Iterator[Bet]:
         """Get an iterator of the unprocessed bets."""
-        bets = self.synchronized_data.bets
 
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
         if self.params.using_kelly:
             # get only bets that close in the next `sample_bets_closing_days`
-            bets = [
+            self.bets = [
                 bet
-                for bet in bets
+                for bet in self.bets
                 if bet.openingTimestamp
                 <= (
                     self.synced_timestamp
@@ -59,7 +54,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                 )
             ]
 
-        return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, bets)
+        return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, self.bets)
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
@@ -71,38 +66,37 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :param bets: the bets' values to compare for the sampling.
         :return: the id of the sampled bet, out of all the available bets, not only the given ones.
         """
-        return self.synchronized_data.bets.index(max(bets))
+        return self.bets.index(max(bets))
 
-    def _set_processed(self, idx: int) -> Optional[str]:
-        """Update the bet's status for the given id to `PROCESSED`, and return the updated bets list, serialized."""
-        bets = self.synchronized_data.bets
-        bets[idx].status = BetStatus.PROCESSED
-        return serialize_bets(bets)
-
-    def _sample(self) -> Tuple[Optional[str], Optional[int]]:
-        """Sample a bet and return the bets, serialized, with the sampled bet marked as processed, and its index."""
+    def _sample(self) -> Optional[int]:
+        """Sample a bet, mark it as processed, and return its index."""
         available_bets = list(self.available_bets)
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
-            return None, None
+            return None
 
         idx = self._sampled_bet_idx(available_bets)
 
-        if self.synchronized_data.bets[idx].scaledLiquidityMeasure == 0:
+        if self.bets[idx].scaledLiquidityMeasure == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
-            return None, None
+            return None
 
-        bets = self._set_processed(idx)
-        msg = f"Sampled bet: {self.synchronized_data.bets[idx]}"
+        # update the bet's status for the given id to `PROCESSED`
+        self.bets[idx].status = BetStatus.PROCESSED
+        msg = f"Sampled bet: {self.bets[idx]}"
         self.context.logger.info(msg)
-        return bets, idx
+        return idx
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            payload = SamplingPayload(self.context.agent_address, *self._sample())
+            self.read_bets()
+            idx = self._sample()
+            self.store_bets()
+            bets_hash = self.hash_stored_bets()
+            payload = SamplingPayload(self.context.agent_address, bets_hash, idx)
 
         yield from self.finish_behaviour(payload)

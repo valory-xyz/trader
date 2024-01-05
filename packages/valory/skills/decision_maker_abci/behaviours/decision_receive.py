@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -243,7 +243,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
-        bet = self.synchronized_data.sampled_bet
+        bet = self.sampled_bet
 
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
@@ -311,7 +311,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self, vote: int, win_probability: float, confidence: float
     ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
-        bet = self.synchronized_data.sampled_bet
+        bet = self.sampled_bet
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, vote
         )

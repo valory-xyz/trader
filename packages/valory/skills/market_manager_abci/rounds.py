@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,10 +19,9 @@
 
 """This module contains the rounds for the MarketManager ABCI application."""
 
-import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Type, cast
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -36,7 +35,6 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.bets import Bet, BetsDecoder
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
@@ -61,18 +59,13 @@ class SynchronizedData(BaseSynchronizedData):
         return CollectionRound.deserialize_collection(serialized)
 
     @property
-    def bets(self) -> List[Bet]:
-        """Get the most voted bets."""
-        serialized_bets = str(self.db.get("bets", ""))
-
-        if serialized_bets == "":
-            return []
-
-        return json.loads(serialized_bets, cls=BetsDecoder)
+    def bets_hash(self) -> str:
+        """Get the most voted bets' hash."""
+        return str(self.db.get_strict("bets_hash"))
 
     @property
-    def participant_to_bets(self) -> DeserializedCollection:
-        """Get the participants to bets."""
+    def participant_to_bets_hash(self) -> DeserializedCollection:
+        """Get the participants to bets' hash."""
         return self._get_deserialized("participant_to_bets")
 
 
@@ -100,8 +93,8 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.bets)
-    collection_key = get_name(SynchronizedData.participant_to_bets)
+    selection_key = get_name(SynchronizedData.bets_hash)
+    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
@@ -114,7 +107,7 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
         if event != Event.FETCH_ERROR:
             return res
 
-        synced_data.update(SynchronizedData, bets=synced_data.db.get("bets", ""))
+        synced_data.update(SynchronizedData, bets=synced_data.db.get("bets_hash", ""))
         return synced_data, event
 
 
@@ -159,13 +152,13 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
         FinishedMarketManagerRound: {},
         FailedMarketManagerRound: {},
     }
-    cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets)})
+    cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets_hash)})
     final_states: Set[AppState] = {FinishedMarketManagerRound, FailedMarketManagerRound}
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {UpdateBetsRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
-        FinishedMarketManagerRound: {get_name(SynchronizedData.bets)},
+        FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},
         FailedMarketManagerRound: set(),
     }

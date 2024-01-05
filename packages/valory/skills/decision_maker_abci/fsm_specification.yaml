@@ -36,6 +36,7 @@ states:
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
 - ImpossibleRound
+- RandomnessRound
 - RedeemRound
 - RefillRequiredRound
 - SamplingRound
@@ -65,12 +66,16 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
+    (RandomnessRound, DONE): ToolSelectionRound
+    (RandomnessRound, NO_MAJORITY): RandomnessRound
+    (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
-    (SamplingRound, DONE): ToolSelectionRound
+    (SamplingRound, DONE): RandomnessRound
+    (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
