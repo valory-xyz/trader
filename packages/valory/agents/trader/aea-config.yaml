@@ -158,6 +158,7 @@ models:
       use_termination: ${bool:false}
       on_chain_service_id: ${int:null}
       creator_per_subgraph:
+        omen_subgraph: ${list:[]}
         polymarket_gamma_subgraph: ${list:["0x91430cad2d3975766499717fa0d66a78d814e5c5"]}
       slot_count: ${int:2}
       opening_margin: ${int:300}

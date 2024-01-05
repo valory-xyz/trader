@@ -135,6 +135,7 @@ models:
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
       creator_per_subgraph:
+        omen_subgraph: []
         polymarket_gamma_subgraph: []
       slot_count: 2
       opening_margin: 300

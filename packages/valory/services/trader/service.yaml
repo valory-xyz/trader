@@ -71,7 +71,8 @@ type: skill
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: &id003
-          omen_subgraph: ${OMEN_CREATORS:list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
+          omen_subgraph: ${OMEN_CREATORS:list:[]}
+          polymarket_gamma_subgraph: ${POLYMARKET_CREATORS:list:["0x91430cad2d3975766499717fa0d66a78d814e5c5"]}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:300}
         languages: ${LANGUAGES:list:["en_US"]}
