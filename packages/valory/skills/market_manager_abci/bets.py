@@ -75,7 +75,7 @@ class Bet:
         outcome_token_amounts = [0] * len(outcomes)
         end_date = datetime.strptime(kwargs["endDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
         opening_timestamp = int(end_date.replace(tzinfo=timezone.utc).timestamp())
-        created_by = kwargs["createdBy"] or NULL_ADDRESS
+        submitted_by = kwargs["submitted_by"] or NULL_ADDRESS
         outcome_prices = eval(kwargs["outcomePrices"])
 
         omen_to_polywrap_mapping = {
@@ -85,7 +85,7 @@ class Bet:
 
         return cls(
             collateralToken=USDC,
-            creator=created_by,
+            creator=submitted_by,
             openingTimestamp=opening_timestamp,
             outcomeSlotCount=len(outcomes),
             outcomeTokenAmounts=outcome_token_amounts,

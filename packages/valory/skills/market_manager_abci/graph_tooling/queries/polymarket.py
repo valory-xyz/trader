@@ -33,7 +33,7 @@ questions_polymarket_gamma = Template(
         marketMakerAddress
         question
         denominationToken
-        createdBy
+        submitted_by
         fee
         endDate
         outcomes
