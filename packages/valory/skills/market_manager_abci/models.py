@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -46,6 +46,14 @@ class SharedState(BaseSharedState):
 
 class OmenSubgraph(ApiSpecs):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
+
+
+class PolymarketSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the Polymarket subgraph specifications."""
+
+
+class PolymarketGammaSubgraph(ApiSpecs):
+    """A model that wraps ApiSpecs for the Polymarket Gamma subgraph specifications."""
 
 
 class NetworkSubgraph(ApiSpecs):

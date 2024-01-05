@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2023 Valory AG
+#   Copyright 2021-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,12 +23,13 @@
 import json
 from abc import ABC
 from enum import Enum, auto
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 from web3 import Web3
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.conditional_tokens import (
     user_positions as user_positions_query,
 )
@@ -36,8 +37,11 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.network im
     block_number,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import (
-    questions,
-    trades,
+    questions as questions_omen,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import trades
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.polymarket import (
+    questions_polymarket_gamma,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio import (
     answers as answers_query,
@@ -47,6 +51,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades imp
 )
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
+    OmenSubgraph,
+    PolymarketGammaSubgraph,
     SharedState,
 )
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
@@ -120,10 +126,12 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     def _prepare_fetching(self) -> bool:
         """Prepare for fetching a bet."""
         if self._fetch_status in (FetchStatus.SUCCESS, FetchStatus.NONE):
-            res = next(self._creators_iterator, None)
-            if res is None:
-                return False
-            self._current_market, self._current_creators = res
+            self._current_creators = []
+            while len(self._current_creators) == 0:
+                res = next(self._creators_iterator, None)
+                if res is None:
+                    return False
+                self._current_market, self._current_creators = res
 
         if self._fetch_status == FetchStatus.FAIL:
             return False
@@ -168,16 +176,26 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         self._fetch_status = FetchStatus.SUCCESS
         return res
 
-    def _fetch_bets(self) -> Generator[None, None, Optional[list]]:
+    def _fetch_bets(self) -> Generator[None, None, Tuple[Optional[list], Callable]]:
         """Fetch questions from the current subgraph, for the current creators."""
         self._fetch_status = FetchStatus.IN_PROGRESS
 
-        query = questions.substitute(
-            creators=to_graphql_list(self._current_creators),
-            slot_count=self.params.slot_count,
-            opening_threshold=self.synced_time + self.params.opening_margin,
-            languages=to_graphql_list(self.params.languages),
-        )
+        if isinstance(self.current_subgraph, PolymarketGammaSubgraph):
+            # TODO: we ignore 'creators' and simply fetch 100 latest markets.
+            query = questions_polymarket_gamma.substitute(
+                slot_count=self.params.slot_count,
+            )
+            deserializer = Bet.from_gamma_subgraph
+        elif isinstance(self.current_subgraph, OmenSubgraph):
+            query = questions_omen.substitute(
+                creators=to_graphql_list(self._current_creators),
+                slot_count=self.params.slot_count,
+                opening_threshold=self.synced_time + self.params.opening_margin,
+                languages=to_graphql_list(self.params.languages),
+            )
+            deserializer = Bet
+        else:
+            raise ValueError(f"Unknown API with id: {self.current_subgraph.api_id}!")
 
         res_raw = yield from self.get_http_response(
             content=to_content(query),
@@ -191,7 +209,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             res_context="questions",
         )
 
-        return bets
+        return bets, deserializer
 
     def _fetch_redeem_info(self) -> Generator[None, None, Optional[list]]:
         """Fetch redeeming information from the current subgraph."""

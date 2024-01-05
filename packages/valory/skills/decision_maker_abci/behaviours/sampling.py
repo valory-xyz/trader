@@ -43,7 +43,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
         if self.params.using_kelly:
-            # get only bets that close in the next 48 hours
+            # get only bets that close in the next `sample_bets_closing_days`
             self.bets = [
                 bet
                 for bet in self.bets

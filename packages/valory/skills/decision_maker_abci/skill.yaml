@@ -21,14 +21,14 @@ fingerprint:
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
   behaviours/reedem.py: bafybeibenzbek5qdtk3gobjxfmsm6tg6i3d4yltozymy23izpgbcpal5ye
   behaviours/round_behaviour.py: bafybeibymtirxbazjalmvfstnohaeqhmk4tggwwqhu62gm7mxdv6eabe3y
-  behaviours/sampling.py: bafybeibxcth4gsn7ov5liz5ma5tcflt7nvi64ku4gxlngno5vn3qr7km4u
+  behaviours/sampling.py: bafybeihtcqi3fpeygsp7hbwhr22vyliem4ewly6z27t7zo3e73ob3stw5a
   behaviours/tool_selection.py: bafybeicxw4je76uc7znx4u2hq2b2aaxcf7blwfla7lhdhkqnf3kkupsczq
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigub5ekfxfj4xaitern7lbjtlpdgjqzgwmuijrea5b6dpu2npau7m
   handlers.py: bafybeiggoetspwcvdojmbjdd67tmkoeedikmt6vsbcium3zjaljb6jzqu4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeif63pruksc6fpvmg77jmsrphc36uiawypzzcrk6nbpzoglbpxnlfy
+  models.py: bafybeigw3tbiojunr5iwuqgr6vdx6s355htlrbugiz2tgokxupauhx52iy
   payloads.py: bafybeigcic4vewdglakzpyqevhfwsolh4ywnbvxo5bgned7gl5uo3jif7m
   policy.py: bafybeihca4gc5gdj3wmvtzulqq3cr4zm6ouyt7aoscfedutzr4so4bksna
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -37,7 +37,7 @@ fingerprint:
   states/base.py: bafybeiag6q3nlndsu4nt66rxrgogueh364v3lekqo4c5ynuuo4hql2bxum
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeifruvxwwltndwazkzzbpc5nnnad3z5t5ofy6d3i7nssljbxl6gvxu
-  states/decision_receive.py: bafybeib3roo27nccj4eylaqwwzztzzzwsi6px5atjrch5wbqmpln2kyy6y
+  states/decision_receive.py: bafybeiclng2o5skqc7jwuqggpk6guexaot6e2clgfbhejwe4zlkgayeshq
   states/decision_request.py: bafybeic7otc3hjb753svbmur3yyk6szahc25yii3x4w4vcnpfz6jwvacuu
   states/final_states.py: bafybeidiwhuyd5zm2cq7vhv2owcrxdpm7fnvn3db6p6tql4jz5hgpalflu
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
@@ -67,7 +67,7 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiedxeismnx3k5ty4mvvhlqideixlhqmi5mtcki4lxqfa7uqh7p33u
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeicrzndcdbue34yxwwb4hmmdhgzw4owcdcdag3ifj6thpx5wie3dp4
-- valory/market_manager_abci:0.1.0:bafybeifdf6uoscrgvlgqceqcph2pgoygobznw6hbodpav7lubbqsyh4kby
+- valory/market_manager_abci:0.1.0:bafybeia7vrpts3jeldxr4osltz5ekw7p3h2ib5ossutpviplkzqvfwhjua
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 behaviours:
   main:

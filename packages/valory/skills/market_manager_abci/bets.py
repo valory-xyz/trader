@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -24,11 +24,21 @@ import builtins
 import dataclasses
 import json
 import sys
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Union
 
 
 BINARY_N_SLOTS = 2
+USDC = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+NULL_ADDRESS = "0x" + "0" * 40
+OMEN_TO_POLYWRAP = dict(
+    id="marketMakerAddress",
+    market="market",
+    title="question",
+    fee="fee",
+    scaledLiquidityMeasure="liquidity",
+)
 
 
 class BetStatus(Enum):
@@ -57,6 +67,32 @@ class Bet:
     scaledLiquidityMeasure: float
     status: BetStatus = BetStatus.UNPROCESSED
     blacklist_expiration: float = -1
+
+    @classmethod
+    def from_gamma_subgraph(cls, **kwargs: Any) -> "Bet":
+        """Initialize a bet's instance from gamma subgraph's attributes."""
+        outcomes = eval(kwargs["outcomes"])  # nosec
+        outcome_token_amounts = [0] * len(outcomes)
+        end_date = datetime.strptime(kwargs["endDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        opening_timestamp = int(end_date.replace(tzinfo=timezone.utc).timestamp())
+        submitted_by = kwargs["submitted_by"] or NULL_ADDRESS
+        outcome_prices = eval(kwargs["outcomePrices"])  # nosec
+
+        omen_to_polywrap_mapping = {
+            omen_key: kwargs[polywrap_key]
+            for omen_key, polywrap_key in OMEN_TO_POLYWRAP.items()
+        }
+
+        return cls(
+            collateralToken=USDC,
+            creator=submitted_by,
+            openingTimestamp=opening_timestamp,
+            outcomeSlotCount=len(outcomes),
+            outcomeTokenAmounts=outcome_token_amounts,
+            outcomeTokenMarginalPrices=outcome_prices,
+            outcomes=outcomes,
+            **omen_to_polywrap_mapping,
+        )
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

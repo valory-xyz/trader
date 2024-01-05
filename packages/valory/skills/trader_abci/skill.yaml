@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeifkeuotkaoeigtohopkm5mxgmsl2jdlsg2obpizqel6vjtyyz5uzm
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeibrxivgpzamfmrl6bdngi67g72i32lmu5vgdn3jbwka265blk7ire
+  models.py: bafybeigqhtyji4vbtkatg6sxlywabcupvaxkn3j6bkeh2kgpmucxpyoduq
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -24,9 +24,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibnwjcjx4lluf4cwb6es5peelu3gm7vrzlieygrzpbjlubxpvbvzy
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 - valory/termination_abci:0.1.0:bafybeifdtxgldw33kwvsavcituzewwbr6iqfcsgk5qouqfhpwdrivyyyom
-- valory/market_manager_abci:0.1.0:bafybeifdf6uoscrgvlgqceqcph2pgoygobznw6hbodpav7lubbqsyh4kby
-- valory/decision_maker_abci:0.1.0:bafybeigv6vymf2jisrrwnvobyzmtpa6566ldaq2u7r2vdslrv7h6fhvprq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicrvyshqokgxd7azjy6g3yzhk44lscerwnkci33eisam2foetjv4m
+- valory/market_manager_abci:0.1.0:bafybeia7vrpts3jeldxr4osltz5ekw7p3h2ib5ossutpviplkzqvfwhjua
+- valory/decision_maker_abci:0.1.0:bafybeihxo35ycripnuwcltfy64lxhaox43av7lbcozdgw2w3wupzzpdnn4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibal5o2ji3rxjf5plwsexpiafv6ufnntre2pikfd5qrykff3icaoi
 - valory/staking_abci:0.1.0:bafybeiccopehegiiwxzghrttdhuxtnjp7zvuiclx5zchbtvqpy45rrvdxy
 behaviours:
   main:
@@ -138,6 +138,7 @@ models:
       validate_timeout: 1205
       creator_per_subgraph:
         omen_subgraph: []
+        polymarket_gamma_subgraph: []
       slot_count: 2
       opening_margin: 300
       languages:
@@ -228,6 +229,30 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
+  polymarket_subgraph:
+    args:
+      api_id: polymarket
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/polymarket/matic-markets
+    class_name: PolymarketSubgraph
+  polymarket_gamma_subgraph:
+    args:
+      api_id: polymarket_gamma
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:markets
+      response_type: list
+      retries: 5
+      url: https://gamma-api.polymarket.com/query
+    class_name: PolymarketGammaSubgraph
   randomness_api:
     args:
       api_id: cloudflare

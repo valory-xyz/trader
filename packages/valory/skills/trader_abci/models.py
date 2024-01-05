@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -54,6 +54,12 @@ from packages.valory.skills.market_manager_abci.models import (
 from packages.valory.skills.market_manager_abci.models import (
     OmenSubgraph as MarketManagerOmenSubgraph,
 )
+from packages.valory.skills.market_manager_abci.models import (
+    PolymarketGammaSubgraph as MarketManagerPolyMarketGammaSubgraph,
+)
+from packages.valory.skills.market_manager_abci.models import (
+    PolymarketSubgraph as MarketManagerPolymarketSubgraph,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
@@ -82,6 +88,8 @@ EventToTimeoutMappingType = Dict[
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
+PolymarketSubgraph = MarketManagerPolymarketSubgraph
+PolymarketGammaSubgraph = MarketManagerPolyMarketGammaSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
 MechResponseSpecs = DecisionMakerMechResponseSpecs
 AgentToolsSpecs = DecisionMakerAgentToolsSpecs
