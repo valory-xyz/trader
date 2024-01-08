@@ -18,15 +18,3 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the always blue strategy."""
-
-from typing import Dict, Any, List, Union
-
-
-def get_always_blue() -> Dict[str, Union[int, str]]:
-    """ALWAYS BLUE."""
-    return {"bet_amount": 0, "info": "ALWAYS BLUE!"}
-
-
-def run(*_args, **kwargs) -> Dict[str, Union[int, List[str]]]:
-    """Run the strategy."""
-    return get_always_blue()
