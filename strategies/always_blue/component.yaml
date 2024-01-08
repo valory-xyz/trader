@@ -1,0 +1,14 @@
+name: always_blue
+author: w1kke
+version: 0.1.0
+type: custom
+description: A simple testing strategy strategy.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeicmh5fk5fjspsvesg2tqwm7i7e7bppn4f6cq46rqpwj3ioutlqdle
+  always_blue.py: bafybeicmh5fk5fjspsvesg2tqwm7i7e7bppn4f6cq46rqpwj3ioutlqdle
+fingerprint_ignore_patterns: []
+entry_point: always_blue.py
+callable: run
+dependencies: {}
