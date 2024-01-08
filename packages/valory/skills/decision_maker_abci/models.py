@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -246,13 +246,6 @@ class DecisionMakerParams(MarketManagerParams):
         self.use_fallback_strategy: bool = self._ensure(
             "use_fallback_strategy", kwargs, bool
         )
-        if self.trading_strategy not in [
-            STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
-            STRATEGY_KELLY_CRITERION,
-        ]:
-            raise ValueError(
-                f"The trading strategy {self.trading_strategy} is not supported!"
-            )
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
