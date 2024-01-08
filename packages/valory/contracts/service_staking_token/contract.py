@@ -133,3 +133,25 @@ class ServiceStakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         info = contract.functions.mapServiceInfo(service_id).call()
         return dict(data=info)
+
+    @classmethod
+    def max_num_services(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the max number of services."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        max_num_services = contract.functions.maxNumServices().call()
+        return dict(data=max_num_services)
+
+    @classmethod
+    def get_service_ids(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the service IDs."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        service_ids = contract.functions.getServiceIds().call()
+        return dict(data=service_ids)
