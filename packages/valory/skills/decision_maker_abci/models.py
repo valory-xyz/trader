@@ -71,6 +71,7 @@ ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD = "bet_amount_per_conf_threshold"
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
+MIKE_STRAT = 'mike_strat'
 
 
 class PromptTemplate(Template):
@@ -249,6 +250,7 @@ class DecisionMakerParams(MarketManagerParams):
         if self.trading_strategy not in [
             STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
             STRATEGY_KELLY_CRITERION,
+            MIKE_STRAT
         ]:
             raise ValueError(
                 f"The trading strategy {self.trading_strategy} is not supported!"

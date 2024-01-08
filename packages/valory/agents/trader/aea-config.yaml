@@ -43,10 +43,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibnwjcjx4lluf4cwb6es5peelu3gm7vrzlieygrzpbjlubxpvbvzy
 - valory/termination_abci:0.1.0:bafybeifdtxgldw33kwvsavcituzewwbr6iqfcsgk5qouqfhpwdrivyyyom
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicrvyshqokgxd7azjy6g3yzhk44lscerwnkci33eisam2foetjv4m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeign5ashucvnqho76syygyjytgjlfwb7zw7coxzx2e32cmfus37ic4
 - valory/market_manager_abci:0.1.0:bafybeifdf6uoscrgvlgqceqcph2pgoygobznw6hbodpav7lubbqsyh4kby
-- valory/decision_maker_abci:0.1.0:bafybeigv6vymf2jisrrwnvobyzmtpa6566ldaq2u7r2vdslrv7h6fhvprq
-- valory/trader_abci:0.1.0:bafybeifd7s5nnyqow7pmylpdxlydezj2bipktscx2tdze6o7n3kstwbami
+- valory/decision_maker_abci:0.1.0:bafybeigkeui55hieva6tbwkreqrqdnttroh4rqb5uoo6x4vzcusovda3rq
+- valory/trader_abci:0.1.0:bafybeifhjviuyh7l4bwsg3qxbgrregzt7nadx357wm33dm3kaco4k2yydi
 - valory/staking_abci:0.1.0:bafybeiccopehegiiwxzghrttdhuxtnjp7zvuiclx5zchbtvqpy45rrvdxy
 default_ledger: ethereum
 required_ledgers:
@@ -197,7 +197,7 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies_json: ${list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
+      file_hash_to_strategies_json: ${list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]],[["bafybeiezlsujujfywvlyuo3pq3t4yzo6ai2gsp3j4h4fn7ogdevwdgpvmi",["mike_strat"]]]}
       strategies_kwargs: ${list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
