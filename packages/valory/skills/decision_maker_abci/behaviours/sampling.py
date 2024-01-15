@@ -96,7 +96,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             self.read_bets()
             idx = self._sample()
             self.store_bets()
-            bets_hash = self.hash_stored_bets()
+            if idx is None:
+                bets_hash = None
+            else:
+                bets_hash = self.hash_stored_bets()
             payload = SamplingPayload(self.context.agent_address, bets_hash, idx)
 
         yield from self.finish_behaviour(payload)
