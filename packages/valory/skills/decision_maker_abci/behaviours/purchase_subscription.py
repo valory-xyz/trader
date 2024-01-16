@@ -32,6 +32,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, SubscriptionPayload
 from packages.valory.skills.decision_maker_abci.states.purchase_subscription import SubscriptionRound
+from packages.valory.skills.decision_maker_abci.utils.nevermined import generate_id, zero_x_transformer, no_did_prefixed
 
 
 class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
@@ -45,25 +46,27 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
         self.purchase_tx: str = ""
         self.approval_tx: str = ""
 
-    def _get_purchase_params(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
-        """Get purchase params."""
-        # this data was taken from the nervermined api, by analyzing the following subscription
-        # https://gnosis.nevermined.app/en/subscription/did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195
-        # more specifically the subscription creation tx: https://gnosisscan.io/tx/0x4cac38e6e28992ca8c20c92ffb8d0564dc7d1c3ca9f6b08db0a04b5f5fb23631
-        # and the purchase tx: https://gnosisscan.io/tx/0x086e693fac1c3d084dffdc899adaca773ad986e6e2bff5700549e1ae8364731e (this is what the service should do)
-
-        purchase_params = {}
-
+    @property
+    def subscription_params(self) -> Dict[str, Any]:
+        """Get the subscription params."""
         mech = self.params.mech_agent_address
-        params = self.params.mech_to_subscription_params[mech]
+        return self.params.mech_to_subscription_params[mech]
 
-        base_url = params["base_url"]
-        did = params["did"]
-        purchase_params["did"] = did
-        purchase_params["nft_receiver"] = self.synchronized_data.safe_contract_address
-        purchase_params["contract_address"] = params["transfer_nft_condition_address"]
+    @property
+    def did(self) -> str:
+        """Get the did."""
+        subscription_params = self.subscription_params
+        return subscription_params["did"]
 
-        did_url = f"{base_url}/{did}"
+    @property
+    def base_url(self) -> str:
+        """Get the base url."""
+        subscription_params = self.subscription_params
+        return subscription_params["base_url"]
+
+    def _resolve_did(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
+        """Resolve and parse the did."""
+        did_url = f"{self.base_url}/{self.did}"
         response = yield from self.get_http_response(
             method="GET",
             url=did_url,
@@ -75,28 +78,8 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
                 f"Received status code {response.status_code}."
             )
             return None
-
         try:
-            # TODO: would be good to get a sanity check here, whether its possible to get this information from somewhere else
             data = json.loads(response.body)["data"]
-            service = data["service"]
-            for s in service:
-                if s["type"] == "nft_sales":
-                    template = s["attributes"]["serviceAgreementTemplate"]
-                    conditions = template["conditions"]
-                    for condition in conditions:
-                        if condition["type"] == "transferNFT":
-                            transfer_params = condition["parameters"]
-                            for param in transfer_params:
-                                if param["name"] == "_nftHolder":
-                                    purchase_params["nft_holder"] = param["value"]
-                                elif param["name"] == "_numberNfts":
-                                    purchase_params["nft_amount"] = int(param["value"])
-                                elif param["name"] == "_contractAddress":
-                                    purchase_params[
-                                        "nft_contract_address"
-                                    ] = param["value"]
-
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from nervermined api, "
@@ -104,16 +87,18 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
             )
             return None
 
-        # TODO
-        # purchase_params["agreement_id"] = "agreement_id"
-        # purchase_params["lock_payment_condition"] = "lock_payment_condition"
-        # purchase_params["transfer"] = "transfer", this might be always False from the txs I analyzed
-        # purchase_params["expiration_block"], this might be always 0 from the txs I analyzed
+        return data
 
-        return purchase_params
+    def _get_purchase_params(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
+        """Get purchase params."""
+        agreement_id = zero_x_transformer(generate_id())
+        did = zero_x_transformer(no_did_prefixed(self.did))
+
+
 
     def _get_approval_params(self) -> Dict[str, Any]:
         """Get approval params."""
+        # TODO: get these from the did doc
         approval_params = {}
         mech = self.params.mech_agent_address
         params = self.params.mech_to_subscription_params[mech]
