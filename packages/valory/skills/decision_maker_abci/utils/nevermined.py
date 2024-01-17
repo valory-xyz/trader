@@ -21,9 +21,10 @@
 
 import re
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 import requests
+from web3 import Web3
 
 
 def zero_x_transformer(input_str: str, zero_output: bool = True) -> str:
@@ -54,7 +55,8 @@ def find_service_by_type(did_doc: Dict[str, Any], type: str) -> Dict[str, Any]:
     raise Exception(f'No service found with type {type}')
 
 
-def find_service_condition_by_name(service: Dict[str, Any], name: str):
+def find_service_condition_by_name(service: Dict[str, Any], name: str) -> Dict[str, Any]:
+    """Find a condition by name."""
     conditions = service.get('attributes', {}).get('serviceAgreementTemplate', {}).get('conditions', [])
 
     condition = next((c for c in conditions if c['name'] == name), None)
@@ -92,6 +94,22 @@ def get_nft_address(did_doc: Dict[str, Any], type: str = 'nft-sales') -> str:
 
     return contract_param if contract_param is not None else ''
 
+def get_nft_holder(did_doc: Dict[str, Any], type: str = 'nft-sales') -> str:
+    """Get the NFT holder of a DID."""
+    service = find_service_by_type(did_doc, type)
+    transfer_condition = find_service_condition_by_name(service, 'transferNFT')
+    contract_param = next((p['value'] for p in transfer_condition.get('parameters', []) if p['name'] == '_nftHolder'), None)
+
+    return contract_param if contract_param is not None else ''
+
+def get_nft_transfer(did_doc: Dict[str, Any], type: str = 'nft-sales') -> str:
+    """Get the NFT holder of a DID."""
+    service = find_service_by_type(did_doc, type)
+    transfer_condition = find_service_condition_by_name(service, 'transferNFT')
+    contract_param = next((p['value'] for p in transfer_condition.get('parameters', []) if p['name'] == '_nftTransfer'), None)
+
+    return contract_param if contract_param is not None else ''
+
 
 def no_did_prefixed(input_string: str) -> str:
     """Remove the DID prefix from a string."""
@@ -101,21 +119,156 @@ def no_did_prefixed(input_string: str) -> str:
 def did_transformer(input_string: str, prefix_output: bool = False) -> str:
     """Transform a string to a DID."""
     pattern = re.compile(r'^(?:0x|did:nv:)*([a-f0-9]{64})$', re.IGNORECASE)
-    match_result = input_match(input_string, pattern, 'did_transformer')
+    match_result = input_match(input_string, pattern)
 
     valid, output = match_result['valid'], match_result['output']
 
     return ('did:nv:' if prefix_output and valid else '') + output
 
 
-def input_match(input_string, pattern, function_name):
+def input_match(input_string: str, pattern: re.Pattern[str]) -> Dict[str, Any]:
     match_result = re.match(pattern, input_string)
     if match_result:
         return {'valid': True, 'output': match_result.group(1)}
     else:
         return {'valid': False, 'output': ''}
 
+
+def hash_data(
+    types: List[str],
+    values: List[Any],
+) -> str:
+    """Hash data."""
+    encoded_data = Web3.solidity_keccak(types, values)
+    return encoded_data.hex()
+
+
+def short_id(did: str) -> str:
+    """Get the short ID of a DID."""
+    return did.replace('did:nv:', '')
+
+
+def get_agreement_id(seed: str, creator: str) -> str:
+    """Get the agreement ID."""
+    seed_0x = zero_x_transformer(seed)
+    creator_0x = Web3.to_checksum_address(creator)
+    return hash_data(['bytes32', 'address'], [seed_0x, creator_0x])
+
+
+def get_lock_payment_seed(
+    did_doc: Dict[str, Any],
+    escrow_payment_condition_address: str,
+    token_address: str,
+    amounts: List[int],
+    receivers: List[str],
+) -> str:
+    """Get the lock payment seed."""
+    short_id_ = zero_x_transformer(short_id(did_doc['id']))
+    escrow_payment_condition_address_0x = zero_x_transformer(escrow_payment_condition_address)
+    token_address = Web3.to_checksum_address(token_address)
+    receivers = [Web3.to_checksum_address(receiver) for receiver in receivers]
+
+    return hash_data(
+        ['bytes32', 'bytes32', 'address', 'uint256[]', 'address[]'],
+        [short_id_, escrow_payment_condition_address_0x, token_address, amounts, receivers],
+    )
+
+def get_transfer_nft_condition_seed(
+    did_doc: Dict[str, Any],
+    buyer_address: str,
+    nft_amount: int,
+    lock_condition_id: str,
+    nft_contract_address: str,
+    expiration: int = 0,
+) -> str:
+    """Get the lock payment seed."""
+    short_id_ = zero_x_transformer(short_id(did_doc['id']))
+    nft_holder = Web3.to_checksum_address(get_nft_holder(did_doc))
+    will_transfer = get_nft_transfer(did_doc) == 'true'
+
+    return hash_data(
+        ['bytes32', 'address', 'address', 'uint256', 'bytes32', 'address', 'bool'],
+        [
+            short_id_,
+            nft_holder,
+            Web3.to_checksum_address(buyer_address),
+            nft_amount,
+            lock_condition_id,
+            Web3.to_checksum_address(nft_contract_address),
+            will_transfer,
+        ],
+    )
+
+def get_escrow_payment_seed(
+    did_doc: Dict[str, Any],
+    amounts: List[int],
+    receivers: List[str],
+    buyer_address: str,
+    escrow_payment_condition_address: str,
+    token_address: str,
+    lock_seed: str,
+    access_seed: str,
+) -> str:
+    """Get the escrow payment seed."""
+    short_id_ = zero_x_transformer(short_id(did_doc['id']))
+    escrow_payment_condition_address = Web3.to_checksum_address(escrow_payment_condition_address)
+    receivers = [Web3.to_checksum_address(receiver) for receiver in receivers]
+    buyer_address = Web3.to_checksum_address(buyer_address)
+    token_address = Web3.to_checksum_address(token_address)
+
+    return hash_data(
+        ['bytes32', 'uint256[]', 'address[]', 'address', 'address', 'address', 'bytes32', 'bytes32'],
+        [short_id_, amounts, receivers, buyer_address, escrow_payment_condition_address, token_address, lock_seed, access_seed]
+    )
+
+
+def get_timeouts_and_timelocks(did_doc: Dict[str, Any]) -> Tuple[List[int], List[int]]:
+    """Get timeouts and timelocks"""
+    type = 'nft-sales'
+    service = find_service_by_type(did_doc, type)
+    conditions = service.get('attributes', {}).get('serviceAgreementTemplate', {}).get('conditions', [])
+    timeouts, timelocks = [], []
+    for condition in conditions:
+        timeouts.append(condition.get('timeout', 0))
+        timelocks.append(condition.get('timelock', 0))
+
+    return timeouts, timelocks
+
+
+def get_reward_address(did_doc: Dict[str, Any], type: str = 'nft-sales') -> str:
+    """Get the reward address of a DID."""
+    service = find_service_by_type(did_doc, type)
+    transfer_condition = find_service_condition_by_name(service, 'lockPayment')
+    contract_param = next((p['value'] for p in transfer_condition.get('parameters', []) if p['name'] == '_rewardAddress'), None)
+
+    return contract_param if contract_param is not None else ''
+
+
 # TODO: remove
 res = requests.get('https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo/did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195')
 did_doc = res.json()
-print(get_nft_address(did_doc))
+price = get_price(did_doc)
+print(get_reward_address(did_doc))
+seed = get_lock_payment_seed(
+    did_doc,
+    '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+    '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+    list(price.values()),
+    list(price.keys()),
+)
+seed_access = get_transfer_nft_condition_seed(
+        did_doc,
+        '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+        1,
+        seed,
+        '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+    )
+print(
+get_escrow_payment_seed(did_doc,
+    list(price.values()),
+    list(price.keys()),
+    '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+    '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+    '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',
+    seed,
+    seed_access,                    ))

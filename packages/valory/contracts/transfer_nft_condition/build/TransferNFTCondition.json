@@ -1018,6 +1018,61 @@
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
+    },
+    {
+      "inputs": [
+        {
+            "components": [
+                {
+                "internalType": "bytes32",
+                "name": "did",
+                "type": "bytes32"
+                },
+                {
+                "internalType": "address",
+                "name": "nftHolder",
+                "type": "address"
+                },
+                {
+                "internalType": "address",
+                "name": "nftReceiver",
+                "type": "address"
+                },
+                {
+                "internalType": "uint256",
+                "name": "nftAmount",
+                "type": "uint256"
+                },
+                {
+                "internalType": "bytes32",
+                "name": "lockCondition",
+                "type": "bytes32"
+                },
+                {
+                "internalType": "address",
+                "name": "nftContractAddress",
+                "type": "address"
+                },
+                {
+                "internalType": "bool",
+                "name": "transfer",
+                "type": "bool"
+                }
+            ],
+            "internalType": "struct EscrowComputeExecutionCondition.FulfillArgs",
+            "name": "_fulfillArgs",
+            "type": "tuple"
+            },
+            {
+            "internalType": "bytes",
+            "name": "_signature",
+            "type": "bytes"
+        }
+      ],
+      "name": "createAgreementAndPayEscrow"
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
     }
   ],
   "bytecode": "",

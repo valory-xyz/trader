@@ -19,7 +19,7 @@
 
 """This module contains the class to connect to an TRANSFER_NFT_CONDITION token contract."""
 
-from typing import Dict
+from typing import Dict, List
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -37,31 +37,35 @@ class TransferNftCondition(Contract):
     contract_id = PUBLIC_ID
 
     @classmethod
-    def build_fulfill_for_delegate_tx(
+    def build_order_tx(
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
         agreement_id: str,
         did: str,
-        nft_holder: str,
-        nft_receiver: str,
-        nft_amount: int,
-        lock_payment_condition: str,
-        nft_contract_address: str,
-        transfer: bool,
-        expiration_block: int,
+        condition_ids: List[str],
+        time_locks: List[int],
+        time_outs: List[int],
+        consumer: str,
+        index: int,
+        reward_address: str,
+        token_address: str,
+        amounts: List[int],
+        receives: List[str],
     ) -> Dict[str, bytes]:
         """Build an TransferNftCondition approval."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        data = contract_instance.encodeABI("fulfillForDelegate", args=(
+        data = contract_instance.encodeABI("createAgreementAndPayEscrow", args=(
             bytes.fromhex(agreement_id[2:]),
             bytes.fromhex(did[2:]),
-            Web3.to_checksum_address(nft_holder),
-            Web3.to_checksum_address(nft_receiver),
-            nft_amount,
-            bytes.fromhex(lock_payment_condition[2:]),
-            Web3.to_checksum_address(nft_contract_address),
-            transfer,
-            expiration_block,
+            [bytes.fromhex(condition_id[2:]) for condition_id in condition_ids],
+            time_locks,
+            time_outs,
+            Web3.to_checksum_address(consumer),
+            index,
+            Web3.to_checksum_address(reward_address),
+            Web3.to_checksum_address(token_address),
+            amounts,
+            [Web3.to_checksum_address(receive) for receive in receives],
         ))
         return {"data": bytes.fromhex(data[2:])}

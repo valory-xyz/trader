@@ -19,7 +19,7 @@
 
 """This module contains the behaviour for the decision-making of the skill."""
 import json
-from typing import Any, Generator, Optional, Dict
+from typing import Any, Generator, Optional, Dict, List
 
 from hexbytes import HexBytes
 
@@ -32,7 +32,13 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, SubscriptionPayload
 from packages.valory.skills.decision_maker_abci.states.purchase_subscription import SubscriptionRound
-from packages.valory.skills.decision_maker_abci.utils.nevermined import generate_id, zero_x_transformer, no_did_prefixed
+from packages.valory.skills.decision_maker_abci.utils.nevermined import generate_id, zero_x_transformer, \
+    no_did_prefixed, get_lock_payment_seed, get_price, get_transfer_nft_condition_seed, get_escrow_payment_seed, \
+    get_timeouts_and_timelocks, get_reward_address
+
+
+LOCK_CONDITION_INDEX = 1
+
 
 
 class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
@@ -43,8 +49,9 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
-        self.purchase_tx: str = ""
+        self.order_tx: str = ""
         self.approval_tx: str = ""
+        self.balance: int = 0
 
     @property
     def subscription_params(self) -> Dict[str, Any]:
@@ -57,6 +64,42 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
         """Get the did."""
         subscription_params = self.subscription_params
         return subscription_params["did"]
+
+    @property
+    def escrow_payment_condition_address(self) -> str:
+        """Get the escrow payment address."""
+        subscription_params = self.subscription_params
+        return subscription_params["escrow_payment_condition_address"]
+
+    @property
+    def lock_payment_condition_address(self) -> str:
+        """Get the lock payment address."""
+        subscription_params = self.subscription_params
+        return subscription_params["lock_payment_condition_address"]
+
+    @property
+    def transfer_nft_condition_address(self) -> str:
+        """Get the transfer nft condition address."""
+        subscription_params = self.subscription_params
+        return subscription_params["transfer_nft_condition_address"]
+
+    @property
+    def token_address(self) -> str:
+        """Get the token address."""
+        subscription_params = self.subscription_params
+        return subscription_params["token"]
+
+    @property
+    def purchase_amount(self) -> int:
+        """Get the purchase amount."""
+        subscription_params = self.subscription_params
+        return subscription_params["nft_amount"]
+
+    @property
+    def price(self) -> int:
+        """Get the price."""
+        subscription_params = self.subscription_params
+        return subscription_params["price"]
 
     @property
     def base_url(self) -> str:
@@ -89,54 +132,114 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
 
         return data
 
+    def _get_condition_ids(self, did_doc: Dict[str, Any]) -> List[str]:
+        """Get the condition ids."""
+        price = get_price(did_doc)
+        receivers = list(price.keys())
+        amounts = list(price.values())
+        lock_payment_seed = get_lock_payment_seed(
+            did_doc,
+            self.escrow_payment_condition_address,
+            self.token_address,
+            amounts,
+            receivers,
+        )
+        transfer_nft_condition_seed = get_transfer_nft_condition_seed(
+            did_doc,
+            self.transfer_nft_condition_address,
+            self.purchase_amount,
+            lock_payment_seed,
+            self.token_address,
+        )
+        escrow_payment_seed = get_escrow_payment_seed(
+            did_doc,
+            amounts,
+            receivers,
+            self.synchronized_data.safe_contract_address,
+            self.escrow_payment_condition_address,
+            self.token_address,
+            lock_payment_seed,
+            transfer_nft_condition_seed,
+        )
+        condition_ids = [
+            lock_payment_seed,
+            transfer_nft_condition_seed,
+            escrow_payment_seed,
+        ]
+        return condition_ids
+
+
     def _get_purchase_params(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
         """Get purchase params."""
         agreement_id = zero_x_transformer(generate_id())
         did = zero_x_transformer(no_did_prefixed(self.did))
+        did_doc = yield from self._resolve_did()
+        if did_doc is None:
+            # something went wrong
+            return None
+        condition_ids = self._get_condition_ids(did_doc)
+        timeouts, timelocks = get_timeouts_and_timelocks(did_doc)
+        reward_address = get_reward_address(did_doc)
+        price = get_price(did_doc)
+        receivers = list(price.keys())
+        amounts = list(price.values())
 
-
+        return {
+            "agreement_id": agreement_id,
+            "did": did,
+            "condition_ids": condition_ids,
+            "consumer": self.synchronized_data.safe_contract_address,
+            "index": LOCK_CONDITION_INDEX,
+            "timeouts": timeouts,
+            "timelocks": timelocks,
+            "reward_address": reward_address,
+            "receivers": receivers,
+            "amounts": amounts,
+        }
 
     def _get_approval_params(self) -> Dict[str, Any]:
         """Get approval params."""
         # TODO: get these from the did doc
         approval_params = {}
-        mech = self.params.mech_agent_address
-        params = self.params.mech_to_subscription_params[mech]
-        approval_params["token"] = params["token"]
-        approval_params["spender"] = params["transfer_nft_condition_address"]
-        approval_params["amount"] = params["nft_price"]
+        approval_params["token"] = self.token_address
+        approval_params["spender"] = self.transfer_nft_condition_address
+        approval_params["amount"] = self.price
         return approval_params
 
-    def _prepare_purchase_tx(
+    def _prepare_order_tx(
         self,
         contract_address: str,
         agreement_id: str,
         did: str,
-        nft_holder: str,
-        nft_receiver: str,
-        nft_amount: int,
-        lock_payment_condition: str,
-        nft_contract_address: str,
-        transfer: bool,
-        expiration_block: int,
+        condition_ids: List[str],
+        time_locks: List[int],
+        time_outs: List[int],
+        consumer: str,
+        index: int,
+        reward_address: str,
+        token_address: str,
+        amounts: List[int],
+        receives: List[str],
     ) -> Generator[None, None, bool]:
         """Prepare a purchase tx."""
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=contract_address,
             contract_public_id=TransferNftCondition.contract_id,
-            contract_callable="build_fulfill_for_delegate_tx",
+            contract_callable="build_order_tx",
             data_key="data",
-            placeholder="approval_tx",
+            placeholder="order_tx",
             agreement_id=agreement_id,
             did=did,
-            nft_holder=nft_holder,
-            nft_receiver=nft_receiver,
-            nft_amount=nft_amount,
-            lock_payment_condition=lock_payment_condition,
-            nft_contract_address=nft_contract_address,
-            transfer=transfer,
-            expiration_block=expiration_block,
+            condition_ids=condition_ids,
+            time_locks=time_locks,
+            time_outs=time_outs,
+            consumer=consumer,
+            index=index,
+            reward_address=reward_address,
+            token_address=token_address,
+            amounts=amounts,
+            receives=receives,
         )
         if not result:
             return False
@@ -169,14 +272,29 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
                 data=HexBytes(self.approval_tx),
             )
         )
+    def _get_balance(self, token: str, address: str) -> Generator[None, None, bool]:
+        """Prepare an approval tx."""
+        result = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=token,
+            contract_public_id=ERC20.contract_id,
+            contract_callable="check_balance",
+            data_key="token",
+            placeholder="balance",
+            account=address,
+        )
+        if not result:
+            return False
+
 
     def _should_purchase(self) -> Generator[None, None, bool]:
         """Check if the subscription should be purchased."""
-        # TODO: check if the subscription should be purchased
-        # possible things to check:
-        # is the subscription already purchased?
-        # does the agent have enough funds?
-        # has the subscription run out?
+        result = yield from self._get_balance(self.token_address, self.synchronized_data.safe_contract_address)
+        if not result:
+            self.context.logger.warning("Failed to get balance")
+            return False
+
+        return self.balance <= 0
 
     def get_payload_content(self) -> Generator[None, None, str]:
         """Get the payload."""
@@ -192,7 +310,7 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
         if purchase_params is None:
             return SubscriptionRound.ERROR_PAYLOAD
 
-        result = yield from self._prepare_purchase_tx(**purchase_params)
+        result = yield from self._prepare_order_tx(**purchase_params)
         if not result:
             return SubscriptionRound.ERROR_PAYLOAD
 
