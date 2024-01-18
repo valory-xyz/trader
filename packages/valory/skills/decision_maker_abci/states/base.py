@@ -174,6 +174,16 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the participants to bet-placement."""
         return self._get_deserialized("participant_to_tx_prep")
 
+    @property
+    def agreement_id(self) -> str:
+        """Get the agreement id."""
+        return str(self.db.get_strict("agreement_id"))
+
+    @property
+    def claim(self) -> bool:
+        """Get the claim."""
+        return bool(self.db.get_strict("claim"))
+
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
     """A round for preparing a transaction."""

@@ -244,11 +244,23 @@ def get_reward_address(did_doc: Dict[str, Any], type: str = 'nft-sales') -> str:
     return contract_param if contract_param is not None else ''
 
 
+def get_creator(did_doc: Dict[str, Any]) -> str:
+    """Get the creator of a DID."""
+    return did_doc['proof']['creator']
+
+def get_claim_endpoint(did_doc: Dict[str, Any]) -> str:
+    """Get the claim endpoint of a DID."""
+    service = find_service_by_type(did_doc, 'nft-sales')
+    return service['serviceEndpoint']
+
+
+
 # TODO: remove
 res = requests.get('https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo/did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195')
 did_doc = res.json()
 price = get_price(did_doc)
 print(get_reward_address(did_doc))
+print(get_claim_endpoint(did_doc))
 seed = get_lock_payment_seed(
     did_doc,
     '0x5e1d1eb61e1164d5a50b28c575da73a29595dff7',

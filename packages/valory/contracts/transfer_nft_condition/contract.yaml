@@ -6,10 +6,10 @@ description: TRANSFER_NFT_CONDITION token contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeifmfma6rglvpa22odtozyosnp5mwljum64utxip2wgmezuhnjjjyi
-  __init__.py: bafybeia2k2vmq7lmd3uchmm6jmzj7ebqkogk5aolpw4nwsawnkgqfobltm
-  build/TransferNFTCondition.json: bafybeiemn5b5nszuss7xj6lmvmjuendltp6wz7ubihdvd7c6wqw4bohbpa
-  contract.py: bafybeif3vy43l7baa3doljavpfvy42mywkcgkvpvlilweluk5jf6e3doji
+  README.md: bafybeidiaep6cpoqlabnajvsgegpt72hqnbtozayicaxclzxzftopvlw5u
+  __init__.py: bafybeigr6fpkchrud5tjrx5qevyk436jufe4zt6otkpbzsiergvyp64hs4
+  build/TransferNFTCondition.json: bafybeihjasxvef6utvcdboz2jmjlyldxaqjsakynpzxgfwzczcesoys22m
+  contract.py: bafybeihz5jeggunv4owoamcpgohs7qgnfjqicuxk3zv4hwbxzysnto3w7q
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: TransferNftCondition

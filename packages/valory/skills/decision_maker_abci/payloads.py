@@ -72,6 +72,15 @@ class RequestPayload(MultisigTxPayload):
 class SubscriptionPayload(MultisigTxPayload):
     """Represents a transaction payload for subscribing."""
 
+    agreement_id: str = ''
+
+
+@dataclass(frozen=True)
+class ClaimPayload(BaseTxPayload):
+    """Represents a transaction payload for claiming a subscription."""
+
+    vote: bool
+
 
 @dataclass(frozen=True)
 class VotingPayload(BaseTxPayload):

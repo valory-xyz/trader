@@ -37,6 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
+from packages.valory.skills.decision_maker_abci.states.claim_subscription import ClaimRound
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
@@ -48,11 +49,12 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     ImpossibleRound,
-    RefillRequiredRound,
+    RefillRequiredRound, FinishedSubscriptionRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.order_subscription import SubscriptionRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
@@ -135,6 +137,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound,
         DecisionReceiveRound,
         RedeemRound,
+        ClaimRound,
     }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
@@ -142,6 +145,18 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
+        },
+        SubscriptionRound: {
+            Event.DONE: FinishedSubscriptionRound,
+            Event.SUBSCRIPTION_ERROR: SubscriptionRound,
+            Event.NO_MAJORITY: SubscriptionRound,
+            Event.ROUND_TIMEOUT: SubscriptionRound,
+        },
+        ClaimRound: {
+            Event.DONE: ToolSelectionRound,
+            Event.SUBSCRIPTION_ERROR: ClaimRound,
+            Event.NO_MAJORITY: ClaimRound,
+            Event.ROUND_TIMEOUT: ClaimRound,
         },
         ToolSelectionRound: {
             Event.DONE: DecisionRequestRound,
@@ -213,6 +228,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     )
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
+        FinishedSubscriptionRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
         RefillRequiredRound,

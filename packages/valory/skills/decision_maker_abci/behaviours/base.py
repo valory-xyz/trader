@@ -20,6 +20,7 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
+import json
 from abc import ABC
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
@@ -550,3 +551,84 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
+
+
+class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
+    @property
+    def subscription_params(self) -> Dict[str, Any]:
+        """Get the subscription params."""
+        mech = self.params.mech_agent_address
+        return self.params.mech_to_subscription_params[mech]
+
+    @property
+    def did(self) -> str:
+        """Get the did."""
+        subscription_params = self.subscription_params
+        return subscription_params["did"]
+
+    @property
+    def escrow_payment_condition_address(self) -> str:
+        """Get the escrow payment address."""
+        subscription_params = self.subscription_params
+        return subscription_params["escrow_payment_condition_address"]
+
+    @property
+    def lock_payment_condition_address(self) -> str:
+        """Get the lock payment address."""
+        subscription_params = self.subscription_params
+        return subscription_params["lock_payment_condition_address"]
+
+    @property
+    def transfer_nft_condition_address(self) -> str:
+        """Get the transfer nft condition address."""
+        subscription_params = self.subscription_params
+        return subscription_params["transfer_nft_condition_address"]
+
+    @property
+    def token_address(self) -> str:
+        """Get the token address."""
+        subscription_params = self.subscription_params
+        return subscription_params["token"]
+
+    @property
+    def purchase_amount(self) -> int:
+        """Get the purchase amount."""
+        subscription_params = self.subscription_params
+        return subscription_params["nft_amount"]
+
+    @property
+    def price(self) -> int:
+        """Get the price."""
+        subscription_params = self.subscription_params
+        return subscription_params["price"]
+
+    @property
+    def base_url(self) -> str:
+        """Get the base url."""
+        subscription_params = self.subscription_params
+        return subscription_params["base_url"]
+
+    def _resolve_did(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
+        """Resolve and parse the did."""
+        did_url = f"{self.base_url}/{self.did}"
+        response = yield from self.get_http_response(
+            method="GET",
+            url=did_url,
+            headers={"accept": "application/json"},
+        )
+        if response.status_code != 200:
+            self.context.logger.error(
+                f"Could not retrieve data from did url {did_url}. "
+                f"Received status code {response.status_code}."
+            )
+            return None
+        try:
+            data = json.loads(response.body)["data"]
+        except (ValueError, TypeError) as e:
+            self.context.logger.error(
+                f"Could not parse response from nervermined api, "
+                f"the following error was encountered {type(e).__name__}: {e}"
+            )
+            return None
+
+        return data

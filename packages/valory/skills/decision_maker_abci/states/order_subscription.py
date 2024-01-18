@@ -56,4 +56,13 @@ class SubscriptionRound(TxPreparationRound):
             if payload.tx_hash == self.NO_TX_PAYLOAD:
                 return self.synchronized_data, Event.NO_SUBSCRIPTION
 
-        return super().end_block()
+        update = super().end_block()
+        if update is None:
+            return None
+
+        sync_data, event = update
+        payload = cast(SubscriptionPayload, self.most_voted_payload)
+        sync_data = sync_data.update(
+            agreement_id=payload.agreement_id,
+        )
+        return sync_data, event

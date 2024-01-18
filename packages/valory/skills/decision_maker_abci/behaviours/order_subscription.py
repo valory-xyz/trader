@@ -27,11 +27,11 @@ from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.transfer_nft_condition.contract import TransferNftCondition
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
+    DecisionMakerBaseBehaviour, BaseSubscriptionBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, SubscriptionPayload
-from packages.valory.skills.decision_maker_abci.states.purchase_subscription import SubscriptionRound
+from packages.valory.skills.decision_maker_abci.states.order_subscription import SubscriptionRound
 from packages.valory.skills.decision_maker_abci.utils.nevermined import generate_id, zero_x_transformer, \
     no_did_prefixed, get_lock_payment_seed, get_price, get_transfer_nft_condition_seed, get_escrow_payment_seed, \
     get_timeouts_and_timelocks, get_reward_address
@@ -41,7 +41,7 @@ LOCK_CONDITION_INDEX = 1
 
 
 
-class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
+class PurchaseSubscriptionBehaviour(BaseSubscriptionBehaviour):
     """A behaviour in which the agents purchase a subscriptions."""
 
     matching_round = SubscriptionRound
@@ -52,85 +52,7 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
         self.order_tx: str = ""
         self.approval_tx: str = ""
         self.balance: int = 0
-
-    @property
-    def subscription_params(self) -> Dict[str, Any]:
-        """Get the subscription params."""
-        mech = self.params.mech_agent_address
-        return self.params.mech_to_subscription_params[mech]
-
-    @property
-    def did(self) -> str:
-        """Get the did."""
-        subscription_params = self.subscription_params
-        return subscription_params["did"]
-
-    @property
-    def escrow_payment_condition_address(self) -> str:
-        """Get the escrow payment address."""
-        subscription_params = self.subscription_params
-        return subscription_params["escrow_payment_condition_address"]
-
-    @property
-    def lock_payment_condition_address(self) -> str:
-        """Get the lock payment address."""
-        subscription_params = self.subscription_params
-        return subscription_params["lock_payment_condition_address"]
-
-    @property
-    def transfer_nft_condition_address(self) -> str:
-        """Get the transfer nft condition address."""
-        subscription_params = self.subscription_params
-        return subscription_params["transfer_nft_condition_address"]
-
-    @property
-    def token_address(self) -> str:
-        """Get the token address."""
-        subscription_params = self.subscription_params
-        return subscription_params["token"]
-
-    @property
-    def purchase_amount(self) -> int:
-        """Get the purchase amount."""
-        subscription_params = self.subscription_params
-        return subscription_params["nft_amount"]
-
-    @property
-    def price(self) -> int:
-        """Get the price."""
-        subscription_params = self.subscription_params
-        return subscription_params["price"]
-
-    @property
-    def base_url(self) -> str:
-        """Get the base url."""
-        subscription_params = self.subscription_params
-        return subscription_params["base_url"]
-
-    def _resolve_did(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
-        """Resolve and parse the did."""
-        did_url = f"{self.base_url}/{self.did}"
-        response = yield from self.get_http_response(
-            method="GET",
-            url=did_url,
-            headers={"accept": "application/json"},
-        )
-        if response.status_code != 200:
-            self.context.logger.error(
-                f"Could not retrieve data from did url {did_url}. "
-                f"Received status code {response.status_code}."
-            )
-            return None
-        try:
-            data = json.loads(response.body)["data"]
-        except (ValueError, TypeError) as e:
-            self.context.logger.error(
-                f"Could not parse response from nervermined api, "
-                f"the following error was encountered {type(e).__name__}: {e}"
-            )
-            return None
-
-        return data
+        self.agreement_id: str = ""
 
     def _get_condition_ids(self, did_doc: Dict[str, Any]) -> List[str]:
         """Get the condition ids."""
@@ -247,7 +169,7 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
         self.multisend_batches.append(
             MultisendBatch(
                 to=contract_address,
-                data=HexBytes(self.purchase_tx),
+                data=HexBytes(self.order_tx),
             )
         )
 
@@ -306,6 +228,8 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
         if not result:
             return SubscriptionRound.ERROR_PAYLOAD
 
+        self.agreement_id = approval_params["agreement_id"]
+
         purchase_params = yield from self._get_purchase_params()
         if purchase_params is None:
             return SubscriptionRound.ERROR_PAYLOAD
@@ -332,5 +256,6 @@ class PurchaseSubscriptionBehaviour(DecisionMakerBaseBehaviour):
                 sender,
                 tx_submitter=SubscriptionRound.auto_round_id(),
                 tx_hash=payload_data,
+                agreement_id=self.agreement_id,
             )
         yield from self.finish_behaviour(payload)
