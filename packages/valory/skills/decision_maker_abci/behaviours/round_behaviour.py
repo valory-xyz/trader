@@ -31,6 +31,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import 
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.claim_subscription import ClaimSubscriptionBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
@@ -40,6 +41,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.order_subscription import OrderSubscriptionBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
@@ -64,4 +66,6 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         RedeemBehaviour,  # type: ignore
         HandleFailedTxBehaviour,  # type: ignore
         ToolSelectionBehaviour,  # type: ignore
+        OrderSubscriptionBehaviour,
+        ClaimSubscriptionBehaviour,
     }

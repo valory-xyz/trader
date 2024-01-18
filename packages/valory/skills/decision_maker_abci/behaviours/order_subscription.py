@@ -41,7 +41,7 @@ LOCK_CONDITION_INDEX = 1
 
 
 
-class PurchaseSubscriptionBehaviour(BaseSubscriptionBehaviour):
+class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
     """A behaviour in which the agents purchase a subscriptions."""
 
     matching_round = SubscriptionRound

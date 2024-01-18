@@ -32,7 +32,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
-    RefillRequiredRound,
+    RefillRequiredRound, FinishedSubscriptionRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
@@ -96,6 +96,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
     FinishedDecisionRequestTxRound: DecisionReceiveRound,
+    FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
     FinishedWithoutDecisionRound: RedeemRound,
