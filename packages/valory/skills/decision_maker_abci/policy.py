@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -22,7 +22,10 @@
 import json
 import random
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
+
+
+RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -117,11 +120,12 @@ class EGreedyPolicy:
                 error = "Attempted to remove tools using incorrect indexes!"
                 raise ValueError(error) from exc
 
-    def select_tool(self) -> Optional[int]:
+    def select_tool(self, randomness: RandomnessType) -> Optional[int]:
         """Select a Mech tool and return its index."""
         if self.n_tools == 0:
             return None
 
+        random.seed(randomness)
         if sum(self.reward_rates) == 0 or random.random() < self.eps:  # nosec
             return self.random_tool
 

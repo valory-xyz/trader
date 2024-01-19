@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
   build/ServiceStakingToken.json: bafybeie2xbccvzmjuptqfqumctv6gtyyeoxe7fkx3t7fgbto7wbdugbqxm
-  contract.py: bafybeihhdg5mvd3jwc7q445ntdahaiyjpt2ne6ipkiaymycbrw5iwzuble
+  contract.py: bafybeif2c6sremwf6cgqcfuossbjm43rj7auredsgwafbxrrhzymsqyzmm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: ServiceStakingTokenContract
@@ -16,8 +16,8 @@ contract_interface_paths:
   ethereum: build/ServiceStakingToken.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.43.0.post1
+    version: ==1.44.0
   open-aea-test-autonomy:
-    version: ==0.13.9
+    version: ==0.14.0
   web3:
     version: <7,>=6.0.0

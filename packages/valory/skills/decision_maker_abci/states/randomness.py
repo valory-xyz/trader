@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,16 +17,18 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the MarketManager."""
+"""This module contains the randomness state of the decision-making abci app."""
 
-from dataclasses import dataclass
-from typing import Optional
+from typing import Any
 
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.transaction_settlement_abci.rounds import (
+    RandomnessTransactionSubmissionRound,
+)
 
 
-@dataclass(frozen=True)
-class UpdateBetsPayload(BaseTxPayload):
-    """A transaction payload for the updated bets."""
+class RandomnessRound(RandomnessTransactionSubmissionRound):
+    """A round for gathering randomness."""
 
-    bets_hash: Optional[str]
+    done_event: Any = Event.DONE
+    no_majority_event: Any = Event.NO_MAJORITY

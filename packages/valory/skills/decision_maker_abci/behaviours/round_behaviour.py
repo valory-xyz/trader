@@ -46,6 +46,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx impo
 from packages.valory.skills.decision_maker_abci.behaviours.order_subscription import (
     OrderSubscriptionBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
+    RandomnessBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
@@ -72,4 +75,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         ToolSelectionBehaviour,  # type: ignore
         OrderSubscriptionBehaviour,
         ClaimSubscriptionBehaviour,
+        RandomnessBehaviour,  # type: ignore
     }

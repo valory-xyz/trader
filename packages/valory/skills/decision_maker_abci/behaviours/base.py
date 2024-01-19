@@ -39,10 +39,7 @@ from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.behaviour_utils import (
-    BaseBehaviour,
-    TimeoutException,
-)
+from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     DecisionMakerParams,
@@ -51,6 +48,8 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
+from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
@@ -78,7 +77,7 @@ def remove_fraction_wei(amount: int, fraction: float) -> int:
     raise ValueError(f"The given fraction {fraction!r} is not in the range [0, 1].")
 
 
-class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
+class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     """Represents the base class for the decision-making FSM behaviour."""
 
     def __init__(self, **kwargs: Any) -> None:
@@ -202,9 +201,15 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
         return self.synchronized_data.period_count == 0
 
     @property
+    def sampled_bet(self) -> Bet:
+        """Get the sampled bet."""
+        self.read_bets()
+        return self.bets[self.synchronized_data.sampled_bet_index]
+
+    @property
     def collateral_token(self) -> str:
         """Get the contract address of the token that the market maker supports."""
-        return self.synchronized_data.sampled_bet.collateralToken
+        return self.sampled_bet.collateralToken
 
     @property
     def is_wxdai(self) -> bool:

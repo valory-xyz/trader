@@ -69,7 +69,6 @@ REQUIRED_BET_TEMPLATE_KEYS = {"yes", "no", "question"}
 DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
-STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD = "bet_amount_per_conf_threshold"
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
 
 
@@ -246,13 +245,6 @@ class DecisionMakerParams(MarketManagerParams):
         self.use_fallback_strategy: bool = self._ensure(
             "use_fallback_strategy", kwargs, bool
         )
-        if self.trading_strategy not in [
-            STRATEGY_BET_AMOUNT_PER_CONF_THRESHOLD,
-            STRATEGY_KELLY_CRITERION,
-        ]:
-            raise ValueError(
-                f"The trading strategy {self.trading_strategy} is not supported!"
-            )
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it

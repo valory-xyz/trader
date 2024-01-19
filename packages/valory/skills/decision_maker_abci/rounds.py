@@ -60,6 +60,7 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.order_subscription import (
     SubscriptionRound,
 )
+from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
@@ -75,73 +76,61 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: SamplingRound
 
-    Initial states: {ClaimRound, DecisionReceiveRound, HandleFailedTxRound, RedeemRound, SamplingRound}
+    Initial states: {DecisionReceiveRound, HandleFailedTxRound, RedeemRound, SamplingRound}
 
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 11.
+            - none: 9.
             - no majority: 0.
             - round timeout: 0.
-        1. SubscriptionRound
-            - done: 13.
-            - no subscription: 3.
-            - subscription error: 1.
+        1. ToolSelectionRound
+            - done: 2.
+            - none: 1.
             - no majority: 1.
             - round timeout: 1.
-        2. ClaimRound
-            - done: 3.
-            - subscription error: 2.
+        2. DecisionRequestRound
+            - done: 8.
+            - slots unsupported error: 4.
             - no majority: 2.
             - round timeout: 2.
-        3. ToolSelectionRound
-            - done: 4.
-            - none: 3.
+            - none: 12.
+        3. DecisionReceiveRound
+            - done: 5.
+            - mech response error: 4.
             - no majority: 3.
+            - tie: 4.
+            - unprofitable: 4.
             - round timeout: 3.
-        4. DecisionRequestRound
-            - done: 10.
-            - slots unsupported error: 6.
+        4. BlacklistingRound
+            - done: 9.
+            - none: 12.
             - no majority: 4.
             - round timeout: 4.
-            - none: 15.
-        5. DecisionReceiveRound
-            - done: 7.
-            - mech response error: 6.
+            - fetch error: 12.
+        5. BetPlacementRound
+            - done: 8.
+            - insufficient balance: 11.
             - no majority: 5.
-            - tie: 6.
-            - unprofitable: 6.
             - round timeout: 5.
-        6. BlacklistingRound
-            - done: 11.
-            - none: 15.
+            - none: 12.
+        6. RedeemRound
+            - done: 8.
+            - no redeeming: 10.
             - no majority: 6.
-            - round timeout: 6.
-            - fetch error: 15.
-        7. BetPlacementRound
-            - done: 10.
-            - insufficient balance: 14.
+            - redeem round timeout: 10.
+            - none: 12.
+        7. HandleFailedTxRound
+            - blacklist: 4.
+            - no op: 6.
             - no majority: 7.
-            - round timeout: 7.
-            - none: 15.
-        8. RedeemRound
-            - done: 10.
-            - no redeeming: 12.
-            - no majority: 8.
-            - redeem round timeout: 12.
-            - none: 15.
-        9. HandleFailedTxRound
-            - blacklist: 6.
-            - no op: 8.
-            - no majority: 9.
-        10. FinishedDecisionMakerRound
-        11. FinishedWithoutDecisionRound
-        12. FinishedWithoutRedeemingRound
-        13. FinishedSubscriptionRound
-        14. RefillRequiredRound
-        15. ImpossibleRound
+        8. FinishedDecisionMakerRound
+        9. FinishedWithoutDecisionRound
+        10. FinishedWithoutRedeemingRound
+        11. RefillRequiredRound
+        12. ImpossibleRound
 
-    Final states: {FinishedDecisionMakerRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {FinishedDecisionMakerRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -162,19 +151,26 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         SubscriptionRound: {
             Event.DONE: FinishedSubscriptionRound,
-            Event.NO_SUBSCRIPTION: ToolSelectionRound,
+            Event.NO_SUBSCRIPTION: RandomnessRound,
             Event.SUBSCRIPTION_ERROR: SubscriptionRound,
             Event.NO_MAJORITY: SubscriptionRound,
             Event.ROUND_TIMEOUT: SubscriptionRound,
         },
         ClaimRound: {
-            Event.DONE: ToolSelectionRound,
+            Event.DONE: RandomnessRound,
             Event.SUBSCRIPTION_ERROR: ClaimRound,
             Event.NO_MAJORITY: ClaimRound,
             Event.ROUND_TIMEOUT: ClaimRound,
+        },
+        RandomnessRound: {
+            Event.DONE: ToolSelectionRound,
+            Event.ROUND_TIMEOUT: RandomnessRound,
+            Event.NO_MAJORITY: RandomnessRound,
         },
         ToolSelectionRound: {
             Event.DONE: DecisionRequestRound,
@@ -243,6 +239,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.utilized_tools),
             get_name(SynchronizedData.redeemed_condition_ids),
             get_name(SynchronizedData.payout_so_far),
+            get_name(SynchronizedData.mech_price),
         }
     )
     final_states: Set[AppState] = {
@@ -264,7 +261,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.final_tx_hash),
         },
         HandleFailedTxRound: {
-            get_name(SynchronizedData.bets),
+            get_name(SynchronizedData.bets_hash),
         },
         SamplingRound: set(),
     }

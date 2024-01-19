@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the MarketManager."""
+"""This module contains the always blue strategy."""
 
-from dataclasses import dataclass
-from typing import Optional
-
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from typing import Dict, Any, List, Union
 
 
-@dataclass(frozen=True)
-class UpdateBetsPayload(BaseTxPayload):
-    """A transaction payload for the updated bets."""
+def get_always_blue() -> Dict[str, Union[int, List[str]]]:
+    """ALWAYS BLUE."""
+    return {"bet_amount": 0, "info": ["ALWAYS BLUE!"]}
 
-    bets_hash: Optional[str]
+
+def run(*_args, **kwargs) -> Dict[str, Union[int, List[str]]]:
+    """Run the strategy."""
+    return get_always_blue()
