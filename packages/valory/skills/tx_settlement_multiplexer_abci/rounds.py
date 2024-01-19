@@ -156,18 +156,20 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         1. PostTxSettlementRound
             - decision requesting done: 3.
             - bet placement done: 4.
-            - redeeming done: 5.
-            - staking done: 6.
+            - redeeming done: 6.
+            - staking done: 7.
+            - subscription done: 5.
             - round timeout: 1.
-            - unrecognized: 7.
+            - unrecognized: 8.
         2. ChecksPassedRound
         3. FinishedDecisionRequestTxRound
         4. FinishedBetPlacementTxRound
-        5. FinishedRedeemingTxRound
-        6. FinishedStakingTxRound
-        7. FailedMultiplexerRound
+        5. FinishedSubscriptionTxRound
+        6. FinishedRedeemingTxRound
+        7. FinishedStakingTxRound
+        8. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedDecisionRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0

@@ -20,6 +20,7 @@ alphabet_in:
 - NO_MAJORITY
 - NO_OP
 - NO_REDEEMING
+- NO_SUBSCRIPTION
 - REDEEMING_DONE
 - REDEEM_ROUND_TIMEOUT
 - REFILL_REQUIRED
@@ -29,6 +30,8 @@ alphabet_in:
 - SERVICE_NOT_STAKED
 - SLOTS_UNSUPPORTED_ERROR
 - STAKING_DONE
+- SUBSCRIPTION_DONE
+- SUBSCRIPTION_ERROR
 - SUSPICIOUS_ACTIVITY
 - TIE
 - UNPROFITABLE
@@ -48,6 +51,7 @@ states:
 - CallCheckpointRound
 - CheckLateTxHashesRound
 - CheckTransactionHistoryRound
+- ClaimRound
 - CollectSignatureRound
 - DecisionReceiveRound
 - DecisionRequestRound
@@ -67,6 +71,7 @@ states:
 - SelectKeeperTransactionSubmissionARound
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
+- SubscriptionRound
 - SynchronizeLateMessagesRound
 - ToolSelectionRound
 - UpdateBetsRound
@@ -99,6 +104,10 @@ transition_func:
     (CheckTransactionHistoryRound, NEGATIVE): SelectKeeperTransactionSubmissionBRound
     (CheckTransactionHistoryRound, NONE): HandleFailedTxRound
     (CheckTransactionHistoryRound, NO_MAJORITY): CheckTransactionHistoryRound
+    (ClaimRound, DONE): ToolSelectionRound
+    (ClaimRound, NO_MAJORITY): ClaimRound
+    (ClaimRound, ROUND_TIMEOUT): ClaimRound
+    (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
     (CollectSignatureRound, DONE): FinalizationRound
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
@@ -127,6 +136,7 @@ transition_func:
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
+    (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
     (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
@@ -149,7 +159,7 @@ transition_func:
     (ResetRound, DONE): RandomnessTransactionSubmissionRound
     (ResetRound, NO_MAJORITY): HandleFailedTxRound
     (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
-    (SamplingRound, DONE): ToolSelectionRound
+    (SamplingRound, DONE): SubscriptionRound
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
@@ -167,6 +177,11 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
+    (SubscriptionRound, DONE): PreTxSettlementRound
+    (SubscriptionRound, NO_MAJORITY): SubscriptionRound
+    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
+    (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
+    (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (SynchronizeLateMessagesRound, DONE): CheckLateTxHashesRound
     (SynchronizeLateMessagesRound, NONE): SelectKeeperTransactionSubmissionBRound
     (SynchronizeLateMessagesRound, ROUND_TIMEOUT): SynchronizeLateMessagesRound

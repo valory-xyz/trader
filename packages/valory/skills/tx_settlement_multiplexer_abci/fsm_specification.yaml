@@ -7,6 +7,7 @@ alphabet_in:
 - REFILL_REQUIRED
 - ROUND_TIMEOUT
 - STAKING_DONE
+- SUBSCRIPTION_DONE
 - UNRECOGNIZED
 default_start_state: PreTxSettlementRound
 final_states:
@@ -16,6 +17,7 @@ final_states:
 - FinishedDecisionRequestTxRound
 - FinishedRedeemingTxRound
 - FinishedStakingTxRound
+- FinishedSubscriptionTxRound
 label: TxSettlementMultiplexerAbciApp
 start_states:
 - PostTxSettlementRound
@@ -27,6 +29,7 @@ states:
 - FinishedDecisionRequestTxRound
 - FinishedRedeemingTxRound
 - FinishedStakingTxRound
+- FinishedSubscriptionTxRound
 - PostTxSettlementRound
 - PreTxSettlementRound
 transition_func:
@@ -35,6 +38,7 @@ transition_func:
     (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): FinishedStakingTxRound
+    (PostTxSettlementRound, SUBSCRIPTION_DONE): FinishedSubscriptionTxRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
     (PreTxSettlementRound, CHECKS_PASSED): ChecksPassedRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound

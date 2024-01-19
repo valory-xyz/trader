@@ -8,20 +8,24 @@ alphabet_in:
 - NO_MAJORITY
 - NO_OP
 - NO_REDEEMING
+- NO_SUBSCRIPTION
 - REDEEM_ROUND_TIMEOUT
 - ROUND_TIMEOUT
 - SLOTS_UNSUPPORTED_ERROR
+- SUBSCRIPTION_ERROR
 - TIE
 - UNPROFITABLE
 default_start_state: SamplingRound
 final_states:
 - FinishedDecisionMakerRound
+- FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
 - ImpossibleRound
 - RefillRequiredRound
 label: DecisionMakerAbciApp
 start_states:
+- ClaimRound
 - DecisionReceiveRound
 - HandleFailedTxRound
 - RedeemRound
@@ -29,9 +33,11 @@ start_states:
 states:
 - BetPlacementRound
 - BlacklistingRound
+- ClaimRound
 - DecisionReceiveRound
 - DecisionRequestRound
 - FinishedDecisionMakerRound
+- FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
@@ -39,6 +45,7 @@ states:
 - RedeemRound
 - RefillRequiredRound
 - SamplingRound
+- SubscriptionRound
 - ToolSelectionRound
 transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
@@ -51,6 +58,10 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
+    (ClaimRound, DONE): ToolSelectionRound
+    (ClaimRound, NO_MAJORITY): ClaimRound
+    (ClaimRound, ROUND_TIMEOUT): ClaimRound
+    (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -70,10 +81,15 @@ transition_func:
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
-    (SamplingRound, DONE): ToolSelectionRound
+    (SamplingRound, DONE): SubscriptionRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SubscriptionRound, DONE): FinishedSubscriptionRound
+    (SubscriptionRound, NO_MAJORITY): SubscriptionRound
+    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
+    (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
+    (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (ToolSelectionRound, DONE): DecisionRequestRound
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
