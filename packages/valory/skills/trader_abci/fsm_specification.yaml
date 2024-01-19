@@ -61,6 +61,7 @@ states:
 - ImpossibleRound
 - PostTxSettlementRound
 - PreTxSettlementRound
+- RandomnessRound
 - RandomnessTransactionSubmissionRound
 - RedeemRound
 - RegistrationRound
@@ -104,7 +105,7 @@ transition_func:
     (CheckTransactionHistoryRound, NEGATIVE): SelectKeeperTransactionSubmissionBRound
     (CheckTransactionHistoryRound, NONE): HandleFailedTxRound
     (CheckTransactionHistoryRound, NO_MAJORITY): CheckTransactionHistoryRound
-    (ClaimRound, DONE): ToolSelectionRound
+    (ClaimRound, DONE): RandomnessRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
@@ -183,7 +184,7 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
     (SubscriptionRound, DONE): PreTxSettlementRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
-    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
+    (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
     (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
     (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (SynchronizeLateMessagesRound, DONE): CheckLateTxHashesRound

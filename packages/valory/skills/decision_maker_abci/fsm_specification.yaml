@@ -42,6 +42,7 @@ states:
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
 - ImpossibleRound
+- RandomnessRound
 - RedeemRound
 - RefillRequiredRound
 - SamplingRound
@@ -58,7 +59,7 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
-    (ClaimRound, DONE): ToolSelectionRound
+    (ClaimRound, DONE): RandomnessRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
@@ -85,12 +86,13 @@ transition_func:
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
     (SamplingRound, DONE): SubscriptionRound
+    (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
-    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
+    (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
     (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
     (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (ToolSelectionRound, DONE): DecisionRequestRound
