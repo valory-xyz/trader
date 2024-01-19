@@ -990,6 +990,30 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "balanceOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "bytes4",
           "name": "interfaceId",
           "type": "bytes4"
@@ -1020,25 +1044,58 @@
       "type": "function"
     },
     {
-        "constant": false,
-        "inputs": [
-            {"name": "_id", "type": "bytes32"},
-            {"name": "_did", "type": "bytes32"},
-            {"name": "_conditionIds", "type": "bytes32[]"},
-            {"name": "_timeLocks", "type": "uint256[]"},
-            {"name": "_timeOuts", "type": "uint256[]"},
-            {"name": "_accessConsumer", "type": "address"},
-            {"name": "_idx", "type": "uint256"},
-            {"name": "_rewardAddress", "type": "address"},
-            {"name": "_tokenAddress", "type": "address"},
-            {"name": "_amounts", "type": "uint256[]"},
-            {"name": "_receivers", "type": "address[]"}
-        ],
-        "name": "createAgreementAndPayEscrow",
-        "outputs": [],
-        "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "function"
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "name": "_conditionIds",
+          "type": "bytes32[]"
+        },
+        {
+          "name": "_timeLocks",
+          "type": "uint256[]"
+        },
+        {
+          "name": "_timeOuts",
+          "type": "uint256[]"
+        },
+        {
+          "name": "_accessConsumer",
+          "type": "address"
+        },
+        {
+          "name": "_idx",
+          "type": "uint256"
+        },
+        {
+          "name": "_rewardAddress",
+          "type": "address"
+        },
+        {
+          "name": "_tokenAddress",
+          "type": "address"
+        },
+        {
+          "name": "_amounts",
+          "type": "uint256[]"
+        },
+        {
+          "name": "_receivers",
+          "type": "address[]"
+        }
+      ],
+      "name": "createAgreementAndPayEscrow",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
     }
   ],
   "bytecode": "",

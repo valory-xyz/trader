@@ -8,8 +8,8 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeidiaep6cpoqlabnajvsgegpt72hqnbtozayicaxclzxzftopvlw5u
   __init__.py: bafybeigr6fpkchrud5tjrx5qevyk436jufe4zt6otkpbzsiergvyp64hs4
-  build/TransferNFTCondition.json: bafybeigozlmtk3d3fggn5a2faiteqjujrkbgkvi54ee2jr4snse4nd3s2u
-  contract.py: bafybeihz5jeggunv4owoamcpgohs7qgnfjqicuxk3zv4hwbxzysnto3w7q
+  build/TransferNFTCondition.json: bafybeicovauoyn5bulnmz3ulkee56s46viemw3vpy7fk3zi4isol2jkdca
+  contract.py: bafybeig2wfwtn6kmdozoenxt3hp23srgpeebq4zyaxboqbs5em3rooordm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: TransferNftCondition
@@ -21,9 +21,9 @@ dependencies:
   eth_typing: {}
   hexbytes: {}
   open-aea-ledger-ethereum:
-    version: ==1.43.0.post2
+    version: ==1.43.0.post1
   open-aea-test-autonomy:
-    version: ==0.13.9.post1
+    version: ==0.13.9
   packaging: {}
   py-eth-sig-utils: {}
   requests:

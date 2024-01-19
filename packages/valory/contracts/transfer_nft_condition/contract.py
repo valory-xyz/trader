@@ -69,3 +69,20 @@ class TransferNftCondition(Contract):
             [Web3.to_checksum_address(receive) for receive in receives],
         ))
         return {"data": bytes.fromhex(data[2:])}
+
+
+    @classmethod
+    def balance_of(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        address: str,
+        did: str,
+    ) -> JSONLike:
+        """Get the balance of an address."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        balance = contract_instance.functions.balanceOf(
+            Web3.to_checksum_address(address),
+            int(did, 16)
+        ).call()
+        return dict(data=balance)

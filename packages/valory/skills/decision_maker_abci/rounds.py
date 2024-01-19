@@ -153,6 +153,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         SubscriptionRound: {
             Event.DONE: FinishedSubscriptionRound,
+            Event.NO_SUBSCRIPTION: ToolSelectionRound,
             Event.SUBSCRIPTION_ERROR: SubscriptionRound,
             Event.NO_MAJORITY: SubscriptionRound,
             Event.ROUND_TIMEOUT: SubscriptionRound,

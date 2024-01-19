@@ -221,16 +221,19 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         )
         return True
 
-    def _get_balance(self, token: str, address: str) -> Generator[None, None, bool]:
+    def _get_balance(
+        self, token: str, address: str, did: str
+    ) -> Generator[None, None, bool]:
         """Prepare an approval tx."""
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=token,
-            contract_public_id=ERC20.contract_id,
-            contract_callable="check_balance",
-            data_key="token",
+            contract_public_id=TransferNftCondition.contract_id,
+            contract_callable="balance_of",
+            data_key="data",
             placeholder="balance",
-            account=address,
+            address=address,
+            did=did,
         )
         if not result:
             return False
@@ -238,8 +241,14 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
 
     def _should_purchase(self) -> Generator[None, None, bool]:
         """Check if the subscription should be purchased."""
+        if not self.params.use_nevermined:
+            self.context.logger.info("Nevermined subscriptions are turned off.")
+            return False
+
         result = yield from self._get_balance(
-            self.token_address, self.synchronized_data.safe_contract_address
+            self.token_address,
+            self.synchronized_data.safe_contract_address,
+            zero_x_transformer(no_did_prefixed(self.did)),
         )
         if not result:
             self.context.logger.warning("Failed to get balance")
@@ -249,7 +258,8 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
 
     def get_payload_content(self) -> Generator[None, None, str]:
         """Get the payload."""
-        if not self._should_purchase():
+        should_purchase = yield from self._should_purchase()
+        if not should_purchase:
             return SubscriptionRound.NO_TX_PAYLOAD
 
         approval_params = self._get_approval_params()
