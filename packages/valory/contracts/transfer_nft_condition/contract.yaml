@@ -7,9 +7,9 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeidiaep6cpoqlabnajvsgegpt72hqnbtozayicaxclzxzftopvlw5u
-  __init__.py: bafybeigr6fpkchrud5tjrx5qevyk436jufe4zt6otkpbzsiergvyp64hs4
+  __init__.py: bafybeigz4j3ow7nagttswpbrpajnxqtxrl35oznejzxwi6bhfdeltnab5i
   build/TransferNFTCondition.json: bafybeicovauoyn5bulnmz3ulkee56s46viemw3vpy7fk3zi4isol2jkdca
-  contract.py: bafybeig2wfwtn6kmdozoenxt3hp23srgpeebq4zyaxboqbs5em3rooordm
+  contract.py: bafybeiamwqz5tln7xknhoogsev36c3vhi4u4aovbwmowvpavhmzbtp7ywy
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: TransferNftCondition
