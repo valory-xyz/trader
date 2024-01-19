@@ -88,6 +88,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         1. SubscriptionRound
             - done: 14.
             - no subscription: 3.
+            - none: 1.
             - subscription error: 1.
             - no majority: 1.
             - round timeout: 1.
@@ -174,6 +175,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         SubscriptionRound: {
             Event.DONE: FinishedSubscriptionRound,
             Event.NO_SUBSCRIPTION: RandomnessRound,
+            Event.NONE: SubscriptionRound,
             Event.SUBSCRIPTION_ERROR: SubscriptionRound,
             Event.NO_MAJORITY: SubscriptionRound,
             Event.ROUND_TIMEOUT: SubscriptionRound,

@@ -183,6 +183,7 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
     (SubscriptionRound, DONE): PreTxSettlementRound
+    (SubscriptionRound, NONE): SubscriptionRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
     (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
     (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
