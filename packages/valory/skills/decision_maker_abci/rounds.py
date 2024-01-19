@@ -37,7 +37,9 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.decision_maker_abci.states.claim_subscription import ClaimRound
+from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
+    ClaimRound,
+)
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
@@ -46,15 +48,18 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     ImpossibleRound,
-    RefillRequiredRound, FinishedSubscriptionRound,
+    RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.decision_maker_abci.states.order_subscription import SubscriptionRound
+from packages.valory.skills.decision_maker_abci.states.order_subscription import (
+    SubscriptionRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
@@ -141,7 +146,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     transition_function: AbciAppTransitionFunction = {
         SamplingRound: {
-            Event.DONE: ToolSelectionRound,
+            Event.DONE: SubscriptionRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
@@ -214,6 +219,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
+        FinishedSubscriptionRound: {},
         RefillRequiredRound: {},
         ImpossibleRound: {},
     }
@@ -240,6 +246,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRound: set(),
+        ClaimRound: set(),
         DecisionReceiveRound: {
             get_name(SynchronizedData.final_tx_hash),
         },
@@ -251,6 +258,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
             get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedSubscriptionRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },

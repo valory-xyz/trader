@@ -41,6 +41,9 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
+from packages.valory.skills.decision_maker_abci.states.order_subscription import (
+    SubscriptionRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 
@@ -54,6 +57,7 @@ class Event(Enum):
     BET_PLACEMENT_DONE = "bet_placement_done"
     REDEEMING_DONE = "redeeming_done"
     STAKING_DONE = "staking_done"
+    SUBSCRIPTION_DONE = "subscription_done"
     ROUND_TIMEOUT = "round_timeout"
     UNRECOGNIZED = "unrecognized"
     NO_MAJORITY = "no_majority"
@@ -92,6 +96,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
+            SubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
         }
 
         synced_data = SynchronizedData(self.synchronized_data.db)
@@ -125,6 +130,10 @@ class FinishedRedeemingTxRound(DegenerateRound):
 
 class FinishedStakingTxRound(DegenerateRound):
     """Finished staking round."""
+
+
+class FinishedSubscriptionTxRound(DegenerateRound):
+    """Finished subscription round."""
 
 
 class FailedMultiplexerRound(DegenerateRound):
@@ -178,12 +187,14 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             Event.BET_PLACEMENT_DONE: FinishedBetPlacementTxRound,
             Event.REDEEMING_DONE: FinishedRedeemingTxRound,
             Event.STAKING_DONE: FinishedStakingTxRound,
+            Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
             Event.ROUND_TIMEOUT: PostTxSettlementRound,
             Event.UNRECOGNIZED: FailedMultiplexerRound,
         },
         ChecksPassedRound: {},
         FinishedDecisionRequestTxRound: {},
         FinishedBetPlacementTxRound: {},
+        FinishedSubscriptionTxRound: {},
         FinishedRedeemingTxRound: {},
         FinishedStakingTxRound: {},
         FailedMultiplexerRound: {},
@@ -197,6 +208,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedBetPlacementTxRound,
         FinishedRedeemingTxRound,
         FinishedStakingTxRound,
+        FinishedSubscriptionTxRound,
         FailedMultiplexerRound,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
@@ -210,4 +222,5 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedRedeemingTxRound: set(),
         FinishedStakingTxRound: set(),
         FailedMultiplexerRound: set(),
+        FinishedSubscriptionTxRound: set(),
     }

@@ -21,13 +21,18 @@
 import json
 from typing import Any, Generator
 
-
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BaseSubscriptionBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import ClaimPayload
-from packages.valory.skills.decision_maker_abci.states.claim_subscription import ClaimRound
-from packages.valory.skills.decision_maker_abci.utils.nevermined import get_creator, get_claim_endpoint
+from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
+    ClaimRound,
+)
+from packages.valory.skills.decision_maker_abci.utils.nevermined import (
+    get_claim_endpoint,
+    get_creator,
+)
+
 
 SERVICE_INDEX = -1
 ERC1155 = 1155
@@ -63,14 +68,14 @@ class ClaimSubscriptionBehaviour(BaseSubscriptionBehaviour):
             "serviceIndex": SERVICE_INDEX,
         }
         res = yield from self.get_http_response(
-            'POST',
+            "POST",
             claim_endpoint,
             json.dumps(body).encode(),
-            headers={'Content-Type': 'application/json'},
+            headers={"Content-Type": "application/json"},
         )
-        if res.status_code != 200:
+        if res.status_code != 201:
             self.context.logger.warning(
-                f'Failed to claim subscription: {res.status_code} - {res.body}',
+                f"Failed to claim subscription: {res.status_code!r} - {res.body!r}",
             )
             return False
 

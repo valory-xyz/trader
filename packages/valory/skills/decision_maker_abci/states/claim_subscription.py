@@ -19,18 +19,11 @@
 
 """This module contains the decision receiving state of the decision-making abci app."""
 
-from enum import Enum
-from typing import Optional, Tuple, cast, Type
-
-from packages.valory.skills.abstract_round_abci.base import (
-    CollectSameUntilThresholdRound,
-    get_name, BaseSynchronizedData, VotingRound,
-)
-from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, MultisigTxPayload, \
-    SubscriptionPayload, ClaimPayload
+from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
+from packages.valory.skills.decision_maker_abci.payloads import ClaimPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
-    SynchronizedData, TxPreparationRound,
+    SynchronizedData,
 )
 
 

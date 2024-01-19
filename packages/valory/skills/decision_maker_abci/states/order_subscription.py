@@ -20,17 +20,20 @@
 """This module contains the decision receiving state of the decision-making abci app."""
 
 from enum import Enum
-from typing import Optional, Tuple, cast, Type
+from typing import Optional, Tuple, Type
 
 from packages.valory.skills.abstract_round_abci.base import (
-    CollectSameUntilThresholdRound,
-    get_name, BaseSynchronizedData,
+    BaseSynchronizedData,
+    get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, MultisigTxPayload, \
-    SubscriptionPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    MultisigTxPayload,
+    SubscriptionPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
-    SynchronizedData, TxPreparationRound,
+    SynchronizedData,
+    TxPreparationRound,
 )
 
 
@@ -39,7 +42,7 @@ class SubscriptionRound(TxPreparationRound):
 
     payload_class: Type[MultisigTxPayload] = SubscriptionPayload
     selection_key = TxPreparationRound.selection_key + (
-        get_name(SynchronizedData.mech_price),
+        get_name(SynchronizedData.agreement_id),
     )
     none_event = Event.NO_SUBSCRIPTION
 
@@ -49,11 +52,11 @@ class SubscriptionRound(TxPreparationRound):
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         if self.threshold_reached:
-            payload = cast(SubscriptionPayload, self.most_voted_payload)
-            if payload.tx_hash == self.ERROR_PAYLOAD:
+            tx_hash = self.most_voted_payload_values[1]
+            if tx_hash == self.ERROR_PAYLOAD:
                 return self.synchronized_data, Event.SUBSCRIPTION_ERROR
 
-            if payload.tx_hash == self.NO_TX_PAYLOAD:
+            if tx_hash == self.NO_TX_PAYLOAD:
                 return self.synchronized_data, Event.NO_SUBSCRIPTION
 
         update = super().end_block()
@@ -61,8 +64,8 @@ class SubscriptionRound(TxPreparationRound):
             return None
 
         sync_data, event = update
-        payload = cast(SubscriptionPayload, self.most_voted_payload)
+        agreement_id = self.most_voted_payload_values[2]
         sync_data = sync_data.update(
-            agreement_id=payload.agreement_id,
+            agreement_id=agreement_id,
         )
         return sync_data, event

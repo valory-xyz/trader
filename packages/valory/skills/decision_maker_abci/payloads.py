@@ -72,7 +72,7 @@ class RequestPayload(MultisigTxPayload):
 class SubscriptionPayload(MultisigTxPayload):
     """Represents a transaction payload for subscribing."""
 
-    agreement_id: str = ''
+    agreement_id: str = ""
 
 
 @dataclass(frozen=True)

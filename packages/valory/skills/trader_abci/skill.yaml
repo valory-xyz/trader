@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeidsfwslnbhhhplvgteeec7idrhm7gxpay4f36wwnkgl4mh7ogovke
 - valory/termination_abci:0.1.0:bafybeid5ipudhwuiuhbzvpn4usgdm3a3ow3naafuefvetmgbbcy6ugyuwi
 - valory/market_manager_abci:0.1.0:bafybeicqjiqq63bcb6colaq4adwsn7o6zhyd7n5ftwdv4kvt3rqxhnapw4
-- valory/decision_maker_abci:0.1.0:bafybeih72hy7st6muq6ojfawtmrndafwkq4v36mp3cula23tt255yus2je
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeighevqttuxh2zy5eux6ff24clan2het472th57mjub2onn6qq3oe4
+- valory/decision_maker_abci:0.1.0:bafybeifyqwmodmic6if4rjj3v5g5pehzwl7bjir2heoqbm5gsdmp3pdoey
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidtxu67k3p5hv7zxgc72nw72h7nrum3sl3bk33bokepgcw224tjb4
 - valory/staking_abci:0.1.0:bafybeihmfcd3kp2jwt4zznoxcwyutyqmfg6myi3buehtaznpq6qfcu4l6u
 behaviours:
   main:
@@ -181,6 +181,29 @@ models:
       refill_check_interval: 10
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
+      mech_to_subscription_params:
+        - - base_url
+          - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
+        - - did
+          - did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195
+        - - escrow_payment_condition_address
+          - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
+        - - lock_payment_condition_address
+          - '0xDE85A368Ee6f374d236500d176814365370778dA'
+        - - transfer_nft_condition_address
+          - '0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979'
+        - - token_address
+          - '0xa30DE8C6aC39B825192e5F1FADe0770332D279A8'
+        - - order_address
+          - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
+        - - nft_amount
+          - '1'
+        - - payment_token
+          - '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
+        - - order_address
+          - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
+        - - price
+          - '0'
       contract_timeout: 300.0
       file_hash_to_strategies_json:
       - - hash

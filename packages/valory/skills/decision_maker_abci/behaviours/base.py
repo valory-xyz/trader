@@ -554,11 +554,12 @@ class DecisionMakerBaseBehaviour(BaseBehaviour, ABC):
 
 
 class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
+    """Base class for subscription behaviours."""
+
     @property
     def subscription_params(self) -> Dict[str, Any]:
         """Get the subscription params."""
-        mech = self.params.mech_agent_address
-        return self.params.mech_to_subscription_params[mech]
+        return self.params.mech_to_subscription_params
 
     @property
     def did(self) -> str:
@@ -588,19 +589,31 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
     def token_address(self) -> str:
         """Get the token address."""
         subscription_params = self.subscription_params
-        return subscription_params["token"]
+        return subscription_params["token_address"]
+
+    @property
+    def order_address(self) -> str:
+        """Get the order address."""
+        subscription_params = self.subscription_params
+        return subscription_params["order_address"]
 
     @property
     def purchase_amount(self) -> int:
         """Get the purchase amount."""
         subscription_params = self.subscription_params
-        return subscription_params["nft_amount"]
+        return int(subscription_params["nft_amount"])
 
     @property
     def price(self) -> int:
         """Get the price."""
         subscription_params = self.subscription_params
-        return subscription_params["price"]
+        return int(subscription_params["price"])
+
+    @property
+    def payment_token(self) -> str:
+        """Get the payment token."""
+        subscription_params = self.subscription_params
+        return subscription_params["payment_token"]
 
     @property
     def base_url(self) -> str:
@@ -623,7 +636,7 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
             )
             return None
         try:
-            data = json.loads(response.body)["data"]
+            data = json.loads(response.body)
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from nervermined api, "
