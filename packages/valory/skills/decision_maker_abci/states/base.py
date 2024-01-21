@@ -51,6 +51,8 @@ class Event(Enum):
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
+    SUBSCRIPTION_ERROR = "subscription_error"
+    NO_SUBSCRIPTION = "no_subscription"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
@@ -160,6 +162,16 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def participant_to_tx_prep(self) -> DeserializedCollection:
         """Get the participants to bet-placement."""
         return self._get_deserialized("participant_to_tx_prep")
+
+    @property
+    def agreement_id(self) -> str:
+        """Get the agreement id."""
+        return str(self.db.get_strict("agreement_id"))
+
+    @property
+    def claim(self) -> bool:
+        """Get the claim."""
+        return bool(self.db.get_strict("claim"))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -66,6 +66,20 @@ class RequestPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
 
     price: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class SubscriptionPayload(MultisigTxPayload):
+    """Represents a transaction payload for subscribing."""
+
+    agreement_id: str = ""
+
+
+@dataclass(frozen=True)
+class ClaimPayload(BaseTxPayload):
+    """Represents a transaction payload for claiming a subscription."""
+
+    vote: bool
 
 
 @dataclass(frozen=True)

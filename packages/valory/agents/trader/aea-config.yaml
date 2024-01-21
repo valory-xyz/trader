@@ -27,6 +27,7 @@ contracts:
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeifdsvdensn52cngcwdcathmlu6vhsmzcljemfrb5uozsigzgwcvuy
 - valory/service_staking_token:0.1.0:bafybeidzvc43ijt3rhmsbfkymtrzq6xcyo6gutp6uradivxjknlkany6xi
+- valory/transfer_nft_condition:0.1.0:bafybeig6j2tgy54mjpeqntrrcdzi32cogche57k4spsz6nz3yvouvb275u
 protocols:
 - open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
 - valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
@@ -43,10 +44,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigkf7uh6zre3wc3btm2we7xffls4e4vurvtsou2nswbn6mcc3g52a
 - valory/termination_abci:0.1.0:bafybeif7dwj4i5okp7rsyeiyvnmt5xop7njvj27bmjqdx4skmimqls7t4e
 - valory/transaction_settlement_abci:0.1.0:bafybeic3ysdc46z4ipuonc2g6vdyqaxxljvfd45cflzi2xq7o7hre6lvvy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidwafoxlqclwxssstd5sgtlr2aypg5nylyfn4q7f4tplt2rjlq6c4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiesf2zztqhie7rpsrglddc7lbjfjxtybqsqhlmtp77ukddejrmiva
 - valory/market_manager_abci:0.1.0:bafybeif23nzty3mvhvx3tphgr3mdrfo4kadxzg4zi57at2pqvml5yrb2xa
-- valory/decision_maker_abci:0.1.0:bafybeiax6d4sdiytgolepg24mm7fp7q2p3tpbiqrp7j7vaogrnfiw3girm
-- valory/trader_abci:0.1.0:bafybeidf244v56ero6atrpo44ikboxivyqm6tl6wtlk2erpol6gwuphhha
+- valory/decision_maker_abci:0.1.0:bafybeidh3efbssuohhuku5b4go5jeqti4xv6dsdpaxm3ti4rudgqmyujpq
+- valory/trader_abci:0.1.0:bafybeifildb45hkpmusursxm3n7tg6bw42xfn4ssa2b7k73tu3og3nesze
 - valory/staking_abci:0.1.0:bafybeifflsc3m5pvxrbhih4xclslhpqdnryilp72wudqffvvttyiung76u
 default_ledger: ethereum
 required_ledgers:
@@ -192,6 +193,16 @@ models:
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
         "stabilityai-stable-diffusion-768-v2-1"]}
+      use_nevermined: ${bool:true}
+      mech_to_subscription_params: ${list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+        ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+        ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
+        ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
+        ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
+        ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
+        "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+        "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+        ["price", "0"]]}
       staking_contract_address: ${str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}

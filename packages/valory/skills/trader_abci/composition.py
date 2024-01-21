@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -25,11 +25,15 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
 )
 from packages.valory.skills.abstract_round_abci.base import BackgroundAppConfig
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
+    ClaimRound,
+)
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     RefillRequiredRound,
@@ -80,6 +84,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedDecisionRequestTxRound,
     FinishedRedeemingTxRound,
     FinishedStakingTxRound,
+    FinishedSubscriptionTxRound,
     PostTxSettlementRound,
     PreTxSettlementRound,
     TxSettlementMultiplexerAbciApp,
@@ -94,8 +99,10 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     ChecksPassedRound: RandomnessTransactionSubmissionRound,
     RefillRequiredRound: ResetAndPauseRound,
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
+    FinishedSubscriptionTxRound: ClaimRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
     FinishedDecisionRequestTxRound: DecisionReceiveRound,
+    FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
     FinishedWithoutDecisionRound: RedeemRound,

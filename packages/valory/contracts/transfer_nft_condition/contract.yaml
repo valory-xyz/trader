@@ -1,0 +1,32 @@
+name: transfer_nft_condition
+author: valory
+version: 0.1.0
+type: contract
+description: TRANSFER_NFT_CONDITION token contract
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeidiaep6cpoqlabnajvsgegpt72hqnbtozayicaxclzxzftopvlw5u
+  __init__.py: bafybeigz4j3ow7nagttswpbrpajnxqtxrl35oznejzxwi6bhfdeltnab5i
+  build/TransferNFTCondition.json: bafybeicovauoyn5bulnmz3ulkee56s46viemw3vpy7fk3zi4isol2jkdca
+  contract.py: bafybeiamwqz5tln7xknhoogsev36c3vhi4u4aovbwmowvpavhmzbtp7ywy
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: TransferNftCondition
+contract_interface_paths:
+  ethereum: build/TransferNFTCondition.json
+dependencies:
+  ecdsa:
+    version: '>=0.15'
+  eth_typing: {}
+  hexbytes: {}
+  open-aea-ledger-ethereum:
+    version: ==1.44.0
+  open-aea-test-autonomy:
+    version: ==0.14.0
+  packaging: {}
+  py-eth-sig-utils: {}
+  requests:
+    version: ==2.28.1
+  web3:
+    version: <7,>=6.0.0

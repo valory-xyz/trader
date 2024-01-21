@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeids5ihwvaindgihdcrfu6lrkg6553zvu3xwhgswqjqmcbgsoxbjlq
+agent: valory/trader:0.1.0:bafybeihddqmhwhnelfclqocgahnbb4ipdhkatqsttl5acne62ifupfaw7i
 number_of_agents: 4
 deployment: {}
 ---
@@ -113,6 +113,16 @@ type: skill
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
+        use_nevermined: ${USE_NEVERMINED:bool:false}
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
+          ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
+          ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
+          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          ["price", "0"]]}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -197,6 +207,16 @@ type: skill
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
+        use_nevermined: ${USE_NEVERMINED:bool:false}
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
+          ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
+          ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
+          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          ["price", "0"]]}
     benchmark_tool: *id004
 2:
   models:
@@ -279,6 +299,16 @@ type: skill
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
+        use_nevermined: ${USE_NEVERMINED:bool:false}
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
+          ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
+          ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
+          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          ["price", "0"]]}
     benchmark_tool: *id004
 3:
   models:
@@ -361,6 +391,16 @@ type: skill
         file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
+        use_nevermined: ${USE_NEVERMINED:bool:false}
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
+          ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
+          ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
+          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          ["price", "0"]]}
     benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0
