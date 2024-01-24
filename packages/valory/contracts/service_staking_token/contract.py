@@ -131,7 +131,7 @@ class ServiceStakingTokenContract(Contract):
     ) -> JSONLike:
         """Retrieve the service info for a service."""
         contract = cls.get_instance(ledger_api, contract_address)
-        info = contract.functions.mapServiceInfo(service_id).call()
+        info = contract.functions.getServiceInfo(service_id).call()
         return dict(data=info)
 
     @classmethod
