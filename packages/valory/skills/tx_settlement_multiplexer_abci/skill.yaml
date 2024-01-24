@@ -22,7 +22,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeibna634t4w4udainzsuxwfydkbcy33alcqy6ugalcfuhoyhr53gs4
 - valory/decision_maker_abci:0.1.0:bafybeidh3efbssuohhuku5b4go5jeqti4xv6dsdpaxm3ti4rudgqmyujpq
-- valory/staking_abci:0.1.0:bafybeicjae675y6wtqgjenvwxy2oneq3ql4pygxnrdevwyo2v4o7kjnime
+- valory/staking_abci:0.1.0:bafybeidphzbekkdy5pvzlbzajfmclqmjkjnkd5bcpjqrhmgpsueiieia7y
 behaviours:
   main:
     args: {}
