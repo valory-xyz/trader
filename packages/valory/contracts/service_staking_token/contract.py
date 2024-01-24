@@ -31,7 +31,7 @@ class ServiceStakingTokenContract(Contract):
     contract_id = PublicId.from_str("valory/service_staking_token:0.1.0")
 
     @classmethod
-    def is_service_staked(
+    def get_service_staking_state(
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
@@ -39,7 +39,7 @@ class ServiceStakingTokenContract(Contract):
     ) -> JSONLike:
         """Check whether the service is staked."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        res = contract_instance.functions.isServiceStaked(service_id).call()
+        res = contract_instance.functions.getServiceStakingState(service_id).call()
         return dict(data=res)
 
     @classmethod
