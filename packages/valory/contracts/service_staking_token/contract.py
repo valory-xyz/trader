@@ -19,10 +19,20 @@
 
 """This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
 
+from enum import Enum, auto
+
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
+
+
+class StakingState(Enum):
+    """Staking state enumeration for the staking."""
+
+    UNSTAKED = auto()
+    STAKED = auto()
+    EVICTED = auto()
 
 
 class ServiceStakingTokenContract(Contract):
@@ -40,7 +50,7 @@ class ServiceStakingTokenContract(Contract):
         """Check whether the service is staked."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         res = contract_instance.functions.getServiceStakingState(service_id).call()
-        return dict(data=res)
+        return dict(data=StakingState(res))
 
     @classmethod
     def build_stake_tx(

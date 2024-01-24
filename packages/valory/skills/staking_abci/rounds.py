@@ -20,9 +20,10 @@
 """This module contains the rounds for the Staking ABCI application."""
 
 from abc import ABC
-from enum import Enum, auto
+from enum import Enum
 from typing import Dict, Optional, Set, Tuple, Type, cast
 
+from packages.valory.contracts.service_staking_token.contract import StakingState
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
@@ -50,14 +51,6 @@ class Event(Enum):
     SERVICE_NOT_STAKED = "service_not_staked"
     SERVICE_EVICTED = "service_evicted"
     NEXT_CHECKPOINT_NOT_REACHED_YET = "next_checkpoint_not_reached_yet"
-
-
-class StakingState(Enum):
-    """Staking state enumeration for the staking."""
-
-    UNSTAKED = auto()
-    STAKED = auto()
-    EVICTED = auto()
 
 
 class SynchronizedData(TxSettlementSyncedData):

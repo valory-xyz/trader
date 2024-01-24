@@ -20,13 +20,14 @@
 """This module contains the behaviours for the staking skill."""
 
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, Optional, Set, Type, Union, cast
+from typing import Any, Callable, Generator, Optional, Set, Type, cast
 
 from aea.configurations.data_types import PublicId
 
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
+    StakingState,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
@@ -40,7 +41,6 @@ from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.staking_abci.rounds import (
     CallCheckpointRound,
     StakingAbciApp,
-    StakingState,
     SynchronizedData,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
@@ -93,10 +93,8 @@ class CallCheckpointBehaviour(BaseBehaviour):
         return self._service_staking_state
 
     @service_staking_state.setter
-    def service_staking_state(self, state: Union[StakingState, int]) -> None:
+    def service_staking_state(self, state: StakingState) -> None:
         """Set the service's staking state."""
-        if isinstance(state, int):
-            state = StakingState(state)
         self._service_staking_state = state
 
     @property
