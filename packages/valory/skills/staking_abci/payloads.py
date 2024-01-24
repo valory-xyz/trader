@@ -37,4 +37,4 @@ class MultisigTxPayload(BaseTxPayload):
 class CallCheckpointPayload(MultisigTxPayload):
     """A transaction payload for the checkpoint call."""
 
-    is_service_staked: bool
+    service_staking_state: int

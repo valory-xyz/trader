@@ -20,7 +20,7 @@
 """This module contains the rounds for the Staking ABCI application."""
 
 from abc import ABC
-from enum import Enum
+from enum import Enum, auto
 from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -51,6 +51,14 @@ class Event(Enum):
     NEXT_CHECKPOINT_NOT_REACHED_YET = "next_checkpoint_not_reached_yet"
 
 
+class StakingState(Enum):
+    """Staking state enumeration for the staking."""
+
+    UNSTAKED = auto()
+    STAKED = auto()
+    EVICTED = auto()
+
+
 class SynchronizedData(TxSettlementSyncedData):
     """Class to represent the synchronized data.
 
@@ -68,9 +76,9 @@ class SynchronizedData(TxSettlementSyncedData):
         return str(self.db.get_strict("tx_submitter"))
 
     @property
-    def is_service_staked(self) -> bool:
-        """Whether the service is staked or not."""
-        return bool(self.db.get("is_service_staked", False))
+    def service_staking_state(self) -> StakingState:
+        """Get the service's staking state."""
+        return StakingState(self.db.get("service_staking_state", 0))
 
     @property
     def participant_to_checkpoint(self) -> DeserializedCollection:
@@ -87,7 +95,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
     selection_key = (
         get_name(SynchronizedData.tx_submitter),
         get_name(SynchronizedData.most_voted_tx_hash),
-        get_name(SynchronizedData.is_service_staked),
+        get_name(SynchronizedData.service_staking_state),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
@@ -103,7 +111,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         if event != Event.DONE:
             return res
 
-        if synced_data.is_service_staked is False:
+        if synced_data.service_staking_state == StakingState.UNSTAKED:
             return synced_data, Event.SERVICE_NOT_STAKED
 
         if synced_data.most_voted_tx_hash is None:
@@ -156,7 +164,7 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         FinishedStakingRound: {},
     }
     cross_period_persisted_keys = frozenset(
-        {get_name(SynchronizedData.is_service_staked)}
+        {get_name(SynchronizedData.service_staking_state)}
     )
     final_states: Set[AppState] = {CheckpointCallPreparedRound, FinishedStakingRound}
     event_to_timeout: Dict[Event, float] = {
@@ -167,9 +175,9 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         CheckpointCallPreparedRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
-            get_name(SynchronizedData.is_service_staked),
+            get_name(SynchronizedData.service_staking_state),
         },
         FinishedStakingRound: {
-            get_name(SynchronizedData.is_service_staked),
+            get_name(SynchronizedData.service_staking_state),
         },
     }
