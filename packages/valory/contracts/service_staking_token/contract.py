@@ -155,3 +155,14 @@ class ServiceStakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         service_ids = contract.functions.getServiceIds().call()
         return dict(data=service_ids)
+
+    @classmethod
+    def get_min_staking_duration(
+            cls,
+            ledger_api: LedgerApi,
+            contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the service IDs."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        duration = contract.functions.minStakingDuration().call()
+        return dict(data=duration)
