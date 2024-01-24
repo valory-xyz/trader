@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -150,13 +150,15 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         0. CallCheckpointRound
             - done: 1.
             - service not staked: 2.
+            - service evicted: 3.
             - next checkpoint not reached yet: 2.
             - round timeout: 0.
             - no majority: 0.
         1. CheckpointCallPreparedRound
         2. FinishedStakingRound
+        3. ServiceEvictedRound
 
-    Final states: {CheckpointCallPreparedRound, FinishedStakingRound}
+    Final states: {CheckpointCallPreparedRound, FinishedStakingRound, ServiceEvictedRound}
 
     Timeouts:
         round timeout: 30.0

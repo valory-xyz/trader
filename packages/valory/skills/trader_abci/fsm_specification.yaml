@@ -27,6 +27,7 @@ alphabet_in:
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
 - ROUND_TIMEOUT
+- SERVICE_EVICTED
 - SERVICE_NOT_STAKED
 - SLOTS_UNSUPPORTED_ERROR
 - STAKING_DONE
@@ -41,6 +42,7 @@ default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
 - ImpossibleRound
+- ServiceEvictedRound
 label: TraderAbciApp
 start_states:
 - RegistrationRound
@@ -72,6 +74,7 @@ states:
 - SelectKeeperTransactionSubmissionARound
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
+- ServiceEvictedRound
 - SubscriptionRound
 - SynchronizeLateMessagesRound
 - ToolSelectionRound
@@ -92,6 +95,7 @@ transition_func:
     (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
     (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
+    (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
