@@ -300,6 +300,9 @@ class CallCheckpointBehaviour(BaseBehaviour):
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
 
+            if self.service_staking_state == StakingState.EVICTED:
+                self.context.logger.critical("Service has been evicted!")
+
             tx_submitter = self.matching_round.auto_round_id()
             payload = CallCheckpointPayload(
                 self.context.agent_address,
