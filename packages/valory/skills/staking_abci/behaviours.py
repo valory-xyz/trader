@@ -230,10 +230,6 @@ class CallCheckpointBehaviour(BaseBehaviour):
 
     def _check_service_staked(self) -> WaitableConditionType:
         """Check whether the service is staked."""
-        if self.synchronized_data.period_count != 0:
-            self.is_service_staked = self.synchronized_data.is_service_staked
-            return True
-
         service_id = self.params.on_chain_service_id
         if service_id is None:
             self.context.logger.warning(
