@@ -234,7 +234,7 @@ class CallCheckpointBehaviour(BaseBehaviour):
         if service_id is None:
             self.context.logger.warning(
                 "Cannot perform any staking-related operations without a configured on-chain service id. "
-                "Setting status to 'not staked'."
+                "Assuming service status 'UNSTAKED'."
             )
             return True
 
