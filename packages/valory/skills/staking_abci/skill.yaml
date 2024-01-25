@@ -127,7 +127,7 @@ models:
       slash_threshold_amount: 10000000000000000
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
-      staking_contract_address: '0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C'
+      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
     class_name: StakingParams
   requests:
     args: {}

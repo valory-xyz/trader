@@ -203,7 +203,7 @@ models:
         "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
         "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
         ["price", "0"]]}
-      staking_contract_address: ${str:0x5add592ce0a1B5DceCebB5Dcac086Cd9F9e3eA5C}
+      staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
