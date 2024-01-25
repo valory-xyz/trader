@@ -19,7 +19,7 @@
 
 """This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
 
-from enum import Enum, auto
+from enum import Enum
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -30,9 +30,9 @@ from aea.crypto.base import LedgerApi
 class StakingState(Enum):
     """Staking state enumeration for the staking."""
 
-    UNSTAKED = auto()
-    STAKED = auto()
-    EVICTED = auto()
+    UNSTAKED = 0
+    STAKED = 1
+    EVICTED = 2
 
 
 class ServiceStakingTokenContract(Contract):
