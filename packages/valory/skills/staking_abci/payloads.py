@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -37,4 +37,4 @@ class MultisigTxPayload(BaseTxPayload):
 class CallCheckpointPayload(MultisigTxPayload):
     """A transaction payload for the checkpoint call."""
 
-    is_service_staked: bool
+    service_staking_state: int

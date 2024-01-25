@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from abc import ABC
 from enum import Enum
 from typing import Dict, Optional, Set, Tuple, Type, cast
 
+from packages.valory.contracts.service_staking_token.contract import StakingState
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
@@ -48,6 +49,7 @@ class Event(Enum):
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
     SERVICE_NOT_STAKED = "service_not_staked"
+    SERVICE_EVICTED = "service_evicted"
     NEXT_CHECKPOINT_NOT_REACHED_YET = "next_checkpoint_not_reached_yet"
 
 
@@ -68,9 +70,9 @@ class SynchronizedData(TxSettlementSyncedData):
         return str(self.db.get_strict("tx_submitter"))
 
     @property
-    def is_service_staked(self) -> bool:
-        """Whether the service is staked or not."""
-        return bool(self.db.get("is_service_staked", False))
+    def service_staking_state(self) -> StakingState:
+        """Get the service's staking state."""
+        return StakingState(self.db.get("service_staking_state", 0))
 
     @property
     def participant_to_checkpoint(self) -> DeserializedCollection:
@@ -87,7 +89,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
     selection_key = (
         get_name(SynchronizedData.tx_submitter),
         get_name(SynchronizedData.most_voted_tx_hash),
-        get_name(SynchronizedData.is_service_staked),
+        get_name(SynchronizedData.service_staking_state),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
@@ -103,8 +105,11 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         if event != Event.DONE:
             return res
 
-        if synced_data.is_service_staked is False:
+        if synced_data.service_staking_state == StakingState.UNSTAKED:
             return synced_data, Event.SERVICE_NOT_STAKED
+
+        if synced_data.service_staking_state == StakingState.EVICTED:
+            return synced_data, Event.SERVICE_EVICTED
 
         if synced_data.most_voted_tx_hash is None:
             return synced_data, Event.NEXT_CHECKPOINT_NOT_REACHED_YET
@@ -120,6 +125,13 @@ class FinishedStakingRound(DegenerateRound, ABC):
     """A round that represents staking has finished."""
 
 
+class ServiceEvictedRound(DegenerateRound, ABC):
+    """A round that terminates the service if it has been evicted."""
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """End block."""
+
+
 class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """StakingAbciApp
 
@@ -131,13 +143,15 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         0. CallCheckpointRound
             - done: 1.
             - service not staked: 2.
+            - service evicted: 3.
             - next checkpoint not reached yet: 2.
             - round timeout: 0.
             - no majority: 0.
         1. CheckpointCallPreparedRound
         2. FinishedStakingRound
+        3. ServiceEvictedRound
 
-    Final states: {CheckpointCallPreparedRound, FinishedStakingRound}
+    Final states: {CheckpointCallPreparedRound, FinishedStakingRound, ServiceEvictedRound}
 
     Timeouts:
         round timeout: 30.0
@@ -148,17 +162,23 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         CallCheckpointRound: {
             Event.DONE: CheckpointCallPreparedRound,
             Event.SERVICE_NOT_STAKED: FinishedStakingRound,
+            Event.SERVICE_EVICTED: ServiceEvictedRound,
             Event.NEXT_CHECKPOINT_NOT_REACHED_YET: FinishedStakingRound,
             Event.ROUND_TIMEOUT: CallCheckpointRound,
             Event.NO_MAJORITY: CallCheckpointRound,
         },
         CheckpointCallPreparedRound: {},
         FinishedStakingRound: {},
+        ServiceEvictedRound: {},
     }
     cross_period_persisted_keys = frozenset(
-        {get_name(SynchronizedData.is_service_staked)}
+        {get_name(SynchronizedData.service_staking_state)}
     )
-    final_states: Set[AppState] = {CheckpointCallPreparedRound, FinishedStakingRound}
+    final_states: Set[AppState] = {
+        CheckpointCallPreparedRound,
+        FinishedStakingRound,
+        ServiceEvictedRound,
+    }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
     }
@@ -167,9 +187,12 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         CheckpointCallPreparedRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
-            get_name(SynchronizedData.is_service_staked),
+            get_name(SynchronizedData.service_staking_state),
         },
         FinishedStakingRound: {
-            get_name(SynchronizedData.is_service_staked),
+            get_name(SynchronizedData.service_staking_state),
+        },
+        ServiceEvictedRound: {
+            get_name(SynchronizedData.service_staking_state),
         },
     }

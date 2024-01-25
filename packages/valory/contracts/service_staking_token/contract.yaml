@@ -7,8 +7,8 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
-  build/ServiceStakingToken.json: bafybeie2xbccvzmjuptqfqumctv6gtyyeoxe7fkx3t7fgbto7wbdugbqxm
-  contract.py: bafybeif2c6sremwf6cgqcfuossbjm43rj7auredsgwafbxrrhzymsqyzmm
+  build/ServiceStakingToken.json: bafybeib6frfpqtr4dfyxuylehqmic2iawofydx7u24t7j5zbrsc4m4ijoi
+  contract.py: bafybeicxwbqmiohfmbikc76cxlt5sext6ly2wmvemysr53alnp5qjq6jmm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: ServiceStakingTokenContract

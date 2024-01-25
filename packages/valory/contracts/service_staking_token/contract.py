@@ -19,10 +19,20 @@
 
 """This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
 
+from enum import Enum
+
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
+
+
+class StakingState(Enum):
+    """Staking state enumeration for the staking."""
+
+    UNSTAKED = 0
+    STAKED = 1
+    EVICTED = 2
 
 
 class ServiceStakingTokenContract(Contract):
@@ -31,7 +41,7 @@ class ServiceStakingTokenContract(Contract):
     contract_id = PublicId.from_str("valory/service_staking_token:0.1.0")
 
     @classmethod
-    def is_service_staked(
+    def get_service_staking_state(
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
@@ -39,8 +49,8 @@ class ServiceStakingTokenContract(Contract):
     ) -> JSONLike:
         """Check whether the service is staked."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        res = contract_instance.functions.isServiceStaked(service_id).call()
-        return dict(data=res)
+        res = contract_instance.functions.getServiceStakingState(service_id).call()
+        return dict(data=StakingState(res))
 
     @classmethod
     def build_stake_tx(
@@ -131,7 +141,7 @@ class ServiceStakingTokenContract(Contract):
     ) -> JSONLike:
         """Retrieve the service info for a service."""
         contract = cls.get_instance(ledger_api, contract_address)
-        info = contract.functions.mapServiceInfo(service_id).call()
+        info = contract.functions.getServiceInfo(service_id).call()
         return dict(data=info)
 
     @classmethod
@@ -155,3 +165,14 @@ class ServiceStakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         service_ids = contract.functions.getServiceIds().call()
         return dict(data=service_ids)
+
+    @classmethod
+    def get_min_staking_duration(
+            cls,
+            ledger_api: LedgerApi,
+            contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the service IDs."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        duration = contract.functions.minStakingDuration().call()
+        return dict(data=duration)

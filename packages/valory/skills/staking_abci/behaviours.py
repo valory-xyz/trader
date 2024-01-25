@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ from aea.configurations.data_types import PublicId
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
+    StakingState,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
@@ -66,7 +67,7 @@ class CallCheckpointBehaviour(BaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
-        self._is_service_staked: bool = False
+        self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._next_checkpoint: int = 0
         self._checkpoint_data: bytes = b""
         self._safe_tx_hash: str = ""
@@ -87,14 +88,14 @@ class CallCheckpointBehaviour(BaseBehaviour):
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
     @property
-    def is_service_staked(self) -> bool:
-        """Whether the service is staked."""
-        return self._is_service_staked
+    def service_staking_state(self) -> StakingState:
+        """Get the service's staking state."""
+        return self._service_staking_state
 
-    @is_service_staked.setter
-    def is_service_staked(self, is_service_staked: bool) -> None:
-        """Whether the service is staked."""
-        self._is_service_staked = is_service_staked
+    @service_staking_state.setter
+    def service_staking_state(self, state: StakingState) -> None:
+        """Set the service's staking state."""
+        self._service_staking_state = state
 
     @property
     def next_checkpoint(self) -> int:
@@ -227,21 +228,17 @@ class CallCheckpointBehaviour(BaseBehaviour):
 
     def _check_service_staked(self) -> WaitableConditionType:
         """Check whether the service is staked."""
-        if self.synchronized_data.period_count != 0:
-            self.is_service_staked = self.synchronized_data.is_service_staked
-            return True
-
         service_id = self.params.on_chain_service_id
         if service_id is None:
             self.context.logger.warning(
                 "Cannot perform any staking-related operations without a configured on-chain service id. "
-                "Setting status to 'not staked'."
+                "Assuming service status 'UNSTAKED'."
             )
             return True
 
         status = yield from self._staking_contract_interact(
-            contract_callable="is_service_staked",
-            placeholder=get_name(CallCheckpointBehaviour.is_service_staked),
+            contract_callable="get_service_staking_state",
+            placeholder=get_name(CallCheckpointBehaviour.service_staking_state),
             service_id=service_id,
         )
 
@@ -296,17 +293,20 @@ class CallCheckpointBehaviour(BaseBehaviour):
             yield from self.wait_for_condition_with_sleep(self._check_service_staked)
 
             checkpoint_tx_hex = None
-            if self.is_service_staked:
+            if self.service_staking_state == StakingState.STAKED:
                 yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
+
+            if self.service_staking_state == StakingState.EVICTED:
+                self.context.logger.critical("Service has been evicted!")
 
             tx_submitter = self.matching_round.auto_round_id()
             payload = CallCheckpointPayload(
                 self.context.agent_address,
                 tx_submitter,
                 checkpoint_tx_hex,
-                self.is_service_staked,
+                self.service_staking_state.value,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
