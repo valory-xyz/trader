@@ -21,9 +21,9 @@ dependencies:
   eth_typing: {}
   hexbytes: {}
   open-aea-ledger-ethereum:
-    version: ==1.44.0
+    version: ==1.46.0
   open-aea-test-autonomy:
-    version: ==0.14.0
+    version: ==0.14.3
   packaging: {}
   py-eth-sig-utils: {}
   requests:
