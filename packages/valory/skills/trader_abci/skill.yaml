@@ -135,6 +135,7 @@ models:
       termination_sleep: 900
       tx_timeout: 10.0
       use_termination: false
+      termination_from_block: 0
       validate_timeout: 1205
       creator_per_subgraph:
         omen_subgraph: []

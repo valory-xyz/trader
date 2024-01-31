@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiduzlvp2pz2rw2lhzxlcye3c7nygephmcknkuqzioqol2ejviw4yq
+agent: valory/trader:0.1.0:bafybeia3cfvngm4z4dv3nnbhnoc3lme6vj4xrbfuekqqzok2pgvbvihtl4
 number_of_agents: 4
 deployment: {}
 ---
@@ -68,6 +68,7 @@ type: skill
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
+        termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: &id003
@@ -163,6 +164,7 @@ type: skill
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
+        termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
@@ -255,6 +257,7 @@ type: skill
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
+        termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
@@ -347,6 +350,7 @@ type: skill
         termination_sleep: ${TERMINATION_SLEEP:int:900}
         tx_timeout: ${TX_TIMEOUT:float:10.0}
         use_termination: ${USE_TERMINATION:bool:false}
+        termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
