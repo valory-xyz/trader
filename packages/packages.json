@@ -1,20 +1,20 @@
 {
     "dev": {
-        "skill/valory/market_manager_abci/0.1.0": "bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeihlcywns6e6dbclae3odpyn4v2bpv7pl35htgszsb6z4qphecldim",
-        "skill/valory/trader_abci/0.1.0": "bafybeievgkfgkhxdwcwrkjnmtcvhxjoypctlku3qmobhfbkegeu5rncwtq",
+        "skill/valory/market_manager_abci/0.1.0": "bafybeif23nzty3mvhvx3tphgr3mdrfo4kadxzg4zi57at2pqvml5yrb2xa",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeibchcl45nayarmacqginjbt5vcbry7mx7fm6siuyi2bardtomqdra",
+        "skill/valory/trader_abci/0.1.0": "bafybeicezv6lrzehojlcxrcoqcvg7sj4vj67npuwduqag6xnz2tojra5nq",
         "contract/valory/market_maker/0.1.0": "bafybeihtjp5z2v6ax3fieu2hnwajlzlfpiadgmrsm24pd4rr2tjq33xt3i",
-        "agent/valory/trader/0.1.0": "bafybeia3cfvngm4z4dv3nnbhnoc3lme6vj4xrbfuekqqzok2pgvbvihtl4",
-        "service/valory/trader/0.1.0": "bafybeigt734q4z22khysf22p5wbs4hzko3qfhwxcz3r37ahdneuc7mp5em",
+        "agent/valory/trader/0.1.0": "bafybeidin7u2c37jcppxlkiawghxa4glmn3crh53tgyrqhkwouslnvch34",
+        "service/valory/trader/0.1.0": "bafybeihacm6oylpidari2pi24ymxi3e4kgivgbl5vramchv6t6qqrwwf3q",
         "contract/valory/erc20/0.1.0": "bafybeihy56fit7nc5e5f2h7bp7b2dvthibldyinynuxfzxvalhfo2zhvji",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeia6fnbxilcocfyupl6x7pid6fwkjpyc3ovr6nnfyl7v2bzaktpw3q",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiacve6p6uzzvczdrvfrp3aglbwvuay2ajc5pcd2oyivzimfmyg42a",
         "contract/valory/mech/0.1.0": "bafybeid26bj6twv6he62gulrhixs2t2jsaxzhmpnysh3sywwankb74ngvu",
         "contract/valory/realitio/0.1.0": "bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq",
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
         "contract/valory/conditional_tokens/0.1.0": "bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu",
         "contract/valory/agent_registry/0.1.0": "bafybeihciea74zyqtl7bsa7kv6wsudix7uh4ri64dlyufrxlm2e2xcqoeu",
         "contract/valory/service_staking_token/0.1.0": "bafybeif2rfugwe6flohxe5p4y5so56saeq5blpnuckuhjwoh2m65dj3qhi",
-        "skill/valory/staking_abci/0.1.0": "bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye",
+        "skill/valory/staking_abci/0.1.0": "bafybeigkxlt2vn32ncqvaa4ekgjklowicv7nfyptvswajm4rvzqscx4ony",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeigj46jcovsrfrfymdr37fym25k5s4dbrek5pzhshewstxjds76uyu"
     },
     "third_party": {
