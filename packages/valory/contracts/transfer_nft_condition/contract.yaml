@@ -8,8 +8,8 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeidiaep6cpoqlabnajvsgegpt72hqnbtozayicaxclzxzftopvlw5u
   __init__.py: bafybeigz4j3ow7nagttswpbrpajnxqtxrl35oznejzxwi6bhfdeltnab5i
-  build/TransferNFTCondition.json: bafybeicovauoyn5bulnmz3ulkee56s46viemw3vpy7fk3zi4isol2jkdca
-  contract.py: bafybeiamwqz5tln7xknhoogsev36c3vhi4u4aovbwmowvpavhmzbtp7ywy
+  build/TransferNFTCondition.json: bafybeigxqddrgr4tuyhxyt5zblgnhwgpn4szjvyu5kvznslw4xfi7x2pp4
+  contract.py: bafybeibievlshamdrcanb7rd4625jhmvmdwspovpnyudshahjiq4vzvyrm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: TransferNftCondition
