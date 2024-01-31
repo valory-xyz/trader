@@ -36,7 +36,9 @@ from packages.valory.contracts.gnosis_safe.contract import (
 )
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.contracts.multisend.contract import MultiSendContract
-from packages.valory.contracts.transfer_nft_condition.contract import TransferNftCondition
+from packages.valory.contracts.transfer_nft_condition.contract import (
+    TransferNftCondition,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -49,7 +51,10 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
-from packages.valory.skills.decision_maker_abci.utils.nevermined import zero_x_transformer, no_did_prefixed
+from packages.valory.skills.decision_maker_abci.utils.nevermined import (
+    no_did_prefixed,
+    zero_x_transformer,
+)
 from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (

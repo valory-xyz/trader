@@ -80,19 +80,17 @@ class ClaimSubscriptionBehaviour(BaseSubscriptionBehaviour):
             return True
 
         self.context.logger.warning(
-            f"Couldn't claim subscription: {res.status_code!r} - {res.body!r}",
+            f"Couldn't claim subscription: {res.status_code!r} - {res.body!r}"
             f"Checking the balance of the safe on the NFT."
         )
         has_balance = yield from self._has_positive_nft_balance()
         if not has_balance:
             self.context.logger.warning(
-                f"Safe doesn't contain the NFT, claiming failed."
+                "Safe doesn't contain the NFT, claiming failed."
             )
             return False
 
-        self.context.logger.info(
-            f"Safe contains the NFT, claiming succeeded."
-        )
+        self.context.logger.info("Safe contains the NFT, claiming succeeded.")
         return True
 
     def async_act(self) -> Generator:

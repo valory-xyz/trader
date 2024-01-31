@@ -27,9 +27,10 @@ from packages.valory.contracts.transfer_nft_condition.contract import (
     TransferNftCondition,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    BaseSubscriptionBehaviour, WXDAI, WaitableConditionType,
+    BaseSubscriptionBehaviour,
+    WXDAI,
+    WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import SubscriptionPayload
@@ -271,7 +272,9 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
             return SubscriptionRound.ERROR_PAYLOAD
 
         if not self.is_xdai:
-            self.context.logger.warning(f"Subscription is not using xDAI: {self.is_xdai}")
+            self.context.logger.warning(
+                f"Subscription is not using xDAI: {self.is_xdai}"
+            )
             approval_params = self._get_approval_params()
             result = yield from self._prepare_approval_tx(**approval_params)
             if not result:
@@ -288,9 +291,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
                     )
                     return SubscriptionRound.ERROR_PAYLOAD
                 amount_to_withdraw = self.price - self.wallet_balance
-                self.context.logger.info(
-                    f"Withdrawing {amount_to_withdraw} from WxDAI"
-                )
+                self.context.logger.info(f"Withdrawing {amount_to_withdraw} from WxDAI")
                 result = yield from self._build_withdraw_wxdai_tx(amount_to_withdraw)
                 if not result:
                     return SubscriptionRound.ERROR_PAYLOAD
