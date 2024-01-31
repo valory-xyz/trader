@@ -12,14 +12,14 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeid5di6dt45myls6nggxd5422vlkqzgxb4hxe4lmdolgvmnntzemlm
+  behaviours/base.py: bafybeigel7rznswltgzvsdsdhi3afjfhwpapab52cggjtnxxpbr7oz2pre
   behaviours/bet_placement.py: bafybeib7jgq7iyfoyj3ur3xkj6knh7t7vr32kc743ztyjskkdevyh6l75q
   behaviours/blacklisting.py: bafybeic7o2jzmhbamdcebbdjeie3dkm7y2wq7xutpeshqmrt2hdq65vlai
-  behaviours/claim_subscription.py: bafybeihctnttpg5ckv5653iqwidbfxqif3ox35zwuaf52wfjfmpgtxv7em
+  behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
   behaviours/decision_receive.py: bafybeig4gmlad7epkaao6nsfqya3zqhllt4hwiijtarcczmokxekxehrcu
   behaviours/decision_request.py: bafybeicpvpsdbcfvtiapnprp4j45exy5atyshfwgzksj3jptstlv6kgiwy
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/order_subscription.py: bafybeiehmurti6cmarlaqqgr45fou6js5gb4cbbul7n36chyb4ks3jxtay
+  behaviours/order_subscription.py: bafybeifygejified3yoza3gy4g7ina6m4lmz4pp2abtwfuwrmiwznnvrua
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
   behaviours/reedem.py: bafybeibenzbek5qdtk3gobjxfmsm6tg6i3d4yltozymy23izpgbcpal5ye
   behaviours/round_behaviour.py: bafybeidrks62unrnoyp3jnbz2nozgnittfntyknymuuja7jwcsjuap4fve
@@ -206,7 +206,7 @@ models:
       - - base_url
         - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
       - - did
-        - did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195
+        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
       - - escrow_payment_condition_address
         - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
       - - lock_payment_condition_address
@@ -217,12 +217,14 @@ models:
         - '0xa30DE8C6aC39B825192e5F1FADe0770332D279A8'
       - - order_address
         - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - payment_token
-        - '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
       - - nft_amount
-        - '1'
+        - '100'
+      - - payment_token
+        - '0x0000000000000000000000000000000000000000'
+      - - order_address
+        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
       - - price
-        - '0'
+        - '1000000000000000000'
       irrelevant_tools:
       - openai-text-davinci-002
       - openai-text-davinci-003

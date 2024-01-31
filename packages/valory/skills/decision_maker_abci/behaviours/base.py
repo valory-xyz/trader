@@ -36,6 +36,9 @@ from packages.valory.contracts.gnosis_safe.contract import (
 )
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.contracts.multisend.contract import MultiSendContract
+from packages.valory.contracts.transfer_nft_condition.contract import (
+    TransferNftCondition,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -48,6 +51,10 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
+from packages.valory.skills.decision_maker_abci.utils.nevermined import (
+    no_did_prefixed,
+    zero_x_transformer,
+)
 from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
@@ -67,6 +74,7 @@ CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -561,6 +569,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
     """Base class for subscription behaviours."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize `BaseSubscriptionBehaviour`."""
+        super().__init__(**kwargs)
+        self.balance: int = 0
+
     @property
     def subscription_params(self) -> Dict[str, Any]:
         """Get the subscription params."""
@@ -621,6 +634,18 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
         return subscription_params["payment_token"]
 
     @property
+    def is_xdai(self) -> bool:
+        """
+        Check if the payment token is xDAI.
+
+        When the payment token for the subscription is xdai (the native token of the chain),
+        nevermined sets the payment address to the zeroAddress.
+
+        :return: True if the payment token is xDAI, False otherwise.
+        """
+        return self.payment_token == ZERO_ADDRESS
+
+    @property
     def base_url(self) -> str:
         """Get the base url."""
         subscription_params = self.subscription_params
@@ -650,3 +675,32 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
             return None
 
         return data
+
+    def _get_nft_balance(
+        self, token: str, address: str, did: str
+    ) -> Generator[None, None, bool]:
+        """Prepare an approval tx."""
+        result = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=token,
+            contract_public_id=TransferNftCondition.contract_id,
+            contract_callable="balance_of",
+            data_key="data",
+            placeholder="balance",
+            address=address,
+            did=did,
+        )
+        return result
+
+    def _has_positive_nft_balance(self) -> Generator[None, None, bool]:
+        """Check if the agent has a non-zero balance of the NFT."""
+        result = yield from self._get_nft_balance(
+            self.token_address,
+            self.synchronized_data.safe_contract_address,
+            zero_x_transformer(no_did_prefixed(self.did)),
+        )
+        if not result:
+            self.context.logger.warning("Failed to get balance")
+            return False
+
+        return self.balance > 0

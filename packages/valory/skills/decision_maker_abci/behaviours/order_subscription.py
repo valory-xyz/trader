@@ -29,6 +29,8 @@ from packages.valory.contracts.transfer_nft_condition.contract import (
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BaseSubscriptionBehaviour,
+    WXDAI,
+    WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import SubscriptionPayload
@@ -150,6 +152,32 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         approval_params["amount"] = self.price  # type: ignore
         return approval_params
 
+    def _build_withdraw_wxdai_tx(self, amount: int) -> WaitableConditionType:
+        """Exchange xDAI to wxDAI."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=WXDAI,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_withdraw_tx",
+            amount=amount,
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
+            return False
+
+        approval_data = response_msg.state.body.get("data")
+        if approval_data is None:
+            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=WXDAI,
+            data=HexBytes(approval_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
+
     def _prepare_order_tx(
         self,
         contract_address: str,
@@ -188,10 +216,12 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         if not result:
             return False
 
+        value = self.price if self.is_xdai else 0
         self.multisend_batches.append(
             MultisendBatch(
                 to=contract_address,
                 data=HexBytes(self.order_tx),
+                value=value,
             )
         )
         return True
@@ -221,40 +251,15 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         )
         return True
 
-    def _get_balance(
-        self, token: str, address: str, did: str
-    ) -> Generator[None, None, bool]:
-        """Prepare an approval tx."""
-        result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=token,
-            contract_public_id=TransferNftCondition.contract_id,
-            contract_callable="balance_of",
-            data_key="data",
-            placeholder="balance",
-            address=address,
-            did=did,
-        )
-        if not result:
-            return False
-        return True
-
     def _should_purchase(self) -> Generator[None, None, bool]:
         """Check if the subscription should be purchased."""
         if not self.params.use_nevermined:
             self.context.logger.info("Nevermined subscriptions are turned off.")
             return False
 
-        result = yield from self._get_balance(
-            self.token_address,
-            self.synchronized_data.safe_contract_address,
-            zero_x_transformer(no_did_prefixed(self.did)),
-        )
-        if not result:
-            self.context.logger.warning("Failed to get balance")
-            return False
-
-        return self.balance <= 0
+        has_balance = yield from self._has_positive_nft_balance()
+        # in case there is no balance on the safe, we purchase
+        return not has_balance
 
     def get_payload_content(self) -> Generator[None, None, str]:
         """Get the payload."""
@@ -262,10 +267,34 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         if not should_purchase:
             return SubscriptionRound.NO_TX_PAYLOAD
 
-        approval_params = self._get_approval_params()
-        result = yield from self._prepare_approval_tx(**approval_params)
+        result = yield from self.check_balance()
         if not result:
             return SubscriptionRound.ERROR_PAYLOAD
+
+        if not self.is_xdai:
+            self.context.logger.warning(
+                f"Subscription is not using xDAI: {self.is_xdai}"
+            )
+            approval_params = self._get_approval_params()
+            result = yield from self._prepare_approval_tx(**approval_params)
+            if not result:
+                return SubscriptionRound.ERROR_PAYLOAD
+
+        else:
+            self.context.logger.info(
+                f"Using wxDAI to purchase subscription: {self.wallet_balance} < {self.price}"
+            )
+            if self.wallet_balance < self.price:
+                if self.wallet_balance + self.token_balance < self.price:
+                    self.context.logger.info(
+                        f"Insufficient funds to purchase subscription: {self.wallet_balance + self.token_balance} < {self.price}"
+                    )
+                    return SubscriptionRound.ERROR_PAYLOAD
+                amount_to_withdraw = self.price - self.wallet_balance
+                self.context.logger.info(f"Withdrawing {amount_to_withdraw} from WxDAI")
+                result = yield from self._build_withdraw_wxdai_tx(amount_to_withdraw)
+                if not result:
+                    return SubscriptionRound.ERROR_PAYLOAD
 
         purchase_params = yield from self._get_purchase_params()
         if purchase_params is None:
