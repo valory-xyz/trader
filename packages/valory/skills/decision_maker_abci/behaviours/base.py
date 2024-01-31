@@ -635,7 +635,14 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     @property
     def is_xdai(self) -> bool:
-        """Check if the payment token is xDAI"""
+        """
+        Check if the payment token is xDAI.
+
+        When the payment token for the subscription is xdai (the native token of the chain),
+        nevermined sets the payment address to the zeroAddress.
+
+        :return: True if the payment token is xDAI, False otherwise.
+        """
         return self.payment_token == ZERO_ADDRESS
 
     @property
