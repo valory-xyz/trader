@@ -21,13 +21,13 @@ contracts:
 - valory/market_maker:0.1.0:bafybeihtjp5z2v6ax3fieu2hnwajlzlfpiadgmrsm24pd4rr2tjq33xt3i
 - valory/erc20:0.1.0:bafybeihy56fit7nc5e5f2h7bp7b2dvthibldyinynuxfzxvalhfo2zhvji
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeid26bj6twv6he62gulrhixs2t2jsaxzhmpnysh3sywwankb74ngvu
+- valory/mech:0.1.0:bafybeihsmblus6lw3g2wfbtyzpvgedwrpc23rmigoxr7e7ykzyqb3567hm
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeihciea74zyqtl7bsa7kv6wsudix7uh4ri64dlyufrxlm2e2xcqoeu
 - valory/service_staking_token:0.1.0:bafybeif2rfugwe6flohxe5p4y5so56saeq5blpnuckuhjwoh2m65dj3qhi
-- valory/transfer_nft_condition:0.1.0:bafybeigj46jcovsrfrfymdr37fym25k5s4dbrek5pzhshewstxjds76uyu
+- valory/transfer_nft_condition:0.1.0:bafybeiab7p2jky5g6jjznpqkf4znyjp5ko466usgv5pntdlqi6uss456y4
 protocols:
 - open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
 - valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
@@ -44,10 +44,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeialc6wdfe56dirdx3pgyh2qaq74hpp3n3ues6e3zr7yoqwgnwsqyu
 - valory/termination_abci:0.1.0:bafybeihmqrvnzhptap62nchvocmu7tzl5d2o6k4eitkaiuvo7qwvsaedua
 - valory/transaction_settlement_abci:0.1.0:bafybeihaad5k6adwkqwc5pui243inep2kvw7k7pgwwqaykssyx7p64peyi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidtm6vd4pin35zwxiryzaagtwfkxgqtcevacbthoekgoi5yfsr4gm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieaagvh5upevey3prqev62zjbbjhcspkxadywfurvnzcvbxvrerbe
 - valory/market_manager_abci:0.1.0:bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni
-- valory/decision_maker_abci:0.1.0:bafybeiatntrgxmsmzfsuksits4mezhcmldogn7bcoqy6fztalhjhv65g7m
-- valory/trader_abci:0.1.0:bafybeifjodxblb75batrffbcaeq6g4vlqz6o4bllsz6agtvcxukjfwu5wa
+- valory/decision_maker_abci:0.1.0:bafybeibczcx5zrehtozdrmmbr4ifosa35xgfd54lzcqicz7oiruybmle5y
+- valory/trader_abci:0.1.0:bafybeic4ox22gt4ngzia4zfpydnbdbcw3ynkkkbean2j75xwluycbdmg5a
 - valory/staking_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
 default_ledger: ethereum
 required_ledgers:
