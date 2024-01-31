@@ -47,7 +47,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia6fnbxilcocfyupl6x7pid6fwkjpyc3ovr6nnfyl7v2bzaktpw3q
 - valory/market_manager_abci:0.1.0:bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni
 - valory/decision_maker_abci:0.1.0:bafybeihlcywns6e6dbclae3odpyn4v2bpv7pl35htgszsb6z4qphecldim
-- valory/trader_abci:0.1.0:bafybeidvz2heofjhximr4i6peat2unqydfx5bzotefutdidwiqbrz5bgxq
+- valory/trader_abci:0.1.0:bafybeievgkfgkhxdwcwrkjnmtcvhxjoypctlku3qmobhfbkegeu5rncwtq
 - valory/staking_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
 default_ledger: ethereum
 required_ledgers:
@@ -156,6 +156,7 @@ models:
       sleep_time: ${int:10}
       tendermint_p2p_url: ${str:localhost:26656}
       termination_sleep: ${int:900}
+      termination_from_block: ${int:0}
       use_termination: ${bool:false}
       on_chain_service_id: ${int:null}
       creator_per_subgraph:
