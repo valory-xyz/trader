@@ -19,15 +19,15 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeibna634t4w4udainzsuxwfydkbcy33alcqy6ugalcfuhoyhr53gs4
-- valory/registration_abci:0.1.0:bafybeifvglcgcyla5abdth4htjxbom7vidzytk5pfjfnslpbxox2cyjxse
-- valory/reset_pause_abci:0.1.0:bafybeigkf7uh6zre3wc3btm2we7xffls4e4vurvtsou2nswbn6mcc3g52a
-- valory/transaction_settlement_abci:0.1.0:bafybeic3ysdc46z4ipuonc2g6vdyqaxxljvfd45cflzi2xq7o7hre6lvvy
-- valory/termination_abci:0.1.0:bafybeif7dwj4i5okp7rsyeiyvnmt5xop7njvj27bmjqdx4skmimqls7t4e
-- valory/market_manager_abci:0.1.0:bafybeif23nzty3mvhvx3tphgr3mdrfo4kadxzg4zi57at2pqvml5yrb2xa
-- valory/decision_maker_abci:0.1.0:bafybeibchcl45nayarmacqginjbt5vcbry7mx7fm6siuyi2bardtomqdra
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiacve6p6uzzvczdrvfrp3aglbwvuay2ajc5pcd2oyivzimfmyg42a
-- valory/staking_abci:0.1.0:bafybeigkxlt2vn32ncqvaa4ekgjklowicv7nfyptvswajm4rvzqscx4ony
+- valory/abstract_round_abci:0.1.0:bafybeidyrcd4hxl4gq7xhkcd546wkidebbvt6vnomxmrdsja6shkpysh5u
+- valory/registration_abci:0.1.0:bafybeifh4jchomng6fsagamr6adlrixw7fnby4ylkngeq42zzskf4ahfjy
+- valory/reset_pause_abci:0.1.0:bafybeialc6wdfe56dirdx3pgyh2qaq74hpp3n3ues6e3zr7yoqwgnwsqyu
+- valory/transaction_settlement_abci:0.1.0:bafybeihaad5k6adwkqwc5pui243inep2kvw7k7pgwwqaykssyx7p64peyi
+- valory/termination_abci:0.1.0:bafybeihmqrvnzhptap62nchvocmu7tzl5d2o6k4eitkaiuvo7qwvsaedua
+- valory/market_manager_abci:0.1.0:bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni
+- valory/decision_maker_abci:0.1.0:bafybeif4rglf3p73ugtaqb3lyhcbsdz7pfjhlgv47n7epq6pzzytemv3vi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicofvx2xzfomev34cqqcm6crepaifiycjmb7i3ndkuhydilpv25km
+- valory/staking_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
 behaviours:
   main:
     args: {}
@@ -187,7 +187,7 @@ models:
       - - base_url
         - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
       - - did
-        - did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195
+        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
       - - escrow_payment_condition_address
         - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
       - - lock_payment_condition_address
@@ -199,13 +199,13 @@ models:
       - - order_address
         - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
       - - nft_amount
-        - '1'
+        - '100'
       - - payment_token
-        - '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
+        - '0x0000000000000000000000000000000000000000'
       - - order_address
         - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
       - - price
-        - '0'
+        - '1000000000000000000'
       contract_timeout: 300.0
       file_hash_to_strategies_json:
       - - hash

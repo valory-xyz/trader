@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidin7u2c37jcppxlkiawghxa4glmn3crh53tgyrqhkwouslnvch34
+agent: valory/trader:0.1.0:bafybeiaxpdtnniye6jwdzd373kz2rpiak72ncoqfaleizw7mck6jvinwnu
 number_of_agents: 4
 deployment: {}
 ---
@@ -116,14 +116,14 @@ type: skill
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
         mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
-          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
-          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
-          ["price", "0"]]}
+          ["price", "1000000000000000000"]]}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -211,14 +211,14 @@ type: skill
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
         mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
-          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
-          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
-          ["price", "0"]]}
+          ["price", "1000000000000000000"]]}
     benchmark_tool: *id004
 2:
   models:
@@ -304,14 +304,14 @@ type: skill
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
         mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
-          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
-          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
-          ["price", "0"]]}
+          ["price", "1000000000000000000"]]}
     benchmark_tool: *id004
 3:
   models:
@@ -397,14 +397,14 @@ type: skill
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
         mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
-          ["did", "did:nv:416e35cb209ecbfbf23e1192557b06e94c5d9a9afb025cce2e9baff23e907195"],
+          ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0xa30DE8C6aC39B825192e5F1FADe0770332D279A8"], ["order_address",
-          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "1"], ["payment_token",
+          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
-          ["price", "0"]]}
+          ["price", "1000000000000000000"]]}
     benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0
