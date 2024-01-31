@@ -683,9 +683,7 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
             address=address,
             did=did,
         )
-        if not result:
-            return False
-        return True
+        return result
 
     def _has_positive_nft_balance(self) -> Generator[None, None, bool]:
         """Check if the agent has a non-zero balance of the NFT."""
