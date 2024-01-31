@@ -570,7 +570,7 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
     """Base class for subscription behaviours."""
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialize `RedeemBehaviour`."""
+        """Initialize `BaseSubscriptionBehaviour`."""
         super().__init__(**kwargs)
         self.balance: int = 0
 
