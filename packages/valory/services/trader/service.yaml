@@ -6,7 +6,6 @@ aea_version: '>=1.0.0, <2.0.0'
 license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
-  keys.json: bafybeiffd34pjy4ayxocfxdj23rez3jidyhzc2rpdkogzk6eosrdovlqqy
 fingerprint_ignore_patterns: []
 agent: valory/trader:0.1.0:bafybeiduzlvp2pz2rw2lhzxlcye3c7nygephmcknkuqzioqol2ejviw4yq
 number_of_agents: 4
