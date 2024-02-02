@@ -2,7 +2,7 @@ name: Release Flow
 
 on:
   release:
-    types: [published]
+    types: [prereleased, released]
 
 jobs:
   publish-packages:
@@ -94,3 +94,60 @@ jobs:
           echo "Pushing $DOCKER_USER/oar-$AGENT:$DEFAULT_IMAGE_TAG"
           docker push $DOCKER_USER/oar-$AGENT:$VERSION
           docker push $DOCKER_USER/oar-$AGENT:$DEFAULT_IMAGE_TAG
+2
+  deploy-service-on-propel:
+    name: Deploy service on propel
+    environment: ${{ github.event.action == 'released' && 'production' || 'staging' }}
+    needs:
+    - "publish-packages"
+    - "publish-images"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10"]
+    env:
+      CMD: "propel -U ${{ vars.PROPEL_BASE_URL }}"
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-versions }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update --fix-missing
+          sudo apt-get autoremove
+          sudo apt-get autoclean
+          python -m pip install --upgrade pip
+          pip install propel-client open-autonomy
+
+      - name: Make use proxy instead of actual nlb by dns override
+        run: |
+          # for staging
+          export IP_ADDR=$(dig +short balancer.tcp.propel.staging.autonolas.tech)
+          echo -e "\n$IP_ADDR\tapp.propel.staging.valory.xyz\n"  | sudo tee -a /etc/hosts
+          
+          # for prod
+          export IP_ADDR=$(dig +short balancer.tcp.propel.autonolas.tech)
+          echo -e "\n$IP_ADDR\tapp.propel.valory.xyz\n"  | sudo tee -a /etc/hosts
+
+      - name: Login to propel
+        run: |
+          $CMD login -u  '${{ vars.PROPEL_USERNAME }}' -p  '${{ secrets.PROPEL_PASSWORD }}'
+
+      - name: Do a deployment
+        run: |
+          # determine ipfs hash id
+          export IPFS_HASH=$(jq '.dev | to_entries[] | select(.key | startswith("service"))| .value' -r  ./packages/packages.json | head -n1)
+          export SERVICE_PATH=service_for_propel
+
+          # fetch service file and check it published
+          autonomy init --reset --author ci --ipfs --remote
+          autonomy fetch $IPFS_HASH --service --alias $SERVICE_PATH
+
+          # get env vars from github actions
+          echo '${{ toJSON(secrets) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' > github.vars
+          echo >> github.vars
+          echo '${{ toJSON(vars) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' >> github.vars
+          source github.vars
+          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
