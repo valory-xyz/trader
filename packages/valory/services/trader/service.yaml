@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigelmjanmd57y2dshhqll5jjja2xeizn4vjgsuwanqtlehespvnoe
+agent: valory/trader:0.1.0:bafybeiexmyrslgxqnygcbir5ws26ltcjv5qo7e7plqapoo3j22xuqpfy64
 number_of_agents: 4
 deployment: {}
 ---
@@ -120,9 +120,9 @@ type: skill
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          ["token_address", "0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce"], ["order_address",
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
-          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
     benchmark_tool: &id004
       args:
@@ -215,9 +215,9 @@ type: skill
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          ["token_address", "0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce"], ["order_address",
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
-          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
     benchmark_tool: *id004
 2:
@@ -308,9 +308,9 @@ type: skill
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          ["token_address", "0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce"], ["order_address",
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
-          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
     benchmark_tool: *id004
 3:
@@ -401,9 +401,9 @@ type: skill
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
           ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-          ["token_address", "0x0000000000000000000000000000000000000000"], ["order_address",
+          ["token_address", "0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce"], ["order_address",
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
-          "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+          "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
     benchmark_tool: *id004
 ---

@@ -70,7 +70,6 @@ class TransferNftCondition(Contract):
         ))
         return {"data": bytes.fromhex(data[2:])}
 
-
     @classmethod
     def balance_of(
         cls,
@@ -86,3 +85,36 @@ class TransferNftCondition(Contract):
             int(did, 16)
         ).call()
         return dict(data=balance)
+
+    @classmethod
+    def is_approved_for_all(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        account: str,
+        operator: str,
+    ) -> JSONLike:
+        """Get the balance of an address."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        is_approved = contract_instance.functions.isApprovedForAll(
+            Web3.to_checksum_address(account),
+            Web3.to_checksum_address(operator),
+        ).call()
+        return dict(data=is_approved)
+
+    @classmethod
+    def build_set_approval_for_all_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        operator: str,
+        approved: bool,
+    ) -> Dict[str, bytes]:
+        """Build an TransferNftCondition approval."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        data = contract_instance.encodeABI("setApprovalForAll", args=(
+            Web3.to_checksum_address(operator),
+            approved,
+        ))
+        return {"data": bytes.fromhex(data[2:])}
+

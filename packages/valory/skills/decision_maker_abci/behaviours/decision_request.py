@@ -32,6 +32,9 @@ from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
+from packages.valory.contracts.transfer_nft_condition.contract import (
+    TransferNftCondition,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.io_.store import SupportedFiletype
@@ -55,6 +58,7 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 METADATA_FILENAME = "metadata.json"
 V1_HEX_PREFIX = "f01"
 Ox = "0x"
+APPROVE_MECH = True
 
 
 @dataclass
@@ -160,10 +164,74 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_price(self) -> WaitableConditionType:
         """Get the price of the mech request."""
+        if self.params.use_nevermined:
+            # when we use nevermined, we don't need to pay for the mech request
+            self.price = 0
+            return True
         result = yield from self._mech_contract_interact(
             "get_price", "price", get_name(DecisionRequestBehaviour.price)
         )
         return result
+
+    def _is_approved_for_all(self) -> Generator[None, None, Optional[bool]]:
+        """Check whether the mech is approved to spend the mech subscription."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.token_address,
+            contract_id=str(TransferNftCondition.contract_id),
+            contract_callable="is_approved_for_all",
+            account=self.synchronized_data.safe_contract_address,
+            operator=self.params.mech_agent_address,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(
+                f"Could not get `TransferNftCondition.is_approved_for_all`: {response_msg}"
+            )
+            return None
+
+        return response_msg.state.body.get("data")
+
+    def _check_nevermined_subscription(self) -> WaitableConditionType:
+        """Approve the mech to spend the mech subscription."""
+        if not self.params.use_nevermined:
+            # do nothing if we don't use nevermined
+            return True
+
+        is_approved_for_all = yield from self._is_approved_for_all()
+        if is_approved_for_all is None:
+            # something went wrong when checking the mech approval
+            return False
+        if is_approved_for_all:
+            # the mech is already approved to spend the mech subscription
+            self.context.logger.info(
+                "The mech is already approved to spend the mech subscription."
+            )
+            return True
+
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.token_address,
+            contract_id=str(TransferNftCondition.contract_id),
+            contract_callable="build_set_approval_for_all_tx",
+            operator=self.params.mech_agent_address,
+            approved=APPROVE_MECH,
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build withdraw tx: {response_msg}")
+            return False
+
+        data = response_msg.state.body.get("data")
+        if data is None:
+            self.context.logger.info(f"Could not build withdraw tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=self.token_address,
+            data=HexBytes(data),
+        )
+        self.multisend_batches.append(batch)
+        return True
 
     def _build_unwrap_tx(self) -> WaitableConditionType:
         """Exchange wxDAI to xDAI."""
@@ -286,6 +354,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             self._send_metadata_to_ipfs,
             self._get_price,
             self._check_unwrap,
+            self._check_nevermined_subscription,
             self._build_request_data,
         ):
             yield from self.wait_for_condition_with_sleep(step)

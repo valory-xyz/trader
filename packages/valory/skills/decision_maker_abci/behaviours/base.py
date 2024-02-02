@@ -99,6 +99,23 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
 
+    @property
+    def subscription_params(self) -> Dict[str, Any]:
+        """Get the subscription params."""
+        return self.params.mech_to_subscription_params
+
+    @property
+    def did(self) -> str:
+        """Get the did."""
+        subscription_params = self.subscription_params
+        return subscription_params["did"]
+
+    @property
+    def token_address(self) -> str:
+        """Get the token address."""
+        subscription_params = self.subscription_params
+        return subscription_params["token_address"]
+
     def strategy_exec(self, strategy: str) -> Optional[Tuple[str, str]]:
         """Get the executable strategy file's content."""
         return self.shared_state.strategies_executables.get(strategy, None)
@@ -575,17 +592,6 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.balance: int = 0
 
     @property
-    def subscription_params(self) -> Dict[str, Any]:
-        """Get the subscription params."""
-        return self.params.mech_to_subscription_params
-
-    @property
-    def did(self) -> str:
-        """Get the did."""
-        subscription_params = self.subscription_params
-        return subscription_params["did"]
-
-    @property
     def escrow_payment_condition_address(self) -> str:
         """Get the escrow payment address."""
         subscription_params = self.subscription_params
@@ -602,12 +608,6 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Get the transfer nft condition address."""
         subscription_params = self.subscription_params
         return subscription_params["transfer_nft_condition_address"]
-
-    @property
-    def token_address(self) -> str:
-        """Get the token address."""
-        subscription_params = self.subscription_params
-        return subscription_params["token_address"]
 
     @property
     def order_address(self) -> str:
