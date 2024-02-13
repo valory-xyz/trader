@@ -22,8 +22,8 @@ contracts:
 - valory/erc20:0.1.0:bafybeihy56fit7nc5e5f2h7bp7b2dvthibldyinynuxfzxvalhfo2zhvji
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeihns2sdru2g562dh5rymc4owdj7ymkm4o6ld7ahed46f7vp2bj7om
-- valory/conditional_tokens:0.1.0:bafybeicdofcevvk4x3htidn3bhttk5k4t5ahdneale5jenu2nsmvmvtlpu
-- valory/realitio:0.1.0:bafybeig2m3yof6bmrbgqbj5d5er56pdi7lg2pbxazi3cnku5ofc6bbolb4
+- valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
+- valory/realitio:0.1.0:bafybeibszl2k2n7ddvyjkxzdlzshcotgkoegqadkne3f2rzqxmoyefxp6u
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeihciea74zyqtl7bsa7kv6wsudix7uh4ri64dlyufrxlm2e2xcqoeu
 - valory/service_staking_token:0.1.0:bafybeif2rfugwe6flohxe5p4y5so56saeq5blpnuckuhjwoh2m65dj3qhi
@@ -44,10 +44,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibnwjcjx4lluf4cwb6es5peelu3gm7vrzlieygrzpbjlubxpvbvzy
 - valory/termination_abci:0.1.0:bafybeifdtxgldw33kwvsavcituzewwbr6iqfcsgk5qouqfhpwdrivyyyom
 - valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidrgkuppdpbverkgwzjlmgtztntgemvbo7adh23ab5z5qdfkpifre
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicwu2lrwubcdaj22f553ugf5zndh6gcwup4edhp773tnhpsmxyuf4
 - valory/market_manager_abci:0.1.0:bafybeifdf6uoscrgvlgqceqcph2pgoygobznw6hbodpav7lubbqsyh4kby
-- valory/decision_maker_abci:0.1.0:bafybeidm6ef6poq2gds3dpnnqixmawwvsoucsysanajnoxdnuo3izzn5h4
-- valory/trader_abci:0.1.0:bafybeickulxsjmon7sbtvq76pbjd3pizjvyl47upvmt5tfslhom7v7ow4e
+- valory/decision_maker_abci:0.1.0:bafybeidfsazphtmlkliahx67a63wfyxtmllhgxmqjm6j7xk4zjlofkrscm
+- valory/trader_abci:0.1.0:bafybeiblp2ivghezf4m3gimn5rb45f7mwmbskipmhdydbpa4h63j6ni7rq
 - valory/staking_abci:0.1.0:bafybeif6aq2f3rbznfn33wrcut2q73vlpmsztqaq6lag5tx46vv5p2gvwy
 default_ledger: ethereum
 required_ledgers:
