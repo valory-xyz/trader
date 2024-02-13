@@ -57,6 +57,7 @@ from packages.valory.skills.market_manager_abci.models import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
+from packages.valory.skills.params_server_abci.models import ParamsServerParams
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.termination_abci.models import TerminationParams
@@ -98,7 +99,7 @@ class RandomnessApi(ApiSpecs):
 
 
 class TraderParams(
-    DecisionMakerParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams
+    DecisionMakerParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams, ParamsServerParams
 ):
     """A model to represent the trader params."""
 
