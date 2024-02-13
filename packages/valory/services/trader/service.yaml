@@ -55,6 +55,8 @@ type: skill
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
         round_timeout_seconds: ${ROUND_TIMEOUT:float:350.0}
+        service_endpoint_base: ${SERVICE_ENDPOINT_BASE:str:https://trader.staging.autonolas.tech/}
+        update_secret: ${UPDATE_SECRET:str:secret}
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
@@ -151,6 +153,8 @@ type: skill
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
         round_timeout_seconds: ${ROUND_TIMEOUT:float:350.0}
+        service_endpoint_base: ${SERVICE_ENDPOINT_BASE:str:https://trader.staging.autonolas.tech/}
+        update_secret: ${UPDATE_SECRET:str:secret}
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
@@ -244,6 +248,8 @@ type: skill
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
         round_timeout_seconds: ${ROUND_TIMEOUT:float:350.0}
+        service_endpoint_base: ${SERVICE_ENDPOINT_BASE:str:https://trader.staging.autonolas.tech/}
+        update_secret: ${UPDATE_SECRET:str:secret}
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
@@ -337,6 +343,8 @@ type: skill
         request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
         request_timeout: ${REQUEST_TIMEOUT:float:10.0}
         round_timeout_seconds: ${ROUND_TIMEOUT:float:350.0}
+        service_endpoint_base: ${SERVICE_ENDPOINT_BASE:str:https://trader.staging.autonolas.tech/}
+        update_secret: ${UPDATE_SECRET:str:secret}
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}

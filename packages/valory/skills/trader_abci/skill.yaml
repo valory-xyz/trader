@@ -28,6 +28,7 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeifharwkzhzh5ngtbky3zo55ik2eqjqrxxx4yqr4hiwmdoqyp2td54
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibyxyafhqaud5yhx2hfubowhwqups6hn6umvuunlq5o4h7ax44guu
 - valory/staking_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
+- valory/params_server_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
 behaviours:
   main:
     args: {}
@@ -117,6 +118,8 @@ models:
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
       round_timeout_seconds: 350.0
+      service_endpoint_base: https://trader.staging.autonolas.tech/
+      update_secret: secret
       service_id: trader
       service_registry_address: null
       agent_registry_address: null

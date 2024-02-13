@@ -1,0 +1,43 @@
+name: params_server_abci
+author: valory
+version: 0.1.0
+type: skill
+description: The abci skill provides a template of an ABCI application.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeiezmhsokdhxat2gzxgau2zotd5nqjepg5lb2y7ypijuuq75xnxxrq
+  __init__.py: bafybeigdpqcsxpxp3akxdy5wcccfahom7pmbrnmututws2fmpcr7q6ryoe
+  dialogues.py: bafybeib6cex55nl57xe6boa4c3z4ynlxstnospqjehdb5owpgtvzsu5ucm
+  handlers.py: bafybeigcvm43vuj4tpjonlrpcgy7w7h5tylvyvjcdhshcpwomhsbio4ewy
+fingerprint_ignore_patterns: []
+connections:
+- valory/http_client:0.23.0:bafybeih5vzo22p2umhqo52nzluaanxx7kejvvpcpdsrdymckkyvmsim6gm
+- valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
+contracts: []
+protocols:
+- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeidyrcd4hxl4gq7xhkcd546wkidebbvt6vnomxmrdsja6shkpysh5u
+behaviours: {}
+handlers:
+  abci:
+    args: {}
+    class_name: ABCIHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  params:
+    args:
+      service_endpoint_base: https://trader.staging.autonolas.tech/
+      update_secret: secret
+    class_name: ParamsServerParams
+dependencies: {}
+is_abstract: true
