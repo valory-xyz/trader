@@ -58,24 +58,24 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeigz4lf4b536uxb52tmqkfajdjtszclv67gtqitygrkaww4vzg2fle
+- valory/gnosis_safe:0.1.0:bafybeiegkl6zrbvlbpwmoziw4hfkocjfqdqphkmpgow7ovsmv7bwa3f4pe
 - valory/market_maker:0.1.0:bafybeihtjp5z2v6ax3fieu2hnwajlzlfpiadgmrsm24pd4rr2tjq33xt3i
 - valory/erc20:0.1.0:bafybeihy56fit7nc5e5f2h7bp7b2dvthibldyinynuxfzxvalhfo2zhvji
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeihns2sdru2g562dh5rymc4owdj7ymkm4o6ld7ahed46f7vp2bj7om
-- valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
-- valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
+- valory/conditional_tokens:0.1.0:bafybeicdofcevvk4x3htidn3bhttk5k4t5ahdneale5jenu2nsmvmvtlpu
+- valory/realitio:0.1.0:bafybeig2m3yof6bmrbgqbj5d5er56pdi7lg2pbxazi3cnku5ofc6bbolb4
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeihciea74zyqtl7bsa7kv6wsudix7uh4ri64dlyufrxlm2e2xcqoeu
 - valory/transfer_nft_condition:0.1.0:bafybeiab7p2jky5g6jjznpqkf4znyjp5ko466usgv5pntdlqi6uss456y4
 protocols:
-- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
-- valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
-- valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
+- valory/contract_api:1.0.0:bafybeialhbjvwiwcnqq3ysxcyemobcbie7xza66gaofcvla5njezkvhcka
+- valory/ledger_api:1.0.0:bafybeige5agrztgzfevyglf7mb4o7pzfttmq4f6zi765y4g2zvftbyowru
+- valory/ipfs:0.1.0:bafybeiedxeismnx3k5ty4mvvhlqideixlhqmi5mtcki4lxqfa7uqh7p33u
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeidyrcd4hxl4gq7xhkcd546wkidebbvt6vnomxmrdsja6shkpysh5u
-- valory/market_manager_abci:0.1.0:bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni
-- valory/transaction_settlement_abci:0.1.0:bafybeihaad5k6adwkqwc5pui243inep2kvw7k7pgwwqaykssyx7p64peyi
+- valory/abstract_round_abci:0.1.0:bafybeicrzndcdbue34yxwwb4hmmdhgzw4owcdcdag3ifj6thpx5wie3dp4
+- valory/market_manager_abci:0.1.0:bafybeifdf6uoscrgvlgqceqcph2pgoygobznw6hbodpav7lubbqsyh4kby
+- valory/transaction_settlement_abci:0.1.0:bafybeifpnkwgwpzz6uwrvfgurm26allr6shjfbp7bfbrxwy64sw3nf3fsa
 behaviours:
   main:
     args: {}
