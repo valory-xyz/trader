@@ -401,3 +401,15 @@ class RealitioContract(Contract):
             ],
         )
         return dict(data=data)
+
+    @classmethod
+    def balance_of(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        address: str,
+    ) -> JSONLike:
+        """Get balance for an address"""
+        contract = cls.get_instance(ledger_api, contract_address)
+        data = contract.functions.balanceOf(address).call()
+        return dict(data=data)

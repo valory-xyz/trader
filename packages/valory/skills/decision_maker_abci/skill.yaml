@@ -64,7 +64,7 @@ contracts:
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeihns2sdru2g562dh5rymc4owdj7ymkm4o6ld7ahed46f7vp2bj7om
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
-- valory/realitio:0.1.0:bafybeibszl2k2n7ddvyjkxzdlzshcotgkoegqadkne3f2rzqxmoyefxp6u
+- valory/realitio:0.1.0:bafybeifiglhz3tclhbzadk33pbd5yoillqxh24hygutlxs6sjk64emxvcq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeihciea74zyqtl7bsa7kv6wsudix7uh4ri64dlyufrxlm2e2xcqoeu
 - valory/transfer_nft_condition:0.1.0:bafybeiab7p2jky5g6jjznpqkf4znyjp5ko466usgv5pntdlqi6uss456y4
