@@ -413,3 +413,16 @@ class RealitioContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         data = contract.functions.balanceOf(address).call()
         return dict(data=data)
+
+    @classmethod
+    def build_withdraw_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Build `withdraw` transaction."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        data = contract.encodeABI(
+            fn_name="withdraw",
+        )
+        return dict(data=data)
