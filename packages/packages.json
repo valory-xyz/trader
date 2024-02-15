@@ -15,7 +15,8 @@
         "contract/valory/agent_registry/0.1.0": "bafybeihciea74zyqtl7bsa7kv6wsudix7uh4ri64dlyufrxlm2e2xcqoeu",
         "contract/valory/service_staking_token/0.1.0": "bafybeif2rfugwe6flohxe5p4y5so56saeq5blpnuckuhjwoh2m65dj3qhi",
         "skill/valory/staking_abci/0.1.0": "bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye",
-        "contract/valory/transfer_nft_condition/0.1.0": "bafybeiab7p2jky5g6jjznpqkf4znyjp5ko466usgv5pntdlqi6uss456y4"
+        "contract/valory/transfer_nft_condition/0.1.0": "bafybeiab7p2jky5g6jjznpqkf4znyjp5ko466usgv5pntdlqi6uss456y4",
+        "service/valory/trader_omen_gnosis/0.1.0": "bafybeicxdpkuk5z5zfbkso7v5pywf4v7chxvluyht7dtgalg6dnhl7ejoe"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
