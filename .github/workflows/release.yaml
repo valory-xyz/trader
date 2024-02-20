@@ -94,7 +94,7 @@ jobs:
           echo "Pushing $DOCKER_USER/oar-$AGENT:$DEFAULT_IMAGE_TAG"
           docker push $DOCKER_USER/oar-$AGENT:$VERSION
           docker push $DOCKER_USER/oar-$AGENT:$DEFAULT_IMAGE_TAG
-2
+
   deploy-service-on-propel:
     name: Deploy service on propel
     environment: ${{ github.event.action == 'released' && 'production' || 'staging' }}
