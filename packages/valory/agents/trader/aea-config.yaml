@@ -49,6 +49,11 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeicxq2jx4zgpphponov2bcggtm6ilam7htuko4yvf7vnx464ebf7hm
 - valory/trader_abci:0.1.0:bafybeidcxayv7qatr6mqoh3jvmdvmr42525lxprotncvx7f4pvdqdvbrg4
 - valory/staking_abci:0.1.0:bafybeic4jjovyh4rwwyjw3pcaqtzywuy5wqlywu6bofrd7tsjgix4bzsoi
+customs:
+- valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
+- valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
+- w1kke/always_blue:0.1.0:bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm
+- jhehemann/kelly_criterion:0.1.0:bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
 default_ledger: ethereum
 required_ledgers:
 - ethereum
