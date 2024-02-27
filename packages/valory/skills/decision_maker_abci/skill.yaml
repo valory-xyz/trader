@@ -14,10 +14,10 @@ fingerprint:
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
   behaviours/base.py: bafybeigoxverx6e75jdzj54hsfyzgunofuy5nll5lbn52gxeyzo7jw6vyy
   behaviours/bet_placement.py: bafybeib7jgq7iyfoyj3ur3xkj6knh7t7vr32kc743ztyjskkdevyh6l75q
-  behaviours/blacklisting.py: bafybeic7o2jzmhbamdcebbdjeie3dkm7y2wq7xutpeshqmrt2hdq65vlai
+  behaviours/blacklisting.py: bafybeid2kwsrq3ityeqsixalpaxwwiduo3lvqs5uzqhw5yfccqz5hqm6im
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
   behaviours/decision_receive.py: bafybeig4gmlad7epkaao6nsfqya3zqhllt4hwiijtarcczmokxekxehrcu
-  behaviours/decision_request.py: bafybeico22ps3u7olsny5c2efki4x2tub726s4mpnqnsx7oyzv4yd5fa4y
+  behaviours/decision_request.py: bafybeiesxnu3outdldwrd2rhbokryvik5uzp6wr6dqhwypy66txev322um
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeifygejified3yoza3gy4g7ina6m4lmz4pp2abtwfuwrmiwznnvrua
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
@@ -32,7 +32,7 @@ fingerprint:
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeihzxf3dhx73lk7d56ir7zhmz2x6u5x6aga6f7rfms37zkvaqhfelm
   payloads.py: bafybeibmjrckgsflqulviynadl6bx3keuabvhfolkiib7cmjhfsov2vuty
-  policy.py: bafybeihca4gc5gdj3wmvtzulqq3cr4zm6ouyt7aoscfedutzr4so4bksna
+  policy.py: bafybeidbsu5zn456jpku65jajwlxyg5kn2ltlkctkculkj2i2tfmmwm4jq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeih6bo7nnc7hvg67svio3f6cwob55qp4bgxjcejsmj6el3zhltz7bq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
