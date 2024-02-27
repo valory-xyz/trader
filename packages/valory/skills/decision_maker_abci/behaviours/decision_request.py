@@ -166,7 +166,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Get the price of the mech request."""
         if self.params.use_nevermined:
             # when we use nevermined, we don't need to pay for the mech request
-            self.price = 0
             return True
         result = yield from self._mech_contract_interact(
             "get_price", "price", get_name(DecisionRequestBehaviour.price)
