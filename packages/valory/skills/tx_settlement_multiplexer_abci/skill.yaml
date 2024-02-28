@@ -20,9 +20,9 @@ contracts: []
 protocols:
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigjrepaqpb3m7zunmt4hryos4vto4yyj3u6iyofdb2fotwho3bqvm
-- valory/decision_maker_abci:0.1.0:bafybeidicnzsh4xaxllpvb5t2watofzu4phr7d67v45jqrtiuhofueb75m
-- valory/staking_abci:0.1.0:bafybeic4jjovyh4rwwyjw3pcaqtzywuy5wqlywu6bofrd7tsjgix4bzsoi
+- valory/abstract_round_abci:0.1.0:bafybeifrsatxr4syaccaxnirpvm2zetttlmrp3vr3fmqm7vc7lazy4i2bm
+- valory/decision_maker_abci:0.1.0:bafybeick4cueks2xwktifcrnkwr3f7ta6a57swbsn46tujmjsiqb4uuh74
+- valory/staking_abci:0.1.0:bafybeiafgwdxmnyme675pcdagrgtu34riizw5aig65hvku355sd7rharj4
 behaviours:
   main:
     args: {}
