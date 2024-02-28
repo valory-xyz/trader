@@ -21,7 +21,7 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeifygejified3yoza3gy4g7ina6m4lmz4pp2abtwfuwrmiwznnvrua
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
-  behaviours/reedem.py: bafybeibenzbek5qdtk3gobjxfmsm6tg6i3d4yltozymy23izpgbcpal5ye
+  behaviours/reedem.py: bafybeihwe4azke5zbdu4rhhsx3bmjgnkagwkuowyowvkure2do2rg4ainy
   behaviours/round_behaviour.py: bafybeidrks62unrnoyp3jnbz2nozgnittfntyknymuuja7jwcsjuap4fve
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
   behaviours/tool_selection.py: bafybeicxw4je76uc7znx4u2hq2b2aaxcf7blwfla7lhdhkqnf3kkupsczq
