@@ -487,7 +487,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def _check_already_redeemed_via_subgraph(self) -> WaitableConditionType:
         """Check whether the condition ids have already been redeemed via subgraph."""
         safe_address = self.synchronized_data.safe_contract_address.lower()
-        from_timestamp, to_timestamp = 0.0, time.time()  # from begging to now
+        from_timestamp, to_timestamp = 0.0, time.time()  # from beginning to now
 
         # get the trades
         trades = yield from self.fetch_trades(
@@ -496,7 +496,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if trades is None:
             return False
 
-        # get the user positions
+        # get the user's positions
         user_positions = yield from self.fetch_user_positions(safe_address)
         if user_positions is None:
             return False
