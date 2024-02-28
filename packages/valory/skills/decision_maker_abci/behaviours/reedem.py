@@ -202,9 +202,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         return self.shared_state.redeeming_progress
 
     @redeeming_progress.setter
-    def redeeming_progress(self, payouts: RedeemingProgress) -> None:
+    def redeeming_progress(self, progress: RedeemingProgress) -> None:
         """Set the redeeming check progress in the shared state."""
-        self.shared_state.redeeming_progress = payouts
+        self.shared_state.redeeming_progress = progress
 
     @property
     def latest_block_number(self) -> int:
