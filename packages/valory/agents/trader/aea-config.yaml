@@ -44,10 +44,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeienpu6guwbkdzscnovmhizuzlkpalycltzxnwovisbd2coyjim7li
 - valory/termination_abci:0.1.0:bafybeicklx5s3mjl4pgkcz36bw2vuuqj6w73qyh455vkoncyanxqlns6ze
 - valory/transaction_settlement_abci:0.1.0:bafybeihcfbjnty6j4aluaajgfdrc4ctg76ebb3gfub5pwqtooait7x76r4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifbbhgebvszz3eekvrdyvgwr7w5luaeepjbswirnaeauziyfuxt4q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif6uqfiwizn4xd5k67rdslb56l2vrtvc53jirvn7xz32aht6cttzm
 - valory/market_manager_abci:0.1.0:bafybeigcboyrmlmuwtzuvkxi4uiklromiyuaund4xgtfjbxwsuemndidna
-- valory/decision_maker_abci:0.1.0:bafybeiailugc3i2ujbzwoylfoltdanz7xbgnscykrur2u4tt2sgui46t4m
-- valory/trader_abci:0.1.0:bafybeiels2i3j2xifeeny64li2znpueximf3p4ctf3wrd4sosdfubx66ra
+- valory/decision_maker_abci:0.1.0:bafybeick4cueks2xwktifcrnkwr3f7ta6a57swbsn46tujmjsiqb4uuh74
+- valory/trader_abci:0.1.0:bafybeigs6tqnvxuyczfj6jjwsazggb6cs2gjaxyw35hewwokoz5i5e6ywe
 - valory/staking_abci:0.1.0:bafybeiafgwdxmnyme675pcdagrgtu34riizw5aig65hvku355sd7rharj4
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
