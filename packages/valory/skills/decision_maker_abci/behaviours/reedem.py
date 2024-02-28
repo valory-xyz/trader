@@ -535,7 +535,11 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         payouts_amount = sum(payouts.values())
         if payouts_amount > 0:
             self.redeemed_condition_ids |= set(payouts.keys())
-            self.payout_so_far += payouts_amount
+            if self.params.use_subgraph_for_redeeming:
+                self.payout_so_far = payouts_amount
+            else:
+                self.payout_so_far += payouts_amount
+
             # filter the trades again if new payouts have been found
             self._filter_trades()
             wxdai_amount = self.wei_to_native(self.payout_so_far)
