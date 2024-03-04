@@ -323,6 +323,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             other_tokens_in_pool,
             bet.fee,
         )
+        bet_threshold = self.params.bet_threshold
+        bet_amount = max(bet_amount, bet_threshold)
 
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
@@ -338,7 +340,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
                 "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
             )
-        bet_threshold = self.params.bet_threshold
         if bet_threshold <= 0:
             self.context.logger.warning(
                 f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "

@@ -44,10 +44,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeienpu6guwbkdzscnovmhizuzlkpalycltzxnwovisbd2coyjim7li
 - valory/termination_abci:0.1.0:bafybeicklx5s3mjl4pgkcz36bw2vuuqj6w73qyh455vkoncyanxqlns6ze
 - valory/transaction_settlement_abci:0.1.0:bafybeihcfbjnty6j4aluaajgfdrc4ctg76ebb3gfub5pwqtooait7x76r4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif6uqfiwizn4xd5k67rdslb56l2vrtvc53jirvn7xz32aht6cttzm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiao4cb5e5jvku2sedjejogv7qawrgt6yungt5aiweldfyfjt3ljsi
 - valory/market_manager_abci:0.1.0:bafybeigcboyrmlmuwtzuvkxi4uiklromiyuaund4xgtfjbxwsuemndidna
-- valory/decision_maker_abci:0.1.0:bafybeick4cueks2xwktifcrnkwr3f7ta6a57swbsn46tujmjsiqb4uuh74
-- valory/trader_abci:0.1.0:bafybeigs6tqnvxuyczfj6jjwsazggb6cs2gjaxyw35hewwokoz5i5e6ywe
+- valory/decision_maker_abci:0.1.0:bafybeiga5zwee3w6qrdc3csabkm2si6g4iu7ok34dtbh4lrkvcv2eioteq
+- valory/trader_abci:0.1.0:bafybeihoc7hy2datndjvr3epi5lml4vcudvrd3qidkwkljhtvrarq4b7lu
 - valory/staking_abci:0.1.0:bafybeiafgwdxmnyme675pcdagrgtu34riizw5aig65hvku355sd7rharj4
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
