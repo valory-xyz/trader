@@ -27,6 +27,34 @@ jobs:
               export AUTHOR=$(grep 'service' packages/packages.json | awk -F/ '{print $2}' | head -1)
               autonomy init --reset --author $AUTHOR --ipfs --remote
               autonomy push-all
+
+  trigger-charlie:
+    name: Notify Charlie the bot about the release
+    runs-on: ubuntu-latest
+    needs:
+      - publish-packages
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v3
+        with:
+          python-version: 3.10
+      - name: Run the trigger script
+        env:
+          CHARLIE_API: ${{secrets.CHARLIE_API}}
+          CHARLIE_TOKEN: ${{secrets.CHARLIE_TOKEN}}
+        run: |
+          sudo apt-get update --fix-missing
+          sudo apt-get install curl git -y
+          git config --global --add safe.directory /work
+          export VERSION=$(git describe --exact-match --tags $(git rev-parse HEAD)) || exit 1
+              if [ $? -eq 0 ]; then
+                  echo "Tagging $VERSION"
+              else
+                  echo "You are not on a tagged branch"
+                  exit 1
+              fi
+          curl "$CHARLIE_API" -X POST -H "Content-Type: application/json" -H "Authorization: $CHARLIE_TOKEN" -d '{"name": "valory-xyz/trader", "version": "$VERSION"}
+
   publish-images:
     name: Publish Docker Images
     runs-on: ${{ matrix.os }}
