@@ -21,7 +21,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeiedlfmqdakxdhqydhhi6uzdwtjxt37mfwi3qjollsfynew3kp5noy
 - valory/erc20:0.1.0:bafybeibyutc6scd7pmexbonih7txh37knwph7lduzrkkhzjwfin2vuop4i
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeifd5shqcbx2fginrb2hliz63mfvpkvpwlyoddrzypy2as7zikru3m
+- valory/mech:0.1.0:bafybeihahwhu7mxk3bu4ruvvohqdgfrctaaelnbfrbavfzc6qzvdfgdhau
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
@@ -44,11 +44,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeienpu6guwbkdzscnovmhizuzlkpalycltzxnwovisbd2coyjim7li
 - valory/termination_abci:0.1.0:bafybeicklx5s3mjl4pgkcz36bw2vuuqj6w73qyh455vkoncyanxqlns6ze
 - valory/transaction_settlement_abci:0.1.0:bafybeihcfbjnty6j4aluaajgfdrc4ctg76ebb3gfub5pwqtooait7x76r4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiao4cb5e5jvku2sedjejogv7qawrgt6yungt5aiweldfyfjt3ljsi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiainw4dgflf3pggnwjacoey3u7tvsravojzfc4autaiuz7sf6zhvy
 - valory/market_manager_abci:0.1.0:bafybeigcboyrmlmuwtzuvkxi4uiklromiyuaund4xgtfjbxwsuemndidna
-- valory/decision_maker_abci:0.1.0:bafybeiga5zwee3w6qrdc3csabkm2si6g4iu7ok34dtbh4lrkvcv2eioteq
-- valory/trader_abci:0.1.0:bafybeihoc7hy2datndjvr3epi5lml4vcudvrd3qidkwkljhtvrarq4b7lu
+- valory/decision_maker_abci:0.1.0:bafybeibxn5kmkz3hizl5y4exy2h4yhsuum2d6apbnrur65f5fuomn5szzm
+- valory/trader_abci:0.1.0:bafybeig24uwyz4ekdt424eb5w4pmd6bkyblypj2s6uxa5znvwv3o3gbbw4
 - valory/staking_abci:0.1.0:bafybeiafgwdxmnyme675pcdagrgtu34riizw5aig65hvku355sd7rharj4
+- valory/mech_interact_abci:0.1.0:bafybeigkdst5bpgkeo6747nnbhg7zmeqwtj6xck3j3bzdv572rklncoaua
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
@@ -154,6 +155,7 @@ models:
       reset_pause_duration: ${int:30}
       max_healthcheck: ${int:43200}
       multisend_address: ${str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+      multisend_batch_size: ${int:5}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:null}
       agent_registry_address: ${str:null}
@@ -171,7 +173,8 @@ models:
       languages: ${list:["en_US"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
-      mech_agent_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+      mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+      request_price: ${int:null}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion}
       use_fallback_strategy: ${bool:true}
@@ -241,3 +244,8 @@ config:
       chain_id: ${int:1337}
       default_gas_price_strategy: ${str:eip1559}
       poa_chain: ${bool:false}
+    gnosis:
+      address: ${str:https://rpc.gnosischain.com}
+      chain_id: ${int:100}
+      poa_chain: ${bool:false}
+      default_gas_price_strategy: ${str:eip1559}

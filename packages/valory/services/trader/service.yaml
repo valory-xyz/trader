@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeideq5os6xfnvip3ycssba3zm77jbrqaehdcjljiqn3vukskl6l52a
+agent: valory/trader:0.1.0:bafybeiffkddk6hw7we3auhwrjsm3kvixehbil5a3clkubdwriqdetxyzi4
 number_of_agents: 4
 deployment: {}
 ---
@@ -78,7 +78,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
@@ -143,6 +143,7 @@ type: skill
         max_attempts: ${MAX_ATTEMPTS:int:10}
         max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+        multisend_batch_size: ${MULTISEND_BATCH_SIZE:int:5}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:int:400}
@@ -173,7 +174,8 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
+        request_price: ${REQUEST_PRICE:int:null}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
@@ -266,7 +268,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
@@ -359,7 +361,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}

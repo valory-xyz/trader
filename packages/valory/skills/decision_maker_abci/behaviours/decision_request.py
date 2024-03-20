@@ -180,7 +180,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             contract_id=str(TransferNftCondition.contract_id),
             contract_callable="is_approved_for_all",
             account=self.synchronized_data.safe_contract_address,
-            operator=self.params.mech_agent_address,
+            operator=self.params.mech_contract_address,
         )
         if response_msg.performative != ContractApiMessage.Performative.STATE:
             self.context.logger.info(
@@ -212,7 +212,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             contract_address=self.token_address,
             contract_id=str(TransferNftCondition.contract_id),
             contract_callable="build_set_approval_for_all_tx",
-            operator=self.params.mech_agent_address,
+            operator=self.params.mech_contract_address,
             approved=APPROVE_MECH,
         )
 
@@ -301,7 +301,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             return True
 
         batch = MultisendBatch(
-            to=self.params.mech_agent_address,
+            to=self.params.mech_contract_address,
             data=HexBytes(self.request_data),
             value=self.price,
         )
@@ -315,7 +315,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             contract_address=self.synchronized_data.safe_contract_address,
             contract_public_id=GnosisSafeContract.contract_id,
             contract_callable="get_raw_safe_transaction_hash",
-            to_address=self.params.mech_agent_address,
+            to_address=self.params.mech_contract_address,
             value=self.price,
             data=self.request_data,
             data_key="tx_hash",
@@ -330,7 +330,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             self.safe_tx_hash,
             self.price,
             SAFE_GAS,
-            self.params.mech_agent_address,
+            self.params.mech_contract_address,
             self.request_data,
         )
 

@@ -231,7 +231,9 @@ class DecisionMakerParams(MarketManagerParams):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
+        self.mech_contract_address: str = self._ensure(
+            "mech_contract_address", kwargs, str
+        )
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int

@@ -12,12 +12,12 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeigoxverx6e75jdzj54hsfyzgunofuy5nll5lbn52gxeyzo7jw6vyy
+  behaviours/base.py: bafybeicg37b76cic7zuy2uvskhl7ohgv74o74w2fjbojwydhvh3hrywoz4
   behaviours/bet_placement.py: bafybeib7jgq7iyfoyj3ur3xkj6knh7t7vr32kc743ztyjskkdevyh6l75q
   behaviours/blacklisting.py: bafybeid2kwsrq3ityeqsixalpaxwwiduo3lvqs5uzqhw5yfccqz5hqm6im
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
   behaviours/decision_receive.py: bafybeiapkbvoqtlsisntdmmbw64zjuembaphsktn45smij5uocm3yxvml4
-  behaviours/decision_request.py: bafybeiesxnu3outdldwrd2rhbokryvik5uzp6wr6dqhwypy66txev322um
+  behaviours/decision_request.py: bafybeicoyoclqbvyzwdoiw3x2tktammizwsohux7nl2x7g4ae5j5lyiley
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeifygejified3yoza3gy4g7ina6m4lmz4pp2abtwfuwrmiwznnvrua
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
@@ -30,7 +30,7 @@ fingerprint:
   handlers.py: bafybeiggoetspwcvdojmbjdd67tmkoeedikmt6vsbcium3zjaljb6jzqu4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeihzxf3dhx73lk7d56ir7zhmz2x6u5x6aga6f7rfms37zkvaqhfelm
+  models.py: bafybeiezzu5by7vrr2ekcsqc5q6bb4qf5pl6svj34dxuu73mq5iphbz7lu
   payloads.py: bafybeibmjrckgsflqulviynadl6bx3keuabvhfolkiib7cmjhfsov2vuty
   policy.py: bafybeidbsu5zn456jpku65jajwlxyg5kn2ltlkctkculkj2i2tfmmwm4jq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -62,7 +62,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeiedlfmqdakxdhqydhhi6uzdwtjxt37mfwi3qjollsfynew3kp5noy
 - valory/erc20:0.1.0:bafybeibyutc6scd7pmexbonih7txh37knwph7lduzrkkhzjwfin2vuop4i
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeifd5shqcbx2fginrb2hliz63mfvpkvpwlyoddrzypy2as7zikru3m
+- valory/mech:0.1.0:bafybeihahwhu7mxk3bu4ruvvohqdgfrctaaelnbfrbavfzc6qzvdfgdhau
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
@@ -76,6 +76,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeifrsatxr4syaccaxnirpvm2zetttlmrp3vr3fmqm7vc7lazy4i2bm
 - valory/market_manager_abci:0.1.0:bafybeigcboyrmlmuwtzuvkxi4uiklromiyuaund4xgtfjbxwsuemndidna
 - valory/transaction_settlement_abci:0.1.0:bafybeihcfbjnty6j4aluaajgfdrc4ctg76ebb3gfub5pwqtooait7x76r4
+- valory/mech_interact_abci:0.1.0:bafybeigkdst5bpgkeo6747nnbhg7zmeqwtj6xck3j3bzdv572rklncoaua
 behaviours:
   main:
     args: {}
@@ -147,6 +148,8 @@ models:
       keeper_timeout: 30.0
       max_attempts: 10
       max_healthcheck: 120
+      multisend_address: '0x0000000000000000000000000000000000000000'
+      multisend_batch_size: 5
       on_chain_service_id: null
       request_retry_delay: 1.0
       request_timeout: 10.0
@@ -177,7 +180,8 @@ models:
       tendermint_url: http://localhost:26657
       tx_timeout: 10.0
       use_termination: false
-      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
+      mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
+      request_price: null
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
@@ -264,7 +268,7 @@ models:
         Content-Type: application/json
       method: GET
       parameters: {}
-      response_key: null
+      response_key: result
       response_type: dict
       retries: 5
       url: ''

@@ -25,9 +25,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihcfbjnty6j4aluaajgfdrc4ctg76ebb3gfub5pwqtooait7x76r4
 - valory/termination_abci:0.1.0:bafybeicklx5s3mjl4pgkcz36bw2vuuqj6w73qyh455vkoncyanxqlns6ze
 - valory/market_manager_abci:0.1.0:bafybeigcboyrmlmuwtzuvkxi4uiklromiyuaund4xgtfjbxwsuemndidna
-- valory/decision_maker_abci:0.1.0:bafybeiga5zwee3w6qrdc3csabkm2si6g4iu7ok34dtbh4lrkvcv2eioteq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiao4cb5e5jvku2sedjejogv7qawrgt6yungt5aiweldfyfjt3ljsi
+- valory/decision_maker_abci:0.1.0:bafybeibxn5kmkz3hizl5y4exy2h4yhsuum2d6apbnrur65f5fuomn5szzm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiainw4dgflf3pggnwjacoey3u7tvsravojzfc4autaiuz7sf6zhvy
 - valory/staking_abci:0.1.0:bafybeiafgwdxmnyme675pcdagrgtu34riizw5aig65hvku355sd7rharj4
+- valory/mech_interact_abci:0.1.0:bafybeigkdst5bpgkeo6747nnbhg7zmeqwtj6xck3j3bzdv572rklncoaua
 behaviours:
   main:
     args: {}
@@ -104,6 +105,7 @@ models:
       max_attempts: 10
       max_healthcheck: 120
       multisend_address: '0x0000000000000000000000000000000000000000'
+      multisend_batch_size: 5
       on_chain_service_id: null
       request_retry_delay: 1.0
       request_timeout: 10.0
@@ -145,7 +147,8 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
+      mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
+      request_price: null
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
@@ -271,7 +274,7 @@ models:
         Content-Type: application/json
       method: GET
       parameters: {}
-      response_key: null
+      response_key: result
       response_type: dict
       retries: 5
       url: ''
