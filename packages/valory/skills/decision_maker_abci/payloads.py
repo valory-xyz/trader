@@ -62,10 +62,10 @@ class RedeemPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
-class RequestPayload(MultisigTxPayload):
-    """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
+class MechRequestsPayload(BaseTxPayload):
+    """Represents a transaction payload for preparing mech requests."""
 
-    price: Optional[int] = None
+    mech_requests: Optional[str] = None
 
 
 @dataclass(frozen=True)

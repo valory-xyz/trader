@@ -35,6 +35,9 @@ from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.transfer_nft_condition.contract import (
     TransferNftCondition,
 )
+from packages.valory.skills.mech_interact_abci.states.base import (
+    MechMetadata,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.io_.store import SupportedFiletype
@@ -45,7 +48,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import RequestPayload
+from packages.valory.skills.decision_maker_abci.payloads import MechRequestsPayload
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
@@ -55,19 +58,17 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 )
 
 
-METADATA_FILENAME = "metadata.json"
-V1_HEX_PREFIX = "f01"
 Ox = "0x"
 APPROVE_MECH = True
 
 
-@dataclass
-class MechMetadata:
-    """A Mech's metadata."""
+# @dataclass
+# class MechMetadata:
+#     """A Mech's metadata."""
 
-    prompt: str
-    tool: str
-    nonce: str = field(default_factory=lambda: str(uuid4()))
+#     prompt: str
+#     tool: str
+#     nonce: str = field(default_factory=lambda: str(uuid4()))
 
 
 class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
@@ -79,7 +80,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Initialize Behaviour."""
         super().__init__(**kwargs)
         self._metadata: Optional[MechMetadata] = None
-        self._v1_hex_truncated: str = ""
         self._request_data: bytes = b""
         self._price: int = 0
 
@@ -143,25 +143,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         msg = f"Prepared metadata {self.metadata!r} for the request."
         self.context.logger.info(msg)
 
-    def _send_metadata_to_ipfs(
-        self,
-    ) -> WaitableConditionType:
-        """Send Mech metadata to IPFS."""
-        metadata_hash = yield from self.send_to_ipfs(
-            self.metadata_filepath, self.metadata, filetype=SupportedFiletype.JSON
-        )
-        if metadata_hash is None:
-            return False
-
-        v1_file_hash = to_v1(metadata_hash)
-        cid_bytes = cast(bytes, multibase.decode(v1_file_hash))
-        multihash_bytes = multicodec.remove_prefix(cid_bytes)
-        v1_file_hash_hex = V1_HEX_PREFIX + multihash_bytes.hex()
-        ipfs_link = self.params.ipfs_address + v1_file_hash_hex
-        self.context.logger.info(f"Prompt uploaded: {ipfs_link}")
-        self._v1_hex_truncated = Ox + v1_file_hash_hex[9:]
-        return True
-
     def _get_price(self) -> WaitableConditionType:
         """Get the price of the mech request."""
         if self.params.use_nevermined:
@@ -189,48 +170,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             return None
 
         return response_msg.state.body.get("data")
-
-    def _check_nevermined_subscription(self) -> WaitableConditionType:
-        """Approve the mech to spend the mech subscription."""
-        if not self.params.use_nevermined:
-            # do nothing if we don't use nevermined
-            return True
-
-        is_approved_for_all = yield from self._is_approved_for_all()
-        if is_approved_for_all is None:
-            # something went wrong when checking the mech approval
-            return False
-        if is_approved_for_all:
-            # the mech is already approved to spend the mech subscription
-            self.context.logger.info(
-                "The mech is already approved to spend the mech subscription."
-            )
-            return True
-
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
-            contract_address=self.token_address,
-            contract_id=str(TransferNftCondition.contract_id),
-            contract_callable="build_set_approval_for_all_tx",
-            operator=self.params.mech_contract_address,
-            approved=APPROVE_MECH,
-        )
-
-        if response_msg.performative != ContractApiMessage.Performative.STATE:
-            self.context.logger.info(f"Could not build withdraw tx: {response_msg}")
-            return False
-
-        data = response_msg.state.body.get("data")
-        if data is None:
-            self.context.logger.info(f"Could not build withdraw tx: {response_msg}")
-            return False
-
-        batch = MultisendBatch(
-            to=self.token_address,
-            data=HexBytes(data),
-        )
-        self.multisend_batches.append(batch)
-        return True
 
     def _build_unwrap_tx(self) -> WaitableConditionType:
         """Exchange wxDAI to xDAI."""
@@ -372,7 +311,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             if self.n_slots_supported:
                 tx_submitter = self.matching_round.auto_round_id()
                 mech_tx_hex = yield from self._prepare_safe_tx()
-                price = self.price
             agent = self.context.agent_address
-            payload = RequestPayload(agent, tx_submitter, mech_tx_hex, price)
+            payload = MechRequestsPayload(agent, mech_requests)
         yield from self.finish_behaviour(payload)

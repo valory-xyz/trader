@@ -32,9 +32,8 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
-from packages.valory.skills.decision_maker_abci.models import (
+from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
-    MechResponseSpecs,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (

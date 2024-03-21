@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -34,9 +34,6 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.models import (
-    MechResponseSpecs as DecisionMakerMechResponseSpecs,
-)
-from packages.valory.skills.decision_maker_abci.models import (
     RealitioSubgraph as DecisionMakerRealitioSubgraph,
 )
 from packages.valory.skills.decision_maker_abci.models import (
@@ -47,6 +44,12 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    MechResponseSpecs as BaseMechResponseSpecs,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    Params as MechInteractParams,
 )
 from packages.valory.skills.market_manager_abci.models import (
     NetworkSubgraph as MarketManagerNetworkSubgraph,
@@ -83,7 +86,7 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
-MechResponseSpecs = DecisionMakerMechResponseSpecs
+MechResponseSpecs = BaseMechResponseSpecs
 AgentToolsSpecs = DecisionMakerAgentToolsSpecs
 TradesSubgraph = DecisionMakerTradesSubgraph
 ConditionalTokensSubgraph = DecisionMakerConditionalTokensSubgraph
@@ -98,7 +101,7 @@ class RandomnessApi(ApiSpecs):
 
 
 class TraderParams(
-    DecisionMakerParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams
+    DecisionMakerParams, MechInteractParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams
 ):
     """A model to represent the trader params."""
 

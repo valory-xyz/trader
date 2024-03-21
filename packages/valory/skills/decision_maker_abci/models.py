@@ -369,10 +369,6 @@ class DecisionMakerParams(MarketManagerParams):
         return Path(path)
 
 
-class MechResponseSpecs(ApiSpecs):
-    """A model that wraps ApiSpecs for the Mech's response specifications."""
-
-
 class AgentToolsSpecs(ApiSpecs):
     """A model that wraps ApiSpecs for the Mech agent's tools specifications."""
 
@@ -422,31 +418,6 @@ class PredictionResponse:
     def win_probability(self) -> Optional[float]:
         """Return the probability estimation for winning with vote."""
         return max(self.p_no, self.p_yes)
-
-
-@dataclass(init=False)
-class MechInteractionResponse:
-    """A structure for the response of a mech interaction task."""
-
-    request_id: int
-    result: Optional[PredictionResponse]
-    error: str
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the mech's response ignoring extra keys."""
-        self.request_id = kwargs.pop("requestId", 0)
-        self.error = kwargs.pop("error", "Unknown")
-        self.result = kwargs.pop("result", None)
-
-        if isinstance(self.result, str):
-            self.result = PredictionResponse(**json.loads(self.result))
-
-    @classmethod
-    def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
-        """Return an incorrect format response."""
-        response = cls()
-        response.error = f"The response's format was unexpected: {res}"
-        return response
 
 
 class TradesSubgraph(ApiSpecs):
