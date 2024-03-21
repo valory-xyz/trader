@@ -34,7 +34,7 @@ fingerprint:
   payloads.py: bafybeibmjrckgsflqulviynadl6bx3keuabvhfolkiib7cmjhfsov2vuty
   policy.py: bafybeidbsu5zn456jpku65jajwlxyg5kn2ltlkctkculkj2i2tfmmwm4jq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
-  rounds.py: bafybeih6bo7nnc7hvg67svio3f6cwob55qp4bgxjcejsmj6el3zhltz7bq
+  rounds.py: bafybeielsnwnvnrofn7vfm6t4y2pocbav7za6shia5w5icapzgh3lkimo4
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeid4khumtvfw5n37avkf3kujfxdwhfjcsnzpmyjeljkpcako5f2duy
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
@@ -42,7 +42,7 @@ fingerprint:
   states/claim_subscription.py: bafybeiampifhdoztggwj6gthl2hfzecmjcwnm6nic2o47q4je7j4x3ujne
   states/decision_receive.py: bafybeib3roo27nccj4eylaqwwzztzzzwsi6px5atjrch5wbqmpln2kyy6y
   states/decision_request.py: bafybeic7otc3hjb753svbmur3yyk6szahc25yii3x4w4vcnpfz6jwvacuu
-  states/final_states.py: bafybeidmlhpjvsdogejrvaczk3tfcbh7f7ijectshh23qi5yzktozzunee
+  states/final_states.py: bafybeiantsmq3yuzg7qzk6hlyngj74jsx43rphghfwsvseakcxmu3n4kqm
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
   states/order_subscription.py: bafybeiaoemltuh3zkch7hvaxzxxsofe3pomlgifj5hamkqqon5mg5eaoqq
   states/randomness.py: bafybeifgsyipvvu2e6caggyoo5vsmd64uexuho5ybyf3ry424r7kldcfre
@@ -62,7 +62,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeieblarug7skds3u6r24kqehss6vnrtac3hh6ir7mpseb3w4rbrnzq
 - valory/erc20:0.1.0:bafybeifsag2oyd6pccj2bxkeo7ovgwvhifzw7y6okwdnzcbegmk6hozuyy
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiaqkpudbwnjf2svagdwgl5vujhuhmdqiomee47m5t3z23iest2oxa
+- valory/mech:0.1.0:bafybeibvsxfzyztadliu3jvxmwou65wb7gzy3z5zgqeizz53frunuvaidy
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4

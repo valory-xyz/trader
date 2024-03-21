@@ -48,6 +48,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
@@ -198,7 +199,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: ToolSelectionRound,
         },
         DecisionRequestRound: {
-            Event.DONE: FinishedDecisionMakerRound,
+            Event.DONE: FinishedDecisionRequestRound,
             Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionRequestRound,
             Event.ROUND_TIMEOUT: DecisionRequestRound,
@@ -245,6 +246,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: HandleFailedTxRound,
         },
         FinishedDecisionMakerRound: {},
+        FinishedDecisionRequestRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
         FinishedSubscriptionRound: {},
@@ -263,6 +265,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     )
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
+        FinishedDecisionRequestRound,
         FinishedSubscriptionRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
@@ -290,6 +293,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },
+        FinishedDecisionRequestRound: set(),
         FinishedSubscriptionRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),

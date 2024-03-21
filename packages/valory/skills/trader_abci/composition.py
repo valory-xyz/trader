@@ -33,6 +33,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
@@ -81,7 +82,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
-    FinishedDecisionRequestTxRound,
+    FinishedMechRequestTxRound,
     FinishedRedeemingTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
@@ -90,6 +91,18 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     TxSettlementMultiplexerAbciApp,
 )
 
+from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FinishedMechRequestRound,
+    FinishedMechResponseRound,
+    FinishedMechRequestSkipRound,
+    FinishedMechResponseTimeoutRound,
+)
+from packages.valory.skills.mech_interact_abci.states.request import (
+    MechRequestRound,
+)
+from packages.valory.skills.mech_interact_abci.states.response import (
+    MechResponseRound,
+)
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
@@ -101,7 +114,12 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
     FinishedSubscriptionTxRound: ClaimRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
-    FinishedDecisionRequestTxRound: DecisionReceiveRound,
+    FinishedDecisionRequestRound: MechRequestRound,
+    FinishedMechRequestRound: PreTxSettlementRound,
+    FinishedMechRequestTxRound: MechResponseRound,
+    FinishedMechResponseRound: DecisionReceiveRound,
+    FinishedMechResponseTimeoutRound: MechResponseRound,
+    FinishedMechRequestSkipRound: RedeemRound,
     FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
