@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeibi3t63vwfrx5sbkfhji3rb62dtwczpajuijqgul6bpcn3altcziq
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeie5beqip2quzkq5okquh5k6edf3zta6lomuz7rn73e365dxs2qlry
+  models.py: bafybeigk7hs7xsfjoszsque6r6yvbrrhattfuli2nfend4istk465e6try
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihbor7t3ozvzxqbiie5wl57ol3k7sqkhd22q2boogmwzj7sfvzic4
 - valory/termination_abci:0.1.0:bafybeif2gi2zvnixowmrqgvu6jm3eytwik7nvngv7cz5i44etg3iueorfe
 - valory/market_manager_abci:0.1.0:bafybeiftumqut5wlncpqsep4qtguhaqc7puxhd266ysvdh4u7zksj26aai
-- valory/decision_maker_abci:0.1.0:bafybeias5xuwknpoxkd3qbl7qa5y5g3r5i6x2kbzfi6mmrvxnnopjpi2vm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibyw7gkebej6f3obwloviuy5p5bpyom744qeytvf2ae7rbtesdnmu
+- valory/decision_maker_abci:0.1.0:bafybeic545zpe7lb6jpgwzip7t43ytu5voiior47kla5dnbgwq66gcveei
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia7q333bo3uzrlltjmflgqeqvyftwqcwz37x5exwuqylhxn4fdmde
 - valory/staking_abci:0.1.0:bafybeihh6e5eptk5lttl4jeqxsd7pwbrlroojlxevht4jlvu4hj4iusnoi
 - valory/mech_interact_abci:0.1.0:bafybeicjwkzvjwzzoftb7wtzg4mdib643w4etctk4zifu6pskosijpjury
 behaviours:

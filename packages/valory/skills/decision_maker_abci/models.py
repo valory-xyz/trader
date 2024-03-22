@@ -58,6 +58,9 @@ from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
+from packages.valory.skills.mech_interact_abci.models import (
+    Params as MechInteractParams,
+)
 
 
 FromBlockMappingType = Dict[HexBytes, Union[int, str]]
@@ -226,14 +229,11 @@ def nested_list_todict_workaround(
     return {value[0]: value[1] for value in values}
 
 
-class DecisionMakerParams(MarketManagerParams):
+class DecisionMakerParams(MarketManagerParams, MechInteractParams):
     """Decision maker's parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.mech_contract_address: str = self._ensure(
-            "mech_contract_address", kwargs, str
-        )
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
@@ -253,12 +253,8 @@ class DecisionMakerParams(MarketManagerParams):
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int
         )
-        self._ipfs_address: str = self._ensure("ipfs_address", kwargs, str)
         self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
         check_prompt_template(self.prompt_template)
-        multisend_address = kwargs.get("multisend_address", None)
-        enforce(multisend_address is not None, "Multisend address not specified!")
-        self.multisend_address: str = multisend_address
         self.dust_threshold: int = self._ensure("dust_threshold", kwargs, int)
         self.conditional_tokens_address: str = self._ensure(
             "conditional_tokens_address", kwargs, str
@@ -327,13 +323,6 @@ class DecisionMakerParams(MarketManagerParams):
     def using_kelly(self) -> bool:
         """Get the max bet amount if the `bet_amount_per_conf_threshold` strategy is used."""
         return self.trading_strategy == STRATEGY_KELLY_CRITERION
-
-    @property
-    def ipfs_address(self) -> str:
-        """Get the IPFS address."""
-        if self._ipfs_address.endswith("/"):
-            return self._ipfs_address
-        return f"{self._ipfs_address}/"
 
     @property
     def prompt_template(self) -> PromptTemplate:

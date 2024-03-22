@@ -57,9 +57,6 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
-from packages.valory.skills.mech_interact_abci.models import (
-    Params as MechInteractParams,
-)
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.termination_abci.models import TerminationParams
@@ -100,13 +97,8 @@ class RandomnessApi(ApiSpecs):
     """A model for randomness api specifications."""
 
 
-class DecisionMakerMechInteractParams(DecisionMakerParams, MechInteractParams):
-    """A class joining DecisionMakerParams and MechInteractParams. This class
-    is required because both classes have common parameters."""
-
-
 class TraderParams(
-    DecisionMakerMechInteractParams,
+    DecisionMakerParams,  # It also contains MechInteractParams
     TerminationParams,
     StakingParams,
     TxSettlementMultiplexerParams,
