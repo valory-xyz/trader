@@ -19,25 +19,26 @@
 
 """This module contains the decision requesting state of the decision-making abci app."""
 
-from typing import Type
-
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    CollectSameUntilThresholdRound,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import (
-    MultisigTxPayload,
-    RequestPayload,
+    DecisionRequestPayload,
 )
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
-    TxPreparationRound,
 )
 
 
-class DecisionRequestRound(TxPreparationRound):
+class DecisionRequestRound(CollectSameUntilThresholdRound):
     """A round in which the agents prepare a tx to initiate a request to a mech to determine the answer to a bet."""
 
-    payload_class: Type[MultisigTxPayload] = RequestPayload
-    selection_key = TxPreparationRound.selection_key + (
-        get_name(SynchronizedData.mech_price),
-    )
+    payload_class: DecisionRequestPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = get_name(SynchronizedData.mech_requests)
     none_event = Event.SLOTS_UNSUPPORTED_ERROR

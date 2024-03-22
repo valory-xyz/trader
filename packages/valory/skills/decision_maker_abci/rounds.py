@@ -200,7 +200,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionRequestRound: {
             Event.DONE: FinishedDecisionRequestRound,
-            Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionRequestRound,
             Event.ROUND_TIMEOUT: DecisionRequestRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
