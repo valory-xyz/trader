@@ -38,5 +38,6 @@ class DecisionRequestRound(CollectSameUntilThresholdRound):
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(SynchronizedData.participant_to_selection)
     selection_key = get_name(SynchronizedData.mech_requests)
     none_event = Event.SLOTS_UNSUPPORTED_ERROR
