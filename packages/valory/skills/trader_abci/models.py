@@ -100,9 +100,13 @@ class RandomnessApi(ApiSpecs):
     """A model for randomness api specifications."""
 
 
+class DecisionMakerMechInteractParams(DecisionMakerParams, MechInteractParams):
+    """A class joining DecisionMakerParams and MechInteractParams. This class
+    is required because both classes have common parameters."""
+
+
 class TraderParams(
-    DecisionMakerParams,
-    MechInteractParams,
+    DecisionMakerMechInteractParams,
     TerminationParams,
     StakingParams,
     TxSettlementMultiplexerParams,
