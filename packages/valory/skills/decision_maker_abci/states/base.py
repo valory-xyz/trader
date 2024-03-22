@@ -30,12 +30,12 @@ from packages.valory.skills.abstract_round_abci.base import (
 )
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.market_manager_abci.rounds import (
+    SynchronizedData as MarketManagerSyncedData,
+)
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
     MechMetadata,
-)
-from packages.valory.skills.market_manager_abci.rounds import (
-    SynchronizedData as MarketManagerSyncedData,
 )
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,

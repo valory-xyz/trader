@@ -23,9 +23,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import (
-    DecisionRequestPayload,
-)
+from packages.valory.skills.decision_maker_abci.payloads import DecisionRequestPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
@@ -35,7 +33,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 class DecisionRequestRound(CollectSameUntilThresholdRound):
     """A round in which the agents prepare a tx to initiate a request to a mech to determine the answer to a bet."""
 
-    payload_class: DecisionRequestPayload
+    payload_class = DecisionRequestPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     none_event = Event.NONE

@@ -259,7 +259,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.utilized_tools),
             get_name(SynchronizedData.redeemed_condition_ids),
             get_name(SynchronizedData.payout_so_far),
-            get_name(SynchronizedData.mech_price),
         }
     )
     final_states: Set[AppState] = {

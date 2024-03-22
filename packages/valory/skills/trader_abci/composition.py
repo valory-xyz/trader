@@ -50,6 +50,15 @@ from packages.valory.skills.market_manager_abci.rounds import (
     MarketManagerAbciApp,
     UpdateBetsRound,
 )
+from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
+from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FinishedMechRequestRound,
+    FinishedMechRequestSkipRound,
+    FinishedMechResponseRound,
+    FinishedMechResponseTimeoutRound,
+)
+from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
+from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
 from packages.valory.skills.registration_abci.rounds import (
     AgentRegistrationAbciApp,
     FinishedRegistrationRound,
@@ -91,18 +100,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     TxSettlementMultiplexerAbciApp,
 )
 
-from packages.valory.skills.mech_interact_abci.states.final_states import (
-    FinishedMechRequestRound,
-    FinishedMechResponseRound,
-    FinishedMechRequestSkipRound,
-    FinishedMechResponseTimeoutRound,
-)
-from packages.valory.skills.mech_interact_abci.states.request import (
-    MechRequestRound,
-)
-from packages.valory.skills.mech_interact_abci.states.response import (
-    MechResponseRound,
-)
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
@@ -144,6 +141,7 @@ TraderAbciApp = chain(
         AgentRegistrationAbciApp,
         DecisionMakerAbciApp,
         MarketManagerAbciApp,
+        MechInteractAbciApp,
         TransactionSubmissionAbciApp,
         TxSettlementMultiplexerAbciApp,
         ResetPauseAbciApp,

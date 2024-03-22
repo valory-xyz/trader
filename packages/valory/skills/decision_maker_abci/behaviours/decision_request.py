@@ -19,21 +19,20 @@
 
 """This module contains the behaviour of the skill which is responsible for requesting a decision from the mech."""
 
+import json
 from dataclasses import asdict
 from typing import Any, Dict, Generator, Optional
 from uuid import uuid4
 
-import json
-
-from packages.valory.skills.mech_interact_abci.states.base import (
-    MechMetadata,
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.base import DecisionMakerBaseBehaviour
 from packages.valory.skills.decision_maker_abci.payloads import DecisionRequestPayload
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
+from packages.valory.skills.mech_interact_abci.states.base import MechMetadata
 
 
 class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):

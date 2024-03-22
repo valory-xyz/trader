@@ -45,12 +45,6 @@ from packages.valory.skills.decision_maker_abci.models import (
 from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
 )
-from packages.valory.skills.mech_interact_abci.models import (
-    MechResponseSpecs as BaseMechResponseSpecs,
-)
-from packages.valory.skills.mech_interact_abci.models import (
-    Params as MechInteractParams,
-)
 from packages.valory.skills.market_manager_abci.models import (
     NetworkSubgraph as MarketManagerNetworkSubgraph,
 )
@@ -59,6 +53,12 @@ from packages.valory.skills.market_manager_abci.models import (
 )
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    MechResponseSpecs as BaseMechResponseSpecs,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    Params as MechInteractParams,
 )
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.staking_abci.models import StakingParams
@@ -101,7 +101,11 @@ class RandomnessApi(ApiSpecs):
 
 
 class TraderParams(
-    DecisionMakerParams, MechInteractParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams
+    DecisionMakerParams,
+    MechInteractParams,
+    TerminationParams,
+    StakingParams,
+    TxSettlementMultiplexerParams,
 ):
     """A model to represent the trader params."""
 
