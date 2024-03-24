@@ -76,7 +76,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeigr33fuqxsw7dwurncs7b4ogqa736k4ojktd3ucluv22setixe2a4
 - valory/market_manager_abci:0.1.0:bafybeiftumqut5wlncpqsep4qtguhaqc7puxhd266ysvdh4u7zksj26aai
 - valory/transaction_settlement_abci:0.1.0:bafybeihbor7t3ozvzxqbiie5wl57ol3k7sqkhd22q2boogmwzj7sfvzic4
-- valory/mech_interact_abci:0.1.0:bafybeicjwkzvjwzzoftb7wtzg4mdib643w4etctk4zifu6pskosijpjury
+- valory/mech_interact_abci:0.1.0:bafybeib3uelyyuohzu7zysgd7awonzox2ixgpuyclnphlmid7ak7ktva4u
 behaviours:
   main:
     args: {}
