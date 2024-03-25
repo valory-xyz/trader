@@ -68,6 +68,10 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     This data is replicated by the tendermint application.
     """
 
+    # These parameters are from other ABCI skills, and are added
+    # here to avoid subclassing and avoid MyPy linter issues.
+    mech_price: int
+
     @property
     def sampled_bet_index(self) -> int:
         """Get the sampled bet."""

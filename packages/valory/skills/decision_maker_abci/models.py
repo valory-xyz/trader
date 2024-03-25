@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -38,7 +37,6 @@ from typing import (
     Union,
 )
 
-from aea.exceptions import enforce
 from aea.skills.base import SkillContext
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO

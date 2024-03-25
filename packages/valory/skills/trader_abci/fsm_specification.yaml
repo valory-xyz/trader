@@ -5,7 +5,6 @@ alphabet_in:
 - CHECK_HISTORY
 - CHECK_LATE_ARRIVING_MESSAGE
 - CHECK_TIMEOUT
-- DECISION_REQUESTING_DONE
 - DONE
 - FETCH_ERROR
 - FINALIZATION_FAILED
@@ -13,6 +12,7 @@ alphabet_in:
 - INCORRECT_SERIALIZATION
 - INSUFFICIENT_BALANCE
 - INSUFFICIENT_FUNDS
+- MECH_REQUESTING_DONE
 - MECH_RESPONSE_ERROR
 - NEGATIVE
 - NEXT_CHECKPOINT_NOT_REACHED_YET
@@ -29,7 +29,7 @@ alphabet_in:
 - ROUND_TIMEOUT
 - SERVICE_EVICTED
 - SERVICE_NOT_STAKED
-- SLOTS_UNSUPPORTED_ERROR
+- SKIP_REQUEST
 - STAKING_DONE
 - SUBSCRIPTION_DONE
 - SUBSCRIPTION_ERROR
@@ -61,6 +61,8 @@ states:
 - FinalizationRound
 - HandleFailedTxRound
 - ImpossibleRound
+- MechRequestRound
+- MechResponseRound
 - PostTxSettlementRound
 - PreTxSettlementRound
 - RandomnessRound
@@ -122,11 +124,10 @@ transition_func:
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
-    (DecisionRequestRound, DONE): PreTxSettlementRound
+    (DecisionRequestRound, DONE): MechRequestRound
     (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
-    (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound
@@ -136,8 +137,15 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
+    (MechRequestRound, DONE): PreTxSettlementRound
+    (MechRequestRound, NO_MAJORITY): MechRequestRound
+    (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
+    (MechRequestRound, SKIP_REQUEST): RedeemRound
+    (MechResponseRound, DONE): DecisionReceiveRound
+    (MechResponseRound, NO_MAJORITY): MechResponseRound
+    (MechResponseRound, ROUND_TIMEOUT): MechResponseRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
-    (PostTxSettlementRound, DECISION_REQUESTING_DONE): DecisionReceiveRound
+    (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
