@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -34,9 +34,6 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.models import (
-    MechResponseSpecs as DecisionMakerMechResponseSpecs,
-)
-from packages.valory.skills.decision_maker_abci.models import (
     RealitioSubgraph as DecisionMakerRealitioSubgraph,
 )
 from packages.valory.skills.decision_maker_abci.models import (
@@ -56,6 +53,9 @@ from packages.valory.skills.market_manager_abci.models import (
 )
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    MechResponseSpecs as BaseMechResponseSpecs,
 )
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.staking_abci.models import StakingParams
@@ -83,7 +83,7 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 OmenSubgraph = MarketManagerOmenSubgraph
 NetworkSubgraph = MarketManagerNetworkSubgraph
-MechResponseSpecs = DecisionMakerMechResponseSpecs
+MechResponseSpecs = BaseMechResponseSpecs
 AgentToolsSpecs = DecisionMakerAgentToolsSpecs
 TradesSubgraph = DecisionMakerTradesSubgraph
 ConditionalTokensSubgraph = DecisionMakerConditionalTokensSubgraph
@@ -98,7 +98,10 @@ class RandomnessApi(ApiSpecs):
 
 
 class TraderParams(
-    DecisionMakerParams, TerminationParams, StakingParams, TxSettlementMultiplexerParams
+    DecisionMakerParams,  # It also contains MechInteractParams
+    TerminationParams,
+    StakingParams,
+    TxSettlementMultiplexerParams,
 ):
     """A model to represent the trader params."""
 

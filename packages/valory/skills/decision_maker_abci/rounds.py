@@ -48,6 +48,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
@@ -81,12 +82,12 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. SamplingRound
             - done: 1.
-            - none: 12.
+            - none: 13.
             - no majority: 0.
             - round timeout: 0.
-            - fetch error: 16.
+            - fetch error: 17.
         1. SubscriptionRound
-            - done: 14.
+            - done: 15.
             - no subscription: 3.
             - none: 1.
             - subscription error: 1.
@@ -107,11 +108,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 4.
             - round timeout: 4.
         5. DecisionRequestRound
-            - done: 11.
-            - slots unsupported error: 7.
+            - done: 12.
             - no majority: 5.
             - round timeout: 5.
-            - none: 16.
+            - none: 17.
         6. DecisionReceiveRound
             - done: 8.
             - mech response error: 7.
@@ -120,35 +120,36 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - unprofitable: 7.
             - round timeout: 6.
         7. BlacklistingRound
-            - done: 12.
-            - none: 16.
+            - done: 13.
+            - none: 17.
             - no majority: 7.
             - round timeout: 7.
-            - fetch error: 16.
+            - fetch error: 17.
         8. BetPlacementRound
             - done: 11.
-            - insufficient balance: 15.
+            - insufficient balance: 16.
             - no majority: 8.
             - round timeout: 8.
-            - none: 16.
+            - none: 17.
         9. RedeemRound
             - done: 11.
-            - no redeeming: 13.
+            - no redeeming: 14.
             - no majority: 9.
-            - redeem round timeout: 13.
-            - none: 16.
+            - redeem round timeout: 14.
+            - none: 17.
         10. HandleFailedTxRound
             - blacklist: 7.
             - no op: 9.
             - no majority: 10.
         11. FinishedDecisionMakerRound
-        12. FinishedWithoutDecisionRound
-        13. FinishedWithoutRedeemingRound
-        14. FinishedSubscriptionRound
-        15. RefillRequiredRound
-        16. ImpossibleRound
+        12. FinishedDecisionRequestRound
+        13. FinishedWithoutDecisionRound
+        14. FinishedWithoutRedeemingRound
+        15. FinishedSubscriptionRound
+        16. RefillRequiredRound
+        17. ImpossibleRound
 
-    Final states: {FinishedDecisionMakerRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -198,8 +199,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: ToolSelectionRound,
         },
         DecisionRequestRound: {
-            Event.DONE: FinishedDecisionMakerRound,
-            Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
+            Event.DONE: FinishedDecisionRequestRound,
             Event.NO_MAJORITY: DecisionRequestRound,
             Event.ROUND_TIMEOUT: DecisionRequestRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
@@ -245,6 +245,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: HandleFailedTxRound,
         },
         FinishedDecisionMakerRound: {},
+        FinishedDecisionRequestRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
         FinishedSubscriptionRound: {},
@@ -258,11 +259,11 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.utilized_tools),
             get_name(SynchronizedData.redeemed_condition_ids),
             get_name(SynchronizedData.payout_so_far),
-            get_name(SynchronizedData.mech_price),
         }
     )
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
+        FinishedDecisionRequestRound,
         FinishedSubscriptionRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
@@ -290,6 +291,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },
+        FinishedDecisionRequestRound: set(),
         FinishedSubscriptionRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),

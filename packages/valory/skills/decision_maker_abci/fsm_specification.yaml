@@ -11,13 +11,13 @@ alphabet_in:
 - NO_SUBSCRIPTION
 - REDEEM_ROUND_TIMEOUT
 - ROUND_TIMEOUT
-- SLOTS_UNSUPPORTED_ERROR
 - SUBSCRIPTION_ERROR
 - TIE
 - UNPROFITABLE
 default_start_state: SamplingRound
 final_states:
 - FinishedDecisionMakerRound
+- FinishedDecisionRequestRound
 - FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
@@ -37,6 +37,7 @@ states:
 - DecisionReceiveRound
 - DecisionRequestRound
 - FinishedDecisionMakerRound
+- FinishedDecisionRequestRound
 - FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
@@ -69,11 +70,10 @@ transition_func:
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
-    (DecisionRequestRound, DONE): FinishedDecisionMakerRound
+    (DecisionRequestRound, DONE): FinishedDecisionRequestRound
     (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
-    (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
