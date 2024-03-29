@@ -1,3 +1,2 @@
-contract/valory/agent_registry/0.1.0
 custom/valory/mike_strat/0.1.0
 custom/w1kke/always_blue/0.1.0
