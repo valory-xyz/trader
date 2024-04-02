@@ -25,9 +25,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeie7bvctvvmphamfrujtnsg2wxeafuoquvgikhm33xrowtpybj2iyy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeico5v6u7dmy7tj4nwakmoef5ihirivtb7s5lxm3v6szsco3ulkctu
+- valory/decision_maker_abci:0.1.0:bafybeiarkuay5j5clvy2pa5ffd2axl4um44wcojaibrmxt4wkttcnyy2qq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibamqzm5cyohumxk5fowlb7zx7jkkk33aite43so35yydxig4kwb4
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
+- valory/mech_interact_abci:0.1.0:bafybeihil35lbpcfov3dqrxzyluhjkbuysx6qkozqrd5of47jhebtg7dji
 behaviours:
   main:
     args: {}
@@ -274,7 +275,7 @@ models:
       method: GET
       parameters: {}
       response_key: result
-      response_type: dict
+      response_type: str
       retries: 5
       url: ''
     class_name: MechResponseSpecs

@@ -16,7 +16,7 @@ fingerprint:
   behaviours/bet_placement.py: bafybeib7jgq7iyfoyj3ur3xkj6knh7t7vr32kc743ztyjskkdevyh6l75q
   behaviours/blacklisting.py: bafybeid2kwsrq3ityeqsixalpaxwwiduo3lvqs5uzqhw5yfccqz5hqm6im
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
-  behaviours/decision_receive.py: bafybeidgka77mwaadjjomov53z7jd2dr3a3szhcxulglogzyfgzqip3qlm
+  behaviours/decision_receive.py: bafybeign4nl75334sgf4nni6glpbvzqgdw7vrclwiey6tmgj7x5pzmmaue
   behaviours/decision_request.py: bafybeicv2c5nwipgn6juhgohl7sol3bwkfknsvcrfcswbulukxkczi444i
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeifygejified3yoza3gy4g7ina6m4lmz4pp2abtwfuwrmiwznnvrua
@@ -36,7 +36,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeibk6wrimonboqzhsevg26mynt46gu63w5b5bnndtcdvqkorhf53pi
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeibpzv4te3o5rz67cjnqo6dd5rmtt3awj5khamb6epomgnk7vfe5ui
+  states/base.py: bafybeiefeeubjxohtlts4whzw7pgo37c3mtelo5z5yccaxfypgrdjqs5du
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeifruvxwwltndwazkzzbpc5nnnad3z5t5ofy6d3i7nssljbxl6gvxu
   states/claim_subscription.py: bafybeiampifhdoztggwj6gthl2hfzecmjcwnm6nic2o47q4je7j4x3ujne
@@ -62,7 +62,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeihyi42hkmu2knrunfdbunjh6j3ibfrnwj7rmqw7mm7pmerzcwzfiq
 - valory/erc20:0.1.0:bafybeihnbk5wp7zb6hmaykqfxgdrvpwmxxh3xnmcwn3elopw3urjeyxo54
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiaqkpudbwnjf2svagdwgl5vujhuhmdqiomee47m5t3z23iest2oxa
+- valory/mech:0.1.0:bafybeibvsxfzyztadliu3jvxmwou65wb7gzy3z5zgqeizz53frunuvaidy
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
@@ -76,6 +76,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
+- valory/mech_interact_abci:0.1.0:bafybeihil35lbpcfov3dqrxzyluhjkbuysx6qkozqrd5of47jhebtg7dji
 behaviours:
   main:
     args: {}
@@ -268,7 +269,7 @@ models:
       method: GET
       parameters: {}
       response_key: result
-      response_type: dict
+      response_type: str
       retries: 5
       url: ''
     class_name: MechResponseSpecs

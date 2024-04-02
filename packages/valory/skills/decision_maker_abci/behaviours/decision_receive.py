@@ -28,6 +28,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
+from packages.valory.skills.decision_maker_abci.models import PredictionResponse
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
@@ -95,7 +96,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             )
             return None, None, None
 
-        result = json.loads(self.mech_response.result)
+        result = PredictionResponse(**json.loads(self.mech_response.result))
         return (
             result.vote,
             result.win_probability,
