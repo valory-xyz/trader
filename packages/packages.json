@@ -13,12 +13,12 @@
         "contract/valory/service_staking_token/0.1.0": "bafybeibpe24zfvpipaut77tsutmednncjviqeoekxltsndovdz3ugek7bu",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeicgpoag2lymofz3vnen76q7gtig5hzimn32o57php4uerr6t25em4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiarkuay5j5clvy2pa5ffd2axl4um44wcojaibrmxt4wkttcnyy2qq",
-        "skill/valory/trader_abci/0.1.0": "bafybeia62pxmjndmzc5igtd75fuolyuhrdjydbg7nwsdrtgrl4ta23m6zq",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibamqzm5cyohumxk5fowlb7zx7jkkk33aite43so35yydxig4kwb4",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeighmjp5bnefuhcwqdf54pcupd32uh4dpd7z4a6qcttwkz4gzgp2pe",
+        "skill/valory/trader_abci/0.1.0": "bafybeihlqx7sua6cj7yipqhn7wlwhwjc6depswxk3kpfzsjntdfpgq73sy",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidiqpjcedi5svfzhauujtgcpnlkbysp2noow7yof7rk3b355fl6aa",
         "skill/valory/staking_abci/0.1.0": "bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e",
-        "agent/valory/trader/0.1.0": "bafybeigua6j7ssto4fh2astdgf2pcbxbvy2b7jrbr67x526ou4vouezede",
-        "service/valory/trader/0.1.0": "bafybeidgmrsiuzudmg5xylmvh3lxbnwengqccfdv6ztnxwrb32xfrwg7iq"
+        "agent/valory/trader/0.1.0": "bafybeihx6j642watydtns2plzzlxglsoildg3i2j2miwmtvmollvagnx2i",
+        "service/valory/trader/0.1.0": "bafybeih56piqvotdtqwo5mdosupha352uzjlzbarujflx55gus6vmlgi4e"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
@@ -45,6 +45,6 @@
         "skill/valory/abstract_round_abci/0.1.0": "bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i",
         "skill/valory/transaction_settlement_abci/0.1.0": "bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq",
         "skill/valory/termination_abci/0.1.0": "bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeihil35lbpcfov3dqrxzyluhjkbuysx6qkozqrd5of47jhebtg7dji"
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeibqmg6lawncyot2xjsfsgtam6jubqravkhruex2o2vfzuc46khoiu"
     }
 }

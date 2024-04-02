@@ -30,6 +30,7 @@ alphabet_in:
 - SERVICE_EVICTED
 - SERVICE_NOT_STAKED
 - SKIP_REQUEST
+- SLOTS_UNSUPPORTED_ERROR
 - STAKING_DONE
 - SUBSCRIPTION_DONE
 - SUBSCRIPTION_ERROR
@@ -128,6 +129,7 @@ transition_func:
     (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
+    (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound

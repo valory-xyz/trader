@@ -109,6 +109,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 4.
         5. DecisionRequestRound
             - done: 12.
+            - slots unsupported error: 7.
             - no majority: 5.
             - round timeout: 5.
             - none: 17.
@@ -200,6 +201,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionRequestRound: {
             Event.DONE: FinishedDecisionRequestRound,
+            Event.SLOTS_UNSUPPORTED_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionRequestRound,
             Event.ROUND_TIMEOUT: DecisionRequestRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
@@ -259,6 +261,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.utilized_tools),
             get_name(SynchronizedData.redeemed_condition_ids),
             get_name(SynchronizedData.payout_so_far),
+            get_name(SynchronizedData.mech_price),
         }
     )
     final_states: Set[AppState] = {
