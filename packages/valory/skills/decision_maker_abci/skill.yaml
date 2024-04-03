@@ -149,7 +149,7 @@ models:
       max_attempts: 10
       max_healthcheck: 120
       multisend_address: '0x0000000000000000000000000000000000000000'
-      multisend_batch_size: 5
+      multisend_batch_size: 1
       on_chain_service_id: null
       request_retry_delay: 1.0
       request_timeout: 10.0
