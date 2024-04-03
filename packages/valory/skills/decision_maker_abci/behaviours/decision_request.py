@@ -74,10 +74,10 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            mech_requests = []
-            if self.n_slots_supported:
-                mech_requests.append(self.metadata)
-            serialized_mech_requests = json.dumps(mech_requests, sort_keys=True)
+            payload_content = None
+            if self._metadata and self.n_slots_supported:
+                mech_requests = [self.metadata]
+                payload_content = json.dumps(mech_requests, sort_keys=True)
             agent = self.context.agent_address
-            payload = DecisionRequestPayload(agent, serialized_mech_requests)
+            payload = DecisionRequestPayload(agent, payload_content)
         yield from self.finish_behaviour(payload)

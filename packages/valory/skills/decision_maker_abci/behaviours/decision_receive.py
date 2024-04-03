@@ -98,17 +98,15 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         try:
             result = PredictionResponse(**json.loads(self.mech_response.result))
-            return (
-                result.vote,
-                result.win_probability,
-                result.confidence,
-            )
-        except json.JSONDecodeError as exc:
-            self.context.logger.error(f"There was a JSONDecodeError parsing the mech's response: {exc}")
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None, None, None
-        except ValueError as exc:
-            self.context.logger.error(f"There was a ValueError parsing the mech's response: {exc}")
-            return None, None, None
+
+        return (
+            result.vote,
+            result.win_probability,
+            result.confidence,
+        )
 
     @staticmethod
     def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
