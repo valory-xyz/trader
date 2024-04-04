@@ -37,6 +37,9 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
+from packages.valory.skills.decision_maker_abci.states.check_stop_trading_conditions import (
+    CheckStopTradingConditionsRound,
+)
 from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
     ClaimRound,
 )
@@ -75,80 +78,85 @@ from packages.valory.skills.market_manager_abci.rounds import (
 class DecisionMakerAbciApp(AbciApp[Event]):
     """DecisionMakerAbciApp
 
-    Initial round: SamplingRound
+    Initial round: CheckStopTradingConditionsRound
 
-    Initial states: {ClaimRound, DecisionReceiveRound, HandleFailedTxRound, RedeemRound, SamplingRound}
+    Initial states: {CheckStopTradingConditionsRound, ClaimRound, DecisionReceiveRound, HandleFailedTxRound, RedeemRound}
 
     Transition states:
-        0. SamplingRound
+        0. CheckStopTradingConditionsRound
             - done: 1.
-            - none: 13.
+            - none: 0.
             - no majority: 0.
             - round timeout: 0.
-            - fetch error: 17.
-        1. SubscriptionRound
-            - done: 15.
-            - no subscription: 3.
-            - none: 1.
-            - subscription error: 1.
+        1. SamplingRound
+            - done: 2.
+            - none: 14.
             - no majority: 1.
             - round timeout: 1.
-        2. ClaimRound
-            - done: 3.
+            - fetch error: 18.
+        2. SubscriptionRound
+            - done: 16.
+            - no subscription: 4.
+            - none: 2.
             - subscription error: 2.
             - no majority: 2.
             - round timeout: 2.
-        3. RandomnessRound
+        3. ClaimRound
             - done: 4.
-            - round timeout: 3.
+            - subscription error: 3.
             - no majority: 3.
-        4. ToolSelectionRound
+            - round timeout: 3.
+        4. RandomnessRound
             - done: 5.
-            - none: 4.
-            - no majority: 4.
             - round timeout: 4.
-        5. DecisionRequestRound
-            - done: 12.
-            - slots unsupported error: 7.
+            - no majority: 4.
+        5. ToolSelectionRound
+            - done: 6.
+            - none: 5.
             - no majority: 5.
             - round timeout: 5.
-            - none: 17.
-        6. DecisionReceiveRound
-            - done: 8.
-            - mech response error: 7.
-            - no majority: 6.
-            - tie: 7.
-            - unprofitable: 7.
-            - round timeout: 6.
-        7. BlacklistingRound
+        6. DecisionRequestRound
             - done: 13.
-            - none: 17.
+            - slots unsupported error: 8.
+            - no majority: 6.
+            - round timeout: 6.
+            - none: 18.
+        7. DecisionReceiveRound
+            - done: 9.
+            - mech response error: 8.
             - no majority: 7.
+            - tie: 8.
+            - unprofitable: 8.
             - round timeout: 7.
-            - fetch error: 17.
-        8. BetPlacementRound
-            - done: 11.
-            - insufficient balance: 16.
+        8. BlacklistingRound
+            - done: 14.
+            - none: 18.
             - no majority: 8.
             - round timeout: 8.
-            - none: 17.
-        9. RedeemRound
-            - done: 11.
-            - no redeeming: 14.
+            - fetch error: 18.
+        9. BetPlacementRound
+            - done: 12.
+            - insufficient balance: 17.
             - no majority: 9.
-            - redeem round timeout: 14.
-            - none: 17.
-        10. HandleFailedTxRound
-            - blacklist: 7.
-            - no op: 9.
+            - round timeout: 9.
+            - none: 18.
+        10. RedeemRound
+            - done: 12.
+            - no redeeming: 15.
             - no majority: 10.
-        11. FinishedDecisionMakerRound
-        12. FinishedDecisionRequestRound
-        13. FinishedWithoutDecisionRound
-        14. FinishedWithoutRedeemingRound
-        15. FinishedSubscriptionRound
-        16. RefillRequiredRound
-        17. ImpossibleRound
+            - redeem round timeout: 15.
+            - none: 18.
+        11. HandleFailedTxRound
+            - blacklist: 8.
+            - no op: 10.
+            - no majority: 11.
+        12. FinishedDecisionMakerRound
+        13. FinishedDecisionRequestRound
+        14. FinishedWithoutDecisionRound
+        15. FinishedWithoutRedeemingRound
+        16. FinishedSubscriptionRound
+        17. RefillRequiredRound
+        18. ImpossibleRound
 
     Final states: {FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
@@ -157,15 +165,21 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         redeem round timeout: 3600.0
     """
 
-    initial_round_cls: AppState = SamplingRound
+    initial_round_cls: AppState = CheckStopTradingConditionsRound
     initial_states: Set[AppState] = {
-        SamplingRound,
+        CheckStopTradingConditionsRound,
         HandleFailedTxRound,
         DecisionReceiveRound,
         RedeemRound,
         ClaimRound,
     }
     transition_function: AbciAppTransitionFunction = {
+        CheckStopTradingConditionsRound: {
+            Event.DONE: SamplingRound,
+            Event.NONE: CheckStopTradingConditionsRound,
+            Event.NO_MAJORITY: CheckStopTradingConditionsRound,
+            Event.ROUND_TIMEOUT: CheckStopTradingConditionsRound,
+        },
         SamplingRound: {
             Event.DONE: SubscriptionRound,
             Event.NONE: FinishedWithoutDecisionRound,
@@ -286,7 +300,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound: {
             get_name(SynchronizedData.bets_hash),
         },
-        SamplingRound: set(),
+        CheckStopTradingConditionsRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {

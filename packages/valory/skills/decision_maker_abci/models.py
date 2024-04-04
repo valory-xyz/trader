@@ -315,6 +315,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             kwargs,
             "mech_to_subscription_params",
         )
+        self.stop_trading = self._ensure("stop_trading", kwargs, bool)
         super().__init__(*args, **kwargs)
 
     @property

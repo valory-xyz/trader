@@ -195,6 +195,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
 
+    @property
+    def stop_trading(self) -> bool:
+        """Get whether agent should stop trading."""
+        return bool(self.db.get("stop_trading", False))
+
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
     """A round for preparing a transaction."""

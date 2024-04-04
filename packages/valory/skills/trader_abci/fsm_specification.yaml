@@ -53,6 +53,7 @@ states:
 - BlacklistingRound
 - CallCheckpointRound
 - CheckLateTxHashesRound
+- CheckStopTradingConditionsRound
 - CheckTransactionHistoryRound
 - ClaimRound
 - CollectSignatureRound
@@ -106,6 +107,10 @@ transition_func:
     (CheckLateTxHashesRound, NEGATIVE): HandleFailedTxRound
     (CheckLateTxHashesRound, NONE): HandleFailedTxRound
     (CheckLateTxHashesRound, NO_MAJORITY): HandleFailedTxRound
+    (CheckStopTradingConditionsRound, DONE): SamplingRound
+    (CheckStopTradingConditionsRound, NONE): CheckStopTradingConditionsRound
+    (CheckStopTradingConditionsRound, NO_MAJORITY): CheckStopTradingConditionsRound
+    (CheckStopTradingConditionsRound, ROUND_TIMEOUT): CheckStopTradingConditionsRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
     (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
@@ -210,7 +215,7 @@ transition_func:
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
     (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
-    (UpdateBetsRound, DONE): SamplingRound
+    (UpdateBetsRound, DONE): CheckStopTradingConditionsRound
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
     (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound

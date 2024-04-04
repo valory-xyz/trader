@@ -25,6 +25,9 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
 )
 from packages.valory.skills.abstract_round_abci.base import BackgroundAppConfig
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.states.check_stop_trading_conditions import (
+    CheckStopTradingConditionsRound,
+)
 from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
     ClaimRound,
 )
@@ -43,7 +46,6 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
-from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
     FinishedMarketManagerRound,
@@ -103,7 +105,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
-    FinishedMarketManagerRound: SamplingRound,
+    FinishedMarketManagerRound: CheckStopTradingConditionsRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
     ChecksPassedRound: RandomnessTransactionSubmissionRound,

@@ -104,3 +104,10 @@ class ToolSelectionPayload(BaseTxPayload):
     policy: Optional[str]
     utilized_tools: Optional[str]
     index: Optional[int]
+
+
+@dataclass(frozen=True)
+class CheckStopTradingConditionsPayload(BaseTxPayload):
+    """Represents a transaction payload for the decision-making."""
+
+    stop_trading: Optional[bool]

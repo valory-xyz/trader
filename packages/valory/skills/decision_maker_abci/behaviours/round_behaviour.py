@@ -31,6 +31,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import 
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.check_stop_trading_conditions import (
+    CheckStopTradingConditionsBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.claim_subscription import (
     ClaimSubscriptionBehaviour,
 )
@@ -65,6 +68,7 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
     initial_behaviour_cls = SamplingBehaviour
     abci_app_cls = DecisionMakerAbciApp
     behaviours: Set[Type[BaseBehaviour]] = {
+        CheckStopTradingConditionsBehaviour,  # type: ignore
         SamplingBehaviour,  # type: ignore
         DecisionRequestBehaviour,  # type: ignore
         DecisionReceiveBehaviour,  # type: ignore

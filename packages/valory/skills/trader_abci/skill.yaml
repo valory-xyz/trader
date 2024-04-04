@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigx2uevbnytt6hpwfsrk32u6pyv5scyqvyyzm2a25xaufrxvkldxi
-  composition.py: bafybeidvxtqoghju4tkesiwi6qfzxe3zf2nbqmehimwvp5skmohkeozmei
+  composition.py: bafybeig5quwiftnpgamwhzyp2qrbz4vi5zni5he7jl54zo4gwjejjaoj54
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeiaulbsq76cc5h7jjz6oiezoui452mtyk6g2kbmhhzsggqrjqw4cuy
+  fsm_specification.yaml: bafybeiensbxui53lkcrzfmjz4n7tcvedfihmcafe2cylm4vnz2m4llr7ey
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
   models.py: bafybeigk7hs7xsfjoszsque6r6yvbrrhattfuli2nfend4istk465e6try
 fingerprint_ignore_patterns: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeiftz2xjbld2njsywsii5pgp6354oqm6ultqyfyfsnemuzqulw6o2y
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifshd7ut2eyzyolvwpjcjxreq2c655gz4nh2vudglvfb7oog7gase
+- valory/decision_maker_abci:0.1.0:bafybeiammcnczjcltq3lyrfgurn3bjsutw37mpfuxgfxqqbsizz46zvbyy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic4knqgryhxyggjjzipstwhrimpo4soeigp4ewpdanphfu4af27rq
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
 - valory/mech_interact_abci:0.1.0:bafybeidxignwgujlkhw5hbek7xw2uz5nrd3h2xx7sj5zor263dgh4fm3p4
 behaviours:
@@ -149,6 +149,7 @@ models:
       abt_error_mult: 5
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
       request_price: null
+      stop_trading: false
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
