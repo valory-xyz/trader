@@ -21,7 +21,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeihyi42hkmu2knrunfdbunjh6j3ibfrnwj7rmqw7mm7pmerzcwzfiq
 - valory/erc20:0.1.0:bafybeihnbk5wp7zb6hmaykqfxgdrvpwmxxh3xnmcwn3elopw3urjeyxo54
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeie6zwwup4mfrulzwme5453cli5mzcvfqwmpcrp3rpqzu4payapy4i
+- valory/mech:0.1.0:bafybeiejdn3rqqa7smbeiypajy63um7okteimvj6bsud3gezneycmdc6te
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
@@ -44,12 +44,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidl2exsrv6aapnyarfsastsj2rrzvexosnhw4irhxhocrcektu23y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifshd7ut2eyzyolvwpjcjxreq2c655gz4nh2vudglvfb7oog7gase
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeibeqcyy7qvubxjg7lwolsvvufuirsic5ymhdxvg7th2izdwcgfhw4
-- valory/trader_abci:0.1.0:bafybeiah5fcltnf7qu6e7i2wfbhscjkrn2g53qymjfumweowzxpj6hxciy
+- valory/decision_maker_abci:0.1.0:bafybeiftz2xjbld2njsywsii5pgp6354oqm6ultqyfyfsnemuzqulw6o2y
+- valory/trader_abci:0.1.0:bafybeidrrl5mni5i4gsde7pfms6shsljmnwdcgo4pqeaujvti446rkkgxu
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
-- valory/mech_interact_abci:0.1.0:bafybeibutwdwbxornznmhkwo7wvycvnx2adxzq2uxf6hegphdnmiflhx5a
+- valory/mech_interact_abci:0.1.0:bafybeidxignwgujlkhw5hbek7xw2uz5nrd3h2xx7sj5zor263dgh4fm3p4
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
