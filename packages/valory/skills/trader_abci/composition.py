@@ -33,6 +33,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionMakerRound,
+    FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
@@ -49,6 +50,15 @@ from packages.valory.skills.market_manager_abci.rounds import (
     MarketManagerAbciApp,
     UpdateBetsRound,
 )
+from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
+from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FinishedMechRequestRound,
+    FinishedMechRequestSkipRound,
+    FinishedMechResponseRound,
+    FinishedMechResponseTimeoutRound,
+)
+from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
+from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
 from packages.valory.skills.registration_abci.rounds import (
     AgentRegistrationAbciApp,
     FinishedRegistrationRound,
@@ -81,7 +91,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
-    FinishedDecisionRequestTxRound,
+    FinishedMechRequestTxRound,
     FinishedRedeemingTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
@@ -101,7 +111,12 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedTransactionSubmissionRound: PostTxSettlementRound,
     FinishedSubscriptionTxRound: ClaimRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
-    FinishedDecisionRequestTxRound: DecisionReceiveRound,
+    FinishedDecisionRequestRound: MechRequestRound,
+    FinishedMechRequestRound: PreTxSettlementRound,
+    FinishedMechRequestTxRound: MechResponseRound,
+    FinishedMechResponseRound: DecisionReceiveRound,
+    FinishedMechResponseTimeoutRound: MechResponseRound,
+    FinishedMechRequestSkipRound: RedeemRound,
     FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
@@ -126,6 +141,7 @@ TraderAbciApp = chain(
         AgentRegistrationAbciApp,
         DecisionMakerAbciApp,
         MarketManagerAbciApp,
+        MechInteractAbciApp,
         TransactionSubmissionAbciApp,
         TxSettlementMultiplexerAbciApp,
         ResetPauseAbciApp,

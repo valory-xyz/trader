@@ -18,6 +18,7 @@ alphabet_in:
 default_start_state: SamplingRound
 final_states:
 - FinishedDecisionMakerRound
+- FinishedDecisionRequestRound
 - FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
@@ -37,6 +38,7 @@ states:
 - DecisionReceiveRound
 - DecisionRequestRound
 - FinishedDecisionMakerRound
+- FinishedDecisionRequestRound
 - FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
@@ -69,7 +71,7 @@ transition_func:
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
-    (DecisionRequestRound, DONE): FinishedDecisionMakerRound
+    (DecisionRequestRound, DONE): FinishedDecisionRequestRound
     (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound

@@ -8,12 +8,12 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
-  composition.py: bafybeif75v3swf2pmxi3rdd5kqdfv4ap5uapcbszkiohhur67oemrgotay
+  behaviours.py: bafybeigx2uevbnytt6hpwfsrk32u6pyv5scyqvyyzm2a25xaufrxvkldxi
+  composition.py: bafybeidvxtqoghju4tkesiwi6qfzxe3zf2nbqmehimwvp5skmohkeozmei
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeibi3t63vwfrx5sbkfhji3rb62dtwczpajuijqgul6bpcn3altcziq
+  fsm_specification.yaml: bafybeiaulbsq76cc5h7jjz6oiezoui452mtyk6g2kbmhhzsggqrjqw4cuy
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeibrxivgpzamfmrl6bdngi67g72i32lmu5vgdn3jbwka265blk7ire
+  models.py: bafybeigk7hs7xsfjoszsque6r6yvbrrhattfuli2nfend4istk465e6try
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,9 +25,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeie7bvctvvmphamfrujtnsg2wxeafuoquvgikhm33xrowtpybj2iyy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeico5v6u7dmy7tj4nwakmoef5ihirivtb7s5lxm3v6szsco3ulkctu
+- valory/decision_maker_abci:0.1.0:bafybeiftz2xjbld2njsywsii5pgp6354oqm6ultqyfyfsnemuzqulw6o2y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifshd7ut2eyzyolvwpjcjxreq2c655gz4nh2vudglvfb7oog7gase
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
+- valory/mech_interact_abci:0.1.0:bafybeidxignwgujlkhw5hbek7xw2uz5nrd3h2xx7sj5zor263dgh4fm3p4
 behaviours:
   main:
     args: {}
@@ -104,6 +105,7 @@ models:
       max_attempts: 10
       max_healthcheck: 120
       multisend_address: '0x0000000000000000000000000000000000000000'
+      multisend_batch_size: 1
       on_chain_service_id: null
       request_retry_delay: 1.0
       request_timeout: 10.0
@@ -145,7 +147,8 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
+      mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
+      request_price: null
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
@@ -271,8 +274,8 @@ models:
         Content-Type: application/json
       method: GET
       parameters: {}
-      response_key: null
-      response_type: dict
+      response_key: result
+      response_type: str
       retries: 5
       url: ''
     class_name: MechResponseSpecs

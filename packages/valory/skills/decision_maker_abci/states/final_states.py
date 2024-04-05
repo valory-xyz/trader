@@ -26,6 +26,10 @@ class FinishedDecisionMakerRound(DegenerateRound):
     """A round representing that decision-making has finished."""
 
 
+class FinishedDecisionRequestRound(DegenerateRound):
+    """A round representing that decision request has finished."""
+
+
 class FinishedSubscriptionRound(DegenerateRound):
     """A round representing that subscription has finished."""
 
