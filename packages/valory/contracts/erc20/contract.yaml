@@ -7,7 +7,7 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifmfma6rglvpa22odtozyosnp5mwljum64utxip2wgmezuhnjjjyi
-  __init__.py: bafybeia2k2vmq7lmd3uchmm6jmzj7ebqkogk5aolpw4nwsawnkgqfobltm
+  __init__.py: bafybeif5vpc3dfrlxlch7brbhmdwksabyzddpfqgm56vdbbkek3t3br6ke
   build/ERC20.json: bafybeiemn5b5nszuss7xj6lmvmjuendltp6wz7ubihdvd7c6wqw4bohbpa
   contract.py: bafybeidxplm7cdvwjs5le2m2uxqj5km2aynyujcycbuimkmqfqyrl4oh2u
 fingerprint_ignore_patterns: []
