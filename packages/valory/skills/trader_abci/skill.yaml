@@ -25,10 +25,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeiftz2xjbld2njsywsii5pgp6354oqm6ultqyfyfsnemuzqulw6o2y
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifshd7ut2eyzyolvwpjcjxreq2c655gz4nh2vudglvfb7oog7gase
+- valory/decision_maker_abci:0.1.0:bafybeiaehx2awffr3treggf32lovwsg7iowyyuk32a7vkrwvdnioyongo4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeichieihueuywhd4upujcqvr6y3gffu5lcvwwqnpvcdtloagghsww4
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
-- valory/mech_interact_abci:0.1.0:bafybeidxignwgujlkhw5hbek7xw2uz5nrd3h2xx7sj5zor263dgh4fm3p4
+- valory/mech_interact_abci:0.1.0:bafybeih3jryqhchcxr4udmw3u4zxtmty2ppph5fe3o2lu5l5qc257s2zvu
 behaviours:
   main:
     args: {}

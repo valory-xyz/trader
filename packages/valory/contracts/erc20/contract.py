@@ -30,6 +30,7 @@ from aea_ledger_ethereum import EthereumApi
 
 PUBLIC_ID = PublicId.from_str("valory/erc20:0.1.0")
 
+
 class ERC20(Contract):
     """The ERC20 contract."""
 
