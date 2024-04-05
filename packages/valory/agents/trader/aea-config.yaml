@@ -44,10 +44,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic4knqgryhxyggjjzipstwhrimpo4soeigp4ewpdanphfu4af27rq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifnucvqrpdhjhk424k4ocpfqe676ef2igkmfz3jk2nq5fl63sd5hm
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeiammcnczjcltq3lyrfgurn3bjsutw37mpfuxgfxqqbsizz46zvbyy
-- valory/trader_abci:0.1.0:bafybeibf45e3oeifbm5coyadrlsvxtthb4fmi2lluiq4uzsfg5nuxm7i4q
+- valory/decision_maker_abci:0.1.0:bafybeihgb2lh6ld6jrzxr3aypgqifh4j3o7isoxjgupdmevqpnmgnjisla
+- valory/trader_abci:0.1.0:bafybeid6bqnrszctzjzxovloxgyi5e4wfwxqrbtfxlwwmyfovbpcpk77ce
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
 - valory/mech_interact_abci:0.1.0:bafybeidxignwgujlkhw5hbek7xw2uz5nrd3h2xx7sj5zor263dgh4fm3p4
 customs:
@@ -176,6 +176,7 @@ models:
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       request_price: ${int:null}
       stop_trading: ${bool:false}
+      stop_trading_if_staking_kpi_met: ${bool:true}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion}
       use_fallback_strategy: ${bool:true}

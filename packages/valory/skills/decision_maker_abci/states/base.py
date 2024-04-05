@@ -85,9 +85,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return json.loads(tools)
 
     @property
-    def policy(self) -> EGreedyPolicy:
+    def policy(self) -> Optional[EGreedyPolicy]:
         """Get the policy."""
-        policy = self.db.get_strict("policy")
+        policy = self.db.get("policy")
+        if policy is None:
+            return None
         return EGreedyPolicy.deserialize(policy)
 
     @property

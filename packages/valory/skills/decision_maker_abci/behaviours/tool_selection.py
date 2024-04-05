@@ -194,7 +194,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
-        if self.is_first_period:
+        if self.is_first_period or not self.synchronized_data.policy:
             self._policy = self._get_init_policy()
             local_tools = self._try_recover_mech_tools()
             if local_tools is None:

@@ -15,7 +15,7 @@ fingerprint:
   behaviours/base.py: bafybeicg37b76cic7zuy2uvskhl7ohgv74o74w2fjbojwydhvh3hrywoz4
   behaviours/bet_placement.py: bafybeib7jgq7iyfoyj3ur3xkj6knh7t7vr32kc743ztyjskkdevyh6l75q
   behaviours/blacklisting.py: bafybeid2kwsrq3ityeqsixalpaxwwiduo3lvqs5uzqhw5yfccqz5hqm6im
-  behaviours/check_stop_trading_conditions.py: bafybeiddedi2oigijsgai6ouojnacl3sdeytlr3pcqoy4ubfpiyoc3igcu
+  behaviours/check_stop_trading_conditions.py: bafybeibnptz3asmzirauuwzdnj6kq3oubigejax2epcaz3vnveohjydwe4
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
   behaviours/decision_receive.py: bafybeid35xch5vsuuvtebu2yqedzeybbvc3kbt4d7q62efevhribmzg5gq
   behaviours/decision_request.py: bafybeibtvdjisudxyj677b7yctxnyo3tnrqdugevbfs27fmqnbo23cfexe
@@ -25,7 +25,7 @@ fingerprint:
   behaviours/reedem.py: bafybeihwe4azke5zbdu4rhhsx3bmjgnkagwkuowyowvkure2do2rg4ainy
   behaviours/round_behaviour.py: bafybeifyaipqmm2azcoeqfto6j5fsydegmw66u5xqrb7gf7yvhjwelyxwq
   behaviours/sampling.py: bafybeicptdufrilatorftw4afsuw36cmy3neieknm3z6duyp6awnpz5bb4
-  behaviours/tool_selection.py: bafybeicxw4je76uc7znx4u2hq2b2aaxcf7blwfla7lhdhkqnf3kkupsczq
+  behaviours/tool_selection.py: bafybeigw2btm4cf2sktzr47nfhn6otywzhwca3m6waff2vbl6wv6oifije
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeib6lazw6hocekzkojh56vicodnvkuxzhl2lwd6rck7ao6ilpixlky
   handlers.py: bafybeiggoetspwcvdojmbjdd67tmkoeedikmt6vsbcium3zjaljb6jzqu4
@@ -37,7 +37,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeib6eyrmsvbtvdrkzq3c2cswodfoac5n27mrvijzuxgo6fcthjiamy
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeida6fpny7ro2uutqvuversval3aqf5abgmjsp2ukcz5kodfxrl4ai
+  states/base.py: bafybeidt3v6uzjbg7ki7hgcuzk5qhwqfkdvonvei6oxjybrdru7aabent4
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeifruvxwwltndwazkzzbpc5nnnad3z5t5ofy6d3i7nssljbxl6gvxu
   states/check_stop_trading_conditions.py: bafybeicbbvqmv534trsgyebkuvkiuhitgm3udccgpqjha675gwilk2ihki
@@ -182,9 +182,10 @@ models:
       tendermint_url: http://localhost:26657
       tx_timeout: 10.0
       use_termination: false
-      mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
+      mech_contract_address: '0x77af31De935740567Cf4fF1986D04B2c964A786a'
       request_price: null
       stop_trading: false
+      stop_trading_if_staking_kpi_met: true
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
