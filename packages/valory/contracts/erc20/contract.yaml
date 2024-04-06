@@ -9,7 +9,7 @@ fingerprint:
   README.md: bafybeifmfma6rglvpa22odtozyosnp5mwljum64utxip2wgmezuhnjjjyi
   __init__.py: bafybeif5vpc3dfrlxlch7brbhmdwksabyzddpfqgm56vdbbkek3t3br6ke
   build/ERC20.json: bafybeiemn5b5nszuss7xj6lmvmjuendltp6wz7ubihdvd7c6wqw4bohbpa
-  contract.py: bafybeidxplm7cdvwjs5le2m2uxqj5km2aynyujcycbuimkmqfqyrl4oh2u
+  contract.py: bafybeien5pkaqqlwhp76r2jepzh4c2ww7nbyuyhwxqseeeojxpcmulxixm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: ERC20

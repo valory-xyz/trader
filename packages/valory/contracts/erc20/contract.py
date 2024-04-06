@@ -45,7 +45,7 @@ class ERC20(Contract):
     ) -> JSONLike:
         """Check the balance of the given account."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        balance_of = getattr(contract_instance.functions, "balanceOf")
+        balance_of = getattr(contract_instance.functions, "balanceOf")  # noqa
         token_balance = balance_of(account).call()
         wallet_balance = ledger_api.api.eth.get_balance(account)
         return dict(token=token_balance, wallet=wallet_balance)
