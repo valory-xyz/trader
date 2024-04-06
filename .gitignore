@@ -16,6 +16,7 @@ packages/valory/skills/reset_pause_abci/
 packages/valory/skills/transaction_settlement_abci/
 packages/valory/skills/termination_abci/
 
+packages/valory/contracts/erc20/
 packages/valory/contracts/mech/
 packages/valory/contracts/gnosis_safe_proxy_factory/
 packages/valory/contracts/multisend/
