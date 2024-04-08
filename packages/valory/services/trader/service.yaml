@@ -79,7 +79,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
@@ -176,7 +176,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
@@ -271,7 +271,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
@@ -366,7 +366,7 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31de935740567cf4ff1986d04b2c964a786a}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
