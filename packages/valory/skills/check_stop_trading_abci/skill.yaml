@@ -1,0 +1,144 @@
+name: check_stop_trading_abci
+author: valory
+version: 0.1.0
+type: skill
+description: This skill implements the check for stop trading for an AEA.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeicxomwratfnu3yqo5eav65ddxxrjfrzadqfgdcsp53dvft3xlv6ze
+  __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
+  behaviours.py: bafybeihqlyxdilwnn65teagzlw76bsubscgqafupw54hwxxnpj57og4rku
+  dialogues.py: bafybeictrrnwcijiejczy23dfvbx5kujgef3dulzqhs3etl2juvz5spm2e
+  fsm_specification.yaml: bafybeiefujlpmnqdbfxntv5vwtuwinnu6furbteghbunuv2m4dtfeijvyi
+  handlers.py: bafybeieo2n2khyzon3taqzo3jlsxf6lxhemu2pcszuiqfqt3p7gfqbsqzm
+  models.py: bafybeigbfnddkph4s5jwhvvd2nl5z6q7y26i2knc4btetvw2ovfwaa4nmm
+  payloads.py: bafybeih7byn5bno2ecmm3fx3yr4iw4rdcffvnqjpovxjvzqqfi34aykoee
+  rounds.py: bafybeib5w6zlsmhf2w65le57e7dkvghunfu6b5qu5jtyoiunrgptmjgckm
+fingerprint_ignore_patterns: []
+connections: []
+contracts:
+- valory/gnosis_safe:0.1.0:bafybeibq77mgzhyb23blf2eqmia3kc6io5karedfzhntvpcebeqdzrgyqa
+- valory/service_staking_token:0.1.0:bafybeibpe24zfvpipaut77tsutmednncjviqeoekxltsndovdz3ugek7bu
+protocols:
+- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
+- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
+behaviours:
+  main:
+    args: {}
+    class_name: CheckStopTradingRoundBehaviour
+handlers:
+  abci:
+    args: {}
+    class_name: ABCICheckStopTradingHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  benchmark_tool:
+    args:
+      log_dir: /logs
+    class_name: BenchmarkTool
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  params:
+    args:
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      genesis_config:
+        genesis_time: '2022-05-20T16:00:21.735122717Z'
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_num_blocks: '100000'
+            max_age_duration: '172800000000000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        voting_power: '10'
+      keeper_timeout: 30.0
+      max_attempts: 10
+      max_healthcheck: 120
+      multisend_address: '0x0000000000000000000000000000000000000000'
+      on_chain_service_id: null
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 10
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 350.0
+      service_id: check_stop_trading
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+      share_tm_config_on_startup: false
+      sleep_time: 5
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      termination_sleep: 900
+      tx_timeout: 10.0
+      use_termination: false
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
+      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      disable_trading: false
+      stop_trading_if_staking_kpi_met: true
+    class_name: CheckStopTradingParams
+  requests:
+    args: {}
+    class_name: Requests
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  state:
+    args: {}
+    class_name: SharedState
+dependencies: {}
+is_abstract: true
