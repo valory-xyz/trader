@@ -47,9 +47,9 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibl6b5negw35fumbvl6dvcu7dammqmac5x3htapu3p7yf7lkqr73a
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
 - valory/decision_maker_abci:0.1.0:bafybeigyrxb6ycg243crte5mmmut2znfhlnc43rqn3mnp3sylvf563teki
-- valory/trader_abci:0.1.0:bafybeie3wjbqbcgeeuxw3irtcgofwhlhsq25tz4mpgywef52m3wmtrlpwa
+- valory/trader_abci:0.1.0:bafybeigbex4w7e6jmuts7mmzwc466urybbkakd6walqubufocpnhqjxape
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
-- valory/check_stop_trading_abci:0.1.0:bafybeihd2awwfnwboe4tnb6gmrhtheg5py4m37sdqtxxn7z3wnhxxntku4
+- valory/check_stop_trading_abci:0.1.0:bafybeidqgwx3747hk3icoadjcly7ug2lp6nbg6p4afe2ziga3ph26j4e5u
 - valory/mech_interact_abci:0.1.0:bafybeig2kvyn52kskydyono5wmjsfwtzeq5pcsrtn7p72rfesjatzwgrnq
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -214,6 +214,8 @@ models:
         "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
         ["price", "1000000000000000000"]]}
       staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+      disable_trading: ${bool:false}
+      stop_trading_if_staking_kpi_met: ${bool:true}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}

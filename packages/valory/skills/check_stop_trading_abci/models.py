@@ -40,11 +40,14 @@ BenchmarkTool = BaseBenchmarkTool
 class CheckStopTradingParams(BaseParams):
     """CheckStopTrading parameters."""
 
+    staking_contract_address: str
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.staking_contract_address: str = self._ensure(
-            "staking_contract_address", kwargs, str
-        )
+        # TODO: inherit from staking abci?
+        #self.staking_contract_address: str = self._ensure(
+        #    "staking_contract_address", kwargs, str
+        #)
         self.disable_trading: bool = self._ensure(
             "disable_trading", kwargs, bool
         )

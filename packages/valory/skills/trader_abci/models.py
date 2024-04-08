@@ -26,6 +26,7 @@ from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
+from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.decision_maker_abci.models import (
     AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
 )
@@ -102,6 +103,7 @@ class TraderParams(
     TerminationParams,
     StakingParams,
     TxSettlementMultiplexerParams,
+    CheckStopTradingParams,
 ):
     """A model to represent the trader params."""
 

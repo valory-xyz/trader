@@ -25,6 +25,9 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.check_stop_trading_abci.behaviours import (
+    CheckStopTradingRoundBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.round_behaviour import (
     AgentDecisionMakerRoundBehaviour,
 )
@@ -71,5 +74,6 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *TransactionSettlementRoundBehaviour.behaviours,
         *PostTxSettlementFullBehaviour.behaviours,
         *StakingRoundBehaviour.behaviours,
+        *CheckStopTradingRoundBehaviour.behaviours,
     }
     background_behaviours_cls = {BackgroundBehaviour}  # type: ignore

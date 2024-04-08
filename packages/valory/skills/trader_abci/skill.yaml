@@ -8,12 +8,12 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeigx2uevbnytt6hpwfsrk32u6pyv5scyqvyyzm2a25xaufrxvkldxi
-  composition.py: bafybeidvxtqoghju4tkesiwi6qfzxe3zf2nbqmehimwvp5skmohkeozmei
+  behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
+  composition.py: bafybeidlwhwbcj3v62eqpte6saykvi4zijpxks2rin4ahk2e7kdfwggwom
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeiaulbsq76cc5h7jjz6oiezoui452mtyk6g2kbmhhzsggqrjqw4cuy
+  fsm_specification.yaml: bafybeicibuzg6mf6632jin3d6xylkb7if5o4dqpire6ijhor5v2e6rvo7u
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeigk7hs7xsfjoszsque6r6yvbrrhattfuli2nfend4istk465e6try
+  models.py: bafybeiffamdk53bhywlwiplfbsrhslaygl6jirfoxckqdnhqwpoevnisfa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -28,7 +28,7 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeigyrxb6ycg243crte5mmmut2znfhlnc43rqn3mnp3sylvf563teki
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibl6b5negw35fumbvl6dvcu7dammqmac5x3htapu3p7yf7lkqr73a
 - valory/staking_abci:0.1.0:bafybeibf565rftitlrlovlvchoe45ng72ctec74fsvrmegp3o4uepu4q2e
-- valory/check_stop_trading_abci:0.1.0:bafybeihd2awwfnwboe4tnb6gmrhtheg5py4m37sdqtxxn7z3wnhxxntku4
+- valory/check_stop_trading_abci:0.1.0:bafybeidqgwx3747hk3icoadjcly7ug2lp6nbg6p4afe2ziga3ph26j4e5u
 - valory/mech_interact_abci:0.1.0:bafybeig2kvyn52kskydyono5wmjsfwtzeq5pcsrtn7p72rfesjatzwgrnq
 behaviours:
   main:
@@ -182,6 +182,8 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      disable_trading: false
+      stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       redeem_round_timeout: 3600.0
