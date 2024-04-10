@@ -41,6 +41,7 @@ class CheckStopTradingParams(BaseParams):
     """CheckStopTrading parameters."""
 
     staking_contract_address: str
+    mech_contract_address: str
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
