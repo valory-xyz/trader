@@ -36,16 +36,13 @@ from packages.valory.skills.staking_abci.behaviours import (
     StakingInteractBaseBehaviour,
     WaitableConditionType,
 )
+from packages.valory.contracts.service_staking_token.contract import StakingState
 
 
 class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     """A behaviour that checks stop trading conditions."""
 
     matching_round = CheckStopTradingRound
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the behaviour."""
-        super().__init__(**kwargs)
 
     @property
     def mech_request_count(self) -> int:
@@ -80,7 +77,11 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         return cast(CheckStopTradingParams, self.context.params)
 
     def is_staking_kpi_met(self) -> WaitableConditionType:
-        """Return whether the staking KPI has been met."""
+        """Return whether the staking KPI has been met (only for staked services)."""
+        yield from self.wait_for_condition_with_sleep(self._check_service_staked)
+        self.context.logger.info(f"{self.service_staking_state=}")
+        if self.service_staking_state != StakingState.STAKED:
+            return False
 
         yield from self.wait_for_condition_with_sleep(self._get_mech_request_count)
         mech_request_count = self.mech_request_count
