@@ -130,13 +130,18 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             if self.is_first_period:
                 stop_trading = False
             else:
+                stop_trading_conditions = []
+
                 disable_trading = self.params.disable_trading
                 self.context.logger.info(f"{disable_trading=}")
+                stop_trading_conditions.append(disable_trading)
 
-                staking_kpi_met = yield from self.is_staking_kpi_met()
-                self.context.logger.info(f"{staking_kpi_met=}")
+                if self.params.stop_trading_if_staking_kpi_met:
+                    staking_kpi_met = yield from self.is_staking_kpi_met()
+                    self.context.logger.info(f"{staking_kpi_met=}")
+                    stop_trading_conditions.append(staking_kpi_met)
 
-                stop_trading = any([disable_trading, staking_kpi_met])
+                stop_trading = any(stop_trading_conditions)
 
             self.context.logger.info(f"{stop_trading=}")
             payload = CheckStopTradingPayload(
