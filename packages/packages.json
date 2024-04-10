@@ -18,7 +18,7 @@
         "skill/valory/staking_abci/0.1.0": "bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeihs2yjqyqno6h5pmhrwlpgnoqunnho54p2y46ut2hmorsaz36quru",
         "agent/valory/trader/0.1.0": "bafybeignyb7bcsysmks3v7wzspscocy5t63oc4ucpakcs5vmc2g3eebxm4",
-        "service/valory/trader/0.1.0": "bafybeihv4m7py577dfzp5nefvoqlxm5msxnc6weo53nfi6wjfdzgj6ztsu"
+        "service/valory/trader/0.1.0": "bafybeiewwtagcb6kndddzqapebdmuwrywa67nrcyud6wi32oaw5uunxyyi"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
