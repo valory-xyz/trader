@@ -31,17 +31,15 @@ from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.check_stop_trading_abci.rounds import CheckStopTradingAbciApp
+from packages.valory.skills.staking_abci.models import StakingParams
 
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
 
-class CheckStopTradingParams(BaseParams):
+class CheckStopTradingParams(StakingParams):
     """CheckStopTrading parameters."""
-
-    staking_contract_address: str
-    mech_contract_address: str
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""

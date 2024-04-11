@@ -59,7 +59,6 @@ from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
-from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.termination_abci.models import TerminationParams
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
 from packages.valory.skills.transaction_settlement_abci.rounds import Event as TSEvent
@@ -101,9 +100,8 @@ class RandomnessApi(ApiSpecs):
 class TraderParams(
     DecisionMakerParams,  # It also contains MechInteractParams
     TerminationParams,
-    StakingParams,
     TxSettlementMultiplexerParams,
-    CheckStopTradingParams,
+    CheckStopTradingParams,  # It also contains StakingParams
 ):
     """A model to represent the trader params."""
 

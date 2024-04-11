@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicibuzg6mf6632jin3d6xylkb7if5o4dqpire6ijhor5v2e6rvo7u
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeiffamdk53bhywlwiplfbsrhslaygl6jirfoxckqdnhqwpoevnisfa
+  models.py: bafybeih2bhwwqms32da3zlcpxfwoy725xdbs42e7u55enwuscacffwchaa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -28,7 +28,7 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeihl4fyyjj34kvouh3ujmekqm4vsn5eabpfsww7danwyqmfhxxlequ
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifmyrqtgp4duq65ag3pnbid2xlgxemefln3mshccs6dnhdtieg4la
 - valory/staking_abci:0.1.0:bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4
-- valory/check_stop_trading_abci:0.1.0:bafybeig7doeus3ezz57nazjmjd6qkkbkuptr3rf4btbbuxsx767jsxcnha
+- valory/check_stop_trading_abci:0.1.0:bafybeigqdtgp44ocop6btftb5zfrq4yrjunsr5ija2dxpvpalxqmlqxzbm
 - valory/mech_interact_abci:0.1.0:bafybeihovtfa2oocrx32pdq2af6ey37om7q7b2gy3kkd3azv6mjrclohsy
 behaviours:
   main:
