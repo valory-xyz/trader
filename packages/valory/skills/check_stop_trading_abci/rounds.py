@@ -65,11 +65,6 @@ class SynchronizedData(BaseSynchronizedData):
         """Get if the service must stop trading."""
         return bool(self.db.get("stop_trading", False))
 
-    @property
-    def participant_to_selection(self) -> DeserializedCollection:
-        """Get the participants to selection round."""
-        return self._get_deserialized("participant_to_selection")
-
 
 class CheckStopTradingRound(CollectSameUntilThresholdRound):
     """A round for checking stop trading conditions."""
@@ -79,7 +74,7 @@ class CheckStopTradingRound(CollectSameUntilThresholdRound):
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (get_name(SynchronizedData.stop_trading),)
+    selection_key = get_name(SynchronizedData.stop_trading)
     collection_key = get_name(SynchronizedData.participant_to_selection)
 
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
@@ -101,7 +96,7 @@ class FinishedCheckStopTradingRound(DegenerateRound, ABC):
     """A round that represents check stop trading has finished."""
 
 
-class FinishedCheckStopTradingWithSkipTradingRound(DegenerateRound, ABC):
+class FinishedWithSkipTradingRound(DegenerateRound, ABC):
     """A round that represents check stop trading has finished with skip trading."""
 
 
@@ -120,9 +115,9 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
             - no majority: 0.
             - skip trading: 2.
         1. FinishedCheckStopTradingRound
-        2. FinishedCheckStopTradingWithSkipTradingRound
+        2. FinishedWithSkipTradingRound
 
-    Final states: {FinishedCheckStopTradingRound, FinishedCheckStopTradingWithSkipTradingRound}
+    Final states: {FinishedCheckStopTradingRound, FinishedWithSkipTradingRound}
 
     Timeouts:
         round timeout: 30.0
@@ -135,14 +130,14 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
             Event.NONE: CheckStopTradingRound,
             Event.ROUND_TIMEOUT: CheckStopTradingRound,
             Event.NO_MAJORITY: CheckStopTradingRound,
-            Event.SKIP_TRADING: FinishedCheckStopTradingWithSkipTradingRound,
+            Event.SKIP_TRADING: FinishedWithSkipTradingRound,
         },
         FinishedCheckStopTradingRound: {},
-        FinishedCheckStopTradingWithSkipTradingRound: {},
+        FinishedWithSkipTradingRound: {},
     }
     final_states: Set[AppState] = {
         FinishedCheckStopTradingRound,
-        FinishedCheckStopTradingWithSkipTradingRound,
+        FinishedWithSkipTradingRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -150,5 +145,5 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
     db_pre_conditions: Dict[AppState, Set[str]] = {CheckStopTradingRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedCheckStopTradingRound: set(),
-        FinishedCheckStopTradingWithSkipTradingRound: set(),
+        FinishedWithSkipTradingRound: set(),
     }

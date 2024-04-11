@@ -7,17 +7,17 @@ alphabet_in:
 default_start_state: CheckStopTradingRound
 final_states:
 - FinishedCheckStopTradingRound
-- FinishedCheckStopTradingWithSkipTradingRound
+- FinishedWithSkipTradingRound
 label: CheckStopTradingAbciApp
 start_states:
 - CheckStopTradingRound
 states:
 - CheckStopTradingRound
 - FinishedCheckStopTradingRound
-- FinishedCheckStopTradingWithSkipTradingRound
+- FinishedWithSkipTradingRound
 transition_func:
     (CheckStopTradingRound, DONE): FinishedCheckStopTradingRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
-    (CheckStopTradingRound, SKIP_TRADING): FinishedCheckStopTradingWithSkipTradingRound
+    (CheckStopTradingRound, SKIP_TRADING): FinishedWithSkipTradingRound

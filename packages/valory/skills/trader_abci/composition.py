@@ -28,7 +28,7 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
     FinishedCheckStopTradingRound,
-    FinishedCheckStopTradingWithSkipTradingRound,
+    FinishedWithSkipTradingRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
@@ -111,7 +111,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: SamplingRound,
-    FinishedCheckStopTradingWithSkipTradingRound: RedeemRound,
+    FinishedWithSkipTradingRound: RedeemRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
     ChecksPassedRound: RandomnessTransactionSubmissionRound,

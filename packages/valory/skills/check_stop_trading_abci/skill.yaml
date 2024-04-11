@@ -6,15 +6,15 @@ description: This skill implements the check for stop trading for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeicxomwratfnu3yqo5eav65ddxxrjfrzadqfgdcsp53dvft3xlv6ze
+  README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeieaps6wnm7ovxljp5mlfsgldb5qkwy35hjslhlugmdg256ifhjcqy
+  behaviours.py: bafybeifuppqvkvx276mlxsggyw3eaph3msyp573f2rmwlxyszy6fyzk7kq
   dialogues.py: bafybeictrrnwcijiejczy23dfvbx5kujgef3dulzqhs3etl2juvz5spm2e
-  fsm_specification.yaml: bafybeiefujlpmnqdbfxntv5vwtuwinnu6furbteghbunuv2m4dtfeijvyi
+  fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
   handlers.py: bafybeiard64fwxib3rtyp67ymhf222uongcyqhfhdyttpsyqkmyh5ajipu
   models.py: bafybeiecrxmuts2whh3vz5a7thoy55ef3dkjidkdgyn6amy3uxss4x2fwa
   payloads.py: bafybeih7byn5bno2ecmm3fx3yr4iw4rdcffvnqjpovxjvzqqfi34aykoee
-  rounds.py: bafybeib5w6zlsmhf2w65le57e7dkvghunfu6b5qu5jtyoiunrgptmjgckm
+  rounds.py: bafybeifr63su5tzshv6vh4vdn4swxw3qruatwrns7flzu42bznevsxifwi
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -126,7 +126,6 @@ models:
       slash_threshold_amount: 10000000000000000
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
-      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
     class_name: CheckStopTradingParams

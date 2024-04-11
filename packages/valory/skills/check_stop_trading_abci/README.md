@@ -2,4 +2,4 @@
 
 ## Description
 
-This module contains the check stop trading skill for an AEA.
+This package contains the check stop trading skill for an AEA.

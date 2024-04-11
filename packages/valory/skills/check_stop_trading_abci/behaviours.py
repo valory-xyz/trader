@@ -39,6 +39,13 @@ from packages.valory.skills.staking_abci.behaviours import (
 from packages.valory.contracts.service_staking_token.contract import StakingState
 
 
+# Liveness ratio from the staking contract is expressed in calls per 10**18 seconds.
+LIVENESS_RATIO_SCALE_FACTOR = 10**18
+
+# A safety margin in case there is a delay between the moment the KPI condition is
+# satisfied, and the moment where the checkpoint is called.
+REQUIRED_MECH_REQUESTS_SAFETY_MARGIN = 1
+
 class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     """A behaviour that checks stop trading conditions."""
 
@@ -110,9 +117,9 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         self.context.logger.info(f"{current_timestamp=}")
 
         required_mech_requests = math.ceil(max(
-            (current_timestamp - last_ts_checkpoint) * liveness_ratio / 10**18,
-            (liveness_period) * liveness_ratio / 10**18
-        )) + 1
+            (current_timestamp - last_ts_checkpoint) * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR,
+            (liveness_period) * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR
+        )) + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
         self.context.logger.info(f"{required_mech_requests=}")
 
         if mech_requests_since_last_cp >= required_mech_requests:
