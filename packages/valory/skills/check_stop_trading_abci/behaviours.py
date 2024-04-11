@@ -86,71 +86,73 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     def is_staking_kpi_met(self) -> WaitableConditionType:
         """Return whether the staking KPI has been met (only for staked services)."""
         yield from self.wait_for_condition_with_sleep(self._check_service_staked)
-        self.context.logger.info(f"{self.service_staking_state=}")
+        self.context.logger.debug(f"{self.service_staking_state=}")
         if self.service_staking_state != StakingState.STAKED:
             return False
 
         yield from self.wait_for_condition_with_sleep(self._get_mech_request_count)
         mech_request_count = self.mech_request_count
-        self.context.logger.info(f"{self.mech_request_count=}")
+        self.context.logger.debug(f"{self.mech_request_count=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_service_info)
         mech_request_count_on_last_checkpoint = self.service_info[2][1]
-        self.context.logger.info(f"{mech_request_count_on_last_checkpoint=}")
+        self.context.logger.debug(f"{mech_request_count_on_last_checkpoint=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
         last_ts_checkpoint = self.ts_checkpoint
-        self.context.logger.info(f"{last_ts_checkpoint=}")
+        self.context.logger.debug(f"{last_ts_checkpoint=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
         liveness_period = self.liveness_period
-        self.context.logger.info(f"{liveness_period=}")
+        self.context.logger.debug(f"{liveness_period=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_liveness_ratio)
         liveness_ratio = self.liveness_ratio
-        self.context.logger.info(f"{liveness_ratio=}")
+        self.context.logger.debug(f"{liveness_ratio=}")
 
         mech_requests_since_last_cp = mech_request_count - mech_request_count_on_last_checkpoint
-        self.context.logger.info(f"{mech_requests_since_last_cp=}")
+        self.context.logger.debug(f"{mech_requests_since_last_cp=}")
 
         current_timestamp = self.synced_timestamp
-        self.context.logger.info(f"{current_timestamp=}")
+        self.context.logger.debug(f"{current_timestamp=}")
 
         required_mech_requests = math.ceil(max(
             (current_timestamp - last_ts_checkpoint) * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR,
             (liveness_period) * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR
         )) + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
-        self.context.logger.info(f"{required_mech_requests=}")
+        self.context.logger.debug(f"{required_mech_requests=}")
 
         if mech_requests_since_last_cp >= required_mech_requests:
             return True
         return False
 
+    def _compute_stop_trading(self) -> Generator:
+        # This is a "hacky" way of getting required data initialized on
+        # the Trader: On first period, the FSM needs to initialize some
+        # data on the trading branch so that it is available in the
+        # cross-period persistent keys.
+        if self.is_first_period:
+            self.context.logger.debug(f"{self.is_first_period=}")
+            return False
+
+        stop_trading_conditions = []
+
+        self.context.logger.debug(f"{self.params.disable_trading=}")
+        stop_trading_conditions.append(self.params.disable_trading)
+
+        self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
+        if self.params.stop_trading_if_staking_kpi_met:
+            staking_kpi_met = yield from self.is_staking_kpi_met()
+            self.context.logger.debug(f"{staking_kpi_met=}")
+            stop_trading_conditions.append(staking_kpi_met)
+
+        return any(stop_trading_conditions)
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-
-            # This is a "hacky" way of getting required data initialized on
-            # the Trader: On first period, the FSM needs to initialize some
-            # data on the trading branch so that it is available in the
-            # cross-period persistent keys.
-            if self.is_first_period:
-                stop_trading = False
-            else:
-                stop_trading_conditions = []
-
-                disable_trading = self.params.disable_trading
-                self.context.logger.info(f"{disable_trading=}")
-                stop_trading_conditions.append(disable_trading)
-
-                if self.params.stop_trading_if_staking_kpi_met:
-                    staking_kpi_met = yield from self.is_staking_kpi_met()
-                    self.context.logger.info(f"{staking_kpi_met=}")
-                    stop_trading_conditions.append(staking_kpi_met)
-
-                stop_trading = any(stop_trading_conditions)
-
-            self.context.logger.info(f"{stop_trading=}")
+            stop_trading = yield from self._compute_stop_trading()
+            self.context.logger.info(f"Computed {stop_trading=}")
             payload = CheckStopTradingPayload(
                 self.context.agent_address, stop_trading
             )
