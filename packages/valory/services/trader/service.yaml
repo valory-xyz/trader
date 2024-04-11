@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig2clkaul65rgkttohpj6c5dvry2brux2krjw2aua2mzxidfsjmn4
+agent: valory/trader:0.1.0:bafybeihlc6vtlokdt4wxxt7jqto6rokydpn2xhlqpmny3cs4s76flaeeoq
 number_of_agents: 4
 deployment: {}
 ---
@@ -81,6 +81,8 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        wrapped_native_token_address: ${WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
@@ -180,6 +182,8 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        wrapped_native_token_address: ${WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
@@ -277,6 +281,8 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        wrapped_native_token_address: ${WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
@@ -374,6 +380,8 @@ type: skill
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         request_price: ${REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        wrapped_native_token_address: ${WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
