@@ -76,7 +76,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/mech_interact_abci:0.1.0:bafybeihvjtdg47pchoutcuh5l7jwiclpowriymtj7nyud22cetjjxggeiy
+- valory/mech_interact_abci:0.1.0:bafybeib3aytq2a5hk6vjsak3eznuilndx4p53utdylbyhcmt6ty7kk6euq
 behaviours:
   main:
     args: {}
@@ -181,7 +181,9 @@ models:
       tx_timeout: 10.0
       use_termination: false
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
-      request_price: null
+      mech_request_price: null
+      mech_chain_id: gnosis
+      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true

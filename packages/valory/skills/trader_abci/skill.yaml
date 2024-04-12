@@ -25,11 +25,11 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeif64m3zztadm2jjonorlwc2lpppqmqktig4jvfvycz3w5qv6sfrpa
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigwosmf2ltoh2wkwppgftqzucktzq2b7eiakhtclnfybpsusregde
+- valory/decision_maker_abci:0.1.0:bafybeibvq365gs7ibi7bkzoqyiirdcbpros2q7z3zpsqxhbcfy5d77y7je
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibcuvrm5fvmh7nuee4tmbof6debprdqzhvhdpzp2dbddtwva4wz3y
 - valory/staking_abci:0.1.0:bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4
 - valory/check_stop_trading_abci:0.1.0:bafybeifho6gdnpx3j2czez4iotjhgropakiubzya6ceag556ijjqc5gfay
-- valory/mech_interact_abci:0.1.0:bafybeihvjtdg47pchoutcuh5l7jwiclpowriymtj7nyud22cetjjxggeiy
+- valory/mech_interact_abci:0.1.0:bafybeib3aytq2a5hk6vjsak3eznuilndx4p53utdylbyhcmt6ty7kk6euq
 behaviours:
   main:
     args: {}
@@ -149,9 +149,9 @@ models:
       average_block_time: 5
       abt_error_mult: 5
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
-      request_price: null
+      mech_request_price: null
       mech_chain_id: gnosis
-      wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
+      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
