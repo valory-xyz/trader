@@ -20,7 +20,7 @@
 """This module contains the behaviours for the check stop trading skill."""
 
 import math
-from typing import Any, Generator, Set, Type, cast
+from typing import Generator, Set, Type, cast
 
 from packages.valory.contracts.mech.contract import Mech as MechContract
 from packages.valory.skills.abstract_round_abci.base import get_name
@@ -83,7 +83,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         """Return the params."""
         return cast(CheckStopTradingParams, self.context.params)
 
-    def is_staking_kpi_met(self) -> WaitableConditionType:
+    def is_staking_kpi_met(self) -> Generator[None, None, bool]:
         """Return whether the staking KPI has been met (only for staked services)."""
         yield from self.wait_for_condition_with_sleep(self._check_service_staked)
         self.context.logger.debug(f"{self.service_staking_state=}")
