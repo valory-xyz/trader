@@ -28,4 +28,4 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 class CheckStopTradingPayload(BaseTxPayload):
     """A transaction payload for the check stop trading abci."""
 
-    stop_trading: bool
+    vote: bool

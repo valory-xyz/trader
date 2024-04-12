@@ -21,20 +21,18 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type, cast
+from typing import Dict, Set, Tuple, Type, cast
 
-from packages.valory.contracts.service_staking_token.contract import StakingState
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
     AbstractRound,
     AppState,
     BaseSynchronizedData,
-    CollectSameUntilThresholdRound,
+    VotingRound,
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
-    get_name,
 )
 from packages.valory.skills.check_stop_trading_abci.payloads import CheckStopTradingPayload
 
@@ -60,36 +58,16 @@ class SynchronizedData(BaseSynchronizedData):
         serialized = self.db.get_strict(key)
         return CollectionRound.deserialize_collection(serialized)
 
-    @property
-    def stop_trading(self) -> bool:
-        """Get if the service must stop trading."""
-        return bool(self.db.get("stop_trading", False))
 
-
-class CheckStopTradingRound(CollectSameUntilThresholdRound):
+class CheckStopTradingRound(VotingRound):
     """A round for checking stop trading conditions."""
 
     payload_class = CheckStopTradingPayload
     synchronized_data_class = SynchronizedData
-    done_event = Event.DONE
+    done_event = Event.SKIP_TRADING
+    negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.stop_trading)
-    collection_key = get_name(SynchronizedData.participant_to_selection)
-
-    def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
-        """Process the end of the block."""
-        res = super().end_block()
-        if res is None:
-            return None
-
-        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        stop_trading_payload = self.most_voted_payload
-
-        if event == Event.DONE and stop_trading_payload == True:
-            return synced_data, Event.SKIP_TRADING
-
-        return synced_data, event
 
 
 class FinishedCheckStopTradingRound(DegenerateRound, ABC):
