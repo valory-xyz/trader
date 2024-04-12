@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Tuple, Type, cast
+from typing import Dict, Set, Type
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -29,6 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     AppState,
     BaseSynchronizedData,
+    get_name,
     VotingRound,
     CollectionRound,
     DegenerateRound,
@@ -68,6 +69,7 @@ class CheckStopTradingRound(VotingRound):
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(SynchronizedData.participant_to_votes)
 
 
 class FinishedCheckStopTradingRound(DegenerateRound, ABC):
