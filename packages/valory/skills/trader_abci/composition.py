@@ -24,6 +24,12 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
     chain,
 )
 from packages.valory.skills.abstract_round_abci.base import BackgroundAppConfig
+from packages.valory.skills.check_stop_trading_abci.rounds import (
+    CheckStopTradingAbciApp,
+    CheckStopTradingRound,
+    FinishedCheckStopTradingRound,
+    FinishedWithSkipTradingRound,
+)
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
     ClaimRound,
@@ -103,7 +109,9 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: UpdateBetsRound,
-    FinishedMarketManagerRound: SamplingRound,
+    FinishedMarketManagerRound: CheckStopTradingRound,
+    FinishedCheckStopTradingRound: SamplingRound,
+    FinishedWithSkipTradingRound: RedeemRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
     ChecksPassedRound: RandomnessTransactionSubmissionRound,
@@ -146,6 +154,7 @@ TraderAbciApp = chain(
         TxSettlementMultiplexerAbciApp,
         ResetPauseAbciApp,
         StakingAbciApp,
+        CheckStopTradingAbciApp,
     ),
     abci_app_transition_mapping,
 ).add_background_app(termination_config)

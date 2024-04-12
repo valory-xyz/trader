@@ -26,6 +26,7 @@ from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
+from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.decision_maker_abci.models import (
     AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
 )
@@ -58,7 +59,6 @@ from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
-from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.termination_abci.models import TerminationParams
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
 from packages.valory.skills.transaction_settlement_abci.rounds import Event as TSEvent
@@ -100,8 +100,8 @@ class RandomnessApi(ApiSpecs):
 class TraderParams(
     DecisionMakerParams,  # It also contains MechInteractParams
     TerminationParams,
-    StakingParams,
     TxSettlementMultiplexerParams,
+    CheckStopTradingParams,  # It also contains StakingParams
 ):
     """A model to represent the trader params."""
 

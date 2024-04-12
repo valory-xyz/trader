@@ -19,8 +19,9 @@
 
 """This module contains the behaviours for the staking skill."""
 
+from abc import ABC
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, Optional, Set, Type, cast
+from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, cast
 
 from aea.configurations.data_types import PublicId
 
@@ -59,33 +60,29 @@ ETH_PRICE = 0
 SAFE_GAS = 0
 
 
-class CallCheckpointBehaviour(BaseBehaviour):
-    """Behaviour that calls the checkpoint contract function if the service is staked and if it is necessary."""
-
-    matching_round = CallCheckpointRound
+class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
+    """Base behaviour that contains methods to interact with the staking contract."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
-        self._service_staking_state: StakingState = StakingState.UNSTAKED
-        self._next_checkpoint: int = 0
-        self._checkpoint_data: bytes = b""
-        self._safe_tx_hash: str = ""
-
-    @property
-    def params(self) -> StakingParams:
-        """Return the params."""
-        return cast(StakingParams, self.context.params)
-
-    @property
-    def synchronized_data(self) -> SynchronizedData:
-        """Return the synchronized data."""
-        return SynchronizedData(super().synchronized_data.db)
+        params = cast(StakingParams, self.context.params)
+        self._staking_contract_address = params.staking_contract_address
 
     @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+
+    @property
+    def staking_contract_address(self) -> str:
+        """Get the staking contract address."""
+        return self._staking_contract_address
+
+    @staking_contract_address.setter
+    def staking_contract_address(self, staking_contract_address: str) -> None:
+        """Set the staking contract address."""
+        self._staking_contract_address = staking_contract_address
 
     @property
     def service_staking_state(self) -> StakingState:
@@ -104,7 +101,7 @@ class CallCheckpointBehaviour(BaseBehaviour):
 
     @next_checkpoint.setter
     def next_checkpoint(self, next_checkpoint: int) -> None:
-        """Whether the service is staked."""
+        """Set the next checkpoint."""
         self._next_checkpoint = next_checkpoint
 
     @property
@@ -113,30 +110,44 @@ class CallCheckpointBehaviour(BaseBehaviour):
         return self.next_checkpoint <= self.synced_timestamp
 
     @property
-    def checkpoint_data(self) -> bytes:
-        """Get the checkpoint data."""
-        return self._checkpoint_data
+    def ts_checkpoint(self) -> int:
+        """Get the last checkpoint timestamp."""
+        return self._checkpoint_ts
 
-    @checkpoint_data.setter
-    def checkpoint_data(self, data: bytes) -> None:
-        """Set the request data."""
-        self._checkpoint_data = data
+    @ts_checkpoint.setter
+    def ts_checkpoint(self, checkpoint_ts: int) -> None:
+        """Set the last checkpoint timestamp."""
+        self._checkpoint_ts = checkpoint_ts
 
     @property
-    def safe_tx_hash(self) -> str:
-        """Get the safe_tx_hash."""
-        return self._safe_tx_hash
+    def liveness_period(self) -> int:
+        """Get the liveness period."""
+        return self._liveness_period
 
-    @safe_tx_hash.setter
-    def safe_tx_hash(self, safe_hash: str) -> None:
-        """Set the safe_tx_hash."""
-        length = len(safe_hash)
-        if length != TX_HASH_LENGTH:
-            raise ValueError(
-                f"Incorrect length {length} != {TX_HASH_LENGTH} detected "
-                f"when trying to assign a safe transaction hash: {safe_hash}"
-            )
-        self._safe_tx_hash = safe_hash[2:]
+    @liveness_period.setter
+    def liveness_period(self, liveness_period: int) -> None:
+        """Set the liveness period."""
+        self._liveness_period = liveness_period
+
+    @property
+    def liveness_ratio(self) -> int:
+        """Get the liveness ratio."""
+        return self._liveness_ratio
+
+    @liveness_ratio.setter
+    def liveness_ratio(self, liveness_ratio: int) -> None:
+        """Set the liveness period."""
+        self._liveness_ratio = liveness_ratio
+
+    @property
+    def service_info(self) -> Tuple[Any]:
+        """Get the service info."""
+        return self._service_info
+
+    @service_info.setter
+    def service_info(self, service_info: Tuple[Any]) -> None:
+        """Set the service info."""
+        self._service_info = service_info
 
     def wait_for_condition_with_sleep(
         self,
@@ -217,7 +228,7 @@ class CallCheckpointBehaviour(BaseBehaviour):
     ) -> WaitableConditionType:
         """Interact with the staking contract."""
         status = yield from self.contract_interact(
-            contract_address=self.params.staking_contract_address,
+            contract_address=self.staking_contract_address,
             contract_public_id=ServiceStakingTokenContract.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
@@ -251,6 +262,99 @@ class CallCheckpointBehaviour(BaseBehaviour):
             placeholder=get_name(CallCheckpointBehaviour.next_checkpoint),
         )
         return status
+
+    def _get_ts_checkpoint(self) -> WaitableConditionType:
+        """Get the timestamp in which the next checkpoint is reached."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="ts_checkpoint",
+            placeholder=get_name(CallCheckpointBehaviour.ts_checkpoint),
+        )
+        return status
+
+    def _get_liveness_period(self) -> WaitableConditionType:
+        """Get the liveness period."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_liveness_period",
+            placeholder=get_name(CallCheckpointBehaviour.liveness_period),
+        )
+        return status
+
+    def _get_liveness_ratio(self) -> WaitableConditionType:
+        """Get the liveness ratio."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="liveness_ratio",
+            placeholder=get_name(CallCheckpointBehaviour.liveness_ratio),
+        )
+        return status
+
+    def _get_service_info(self) -> WaitableConditionType:
+        """Get the service info."""
+        service_id = self.params.on_chain_service_id
+        if service_id is None:
+            self.context.logger.warning(
+                "Cannot perform any staking-related operations without a configured on-chain service id. "
+                "Assuming service status 'UNSTAKED'."
+            )
+            return True
+
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_service_info",
+            placeholder=get_name(CallCheckpointBehaviour.service_info),
+            service_id=service_id,
+        )
+        return status
+
+
+class CallCheckpointBehaviour(
+    StakingInteractBaseBehaviour
+):  # pylint-disable too-many-ancestors
+    """Behaviour that calls the checkpoint contract function if the service is staked and if it is necessary."""
+
+    matching_round = CallCheckpointRound
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the behaviour."""
+        super().__init__(**kwargs)
+        self._service_staking_state: StakingState = StakingState.UNSTAKED
+        self._next_checkpoint: int = 0
+        self._checkpoint_data: bytes = b""
+        self._safe_tx_hash: str = ""
+
+    @property
+    def params(self) -> StakingParams:
+        """Return the params."""
+        return cast(StakingParams, self.context.params)
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(super().synchronized_data.db)
+
+    @property
+    def checkpoint_data(self) -> bytes:
+        """Get the checkpoint data."""
+        return self._checkpoint_data
+
+    @checkpoint_data.setter
+    def checkpoint_data(self, data: bytes) -> None:
+        """Set the request data."""
+        self._checkpoint_data = data
+
+    @property
+    def safe_tx_hash(self) -> str:
+        """Get the safe_tx_hash."""
+        return self._safe_tx_hash
+
+    @safe_tx_hash.setter
+    def safe_tx_hash(self, safe_hash: str) -> None:
+        """Set the safe_tx_hash."""
+        length = len(safe_hash)
+        if length != TX_HASH_LENGTH:
+            raise ValueError(
+                f"Incorrect length {length} != {TX_HASH_LENGTH} detected "
+                f"when trying to assign a safe transaction hash: {safe_hash}"
+            )
+        self._safe_tx_hash = safe_hash[2:]
 
     def _build_checkpoint_tx(self) -> WaitableConditionType:
         """Get the request tx data encoded."""

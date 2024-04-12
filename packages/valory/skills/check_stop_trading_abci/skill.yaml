@@ -1,38 +1,37 @@
-name: staking_abci
+name: check_stop_trading_abci
 author: valory
 version: 0.1.0
 type: skill
-description: This skill implements the Staking for an AEA.
+description: This skill implements the check for stop trading for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
-  __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeibio2hl5vic3zpx4oyco2jsqfhc2nn5xyoazfjosdk4r7o5d7oj74
-  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
-  handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeidznu5ci73f34mcvjc4i7pgzrhjuc3z56hczhbvr2o74unioliqre
-  payloads.py: bafybeibnub5ehb2mvpcoan3x23pp5oz4azpofwrtcl32abswcfl4cmjlwq
-  rounds.py: bafybeigrzzs6c2kf3lrqh3nw2ww6zhq2riyjbwaponblsnu42zciachgwe
+  README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
+  __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
+  behaviours.py: bafybeifun2lehddh6az5h7unpa5kix7vi6e2obejfhfwwzjbdhelagmeoe
+  dialogues.py: bafybeictrrnwcijiejczy23dfvbx5kujgef3dulzqhs3etl2juvz5spm2e
+  fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
+  handlers.py: bafybeiard64fwxib3rtyp67ymhf222uongcyqhfhdyttpsyqkmyh5ajipu
+  models.py: bafybeietyrst4ng4dtncerz4cz4urqoqar5rui3mbqfeemhjns4jgxhrzy
+  payloads.py: bafybeidh5bqywun4chrbsci2xbcrnnzuys5sswxwbxq3yl2ksawi3xsi5q
+  rounds.py: bafybeieif76cskoxxi7d6rptvj6iq5joevfcpgwhm3jwzrd46rdfahb2oa
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeibq77mgzhyb23blf2eqmia3kc6io5karedfzhntvpcebeqdzrgyqa
 - valory/service_staking_token:0.1.0:bafybeid44l7qekvkwkvmfl4kcqchnaktttacp7lbx464mzqqs5cnefj35e
-protocols:
-- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+- valory/mech:0.1.0:bafybeiejkna5d7hllaxm6avsnffxfs6n4nx2lncmjz6iodkt2xhcy3mbva
+protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
-- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
+- valory/staking_abci:0.1.0:bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4
 behaviours:
   main:
     args: {}
-    class_name: StakingRoundBehaviour
+    class_name: CheckStopTradingRoundBehaviour
 handlers:
   abci:
     args: {}
-    class_name: ABCIStakingHandler
+    class_name: ABCICheckStopTradingHandler
   contract_api:
     args: {}
     class_name: ContractApiHandler
@@ -105,7 +104,7 @@ models:
       retry_attempts: 400
       retry_timeout: 3
       round_timeout_seconds: 350.0
-      service_id: staking
+      service_id: check_stop_trading
       service_registry_address: null
       setup:
         all_participants:
@@ -127,8 +126,9 @@ models:
       slash_threshold_amount: 10000000000000000
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
-      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
-    class_name: StakingParams
+      disable_trading: false
+      stop_trading_if_staking_kpi_met: true
+    class_name: CheckStopTradingParams
   requests:
     args: {}
     class_name: Requests
