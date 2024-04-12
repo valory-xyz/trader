@@ -23,3 +23,6 @@ fc7d0697d1543849b07750430843e6b01426cc7a:packages/valory/services/trader_omen_gn
 63bb4c2347c3def7bd65d554c8d536b79325afb9:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:154
 809a4d8befaf483c8d5d775f3271e7d8601e2985:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:186
 809a4d8befaf483c8d5d775f3271e7d8601e2985:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:154
+ae28aeb8ad56e1873bfb3996c5d5ad8367709cd1:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:186
+ae28aeb8ad56e1873bfb3996c5d5ad8367709cd1:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:154
+
