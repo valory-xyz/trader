@@ -12,14 +12,14 @@
         "contract/valory/service_staking_token/0.1.0": "bafybeid44l7qekvkwkvmfl4kcqchnaktttacp7lbx464mzqqs5cnefj35e",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeicgpoag2lymofz3vnen76q7gtig5hzimn32o57php4uerr6t25em4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeigvoa3ts4olx3hhf5aruzcjqvgvmju4zba4wfkiwp5dlggspkyqyq",
-        "skill/valory/trader_abci/0.1.0": "bafybeifwt4z2mgwj6nbojk6biesg3zmwlk63jwkjkcmh37ftpmugray56i",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeigzo446pn7ek5napocvximdscfooqj6sg55g64om7in2uf5ccr2xy",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeifkxudani7palj3qieq77wlvfjk6abhh5b24abhd6g6ectplqbv34",
+        "skill/valory/trader_abci/0.1.0": "bafybeievmr6mclc2mytlp6r4yhnbqtjzkjwfsn7vwoqjhfxrskrcn4vr4e",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeichsxv4cutr4tb4svdlaobxgk5ywvwrzhnwt2t743vwisjiwwlaoq",
         "skill/valory/staking_abci/0.1.0": "bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeibry7nmbug5bdkl4gza537wolyn72ju52v2patsfxovqe6c7c4nf4",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeidbgr4jvebtlc2eqzze2k4sgticc2y2tsl2q2vlubakuoefc5sme4",
-        "agent/valory/trader/0.1.0": "bafybeifnehe63dyxy3tg27mdff4jimee6vxgy2fkzrcrwmbae7bfuoef2q",
-        "service/valory/trader/0.1.0": "bafybeietaswpdzg252gmoafgvb2y5guyng37orlcr6cpkv3f4bmhkqd4s4"
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeih2duydujs4gc4oakxa4ngwrjexgwyitnibro6pbdgeoxmbzimyfe",
+        "agent/valory/trader/0.1.0": "bafybeiegfix7lv6ppjhghzxcekbw3jiifxqkgxb2cqgnet3d6wdsxob57a",
+        "service/valory/trader/0.1.0": "bafybeifbn3gdgw6p72haurssc7ishpwdltt76o6bafx5kxkkytxybzdhiu"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
