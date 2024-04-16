@@ -19,7 +19,7 @@ fingerprint:
   behaviours/decision_receive.py: bafybeid35xch5vsuuvtebu2yqedzeybbvc3kbt4d7q62efevhribmzg5gq
   behaviours/decision_request.py: bafybeibtvdjisudxyj677b7yctxnyo3tnrqdugevbfs27fmqnbo23cfexe
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
-  behaviours/order_subscription.py: bafybeigpfhuqgow4wtwee5hy4jhsvyxdyxds2szb4ar6gwt4lr6qk634ti
+  behaviours/order_subscription.py: bafybeifw66sp4sfvx65qikxjlehxbhgyvmwqaeoy43wsdepwte7oypsoie
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
   behaviours/reedem.py: bafybeihwe4azke5zbdu4rhhsx3bmjgnkagwkuowyowvkure2do2rg4ainy
   behaviours/round_behaviour.py: bafybeidrks62unrnoyp3jnbz2nozgnittfntyknymuuja7jwcsjuap4fve

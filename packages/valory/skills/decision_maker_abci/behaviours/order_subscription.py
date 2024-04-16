@@ -261,6 +261,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
             contract_callable="get_pending_requests",
             data_key="pending_requests",
             placeholder="pending_reqs",
+            sender_address=self.synchronized_data.safe_contract_address,
         )
         if not result:
             self.context.logger.info("Could not get the required balance.")
