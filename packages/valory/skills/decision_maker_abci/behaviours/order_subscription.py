@@ -27,6 +27,7 @@ from packages.valory.contracts.transfer_nft_condition.contract import (
     TransferNftCondition,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BaseSubscriptionBehaviour,
     WXDAI,
@@ -65,6 +66,8 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         self.approval_tx: str = ""
         self.balance: int = 0
         self.agreement_id: str = ""
+        self.credits_per_req: int = 0
+        self.pending_reqs: int = 0
 
     def _get_condition_ids(
         self, agreement_id_seed: str, did_doc: Dict[str, Any]
@@ -251,15 +254,61 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         )
         return True
 
+
+    def _get_pending_requests(self) -> Generator[None, None, bool]:
+        """Get the required balance for the subscription."""
+        result = yield from self._mech_contract_interact(
+            contract_callable="get_pending_requests",
+            data_key="pending_requests",
+            placeholder="pending_reqs",
+        )
+        if not result:
+            self.context.logger.info("Could not get the required balance.")
+            return False
+
+        return result
+
+    def _get_nevermined_price(self) -> Generator[None, None, bool]:
+        """Get the price of the subscription."""
+        result = yield from self._mech_contract_interact(
+            contract_callable="get_price",
+            data_key="price",
+            placeholder="credits_per_req",
+        )
+        if not result:
+            self.context.logger.info("Could not get the price.")
+            return False
+
+        return result
+
     def _should_purchase(self) -> Generator[None, None, bool]:
         """Check if the subscription should be purchased."""
         if not self.params.use_nevermined:
             self.context.logger.info("Nevermined subscriptions are turned off.")
             return False
 
-        has_balance = yield from self._has_positive_nft_balance()
-        # in case there is no balance on the safe, we purchase
-        return not has_balance
+        result = yield from self._get_nevermined_price()
+        if not result:
+            self.context.logger.info("Could not get the nevermined price.")
+            return False
+
+        result = yield from self._get_pending_requests()
+        if not result:
+            self.context.logger.info("Could not get the pending requests.")
+            return False
+
+        result = yield from self._get_nft_balance(
+            self.token_address,
+            self.synchronized_data.safe_contract_address,
+            zero_x_transformer(no_did_prefixed(self.did)),
+        )
+        if not result:
+            self.context.logger.warning("Failed to get balance")
+            return False
+
+        credits_required = (self.pending_reqs + 1) * self.credits_per_req
+
+        return credits_required > self.balance
 
     def get_payload_content(self) -> Generator[None, None, str]:
         """Get the payload."""
