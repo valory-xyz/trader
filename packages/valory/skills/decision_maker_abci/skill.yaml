@@ -62,7 +62,7 @@ contracts:
 - valory/market_maker:0.1.0:bafybeihyi42hkmu2knrunfdbunjh6j3ibfrnwj7rmqw7mm7pmerzcwzfiq
 - valory/erc20:0.1.0:bafybeigvftdxjgnlsoemst5d57cor36idywk7bwcfj2bjqijxdxo3xpurq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiayv7irtodu5hgaveixv7idkc5jva4gyfjcehkio7zfx7iiznc2bm
+- valory/mech:0.1.0:bafybeiejkna5d7hllaxm6avsnffxfs6n4nx2lncmjz6iodkt2xhcy3mbva
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
@@ -76,7 +76,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/mech_interact_abci:0.1.0:bafybeih2duydujs4gc4oakxa4ngwrjexgwyitnibro6pbdgeoxmbzimyfe
+- valory/mech_interact_abci:0.1.0:bafybeib3aytq2a5hk6vjsak3eznuilndx4p53utdylbyhcmt6ty7kk6euq
 behaviours:
   main:
     args: {}
