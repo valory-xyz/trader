@@ -41,7 +41,7 @@ from packages.valory.contracts.transfer_nft_condition.contract import (
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload, get_name
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (

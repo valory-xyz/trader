@@ -27,7 +27,6 @@ from packages.valory.contracts.transfer_nft_condition.contract import (
     TransferNftCondition,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BaseSubscriptionBehaviour,
     WXDAI,
