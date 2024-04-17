@@ -262,7 +262,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
             sender_address=self.synchronized_data.safe_contract_address,
         )
         if not result:
-            self.context.logger.info("Could not get the required balance.")
+            self.context.logger.info("Could not get the pending requests.")
             return False
 
         return result
@@ -288,7 +288,6 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
 
         result = yield from self._get_nevermined_price()
         if not result:
-            self.context.logger.info("Could not get the nevermined price.")
             return False
 
         result = yield from self._get_pending_requests()
