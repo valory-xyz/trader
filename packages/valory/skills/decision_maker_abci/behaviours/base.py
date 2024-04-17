@@ -62,6 +62,7 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 )
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
+
 WaitableConditionType = Generator[None, None, bool]
 
 # setting the safe gas to 0 means that all available gas will be used
@@ -242,7 +243,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     @staticmethod
     def wei_to_native(wei: int) -> float:
         """Convert WEI to native token."""
-        return wei / 10 ** 18
+        return wei / 10**18
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
@@ -284,7 +285,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return True
 
     def send_message(
-            self, msg: Message, dialogue: Dialogue, callback: Callable
+        self, msg: Message, dialogue: Dialogue, callback: Callable
     ) -> None:
         """Send a message."""
         self.context.outbox.put_message(message=msg)
@@ -343,12 +344,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.sleep(self.params.sleep_time)
 
     def get_bet_amount(
-            self,
-            win_probability: float,
-            confidence: float,
-            selected_type_tokens_in_pool: int,
-            other_tokens_in_pool: int,
-            bet_fee: int,
+        self,
+        win_probability: float,
+        confidence: float,
+        selected_type_tokens_in_pool: int,
+        other_tokens_in_pool: int,
+        bet_fee: int,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
@@ -389,9 +390,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             strategies_names = set(self.shared_state.strategies_executables)
             remaining_strategies = strategies_names - tried_strategies
             if (
-                    bet_amount > 0
-                    or len(remaining_strategies) == 0
-                    or not self.params.use_fallback_strategy
+                bet_amount > 0
+                or len(remaining_strategies) == 0
+                or not self.params.use_fallback_strategy
             ):
                 break
 
@@ -403,7 +404,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return bet_amount
 
     def default_error(
-            self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
+        self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
     ) -> None:
         """Return a default contract interaction error message."""
         self.context.logger.error(
@@ -428,14 +429,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return False
 
     def contract_interact(
-            self,
-            performative: ContractApiMessage.Performative,
-            contract_address: str,
-            contract_public_id: PublicId,
-            contract_callable: str,
-            data_key: str,
-            placeholder: str,
-            **kwargs: Any,
+        self,
+        performative: ContractApiMessage.Performative,
+        contract_address: str,
+        contract_public_id: PublicId,
+        contract_callable: str,
+        data_key: str,
+        placeholder: str,
+        **kwargs: Any,
     ) -> WaitableConditionType:
         """Interact with a contract."""
         contract_id = str(contract_public_id)
@@ -461,7 +462,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return True
 
     def _mech_contract_interact(
-            self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
+        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
     ) -> WaitableConditionType:
         """Interact with the mech contract."""
         status = yield from self.contract_interact(
@@ -476,7 +477,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return status
 
     def _build_multisend_data(
-            self,
+        self,
     ) -> WaitableConditionType:
         """Get the multisend tx."""
         response_msg = yield from self.get_contract_api_response(
@@ -542,9 +543,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return True
 
     def wait_for_condition_with_sleep(
-            self,
-            condition_gen: Callable[[], WaitableConditionType],
-            timeout: Optional[float] = None,
+        self,
+        condition_gen: Callable[[], WaitableConditionType],
+        timeout: Optional[float] = None,
     ) -> Generator[None, None, None]:
         """Wait for a condition to happen and sleep in-between checks.
 

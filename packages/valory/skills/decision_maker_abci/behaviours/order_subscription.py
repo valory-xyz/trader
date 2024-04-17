@@ -254,7 +254,6 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         )
         return True
 
-
     def _get_pending_requests(self) -> Generator[None, None, bool]:
         """Get the required balance for the subscription."""
         result = yield from self._mech_contract_interact(
