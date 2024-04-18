@@ -20,7 +20,7 @@ contracts:
 - valory/service_registry:0.1.0:bafybeicbxmbzt757lbmyh6762lrkcrp3oeum6dk3z7pvosixasifsk6xlm
 - valory/market_maker:0.1.0:bafybeihyi42hkmu2knrunfdbunjh6j3ibfrnwj7rmqw7mm7pmerzcwzfiq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiejkna5d7hllaxm6avsnffxfs6n4nx2lncmjz6iodkt2xhcy3mbva
+- valory/mech:0.1.0:bafybeiayv7irtodu5hgaveixv7idkc5jva4gyfjcehkio7zfx7iiznc2bm
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
@@ -43,13 +43,13 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihisayejfjykvocyk36lgfkiwskqc5i5fma4efevt6rvke6nwsfqy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictjqqnq5gxtxnripxefu6yd6foqw7ovgbr52nnqtldtgdk7jnxei
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeignpcrzh2kc6ocr5egdzqhz4ngu5nribh3iqrlyuqcfp6gazmj37e
-- valory/trader_abci:0.1.0:bafybeigs5lfin2xbs2ecmli6gqsi2aqmzzi35ka3j5xuqq75p5jd2rryxe
+- valory/decision_maker_abci:0.1.0:bafybeieg3rkt7tfyam6kunhshnyoe5mo3cat7odph5mm6lswej5un3i3my
+- valory/trader_abci:0.1.0:bafybeidlsd5dgupxnonyflp5gvjhxtmycn4k3h7kry5dqmjp2g23s2imea
 - valory/staking_abci:0.1.0:bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4
-- valory/check_stop_trading_abci:0.1.0:bafybeiedpw6gudh7ddrcfpggnbxmbfaqn57a5geg645c2ymuzwy3rtckii
-- valory/mech_interact_abci:0.1.0:bafybeib3aytq2a5hk6vjsak3eznuilndx4p53utdylbyhcmt6ty7kk6euq
+- valory/check_stop_trading_abci:0.1.0:bafybeibry7nmbug5bdkl4gza537wolyn72ju52v2patsfxovqe6c7c4nf4
+- valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
