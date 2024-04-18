@@ -65,7 +65,6 @@ from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LE
 
 WaitableConditionType = Generator[None, None, bool]
 
-
 # setting the safe gas to 0 means that all available gas will be used
 # which is what we want in most cases
 # more info here: https://safe-docs.dev.gnosisdev.com/safe/docs/contracts_tx_execution/
