@@ -292,7 +292,6 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
 
         result = yield from self._get_pending_requests()
         if not result:
-            self.context.logger.info("Could not get the pending requests.")
             return False
 
         result = yield from self._get_nft_balance(
