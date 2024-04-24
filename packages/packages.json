@@ -9,15 +9,16 @@
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
         "contract/valory/conditional_tokens/0.1.0": "bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu",
         "contract/valory/agent_registry/0.1.0": "bafybeiaogm57a6f77m7xcirp7njem53wwprgrx2jjfsfbhlo62drev26zy",
-        "contract/valory/service_staking_token/0.1.0": "bafybeifeyaganvpq5jfkbbyekjkvro5jiiq5dar5llraqjun3x4zpfcra4",
+        "contract/valory/service_staking_token/0.1.0": "bafybeihxqpugircxgd3d7lukavxfr6o5yhhj3gojcecnuo3lwxr6akawzu",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeicij6pbiifdbwx44tu2r4dd5asmmbzl7qsdztbt3w4tivusscnuay",
         "skill/valory/market_manager_abci/0.1.0": "bafybeigeikd4yl47jeda5puexy4ui24mxtfvyhq3762gbzke34bwdley5i",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeihrbaivgq32zkcy4jiuukmauqbj3h5vni2y4wfozu2c22wfezgm3m",
-        "skill/valory/trader_abci/0.1.0": "bafybeibn2sa6zmhbkymqydp6i4jkg4x3bflfa2x7yub7zu37td6enyxide",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibvljs2azm4xndbw6uu3axjf3bzmujm4bwz3bcredp5wy72lezui4",
-        "skill/valory/staking_abci/0.1.0": "bafybeiapilihdmm7c2pknv6vwqvt4hxul5sjnzcnhwjno4273bwsuytv7u",
-        "agent/valory/trader/0.1.0": "bafybeievaujsqofl4y2ft67sp54elsi554bpvyua7u23carjeecgpfue34",
-        "service/valory/trader/0.1.0": "bafybeiecpf5jopzuavtgfmvwstztkgmy5zrbpylijzctqqqgtyk3m5cuzu"
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeibw7qd4wbc5s5fczwdrbldz3pmgemtexuasbl3te5327etzn6rh24",
+        "skill/valory/trader_abci/0.1.0": "bafybeieg5b4q3zict3ktpwj47rpmphu4ru3bxmk7wbb3xdaxgqsgh4ydxe",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeicxpbignav5fpx2xoywocqrhres3hjwknxjv4tbkhwlghavxoa2u4",
+        "skill/valory/staking_abci/0.1.0": "bafybeidx2dj7jlogcvysnslcyto23k3hftn6whhgmfcgx4jhlprx3eb2z4",
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeidwkmu5hqc7vzhymjrelruxfwodcvvxgqjj5makgqhjisiwjcbqhq",
+        "agent/valory/trader/0.1.0": "bafybeihomabgx4cfg6lp4zlhpoitxwsvgt7qa3fo35754ylw3xzbw2yep4",
+        "service/valory/trader/0.1.0": "bafybeiddvqrbd4h4sqhezkrrdt2e3pbtt5425wnpslwdbcvq6pwo6xmewa"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
