@@ -360,10 +360,14 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
 
     def async_act(self) -> Generator:
         """Do the action."""
+        sender = self.context.agent_address
+
+        if self.context.benchmarking_mode.enabled:
+            payload = SubscriptionPayload(sender)
+            yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             payload_data = yield from self.get_payload_content()
-            sender = self.context.agent_address
             payload = SubscriptionPayload(
                 sender,
                 tx_submitter=SubscriptionRound.auto_round_id(),

@@ -221,7 +221,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
         """Try to recover the policy from the policy store."""
         try:
-            policy_path = self.params.policy_store_path / self.POLICY_STORE
+            policy_path = self.params.store_path / self.POLICY_STORE
             with open(policy_path, "r") as f:
                 policy = f.read()
                 return EGreedyPolicy.deserialize(policy)
@@ -232,7 +232,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_utilized_tools(self) -> Optional[Dict[str, Any]]:
         """Try to recover the available tools from the tools store."""
         try:
-            tools_path = self.params.policy_store_path / self.UTILIZED_TOOLS_STORE
+            tools_path = self.params.store_path / self.UTILIZED_TOOLS_STORE
             with open(tools_path, "r") as f:
                 tools = json.load(f)
                 return tools
@@ -243,7 +243,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_mech_tools(self) -> Optional[List[str]]:
         """Try to recover the available tools from the tools store."""
         try:
-            tools_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+            tools_path = self.params.store_path / self.AVAILABLE_TOOLS_STORE
             with open(tools_path, "r") as f:
                 tools = json.load(f)
                 return tools
@@ -266,13 +266,13 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _store_policy(self) -> None:
         """Store the policy"""
-        policy_path = self.params.policy_store_path / self.POLICY_STORE
+        policy_path = self.params.store_path / self.POLICY_STORE
         with open(policy_path, "w") as f:
             f.write(self.policy.serialize())
 
     def _store_available_mech_tools(self) -> None:
         """Store the policy"""
-        policy_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+        policy_path = self.params.store_path / self.AVAILABLE_TOOLS_STORE
         with open(policy_path, "w") as f:
             json.dump(self.mech_tools, f)
 

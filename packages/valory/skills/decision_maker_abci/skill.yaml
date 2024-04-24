@@ -203,7 +203,7 @@ models:
       max_filtering_retries: 6
       minimum_batch_size: 500
       redeeming_batch_size: 5
-      policy_store_path: /data/
+      store_path: /data/
       slippage: 0.01
       policy_epsilon: 0.1
       use_subgraph_for_redeeming: true
@@ -263,6 +263,24 @@ models:
           0.9: 0
           1.0: 0
     class_name: DecisionMakerParams
+  benchmarking_mode:
+    args:
+      enabled: false
+      native_balance: 10000000000000000000
+      collateral_balance: 10000000000000000000
+      mech_cost: 10000000000000000
+      sep: ","
+      dataset_filename: benchmark_data.csv
+      question_field: question
+      question_id_field: question_id
+      answer_field: answer
+      p_yes_field_part: p_yes_
+      p_no_field_part: p_no_
+      confidence_field_part: confidence_
+      part_prefix_mode: true
+      bet_amount_field: collateral_amount
+      results_filename: benchmarking_results.csv
+    class_name: BenchmarkingMode
   mech_response:
     args:
       api_id: mech_response

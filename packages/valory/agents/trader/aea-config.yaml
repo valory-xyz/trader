@@ -199,7 +199,7 @@ models:
       slippage: ${float:0.01}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.1}
-      policy_store_path: ${str:/data/}
+      store_path: ${str:/data/}
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
@@ -223,6 +223,23 @@ models:
       contract_timeout: ${float:300.0}
       file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
       strategies_kwargs: ${list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
+  benchmarking_mode:
+    args:
+      enabled: ${bool:false}
+      native_balance: ${int:10000000000000000000}
+      collateral_balance: ${int:10000000000000000000}
+      mech_cost: ${int:10000000000000000}
+      sep: ${str:,}
+      dataset_filename: ${str:benchmark_data.csv}
+      question_field: ${str:question}
+      question_id_field: ${str:question_id}
+      answer_field: ${str:answer}
+      p_yes_field_part: ${str:p_yes_}
+      p_no_field_part: ${str:p_no_}
+      confidence_field_part: ${str:confidence_}
+      part_prefix_mode: ${bool:true}
+      bet_amount_field: ${str:collateral_amount}
+      results_filename: ${str:benchmarking_results.csv}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

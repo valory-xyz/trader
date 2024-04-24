@@ -19,16 +19,27 @@
 
 """This module contains the behaviour for the decision-making of the skill."""
 
+import csv
 import json
+import os
 from math import prod
-from typing import Any, Generator, Optional, Tuple, Union
+from tempfile import NamedTemporaryFile
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+    NEW_LINE,
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
-from packages.valory.skills.decision_maker_abci.models import PredictionResponse
+from packages.valory.skills.decision_maker_abci.models import (
+    BenchmarkingMockData,
+    CONFIDENCE_FIELD,
+    INFO_UTILITY_FIELD,
+    P_NO_FIELD,
+    P_YES_FIELD,
+    PredictionResponse,
+)
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
@@ -40,6 +51,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
 
 
 SLIPPAGE = 1.05
+WRITE_TEXT_MODE = "w+t"
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -75,6 +87,85 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return MechInteractionResponse(error=error)
         return self._mech_response
 
+    def _cut_dataset_row(self) -> Optional[Dict[str, str]]:
+        """Read and delete a row from the input dataset which is used during the benchmarking mode.
+
+        :return: a dictionary with the header fields mapped to the values of the first row.
+            If no rows are in the file, returns `None`
+        """
+        sep = self.benchmarking_mode.sep
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+        write_dataset = NamedTemporaryFile(WRITE_TEXT_MODE, delete=False)
+        with open(dataset_filepath) as read_dataset:
+            reader = csv.DictReader(read_dataset, delimiter=sep)
+            row_with_headers: Dict[str, str] = next(reader, {})
+            if not row_with_headers:
+                # if no rows are in the file, then we finished the benchmarking
+                return None
+
+            # write the header into the temporary file
+            headers = reader.fieldnames
+            if headers is None:
+                self.context.logger.error(
+                    "The dataset has no headers! Cannot perform the benchmarking with a corrupted dataset file."
+                )
+                return None
+            serialized_header = sep.join(headers) + NEW_LINE
+            write_dataset.write(serialized_header)
+
+            # write the next rows into the temporary file
+            while True:
+                next_row = next(reader, {})
+                if not next_row:
+                    break
+                serialized_row = sep.join(next_row.values()) + NEW_LINE
+                write_dataset.write(serialized_row)
+
+        # replace the current file with the temporary one, effectively removing the first row, excluding the header
+        os.replace(write_dataset.name, dataset_filepath)
+        write_dataset.close()
+        try:
+            os.unlink(write_dataset.name)
+        except FileNotFoundError:
+            pass
+
+        return row_with_headers
+
+    def _parse_dataset_row(self, row: Dict[str, str]) -> str:
+        """Parse a dataset's row to store the mock market data and to mock a prediction response."""
+        mode = self.benchmarking_mode
+        self.shared_state.mock_data = BenchmarkingMockData(
+            row[mode.question_id_field],
+            row[mode.question_field],
+            row[mode.answer_field],
+        )
+        mech_tool = self.synchronized_data.mech_tool
+        fields = {}
+
+        for prediction_attribute, field_part in {
+            P_YES_FIELD: mode.p_yes_field_part,
+            P_NO_FIELD: mode.p_no_field_part,
+            CONFIDENCE_FIELD: mode.confidence_field_part,
+        }.items():
+            if mode.part_prefix_mode:
+                fields[prediction_attribute] = row[field_part + mech_tool]
+            else:
+                fields[prediction_attribute] = row[mech_tool + field_part]
+
+        # set the info utility to zero as it does not matter for the benchmark
+        fields[INFO_UTILITY_FIELD] = "0"
+        return json.dumps(fields)
+
+    def _mock_response(self) -> None:
+        """Mock the response data."""
+        dataset_row = self._cut_dataset_row()
+        if dataset_row is None:
+            return
+        mech_response = self._parse_dataset_row(dataset_row)
+        self._mech_response = MechInteractionResponse(result=mech_response)
+
     def _get_response(self) -> None:
         """Get the response data."""
         mech_responses = self.synchronized_data.mech_responses
@@ -86,24 +177,40 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _get_decision(
         self,
-    ) -> Tuple[Optional[int], Optional[float], Optional[float]]:
+    ) -> Tuple[
+        Optional[int],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+    ]:
         """Get vote, win probability and confidence."""
-        self._get_response()
+        if self.benchmarking_mode.enabled:
+            self._mock_response()
+        else:
+            self._get_response()
+
+        if self._mech_response is None:
+            self.context.logger.info("The benchmarking has finished!")
+            return None, None, None, None, None
+
         self.context.logger.info(f"Decision has been received:\n{self.mech_response}")
         if self.mech_response.result is None:
             self.context.logger.error(
                 f"There was an error on the mech's response: {self.mech_response.error}"
             )
-            return None, None, None
+            return None, None, None, None, None
 
         try:
             result = PredictionResponse(**json.loads(self.mech_response.result))
         except (json.JSONDecodeError, ValueError) as exc:
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
-            return None, None, None
+            return None, None, None, None, None
 
         return (
             result.vote,
+            result.p_yes,
+            result.p_no,
             result.win_probability,
             result.confidence,
         )
@@ -185,7 +292,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return num_shares, available_shares
 
     def _is_profitable(
-        self, vote: int, win_probability: float, confidence: float
+        self,
+        vote: int,
+        p_yes: float,
+        p_no: float,
+        win_probability: float,
+        confidence: float,
     ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
         bet = self.sampled_bet
@@ -233,22 +345,28 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
+
+        if self.benchmarking_mode.enabled and is_profitable:
+            self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+
         return is_profitable, bet_amount
 
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            vote, win_probability, confidence = self._get_decision()
+            vote, p_yes, p_no, win_probability, confidence = self._get_decision()
             is_profitable = None
             bet_amount = None
             if (
                 vote is not None
+                and p_yes is not None
+                and p_no is not None
                 and confidence is not None
                 and win_probability is not None
             ):
                 is_profitable, bet_amount = yield from self._is_profitable(
-                    vote, win_probability, confidence
+                    vote, p_yes, p_no, win_probability, confidence
                 )
             payload = DecisionReceivePayload(
                 self.context.agent_address,

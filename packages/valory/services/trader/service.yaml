@@ -104,7 +104,7 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
@@ -133,6 +133,23 @@ type: skill
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
+    benchmarking_mode:
+      args:
+        enabled: ${BENCHMARKING_MODE_ENABLED:bool:false}
+        native_balance: ${BENCHMARKING_MODE_NATIVE_BALANCE:int:10000000000000000000}
+        collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
+        mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
+        sep: ${SEP:str:,}
+        dataset_filename: ${DATASET_FILENAME:str:benchmark_data.csv}
+        question_field: ${QUESTION_FIELD:str:question}
+        question_id_field: ${QUESTION_ID_FIELD:str:question_id}
+        answer_field: ${ANSWER_FIELD:str:answer}
+        p_yes_field_part: ${P_YES_FIELD_PART:str:p_yes_}
+        p_no_field_part: ${P_NO_FIELD_PART:str:p_no_}
+        confidence_field_part: ${CONFIDENCE_FIELD_PART:str:confidence_}
+        part_prefix_mode: ${PART_PREFIX_MODE:bool:true}
+        bet_amount_field: ${BET_AMOUNT_FIELD:str:collateral_amount}
+        results_filename: ${RESULTS_FILENAME:str:benchmarking_results.csv}
 1:
   models:
     params:
@@ -205,7 +222,7 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
@@ -304,7 +321,7 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
@@ -403,7 +420,7 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",

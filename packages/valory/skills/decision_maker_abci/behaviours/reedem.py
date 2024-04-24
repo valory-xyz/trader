@@ -891,7 +891,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _store_utilized_tools(self) -> None:
         """Store the tools utilized by the behaviour."""
-        path = self.params.policy_store_path / self.UTILIZED_TOOLS_PATH
+        path = self.params.store_path / self.UTILIZED_TOOLS_PATH
         with path.open("w") as f:
             json.dump(self.utilized_tools, f)
 
@@ -929,6 +929,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                         agent,
                         tx_submitter,
                         redeem_tx_hex,
+                        None,
                         policy,
                         utilized_tools,
                         condition_ids,

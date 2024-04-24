@@ -31,6 +31,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import 
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.check_benchmarking import (
+    CheckBenchmarkingModeBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.claim_subscription import (
     ClaimSubscriptionBehaviour,
 )
@@ -76,4 +79,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         OrderSubscriptionBehaviour,
         ClaimSubscriptionBehaviour,
         RandomnessBehaviour,  # type: ignore
+        CheckBenchmarkingModeBehaviour,  # type: ignore
     }

@@ -31,6 +31,9 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     FinishedWithSkipTradingRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    CheckBenchmarkingModeRound,
+)
 from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
     ClaimRound,
 )
@@ -38,6 +41,9 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
+    BenchmarkingDoneRound,
+    BenchmarkingModeDisabledRound,
+    FinishedBenchmarkingRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
@@ -108,7 +114,8 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    FinishedRegistrationRound: UpdateBetsRound,
+    FinishedRegistrationRound: CheckBenchmarkingModeRound,
+    BenchmarkingModeDisabledRound: UpdateBetsRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: SamplingRound,
     FinishedWithSkipTradingRound: RedeemRound,
@@ -133,8 +140,11 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedStakingRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
-    FinishedResetAndPauseRound: UpdateBetsRound,
+    FinishedBenchmarkingRound: ResetAndPauseRound,
+    FinishedResetAndPauseRound: CheckBenchmarkingModeRound,
     FinishedResetAndPauseErrorRound: ResetAndPauseRound,
+    # this has no effect, because the `BenchmarkingDoneRound` is terminal
+    BenchmarkingDoneRound: ResetAndPauseRound,
 }
 
 termination_config = BackgroundAppConfig(
