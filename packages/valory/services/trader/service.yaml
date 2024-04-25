@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihomabgx4cfg6lp4zlhpoitxwsvgt7qa3fo35754ylw3xzbw2yep4
+agent: valory/trader:0.1.0:bafybeigd7nqrwu4cyy4oweciuold4hl64i34s4b2ynol3xvungptbqqtui
 number_of_agents: 4
 deployment: {}
 ---
@@ -436,31 +436,31 @@ type: connection
 0:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_0:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 1:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_1:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 2:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_2:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 3:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_3:str:http://host.docker.internal:8545}
         chain_id: ${CHAIN_ID:int:1337}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
@@ -474,7 +474,7 @@ config:
     public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
 cert_requests:
 - identifier: acn
-  ledger_id: ethereum
+  ledger_id: gnosis
   message_format: '{public_key}'
   not_after: '2023-01-01'
   not_before: '2022-01-01'
