@@ -140,12 +140,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._liveness_ratio = liveness_ratio
 
     @property
-    def service_info(self) -> Tuple[Any]:
+    def service_info(self) -> Tuple[Any, Any, Tuple[Any, Any]]:
         """Get the service info."""
         return self._service_info
 
     @service_info.setter
-    def service_info(self, service_info: Tuple[Any]) -> None:
+    def service_info(self, service_info: Tuple[Any, Any, Tuple[Any, Any]]) -> None:
         """Set the service info."""
         self._service_info = service_info
 
