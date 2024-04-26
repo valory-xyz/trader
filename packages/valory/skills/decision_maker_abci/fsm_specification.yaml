@@ -22,6 +22,7 @@ alphabet_in:
 - UNPROFITABLE
 default_start_state: CheckBenchmarkingModeRound
 final_states:
+- BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
 - FinishedBenchmarkingRound
 - FinishedDecisionMakerRound
@@ -40,7 +41,7 @@ start_states:
 - RedeemRound
 - SamplingRound
 states:
-- BenchmarkingFinishedRound
+- BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
 - BetPlacementRound
 - BlacklistingRound
@@ -77,13 +78,15 @@ transition_func:
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): SamplingRound
+    (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
     (ClaimRound, DONE): RandomnessRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
-    (DecisionReceiveRound, BENCHMARKING_FINISHED): BenchmarkingFinishedRound
+    (DecisionReceiveRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -92,7 +95,6 @@ transition_func:
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
     (DecisionRequestRound, DONE): FinishedDecisionRequestRound
     (DecisionRequestRound, MOCK_MECH_REQUEST): DecisionReceiveRound
-    (DecisionRequestRound, NONE): ImpossibleRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
