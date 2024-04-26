@@ -117,7 +117,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
             # write the next rows into the temporary file
             while True:
-                next_row = next(reader, {})
+                next_row: Dict[str, str] = next(reader, {})
                 if not next_row:
                     break
                 serialized_row = sep.join(next_row.values()) + NEW_LINE
