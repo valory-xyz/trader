@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -25,11 +25,17 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.check_stop_trading_abci.behaviours import (
+    CheckStopTradingRoundBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.round_behaviour import (
     AgentDecisionMakerRoundBehaviour,
 )
 from packages.valory.skills.market_manager_abci.behaviours import (
     MarketManagerRoundBehaviour,
+)
+from packages.valory.skills.mech_interact_abci.behaviours.round_behaviour import (
+    MechInteractRoundBehaviour,
 )
 from packages.valory.skills.registration_abci.behaviours import (
     AgentRegistrationRoundBehaviour,
@@ -62,10 +68,12 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *AgentRegistrationRoundBehaviour.behaviours,
         *AgentDecisionMakerRoundBehaviour.behaviours,
         *MarketManagerRoundBehaviour.behaviours,
+        *MechInteractRoundBehaviour.behaviours,
         *ResetPauseABCIConsensusBehaviour.behaviours,
         *TerminationAbciBehaviours.behaviours,
         *TransactionSettlementRoundBehaviour.behaviours,
         *PostTxSettlementFullBehaviour.behaviours,
         *StakingRoundBehaviour.behaviours,
+        *CheckStopTradingRoundBehaviour.behaviours,
     }
     background_behaviours_cls = {BackgroundBehaviour}  # type: ignore

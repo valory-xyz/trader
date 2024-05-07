@@ -1,7 +1,7 @@
 alphabet_in:
 - BET_PLACEMENT_DONE
 - CHECKS_PASSED
-- DECISION_REQUESTING_DONE
+- MECH_REQUESTING_DONE
 - NO_MAJORITY
 - REDEEMING_DONE
 - REFILL_REQUIRED
@@ -14,7 +14,7 @@ final_states:
 - ChecksPassedRound
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
-- FinishedDecisionRequestTxRound
+- FinishedMechRequestTxRound
 - FinishedRedeemingTxRound
 - FinishedStakingTxRound
 - FinishedSubscriptionTxRound
@@ -26,7 +26,7 @@ states:
 - ChecksPassedRound
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
-- FinishedDecisionRequestTxRound
+- FinishedMechRequestTxRound
 - FinishedRedeemingTxRound
 - FinishedStakingTxRound
 - FinishedSubscriptionTxRound
@@ -34,7 +34,7 @@ states:
 - PreTxSettlementRound
 transition_func:
     (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementTxRound
-    (PostTxSettlementRound, DECISION_REQUESTING_DONE): FinishedDecisionRequestTxRound
+    (PostTxSettlementRound, MECH_REQUESTING_DONE): FinishedMechRequestTxRound
     (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): FinishedStakingTxRound

@@ -38,7 +38,7 @@ jobs:
         virtualenvs-path: ~/my-custom-path
         installer-parallel: true
     - name: Check if dependencies can be locked
-      run: poetry lock
+      run: poetry lock --check
     - name: Poetry install requirements and check they can be locked
       run: poetry install --all-extras --no-interaction -vvv
 
@@ -124,4 +124,4 @@ jobs:
           wget https://github.com/zricethezav/gitleaks/releases/download/v8.10.1/gitleaks_8.10.1_linux_x64.tar.gz && \
           tar -xzf gitleaks_8.10.1_linux_x64.tar.gz && \
           sudo install gitleaks /usr/bin && \
-          gitleaks detect --report-format json --report-path leak_report
+          gitleaks detect --report-format json --report-path leak_report -v

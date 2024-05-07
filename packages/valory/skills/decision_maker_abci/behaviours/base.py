@@ -65,7 +65,6 @@ from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LE
 
 WaitableConditionType = Generator[None, None, bool]
 
-
 # setting the safe gas to 0 means that all available gas will be used
 # which is what we want in most cases
 # more info here: https://safe-docs.dev.gnosisdev.com/safe/docs/contracts_tx_execution/
@@ -468,7 +467,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Interact with the mech contract."""
         status = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.mech_agent_address,
+            contract_address=self.params.mech_contract_address,
             contract_public_id=Mech.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,

@@ -8,26 +8,28 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
-  composition.py: bafybeif75v3swf2pmxi3rdd5kqdfv4ap5uapcbszkiohhur67oemrgotay
+  behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
+  composition.py: bafybeidazh2w4do27n2fmwh5eyca7tet5dxw4uilh4wkhoazlgyhr7w3eu
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeibi3t63vwfrx5sbkfhji3rb62dtwczpajuijqgul6bpcn3altcziq
+  fsm_specification.yaml: bafybeicibuzg6mf6632jin3d6xylkb7if5o4dqpire6ijhor5v2e6rvo7u
   handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeibrxivgpzamfmrl6bdngi67g72i32lmu5vgdn3jbwka265blk7ire
+  models.py: bafybeih2bhwwqms32da3zlcpxfwoy725xdbs42e7u55enwuscacffwchaa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeidyrcd4hxl4gq7xhkcd546wkidebbvt6vnomxmrdsja6shkpysh5u
-- valory/registration_abci:0.1.0:bafybeifh4jchomng6fsagamr6adlrixw7fnby4ylkngeq42zzskf4ahfjy
-- valory/reset_pause_abci:0.1.0:bafybeialc6wdfe56dirdx3pgyh2qaq74hpp3n3ues6e3zr7yoqwgnwsqyu
-- valory/transaction_settlement_abci:0.1.0:bafybeihaad5k6adwkqwc5pui243inep2kvw7k7pgwwqaykssyx7p64peyi
-- valory/termination_abci:0.1.0:bafybeihmqrvnzhptap62nchvocmu7tzl5d2o6k4eitkaiuvo7qwvsaedua
-- valory/market_manager_abci:0.1.0:bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni
-- valory/decision_maker_abci:0.1.0:bafybeifharwkzhzh5ngtbky3zo55ik2eqjqrxxx4yqr4hiwmdoqyp2td54
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibyxyafhqaud5yhx2hfubowhwqups6hn6umvuunlq5o4h7ax44guu
-- valory/staking_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
+- valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
+- valory/registration_abci:0.1.0:bafybeiek7zcsxbucjwzgqfftafhfrocvc7q4yxllh2q44jeemsjxg3rcfm
+- valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
+- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
+- valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
+- valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
+- valory/decision_maker_abci:0.1.0:bafybeieg3rkt7tfyam6kunhshnyoe5mo3cat7odph5mm6lswej5un3i3my
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictjqqnq5gxtxnripxefu6yd6foqw7ovgbr52nnqtldtgdk7jnxei
+- valory/staking_abci:0.1.0:bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4
+- valory/check_stop_trading_abci:0.1.0:bafybeibry7nmbug5bdkl4gza537wolyn72ju52v2patsfxovqe6c7c4nf4
+- valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
 behaviours:
   main:
     args: {}
@@ -104,6 +106,7 @@ models:
       max_attempts: 10
       max_healthcheck: 120
       multisend_address: '0x0000000000000000000000000000000000000000'
+      multisend_batch_size: 1
       on_chain_service_id: null
       request_retry_delay: 1.0
       request_timeout: 10.0
@@ -145,7 +148,10 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
+      mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
+      mech_request_price: null
+      mech_chain_id: gnosis
+      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
@@ -178,6 +184,8 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      disable_trading: false
+      stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       redeem_round_timeout: 3600.0
@@ -271,8 +279,8 @@ models:
         Content-Type: application/json
       method: GET
       parameters: {}
-      response_key: null
-      response_type: dict
+      response_key: result
+      response_type: str
       retries: 5
       url: ''
     class_name: MechResponseSpecs

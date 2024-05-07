@@ -184,3 +184,12 @@ you need, for the case of 4 agents:
 You can also explore the [`service.yaml`](https://github.com/valory-xyz/trader/blob/main/packages/valory/services/trader/service.yaml) file, which contains all the possible configuration variables for the service.
 
 Finally, if you are experienced with the [Open Autonomy](https://docs.autonolas.network/) framework, you can also modify the internal business logic of the service yourself.
+
+## Included strategies
+
+| Strategies |
+|---|
+| packages/jhehemann/customs/kelly_criterion |
+| packages/valory/customs/bet_amount_per_threshold |
+| packages/valory/customs/mike_strat |
+| packages/w1kke/customs/always_blue |

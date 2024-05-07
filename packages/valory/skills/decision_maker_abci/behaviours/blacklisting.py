@@ -31,6 +31,9 @@ from packages.valory.skills.decision_maker_abci.states.blacklisting import (
 from packages.valory.skills.market_manager_abci.bets import BetStatus
 
 
+TX_COST_APPROX = int(1e15)
+
+
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
@@ -49,12 +52,18 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         sampled_bet.status = BetStatus.BLACKLISTED
         blacklist_expiration = self.synced_time + self.params.blacklisting_duration
         sampled_bet.blacklist_expiration = blacklist_expiration
+        tool_idx = self.synchronized_data.mech_tool_idx
         if self.synchronized_data.is_mech_price_set:
             # impose a penalty equivalent to the mech's price on the tool responsible for blacklisting the market
-            tool_idx = self.synchronized_data.mech_tool_idx
-            penalty = -self.wei_to_native(self.synchronized_data.mech_price)
-            penalty *= self.params.tool_punishment_multiplier
-            self.policy.add_reward(tool_idx, penalty)
+            penalty_wei = self.synchronized_data.mech_price
+        else:
+            # if the price has not been set or a nevermined subscription is used, penalize using a small amount,
+            # approximating the cost of a transaction
+            penalty_wei = -TX_COST_APPROX
+
+        penalty = -self.wei_to_native(penalty_wei)
+        penalty *= self.params.tool_punishment_multiplier
+        self.policy.add_reward(tool_idx, penalty)
 
     def setup(self) -> None:
         """Setup the behaviour"""

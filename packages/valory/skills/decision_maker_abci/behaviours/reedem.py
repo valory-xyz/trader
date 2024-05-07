@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -202,9 +202,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         return self.shared_state.redeeming_progress
 
     @redeeming_progress.setter
-    def redeeming_progress(self, payouts: RedeemingProgress) -> None:
+    def redeeming_progress(self, progress: RedeemingProgress) -> None:
         """Set the redeeming check progress in the shared state."""
-        self.shared_state.redeeming_progress = payouts
+        self.shared_state.redeeming_progress = progress
 
     @property
     def latest_block_number(self) -> int:
@@ -487,7 +487,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def _check_already_redeemed_via_subgraph(self) -> WaitableConditionType:
         """Check whether the condition ids have already been redeemed via subgraph."""
         safe_address = self.synchronized_data.safe_contract_address.lower()
-        from_timestamp, to_timestamp = 0.0, time.time()  # from begging to now
+        from_timestamp, to_timestamp = 0.0, time.time()  # from beginning to now
 
         # get the trades
         trades = yield from self.fetch_trades(
@@ -496,7 +496,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if trades is None:
             return False
 
-        # get the user positions
+        # get the user's positions
         user_positions = yield from self.fetch_user_positions(safe_address)
         if user_positions is None:
             return False
@@ -535,7 +535,11 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         payouts_amount = sum(payouts.values())
         if payouts_amount > 0:
             self.redeemed_condition_ids |= set(payouts.keys())
-            self.payout_so_far += payouts_amount
+            if self.params.use_subgraph_for_redeeming:
+                self.payout_so_far = payouts_amount
+            else:
+                self.payout_so_far += payouts_amount
+
             # filter the trades again if new payouts have been found
             self._filter_trades()
             wxdai_amount = self.wei_to_native(self.payout_so_far)

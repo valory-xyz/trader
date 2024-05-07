@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -38,7 +37,6 @@ from typing import (
     Union,
 )
 
-from aea.exceptions import enforce
 from aea.skills.base import SkillContext
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
@@ -58,6 +56,9 @@ from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
+from packages.valory.skills.mech_interact_abci.models import (
+    Params as MechInteractParams,
+)
 
 
 FromBlockMappingType = Dict[HexBytes, Union[int, str]]
@@ -226,12 +227,11 @@ def nested_list_todict_workaround(
     return {value[0]: value[1] for value in values}
 
 
-class DecisionMakerParams(MarketManagerParams):
+class DecisionMakerParams(MarketManagerParams, MechInteractParams):
     """Decision maker's parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
@@ -251,12 +251,8 @@ class DecisionMakerParams(MarketManagerParams):
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int
         )
-        self._ipfs_address: str = self._ensure("ipfs_address", kwargs, str)
         self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
         check_prompt_template(self.prompt_template)
-        multisend_address = kwargs.get("multisend_address", None)
-        enforce(multisend_address is not None, "Multisend address not specified!")
-        self.multisend_address: str = multisend_address
         self.dust_threshold: int = self._ensure("dust_threshold", kwargs, int)
         self.conditional_tokens_address: str = self._ensure(
             "conditional_tokens_address", kwargs, str
@@ -327,13 +323,6 @@ class DecisionMakerParams(MarketManagerParams):
         return self.trading_strategy == STRATEGY_KELLY_CRITERION
 
     @property
-    def ipfs_address(self) -> str:
-        """Get the IPFS address."""
-        if self._ipfs_address.endswith("/"):
-            return self._ipfs_address
-        return f"{self._ipfs_address}/"
-
-    @property
     def prompt_template(self) -> PromptTemplate:
         """Get the prompt template as a string `PromptTemplate`."""
         return PromptTemplate(self._prompt_template)
@@ -365,10 +354,6 @@ class DecisionMakerParams(MarketManagerParams):
                 f"Policy store path {path!r} is not a directory or is not writable."
             )
         return Path(path)
-
-
-class MechResponseSpecs(ApiSpecs):
-    """A model that wraps ApiSpecs for the Mech's response specifications."""
 
 
 class AgentToolsSpecs(ApiSpecs):
@@ -420,31 +405,6 @@ class PredictionResponse:
     def win_probability(self) -> Optional[float]:
         """Return the probability estimation for winning with vote."""
         return max(self.p_no, self.p_yes)
-
-
-@dataclass(init=False)
-class MechInteractionResponse:
-    """A structure for the response of a mech interaction task."""
-
-    request_id: int
-    result: Optional[PredictionResponse]
-    error: str
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the mech's response ignoring extra keys."""
-        self.request_id = kwargs.pop("requestId", 0)
-        self.error = kwargs.pop("error", "Unknown")
-        self.result = kwargs.pop("result", None)
-
-        if isinstance(self.result, str):
-            self.result = PredictionResponse(**json.loads(self.result))
-
-    @classmethod
-    def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
-        """Return an incorrect format response."""
-        response = cls()
-        response.error = f"The response's format was unexpected: {res}"
-        return response
 
 
 class TradesSubgraph(ApiSpecs):

@@ -33,6 +33,10 @@ from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
 )
+from packages.valory.skills.mech_interact_abci.states.base import (
+    MechInteractionResponse,
+    MechMetadata,
+)
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
@@ -73,11 +77,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def is_mech_price_set(self) -> bool:
         """Get whether mech's price is known."""
         return bool(self.db.get("mech_price", False))
-
-    @property
-    def mech_price(self) -> int:
-        """Get the mech's request price."""
-        return int(self.db.get_strict("mech_price"))
 
     @property
     def available_mech_tools(self) -> List[str]:
@@ -172,6 +171,29 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def claim(self) -> bool:
         """Get the claim."""
         return bool(self.db.get_strict("claim"))
+
+    @property
+    def mech_price(self) -> int:
+        """Get the mech's request price."""
+        return int(self.db.get_strict("mech_price"))
+
+    @property
+    def mech_requests(self) -> List[MechMetadata]:
+        """Get the mech requests."""
+        serialized = self.db.get("mech_requests", "[]")
+        if serialized is None:
+            serialized = "[]"
+        requests = json.loads(serialized)
+        return [MechMetadata(**metadata_item) for metadata_item in requests]
+
+    @property
+    def mech_responses(self) -> List[MechInteractionResponse]:
+        """Get the mech responses."""
+        serialized = self.db.get("mech_responses", "[]")
+        if serialized is None:
+            serialized = "[]"
+        responses = json.loads(serialized)
+        return [MechInteractionResponse(**response_item) for response_item in responses]
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
