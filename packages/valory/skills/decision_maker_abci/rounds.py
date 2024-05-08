@@ -189,7 +189,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
-            Event.BENCHMARKING_ENABLED: SamplingRound,
+            Event.BENCHMARKING_ENABLED: RandomnessRound,
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
