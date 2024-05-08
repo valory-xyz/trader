@@ -258,9 +258,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
+        is_wxdai = True if self.benchmarking_mode.enabled else self.is_wxdai
+
         return (
             f"{self.wei_to_native(amount)} wxDAI"
-            if self.is_wxdai
+            if is_wxdai
             else f"{amount} WEI of the collateral token with address {self.collateral_token}"
         )
 
