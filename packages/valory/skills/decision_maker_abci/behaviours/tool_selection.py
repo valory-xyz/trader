@@ -157,11 +157,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         return result
 
     def _get_mech_tools(self) -> WaitableConditionType:
-        """Get the mech agent's tools from IPFS or if in benchmarking mode from a local file."""
-
-        if self.benchmarking_mode.enabled:
-            return _get_tools_from_benchmark_file()
-
+        """Get the mech agent's tools from IPFS."""
         self.set_mech_agent_specs()
         specs = self.mech_tools_api.get_spec()
         res_raw = yield from self.get_http_response(**specs)
@@ -198,6 +194,10 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self,
     ) -> Generator[None, None, None]:
         """Get the Mech's tools."""
+        if self.benchmarking_mode.enabled:
+            self._get_tools_from_benchmark_file()
+            return
+
         for step in (
             self._get_mech_id,
             self._get_mech_hash,
