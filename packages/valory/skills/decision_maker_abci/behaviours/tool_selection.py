@@ -20,7 +20,6 @@
 """This module contains the behaviour of the skill which is responsible for selecting a mech tool."""
 
 import json
-import pandas as pd
 from typing import Any, Dict, Generator, List, Optional
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
@@ -111,27 +110,24 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self.mech_tools_api.url = ipfs_link
         self.mech_tools_api.__dict__["_frozen"] = True
 
-    def _get_tools_from_benchmark_file(self):
-        dataset_filename = self.benchmarking_mode.dataset_filename
+    def _get_tools_from_benchmark_file(self) -> None:
+        """Get the tools from the benchmark dataset."""
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+        with open(dataset_filepath) as read_dataset:
+            row = read_dataset.readline()
+            if not row:
+                # if no headers are in the file, then we finished the benchmarking
+                self.context.logger.error("No headers in dataset file.")
+                return
 
-        df = pd.read_csv(dataset_filename, index_col=0)
-        col_headers = list(df.columns)
-
-        # get tool names using just one column type p_yes
-        tool_names = set()
-        for column_name in col_headers:
-            p_yes_prefix = self.benchmarking_mode.p_yes_field_part
-            if p_yes_prefix in column_name:
-                tool_names.add(column_name[len(p_yes_prefix) :])
-
-        res = sorted(tool_names)
-        self.context.logger.info(f"Relevant tools from the csv benchmark file: {res}.")
-
-        if len(res) == 0:
-            self.context.logger.error("No tools found on the csv file!")
-            return False
-        self.mech_tools = res
-        return True
+        # parse tools from headers
+        headers = row.split(self.benchmarking_mode.sep)
+        p_yes_part = self.benchmarking_mode.p_yes_field_part
+        self.mech_tools = [
+            header.replace(p_yes_part, "") for header in headers if p_yes_part in header
+        ]
 
     def _get_mech_id(self) -> WaitableConditionType:
         """Get the mech's id."""
