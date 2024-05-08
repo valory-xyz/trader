@@ -23,7 +23,7 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
     AbciAppTransitionMapping,
     chain,
 )
-from packages.valory.skills.abstract_round_abci.base import BackgroundAppConfig
+from packages.valory.skills.abstract_round_abci.base import AbciApp, BackgroundAppConfig
 from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
@@ -168,3 +168,31 @@ TraderAbciApp = chain(
     ),
     abci_app_transition_mapping,
 ).add_background_app(termination_config)
+
+
+# keep a backup of the original setup method
+TraderAbciApp._setup = TraderAbciApp.setup  # type: ignore
+
+
+def setup_with_cross_period_keys(abci_app: AbciApp) -> None:
+    """Extend the setup to always include the cross-period keys.
+
+    Hacky solution necessary for always setting the cross-period persisted keys
+    and not raising an exception when the first period ends.
+    This also protects us in case a round timeout is raised.
+
+    :param abci_app: the abi app's instance.
+    """
+    # call the original setup method
+    abci_app._setup()  # type: ignore
+
+    # update the db to include all the cross-period persisted keys
+    update = {
+        db_key: abci_app.synchronized_data.db.get(db_key, None)
+        for db_key in abci_app.cross_period_persisted_keys
+    }
+    abci_app.synchronized_data.db.update(**update)
+
+
+# replace the setup method with the mocked version
+TraderAbciApp.setup = setup_with_cross_period_keys  # type: ignore
