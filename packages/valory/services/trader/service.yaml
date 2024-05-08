@@ -139,6 +139,7 @@ type: skill
         native_balance: ${BENCHMARKING_MODE_NATIVE_BALANCE:int:10000000000000000000}
         collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
         mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
+        pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
         sep: ${SEP:str:,}
         dataset_filename: ${DATASET_FILENAME:str:benchmark_data.csv}
         question_field: ${QUESTION_FIELD:str:question}

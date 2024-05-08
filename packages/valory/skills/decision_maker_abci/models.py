@@ -371,6 +371,7 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.native_balance: int = self._ensure("native_balance", kwargs, int)
         self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
         self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
+        self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
         self.sep: str = self._ensure("sep", kwargs, str)
         self.dataset_filename: Path = Path(
             self._ensure("dataset_filename", kwargs, str)

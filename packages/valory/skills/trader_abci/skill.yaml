@@ -242,6 +242,7 @@ models:
       native_balance: 10000000000000000000
       collateral_balance: 10000000000000000000
       mech_cost: 10000000000000000
+      pool_fee: 20000000000000000
       sep: ','
       dataset_filename: benchmark_data.csv
       question_field: question

@@ -230,6 +230,7 @@ models:
       native_balance: ${int:10000000000000000000}
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
+      pool_fee: ${int:20000000000000000}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}

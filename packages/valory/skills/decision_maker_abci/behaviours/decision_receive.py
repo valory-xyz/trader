@@ -225,10 +225,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return selected_type_tokens_in_pool, other_tokens_in_pool
 
-    def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
+    def _calc_binary_shares(
+        self, bet: Bet, net_bet_amount: int, vote: int
+    ) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
-        bet = self.sampled_bet
-
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
         self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
@@ -300,7 +300,24 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         confidence: float,
     ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
-        bet = self.sampled_bet
+        bet = (
+            self.sampled_bet
+            if not self.benchmarking_mode.enabled
+            else Bet(
+                id="",
+                market="",
+                title="",
+                collateralToken="",
+                creator="",
+                fee=self.benchmarking_mode.pool_fee,
+                openingTimestamp=0,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[int(10e18)] * 2,
+                outcomeTokenMarginalPrices=[0.5] * 2,
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=10,
+            )
+        )
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, vote
         )
@@ -320,7 +337,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
 
-        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
+        num_shares, available_shares = self._calc_binary_shares(
+            bet, net_bet_amount, vote
+        )
 
         self.context.logger.info(f"Adjusted available shares: {available_shares}")
         if num_shares > available_shares * SLIPPAGE:
