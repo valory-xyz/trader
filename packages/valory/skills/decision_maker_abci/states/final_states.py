@@ -19,6 +19,7 @@
 
 """This module contains the final states of the decision-making abci app."""
 
+import sys
 from enum import Enum
 from typing import Optional, Tuple
 
@@ -65,7 +66,7 @@ class BenchmarkingDoneRound(DegenerateRound):
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Gracefully stop the service."""
-        exit(0)
+        sys.exit(0)
 
 
 class ImpossibleRound(DegenerateRound):
