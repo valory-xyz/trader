@@ -77,7 +77,7 @@ transition_func:
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): ToolSelectionRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): SamplingRound
     (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
