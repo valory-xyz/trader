@@ -111,7 +111,7 @@ transition_func:
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): SamplingRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): RandomnessRound
     (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound

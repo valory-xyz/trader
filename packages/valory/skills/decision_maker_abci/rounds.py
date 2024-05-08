@@ -87,7 +87,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Transition states:
         0. CheckBenchmarkingModeRound
-            - benchmarking enabled: 1.
+            - benchmarking enabled: 4.
             - benchmarking disabled: 13.
             - no majority: 0.
             - round timeout: 0.
