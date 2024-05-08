@@ -54,6 +54,6 @@ class BlacklistingRound(UpdateBetsRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        if event == Event.DONE and synced_data.mocking_mode:
+        if event == Event.DONE and self.context.benchmarking_mode.enabled:
             return synced_data, Event.MOCK_TX
         return res
