@@ -80,6 +80,8 @@ BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 NEW_LINE = "\n"
+QUOTE = '"'
+TWO_QUOTES = '""'
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -635,7 +637,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
             results = (
                 mock_data.id,
-                mock_data.question,
+                # reintroduce duplicate quotes and quote the question
+                # as it may contain commas which are also used as separators
+                QUOTE + mock_data.question.replace(QUOTE, TWO_QUOTES) + QUOTE,
                 mock_data.answer,
                 p_yes,
                 p_no,

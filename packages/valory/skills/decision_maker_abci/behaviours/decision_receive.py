@@ -29,6 +29,8 @@ from typing import Any, Dict, Generator, Optional, Tuple, Union
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     NEW_LINE,
+    QUOTE,
+    TWO_QUOTES,
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
@@ -52,6 +54,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
 
 SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
+COMMA = ","
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -120,7 +123,19 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 next_row: Dict[str, str] = next(reader, {})
                 if not next_row:
                     break
-                serialized_row = sep.join(next_row.values()) + NEW_LINE
+
+                quotes_preserved = []
+                for field in next_row.values():
+                    if QUOTE in field:
+                        # the reader removes the non-duplicated quotes, and replaces duplicated quotes with single ones;
+                        # therefore, we need to reintroduce duplicated quotes to match the original csv representation
+                        field = field.replace(QUOTE, TWO_QUOTES)
+                    if any(trigger in field for trigger in (COMMA, TWO_QUOTES)):
+                        # next, we need to reintroduce the quotes around fields that contain duplicated quotes or commas
+                        field = QUOTE + field + QUOTE
+                    quotes_preserved.append(field)
+
+                serialized_row = sep.join(quotes_preserved) + NEW_LINE
                 write_dataset.write(serialized_row)
 
         # replace the current file with the temporary one, effectively removing the first row, excluding the header
