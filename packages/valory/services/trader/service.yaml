@@ -140,17 +140,17 @@ type: skill
         collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
         mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
         pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
-        sep: ${SEP:str:,}
-        dataset_filename: ${DATASET_FILENAME:str:benchmark_data.csv}
-        question_field: ${QUESTION_FIELD:str:question}
-        question_id_field: ${QUESTION_ID_FIELD:str:question_id}
-        answer_field: ${ANSWER_FIELD:str:answer}
-        p_yes_field_part: ${P_YES_FIELD_PART:str:p_yes_}
-        p_no_field_part: ${P_NO_FIELD_PART:str:p_no_}
-        confidence_field_part: ${CONFIDENCE_FIELD_PART:str:confidence_}
-        part_prefix_mode: ${PART_PREFIX_MODE:bool:true}
-        bet_amount_field: ${BET_AMOUNT_FIELD:str:collateral_amount}
-        results_filename: ${RESULTS_FILENAME:str:benchmarking_results.csv}
+        sep: ${BENCHMARKING_MODE_SEP:str:,}
+        dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
+        question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}
+        question_id_field: ${BENCHMARKING_MODE_QUESTION_ID_FIELD:str:question_id}
+        answer_field: ${BENCHMARKING_MODE_ANSWER_FIELD:str:answer}
+        p_yes_field_part: ${BENCHMARKING_MODE_P_YES_FIELD_PART:str:p_yes_}
+        p_no_field_part: ${BENCHMARKING_MODE_P_NO_FIELD_PART:str:p_no_}
+        confidence_field_part: ${BENCHMARKING_MODE_CONFIDENCE_FIELD_PART:str:confidence_}
+        part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
+        bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
+        results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
 1:
   models:
     params:
