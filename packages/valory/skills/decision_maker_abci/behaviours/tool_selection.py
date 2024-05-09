@@ -110,6 +110,25 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self.mech_tools_api.url = ipfs_link
         self.mech_tools_api.__dict__["_frozen"] = True
 
+    def _get_tools_from_benchmark_file(self) -> None:
+        """Get the tools from the benchmark dataset."""
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+        with open(dataset_filepath) as read_dataset:
+            row = read_dataset.readline()
+            if not row:
+                # if no headers are in the file, then we finished the benchmarking
+                self.context.logger.error("No headers in dataset file.")
+                return
+
+        # parse tools from headers
+        headers = row.split(self.benchmarking_mode.sep)
+        p_yes_part = self.benchmarking_mode.p_yes_field_part
+        self.mech_tools = [
+            header.replace(p_yes_part, "") for header in headers if p_yes_part in header
+        ]
+
     def _get_mech_id(self) -> WaitableConditionType:
         """Get the mech's id."""
         result = yield from self._mech_contract_interact(
@@ -171,6 +190,10 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self,
     ) -> Generator[None, None, None]:
         """Get the Mech's tools."""
+        if self.benchmarking_mode.enabled:
+            self._get_tools_from_benchmark_file()
+            return
+
         for step in (
             self._get_mech_id,
             self._get_mech_hash,
@@ -221,7 +244,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
         """Try to recover the policy from the policy store."""
         try:
-            policy_path = self.params.policy_store_path / self.POLICY_STORE
+            policy_path = self.params.store_path / self.POLICY_STORE
             with open(policy_path, "r") as f:
                 policy = f.read()
                 return EGreedyPolicy.deserialize(policy)
@@ -232,7 +255,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_utilized_tools(self) -> Optional[Dict[str, Any]]:
         """Try to recover the available tools from the tools store."""
         try:
-            tools_path = self.params.policy_store_path / self.UTILIZED_TOOLS_STORE
+            tools_path = self.params.store_path / self.UTILIZED_TOOLS_STORE
             with open(tools_path, "r") as f:
                 tools = json.load(f)
                 return tools
@@ -243,7 +266,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_mech_tools(self) -> Optional[List[str]]:
         """Try to recover the available tools from the tools store."""
         try:
-            tools_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+            tools_path = self.params.store_path / self.AVAILABLE_TOOLS_STORE
             with open(tools_path, "r") as f:
                 tools = json.load(f)
                 return tools
@@ -266,13 +289,13 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _store_policy(self) -> None:
         """Store the policy"""
-        policy_path = self.params.policy_store_path / self.POLICY_STORE
+        policy_path = self.params.store_path / self.POLICY_STORE
         with open(policy_path, "w") as f:
             f.write(self.policy.serialize())
 
     def _store_available_mech_tools(self) -> None:
         """Store the policy"""
-        policy_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+        policy_path = self.params.store_path / self.AVAILABLE_TOOLS_STORE
         with open(policy_path, "w") as f:
             json.dump(self.mech_tools, f)
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,9 +19,13 @@
 
 """This module contains the blacklisting state of the decision-making abci app."""
 
-from typing import Any, Type
+from enum import Enum
+from typing import Any, Optional, Tuple, Type, cast
 
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -42,3 +46,14 @@ class BlacklistingRound(UpdateBetsRound):
         UpdateBetsRound.selection_key,
         get_name(SynchronizedData.policy),
     )
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event == Event.DONE and self.context.benchmarking_mode.enabled:
+            return synced_data, Event.MOCK_TX
+        return res

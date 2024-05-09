@@ -204,9 +204,17 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
     def async_act(self) -> Generator:
         """Do the action."""
+        agent = self.context.agent_address
+
+        if self.benchmarking_mode.enabled:
+            # simulate the bet placement
+            with self.context.benchmark_tool.measure(self.behaviour_id).local():
+                payload = MultisigTxPayload(agent, None, None, True)
+            yield from self.finish_behaviour(payload)
+
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self.check_balance)
-            tx_submitter = betting_tx_hex = None
+            tx_submitter = betting_tx_hex = mocking_mode = None
 
             can_exchange = (
                 self.is_wxdai
@@ -220,7 +228,8 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
 
-            agent = self.context.agent_address
-            payload = MultisigTxPayload(agent, tx_submitter, betting_tx_hex)
+            payload = MultisigTxPayload(
+                agent, tx_submitter, betting_tx_hex, mocking_mode
+            )
 
         yield from self.finish_behaviour(payload)

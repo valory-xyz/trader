@@ -21,6 +21,7 @@
 
 import dataclasses
 import json
+import os
 from abc import ABC
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
@@ -45,8 +46,12 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
+    BenchmarkingMode,
+    CONFIDENCE_FIELD,
     DecisionMakerParams,
     MultisendBatch,
+    P_NO_FIELD,
+    P_YES_FIELD,
     SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
@@ -74,6 +79,9 @@ WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+NEW_LINE = "\n"
+QUOTE = '"'
+TWO_QUOTES = '""'
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -151,6 +159,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def params(self) -> DecisionMakerParams:
         """Return the params."""
         return cast(DecisionMakerParams, self.context.params)
+
+    @property
+    def benchmarking_mode(self) -> BenchmarkingMode:
+        """Return the benchmarking mode configurations."""
+        return cast(BenchmarkingMode, self.context.benchmarking_mode)
 
     @property
     def shared_state(self) -> SharedState:
@@ -247,14 +260,32 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
+        is_wxdai = True if self.benchmarking_mode.enabled else self.is_wxdai
+
         return (
             f"{self.wei_to_native(amount)} wxDAI"
-            if self.is_wxdai
+            if is_wxdai
             else f"{amount} WEI of the collateral token with address {self.collateral_token}"
         )
 
+    def _report_balance(self) -> None:
+        """Report the balances of the native and the collateral tokens."""
+        native = self.wei_to_native(self.wallet_balance)
+        collateral = self._collateral_amount_info(self.token_balance)
+        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
+
+    def _mock_balance_check(self) -> None:
+        """Mock the balance of the native and the collateral tokens."""
+        self.token_balance = self.benchmarking_mode.collateral_balance
+        self.wallet_balance = self.benchmarking_mode.native_balance
+        self._report_balance()
+
     def check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
+        if self.benchmarking_mode.enabled:
+            self._mock_balance_check()
+            return True
+
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.collateral_token,
@@ -278,10 +309,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         self.token_balance = int(token)
         self.wallet_balance = int(wallet)
-
-        native = self.wei_to_native(self.wallet_balance)
-        collateral = self._collateral_amount_info(self.token_balance)
-        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
+        self._report_balance()
         return True
 
     def send_message(
@@ -572,6 +600,55 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 raise TimeoutException()
             self.context.logger.info(f"Retrying in {self.params.sleep_time} seconds.")
             yield from self.sleep(self.params.sleep_time)
+
+    def _write_benchmark_results(
+        self,
+        p_yes: Optional[float] = None,
+        p_no: Optional[float] = None,
+        confidence: Optional[float] = None,
+        bet_amount: Optional[float] = None,
+    ) -> None:
+        """Write the results to the benchmarking file."""
+        mock_data = self.shared_state.mock_data
+        if mock_data is None:
+            self.context.logger.error(
+                "The mock data are empty! Cannot write the benchmark result."
+            )
+            return
+
+        add_headers = False
+        results_path = self.params.store_path / self.benchmarking_mode.results_filename
+        if not os.path.isfile(results_path):
+            add_headers = True
+
+        with open(results_path, "a") as results_file:
+            if add_headers:
+                headers = (
+                    self.benchmarking_mode.question_id_field,
+                    self.benchmarking_mode.question_field,
+                    self.benchmarking_mode.answer_field,
+                    P_YES_FIELD,
+                    P_NO_FIELD,
+                    CONFIDENCE_FIELD,
+                    self.benchmarking_mode.bet_amount_field,
+                )
+                row = ",".join(headers) + NEW_LINE
+                results_file.write(row)
+
+            results = (
+                mock_data.id,
+                # reintroduce duplicate quotes and quote the question
+                # as it may contain commas which are also used as separators
+                QUOTE + mock_data.question.replace(QUOTE, TWO_QUOTES) + QUOTE,
+                mock_data.answer,
+                p_yes,
+                p_no,
+                confidence,
+                bet_amount,
+            )
+            results_text = tuple(str(res) for res in results)
+            row = ",".join(results_text) + NEW_LINE
+            results_file.write(row)
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

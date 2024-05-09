@@ -46,24 +46,37 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         return synced_time.timestamp()
 
     def _blacklist(self) -> None:
-        """Blacklist the sampled bet."""
-        sampled_bet_index = self.synchronized_data.sampled_bet_index
-        sampled_bet = self.bets[sampled_bet_index]
-        sampled_bet.status = BetStatus.BLACKLISTED
-        blacklist_expiration = self.synced_time + self.params.blacklisting_duration
-        sampled_bet.blacklist_expiration = blacklist_expiration
-        tool_idx = self.synchronized_data.mech_tool_idx
+        """Update the policy and blacklist the sampled bet."""
+        # calculate the penalty
         if self.synchronized_data.is_mech_price_set:
             # impose a penalty equivalent to the mech's price on the tool responsible for blacklisting the market
             penalty_wei = self.synchronized_data.mech_price
+        elif self.benchmarking_mode.enabled:
+            # penalize using the simulated mech's cost
+            penalty_wei = self.benchmarking_mode.mech_cost
         else:
             # if the price has not been set or a nevermined subscription is used, penalize using a small amount,
             # approximating the cost of a transaction
             penalty_wei = -TX_COST_APPROX
 
+        # update the policy to penalize the most recently utilized mech tool
+        tool_idx = self.synchronized_data.mech_tool_idx
         penalty = -self.wei_to_native(penalty_wei)
         penalty *= self.params.tool_punishment_multiplier
         self.policy.add_reward(tool_idx, penalty)
+
+        # if running in benchmarking mode, store the no-vote result
+        # and skip blacklisting the market as we should be based solely on the input data of the simulation
+        if self.benchmarking_mode.enabled:
+            self._write_benchmark_results()
+            return
+
+        # blacklist the sampled bet
+        sampled_bet_index = self.synchronized_data.sampled_bet_index
+        sampled_bet = self.bets[sampled_bet_index]
+        sampled_bet.status = BetStatus.BLACKLISTED
+        blacklist_expiration = self.synced_time + self.params.blacklisting_duration
+        sampled_bet.blacklist_expiration = blacklist_expiration
 
     def setup(self) -> None:
         """Setup the behaviour"""

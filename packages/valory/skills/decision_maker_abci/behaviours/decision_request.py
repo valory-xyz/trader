@@ -57,7 +57,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
 
     def setup(self) -> None:
         """Setup behaviour."""
-        if not self.n_slots_supported:
+        if not self.n_slots_supported or self.benchmarking_mode.enabled:
             return
 
         sampled_bet = self.sampled_bet
@@ -75,9 +75,13 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             payload_content = None
+            mocking_mode: Optional[bool] = self.benchmarking_mode.enabled
             if self._metadata and self.n_slots_supported:
                 mech_requests = [self.metadata]
                 payload_content = json.dumps(mech_requests, sort_keys=True)
+            if not self.n_slots_supported:
+                mocking_mode = None
+
             agent = self.context.agent_address
-            payload = DecisionRequestPayload(agent, payload_content)
+            payload = DecisionRequestPayload(agent, payload_content, mocking_mode)
         yield from self.finish_behaviour(payload)

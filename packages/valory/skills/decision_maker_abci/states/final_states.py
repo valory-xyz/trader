@@ -19,11 +19,26 @@
 
 """This module contains the final states of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import DegenerateRound
+import sys
+from enum import Enum
+from typing import Optional, Tuple
+
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    DegenerateRound,
+)
+
+
+class BenchmarkingModeDisabledRound(DegenerateRound):
+    """A round representing that the benchmarking mode is disabled."""
 
 
 class FinishedDecisionMakerRound(DegenerateRound):
     """A round representing that decision-making has finished."""
+
+
+class FinishedBenchmarkingRound(DegenerateRound):
+    """A round representing that decision-making has finished running in the benchmarking mode."""
 
 
 class FinishedDecisionRequestRound(DegenerateRound):
@@ -44,6 +59,14 @@ class FinishedWithoutDecisionRound(DegenerateRound):
 
 class RefillRequiredRound(DegenerateRound):
     """A round representing that a refill is required for placing a bet."""
+
+
+class BenchmarkingDoneRound(DegenerateRound):
+    """A round representing that the benchmarking has finished."""
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Gracefully stop the service."""
+        sys.exit(0)
 
 
 class ImpossibleRound(DegenerateRound):

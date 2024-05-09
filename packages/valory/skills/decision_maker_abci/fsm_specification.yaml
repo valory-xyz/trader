@@ -1,9 +1,14 @@
 alphabet_in:
+- BENCHMARKING_DISABLED
+- BENCHMARKING_ENABLED
+- BENCHMARKING_FINISHED
 - BLACKLIST
 - DONE
 - FETCH_ERROR
 - INSUFFICIENT_BALANCE
 - MECH_RESPONSE_ERROR
+- MOCK_MECH_REQUEST
+- MOCK_TX
 - NONE
 - NO_MAJORITY
 - NO_OP
@@ -15,8 +20,11 @@ alphabet_in:
 - SUBSCRIPTION_ERROR
 - TIE
 - UNPROFITABLE
-default_start_state: SamplingRound
+default_start_state: CheckBenchmarkingModeRound
 final_states:
+- BenchmarkingDoneRound
+- BenchmarkingModeDisabledRound
+- FinishedBenchmarkingRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
 - FinishedSubscriptionRound
@@ -26,17 +34,22 @@ final_states:
 - RefillRequiredRound
 label: DecisionMakerAbciApp
 start_states:
+- CheckBenchmarkingModeRound
 - ClaimRound
 - DecisionReceiveRound
 - HandleFailedTxRound
 - RedeemRound
 - SamplingRound
 states:
+- BenchmarkingDoneRound
+- BenchmarkingModeDisabledRound
 - BetPlacementRound
 - BlacklistingRound
+- CheckBenchmarkingModeRound
 - ClaimRound
 - DecisionReceiveRound
 - DecisionRequestRound
+- FinishedBenchmarkingRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
 - FinishedSubscriptionRound
@@ -53,18 +66,27 @@ states:
 transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
+    (BetPlacementRound, MOCK_TX): FinishedBenchmarkingRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
+    (BlacklistingRound, MOCK_TX): FinishedBenchmarkingRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): RandomnessRound
+    (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
+    (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
+    (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
     (ClaimRound, DONE): RandomnessRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
+    (DecisionReceiveRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -72,7 +94,7 @@ transition_func:
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
     (DecisionRequestRound, DONE): FinishedDecisionRequestRound
-    (DecisionRequestRound, NONE): ImpossibleRound
+    (DecisionRequestRound, MOCK_MECH_REQUEST): DecisionReceiveRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
@@ -83,6 +105,7 @@ transition_func:
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
+    (RedeemRound, MOCK_TX): FinishedBenchmarkingRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
@@ -93,6 +116,7 @@ transition_func:
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
+    (SubscriptionRound, MOCK_TX): RandomnessRound
     (SubscriptionRound, NONE): SubscriptionRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
     (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
