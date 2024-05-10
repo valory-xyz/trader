@@ -14,7 +14,7 @@ fingerprint:
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
   behaviours/base.py: bafybeiap6bqx627tz775mdkppjude7az7yg6awwqfvrieq37hreiztscgy
   behaviours/bet_placement.py: bafybeia62an6dpkf6b46fzc4epcyh3zuvpvoge3ewmussclxbldjf3bdue
-  behaviours/blacklisting.py: bafybeieyczuqecp2bzqxfu3jupqvjdxran5tsmy4lhvntokd6d2qwg2fre
+  behaviours/blacklisting.py: bafybeigamu43kwg4wdooviw3fb73casqeigokzy5zqshgybe4tmn6utcrm
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
   behaviours/decision_receive.py: bafybeieuqggknaggmxkhcxa47jh7yiyv4xjzi4zyfjuamwvowqun7lx3b4

@@ -89,7 +89,9 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
             self.read_bets()
             self._blacklist()
             self.store_bets()
-            bets_hash = self.hash_stored_bets()
+            bets_hash = (
+                None if self.benchmarking_mode.enabled else self.hash_stored_bets()
+            )
             policy = self.policy.serialize()
             payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)
 
