@@ -1,0 +1,325 @@
+agent_name: trader
+author: eightballer
+version: 0.1.0
+license: Apache-2.0
+description: Trader agent.
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint: {}
+fingerprint_ignore_patterns: []
+connections:
+- eightballer/http_client:0.1.0:bafybeid4cwamevng2ufyflcrerm6xyp5rjby2lbo2ulybqlik44g3aslni
+- eightballer/http_server:0.1.0:bafybeib27byea6hwpt2fh2tt4t7jbn34r56hc654r365vipbktecfh4qsy
+- eightballer/websocket_server:0.1.0:bafybeiabaq2wl4mnhzrnvuqthlahwv4ils4b2h5liqwwpz4glmvt6hned4
+- valory/abci:0.1.0:bafybeiclexb6cnsog5yjz2qtvqyfnf7x5m7tpp56hblhk3pbocbvgjzhze
+- valory/http_client:0.23.0:bafybeih5vzo22p2umhqo52nzluaanxx7kejvvpcpdsrdymckkyvmsim6gm
+- valory/ipfs:0.1.0:bafybeihndk6hohj3yncgrye5pw7b7w2kztj3avby5u5mfk2fpjh7hqphii
+- valory/ledger:0.19.0:bafybeic3ft7l7ca3qgnderm4xupsfmyoihgi27ukotnz7b5hdczla2enya
+- valory/p2p_libp2p_client:0.1.0:bafybeid3xg5k2ol5adflqloy75ibgljmol6xsvzvezebsg7oudxeeolz7e
+contracts:
+- valory/agent_registry:0.1.0:bafybeibedc7ehebk3ikr4cowjbvgpxqpu65nforgqmraxqxiq5jv6rboqe
+- valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
+- valory/erc20:0.1.0:bafybeigvftdxjgnlsoemst5d57cor36idywk7bwcfj2bjqijxdxo3xpurq
+- valory/gnosis_safe:0.1.0:bafybeibq77mgzhyb23blf2eqmia3kc6io5karedfzhntvpcebeqdzrgyqa
+- valory/gnosis_safe_proxy_factory:0.1.0:bafybeib6podeifufgmawvicm3xyz3uaplbcrsptjzz4unpseh7qtcpar74
+- valory/market_maker:0.1.0:bafybeihyi42hkmu2knrunfdbunjh6j3ibfrnwj7rmqw7mm7pmerzcwzfiq
+- valory/mech:0.1.0:bafybeiayv7irtodu5hgaveixv7idkc5jva4gyfjcehkio7zfx7iiznc2bm
+- valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
+- valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
+- valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
+- valory/service_registry:0.1.0:bafybeicbxmbzt757lbmyh6762lrkcrp3oeum6dk3z7pvosixasifsk6xlm
+- valory/service_staking_token:0.1.0:bafybeid44l7qekvkwkvmfl4kcqchnaktttacp7lbx464mzqqs5cnefj35e
+- valory/transfer_nft_condition:0.1.0:bafybeicgpoag2lymofz3vnen76q7gtig5hzimn32o57php4uerr6t25em4
+protocols:
+- eightballer/http:0.1.0:bafybeibels7dv7ucflaeniwifbisvkegm5vrarrr5ctkcqebg4t7onba6a
+- eightballer/websockets:0.1.0:bafybeigegu5iypibbhpxlvgyv7tfbof6jd7ufbmsxbe4l47wbdu3hop67e
+- open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
+- valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
+- valory/acn:1.1.0:bafybeidluaoeakae3exseupaea4i3yvvk5vivyt227xshjlffywwxzcxqe
+- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
+- valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
+- valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
+- valory/tendermint:0.1.0:bafybeig4mi3vmlv5zpbjbfuzcgida6j5f2nhrpedxicmrrfjweqc5r7cra
+skills:
+- valory/abstract_abci:0.1.0:bafybeihat4giyc4bz6zopvahcj4iw53356pbtwfn7p4d5yflwly2qhahum
+- valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
+- valory/check_stop_trading_abci:0.1.0:bafybeidyc5fvw5wosbc3anxxxog5b67cfmvrsrltjh3cfllye3bb43r3z4
+- valory/decision_maker_abci:0.1.0:bafybeid4txlxu6ig7o3r6ufrsbegnjzsnunmrr5ozy6lv54yzvx6eg5vey
+- valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
+- valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
+- valory/registration_abci:0.1.0:bafybeiek7zcsxbucjwzgqfftafhfrocvc7q4yxllh2q44jeemsjxg3rcfm
+- valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
+- valory/staking_abci:0.1.0:bafybeicsydq6fdansf7qrmrygzchl3h6rtkdw5rmx2jyrwecj4laj5nehy
+- valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
+- valory/trader_abci:0.1.0:bafybeibozxamrqtds3wxiye3fb3tz2uwtw7l7mydxqsmio4aldshtseig4
+- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifssqoybhgmuz6gwylkayajmzn763qsv6uqduzhe4ynbgnrteb7jq
+customs:
+- jhehemann/kelly_criterion:0.1.0:bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
+- valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
+- valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
+- w1kke/always_blue:0.1.0:bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm
+default_ledger: ethereum
+required_ledgers:
+- ethereum
+- cosmos
+default_routing: {}
+connection_private_key_paths: {}
+private_key_paths: {}
+logging_config:
+  disable_existing_loggers: false
+  formatters:
+    standard:
+      format: '[%(asctime)s] [%(levelname)s] %(message)s'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      formatter: standard
+      stream: ext://sys.stdout
+    logfile:
+      class: logging.FileHandler
+      filename: log.txt
+      formatter: standard
+      level: INFO
+  loggers:
+    aea:
+      handlers:
+      - logfile
+      - console
+      propagate: true
+  version: 1
+dependencies:
+  open-aea-ledger-cosmos:
+    version: ==1.50.0
+  open-aea-ledger-ethereum:
+    version: ==1.50.0
+  open-aea-test-autonomy:
+    version: ==0.14.10
+skill_exception_policy: stop_and_exit
+connection_exception_policy: just_log
+default_connection: null
+---
+public_id: valory/abci:0.1.0
+type: connection
+config:
+  host: localhost
+  port: 26658
+  target_skill_id: valory/trader_abci:0.1.0
+  use_tendermint: false
+---
+public_id: valory/trader_abci:0.1.0
+type: skill
+models:
+  benchmark_tool:
+    args:
+      log_dir: /benchmarks
+  benchmarking_mode:
+    args:
+      answer_field: answer
+      bet_amount_field: collateral_amount
+      collateral_balance: 10000000000000000000
+      confidence_field_part: confidence_
+      dataset_filename: benchmark_data.csv
+      enabled: false
+      mech_cost: 10000000000000000
+      native_balance: 10000000000000000000
+      p_no_field_part: p_no_
+      p_yes_field_part: p_yes_
+      part_prefix_mode: true
+      pool_fee: 20000000000000000
+      question_field: question
+      question_id_field: question_id
+      results_filename: benchmarking_results.csv
+      sep: ','
+  params:
+    args:
+      abt_error_mult: 5
+      agent_balance_threshold: 10000000000000000
+      agent_registry_address: null
+      average_block_time: 5
+      bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
+      contract_timeout: 300.0
+      creator_per_subgraph:
+        omen_subgraph:
+        - '0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec'
+      disable_trading: false
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      dust_threshold: 10000000000000
+      event_filtering_batch_size: 5000
+      file_hash_to_strategies_json:
+      - - bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
+        - - bet_amount_per_threshold
+      - - bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
+        - - kelly_criterion
+      finalize_timeout: 60.0
+      genesis_config:
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_duration: '172800000000000'
+            max_age_num_blocks: '100000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        genesis_time: '2022-09-26T00:00:00.000000000Z'
+        voting_power: '10'
+      history_check_timeout: 1205
+      init_fallback_gas: 0
+      ipfs_address: https://gateway.autonolas.tech/ipfs/
+      irrelevant_tools:
+      - openai-text-davinci-002
+      - openai-text-davinci-003
+      - openai-gpt-3.5-turbo
+      - openai-gpt-4
+      - stabilityai-stable-diffusion-v1-5
+      - stabilityai-stable-diffusion-xl-beta-v2-2-2
+      - stabilityai-stable-diffusion-512-v2-1
+      - stabilityai-stable-diffusion-768-v2-1
+      keeper_allowed_retries: 3
+      keeper_timeout: 30.0
+      languages:
+      - en_US
+      max_attempts: 10
+      max_filtering_retries: 6
+      max_healthcheck: 43200
+      mech_chain_id: gnosis
+      mech_contract_address: '0x77af31De935740567Cf4fF1986D04B2c964A786a'
+      mech_request_price: null
+      mech_to_subscription_params:
+      - - base_url
+        - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
+      - - did
+        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
+      - - escrow_payment_condition_address
+        - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
+      - - lock_payment_condition_address
+        - '0xDE85A368Ee6f374d236500d176814365370778dA'
+      - - transfer_nft_condition_address
+        - '0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979'
+      - - token_address
+        - '0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce'
+      - - order_address
+        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
+      - - nft_amount
+        - '100'
+      - - payment_token
+        - '0x0000000000000000000000000000000000000000'
+      - - order_address
+        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
+      - - price
+        - '1000000000000000000'
+      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
+      minimum_batch_size: 500
+      multisend_address: '0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761'
+      multisend_batch_size: 1
+      on_chain_service_id: null
+      opening_margin: 300
+      policy_epsilon: 0.1
+      prompt_template: With the given question "@{question}" and the `yes` option
+        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
+        the respective probabilities of `p_yes` and `p_no` occurring?
+      realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
+      realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
+      redeem_round_timeout: 3600.0
+      redeeming_batch_size: 5
+      reduce_factor: 0.25
+      refill_check_interval: 10
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 30
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 350.0
+      sample_bets_closing_days: 10
+      service_id: trader
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+      share_tm_config_on_startup: false
+      sleep_time: 10
+      slippage: 0.01
+      slot_count: 2
+      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      stop_trading_if_staking_kpi_met: true
+      store_path: /data/
+      strategies_kwargs:
+      - - bet_kelly_fraction
+        - 0.5
+      - - floor_balance
+        - 500000000000000000
+      - - bet_amount_per_threshold
+        - '0.0': 0
+          '0.1': 0
+          '0.2': 0
+          '0.3': 0
+          '0.4': 0
+          '0.5': 0
+          '0.6': 60000000000000000
+          '0.7': 90000000000000000
+          '0.8': 100000000000000000
+          '0.9': 1000000000000000000
+          '1.0': 10000000000000000000
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      termination_from_block: 0
+      termination_sleep: 900
+      tool_punishment_multiplier: 1
+      trading_strategy: kelly_criterion
+      tx_timeout: 10.0
+      use_fallback_strategy: true
+      use_nevermined: true
+      use_subgraph_for_redeeming: true
+      use_termination: false
+      validate_timeout: 1205
+---
+public_id: valory/p2p_libp2p_client:0.1.0
+type: connection
+config:
+  nodes:
+  - public_key: 02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77
+    uri: acn.staging.autonolas.tech:9005
+cert_requests:
+- identifier: acn
+  ledger_id: ethereum
+  message_format: '{public_key}'
+  not_after: '2024-01-01'
+  not_before: '2023-01-01'
+  public_key: 02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77
+  save_path: .certs/acn_cosmos_9005.txt
+---
+public_id: valory/ledger:0.19.0
+type: connection
+config:
+  ledger_apis:
+    ethereum:
+      address: http://host.docker.internal:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      poa_chain: false
+    gnosis:
+      address: https://rpc.gnosischain.com
+      chain_id: 100
+      default_gas_price_strategy: eip1559
+      poa_chain: false
+---
+public_id: eightballer/http_server:0.1.0:bafybeib27byea6hwpt2fh2tt4t7jbn34r56hc654r365vipbktecfh4qsy
+type: connection
+config:
+  target_skill_id: eightballer/frontend_loader

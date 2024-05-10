@@ -31,6 +31,10 @@ packages/valory/protocols/ipfs
 packages/valory/protocols/ledger_api
 packages/valory/protocols/tendermint
 
+packages/eightballer/protocols
+packages/eightballer/connections
+
+
 .idea
 **/__pycache__/
 *.DS_Store
@@ -47,5 +51,6 @@ leak_report
 agent/
 trader/
 !/packages/valory/agents/trader/
+!/packages/eightballer/agents/trader/
 !/packages/valory/services/trader/
 /trader_service/
