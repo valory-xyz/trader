@@ -22,6 +22,7 @@
 import csv
 import json
 import os
+import shutil
 from math import prod
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict, Generator, Optional, Tuple, Union
@@ -139,7 +140,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 write_dataset.write(serialized_row)
 
         # replace the current file with the temporary one, effectively removing the first row, excluding the header
-        os.replace(write_dataset.name, dataset_filepath)
+        shutil.move(write_dataset.name, dataset_filepath)
         write_dataset.close()
         try:
             os.unlink(write_dataset.name)
