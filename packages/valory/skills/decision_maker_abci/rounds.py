@@ -303,6 +303,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.redeemed_condition_ids),
             get_name(SynchronizedData.payout_so_far),
             get_name(SynchronizedData.mech_price),
+            get_name(SynchronizedData.mocking_mode),
+            get_name(SynchronizedData.next_mock_data_row),
         }
     )
     final_states: Set[AppState] = {

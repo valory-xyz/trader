@@ -201,6 +201,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return bool(mode)
 
     @property
+    def next_mock_data_row(self) -> int:
+        """Get the next_mock_data_row."""
+        next_mock_data_row = self.db.get("next_mock_data_row", 1)
+        if next_mock_data_row is None:
+            return 1
+        return int(next_mock_data_row)
+
+    @property
     def mech_responses(self) -> List[MechInteractionResponse]:
         """Get the mech responses."""
         serialized = self.db.get("mech_responses", "[]")

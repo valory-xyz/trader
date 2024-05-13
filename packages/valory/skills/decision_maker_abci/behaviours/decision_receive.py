@@ -21,17 +21,11 @@
 
 import csv
 import json
-import os
-import shutil
 from math import prod
-from tempfile import NamedTemporaryFile
 from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
-    NEW_LINE,
-    QUOTE,
-    TWO_QUOTES,
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
@@ -91,62 +85,31 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return MechInteractionResponse(error=error)
         return self._mech_response
 
-    def _cut_dataset_row(self) -> Optional[Dict[str, str]]:
-        """Read and delete a row from the input dataset which is used during the benchmarking mode.
+    def _next_dataset_row(self) -> Optional[Dict[str, str]]:
+        """Read the next row from the input dataset which is used during the benchmarking mode.
 
         :return: a dictionary with the header fields mapped to the values of the first row.
-            If no rows are in the file, returns `None`
+            If no rows are left to process in the file, returns `None`.
         """
         sep = self.benchmarking_mode.sep
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
-        write_dataset = NamedTemporaryFile(WRITE_TEXT_MODE, delete=False)
+        next_mock_data_row = self.synchronized_data.next_mock_data_row
+
+        row_with_headers: Optional[Dict[str, str]] = None
         with open(dataset_filepath) as read_dataset:
             reader = csv.DictReader(read_dataset, delimiter=sep)
-            row_with_headers: Dict[str, str] = next(reader, {})
+
+            for _ in range(next_mock_data_row):
+                row_with_headers = next(reader, {})
+
             if not row_with_headers:
                 # if no rows are in the file, then we finished the benchmarking
                 return None
 
-            # write the header into the temporary file
-            headers = reader.fieldnames
-            if headers is None:
-                self.context.logger.error(
-                    "The dataset has no headers! Cannot perform the benchmarking with a corrupted dataset file."
-                )
-                return None
-            serialized_header = sep.join(headers) + NEW_LINE
-            write_dataset.write(serialized_header)
-
-            # write the next rows into the temporary file
-            while True:
-                next_row: Dict[str, str] = next(reader, {})
-                if not next_row:
-                    break
-
-                quotes_preserved = []
-                for field in next_row.values():
-                    if QUOTE in field:
-                        # the reader removes the non-duplicated quotes, and replaces duplicated quotes with single ones;
-                        # therefore, we need to reintroduce duplicated quotes to match the original csv representation
-                        field = field.replace(QUOTE, TWO_QUOTES)
-                    if any(trigger in field for trigger in (COMMA, TWO_QUOTES)):
-                        # next, we need to reintroduce the quotes around fields that contain duplicated quotes or commas
-                        field = QUOTE + field + QUOTE
-                    quotes_preserved.append(field)
-
-                serialized_row = sep.join(quotes_preserved) + NEW_LINE
-                write_dataset.write(serialized_row)
-
-        # replace the current file with the temporary one, effectively removing the first row, excluding the header
-        shutil.move(write_dataset.name, dataset_filepath)
-        write_dataset.close()
-        try:
-            os.unlink(write_dataset.name)
-        except FileNotFoundError:
-            pass
-
+        msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
+        self.context.logger.info(msg)
         return row_with_headers
 
     def _parse_dataset_row(self, row: Dict[str, str]) -> str:
@@ -176,7 +139,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _mock_response(self) -> None:
         """Mock the response data."""
-        dataset_row = self._cut_dataset_row()
+        dataset_row = self._next_dataset_row()
         if dataset_row is None:
             return
         mech_response = self._parse_dataset_row(dataset_row)
@@ -393,6 +356,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             vote, p_yes, p_no, win_probability, confidence = self._get_decision()
             is_profitable = None
             bet_amount = None
+            next_mock_data_row = None
             if (
                 vote is not None
                 and p_yes is not None
@@ -403,12 +367,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 is_profitable, bet_amount = yield from self._is_profitable(
                     vote, p_yes, p_no, win_probability, confidence
                 )
+
+                if self.benchmarking_mode.enabled:
+                    next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
                 vote,
                 confidence,
                 bet_amount,
+                next_mock_data_row,
             )
 
         yield from self.finish_behaviour(payload)
