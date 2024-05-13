@@ -34,6 +34,7 @@ class DecisionReceivePayload(BaseTxPayload):
     vote: Optional[int]
     confidence: Optional[float]
     bet_amount: Optional[int]
+    next_mock_data_row: Optional[int]
 
 
 @dataclass(frozen=True)

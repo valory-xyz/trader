@@ -303,6 +303,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.redeemed_condition_ids),
             get_name(SynchronizedData.payout_so_far),
             get_name(SynchronizedData.mech_price),
+            get_name(SynchronizedData.mocking_mode),
+            get_name(SynchronizedData.next_mock_data_row),
         }
     )
     final_states: Set[AppState] = {
@@ -341,7 +343,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BenchmarkingModeDisabledRound: set(),
         FinishedBenchmarkingRound: {
-            get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.mocking_mode),
+            get_name(SynchronizedData.next_mock_data_row),
         },
         FinishedDecisionRequestRound: set(),
         FinishedSubscriptionRound: {
@@ -352,5 +355,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedWithoutRedeemingRound: set(),
         RefillRequiredRound: set(),
         ImpossibleRound: set(),
-        BenchmarkingDoneRound: set(),
+        BenchmarkingDoneRound: {
+            get_name(SynchronizedData.mocking_mode),
+            get_name(SynchronizedData.next_mock_data_row),
+        },
     }
