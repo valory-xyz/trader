@@ -37,10 +37,6 @@ class FinishedDecisionMakerRound(DegenerateRound):
     """A round representing that decision-making has finished."""
 
 
-class FinishedBenchmarkingRound(DegenerateRound):
-    """A round representing that decision-making has finished running in the benchmarking mode."""
-
-
 class FinishedDecisionRequestRound(DegenerateRound):
     """A round representing that decision request has finished."""
 

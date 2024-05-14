@@ -43,7 +43,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
-    FinishedBenchmarkingRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
@@ -140,7 +139,6 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedStakingRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
-    FinishedBenchmarkingRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: CheckBenchmarkingModeRound,
     FinishedResetAndPauseErrorRound: ResetAndPauseRound,
     # this has no effect, because the `BenchmarkingDoneRound` is terminal
