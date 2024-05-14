@@ -24,7 +24,6 @@ default_start_state: CheckBenchmarkingModeRound
 final_states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
-- FinishedBenchmarkingRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
 - FinishedSubscriptionRound
@@ -49,7 +48,6 @@ states:
 - ClaimRound
 - DecisionReceiveRound
 - DecisionRequestRound
-- FinishedBenchmarkingRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
 - FinishedSubscriptionRound
@@ -66,13 +64,13 @@ states:
 transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
-    (BetPlacementRound, MOCK_TX): FinishedBenchmarkingRound
+    (BetPlacementRound, MOCK_TX): RandomnessRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): FinishedBenchmarkingRound
+    (BlacklistingRound, MOCK_TX): RandomnessRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -105,7 +103,7 @@ transition_func:
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
-    (RedeemRound, MOCK_TX): FinishedBenchmarkingRound
+    (RedeemRound, MOCK_TX): RandomnessRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound

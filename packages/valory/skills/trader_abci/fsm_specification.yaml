@@ -94,13 +94,13 @@ states:
 transition_func:
     (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
-    (BetPlacementRound, MOCK_TX): ResetAndPauseRound
+    (BetPlacementRound, MOCK_TX): RandomnessRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): ResetAndPauseRound
+    (BlacklistingRound, MOCK_TX): RandomnessRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -186,7 +186,7 @@ transition_func:
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
     (RedeemRound, DONE): PreTxSettlementRound
-    (RedeemRound, MOCK_TX): ResetAndPauseRound
+    (RedeemRound, MOCK_TX): RandomnessRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
