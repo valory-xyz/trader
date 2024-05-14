@@ -52,7 +52,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
-    FinishedBenchmarkingRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
     FinishedSubscriptionRound,
@@ -162,7 +161,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 11.
         12. FinishedDecisionMakerRound
         13. BenchmarkingModeDisabledRound
-        14. FinishedBenchmarkingRound
         15. FinishedDecisionRequestRound
         16. FinishedWithoutDecisionRound
         17. FinishedWithoutRedeemingRound
@@ -171,7 +169,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         20. ImpossibleRound
         21. BenchmarkingDoneRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedBenchmarkingRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -251,7 +249,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
-            Event.MOCK_TX: FinishedBenchmarkingRound,
+            Event.MOCK_TX: RandomnessRound,
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
@@ -261,7 +259,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
             # skip the bet placement tx and the redeeming
-            Event.MOCK_TX: FinishedBenchmarkingRound,
+            Event.MOCK_TX: RandomnessRound,
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
@@ -270,7 +268,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         RedeemRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            Event.MOCK_TX: FinishedBenchmarkingRound,
+            Event.MOCK_TX: RandomnessRound,
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.NO_MAJORITY: RedeemRound,
             # in case of a round timeout, there likely is something wrong with redeeming
@@ -286,7 +284,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         FinishedDecisionMakerRound: {},
         BenchmarkingModeDisabledRound: {},
-        FinishedBenchmarkingRound: {},
         FinishedDecisionRequestRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
@@ -310,7 +307,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     final_states: Set[AppState] = {
         FinishedDecisionMakerRound,
         BenchmarkingModeDisabledRound,
-        FinishedBenchmarkingRound,
         FinishedDecisionRequestRound,
         FinishedSubscriptionRound,
         FinishedWithoutDecisionRound,
@@ -342,10 +338,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         BenchmarkingModeDisabledRound: set(),
-        FinishedBenchmarkingRound: {
-            get_name(SynchronizedData.mocking_mode),
-            get_name(SynchronizedData.next_mock_data_row),
-        },
         FinishedDecisionRequestRound: set(),
         FinishedSubscriptionRound: {
             get_name(SynchronizedData.tx_submitter),
