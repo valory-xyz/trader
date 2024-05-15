@@ -65,10 +65,8 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         penalty *= self.params.tool_punishment_multiplier
         self.policy.add_reward(tool_idx, penalty)
 
-        # if running in benchmarking mode, store the no-vote result
-        # and skip blacklisting the market as we should be based solely on the input data of the simulation
         if self.benchmarking_mode.enabled:
-            self._write_benchmark_results()
+            # skip blacklisting the market as we should be based solely on the input data of the simulation
             return
 
         # blacklist the sampled bet

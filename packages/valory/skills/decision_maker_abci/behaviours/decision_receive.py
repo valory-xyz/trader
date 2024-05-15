@@ -62,6 +62,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         super().__init__(**kwargs, loader_cls=ComponentPackageLoader)
         self._request_id: int = 0
         self._mech_response: Optional[MechInteractionResponse] = None
+        self._rows_exceeded: bool = False
 
     @property
     def request_id(self) -> int:
@@ -106,6 +107,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
             if not row_with_headers:
                 # if no rows are in the file, then we finished the benchmarking
+                self._rows_exceeded = True
                 return None
 
         msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
@@ -344,8 +346,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             f"Decision for profitability of this market: {is_profitable}."
         )
 
-        if self.benchmarking_mode.enabled and is_profitable:
-            self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+        if self.benchmarking_mode.enabled:
+            if is_profitable:
+                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+            else:
+                self._write_benchmark_results(p_yes, p_no, confidence)
 
         return is_profitable, bet_amount
 
@@ -370,6 +375,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
                 if self.benchmarking_mode.enabled:
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+
+            elif self.benchmarking_mode.enabled and not self._rows_exceeded:
+                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+                next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             payload = DecisionReceivePayload(
                 self.context.agent_address,
