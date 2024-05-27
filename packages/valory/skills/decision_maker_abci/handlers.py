@@ -19,8 +19,19 @@
 
 """This module contains the handler for the 'decision_maker_abci' skill."""
 
-from typing import Callable, Dict, Optional, Tuple, cast
+import json
+import re
 from datetime import datetime
+from enum import Enum
+from typing import Callable, Dict, Optional, Tuple, cast
+from urllib.parse import urlparse
+
+from aea.protocols.base import Message
+
+from packages.valory.connections.http_server.connection import (
+    PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
+)
+from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
@@ -42,21 +53,9 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
-from packages.valory.protocols.http.message import HttpMessage
-import json
-from enum import Enum
-from urllib.parse import urlparse
-import re
-from aea.protocols.base import Message
-from packages.valory.connections.http_server.connection import (
-    PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
-)
-from packages.valory.skills.trader_abci.dialogues import (
-    HttpDialogue,
-    HttpDialogues,
-)
-from packages.valory.skills.trader_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
+from packages.valory.skills.trader_abci.dialogues import HttpDialogue, HttpDialogues
+from packages.valory.skills.trader_abci.models import SharedState
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -143,7 +142,6 @@ class HttpHandler(BaseHttpHandler):
         return SynchronizedData(
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
-
 
     def _get_handler(self, url: str, method: str) -> Tuple[Optional[Callable], Dict]:
         """Check if an url is meant to be handled in this handler
@@ -250,7 +248,6 @@ class HttpHandler(BaseHttpHandler):
         # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
-
 
     def _handle_get_health(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
