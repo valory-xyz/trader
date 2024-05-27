@@ -216,6 +216,7 @@ models:
         "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
         ["price", "1000000000000000000"]]}
       staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+      staking_interaction_sleep_time: ${int:5}
       disable_trading: ${bool:false}
       stop_trading_if_staking_kpi_met: ${bool:true}
       agent_balance_threshold: ${int:10000000000000000}

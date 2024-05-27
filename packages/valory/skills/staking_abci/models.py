@@ -45,6 +45,9 @@ class StakingParams(BaseParams):
         self.staking_contract_address: str = self._ensure(
             "staking_contract_address", kwargs, str
         )
+        self.staking_interaction_sleep_time: int = self._ensure(
+            "staking_interaction_sleep_time", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
 

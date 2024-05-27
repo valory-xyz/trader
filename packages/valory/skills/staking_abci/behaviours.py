@@ -66,8 +66,11 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
-        params = cast(StakingParams, self.context.params)
-        self._staking_contract_address = params.staking_contract_address
+
+    @property
+    def params(self) -> StakingParams:
+        """Return the params."""
+        return cast(StakingParams, self.context.params)
 
     @property
     def synced_timestamp(self) -> int:
@@ -77,12 +80,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     @property
     def staking_contract_address(self) -> str:
         """Get the staking contract address."""
-        return self._staking_contract_address
+        return self.params.staking_contract_address
 
     @staking_contract_address.setter
     def staking_contract_address(self, staking_contract_address: str) -> None:
         """Set the staking contract address."""
-        self._staking_contract_address = staking_contract_address
+        self.params.staking_contract_address = staking_contract_address
 
     @property
     def service_staking_state(self) -> StakingState:
@@ -177,8 +180,9 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
                 break
             if timeout is not None and datetime.now() > deadline:
                 raise TimeoutException()
-            self.context.logger.info(f"Retrying in {self.params.sleep_time} seconds.")
-            yield from self.sleep(self.params.sleep_time)
+            msg = f"Retrying in {self.params.staking_interaction_sleep_time} seconds."
+            self.context.logger.info(msg)
+            yield from self.sleep(self.params.staking_interaction_sleep_time)
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage
