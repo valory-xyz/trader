@@ -315,6 +315,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             bool,
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
+        self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
         self.mech_to_subscription_params: Dict[
             str, Any
         ] = nested_list_todict_workaround(
