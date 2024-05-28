@@ -552,7 +552,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:
             self.context.logger.error(
-                "Couldn't get safe tx hash. Expected response performative "   # type: ignore
+                "Couldn't get safe tx hash. Expected response performative "  # type: ignore
                 f"{ContractApiMessage.Performative.STATE.value}, "  # type: ignore
                 f"received {response_msg.performative.value}: {response_msg}."
             )
