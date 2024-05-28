@@ -254,6 +254,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
     benchmark_tool: *id004
 2:
   models:
@@ -353,6 +354,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
     benchmark_tool: *id004
 3:
   models:
@@ -452,6 +454,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
     benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0
