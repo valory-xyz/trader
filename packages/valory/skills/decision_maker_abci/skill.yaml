@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeiap6bqx627tz775mdkppjude7az7yg6awwqfvrieq37hreiztscgy
+  behaviours/base.py: bafybeiawxs3lmulq2i6zpkljswatihjc366rhkyyupzhzy4kstqbncxbx4
   behaviours/bet_placement.py: bafybeia62an6dpkf6b46fzc4epcyh3zuvpvoge3ewmussclxbldjf3bdue
   behaviours/blacklisting.py: bafybeiaghjvhzyeltk6necqwqfwgwp6z4ckpgt3ee2yj3qhcneg5eorowi
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -31,7 +31,7 @@ fingerprint:
   handlers.py: bafybeiggoetspwcvdojmbjdd67tmkoeedikmt6vsbcium3zjaljb6jzqu4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeiax4skemmboginzgiozay5svzwgdvd62lvn4yksmfgxqoeflatht4
+  models.py: bafybeigooiifyzfjx7fyepakcry4zcnknbt7rv23pf36lmyyyqlombjoxm
   payloads.py: bafybeiheazhwvvg4e5p6g32vlawc7imswjznku2i47u5nsruk4agaxtf7m
   policy.py: bafybeidbsu5zn456jpku65jajwlxyg5kn2ltlkctkculkj2i2tfmmwm4jq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -60,25 +60,25 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeibq77mgzhyb23blf2eqmia3kc6io5karedfzhntvpcebeqdzrgyqa
-- valory/market_maker:0.1.0:bafybeihyi42hkmu2knrunfdbunjh6j3ibfrnwj7rmqw7mm7pmerzcwzfiq
-- valory/erc20:0.1.0:bafybeigvftdxjgnlsoemst5d57cor36idywk7bwcfj2bjqijxdxo3xpurq
+- valory/gnosis_safe:0.1.0:bafybeidcb25wneezfd2iaiqa7ygxlimwwacvycahhenvpw7tdvwdigllzm
+- valory/market_maker:0.1.0:bafybeiba25nt26ntjzkkpfyl2ngbjxrfd44ckg3znfhqm552725vb3gaka
+- valory/erc20:0.1.0:bafybeia7a7mfjeok4ywpmejz74msofagagcentsudqxfojadmxlur5qolu
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiayv7irtodu5hgaveixv7idkc5jva4gyfjcehkio7zfx7iiznc2bm
+- valory/mech:0.1.0:bafybeidwpijhdwj5abewa44k3tzxuanxykzmgnnffeq7re2rxp7pqbd2ou
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeibedc7ehebk3ikr4cowjbvgpxqpu65nforgqmraxqxiq5jv6rboqe
-- valory/transfer_nft_condition:0.1.0:bafybeicgpoag2lymofz3vnen76q7gtig5hzimn32o57php4uerr6t25em4
+- valory/agent_registry:0.1.0:bafybeifsb2krg4qnr4nxdrhcdgpncfr5ra2nahebvn2f2yff7ebwe7ooae
+- valory/transfer_nft_condition:0.1.0:bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi
 protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 - valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
-- valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
+- valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
+- valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
+- valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
+- valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
     args: {}
