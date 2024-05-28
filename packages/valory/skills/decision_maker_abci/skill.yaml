@@ -28,7 +28,7 @@ fingerprint:
   behaviours/tool_selection.py: bafybeie7xhopohfoct7jggerk6nu3vkhlx7uhcowo3dfktoqmr7227j4ke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeif2kas4eho4aielucf3ihjzjsog32icccbxrvje6kkw7aw4m4zg6q
-  handlers.py: bafybeiatqc5zktplpxmcto5zcedeizz3an4xjhvra4ewxgp6bcedormvoa
+  handlers.py: bafybeibxslixy76ukruzycnmbodpgyahbgbkbnkxz4qt5zzlaioa4zucom
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeiax4skemmboginzgiozay5svzwgdvd62lvn4yksmfgxqoeflatht4
@@ -56,7 +56,7 @@ fingerprint:
   tests/behaviours/test_base.py: bafybeidemmwjhtr6i4tq66jyqkpmb425ersfmk7k7zzjmeaz2idqnpcwve
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
-  utils/nevermined.py: bafybeidw4ydwqo7dmdfu2oqx4lmgho5ciakthx6rj2iwgt7bywvnppbxuy
+  utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
@@ -75,6 +75,7 @@ protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 - valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
+- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
@@ -265,6 +266,7 @@ models:
           0.8: 0
           0.9: 0
           1.0: 0
+      service_endpoint: trader.staging.autonolas.tech/
     class_name: DecisionMakerParams
   benchmarking_mode:
     args:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2021-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -52,10 +52,12 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.decision_maker_abci.dialogues import (
+    HttpDialogue,
+    HttpDialogues,
+)
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-from packages.valory.skills.trader_abci.dialogues import HttpDialogue, HttpDialogues
-from packages.valory.skills.trader_abci.models import SharedState
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -117,7 +119,9 @@ class HttpHandler(BaseHttpHandler):
 
     def setup(self) -> None:
         """Implement the setup."""
-        config_uri_base_hostname = urlparse(self.context.params.token_uri_base).hostname
+        config_uri_base_hostname = urlparse(
+            self.context.params.service_endpoint
+        ).hostname
         propel_uri_base_hostname = (
             r"https?:\/\/[a-zA-Z0-9]{16}.agent\.propel\.(staging\.)?autonolas\.tech"
         )
@@ -147,7 +151,7 @@ class HttpHandler(BaseHttpHandler):
         """Check if an url is meant to be handled in this handler
 
         We expect url to match the pattern {hostname}/.*,
-        where hostname is allowed to be localhost, 127.0.0.1 or the token_uri_base's hostname.
+        where hostname is allowed to be localhost, 127.0.0.1 or the service_endpoint's hostname.
         Examples:
             localhost:8000/0
             127.0.0.1:8000/100

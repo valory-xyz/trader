@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigpmfa5qisxnjc66o3jlrozussfoihimuekg4xky45dc5jtjcukry
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiehcmc6go5iu46ijewqm5sb6osf2ud4fc5oxmh7dmfotdryhdp6oe
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeia3ukm5wb3wjdcrwdytoa4hxbfotdt2i7xl3dxjldxtcoqdosrk4q
-- valory/trader_abci:0.1.0:bafybeigjoj5q76dt2agbkxuf3323iojoqzblqxx6u6uvn5y4djdeoxm4e4
+- valory/decision_maker_abci:0.1.0:bafybeigsilvjo4xg3s5ffdcvyny7olnlymrrdixpmc7mt2yw5c4727bngq
+- valory/trader_abci:0.1.0:bafybeigvk5xoqkpe6tipmz3nrol7uclkjc4fsn3jaenwuws4lporzuptha
 - valory/staking_abci:0.1.0:bafybeicsydq6fdansf7qrmrygzchl3h6rtkdw5rmx2jyrwecj4laj5nehy
 - valory/check_stop_trading_abci:0.1.0:bafybeidyc5fvw5wosbc3anxxxog5b67cfmvrsrltjh3cfllye3bb43r3z4
 - valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
@@ -160,7 +160,7 @@ models:
       multisend_batch_size: ${int:1}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:null}
-      agent_registry_address: ${str:null}
+      agent_registry_address: ${str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
       share_tm_config_on_startup: ${bool:false}
       sleep_time: ${int:10}
       tendermint_p2p_url: ${str:localhost:26656}
@@ -225,6 +225,7 @@ models:
       contract_timeout: ${float:300.0}
       file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
       strategies_kwargs: ${list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
+      service_endpoint: ${str:https://trader.staging.autonolas.tech/}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

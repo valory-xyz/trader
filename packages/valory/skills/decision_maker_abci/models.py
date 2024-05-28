@@ -321,6 +321,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             kwargs,
             "mech_to_subscription_params",
         )
+        self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         super().__init__(*args, **kwargs)
 
     @property
