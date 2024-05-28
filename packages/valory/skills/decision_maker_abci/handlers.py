@@ -152,11 +152,6 @@ class HttpHandler(BaseHttpHandler):
 
         We expect url to match the pattern {hostname}/.*,
         where hostname is allowed to be localhost, 127.0.0.1 or the service_endpoint's hostname.
-        Examples:
-            localhost:8000/0
-            127.0.0.1:8000/100
-            https://pfp.staging.autonolas.tech/45
-            http://pfp.staging.autonolas.tech/120
 
         :param url: the url to check
         :returns: the handling method if the message is intended to be handled by this handler, None otherwise, and the regex captures
