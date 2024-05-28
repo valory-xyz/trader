@@ -154,6 +154,7 @@ class HttpHandler(BaseHttpHandler):
         where hostname is allowed to be localhost, 127.0.0.1 or the service_endpoint's hostname.
 
         :param url: the url to check
+        :param method: the method
         :returns: the handling method if the message is intended to be handled by this handler, None otherwise, and the regex captures
         """
         # Check base url

@@ -518,7 +518,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         expected_performative = ContractApiMessage.Performative.RAW_TRANSACTION
         if response_msg.performative != expected_performative:
             self.context.logger.error(
-                f"Couldn't compile the multisend tx. "
+                "Couldn't compile the multisend tx. "  # type: ignore
                 f"Expected response performative {expected_performative.value}, "  # type: ignore
                 f"received {response_msg.performative.value}: {response_msg}"
             )
@@ -552,7 +552,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:
             self.context.logger.error(
-                "Couldn't get safe tx hash. Expected response performative "
+                "Couldn't get safe tx hash. Expected response performative "   # type: ignore
                 f"{ContractApiMessage.Performative.STATE.value}, "  # type: ignore
                 f"received {response_msg.performative.value}: {response_msg}."
             )
