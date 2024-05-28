@@ -18,8 +18,8 @@
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiha5puirahfuauskvvmf5qurpatcmy7d35wlcbnzsdcalej3u2paq",
         "skill/valory/staking_abci/0.1.0": "bafybeicsydq6fdansf7qrmrygzchl3h6rtkdw5rmx2jyrwecj4laj5nehy",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeidyc5fvw5wosbc3anxxxog5b67cfmvrsrltjh3cfllye3bb43r3z4",
-        "agent/valory/trader/0.1.0": "bafybeideffenapg7dndwjs2ntavidgzrhlzq2c7xgq24rjx3v2rkbyzetu",
-        "service/valory/trader/0.1.0": "bafybeihfajf53h5eso536f7ddcur5ayr73uem4rtxvbn7gxz7ggrifa2hy"
+        "agent/valory/trader/0.1.0": "bafybeiclw3cbhvxtkgyp3eny3mh6a6owwa7idmlumqms74b6evnsfdecqu",
+        "service/valory/trader/0.1.0": "bafybeieiueooboziej3xj5mtm2h3ms64aum6sjr3nygzavt2fdisgb3wie"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
