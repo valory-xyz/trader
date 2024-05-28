@@ -132,6 +132,7 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -253,6 +254,7 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
 2:
   models:
@@ -354,6 +356,7 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
 3:
   models:
@@ -455,6 +458,7 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0

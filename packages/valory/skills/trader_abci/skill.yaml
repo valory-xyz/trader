@@ -237,6 +237,7 @@ models:
           0.9: 0
           1.0: 0
       rpc_sleep_time: 10
+      mech_interaction_sleep_time: 10
     class_name: TraderParams
   benchmarking_mode:
     args:
