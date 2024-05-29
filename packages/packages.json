@@ -11,6 +11,7 @@
         "contract/valory/agent_registry/0.1.0": "bafybeifsb2krg4qnr4nxdrhcdgpncfr5ra2nahebvn2f2yff7ebwe7ooae",
         "contract/valory/service_staking_token/0.1.0": "bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi",
+        "contract/valory/relayer/0.1.0": "bafybeiaabvxim4blp5fxb6qjlzjivtvkme3fk24h5jte7w6vr6rsx72j6u",
         "skill/valory/market_manager_abci/0.1.0": "bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeiaxfuorncn6upx657gpaj5fbcput7c2bur7m7bbupnzdsrgah4eau",
         "skill/valory/trader_abci/0.1.0": "bafybeib3vemqm7z4q533g7kg4uotnzweuolfxmnbyep3m3bs4glyj3acmm",
