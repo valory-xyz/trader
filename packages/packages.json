@@ -13,13 +13,13 @@
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi",
         "contract/valory/relayer/0.1.0": "bafybeiaabvxim4blp5fxb6qjlzjivtvkme3fk24h5jte7w6vr6rsx72j6u",
         "skill/valory/market_manager_abci/0.1.0": "bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiaxfuorncn6upx657gpaj5fbcput7c2bur7m7bbupnzdsrgah4eau",
-        "skill/valory/trader_abci/0.1.0": "bafybeib3vemqm7z4q533g7kg4uotnzweuolfxmnbyep3m3bs4glyj3acmm",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeib4xfyeewec2x3b5267anyxryux63q3i67spovckqdjjlmikpfrni",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeicqu2z4npcj2gj5mk5z7wgddgmaswpzvz7tlpxqd3ohagvo3nxyam",
+        "skill/valory/trader_abci/0.1.0": "bafybeigkad7k3hakpvuqj7thmyr2lq2efwvlmqw3lgvksua7gm722lhv5m",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifckmb7jntzaxffih4zljjjoap6z2s24w3775a3wpudt36pb2in7u",
         "skill/valory/staking_abci/0.1.0": "bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi",
-        "agent/valory/trader/0.1.0": "bafybeiagrxyszagakaon5keyhnrhxej56kfm45b3skcd5a7r2pszr3gtce",
-        "service/valory/trader/0.1.0": "bafybeihyytxumawhbwlcedwz6jzyg6m2fzc6l7oiwvhdwrxmehcxu2zsce"
+        "agent/valory/trader/0.1.0": "bafybeiconooi2wspjkju6qfxhzia627i6vnrx7v7yjwyzvus2m57d26sry",
+        "service/valory/trader/0.1.0": "bafybeic2jxicqdvpijfp43tf5inejeqm6hgbbouvdj56237sllhvp6gsja"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
@@ -41,6 +41,7 @@
         "connection/valory/ledger/0.19.0": "bafybeig7woeog4srdby75hpjkmx4rhpkzncbf4h2pm5r6varsp26pf2uhu",
         "connection/valory/p2p_libp2p_client/0.1.0": "bafybeid3xg5k2ol5adflqloy75ibgljmol6xsvzvezebsg7oudxeeolz7e",
         "connection/valory/ipfs/0.1.0": "bafybeieaq56usnosbwdslmo6i2yvttwpsm6djvawsowq3jt6bkjwhw3tl4",
+        "connection/valory/http_server/0.22.0": "bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m",
         "skill/valory/abstract_abci/0.1.0": "bafybeieh4ei3qdelmacnm7vwq57phoewgumr3udvxt6pybmuggwc3yk65q",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie",
         "skill/valory/registration_abci/0.1.0": "bafybeieu7vq3pyns4t5ty6u3sbmpkd7yznpg3rmqifoz3jhy7pmqyg3w6q",

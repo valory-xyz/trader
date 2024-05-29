@@ -7,9 +7,13 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiagrxyszagakaon5keyhnrhxej56kfm45b3skcd5a7r2pszr3gtce
+agent: valory/trader:0.1.0:bafybeiconooi2wspjkju6qfxhzia627i6vnrx7v7yjwyzvus2m57d26sry
 number_of_agents: 4
-deployment: {}
+deployment:
+  agent:
+    ports:
+      0:
+        8000: 8000
 ---
 public_id: valory/trader_abci:0.1.0
 type: skill
@@ -131,6 +135,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: &id004
@@ -253,6 +258,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
@@ -355,6 +361,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
@@ -457,6 +464,7 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
@@ -511,3 +519,9 @@ cert_requests:
   public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
   save_path: .certs/acn_cosmos_11000.txt
 is_abstract: false
+---
+public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  host: ${HTTP_SERVER_HOST:str:0.0.0.0}
+  target_skill_id: valory/trader_abci:0.1.0
