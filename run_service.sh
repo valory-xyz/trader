@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export STORE_PATH='/tmp/'
+
 REPO_PATH=$PWD
 
 # Remove previous service build
