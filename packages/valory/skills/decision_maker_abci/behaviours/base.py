@@ -598,8 +598,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 break
             if timeout is not None and datetime.now() > deadline:
                 raise TimeoutException()
-            self.context.logger.info(f"Retrying in {self.params.sleep_time} seconds.")
-            yield from self.sleep(self.params.sleep_time)
+            self.context.logger.info(
+                f"Retrying in {self.params.rpc_sleep_time} seconds."
+            )
+            yield from self.sleep(self.params.rpc_sleep_time)
 
     def _write_benchmark_results(
         self,

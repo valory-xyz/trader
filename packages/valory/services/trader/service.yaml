@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiclw3cbhvxtkgyp3eny3mh6a6owwa7idmlumqms74b6evnsfdecqu
+agent: valory/trader:0.1.0:bafybeiconooi2wspjkju6qfxhzia627i6vnrx7v7yjwyzvus2m57d26sry
 number_of_agents: 4
 deployment:
   agent:
@@ -114,6 +114,7 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
         disable_trading: ${DISABLE_TRADING:bool:false}
         stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
@@ -135,6 +136,8 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -234,6 +237,7 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
         disable_trading: ${DISABLE_TRADING:bool:false}
         stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
@@ -255,6 +259,8 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
 2:
   models:
@@ -334,6 +340,7 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
         disable_trading: ${DISABLE_TRADING:bool:false}
         stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
@@ -355,6 +362,8 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
 3:
   models:
@@ -434,6 +443,7 @@ type: skill
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
         disable_trading: ${DISABLE_TRADING:bool:false}
         stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
@@ -455,6 +465,8 @@ type: skill
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
 ---
 public_id: valory/ledger:0.19.0

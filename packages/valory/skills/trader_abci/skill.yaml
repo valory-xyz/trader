@@ -19,17 +19,17 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
-- valory/registration_abci:0.1.0:bafybeiek7zcsxbucjwzgqfftafhfrocvc7q4yxllh2q44jeemsjxg3rcfm
-- valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
-- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
-- valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeifujiftvyib3uzzxumjotufnicjye3ksgirynividdrwsbmpzxdx4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiha5puirahfuauskvvmf5qurpatcmy7d35wlcbnzsdcalej3u2paq
-- valory/staking_abci:0.1.0:bafybeicsydq6fdansf7qrmrygzchl3h6rtkdw5rmx2jyrwecj4laj5nehy
-- valory/check_stop_trading_abci:0.1.0:bafybeidyc5fvw5wosbc3anxxxog5b67cfmvrsrltjh3cfllye3bb43r3z4
-- valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
+- valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
+- valory/registration_abci:0.1.0:bafybeieu7vq3pyns4t5ty6u3sbmpkd7yznpg3rmqifoz3jhy7pmqyg3w6q
+- valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
+- valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
+- valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
+- valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
+- valory/decision_maker_abci:0.1.0:bafybeicqu2z4npcj2gj5mk5z7wgddgmaswpzvz7tlpxqd3ohagvo3nxyam
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifckmb7jntzaxffih4zljjjoap6z2s24w3775a3wpudt36pb2in7u
+- valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
+- valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
+- valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
     args: {}
@@ -184,6 +184,7 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_interaction_sleep_time: 5
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
@@ -236,6 +237,8 @@ models:
           0.9: 0
           1.0: 0
       service_endpoint: trader.staging.autonolas.tech/
+      rpc_sleep_time: 10
+      mech_interaction_sleep_time: 10
     class_name: TraderParams
   benchmarking_mode:
     args:
