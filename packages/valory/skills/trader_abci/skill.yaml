@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeidp3sl5uomb5stgk6y7nifxv7zomfe3emqstbuw32urorpimq7lgi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeif7fxldzdglalwgmo3u44jkjdox2tdgf6zbq7epw6ju4kyl5b7tze
-  handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
+  handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
   models.py: bafybeicovhcparwbvqdbrofv4kxiyznuezpqxsdxqx3wkkvht7patop4e4
 fingerprint_ignore_patterns: []
 connections: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
 - valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
 - valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeih55udteiz7jilx34n5zpqnata5eqznupdt5tdghk4strrvifexfe
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6jsc64vhhopsrgrycq2rqoqrndfexxant5mlnkj4dxvv7lmulfa
+- valory/decision_maker_abci:0.1.0:bafybeifujiftvyib3uzzxumjotufnicjye3ksgirynividdrwsbmpzxdx4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiha5puirahfuauskvvmf5qurpatcmy7d35wlcbnzsdcalej3u2paq
 - valory/staking_abci:0.1.0:bafybeicsydq6fdansf7qrmrygzchl3h6rtkdw5rmx2jyrwecj4laj5nehy
 - valory/check_stop_trading_abci:0.1.0:bafybeidyc5fvw5wosbc3anxxxog5b67cfmvrsrltjh3cfllye3bb43r3z4
 - valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
@@ -235,6 +235,7 @@ models:
           0.8: 0
           0.9: 0
           1.0: 0
+      service_endpoint: trader.staging.autonolas.tech/
     class_name: TraderParams
   benchmarking_mode:
     args:
