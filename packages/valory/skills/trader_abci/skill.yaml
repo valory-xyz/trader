@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeicqu2z4npcj2gj5mk5z7wgddgmaswpzvz7tlpxqd3ohagvo3nxyam
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifckmb7jntzaxffih4zljjjoap6z2s24w3775a3wpudt36pb2in7u
+- valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih5fn54m44xuam5uqabohlpkrq7vzzz2kvyrrwwo6nsovaxceyrq4
 - valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
 - valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -122,7 +122,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
-      agent_registry_address: null
+      agent_registry_address: '0x0000000000000000000000000000000000000000'
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'
