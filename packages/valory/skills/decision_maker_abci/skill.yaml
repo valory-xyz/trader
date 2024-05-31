@@ -53,7 +53,8 @@ fingerprint:
   states/tool_selection.py: bafybeiaaijv6dukp3bmsptcwkcmumc6wu6ztzkvaqzsqqjbfn4ozgyuykq
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
   tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
-  tests/behaviours/test_base.py: bafybeidemmwjhtr6i4tq66jyqkpmb425ersfmk7k7zzjmeaz2idqnpcwve
+  tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
+  tests/behaviours/test_base.py: bafybeiaujio72w3yayuexlok66taderagq4s22gku6nrfayuyo7p7yuuda
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi
@@ -194,7 +195,7 @@ models:
       slot_count: 2
       opening_margin: 300
       languages:
-        - en_US
+      - en_US
       average_block_time: 5
       abt_error_mult: 5
       sample_bets_closing_days: 10
