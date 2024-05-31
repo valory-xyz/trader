@@ -188,6 +188,15 @@ models:
       mech_request_price: null
       mech_chain_id: gnosis
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
+      mech_interaction_sleep_time: 10
+      creator_per_subgraph:
+        omen_subgraph: []
+      slot_count: 2
+      opening_margin: 300
+      languages:
+        - en_US
+      average_block_time: 5
+      abt_error_mult: 5
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
