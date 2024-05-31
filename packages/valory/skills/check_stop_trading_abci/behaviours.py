@@ -123,7 +123,9 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
 
         # kpi calculation if v2 staking is used
         if self.use_v2:
-            eligibility_margin = liveness_period * liveness_ratio + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
+            eligibility_margin = (
+                liveness_period * liveness_ratio + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
+            )
             is_kpi_met = mech_requests_since_last_cp >= eligibility_margin
             return is_kpi_met
 

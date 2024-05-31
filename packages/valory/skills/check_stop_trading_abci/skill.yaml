@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeiegwho2fanynmjixqev5e4zswon3tidyiyy4ribvdbc7qno3aagsa
+  behaviours.py: bafybeiaun2btspmgetucfaem73hyjww2caf76qo3xsrtfastmonl2ug4yi
   dialogues.py: bafybeictrrnwcijiejczy23dfvbx5kujgef3dulzqhs3etl2juvz5spm2e
   fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
   handlers.py: bafybeiard64fwxib3rtyp67ymhf222uongcyqhfhdyttpsyqkmyh5ajipu
@@ -19,11 +19,13 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/service_staking_token:0.1.0:bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem
+- valory/staking_token:0.1.0:bafybeiaxxqvsttodna7rw3lda6ksfyewodf2hwoxbgwrny66ppex7uyvoe
+- valory/mech_activity:0.1.0:bafybeiec6nnvfs6captlncrtjfygpp275vkfajvj4frrnab7thsca6337e
 - valory/mech:0.1.0:bafybeidwpijhdwj5abewa44k3tzxuanxykzmgnnffeq7re2rxp7pqbd2ou
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/staking_abci:0.1.0:bafybeif2bpsllzbo3zji4g6tgu55ewumyiyx425eidic33lgemvpwt5v6u
+- valory/staking_abci:0.1.0:bafybeidpc3vvcri7tzx2cuxgtoabaunux5jjc7sa3mibsqho2agiv64pim
 behaviours:
   main:
     args: {}

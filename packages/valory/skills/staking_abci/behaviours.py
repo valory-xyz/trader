@@ -64,6 +64,7 @@ SAFE_GAS = 0
 
 NULL_ADDRESS = "0x0000000000000000000000000000000000000000"
 
+
 class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     """Base behaviour that contains methods to interact with the staking contract."""
 
@@ -245,7 +246,9 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         **kwargs: Any,
     ) -> WaitableConditionType:
         """Interact with the staking contract."""
-        contract_public_id = StakingTokenContract if self.use_v2 else ServiceStakingTokenContract
+        contract_public_id = (
+            StakingTokenContract if self.use_v2 else ServiceStakingTokenContract
+        )
         status = yield from self.contract_interact(
             contract_address=self.staking_contract_address,
             contract_public_id=contract_public_id.contract_id,
@@ -310,7 +313,11 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_period(self) -> WaitableConditionType:
         """Get the liveness period."""
-        contract_interact = self._mech_activity_checker_contract_interact if self.use_v2 else self._staking_contract_interact
+        contract_interact = (
+            self._mech_activity_checker_contract_interact
+            if self.use_v2
+            else self._staking_contract_interact
+        )
         status = yield from contract_interact(
             contract_callable="get_liveness_period",
             placeholder=get_name(CallCheckpointBehaviour.liveness_period),
