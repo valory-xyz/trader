@@ -164,7 +164,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: decision_maker
       service_registry_address: null
-      agent_registry_address: null
+      agent_registry_address: '0x0000000000000000000000000000000000000000'
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'
