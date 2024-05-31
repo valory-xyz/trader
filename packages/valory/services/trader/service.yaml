@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeid4n4i4ga2byxtslrm4cumlrmrempcbvkot5cjbachx7omslka5ti
+agent: valory/trader:0.1.0:bafybeicccpv6x6ora4g7fwotvy6xob42cb7h7lonyjf4fhkac3ietyrtse
 number_of_agents: 4
 deployment:
   agent:
@@ -90,6 +90,7 @@ type: skill
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
+        mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}

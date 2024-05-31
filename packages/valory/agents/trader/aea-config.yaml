@@ -45,12 +45,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih5fn54m44xuam5uqabohlpkrq7vzzz2kvyrrwwo6nsovaxceyrq4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiduqywl3pvjh7u3wv4ogu3f3kcstekntszydky73kvyxe6jcx7xfy
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
 - valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
-- valory/trader_abci:0.1.0:bafybeidvdhzazssaljujsxinfz7slsnwmplm7i42bvpw4avrygrzu54nt4
-- valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
-- valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
+- valory/trader_abci:0.1.0:bafybeiacbqip5rzcuupykfcm6up64wobrgo4maxdmxpgnilabmqa2lj2cm
+- valory/staking_abci:0.1.0:bafybeif2bpsllzbo3zji4g6tgu55ewumyiyx425eidic33lgemvpwt5v6u
+- valory/check_stop_trading_abci:0.1.0:bafybeiago3xzmc24sfpqzyqwlebi4fr3i7dpxpeeoqvlyf5yrzvrx3l674
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -178,6 +178,7 @@ models:
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_request_price: ${int:null}
       mech_chain_id: ${str:gnosis}
+      mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
       mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion}

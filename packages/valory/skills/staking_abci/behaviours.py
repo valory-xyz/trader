@@ -26,10 +26,12 @@ from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, cast
 from aea.configurations.data_types import PublicId
 
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
+from packages.valory.contracts.mech_activity.contract import MechActivityContract
 from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
     StakingState,
 )
+from packages.valory.contracts.staking_token.contract import StakingTokenContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import (
@@ -60,6 +62,8 @@ ETH_PRICE = 0
 SAFE_GAS = 0
 
 
+NULL_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     """Base behaviour that contains methods to interact with the staking contract."""
 
@@ -73,6 +77,11 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         return cast(StakingParams, self.context.params)
 
     @property
+    def use_v2(self) -> bool:
+        """Whether to use the v2 staking contract."""
+        return self.params.mech_activity_checker_contract != NULL_ADDRESS
+
+    @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
@@ -81,6 +90,11 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def staking_contract_address(self) -> str:
         """Get the staking contract address."""
         return self.params.staking_contract_address
+
+    @property
+    def mech_activity_checker_contract(self) -> str:
+        """Get the staking contract address."""
+        return self.params.mech_activity_checker_contract
 
     @staking_contract_address.setter
     def staking_contract_address(self, staking_contract_address: str) -> None:
@@ -231,9 +245,28 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         **kwargs: Any,
     ) -> WaitableConditionType:
         """Interact with the staking contract."""
+        contract_public_id = StakingTokenContract if self.use_v2 else ServiceStakingTokenContract
         status = yield from self.contract_interact(
             contract_address=self.staking_contract_address,
-            contract_public_id=ServiceStakingTokenContract.contract_id,
+            contract_public_id=contract_public_id.contract_id,
+            contract_callable=contract_callable,
+            data_key=data_key,
+            placeholder=placeholder,
+            **kwargs,
+        )
+        return status
+
+    def _mech_activity_checker_contract_interact(
+        self,
+        contract_callable: str,
+        placeholder: str,
+        data_key: str = "data",
+        **kwargs: Any,
+    ) -> WaitableConditionType:
+        """Interact with the staking contract."""
+        status = yield from self.contract_interact(
+            contract_address=self.mech_activity_checker_contract,
+            contract_public_id=MechActivityContract.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
             placeholder=placeholder,
@@ -277,7 +310,8 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_period(self) -> WaitableConditionType:
         """Get the liveness period."""
-        status = yield from self._staking_contract_interact(
+        contract_interact = self._mech_activity_checker_contract_interact if self.use_v2 else self._staking_contract_interact
+        status = yield from contract_interact(
             contract_callable="get_liveness_period",
             placeholder=get_name(CallCheckpointBehaviour.liveness_period),
         )
@@ -285,6 +319,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_ratio(self) -> WaitableConditionType:
         """Get the liveness ratio."""
+
         status = yield from self._staking_contract_interact(
             contract_callable="liveness_ratio",
             placeholder=get_name(CallCheckpointBehaviour.liveness_ratio),

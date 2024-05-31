@@ -1,0 +1,23 @@
+name: staking_token
+author: valory
+version: 0.1.0
+type: contract
+description: Service staking token contract
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
+  build/StakingToken.json: bafybeid5vwardpaeeggfbp4o2ea7wdhywaeamhvyolxmhv6v2ynil4st6q
+  contract.py: bafybeid25lli7qxqhytkah7jod6dvx3plfts7kumzdvk64uhb3htdppuga
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: StakingTokenContract
+contract_interface_paths:
+  ethereum: build/StakingToken.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==1.52.0
+  open-aea-test-autonomy:
+    version: ==0.14.12
+  web3:
+    version: <7,>=6.0.0
