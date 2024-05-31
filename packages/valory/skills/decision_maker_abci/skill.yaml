@@ -216,7 +216,7 @@ models:
       max_filtering_retries: 6
       minimum_batch_size: 500
       redeeming_batch_size: 5
-      store_path: /data/
+      store_path: data
       slippage: 0.01
       policy_epsilon: 0.1
       use_subgraph_for_redeeming: true
