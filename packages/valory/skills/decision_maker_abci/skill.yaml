@@ -297,18 +297,6 @@ models:
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
     class_name: BenchmarkingMode
-  mech_response:
-    args:
-      api_id: mech_response
-      headers:
-        Content-Type: application/json
-      method: GET
-      parameters: {}
-      response_key: result
-      response_type: str
-      retries: 5
-      url: ''
-    class_name: MechResponseSpecs
   trades_subgraph:
     args:
       api_id: trades
