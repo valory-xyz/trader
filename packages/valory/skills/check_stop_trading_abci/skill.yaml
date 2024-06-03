@@ -19,8 +19,6 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/service_staking_token:0.1.0:bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem
-- valory/staking_token:0.1.0:bafybeiaxxqvsttodna7rw3lda6ksfyewodf2hwoxbgwrny66ppex7uyvoe
-- valory/mech_activity:0.1.0:bafybeiec6nnvfs6captlncrtjfygpp275vkfajvj4frrnab7thsca6337e
 - valory/mech:0.1.0:bafybeidwpijhdwj5abewa44k3tzxuanxykzmgnnffeq7re2rxp7pqbd2ou
 protocols: []
 skills:

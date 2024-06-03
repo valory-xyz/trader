@@ -28,7 +28,7 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeietfxfo5k3inw6s35e7ovqv7aklkjwaby2ienauud4kri33qoztwa
 - valory/staking_abci:0.1.0:bafybeidpc3vvcri7tzx2cuxgtoabaunux5jjc7sa3mibsqho2agiv64pim
-- valory/check_stop_trading_abci:0.1.0:bafybeiejccbf54ui4sflbzhzeddm247yca7izckw4ldpx25jusdqkrkrvy
+- valory/check_stop_trading_abci:0.1.0:bafybeig4xbc4izvanftxjvmhhuzuolqdx5fb3xtmnsvmhoghg7lrgn6rmq
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
@@ -189,7 +189,7 @@ models:
       stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
-      mech_activity_checker_contract: 0
+      mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
       use_nevermined: true
