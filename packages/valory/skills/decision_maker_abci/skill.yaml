@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeig7zzeutpmofyc7xuretciwwjyybyxfdqp6x4nz72lwz764bt3fuq
+  behaviours/base.py: bafybeie2a3p2aimyizrofos5y55ha7peyyf657phcknllf7kuv6u6ojgca
   behaviours/bet_placement.py: bafybeia62an6dpkf6b46fzc4epcyh3zuvpvoge3ewmussclxbldjf3bdue
   behaviours/blacklisting.py: bafybeiaghjvhzyeltk6necqwqfwgwp6z4ckpgt3ee2yj3qhcneg5eorowi
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -54,7 +54,9 @@ fingerprint:
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
   tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
-  tests/behaviours/test_base.py: bafybeiaujio72w3yayuexlok66taderagq4s22gku6nrfayuyo7p7yuuda
+  tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
+  tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
+  tests/behaviours/test_base.py: bafybeibz7hljuhrubzpatjblxy7l7araj3tzfwi2sds3qsznshjz5fki54
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi

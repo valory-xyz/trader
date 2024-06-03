@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih5fn54m44xuam5uqabohlpkrq7vzzz2kvyrrwwo6nsovaxceyrq4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihoddqvoe3z55qtypk6ohqjoqxjvs5i2wmktex6midubb5gyc37ri
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
-- valory/trader_abci:0.1.0:bafybeidvdhzazssaljujsxinfz7slsnwmplm7i42bvpw4avrygrzu54nt4
+- valory/decision_maker_abci:0.1.0:bafybeibardulutohrj7n36dzd2l6wtn2g7lgxp7j4xiexampmfack2k24y
+- valory/trader_abci:0.1.0:bafybeigubhrsrr2yfsryc22lg2jrulai753t7s2kgozp2tdc7cfnqlltsu
 - valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
 - valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
