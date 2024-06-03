@@ -131,7 +131,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Execute the strategy and return the results."""
         trading_strategy = kwargs.pop("trading_strategy", None)
         if trading_strategy is None:
-            self.context.logger.error(f"No {trading_strategy!r} was given!")
+            self.context.logger.error(f"No trading strategy was given in {kwargs=}!")
             return {BET_AMOUNT_FIELD: 0}
 
         strategy = self.strategy_exec(trading_strategy)
