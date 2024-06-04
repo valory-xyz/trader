@@ -171,7 +171,7 @@ def did_transformer(input_string: str, prefix_output: bool = False) -> str:
     return ("did:nv:" if prefix_output and valid else "") + output
 
 
-def input_match(input_string: str, pattern: re.Pattern[str]) -> Dict[str, Any]:
+def input_match(input_string: str, pattern: re.Pattern) -> Dict[str, Any]:
     """Match an input string with a pattern."""
     match_result = re.match(pattern, input_string)
     if match_result:

@@ -9,27 +9,27 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeidazh2w4do27n2fmwh5eyca7tet5dxw4uilh4wkhoazlgyhr7w3eu
+  composition.py: bafybeidp3sl5uomb5stgk6y7nifxv7zomfe3emqstbuw32urorpimq7lgi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeicibuzg6mf6632jin3d6xylkb7if5o4dqpire6ijhor5v2e6rvo7u
-  handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeih2bhwwqms32da3zlcpxfwoy725xdbs42e7u55enwuscacffwchaa
+  fsm_specification.yaml: bafybeif7fxldzdglalwgmo3u44jkjdox2tdgf6zbq7epw6ju4kyl5b7tze
+  handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
+  models.py: bafybeicovhcparwbvqdbrofv4kxiyznuezpqxsdxqx3wkkvht7patop4e4
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeih3enhagoql7kzpeyzzu2scpkif6y3ubakpralfnwxcvxexdyvy5i
-- valory/registration_abci:0.1.0:bafybeiek7zcsxbucjwzgqfftafhfrocvc7q4yxllh2q44jeemsjxg3rcfm
-- valory/reset_pause_abci:0.1.0:bafybeidw4mbx3os3hmv7ley7b3g3gja7ydpitr7mxbjpwzxin2mzyt5yam
-- valory/transaction_settlement_abci:0.1.0:bafybeigtzlk4uakmd54rxnznorcrstsr52kta474lgrnvx5ovr546vj7sq
-- valory/termination_abci:0.1.0:bafybeihq6qtbwt6i53ayqym63vhjexkcppy26gguzhhjqywfmiuqghvv44
-- valory/market_manager_abci:0.1.0:bafybeidygkw7mwhbk3ry3au5c5265vms5eti375v5jthd4be5dfnnoache
-- valory/decision_maker_abci:0.1.0:bafybeieg3rkt7tfyam6kunhshnyoe5mo3cat7odph5mm6lswej5un3i3my
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictjqqnq5gxtxnripxefu6yd6foqw7ovgbr52nnqtldtgdk7jnxei
-- valory/staking_abci:0.1.0:bafybeicrp3dbvxcb2wa7kdgpkxu7aqji5fwq6icwcfw7anfcpqv26irsr4
-- valory/check_stop_trading_abci:0.1.0:bafybeibry7nmbug5bdkl4gza537wolyn72ju52v2patsfxovqe6c7c4nf4
-- valory/mech_interact_abci:0.1.0:bafybeigkvcluq2kejpxdcb54iwqtvwhov5elg3cv4v2yomwjxyu5u7g7hi
+- valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
+- valory/registration_abci:0.1.0:bafybeieu7vq3pyns4t5ty6u3sbmpkd7yznpg3rmqifoz3jhy7pmqyg3w6q
+- valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
+- valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
+- valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
+- valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
+- valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeietfxfo5k3inw6s35e7ovqv7aklkjwaby2ienauud4kri33qoztwa
+- valory/staking_abci:0.1.0:bafybeidpc3vvcri7tzx2cuxgtoabaunux5jjc7sa3mibsqho2agiv64pim
+- valory/check_stop_trading_abci:0.1.0:bafybeig4xbc4izvanftxjvmhhuzuolqdx5fb3xtmnsvmhoghg7lrgn6rmq
+- valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
     args: {}
@@ -122,7 +122,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
-      agent_registry_address: null
+      agent_registry_address: '0x0000000000000000000000000000000000000000'
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'
@@ -172,7 +172,7 @@ models:
       redeeming_batch_size: 5
       slippage: 0.01
       policy_epsilon: 0.1
-      policy_store_path: /data/
+      store_path: /data/
       use_subgraph_for_redeeming: true
       irrelevant_tools:
       - openai-text-davinci-002
@@ -184,10 +184,12 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_interaction_sleep_time: 5
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
+      mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
       use_nevermined: true
@@ -235,7 +237,29 @@ models:
           0.8: 0
           0.9: 0
           1.0: 0
+      service_endpoint: trader.staging.autonolas.tech/
+      rpc_sleep_time: 10
+      mech_interaction_sleep_time: 10
     class_name: TraderParams
+  benchmarking_mode:
+    args:
+      enabled: false
+      native_balance: 10000000000000000000
+      collateral_balance: 10000000000000000000
+      mech_cost: 10000000000000000
+      pool_fee: 20000000000000000
+      sep: ','
+      dataset_filename: benchmark_data.csv
+      question_field: question
+      question_id_field: question_id
+      answer_field: answer
+      p_yes_field_part: p_yes_
+      p_no_field_part: p_no_
+      confidence_field_part: confidence_
+      part_prefix_mode: true
+      bet_amount_field: collateral_amount
+      results_filename: benchmarking_results.csv
+    class_name: BenchmarkingMode
   network_subgraph:
     args:
       api_id: network

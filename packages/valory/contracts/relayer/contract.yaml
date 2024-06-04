@@ -1,0 +1,21 @@
+name: relayer
+author: valory
+version: 0.1.0
+type: contract
+description: Relayer contract
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeibi3ij5t2qq2isuq4rtomvlmrcvreggzpzbzn3u7s6ndbo3tiv5c4
+  build/Relayer.json: bafybeiao22dbtjh6nvtwzxkis6hgmi3yphwc6ghzmgbvqrl3dxsvhroike
+  contract.py: bafybeih6yyutxweno7eqikpzxw3v6pkfcoj6swgnyfazu6lbnwovkjji3e
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: RelayerContract
+contract_interface_paths:
+  ethereum: build/Relayer.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==1.50.0
+  web3:
+    version: <7,>=6.0.0

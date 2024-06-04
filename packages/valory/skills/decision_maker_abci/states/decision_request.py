@@ -19,7 +19,11 @@
 
 """This module contains the decision requesting state of the decision-making abci app."""
 
+from enum import Enum
+from typing import Optional, Tuple, cast
+
 from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
     CollectSameUntilThresholdRound,
     get_name,
 )
@@ -36,8 +40,22 @@ class DecisionRequestRound(CollectSameUntilThresholdRound):
     payload_class = DecisionRequestPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.DONE
-    none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_selection)
-    selection_key = get_name(SynchronizedData.mech_requests)
+    selection_key = (
+        get_name(SynchronizedData.mech_requests),
+        get_name(SynchronizedData.mocking_mode),
+    )
     none_event = Event.SLOTS_UNSUPPORTED_ERROR
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event == Event.DONE and synced_data.mocking_mode:
+            return synced_data, Event.MOCK_MECH_REQUEST
+
+        return res

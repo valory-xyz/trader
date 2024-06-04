@@ -22,7 +22,6 @@
 
 from typing import Any
 
-from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -30,7 +29,9 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
-from packages.valory.skills.check_stop_trading_abci.rounds import CheckStopTradingAbciApp
+from packages.valory.skills.check_stop_trading_abci.rounds import (
+    CheckStopTradingAbciApp,
+)
 from packages.valory.skills.staking_abci.models import StakingParams
 
 
@@ -43,9 +44,7 @@ class CheckStopTradingParams(StakingParams):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.disable_trading: bool = self._ensure(
-            "disable_trading", kwargs, bool
-        )
+        self.disable_trading: bool = self._ensure("disable_trading", kwargs, bool)
         self.stop_trading_if_staking_kpi_met: bool = self._ensure(
             "stop_trading_if_staking_kpi_met", kwargs, bool
         )

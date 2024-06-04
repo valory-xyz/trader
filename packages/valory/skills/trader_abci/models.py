@@ -31,6 +31,9 @@ from packages.valory.skills.decision_maker_abci.models import (
     AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
 )
 from packages.valory.skills.decision_maker_abci.models import (
+    BenchmarkingMode as BaseBenchmarkingMode,
+)
+from packages.valory.skills.decision_maker_abci.models import (
     ConditionalTokensSubgraph as DecisionMakerConditionalTokensSubgraph,
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
@@ -88,6 +91,7 @@ AgentToolsSpecs = DecisionMakerAgentToolsSpecs
 TradesSubgraph = DecisionMakerTradesSubgraph
 ConditionalTokensSubgraph = DecisionMakerConditionalTokensSubgraph
 RealitioSubgraph = DecisionMakerRealitioSubgraph
+BenchmarkingMode = BaseBenchmarkingMode
 
 
 MARGIN = 5

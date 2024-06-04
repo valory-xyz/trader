@@ -46,6 +46,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.vote),
         get_name(SynchronizedData.confidence),
         get_name(SynchronizedData.bet_amount),
+        get_name(SynchronizedData.next_mock_data_row),
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)
 
@@ -62,5 +63,8 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
 
         if event == Event.DONE and not synced_data.is_profitable:
             return synced_data, Event.UNPROFITABLE
+
+        if event == Event.MECH_RESPONSE_ERROR and synced_data.mocking_mode:
+            return synced_data, Event.BENCHMARKING_FINISHED
 
         return synced_data, event

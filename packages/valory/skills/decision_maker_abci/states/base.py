@@ -21,9 +21,10 @@
 
 import json
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
     CollectSameUntilThresholdRound,
     DeserializedCollection,
     get_name,
@@ -47,6 +48,11 @@ class Event(Enum):
 
     DONE = "done"
     NONE = "none"
+    BENCHMARKING_ENABLED = "benchmarking_enabled"
+    BENCHMARKING_DISABLED = "benchmarking_disabled"
+    BENCHMARKING_FINISHED = "benchmarking_finished"
+    MOCK_MECH_REQUEST = "mock_mech_request"
+    MOCK_TX = "mock_tx"
     MECH_RESPONSE_ERROR = "mech_response_error"
     SLOTS_UNSUPPORTED_ERROR = "slots_unsupported_error"
     TIE = "tie"
@@ -187,6 +193,22 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return [MechMetadata(**metadata_item) for metadata_item in requests]
 
     @property
+    def mocking_mode(self) -> Optional[bool]:
+        """Get whether the mocking mode should be enabled."""
+        mode = self.db.get_strict("mocking_mode")
+        if mode is None:
+            return None
+        return bool(mode)
+
+    @property
+    def next_mock_data_row(self) -> int:
+        """Get the next_mock_data_row."""
+        next_mock_data_row = self.db.get("next_mock_data_row", 1)
+        if next_mock_data_row is None:
+            return 1
+        return int(next_mock_data_row)
+
+    @property
     def mech_responses(self) -> List[MechInteractionResponse]:
         """Get the mech responses."""
         serialized = self.db.get("mech_responses", "[]")
@@ -207,5 +229,18 @@ class TxPreparationRound(CollectSameUntilThresholdRound):
     selection_key: Tuple[str, ...] = (
         get_name(SynchronizedData.tx_submitter),
         get_name(SynchronizedData.most_voted_tx_hash),
+        get_name(SynchronizedData.mocking_mode),
     )
     collection_key = get_name(SynchronizedData.participant_to_tx_prep)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event == Event.DONE and synced_data.mocking_mode:
+            return synced_data, Event.MOCK_TX
+
+        return res

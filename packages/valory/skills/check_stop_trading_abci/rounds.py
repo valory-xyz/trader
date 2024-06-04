@@ -29,13 +29,15 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     AppState,
     BaseSynchronizedData,
-    get_name,
-    VotingRound,
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
+    VotingRound,
+    get_name,
 )
-from packages.valory.skills.check_stop_trading_abci.payloads import CheckStopTradingPayload
+from packages.valory.skills.check_stop_trading_abci.payloads import (
+    CheckStopTradingPayload,
+)
 
 
 class Event(Enum):

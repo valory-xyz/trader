@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -44,6 +44,12 @@ class StakingParams(BaseParams):
         """Initialize the parameters' object."""
         self.staking_contract_address: str = self._ensure(
             "staking_contract_address", kwargs, str
+        )
+        self.staking_interaction_sleep_time: int = self._ensure(
+            "staking_interaction_sleep_time", kwargs, int
+        )
+        self.mech_activity_checker_contract: str = self._ensure(
+            "mech_activity_checker_contract", kwargs, str
         )
         super().__init__(*args, **kwargs)
 

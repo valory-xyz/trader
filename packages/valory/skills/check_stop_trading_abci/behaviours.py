@@ -23,20 +23,22 @@ import math
 from typing import Generator, Set, Type, cast
 
 from packages.valory.contracts.mech.contract import Mech as MechContract
+from packages.valory.contracts.service_staking_token.contract import StakingState
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
-from packages.valory.skills.check_stop_trading_abci.payloads import CheckStopTradingPayload
+from packages.valory.skills.check_stop_trading_abci.payloads import (
+    CheckStopTradingPayload,
+)
 from packages.valory.skills.check_stop_trading_abci.rounds import (
-    CheckStopTradingRound,
     CheckStopTradingAbciApp,
+    CheckStopTradingRound,
 )
 from packages.valory.skills.staking_abci.behaviours import (
     StakingInteractBaseBehaviour,
     WaitableConditionType,
 )
-from packages.valory.contracts.service_staking_token.contract import StakingState
 
 
 # Liveness ratio from the staking contract is expressed in calls per 10**18 seconds.
@@ -45,6 +47,7 @@ LIVENESS_RATIO_SCALE_FACTOR = 10**18
 # A safety margin in case there is a delay between the moment the KPI condition is
 # satisfied, and the moment where the checkpoint is called.
 REQUIRED_MECH_REQUESTS_SAFETY_MARGIN = 1
+
 
 class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     """A behaviour that checks stop trading conditions."""
@@ -110,21 +113,42 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         liveness_ratio = self.liveness_ratio
         self.context.logger.debug(f"{liveness_ratio=}")
 
-        mech_requests_since_last_cp = mech_request_count - mech_request_count_on_last_checkpoint
+        mech_requests_since_last_cp = (
+            mech_request_count - mech_request_count_on_last_checkpoint
+        )
         self.context.logger.debug(f"{mech_requests_since_last_cp=}")
 
         current_timestamp = self.synced_timestamp
         self.context.logger.debug(f"{current_timestamp=}")
 
-        required_mech_requests = math.ceil(max(
-            (current_timestamp - last_ts_checkpoint) * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR,
-            (liveness_period) * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR
-        )) + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
+        # kpi calculation if v2 staking is used
+        if self.use_v2:
+            eligibility_margin = (
+                liveness_period * liveness_ratio + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
+            )
+            is_kpi_met = mech_requests_since_last_cp >= eligibility_margin
+            return is_kpi_met
+
+        required_mech_requests = (
+            math.ceil(
+                max(
+                    (current_timestamp - last_ts_checkpoint)
+                    * liveness_ratio
+                    / LIVENESS_RATIO_SCALE_FACTOR,
+                    liveness_period * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR,
+                )
+            )
+            + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
+        )
         self.context.logger.debug(f"{required_mech_requests=}")
 
         if mech_requests_since_last_cp >= required_mech_requests:
             return True
         return False
+
+    def _v1_kpi_met(self) -> bool:
+        """Return whether the KPI is met."""
+        return self.mech_request_count >= self.params.stop_trading_kpi
 
     def _compute_stop_trading(self) -> Generator:
         # This is a "hacky" way of getting required data initialized on
@@ -135,11 +159,11 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             self.context.logger.debug(f"{self.is_first_period=}")
             return False
 
-        stop_trading_conditions = []
-
         self.context.logger.debug(f"{self.params.disable_trading=}")
-        stop_trading_conditions.append(self.params.disable_trading)
+        if self.params.disable_trading:
+            return True
 
+        stop_trading_conditions = []
         self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
         if self.params.stop_trading_if_staking_kpi_met:
             staking_kpi_met = yield from self.is_staking_kpi_met()
@@ -153,9 +177,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             stop_trading = yield from self._compute_stop_trading()
             self.context.logger.info(f"Computed {stop_trading=}")
-            payload = CheckStopTradingPayload(
-                self.context.agent_address, stop_trading
-            )
+            payload = CheckStopTradingPayload(self.context.agent_address, stop_trading)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)
