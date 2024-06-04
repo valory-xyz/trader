@@ -26,7 +26,6 @@ from typing import Any, Dict, Optional, Tuple, cast
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from hypothesis.strategies import composite
 
 from packages.valory.skills.abstract_round_abci.base import AbciAppDB
 from packages.valory.skills.abstract_round_abci.test_tools.base import (
@@ -48,7 +47,7 @@ FRACTION_REMOVAL_PRECISION = 2
 PACKAGE_DIR = Path(__file__).parents[2]
 
 
-@composite
+@st.composite
 def remove_fraction_args(draw: st.DrawFn) -> Tuple[int, float, int]:
     """A strategy for building the values of the `test_remove_fraction_wei` with the desired constraints."""
     amount = draw(st.integers())
@@ -79,6 +78,21 @@ def test_remove_fraction_wei_incorrect_fraction(amount: int, fraction: float) ->
         remove_fraction_wei(amount, fraction)
 
 
+@st.composite
+def strategy_executables(
+    draw: st.DrawFn,
+) -> Tuple[str, Dict[str, Tuple[str, str]], Optional[Tuple[str, str]]]:
+    """A strategy for building valid availability window data."""
+    strategy_name = draw(st.text())
+    expected_result = draw(st.tuples(st.text(), st.text()))
+    negative_case = draw(st.booleans())
+
+    if negative_case:
+        return strategy_name, {}, None
+
+    return strategy_name, {strategy_name: expected_result}, expected_result
+
+
 class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     """Test `DecisionMakerBaseBehaviour`."""
 
@@ -102,6 +116,65 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 )
             ),
         )
+
+    @given(strategy_executables())
+    def test_strategy_exec(
+        self,
+        strategy: Tuple[str, Dict[str, Tuple[str, str]], Optional[str]],
+    ) -> None:
+        """Test the `strategy_exec` method."""
+        strategy_name, strategies_executables, expected_result = strategy
+        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
+        self.ffw(BlacklistingBehaviour)
+        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
+        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+        behaviour.shared_state.strategies_executables = strategies_executables
+        res = behaviour.strategy_exec(strategy_name)
+        assert res == expected_result
+
+    @pytest.mark.parametrize("strategy_path", ("dummy_strategy/dummy_strategy.py",))
+    @pytest.mark.parametrize(
+        "args, kwargs, method_name, expected_result",
+        (
+            ((), {}, "", {BET_AMOUNT_FIELD: 0}),
+            ((), {"unexpected_field": "test"}, "", {BET_AMOUNT_FIELD: 0}),
+            ((), {"trading_strategy": None}, "", {BET_AMOUNT_FIELD: 0}),
+            (
+                (),
+                {"trading_strategy": "non_existing_strategy"},
+                "",
+                {BET_AMOUNT_FIELD: 0},
+            ),
+            (
+                (),
+                {"trading_strategy": "test"},
+                "non_existing_method",
+                {BET_AMOUNT_FIELD: 0},
+            ),
+            ((), {"trading_strategy": "test"}, "dummy", "dummy"),
+        ),
+    )
+    def test_execute_strategy(
+        self,
+        strategy_path: str,
+        args: tuple,
+        kwargs: dict,
+        method_name: str,
+        expected_result: int,
+    ) -> None:
+        """Test the `execute_strategy` method."""
+        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
+        self.ffw(BlacklistingBehaviour)
+        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
+        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+        with open(strategy_path) as dummy_strategy:
+            behaviour.shared_state.strategies_executables["test"] = (
+                dummy_strategy.read(),
+                method_name,
+            )
+
+        res = behaviour.execute_strategy(*args, **kwargs)
+        assert res == expected_result
 
     @pytest.mark.parametrize(
         "mocked_result, expected_result",
