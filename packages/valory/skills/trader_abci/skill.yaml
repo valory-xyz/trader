@@ -247,6 +247,12 @@ models:
       collateral_balance: 10000000000000000000
       mech_cost: 10000000000000000
       pool_fee: 20000000000000000
+      outcome_token_amounts:
+        - 11000000000000000000
+        - 9000000000000000000
+      outcome_token_marginal_prices:
+        - 0.4
+        - 0.6
       sep: ','
       dataset_filename: benchmark_data.csv
       question_field: question
