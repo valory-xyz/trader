@@ -33,7 +33,7 @@ from packages.valory.skills.abstract_round_abci.test_tools.base import (
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
-    remove_fraction_wei,
+    remove_fraction_wei, DecisionMakerBaseBehaviour
 )
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
@@ -179,6 +179,13 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         res = behaviour.execute_strategy(*args, **kwargs)
         assert res == expected_result
+
+    @given(st.integers())
+    def test_wei_to_native(self, wei: int) -> None:
+        """Test the `wei_to_native` method."""
+        result = DecisionMakerBaseBehaviour.wei_to_native(wei)
+        assert isinstance(result, float)
+        assert result == wei / 10**18
 
     @pytest.mark.parametrize(
         "mocked_result, expected_result",
