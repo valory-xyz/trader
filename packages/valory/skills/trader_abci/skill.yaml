@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeihz5ibwzfdpbsfmlbvduwkdy47ncyzyw57pvpqbnmstvpvsccggyi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicjjnj6xz3fmb6o5za5luw5toilhctr43edajh5h2py5oep37zziq
+- valory/decision_maker_abci:0.1.0:bafybeigli5iwebxbx65h4pwxzbne6rg2nw6v4rnpqoxjfyubuj5ahtylae
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihg3hdxui25dzoidyqjnvmlxphrsdtasjavvnmapcza7mb6lhxq6q
 - valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
 - valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -248,11 +248,11 @@ models:
       mech_cost: 10000000000000000
       pool_fee: 20000000000000000
       outcome_token_amounts:
-        - 11000000000000000000
-        - 9000000000000000000
+      - 11000000000000000000
+      - 9000000000000000000
       outcome_token_marginal_prices:
-        - 0.4
-        - 0.6
+      - 0.4
+      - 0.6
       sep: ','
       dataset_filename: benchmark_data.csv
       question_field: question
