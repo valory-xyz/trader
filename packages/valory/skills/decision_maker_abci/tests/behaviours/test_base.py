@@ -22,6 +22,7 @@
 import re
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, cast
+from unittest import mock
 
 import pytest
 from hypothesis import given, settings
@@ -33,7 +34,7 @@ from packages.valory.skills.abstract_round_abci.test_tools.base import (
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
-    remove_fraction_wei, DecisionMakerBaseBehaviour
+    remove_fraction_wei, DecisionMakerBaseBehaviour, WXDAI,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
@@ -186,6 +187,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         result = DecisionMakerBaseBehaviour.wei_to_native(wei)
         assert isinstance(result, float)
         assert result == wei / 10**18
+
+    @given(st.integers(), st.booleans(), st.booleans())
+    def test_collateral_amount_info(self, amount: int, benchmarking_mode_enabled: bool, is_wxdai: bool) -> None:
+        """Test the `collateral_amount_info` method."""
+        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
+        self.ffw(BlacklistingBehaviour, {"sampled_bet_index": 0})
+        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
+        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+
+        behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
+        with mock.patch.object(behaviour, "read_bets"):
+            collateral_token = WXDAI if is_wxdai else "unknown"
+            behaviour.bets = [(mock.MagicMock(collateralToken=collateral_token))]
+            result = behaviour._collateral_amount_info(amount)
+
+        if benchmarking_mode_enabled or is_wxdai:
+            assert result == f"{behaviour.wei_to_native(amount)} wxDAI"
+        else:
+            assert result == f"{amount} WEI of the collateral token with address {collateral_token}"
 
     @pytest.mark.parametrize(
         "mocked_result, expected_result",
