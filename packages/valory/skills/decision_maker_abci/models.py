@@ -374,6 +374,12 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
         self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
         self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
+        self.outcome_token_amounts: List[int] = self._ensure(
+            "outcome_token_amounts", kwargs, List[int]
+        )
+        self.outcome_token_marginal_prices: List[float] = self._ensure(
+            "outcome_token_marginal_prices", kwargs, List[float]
+        )
         self.sep: str = self._ensure("sep", kwargs, str)
         self.dataset_filename: Path = Path(
             self._ensure("dataset_filename", kwargs, str)
