@@ -46,6 +46,7 @@ models:
       mech_request_price: 0
       mech_chain_id: ethereum
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
+      mech_activity_checker_contract: '0x155547857680A6D51bebC5603397488988DEb1c8'
       sample_bets_closing_days: 10
       trading_strategy: kelly_criterion
       use_fallback_strategy: true
