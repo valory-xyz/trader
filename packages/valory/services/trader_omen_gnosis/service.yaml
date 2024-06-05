@@ -67,8 +67,8 @@ models:
       minimum_batch_size: 500
       redeeming_batch_size: 1
       slippage: 0.01
+      store_path: ./data
       policy_epsilon: 0.1
-      policy_store_path: /data/
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization","deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
       disable_trading: false
