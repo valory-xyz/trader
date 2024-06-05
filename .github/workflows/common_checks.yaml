@@ -151,6 +151,8 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: "1.17.7"
+      - name: Create decision maker's `store_path` (data folder)
+        run: mkdir data
       - if: matrix.os == 'ubuntu-latest'
         name: Install dependencies (ubuntu-latest)
         run: |
