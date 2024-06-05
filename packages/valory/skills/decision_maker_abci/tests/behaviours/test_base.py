@@ -207,6 +207,22 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         else:
             assert result == f"{amount} WEI of the collateral token with address {collateral_token}"
 
+    @given(st.integers(), st.integers())
+    def test_mock_balance_check(self, collateral_balance: int, native_balance: int) -> None:
+        """Test the `_mock_balance_check` method."""
+        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
+        self.ffw(BlacklistingBehaviour)
+        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
+        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+
+        behaviour.benchmarking_mode.collateral_balance = collateral_balance
+        behaviour.benchmarking_mode.native_balance = native_balance
+        with mock.patch.object(behaviour, "_report_balance") as mock_report_balance:
+            behaviour._mock_balance_check()
+            mock_report_balance.assert_called_once()
+        assert behaviour.token_balance == collateral_balance
+        assert behaviour.wallet_balance == native_balance
+
     @pytest.mark.parametrize(
         "mocked_result, expected_result",
         (
