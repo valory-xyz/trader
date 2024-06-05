@@ -54,24 +54,24 @@ def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def calculate_kelly_bet_amount_no_conf(
-    x: int, y: int, p: float, c: float, b: int, f: float
+    x: int, y: int, p: float, b: int, f: float
 ) -> int:
     """Calculate the Kelly bet amount."""
     if b == 0:
         return 0
     numerator = (
         -4 * x**2 * y
-        + b * y**2 * p * c * f
-        + 2 * b * x * y * p * c * f
-        + b * x**2 * p * c * f
+        + b * y**2 * p * f
+        + 2 * b * x * y * p * f
+        + b * x**2 * p * f
         - 2 * b * y**2 * f
         - 2 * b * x * y * f
         + (
             (
                 4 * x**2 * y
-                - b * y**2 * p * c * f
-                - 2 * b * x * y * p * c * f
-                - b * x**2 * p * c * f
+                - b * y**2 * p * f
+                - 2 * b * x * y * p * f
+                - b * x**2 * p * f
                 + 2 * b * y**2 * f
                 + 2 * b * x * y * f
             )
@@ -79,11 +79,7 @@ def calculate_kelly_bet_amount_no_conf(
             - (
                 4
                 * (x**2 * f - y**2 * f)
-                * (
-                    -4 * b * x * y**2 * p * c
-                    - 4 * b * x**2 * y * p * c
-                    + 4 * b * x * y**2
-                )
+                * (-4 * b * x * y**2 * p - 4 * b * x**2 * y * p + 4 * b * x * y**2)
             )
         )
         ** (1 / 2)
@@ -132,7 +128,6 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
         selected_type_tokens_in_pool,
         other_tokens_in_pool,
         win_probability,
-        confidence,
         bankroll_adj,
         fee_fraction,
     )
