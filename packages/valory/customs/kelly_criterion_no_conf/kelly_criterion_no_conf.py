@@ -151,6 +151,5 @@ def run(*_args, **kwargs) -> Dict[str, Union[int, List[str]]]:
     missing = check_missing_fields(kwargs)
     if len(missing) > 0:
         return {"error": [f"Required kwargs {missing} were not provided."]}
-    print("Executing the NEW KELLY CRITERION FORMULA")
     kwargs = remove_irrelevant_fields(kwargs)
     return get_bet_amount_kelly(**kwargs)
