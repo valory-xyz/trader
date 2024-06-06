@@ -14,12 +14,12 @@
         "contract/valory/relayer/0.1.0": "bafybeicawmds6czx7db2lcktvexwrp245jpekgulndtos5s5zdid3ilvq4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeiccbsrg3knbkax6nyqesn5u67ji6rwylvlgut7cap254sk5hyvojq",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeibeci66bopuq2n4tketevhzgxnc2o2sj6xva67oz5z4r745js5iqe",
-        "skill/valory/trader_abci/0.1.0": "bafybeic6sseb34fov42mfjcu6w3bq7ll6ld5x23p5lqkqeqcn4pmhxoisu",
+        "skill/valory/trader_abci/0.1.0": "bafybeieziwtxhzliuksgvsklij4rg2hwldctuk6zlhzbktlm2gdtj7ytr4",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidpeaxcey6vhiu2maz6wo5tg76kvrpiq5mpy5w5kf4yn66pri5qj4",
         "skill/valory/staking_abci/0.1.0": "bafybeielq2a5ogbee5z4mnaqhzfcdc6uzo35vt64lt2cjnpx4om7j54n4u",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeie5owp3bbwm3aogxrg6qhrbgu4r34p7qlf2xyc7ywlfgkp2ejl7eq",
-        "agent/valory/trader/0.1.0": "bafybeiahe57pcinteh6yev74keeuh2ajabfhwdojlpjdomu6wr6o5hcc4m",
-        "service/valory/trader/0.1.0": "bafybeietfvbkkegtn7pceb4rbp7ekq5ghzwldxhkyvzqaubj3uunc5plbu"
+        "agent/valory/trader/0.1.0": "bafybeiasftnm2x3e5fcqcbmgukpg2igsbce7ukoqkprph6ewkuzxmdlqdq",
+        "service/valory/trader/0.1.0": "bafybeidlccpvqmshd4lunjfm5tbjlb7fodhrtrjgg2u5ymc7v4uwqbgbe4"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
