@@ -44,7 +44,8 @@ from packages.valory.skills.decision_maker_abci.tests.conftest import profile_na
 
 settings.load_profile(profile_name)
 FRACTION_REMOVAL_PRECISION = 2
-PACKAGE_DIR = Path(__file__).parents[2]
+CURRENT_FILE_PATH = Path(__file__).resolve()
+PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
 
 
 @st.composite
@@ -132,7 +133,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         res = behaviour.strategy_exec(strategy_name)
         assert res == expected_result
 
-    @pytest.mark.parametrize("strategy_path", ("dummy_strategy/dummy_strategy.py",))
+    @pytest.mark.parametrize(
+        "strategy_path", (Path("dummy_strategy/dummy_strategy.py"),)
+    )
     @pytest.mark.parametrize(
         "args, kwargs, method_name, expected_result",
         (
@@ -167,7 +170,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         self.ffw(BlacklistingBehaviour)
         behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
         assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
-        with open(strategy_path) as dummy_strategy:
+        current_dir = CURRENT_FILE_PATH.parent
+        with open(current_dir / strategy_path) as dummy_strategy:
             behaviour.shared_state.strategies_executables["test"] = (
                 dummy_strategy.read(),
                 method_name,
