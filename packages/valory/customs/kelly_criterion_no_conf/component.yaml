@@ -1,0 +1,15 @@
+name: kelly_criterion_no_conf
+author: valory
+version: 0.1.0
+type: custom
+description: The kelly criterion trading strategy without confidence factor in the
+  formula.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeig7aeinhrscmhss3sru2gi7kzopbpasfwu2loy4lezlmrgr3vuoey
+  kelly_criterion_no_conf.py: bafybeicslap6yuvgdafqzteglto42isevijvnwsptop4rpdwryf7kyimpa
+fingerprint_ignore_patterns: []
+entry_point: kelly_criterion_no_conf.py
+callable: run
+dependencies: {}

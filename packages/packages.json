@@ -5,6 +5,7 @@
         "custom/jhehemann/kelly_criterion/0.1.0": "bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",
         "custom/w1kke/always_blue/0.1.0": "bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm",
         "custom/valory/new_kelly_criterion/0.1.0": "bafybeiag5m7nc6fy4vkbz5bmwv25cpkmq7psnfxvdcfktk6eqaun6k5ble",
+        "custom/valory/kelly_criterion_no_conf/0.1.0": "bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",
         "contract/valory/market_maker/0.1.0": "bafybeiba25nt26ntjzkkpfyl2ngbjxrfd44ckg3znfhqm552725vb3gaka",
         "contract/valory/realitio/0.1.0": "bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq",
         "contract/valory/realitio_proxy/0.1.0": "bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4",
@@ -20,7 +21,7 @@
         "skill/valory/staking_abci/0.1.0": "bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi",
         "agent/valory/trader/0.1.0": "bafybeifo6j5mdnbgljyp3c4o5zzysvmd2aqylmzv3ti3bijoghcwpvcnqi",
-        "service/valory/trader/0.1.0": "bafybeifne7g3idoct2g2wwfkg4ztqrvjkw7dchm6irze2nqtpn6ruc4dua"
+        "service/valory/trader/0.1.0": "bafybeiff2tp5qz4wwhttmzjgphabltaqcw6k2hyqpzcxyxfgsyiftbt3l4"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
