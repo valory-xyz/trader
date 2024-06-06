@@ -9,26 +9,26 @@ fingerprint:
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
 fingerprint_ignore_patterns: []
 connections:
-- valory/abci:0.1.0:bafybeicksmavx23ralbdw3ajxv5fq5s4c3wzhbc3zdudefm4jqsgrg72ai
+- valory/abci:0.1.0:bafybeifr35jcajq2lqnj2rd5lueo4g5nysbvbaacdchfecwgtcojqx3mie
 - valory/http_client:0.23.0:bafybeihi772xgzpqeipp3fhmvpct4y6e6tpjp4sogwqrnf3wqspgeilg4u
-- valory/ipfs:0.1.0:bafybeieaq56usnosbwdslmo6i2yvttwpsm6djvawsowq3jt6bkjwhw3tl4
+- valory/ipfs:0.1.0:bafybeigcijdbwgdekow5c2ikeltetoteabfp52ewy3xfkd7ygaqbl7j3ke
 - valory/ledger:0.19.0:bafybeig7woeog4srdby75hpjkmx4rhpkzncbf4h2pm5r6varsp26pf2uhu
 - valory/p2p_libp2p_client:0.1.0:bafybeid3xg5k2ol5adflqloy75ibgljmol6xsvzvezebsg7oudxeeolz7e
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeidcb25wneezfd2iaiqa7ygxlimwwacvycahhenvpw7tdvwdigllzm
-- valory/gnosis_safe_proxy_factory:0.1.0:bafybeidwwhkqin3zchbjl7ro6n3tj5kwbfhfvmrdpuxn7owy3b4ktrluba
-- valory/service_registry:0.1.0:bafybeiekytropd5ysnap2wkekub3byi5jbda3qll7awchvhu5plbpafhmi
-- valory/market_maker:0.1.0:bafybeiba25nt26ntjzkkpfyl2ngbjxrfd44ckg3znfhqm552725vb3gaka
+- valory/gnosis_safe:0.1.0:bafybeibbglwlfvytwcphk6pccdbzubpfh2hmmi2me35bxzic32cepectje
+- valory/gnosis_safe_proxy_factory:0.1.0:bafybeibkdn73yvpkuwm3holsunklhzdnuwunhebrwnxkxq25liq36ect4m
+- valory/service_registry:0.1.0:bafybeih4ao44fkkrdofzcf6d2oem6tx4pjo6g27ang5junmcwtw3w4tyra
+- valory/market_maker:0.1.0:bafybeichjutxliu4cmkiwlxj6hifvlbfwe2lgouphwdocpeml45w6dfjkq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeidwpijhdwj5abewa44k3tzxuanxykzmgnnffeq7re2rxp7pqbd2ou
+- valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 - valory/conditional_tokens:0.1.0:bafybeigucumqbsk74nj4rpm4p2cpiky4dj6uws7nfmgpimuviaxcamwqnu
 - valory/realitio:0.1.0:bafybeic5ie4oodetj4krdogydvbfxg4qggc3matpiflocah626tpevpreq
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeifsb2krg4qnr4nxdrhcdgpncfr5ra2nahebvn2f2yff7ebwe7ooae
-- valory/service_staking_token:0.1.0:bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem
-- valory/transfer_nft_condition:0.1.0:bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi
-- valory/erc20:0.1.0:bafybeia7a7mfjeok4ywpmejz74msofagagcentsudqxfojadmxlur5qolu
+- valory/agent_registry:0.1.0:bafybeidvylp5mxb5fwhql7ktrxaeaohjy3qgj4cbbdnjwl2mxxh5jgqxjm
+- valory/service_staking_token:0.1.0:bafybeifpjyyqdt6lkuajaazucp4cvg2ydcfzblr2wen626ubdtmaiven5y
+- valory/transfer_nft_condition:0.1.0:bafybeifb3tby6qs4veaf4nhmecfhl2xxbmh5huuptfod4kbnj6ngj3i4wi
+- valory/erc20:0.1.0:bafybeih3y7k76wjugbbz7bfhxix24cq33m63emjhfog2r5qajn3bgtbb2y
 protocols:
 - open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
 - valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
@@ -39,19 +39,19 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 - valory/tendermint:0.1.0:bafybeig4mi3vmlv5zpbjbfuzcgida6j5f2nhrpedxicmrrfjweqc5r7cra
 skills:
-- valory/abstract_abci:0.1.0:bafybeieh4ei3qdelmacnm7vwq57phoewgumr3udvxt6pybmuggwc3yk65q
-- valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/registration_abci:0.1.0:bafybeieu7vq3pyns4t5ty6u3sbmpkd7yznpg3rmqifoz3jhy7pmqyg3w6q
-- valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
-- valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
-- valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6tizt4rabpntz56evu7jnucvelciehhveh2baaojg7w6xke4ika
-- valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeifcv22lf2qulw5egxxmbux2dzuqnyeu2cpvwyipptoub5r54zbyc4
-- valory/trader_abci:0.1.0:bafybeic3bui5ry3i7ekazbcvisf2z7udjwxyywwgv4au6opzzufpwpcvhm
-- valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
-- valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
-- valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
+- valory/abstract_abci:0.1.0:bafybeibzxex6md6xp5eibvp23cmkk7xgdyd44r5lxhfhlquwe3nb22ujgy
+- valory/abstract_round_abci:0.1.0:bafybeih2soag6gy472x7vbbxmetmr532jqzm2efcapymi3725as33fvjvu
+- valory/registration_abci:0.1.0:bafybeiaxomjnv2h7ozc7mvmz5wysfinfgtqnniznpcdunijb5iiekv4mzi
+- valory/reset_pause_abci:0.1.0:bafybeiatyhxriq2gzny3s5by2plk7tyw4o5uvabzuhvhvwrl2pburbdjcm
+- valory/termination_abci:0.1.0:bafybeig3gpsgm4c2ibywmriv2py6224xxsfw5b6p6j3gc7szz3qv22bhce
+- valory/transaction_settlement_abci:0.1.0:bafybeicq4ttsarwurbll4xqabjb26g3po2ntrcxkwi7vac6d2kmvt6hati
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidpeaxcey6vhiu2maz6wo5tg76kvrpiq5mpy5w5kf4yn66pri5qj4
+- valory/market_manager_abci:0.1.0:bafybeiccbsrg3knbkax6nyqesn5u67ji6rwylvlgut7cap254sk5hyvojq
+- valory/decision_maker_abci:0.1.0:bafybeibeci66bopuq2n4tketevhzgxnc2o2sj6xva67oz5z4r745js5iqe
+- valory/trader_abci:0.1.0:bafybeic6sseb34fov42mfjcu6w3bq7ll6ld5x23p5lqkqeqcn4pmhxoisu
+- valory/staking_abci:0.1.0:bafybeielq2a5ogbee5z4mnaqhzfcdc6uzo35vt64lt2cjnpx4om7j54n4u
+- valory/check_stop_trading_abci:0.1.0:bafybeie5owp3bbwm3aogxrg6qhrbgu4r34p7qlf2xyc7ywlfgkp2ejl7eq
+- valory/mech_interact_abci:0.1.0:bafybeicj4c6brjtijdqywn3knejwl4o5ynzi4jcc4sinezeyj7lbgxbu5q
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
@@ -88,11 +88,11 @@ logging_config:
       propagate: true
 dependencies:
   open-aea-ledger-cosmos:
-    version: ==1.52.0
+    version: ==1.53.0
   open-aea-ledger-ethereum:
-    version: ==1.52.0
+    version: ==1.53.0
   open-aea-test-autonomy:
-    version: ==0.14.12
+    version: ==0.14.14
 skill_exception_policy: stop_and_exit
 connection_exception_policy: just_log
 default_connection: null
