@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the new kelly criterion strategy."""
+"""This module contains the kelly criterion strategy without confidence factor in the formula."""
 
 from typing import Dict, Any, List, Union
 
