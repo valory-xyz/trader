@@ -79,7 +79,6 @@ models:
       redeem_round_timeout: 3600.0
       contract_timeout: 300.0
       file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
-      strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":80000000000000000,"0.8":160000000000000000,"0.9":1000000000000000000,"1.0":1000000000000000000}]]}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
         ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
         ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
