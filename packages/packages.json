@@ -13,13 +13,13 @@
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi",
         "contract/valory/relayer/0.1.0": "bafybeiaabvxim4blp5fxb6qjlzjivtvkme3fk24h5jte7w6vr6rsx72j6u",
         "skill/valory/market_manager_abci/0.1.0": "bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeifcv22lf2qulw5egxxmbux2dzuqnyeu2cpvwyipptoub5r54zbyc4",
-        "skill/valory/trader_abci/0.1.0": "bafybeic3bui5ry3i7ekazbcvisf2z7udjwxyywwgv4au6opzzufpwpcvhm",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeic6tizt4rabpntz56evu7jnucvelciehhveh2baaojg7w6xke4ika",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeibb2qs73ug56hazdmuirwa2avbbdmenuhbmmwcp7zn4fdgztd6sjy",
+        "skill/valory/trader_abci/0.1.0": "bafybeietcp2q726jgo3wwoautzkxuwjoa4jdv2bllcx4o44plsh5gqt7fu",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiaybhcckjudnmelw3vc4mhw7fmydisyguanvlb2h6kdbhke3kjsvi",
         "skill/valory/staking_abci/0.1.0": "bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi",
-        "agent/valory/trader/0.1.0": "bafybeidvindh7eho6wdeoi4ylaqarsputtlvz7ujsros7pgjhoemuhqzy4",
-        "service/valory/trader/0.1.0": "bafybeiamleh4h26jsce25gc7szoemg7sy65h45bn6ptjq27pxajvpc35pi"
+        "agent/valory/trader/0.1.0": "bafybeiczhuenxymwnoankdarwogerydxmzkjeefe6anokksaok25dto6nu",
+        "service/valory/trader/0.1.0": "bafybeih3l6tcadclvaumuvgyle3jgt52d6o7s5rb4r34tfmzsic25bmwje"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",

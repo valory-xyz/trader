@@ -82,6 +82,11 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
 
     def async_act(self) -> Generator:
         """Do the action."""
+        # if the tool selection has not been run for the current period, do not do anything
+        if not self.synchronized_data.has_tool_selection_run:
+            policy = self.policy.serialize()
+            payload = BlacklistingPayload(self.context.agent_address, None, policy)
+            yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.read_bets()
