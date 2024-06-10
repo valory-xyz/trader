@@ -97,6 +97,12 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return EGreedyPolicy.deserialize(policy)
 
     @property
+    def has_tool_selection_run(self) -> bool:
+        """Get whether the tool selection has run."""
+        mech_tool_idx = self.db.get("mech_tool_idx", None)
+        return mech_tool_idx is not None
+
+    @property
     def mech_tool_idx(self) -> int:
         """Get the mech tool's index."""
         return int(self.db.get_strict("mech_tool_idx"))
