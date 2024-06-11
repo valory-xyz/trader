@@ -70,7 +70,7 @@ models:
       store_path: ./data
       policy_epsilon: 0.1
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization","deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
-      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_contract_address: '0xEE9F19b5DF06c7E8Bfc7B28745dcf944C504198A'
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
