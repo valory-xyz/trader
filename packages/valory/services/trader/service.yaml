@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiczhuenxymwnoankdarwogerydxmzkjeefe6anokksaok25dto6nu
+agent: valory/trader:0.1.0:bafybeif4ssbi37xitim37xrhy3s2udsh3urxz4qcedb4zld5qqhsnyssqm
 number_of_agents: 4
 deployment:
   agent:
@@ -161,6 +161,77 @@ type: skill
         part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
+    network_subgraph: &id005
+      args:
+        headers:
+          Content-Type: ${NETWORK_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
+        response_key: ${NETWORK_SUBGRAPH_RESPONSE_KEY:str:data:blocks}
+        response_index: ${NETWORK_SUBGRAPH_RESPONSE_INDEX:int:0}
+        response_type: ${NETWORK_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
+        url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+    omen_subgraph: &id006
+      args:
+        headers:
+          Content-Type: ${OMEN_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${OMEN_SUBGRAPH_METHOD:str:POST}
+        response_key: ${OMEN_SUBGRAPH_RESPONSE_KEY:str:data:fixedProductMarketMakers}
+        response_type: ${OMEN_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
+        url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+    randomness_api: &id007
+      args:
+        method: ${RANDOMNESS_API_METHOD:str:GET}
+        response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
+        response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
+        retries: ${RANDOMNESS_API_RETRIES:int:5}
+        url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
+    mech_response: &id008
+      args:
+        headers:
+          Content-Type: ${MECH_RESPONSE_API_CONTENT_TYPE:str:application/json}
+        method: ${MECH_RESPONSE_API_METHOD:str:GET}
+        response_key: ${MECH_RESPONSE_API_RESPONSE_KEY:str:result}
+        response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
+        retries: ${MECH_RESPONSE_API_RETRIES:int:5}
+        url: ${MECH_RESPONSE_API_URL:str:''}
+    agent_tools: &id009
+      args:
+        headers:
+          Content-Type: ${AGENT_TOOLS_API_CONTENT_TYPE:str:application/json}
+        method: ${AGENT_TOOLS_API_METHOD:str:GET}
+        response_key: ${AGENT_TOOLS_API_RESPONSE_KEY:str:tools}
+        response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
+        retries: ${AGENT_TOOLS_API_RETRIES:int:5}
+        url: ${AGENT_TOOLS_API_URL:str:''}
+    trades_subgraph: &id010
+      args:
+        headers:
+          Content-Type: ${TRADES_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${TRADES_SUBGRAPH_METHOD:str:POST}
+        response_key: ${TRADES_SUBGRAPH_RESPONSE_KEY:str:data:fpmmTrades}
+        response_type: ${TRADES_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
+        url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+    conditional_tokens_subgraph: &id011
+      args:
+        headers:
+          Content-Type: ${CONDITIONAL_TOKENS_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
+        response_key: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_KEY:str:data:user:userPositions}
+        response_type: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
+        url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+    realitio_subgraph: &id012
+      args:
+        headers:
+          Content-Type: ${REALITIO_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
+        response_key: ${REALITIO_SUBGRAPH_RESPONSE_KEY:str:data:answers}
+        response_type: ${REALITIO_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
+        url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 1:
   models:
     params:
@@ -264,6 +335,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -367,6 +446,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -470,6 +557,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection
