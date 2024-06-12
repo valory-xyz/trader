@@ -214,17 +214,33 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self, indexes: List[int], remove_mode: bool = False
     ) -> None:
         """Update the utilized tools' indexes to match the fact that the given ones have been removed or added."""
+        if len(indexes) == 0:
+            return
+
         updated_tools = {}
-        for idx in indexes:
-            for tx_hash, tool_idx in self.utilized_tools.items():
-                if tool_idx == idx:
+        for tx_hash, tool_idx in self.utilized_tools.items():
+            removed = False
+            updated_idx = tool_idx
+
+            for idx in indexes:
+                if removed:
                     continue
 
-                updated_idx = tool_idx
+                if tool_idx == idx and remove_mode:
+                    removed = True
+                    continue
+
+                if tool_idx == idx:
+                    updated_idx += 1
                 if tool_idx > idx:
                     updated_idx += -1 if remove_mode else 1
 
+            if not removed:
                 updated_tools[tx_hash] = updated_idx
+
+        self.context.logger.info(
+            f"Updated the utilized tools' indexes: {self.utilized_tools} -> {updated_tools}."
+        )
         self.utilized_tools = updated_tools
 
     def _adjust_policy_tools(self, local: List[str]) -> None:
@@ -234,7 +250,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         reversed_idx = range(len(local) - 1, -1, -1)
         removed_idx = [idx for idx in reversed_idx if local[idx] not in self.mech_tools]
         self.policy.remove_tools(removed_idx)
-        self._update_utilized_tools(removed_idx, remove_mode=True)
+        self._update_utilized_tools(sorted(removed_idx), remove_mode=True)
 
         # add tools if there are new ones available
         # process the indices in reverse order to avoid index shifting when adding the new tools later
