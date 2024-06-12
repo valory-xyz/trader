@@ -249,6 +249,77 @@ models:
       part_prefix_mode: ${bool:true}
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
+  network_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:blocks}
+      response_index: ${int:0}
+      response_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+  omen_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:fixedProductMarketMakers}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+  randomness_api:
+    args:
+      method: ${str:GET}
+      response_key: ${str:null}
+      response_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://drand.cloudflare.com/public/latest}
+  mech_response:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:GET}
+      response_key: ${str:result}
+      response_type: ${str:str}
+      retries: ${int:5}
+      url: ${str:''}
+  agent_tools:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:GET}
+      response_key: ${str:tools}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:''}
+  trades_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:fpmmTrades}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+  conditional_tokens_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:user:userPositions}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+  realitio_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:answers}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
