@@ -88,7 +88,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -122,7 +122,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -284,7 +284,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -318,7 +318,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -395,7 +395,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -429,7 +429,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -506,7 +506,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -540,7 +540,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
