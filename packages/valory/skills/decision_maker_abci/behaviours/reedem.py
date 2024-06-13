@@ -122,7 +122,14 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             claimable_xdai = self.wei_to_native(update.claimable_amount)
             mech_price = self.wei_to_native(self.synchronized_data.mech_price)
             reward = claimable_xdai - mech_price
-            self.policy.add_reward(tool_index, reward)
+            try:
+                self.policy.add_reward(tool_index, reward)
+            except IndexError:
+                self.context.logger.warning(
+                    f"The stored utilized tools seem to be outdated as no tool with an index {tool_index!r} was found. "
+                    "The policy will not be updated. "
+                    "No action is required as this will be automatically resolved."
+                )
 
     def _stats_report(self) -> None:
         """Report policy statistics."""
