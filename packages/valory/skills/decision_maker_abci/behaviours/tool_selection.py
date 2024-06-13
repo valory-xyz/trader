@@ -299,11 +299,15 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_utilized_tools(self) -> Dict[str, int]:
         """Try to recover the available tools from the tools store."""
         tools_path = self.params.store_path / self.UTILIZED_TOOLS_STORE
-        with open(tools_path, "r") as tools_file:
-            try:
+        try:
+            with open(tools_path, "r") as tools_file:
                 return json.load(tools_file)
-            except Exception as exc:
-                self.context.logger.warning(f"Could not recover the tools: {exc}.")
+        except FileNotFoundError:
+            msg = "No file with pending rewards for the policy were found in the local storage."
+            self.context.logger.info(msg)
+        except Exception as exc:
+            msg = f"Could not recover the pending rewards for the policy: {exc}."
+            self.context.logger.warning(msg)
         return {}
 
     def _try_recover_mech_tools(self) -> Optional[List[str]]:
