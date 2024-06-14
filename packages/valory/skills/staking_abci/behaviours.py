@@ -31,6 +31,9 @@ from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
     StakingState,
 )
+from packages.valory.contracts.staking_token.contract import (
+    StakingState as StakingTokenStakingState,
+)
 from packages.valory.contracts.staking_token.contract import StakingTokenContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
@@ -110,6 +113,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     @service_staking_state.setter
     def service_staking_state(self, state: StakingState) -> None:
         """Set the service's staking state."""
+
+        # The class StakingState is redefined in several packages.
+        # This conversion is required to use a single representation.
+        if isinstance(state, StakingTokenStakingState):
+            state = StakingState(state.value)
+
         self._service_staking_state = state
 
     @property
