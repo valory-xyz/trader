@@ -47,12 +47,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeialmq3grz5eurvoad7gjl4hpvqapnqtlehy2qj5isxtx43s2e5zlq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicm7jbix6qnptanwg34agi4kndaazywzzwr3httv6xtlfgcn47rcy
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
 - valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
-- valory/trader_abci:0.1.0:bafybeib5t4rbvoybx6qv4fjdxhjd72rrz3jdcko4uksgim2gedldeoij5a
-- valory/staking_abci:0.1.0:bafybeihmqmf37cyik5naiiofsrwsw27ey3qm4tq7bgjp5gghvrbcb4nati
-- valory/check_stop_trading_abci:0.1.0:bafybeignyejmijrwpdwubkolchqliz323faheeywol6xlqcll2e55a7gly
+- valory/trader_abci:0.1.0:bafybeietewrf35mcpiza52lcybolh4czedxphkmwesg4kawce4f6hmgq7i
+- valory/staking_abci:0.1.0:bafybeidt4bcu257zb4nge357j3llbodajeaeo4atapaadki2qiznvnvlni
+- valory/check_stop_trading_abci:0.1.0:bafybeiebravnf2aqk2rhxkala5auws3t5bhdmzjfm2drgrorcurt3pznfa
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m

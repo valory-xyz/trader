@@ -322,12 +322,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_period(self) -> WaitableConditionType:
         """Get the liveness period."""
-        contract_interact = (
-            self._mech_activity_checker_contract_interact
-            if self.use_v2
-            else self._staking_contract_interact
-        )
-        status = yield from contract_interact(
+        status = yield from self._staking_contract_interact(
             contract_callable="get_liveness_period",
             placeholder=get_name(CallCheckpointBehaviour.liveness_period),
         )
@@ -335,8 +330,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_ratio(self) -> WaitableConditionType:
         """Get the liveness ratio."""
-
-        status = yield from self._staking_contract_interact(
+        contract_interact = (
+            self._mech_activity_checker_contract_interact
+            if self.use_v2
+            else self._staking_contract_interact
+        )
+        status = yield from contract_interact(
             contract_callable="liveness_ratio",
             placeholder=get_name(CallCheckpointBehaviour.liveness_ratio),
         )
