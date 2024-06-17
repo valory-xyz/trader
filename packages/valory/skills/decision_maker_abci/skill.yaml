@@ -22,10 +22,11 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeibl5ktq5lcwzr3komg77o67yebiokqyii7r3fsshatpww5tr5r3ke
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
-  behaviours/reedem.py: bafybeid7nsgrqm25hw2nugmzlb6xfzvnsvyy3fonn7hxcudot7htqew4ca
+  behaviours/reedem.py: bafybeie423ydv4n3sa7dtr7abri46bvg7bm64ly53js37i32h3tmzbruwa
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
-  behaviours/tool_selection.py: bafybeieq54ygbp5ks6d5zsnab45qkkl6ark5hvdkz66ol3px5nxtmhxrte
+  behaviours/storage_manager.py: bafybeigthyyyof7jvusz4mqtzgh5ptkqitnv2e6aetfjghhlhiebcavmpy
+  behaviours/tool_selection.py: bafybeienrzqmgttqzxk7f5ytb2htuablcerkhraiby74eiv2z2rpd6lqfa
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeif2kas4eho4aielucf3ihjzjsog32icccbxrvje6kkw7aw4m4zg6q
   handlers.py: bafybeielhwnfm2blt6clmwr557g2g3gddnt5bpb4cqul6p3wiwsfoksvlu
@@ -37,7 +38,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeihzr4tovdz2dzgzm4elwifejrtkto6mcdb5zwfk5lyzp63nmuzepa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeigyynuezlgpqcs7cw35tnjd3l3bcdy6nzvqol2mcehgm5d7lv2zei
+  states/base.py: bafybeiglhscyt3dmht2s5adeqmwo5buvpezhw3pkgarm7jslazkil3lsse
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
