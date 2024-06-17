@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, cast
 
 from aea.configurations.data_types import PublicId
+from aea.contracts.base import Contract
 
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.mech_activity.contract import MechActivityContract
@@ -247,8 +248,9 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         **kwargs: Any,
     ) -> WaitableConditionType:
         """Interact with the staking contract."""
-        contract_public_id = (
-            StakingTokenContract if self.use_v2 else ServiceStakingTokenContract
+        contract_public_id = cast(
+            Contract,
+            StakingTokenContract if self.use_v2 else ServiceStakingTokenContract,
         )
         status = yield from self.contract_interact(
             contract_address=self.staking_contract_address,
