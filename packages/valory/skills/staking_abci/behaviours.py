@@ -97,11 +97,6 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         """Get the staking contract address."""
         return self.params.mech_activity_checker_contract
 
-    @staking_contract_address.setter
-    def staking_contract_address(self, staking_contract_address: str) -> None:
-        """Set the staking contract address."""
-        self.params.staking_contract_address = staking_contract_address
-
     @property
     def service_staking_state(self) -> StakingState:
         """Get the service's staking state."""
@@ -110,6 +105,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     @service_staking_state.setter
     def service_staking_state(self, state: StakingState) -> None:
         """Set the service's staking state."""
+
+        # The class StakingState is redefined in several packages.
+        # This conversion is required to use a single representation.
+        if not isinstance(state, StakingState):
+            state = StakingState(state.value)
+
         self._service_staking_state = state
 
     @property
@@ -313,12 +314,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_period(self) -> WaitableConditionType:
         """Get the liveness period."""
-        contract_interact = (
-            self._mech_activity_checker_contract_interact
-            if self.use_v2
-            else self._staking_contract_interact
-        )
-        status = yield from contract_interact(
+        status = yield from self._staking_contract_interact(
             contract_callable="get_liveness_period",
             placeholder=get_name(CallCheckpointBehaviour.liveness_period),
         )
@@ -326,8 +322,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     def _get_liveness_ratio(self) -> WaitableConditionType:
         """Get the liveness ratio."""
-
-        status = yield from self._staking_contract_interact(
+        contract_interact = (
+            self._mech_activity_checker_contract_interact
+            if self.use_v2
+            else self._staking_contract_interact
+        )
+        status = yield from contract_interact(
             contract_callable="liveness_ratio",
             placeholder=get_name(CallCheckpointBehaviour.liveness_ratio),
         )

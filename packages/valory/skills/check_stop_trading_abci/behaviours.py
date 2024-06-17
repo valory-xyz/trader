@@ -121,22 +121,11 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         current_timestamp = self.synced_timestamp
         self.context.logger.debug(f"{current_timestamp=}")
 
-        # kpi calculation if v2 staking is used
-        if self.use_v2:
-            eligibility_margin = (
-                liveness_period * liveness_ratio + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
-            )
-            is_kpi_met = mech_requests_since_last_cp >= eligibility_margin
-            return is_kpi_met
-
         required_mech_requests = (
             math.ceil(
-                max(
-                    (current_timestamp - last_ts_checkpoint)
-                    * liveness_ratio
-                    / LIVENESS_RATIO_SCALE_FACTOR,
-                    liveness_period * liveness_ratio / LIVENESS_RATIO_SCALE_FACTOR,
-                )
+                max(liveness_period, (current_timestamp - last_ts_checkpoint))
+                * liveness_ratio
+                / LIVENESS_RATIO_SCALE_FACTOR
             )
             + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
         )
@@ -145,10 +134,6 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         if mech_requests_since_last_cp >= required_mech_requests:
             return True
         return False
-
-    def _v1_kpi_met(self) -> bool:
-        """Return whether the KPI is met."""
-        return self.mech_request_count >= self.params.stop_trading_kpi
 
     def _compute_stop_trading(self) -> Generator:
         # This is a "hacky" way of getting required data initialized on
