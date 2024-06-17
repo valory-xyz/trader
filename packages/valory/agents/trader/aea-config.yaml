@@ -45,16 +45,17 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieheiirt7i7ujivglkm65xu7lfbr32h4epxzty7ar7e4gd2zjbj34
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihws5nfvhepagcqb43bxuqisqc2w45d57246rwu6ajedatxzkfbpa
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeid7pv3u6dul7s2muozhtiuqnkoom6eheiyzkxge3nev4ug4u5qr3m
-- valory/trader_abci:0.1.0:bafybeifw4xl5oeqsxs5xealvrkm5umrzfvalpu32szg4tcagf22vnhdmsq
+- valory/decision_maker_abci:0.1.0:bafybeib2uenr2a5y2oalybrw2fs2nrr3lp7tw35bvkxkska6pq7l6qqy2q
+- valory/trader_abci:0.1.0:bafybeidpeu7toewtfjb4gyxieqklbev2i2pbyj57ket4qoyffdbypdlw7q
 - valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
 - valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
+- valory/kelly_criterion_no_conf:0.1.0:bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple
 - w1kke/always_blue:0.1.0:bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm
 - jhehemann/kelly_criterion:0.1.0:bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
 default_ledger: ethereum
@@ -180,7 +181,7 @@ models:
       mech_chain_id: ${str:gnosis}
       mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
-      trading_strategy: ${str:kelly_criterion}
+      trading_strategy: ${str:kelly_criterion_no_conf}
       use_fallback_strategy: ${bool:true}
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
@@ -224,7 +225,7 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+      file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple",["kelly_criterion_no_conf"]]]}
       strategies_kwargs: ${list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
