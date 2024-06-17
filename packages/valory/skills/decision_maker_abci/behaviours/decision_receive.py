@@ -293,8 +293,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 fee=self.benchmarking_mode.pool_fee,
                 openingTimestamp=0,
                 outcomeSlotCount=2,
-                outcomeTokenAmounts=[int(10e18)] * 2,
-                outcomeTokenMarginalPrices=[0.5] * 2,
+                outcomeTokenAmounts=self.benchmarking_mode.outcome_token_amounts,
+                outcomeTokenMarginalPrices=self.benchmarking_mode.outcome_token_marginal_prices,
                 outcomes=["Yes", "No"],
                 scaledLiquidityMeasure=10,
             )

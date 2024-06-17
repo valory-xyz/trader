@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeif2sjvwqa7dzz4ieajtffl3eftscc4xfnruxnrg5dlrrwe53b5bgu
+agent: valory/trader:0.1.0:bafybeiggmqtq37rpd7dsa6zdf3k2akzvv4qdln7hbiunshhgbl42jycjt4
 number_of_agents: 4
 deployment:
   agent:
@@ -88,7 +88,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
@@ -123,7 +123,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -149,6 +149,8 @@ type: skill
         collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
         mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
         pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
+        outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:list:[11000000000000000000,9000000000000000000]}
+        outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:list:[0.4,0.6]}
         sep: ${BENCHMARKING_MODE_SEP:str:,}
         dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
         question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}
@@ -160,6 +162,77 @@ type: skill
         part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
+    network_subgraph: &id005
+      args:
+        headers:
+          Content-Type: ${NETWORK_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
+        response_key: ${NETWORK_SUBGRAPH_RESPONSE_KEY:str:data:blocks}
+        response_index: ${NETWORK_SUBGRAPH_RESPONSE_INDEX:int:0}
+        response_type: ${NETWORK_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
+        url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+    omen_subgraph: &id006
+      args:
+        headers:
+          Content-Type: ${OMEN_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${OMEN_SUBGRAPH_METHOD:str:POST}
+        response_key: ${OMEN_SUBGRAPH_RESPONSE_KEY:str:data:fixedProductMarketMakers}
+        response_type: ${OMEN_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
+        url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+    randomness_api: &id007
+      args:
+        method: ${RANDOMNESS_API_METHOD:str:GET}
+        response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
+        response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
+        retries: ${RANDOMNESS_API_RETRIES:int:5}
+        url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
+    mech_response: &id008
+      args:
+        headers:
+          Content-Type: ${MECH_RESPONSE_API_CONTENT_TYPE:str:application/json}
+        method: ${MECH_RESPONSE_API_METHOD:str:GET}
+        response_key: ${MECH_RESPONSE_API_RESPONSE_KEY:str:result}
+        response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
+        retries: ${MECH_RESPONSE_API_RETRIES:int:5}
+        url: ${MECH_RESPONSE_API_URL:str:''}
+    agent_tools: &id009
+      args:
+        headers:
+          Content-Type: ${AGENT_TOOLS_API_CONTENT_TYPE:str:application/json}
+        method: ${AGENT_TOOLS_API_METHOD:str:GET}
+        response_key: ${AGENT_TOOLS_API_RESPONSE_KEY:str:tools}
+        response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
+        retries: ${AGENT_TOOLS_API_RETRIES:int:5}
+        url: ${AGENT_TOOLS_API_URL:str:''}
+    trades_subgraph: &id010
+      args:
+        headers:
+          Content-Type: ${TRADES_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${TRADES_SUBGRAPH_METHOD:str:POST}
+        response_key: ${TRADES_SUBGRAPH_RESPONSE_KEY:str:data:fpmmTrades}
+        response_type: ${TRADES_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
+        url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+    conditional_tokens_subgraph: &id011
+      args:
+        headers:
+          Content-Type: ${CONDITIONAL_TOKENS_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
+        response_key: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_KEY:str:data:user:userPositions}
+        response_type: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
+        url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+    realitio_subgraph: &id012
+      args:
+        headers:
+          Content-Type: ${REALITIO_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
+        response_key: ${REALITIO_SUBGRAPH_RESPONSE_KEY:str:data:answers}
+        response_type: ${REALITIO_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
+        url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 1:
   models:
     params:
@@ -212,7 +285,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -246,7 +319,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -263,6 +336,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -315,7 +396,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -349,7 +430,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -366,6 +447,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -418,7 +507,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -452,7 +541,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -469,6 +558,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection

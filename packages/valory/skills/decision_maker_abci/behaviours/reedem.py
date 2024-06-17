@@ -37,8 +37,10 @@ from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload, get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
     WaitableConditionType,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.models import (
     MultisendBatch,
@@ -67,7 +69,7 @@ BLOCK_NUMBER_KEY = "number"
 DEFAULT_TO_BLOCK = "latest"
 
 
-class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
+class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
     """A behaviour responsible for building and handling the redeeming information."""
 
     def __init__(self, **kwargs: Any) -> None:
@@ -89,8 +91,7 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
 
     def setup(self) -> None:
         """Setup the behaviour"""
-        self._policy = self.synchronized_data.policy
-        self.utilized_tools = self.synchronized_data.utilized_tools
+        super().setup()
         self.redeemed_condition_ids = self.synchronized_data.redeemed_condition_ids
         self.payout_so_far = self.synchronized_data.payout_so_far
 
@@ -122,19 +123,25 @@ class RedeemInfoBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour, ABC):
             claimable_xdai = self.wei_to_native(update.claimable_amount)
             mech_price = self.wei_to_native(self.synchronized_data.mech_price)
             reward = claimable_xdai - mech_price
-            self.policy.add_reward(tool_index, reward)
+            try:
+                self.policy.add_reward(tool_index, reward)
+            except IndexError:
+                self.context.logger.warning(
+                    f"The stored utilized tools seem to be outdated as no tool with an index {tool_index!r} was found. "
+                    "The policy will not be updated. "
+                    "No action is required as this will be automatically resolved."
+                )
 
     def _stats_report(self) -> None:
         """Report policy statistics."""
         stats_report = "Policy statistics so far (only for resolved markets):\n"
-        available_tools = self.synchronized_data.available_mech_tools
-        for i, tool in enumerate(available_tools):
+        for i, tool in enumerate(self.mech_tools):
             stats_report += (
                 f"{tool} tool:\n"
                 f"\tTimes used: {self.policy.counts[i]}\n"
                 f"\tReward rate: {self.policy.reward_rates[i]}\n"
             )
-        best_tool = available_tools[self.policy.best_tool]
+        best_tool = self.mech_tools[self.policy.best_tool]
         stats_report += f"Best tool so far is {best_tool!r}."
         self.context.logger.info(stats_report)
 
@@ -900,9 +907,22 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._store_utilized_tools()
         yield from super().finish_behaviour(payload)
 
+    def _setup_policy_and_tools(self) -> Generator[None, None, bool]:
+        """Set up the policy and tools."""
+        if self.synchronized_data.is_policy_set:
+            self._policy = self.synchronized_data.policy
+            self.mech_tools = self.synchronized_data.available_mech_tools
+            return True
+        status = yield from super()._setup_policy_and_tools()
+        return status
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            success = yield from self._setup_policy_and_tools()
+            if not success:
+                return
+
             if not self.redeeming_progress.check_started:
                 yield from self._get_redeem_info()
                 self._store_progress()
@@ -925,6 +945,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                     utilized_tools = json.dumps(self.utilized_tools)
                     condition_ids = json.dumps(list(self.redeemed_condition_ids))
                     payout = self.payout_so_far
+                    self._store_all()
                     payload = RedeemPayload(
                         agent,
                         tx_submitter,

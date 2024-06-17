@@ -47,16 +47,17 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif6yp475vtskwp7jk3lbrtgkzmbim5o74rlrhp6fwy65dfhzuazgi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihws5nfvhepagcqb43bxuqisqc2w45d57246rwu6ajedatxzkfbpa
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeihvaze22cfs7djtbduficbtmbcv4n5nc3g45irnczhwuqzzcvkr6y
-- valory/trader_abci:0.1.0:bafybeic5stbbd6q2vgtweb4ifnjgjb3mobehuijhn6pbaa7hmzn7om4h4q
-- valory/staking_abci:0.1.0:bafybeicbzbfyngqjllkpfvwo62zewotebebstdlpykmmhlzezknkaphdni
-- valory/check_stop_trading_abci:0.1.0:bafybeigiavk6dwd5clx32paza7qsmkkmhc4tvgy5tteazmdkhj7v32p6fq
+- valory/decision_maker_abci:0.1.0:bafybeib2uenr2a5y2oalybrw2fs2nrr3lp7tw35bvkxkska6pq7l6qqy2q
+- valory/trader_abci:0.1.0:bafybeidpeu7toewtfjb4gyxieqklbev2i2pbyj57ket4qoyffdbypdlw7q
+- valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
+- valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
+- valory/kelly_criterion_no_conf:0.1.0:bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple
 - w1kke/always_blue:0.1.0:bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm
 - jhehemann/kelly_criterion:0.1.0:bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
 default_ledger: ethereum
@@ -183,7 +184,7 @@ models:
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
       mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
-      trading_strategy: ${str:kelly_criterion}
+      trading_strategy: ${str:kelly_criterion_no_conf}
       use_fallback_strategy: ${bool:true}
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
@@ -227,7 +228,7 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
+      file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihnweebd6lxqtiat2mgspp5tpal4e2hntwdxvptkmbunpdxq2fple",["kelly_criterion_no_conf"]]]}
       strategies_kwargs: ${list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
@@ -239,6 +240,8 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
+      outcome_token_amounts: ${list:[11000000000000000000,9000000000000000000]}
+      outcome_token_marginal_prices: ${list:[0.4,0.6]}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}
@@ -250,6 +253,77 @@ models:
       part_prefix_mode: ${bool:true}
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
+  network_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:blocks}
+      response_index: ${int:0}
+      response_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+  omen_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:fixedProductMarketMakers}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+  randomness_api:
+    args:
+      method: ${str:GET}
+      response_key: ${str:null}
+      response_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://drand.cloudflare.com/public/latest}
+  mech_response:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:GET}
+      response_key: ${str:result}
+      response_type: ${str:str}
+      retries: ${int:5}
+      url: ${str:''}
+  agent_tools:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:GET}
+      response_key: ${str:tools}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:''}
+  trades_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:fpmmTrades}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+  conditional_tokens_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:user:userPositions}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+  realitio_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:answers}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

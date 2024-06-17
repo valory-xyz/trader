@@ -50,3 +50,4 @@ trader/
 !/packages/valory/agents/trader/
 !/packages/valory/services/trader/
 /trader_service/
+/.coverage
