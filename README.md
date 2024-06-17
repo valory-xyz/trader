@@ -57,7 +57,7 @@ Next, prepare the [Safe](https://safe.global/). The trader agent runs as part of
 which is an [autonomous service](https://docs.autonolas.network/open-autonomy/get_started/what_is_an_agent_service/) 
 represented on-chain in the [Autonolas Protocol](https://docs.autonolas.network/protocol/) by a [Safe](https://safe.global/) multisig. Follow the next steps to obtain a **Safe address** corresponding to your agent address:
 
-1. Visit https://registry.olas.network/services/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
+1. Visit https://registry.olas.network/gnosis/services/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
 2. Fill in the following fields:
     - *"Owner address"*: a Gnosis address for which you will be able to sign later using a supported wallet. If you want to use the address you are connected to, click on *"Prefill Address"*.
     - Click on *"Generate Hash & File"* and enter the value corresponding to the `service/valory/trader/0.1.0` key in [`packages.json`](https://github.com/valory-xyz/trader/blob/main/packages/packages.json)
@@ -184,3 +184,12 @@ you need, for the case of 4 agents:
 You can also explore the [`service.yaml`](https://github.com/valory-xyz/trader/blob/main/packages/valory/services/trader/service.yaml) file, which contains all the possible configuration variables for the service.
 
 Finally, if you are experienced with the [Open Autonomy](https://docs.autonolas.network/) framework, you can also modify the internal business logic of the service yourself.
+
+## Included strategies
+
+| Strategies |
+|---|
+| packages/jhehemann/customs/kelly_criterion |
+| packages/valory/customs/bet_amount_per_threshold |
+| packages/valory/customs/mike_strat |
+| packages/w1kke/customs/always_blue |

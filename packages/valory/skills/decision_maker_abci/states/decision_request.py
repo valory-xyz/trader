@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,25 +19,43 @@
 
 """This module contains the decision requesting state of the decision-making abci app."""
 
-from typing import Type
+from enum import Enum
+from typing import Optional, Tuple, cast
 
-from packages.valory.skills.abstract_round_abci.base import get_name
-from packages.valory.skills.decision_maker_abci.payloads import (
-    MultisigTxPayload,
-    RequestPayload,
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    CollectSameUntilThresholdRound,
+    get_name,
 )
+from packages.valory.skills.decision_maker_abci.payloads import DecisionRequestPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
-    TxPreparationRound,
 )
 
 
-class DecisionRequestRound(TxPreparationRound):
+class DecisionRequestRound(CollectSameUntilThresholdRound):
     """A round in which the agents prepare a tx to initiate a request to a mech to determine the answer to a bet."""
 
-    payload_class: Type[MultisigTxPayload] = RequestPayload
-    selection_key = TxPreparationRound.selection_key + (
-        get_name(SynchronizedData.mech_price),
+    payload_class = DecisionRequestPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(SynchronizedData.participant_to_selection)
+    selection_key = (
+        get_name(SynchronizedData.mech_requests),
+        get_name(SynchronizedData.mocking_mode),
     )
     none_event = Event.SLOTS_UNSUPPORTED_ERROR
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event == Event.DONE and synced_data.mocking_mode:
+            return synced_data, Event.MOCK_MECH_REQUEST
+
+        return res

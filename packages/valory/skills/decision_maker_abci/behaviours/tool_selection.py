@@ -53,6 +53,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self._mech_id: int = 0
         self._mech_hash: str = ""
         self._mech_tools: Optional[List[str]] = None
+        self._utilized_tools: Dict[str, int] = {}
 
     @property
     def mech_id(self) -> int:
@@ -89,17 +90,25 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     @property
     def utilized_tools(self) -> Dict[str, int]:
         """Get the utilized tools."""
-        if self.is_first_period:
-            tools = self._try_recover_utilized_tools()
-            if tools is not None:
-                return tools
-            return {}
-        return self.synchronized_data.utilized_tools
+        return self._utilized_tools
+
+    @utilized_tools.setter
+    def utilized_tools(self, utilized_tools: Dict[str, int]) -> None:
+        """Get the utilized tools."""
+        self._utilized_tools = utilized_tools
 
     @property
     def mech_tools_api(self) -> AgentToolsSpecs:
         """Get the mech agent api specs."""
         return self.context.agent_tools
+
+    def setup(self) -> None:
+        """Set the behaviour up."""
+        self.utilized_tools = (
+            self._try_recover_utilized_tools()
+            if self.is_first_period
+            else self.synchronized_data.utilized_tools
+        )
 
     def set_mech_agent_specs(self) -> None:
         """Set the mech's agent specs."""
@@ -109,6 +118,25 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self.mech_tools_api.__dict__["_frozen"] = False
         self.mech_tools_api.url = ipfs_link
         self.mech_tools_api.__dict__["_frozen"] = True
+
+    def _get_tools_from_benchmark_file(self) -> None:
+        """Get the tools from the benchmark dataset."""
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+        with open(dataset_filepath) as read_dataset:
+            row = read_dataset.readline()
+            if not row:
+                # if no headers are in the file, then we finished the benchmarking
+                self.context.logger.error("No headers in dataset file.")
+                return
+
+        # parse tools from headers
+        headers = row.split(self.benchmarking_mode.sep)
+        p_yes_part = self.benchmarking_mode.p_yes_field_part
+        self.mech_tools = [
+            header.replace(p_yes_part, "") for header in headers if p_yes_part in header
+        ]
 
     def _get_mech_id(self) -> WaitableConditionType:
         """Get the mech's id."""
@@ -171,12 +199,49 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         self,
     ) -> Generator[None, None, None]:
         """Get the Mech's tools."""
+        if self.benchmarking_mode.enabled:
+            self._get_tools_from_benchmark_file()
+            return
+
         for step in (
             self._get_mech_id,
             self._get_mech_hash,
             self._get_mech_tools,
         ):
             yield from self.wait_for_condition_with_sleep(step)
+
+    def _update_utilized_tools(
+        self, indexes: List[int], remove_mode: bool = False
+    ) -> None:
+        """Update the utilized tools' indexes to match the fact that the given ones have been removed or added."""
+        if len(indexes) == 0:
+            return
+
+        updated_tools = {}
+        for tx_hash, tool_idx in self.utilized_tools.items():
+            removed = False
+            updated_idx = tool_idx
+
+            for idx in indexes:
+                if removed:
+                    continue
+
+                if tool_idx == idx and remove_mode:
+                    removed = True
+                    continue
+
+                if tool_idx == idx:
+                    updated_idx += 1
+                if tool_idx > idx:
+                    updated_idx += -1 if remove_mode else 1
+
+            if not removed:
+                updated_tools[tx_hash] = updated_idx
+
+        self.context.logger.info(
+            f"Updated the utilized tools' indexes: {self.utilized_tools} -> {updated_tools}."
+        )
+        self.utilized_tools = updated_tools
 
     def _adjust_policy_tools(self, local: List[str]) -> None:
         """Add or remove tools from the policy to match the remote tools."""
@@ -185,12 +250,14 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
         reversed_idx = range(len(local) - 1, -1, -1)
         removed_idx = [idx for idx in reversed_idx if local[idx] not in self.mech_tools]
         self.policy.remove_tools(removed_idx)
+        self._update_utilized_tools(sorted(removed_idx), remove_mode=True)
 
         # add tools if there are new ones available
         # process the indices in reverse order to avoid index shifting when adding the new tools later
         reversed_idx = range(len(self.mech_tools) - 1, -1, -1)
         new_idx = [idx for idx in reversed_idx if self.mech_tools[idx] not in local]
         self.policy.add_new_tools(new_idx)
+        self._update_utilized_tools(new_idx)
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
@@ -221,7 +288,7 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
         """Try to recover the policy from the policy store."""
         try:
-            policy_path = self.params.policy_store_path / self.POLICY_STORE
+            policy_path = self.params.store_path / self.POLICY_STORE
             with open(policy_path, "r") as f:
                 policy = f.read()
                 return EGreedyPolicy.deserialize(policy)
@@ -229,21 +296,24 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.warning(f"Could not recover the policy: {e}.")
             return None
 
-    def _try_recover_utilized_tools(self) -> Optional[Dict[str, Any]]:
+    def _try_recover_utilized_tools(self) -> Dict[str, int]:
         """Try to recover the available tools from the tools store."""
+        tools_path = self.params.store_path / self.UTILIZED_TOOLS_STORE
         try:
-            tools_path = self.params.policy_store_path / self.UTILIZED_TOOLS_STORE
-            with open(tools_path, "r") as f:
-                tools = json.load(f)
-                return tools
-        except Exception as e:
-            self.context.logger.warning(f"Could not recover the tools: {e}.")
-            return None
+            with open(tools_path, "r") as tools_file:
+                return json.load(tools_file)
+        except FileNotFoundError:
+            msg = "No file with pending rewards for the policy were found in the local storage."
+            self.context.logger.info(msg)
+        except Exception as exc:
+            msg = f"Could not recover the pending rewards for the policy: {exc}."
+            self.context.logger.warning(msg)
+        return {}
 
     def _try_recover_mech_tools(self) -> Optional[List[str]]:
         """Try to recover the available tools from the tools store."""
         try:
-            tools_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+            tools_path = self.params.store_path / self.AVAILABLE_TOOLS_STORE
             with open(tools_path, "r") as f:
                 tools = json.load(f)
                 return tools
@@ -266,13 +336,13 @@ class ToolSelectionBehaviour(DecisionMakerBaseBehaviour):
 
     def _store_policy(self) -> None:
         """Store the policy"""
-        policy_path = self.params.policy_store_path / self.POLICY_STORE
+        policy_path = self.params.store_path / self.POLICY_STORE
         with open(policy_path, "w") as f:
             f.write(self.policy.serialize())
 
     def _store_available_mech_tools(self) -> None:
         """Store the policy"""
-        policy_path = self.params.policy_store_path / self.AVAILABLE_TOOLS_STORE
+        policy_path = self.params.store_path / self.AVAILABLE_TOOLS_STORE
         with open(policy_path, "w") as f:
             json.dump(self.mech_tools, f)
 

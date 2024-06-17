@@ -21,9 +21,10 @@
 
 import json
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
     CollectSameUntilThresholdRound,
     DeserializedCollection,
     get_name,
@@ -32,6 +33,10 @@ from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayloa
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
+)
+from packages.valory.skills.mech_interact_abci.states.base import (
+    MechInteractionResponse,
+    MechMetadata,
 )
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
@@ -43,6 +48,11 @@ class Event(Enum):
 
     DONE = "done"
     NONE = "none"
+    BENCHMARKING_ENABLED = "benchmarking_enabled"
+    BENCHMARKING_DISABLED = "benchmarking_disabled"
+    BENCHMARKING_FINISHED = "benchmarking_finished"
+    MOCK_MECH_REQUEST = "mock_mech_request"
+    MOCK_TX = "mock_tx"
     MECH_RESPONSE_ERROR = "mech_response_error"
     SLOTS_UNSUPPORTED_ERROR = "slots_unsupported_error"
     TIE = "tie"
@@ -75,11 +85,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return bool(self.db.get("mech_price", False))
 
     @property
-    def mech_price(self) -> int:
-        """Get the mech's request price."""
-        return int(self.db.get_strict("mech_price"))
-
-    @property
     def available_mech_tools(self) -> List[str]:
         """Get all the available mech tools."""
         tools = self.db.get_strict("available_mech_tools")
@@ -90,6 +95,12 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the policy."""
         policy = self.db.get_strict("policy")
         return EGreedyPolicy.deserialize(policy)
+
+    @property
+    def has_tool_selection_run(self) -> bool:
+        """Get whether the tool selection has run."""
+        mech_tool_idx = self.db.get("mech_tool_idx", None)
+        return mech_tool_idx is not None
 
     @property
     def mech_tool_idx(self) -> int:
@@ -173,6 +184,45 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the claim."""
         return bool(self.db.get_strict("claim"))
 
+    @property
+    def mech_price(self) -> int:
+        """Get the mech's request price."""
+        return int(self.db.get_strict("mech_price"))
+
+    @property
+    def mech_requests(self) -> List[MechMetadata]:
+        """Get the mech requests."""
+        serialized = self.db.get("mech_requests", "[]")
+        if serialized is None:
+            serialized = "[]"
+        requests = json.loads(serialized)
+        return [MechMetadata(**metadata_item) for metadata_item in requests]
+
+    @property
+    def mocking_mode(self) -> Optional[bool]:
+        """Get whether the mocking mode should be enabled."""
+        mode = self.db.get_strict("mocking_mode")
+        if mode is None:
+            return None
+        return bool(mode)
+
+    @property
+    def next_mock_data_row(self) -> int:
+        """Get the next_mock_data_row."""
+        next_mock_data_row = self.db.get("next_mock_data_row", 1)
+        if next_mock_data_row is None:
+            return 1
+        return int(next_mock_data_row)
+
+    @property
+    def mech_responses(self) -> List[MechInteractionResponse]:
+        """Get the mech responses."""
+        serialized = self.db.get("mech_responses", "[]")
+        if serialized is None:
+            serialized = "[]"
+        responses = json.loads(serialized)
+        return [MechInteractionResponse(**response_item) for response_item in responses]
+
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
     """A round for preparing a transaction."""
@@ -185,5 +235,18 @@ class TxPreparationRound(CollectSameUntilThresholdRound):
     selection_key: Tuple[str, ...] = (
         get_name(SynchronizedData.tx_submitter),
         get_name(SynchronizedData.most_voted_tx_hash),
+        get_name(SynchronizedData.mocking_mode),
     )
     collection_key = get_name(SynchronizedData.participant_to_tx_prep)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+        if event == Event.DONE and synced_data.mocking_mode:
+            return synced_data, Event.MOCK_TX
+
+        return res

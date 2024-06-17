@@ -122,6 +122,28 @@ class ServiceStakingTokenContract(Contract):
         return dict(data=ts)
 
     @classmethod
+    def ts_checkpoint(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the checkpoint's timestamp."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        ts_checkpoint = contract.functions.tsCheckpoint().call()
+        return dict(data=ts_checkpoint)
+
+    @classmethod
+    def liveness_ratio(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the liveness ratio."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        liveness_ratio = contract.functions.livenessRatio().call()
+        return dict(data=liveness_ratio)
+
+    @classmethod
     def get_liveness_period(
         cls,
         ledger_api: LedgerApi,

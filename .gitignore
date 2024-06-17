@@ -7,14 +7,18 @@ packages/valory/connections/http_client/
 packages/valory/connections/ipfs/
 packages/valory/connections/ledger/
 packages/valory/connections/p2p_libp2p_client/
+packages/valory/connections/http_server/
 
 packages/valory/skills/abstract_abci/
 packages/valory/skills/abstract_round_abci/
+packages/valory/skills/mech_interact_abci/
 packages/valory/skills/registration_abci/
 packages/valory/skills/reset_pause_abci/
 packages/valory/skills/transaction_settlement_abci/
 packages/valory/skills/termination_abci/
 
+packages/valory/contracts/erc20/
+packages/valory/contracts/mech/
 packages/valory/contracts/gnosis_safe_proxy_factory/
 packages/valory/contracts/multisend/
 packages/valory/contracts/service_registry/
@@ -38,6 +42,7 @@ packages/valory/protocols/tendermint
 .env
 .1env
 keys.json
+keys_json/
 leak_report
 
 agent/
@@ -45,3 +50,4 @@ trader/
 !/packages/valory/agents/trader/
 !/packages/valory/services/trader/
 /trader_service/
+/.coverage

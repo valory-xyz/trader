@@ -19,32 +19,37 @@
 
 """This module contains the behaviour for the decision-making of the skill."""
 
+import csv
+import json
 from math import prod
-from typing import Any, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
-from packages.valory.contracts.mech.contract import Mech
-from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    CID_PREFIX,
     DecisionMakerBaseBehaviour,
-    WaitableConditionType,
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
-    MechInteractionResponse,
-    MechResponseSpecs,
+    BenchmarkingMockData,
+    CONFIDENCE_FIELD,
+    INFO_UTILITY_FIELD,
+    P_NO_FIELD,
+    P_YES_FIELD,
+    PredictionResponse,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS, Bet
+from packages.valory.skills.mech_interact_abci.states.base import (
+    MechInteractionResponse,
+)
 
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 SLIPPAGE = 1.05
+WRITE_TEXT_MODE = "w+t"
+COMMA = ","
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -55,20 +60,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize Behaviour."""
         super().__init__(**kwargs, loader_cls=ComponentPackageLoader)
-        self._from_block: int = 0
         self._request_id: int = 0
-        self._response_hex: str = ""
         self._mech_response: Optional[MechInteractionResponse] = None
-
-    @property
-    def from_block(self) -> int:
-        """Get the block number in which the request to the mech was settled."""
-        return self._from_block
-
-    @from_block.setter
-    def from_block(self, from_block: int) -> None:
-        """Set the block number in which the request to the mech was settled."""
-        self._from_block = from_block
+        self._rows_exceeded: bool = False
 
     @property
     def request_id(self) -> int:
@@ -85,34 +79,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(msg)
 
     @property
-    def response_hex(self) -> str:
-        """Get the hash of the response data."""
-        return self._response_hex
-
-    @response_hex.setter
-    def response_hex(self, response_hash: bytes) -> None:
-        """Set the hash of the response data."""
-        try:
-            self._response_hex = response_hash.hex()
-        except AttributeError:
-            msg = f"Response hash {response_hash!r} is not valid hex bytes!"
-            self.context.logger.error(msg)
-
-    @property
-    def mech_response_api(self) -> MechResponseSpecs:
-        """Get the mech response api specs."""
-        return self.context.mech_response
-
-    def set_mech_response_specs(self) -> None:
-        """Set the mech's response specs."""
-        full_ipfs_hash = CID_PREFIX + self.response_hex
-        ipfs_link = self.params.ipfs_address + full_ipfs_hash + f"/{self.request_id}"
-        # The url must be dynamically generated as it depends on the ipfs hash
-        self.mech_response_api.__dict__["_frozen"] = False
-        self.mech_response_api.url = ipfs_link
-        self.mech_response_api.__dict__["_frozen"] = True
-
-    @property
     def mech_response(self) -> MechInteractionResponse:
         """Get the mech's response."""
         if self._mech_response is None:
@@ -120,115 +86,114 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return MechInteractionResponse(error=error)
         return self._mech_response
 
-    def _get_block_number(self) -> WaitableConditionType:
-        """Get the block number in which the request to the mech was settled."""
-        result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            # we do not need the address to get the block number, but the base method does
-            contract_address=ZERO_ADDRESS,
-            contract_public_id=Mech.contract_id,
-            contract_callable="get_block_number",
-            data_key="number",
-            placeholder=get_name(DecisionReceiveBehaviour.from_block),
-            tx_hash=self.synchronized_data.final_tx_hash,
-        )
+    def _next_dataset_row(self) -> Optional[Dict[str, str]]:
+        """Read the next row from the input dataset which is used during the benchmarking mode.
 
-        return result
-
-    def _get_request_id(self) -> WaitableConditionType:
-        """Get the request id."""
-        result = yield from self._mech_contract_interact(
-            contract_callable="process_request_event",
-            data_key="requestId",
-            placeholder=get_name(DecisionReceiveBehaviour.request_id),
-            tx_hash=self.synchronized_data.final_tx_hash,
-        )
-        return result
-
-    def _get_response_hash(self) -> WaitableConditionType:
-        """Get the hash of the response data."""
-        self.context.logger.info(
-            f"Filtering the mech's events from block {self.from_block} "
-            f"for a response to our request with id {self.request_id!r}."
-        )
-        result = yield from self._mech_contract_interact(
-            contract_callable="get_response",
-            data_key="data",
-            placeholder=get_name(DecisionReceiveBehaviour.response_hex),
-            request_id=self.request_id,
-            from_block=self.from_block,
-            timeout=self.params.contract_timeout,
-        )
-
-        if result:
-            self.set_mech_response_specs()
-
-        return result
-
-    def _handle_response(
-        self,
-        res: Optional[str],
-    ) -> Optional[Any]:
-        """Handle the response from the IPFS.
-
-        :param res: the response to handle.
-        :return: the response's result, using the given keys. `None` if response is `None` (has failed).
+        :return: a dictionary with the header fields mapped to the values of the first row.
+            If no rows are left to process in the file, returns `None`.
         """
-        if res is None:
-            msg = f"Could not get the mech's response from {self.mech_response_api.api_id}"
-            self.context.logger.error(msg)
-            self.mech_response_api.increment_retries()
-            return None
+        sep = self.benchmarking_mode.sep
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+        next_mock_data_row = self.synchronized_data.next_mock_data_row
 
-        self.context.logger.info(f"Retrieved the mech's response: {res}.")
-        self.mech_response_api.reset_retries()
-        return res
+        row_with_headers: Optional[Dict[str, str]] = None
+        with open(dataset_filepath) as read_dataset:
+            reader = csv.DictReader(read_dataset, delimiter=sep)
 
-    def _get_response(self) -> WaitableConditionType:
-        """Get the response data from IPFS."""
-        specs = self.mech_response_api.get_spec()
-        res_raw = yield from self.get_http_response(**specs)
-        res = self.mech_response_api.process_response(res_raw)
-        res = self._handle_response(res)
+            for _ in range(next_mock_data_row):
+                row_with_headers = next(reader, {})
 
-        if self.mech_response_api.is_retries_exceeded():
-            error = "Retries were exceeded while trying to get the mech's response."
+            if not row_with_headers:
+                # if no rows are in the file, then we finished the benchmarking
+                self._rows_exceeded = True
+                return None
+
+        msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
+        self.context.logger.info(msg)
+        return row_with_headers
+
+    def _parse_dataset_row(self, row: Dict[str, str]) -> str:
+        """Parse a dataset's row to store the mock market data and to mock a prediction response."""
+        mode = self.benchmarking_mode
+        self.shared_state.mock_data = BenchmarkingMockData(
+            row[mode.question_id_field],
+            row[mode.question_field],
+            row[mode.answer_field],
+        )
+        mech_tool = self.synchronized_data.mech_tool
+        fields = {}
+
+        for prediction_attribute, field_part in {
+            P_YES_FIELD: mode.p_yes_field_part,
+            P_NO_FIELD: mode.p_no_field_part,
+            CONFIDENCE_FIELD: mode.confidence_field_part,
+        }.items():
+            if mode.part_prefix_mode:
+                fields[prediction_attribute] = row[field_part + mech_tool]
+            else:
+                fields[prediction_attribute] = row[mech_tool + field_part]
+
+        # set the info utility to zero as it does not matter for the benchmark
+        fields[INFO_UTILITY_FIELD] = "0"
+        return json.dumps(fields)
+
+    def _mock_response(self) -> None:
+        """Mock the response data."""
+        dataset_row = self._next_dataset_row()
+        if dataset_row is None:
+            return
+        mech_response = self._parse_dataset_row(dataset_row)
+        self._mech_response = MechInteractionResponse(result=mech_response)
+
+    def _get_response(self) -> None:
+        """Get the response data."""
+        mech_responses = self.synchronized_data.mech_responses
+        if not mech_responses:
+            error = "No Mech responses in synchronized_data."
             self._mech_response = MechInteractionResponse(error=error)
-            return True
 
-        if res is None:
-            return False
-
-        try:
-            self._mech_response = MechInteractionResponse(**res)
-        except (ValueError, TypeError, KeyError):
-            self._mech_response = MechInteractionResponse.incorrect_format(res)
-
-        return True
+        self._mech_response = mech_responses[0]
 
     def _get_decision(
         self,
-    ) -> Generator[None, None, Tuple[Optional[int], Optional[float], Optional[float]]]:
+    ) -> Tuple[
+        Optional[int],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+        Optional[float],
+    ]:
         """Get vote, win probability and confidence."""
-        for step in (
-            self._get_block_number,
-            self._get_request_id,
-            self._get_response_hash,
-            self._get_response,
-        ):
-            yield from self.wait_for_condition_with_sleep(step)
+        if self.benchmarking_mode.enabled:
+            self._mock_response()
+        else:
+            self._get_response()
+
+        if self._mech_response is None:
+            self.context.logger.info("The benchmarking has finished!")
+            return None, None, None, None, None
 
         self.context.logger.info(f"Decision has been received:\n{self.mech_response}")
         if self.mech_response.result is None:
             self.context.logger.error(
                 f"There was an error on the mech's response: {self.mech_response.error}"
             )
-            return None, None, None
+            return None, None, None, None, None
+
+        try:
+            result = PredictionResponse(**json.loads(self.mech_response.result))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.context.logger.error(f"Could not parse the mech's response: {exc}")
+            return None, None, None, None, None
 
         return (
-            self.mech_response.result.vote,
-            self.mech_response.result.win_probability,
-            self.mech_response.result.confidence,
+            result.vote,
+            result.p_yes,
+            result.p_no,
+            result.win_probability,
+            result.confidence,
         )
 
     @staticmethod
@@ -241,10 +206,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return selected_type_tokens_in_pool, other_tokens_in_pool
 
-    def _calc_binary_shares(self, net_bet_amount: int, vote: int) -> Tuple[int, int]:
+    def _calc_binary_shares(
+        self, bet: Bet, net_bet_amount: int, vote: int
+    ) -> Tuple[int, int]:
         """Calculate the claimed shares. This calculation only works for binary markets."""
-        bet = self.sampled_bet
-
         # calculate the pool's k (x*y=k)
         token_amounts = bet.outcomeTokenAmounts
         self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
@@ -308,10 +273,32 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return num_shares, available_shares
 
     def _is_profitable(
-        self, vote: int, win_probability: float, confidence: float
+        self,
+        vote: int,
+        p_yes: float,
+        p_no: float,
+        win_probability: float,
+        confidence: float,
     ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
-        bet = self.sampled_bet
+        bet = (
+            self.sampled_bet
+            if not self.benchmarking_mode.enabled
+            else Bet(
+                id="",
+                market="",
+                title="",
+                collateralToken="",
+                creator="",
+                fee=self.benchmarking_mode.pool_fee,
+                openingTimestamp=0,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=self.benchmarking_mode.outcome_token_amounts,
+                outcomeTokenMarginalPrices=self.benchmarking_mode.outcome_token_marginal_prices,
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=10,
+            )
+        )
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, vote
         )
@@ -323,13 +310,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             other_tokens_in_pool,
             bet.fee,
         )
+        bet_threshold = self.params.bet_threshold
+        bet_amount = max(bet_amount, bet_threshold)
 
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
         net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
 
-        num_shares, available_shares = self._calc_binary_shares(net_bet_amount, vote)
+        num_shares, available_shares = self._calc_binary_shares(
+            bet, net_bet_amount, vote
+        )
 
         self.context.logger.info(f"Adjusted available shares: {available_shares}")
         if num_shares > available_shares * SLIPPAGE:
@@ -338,7 +329,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
                 "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
             )
-        bet_threshold = self.params.bet_threshold
         if bet_threshold <= 0:
             self.context.logger.warning(
                 f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
@@ -355,29 +345,48 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
+
+        if self.benchmarking_mode.enabled:
+            if is_profitable:
+                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+            else:
+                self._write_benchmark_results(p_yes, p_no, confidence)
+
         return is_profitable, bet_amount
 
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            vote, win_probability, confidence = yield from self._get_decision()
+            vote, p_yes, p_no, win_probability, confidence = self._get_decision()
             is_profitable = None
             bet_amount = None
+            next_mock_data_row = None
             if (
                 vote is not None
+                and p_yes is not None
+                and p_no is not None
                 and confidence is not None
                 and win_probability is not None
             ):
                 is_profitable, bet_amount = yield from self._is_profitable(
-                    vote, win_probability, confidence
+                    vote, p_yes, p_no, win_probability, confidence
                 )
+
+                if self.benchmarking_mode.enabled:
+                    next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+
+            elif self.benchmarking_mode.enabled and not self._rows_exceeded:
+                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+                next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 is_profitable,
                 vote,
                 confidence,
                 bet_amount,
+                next_mock_data_row,
             )
 
         yield from self.finish_behaviour(payload)

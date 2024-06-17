@@ -7,9 +7,13 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeibyipvxhg7dk67c3a7b6mbcco4uihz3oi26ocku3kaold5aze7u5m
+agent: valory/trader:0.1.0:bafybeieu45k53db2eklmhqeguyca6qsf4zuluwo2ul5fl2unzerojhvqlq
 number_of_agents: 4
-deployment: {}
+deployment:
+  agent:
+    ports:
+      0:
+        8000: 8000
 ---
 public_id: valory/trader_abci:0.1.0
 type: skill
@@ -47,6 +51,7 @@ type: skill
         max_attempts: ${MAX_ATTEMPTS:int:10}
         max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+        multisend_batch_size: ${MULTISEND_BATCH_SIZE:int:1}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:int:400}
@@ -78,9 +83,12 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -100,18 +108,21 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
+        disable_trading: ${DISABLE_TRADING:bool:false}
+        stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -124,9 +135,103 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
+    benchmarking_mode:
+      args:
+        enabled: ${BENCHMARKING_MODE_ENABLED:bool:false}
+        native_balance: ${BENCHMARKING_MODE_NATIVE_BALANCE:int:10000000000000000000}
+        collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
+        mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
+        pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
+        outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:list:[11000000000000000000,9000000000000000000]}
+        outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:list:[0.4,0.6]}
+        sep: ${BENCHMARKING_MODE_SEP:str:,}
+        dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
+        question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}
+        question_id_field: ${BENCHMARKING_MODE_QUESTION_ID_FIELD:str:question_id}
+        answer_field: ${BENCHMARKING_MODE_ANSWER_FIELD:str:answer}
+        p_yes_field_part: ${BENCHMARKING_MODE_P_YES_FIELD_PART:str:p_yes_}
+        p_no_field_part: ${BENCHMARKING_MODE_P_NO_FIELD_PART:str:p_no_}
+        confidence_field_part: ${BENCHMARKING_MODE_CONFIDENCE_FIELD_PART:str:confidence_}
+        part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
+        bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
+        results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
+    network_subgraph: &id005
+      args:
+        headers:
+          Content-Type: ${NETWORK_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
+        response_key: ${NETWORK_SUBGRAPH_RESPONSE_KEY:str:data:blocks}
+        response_index: ${NETWORK_SUBGRAPH_RESPONSE_INDEX:int:0}
+        response_type: ${NETWORK_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
+        url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+    omen_subgraph: &id006
+      args:
+        headers:
+          Content-Type: ${OMEN_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${OMEN_SUBGRAPH_METHOD:str:POST}
+        response_key: ${OMEN_SUBGRAPH_RESPONSE_KEY:str:data:fixedProductMarketMakers}
+        response_type: ${OMEN_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
+        url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+    randomness_api: &id007
+      args:
+        method: ${RANDOMNESS_API_METHOD:str:GET}
+        response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
+        response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
+        retries: ${RANDOMNESS_API_RETRIES:int:5}
+        url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
+    mech_response: &id008
+      args:
+        headers:
+          Content-Type: ${MECH_RESPONSE_API_CONTENT_TYPE:str:application/json}
+        method: ${MECH_RESPONSE_API_METHOD:str:GET}
+        response_key: ${MECH_RESPONSE_API_RESPONSE_KEY:str:result}
+        response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
+        retries: ${MECH_RESPONSE_API_RETRIES:int:5}
+        url: ${MECH_RESPONSE_API_URL:str:''}
+    agent_tools: &id009
+      args:
+        headers:
+          Content-Type: ${AGENT_TOOLS_API_CONTENT_TYPE:str:application/json}
+        method: ${AGENT_TOOLS_API_METHOD:str:GET}
+        response_key: ${AGENT_TOOLS_API_RESPONSE_KEY:str:tools}
+        response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
+        retries: ${AGENT_TOOLS_API_RETRIES:int:5}
+        url: ${AGENT_TOOLS_API_URL:str:''}
+    trades_subgraph: &id010
+      args:
+        headers:
+          Content-Type: ${TRADES_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${TRADES_SUBGRAPH_METHOD:str:POST}
+        response_key: ${TRADES_SUBGRAPH_RESPONSE_KEY:str:data:fpmmTrades}
+        response_type: ${TRADES_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
+        url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+    conditional_tokens_subgraph: &id011
+      args:
+        headers:
+          Content-Type: ${CONDITIONAL_TOKENS_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
+        response_key: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_KEY:str:data:user:userPositions}
+        response_type: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
+        url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+    realitio_subgraph: &id012
+      args:
+        headers:
+          Content-Type: ${REALITIO_SUBGRAPH_CONTENT_TYPE:str:application/json}
+        method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
+        response_key: ${REALITIO_SUBGRAPH_RESPONSE_KEY:str:data:answers}
+        response_type: ${REALITIO_SUBGRAPH_RESPONSE_TYPE:str:list}
+        retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
+        url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 1:
   models:
     params:
@@ -143,6 +248,7 @@ type: skill
         max_attempts: ${MAX_ATTEMPTS:int:10}
         max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+        multisend_batch_size: ${MULTISEND_BATCH_SIZE:int:1}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:int:400}
@@ -173,9 +279,12 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -195,18 +304,21 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
+        disable_trading: ${DISABLE_TRADING:bool:false}
+        stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -219,7 +331,18 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -236,6 +359,7 @@ type: skill
         max_attempts: ${MAX_ATTEMPTS:int:10}
         max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+        multisend_batch_size: ${MULTISEND_BATCH_SIZE:int:1}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:int:400}
@@ -266,9 +390,12 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -288,18 +415,21 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
+        disable_trading: ${DISABLE_TRADING:bool:false}
+        stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -312,7 +442,18 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -329,6 +470,7 @@ type: skill
         max_attempts: ${MAX_ATTEMPTS:int:10}
         max_healthcheck: ${MAX_HEALTHCHECK:int:120}
         multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+        multisend_batch_size: ${MULTISEND_BATCH_SIZE:int:1}
         on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
         reset_tendermint_after: ${RESET_TM_AFTER:int:2}
         retry_attempts: ${RETRY_ATTEMPTS:int:400}
@@ -359,9 +501,12 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
-        mech_agent_address: ${MECH_AGENT_ADDRESS:str:0xff82123dfb52ab75c417195c5fdb87630145ae81}
+        mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
+        mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
+        mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
@@ -381,18 +526,21 @@ type: skill
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
-        policy_store_path: ${POLICY_STORE_PATH:str:/data/}
+        store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
         staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+        staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
+        disable_trading: ${DISABLE_TRADING:bool:false}
+        stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeia4m2mzhedzjbm3enmhgd6csd6hredgwsgpgs2wm2j43vodeqxjfy",["bet_amount_per_threshold"]],["bafybeibtbw44oslyxqrgpnu644zcyc763phtr4rsglxb4b4ma4ha3k5kyq",["kelly_criterion"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeihcly4lt4pqiqhj3kndxitts5yzby77525v4elii23k6skcnbedu4",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",0.5],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -405,7 +553,18 @@ type: skill
           "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
           ["price", "1000000000000000000"]]}
+        service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+        rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection
@@ -457,3 +616,9 @@ cert_requests:
   public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
   save_path: .certs/acn_cosmos_11000.txt
 is_abstract: false
+---
+public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  host: ${HTTP_SERVER_HOST:str:0.0.0.0}
+  target_skill_id: valory/trader_abci:0.1.0

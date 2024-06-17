@@ -59,6 +59,9 @@ class SubscriptionRound(TxPreparationRound):
             if tx_hash == self.NO_TX_PAYLOAD:
                 return self.synchronized_data, Event.NO_SUBSCRIPTION
 
+            if self.context.benchmarking_mode.enabled:
+                return self.synchronized_data, Event.MOCK_TX
+
         update = super().end_block()
         if update is None:
             return None

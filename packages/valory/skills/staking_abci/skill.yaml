@@ -8,23 +8,23 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeickkxb3stdbz5dwvs27t4vrji3uig673tmbl56py3tnwesydgcyn4
+  behaviours.py: bafybeietee5ixgoyj4eakndgrq7yd53tp5anjcwtbura3nsaed53gf4sgm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeidznu5ci73f34mcvjc4i7pgzrhjuc3z56hczhbvr2o74unioliqre
+  models.py: bafybeib4h3wevw4puw7vyanwpfsr4x4cngkm6twzqqtqywpo6xfyqwbele
   payloads.py: bafybeibnub5ehb2mvpcoan3x23pp5oz4azpofwrtcl32abswcfl4cmjlwq
   rounds.py: bafybeigrzzs6c2kf3lrqh3nw2ww6zhq2riyjbwaponblsnu42zciachgwe
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeigz4lf4b536uxb52tmqkfajdjtszclv67gtqitygrkaww4vzg2fle
-- valory/service_staking_token:0.1.0:bafybeif2rfugwe6flohxe5p4y5so56saeq5blpnuckuhjwoh2m65dj3qhi
+- valory/gnosis_safe:0.1.0:bafybeidcb25wneezfd2iaiqa7ygxlimwwacvycahhenvpw7tdvwdigllzm
+- valory/service_staking_token:0.1.0:bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem
 protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeidyrcd4hxl4gq7xhkcd546wkidebbvt6vnomxmrdsja6shkpysh5u
-- valory/transaction_settlement_abci:0.1.0:bafybeihaad5k6adwkqwc5pui243inep2kvw7k7pgwwqaykssyx7p64peyi
+- valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
+- valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 behaviours:
   main:
     args: {}
@@ -128,6 +128,7 @@ models:
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_interaction_sleep_time: 5
     class_name: StakingParams
   requests:
     args: {}

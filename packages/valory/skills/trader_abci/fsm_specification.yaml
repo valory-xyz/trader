@@ -1,11 +1,13 @@
 alphabet_in:
+- BENCHMARKING_DISABLED
+- BENCHMARKING_ENABLED
+- BENCHMARKING_FINISHED
 - BET_PLACEMENT_DONE
 - BLACKLIST
 - CHECKS_PASSED
 - CHECK_HISTORY
 - CHECK_LATE_ARRIVING_MESSAGE
 - CHECK_TIMEOUT
-- DECISION_REQUESTING_DONE
 - DONE
 - FETCH_ERROR
 - FINALIZATION_FAILED
@@ -13,7 +15,10 @@ alphabet_in:
 - INCORRECT_SERIALIZATION
 - INSUFFICIENT_BALANCE
 - INSUFFICIENT_FUNDS
+- MECH_REQUESTING_DONE
 - MECH_RESPONSE_ERROR
+- MOCK_MECH_REQUEST
+- MOCK_TX
 - NEGATIVE
 - NEXT_CHECKPOINT_NOT_REACHED_YET
 - NONE
@@ -29,6 +34,8 @@ alphabet_in:
 - ROUND_TIMEOUT
 - SERVICE_EVICTED
 - SERVICE_NOT_STAKED
+- SKIP_REQUEST
+- SKIP_TRADING
 - SLOTS_UNSUPPORTED_ERROR
 - STAKING_DONE
 - SUBSCRIPTION_DONE
@@ -51,7 +58,9 @@ states:
 - BetPlacementRound
 - BlacklistingRound
 - CallCheckpointRound
+- CheckBenchmarkingModeRound
 - CheckLateTxHashesRound
+- CheckStopTradingRound
 - CheckTransactionHistoryRound
 - ClaimRound
 - CollectSignatureRound
@@ -61,6 +70,8 @@ states:
 - FinalizationRound
 - HandleFailedTxRound
 - ImpossibleRound
+- MechRequestRound
+- MechResponseRound
 - PostTxSettlementRound
 - PreTxSettlementRound
 - RandomnessRound
@@ -83,11 +94,13 @@ states:
 transition_func:
     (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
+    (BetPlacementRound, MOCK_TX): RandomnessRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
+    (BlacklistingRound, MOCK_TX): RandomnessRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -97,12 +110,23 @@ transition_func:
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): RandomnessRound
+    (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
+    (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
+    (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
     (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
     (CheckLateTxHashesRound, DONE): PostTxSettlementRound
     (CheckLateTxHashesRound, NEGATIVE): HandleFailedTxRound
     (CheckLateTxHashesRound, NONE): HandleFailedTxRound
     (CheckLateTxHashesRound, NO_MAJORITY): HandleFailedTxRound
+    (CheckStopTradingRound, DONE): SamplingRound
+    (CheckStopTradingRound, NONE): CheckStopTradingRound
+    (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
+    (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
+    (CheckStopTradingRound, SKIP_TRADING): RedeemRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
     (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
@@ -116,14 +140,15 @@ transition_func:
     (CollectSignatureRound, DONE): FinalizationRound
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
+    (DecisionReceiveRound, BENCHMARKING_FINISHED): ResetAndPauseRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
-    (DecisionRequestRound, DONE): PreTxSettlementRound
-    (DecisionRequestRound, NONE): ImpossibleRound
+    (DecisionRequestRound, DONE): MechRequestRound
+    (DecisionRequestRound, MOCK_MECH_REQUEST): DecisionReceiveRound
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
@@ -136,8 +161,15 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
+    (MechRequestRound, DONE): PreTxSettlementRound
+    (MechRequestRound, NO_MAJORITY): MechRequestRound
+    (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
+    (MechRequestRound, SKIP_REQUEST): RedeemRound
+    (MechResponseRound, DONE): DecisionReceiveRound
+    (MechResponseRound, NO_MAJORITY): MechResponseRound
+    (MechResponseRound, ROUND_TIMEOUT): MechResponseRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
-    (PostTxSettlementRound, DECISION_REQUESTING_DONE): DecisionReceiveRound
+    (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
@@ -154,14 +186,15 @@ transition_func:
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
     (RedeemRound, DONE): PreTxSettlementRound
+    (RedeemRound, MOCK_TX): RandomnessRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
-    (RegistrationRound, DONE): UpdateBetsRound
+    (RegistrationRound, DONE): CheckBenchmarkingModeRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
-    (RegistrationStartupRound, DONE): UpdateBetsRound
-    (ResetAndPauseRound, DONE): UpdateBetsRound
+    (RegistrationStartupRound, DONE): CheckBenchmarkingModeRound
+    (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
     (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
     (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
     (ResetRound, DONE): RandomnessTransactionSubmissionRound
@@ -187,6 +220,7 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
     (SubscriptionRound, DONE): PreTxSettlementRound
+    (SubscriptionRound, MOCK_TX): RandomnessRound
     (SubscriptionRound, NONE): SubscriptionRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
     (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
@@ -200,7 +234,7 @@ transition_func:
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
     (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
-    (UpdateBetsRound, DONE): SamplingRound
+    (UpdateBetsRound, DONE): CheckStopTradingRound
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
     (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound

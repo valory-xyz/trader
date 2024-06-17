@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -38,8 +37,7 @@ from typing import (
     Union,
 )
 
-from aea.exceptions import enforce
-from aea.skills.base import SkillContext
+from aea.skills.base import Model, SkillContext
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 from web3.types import BlockIdentifier
@@ -54,10 +52,14 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.models import MarketManagerParams
+from packages.valory.skills.mech_interact_abci.models import (
+    Params as MechInteractParams,
+)
 
 
 FromBlockMappingType = Dict[HexBytes, Union[int, str]]
@@ -70,6 +72,10 @@ DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
+P_YES_FIELD = "p_yes"
+P_NO_FIELD = "p_no"
+CONFIDENCE_FIELD = "confidence"
+INFO_UTILITY_FIELD = "info_utility"
 
 
 class PromptTemplate(Template):
@@ -156,6 +162,7 @@ class SharedState(BaseSharedState):
         self.strategies_executables: Dict[str, Tuple[str, str]] = {}
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
+        self.mock_data: Optional[BenchmarkingMockData] = None
 
     def setup(self) -> None:
         """Set up the model."""
@@ -226,12 +233,11 @@ def nested_list_todict_workaround(
     return {value[0]: value[1] for value in values}
 
 
-class DecisionMakerParams(MarketManagerParams):
+class DecisionMakerParams(MarketManagerParams, MechInteractParams):
     """Decision maker's parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
-        self.mech_agent_address: str = self._ensure("mech_agent_address", kwargs, str)
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
@@ -251,12 +257,8 @@ class DecisionMakerParams(MarketManagerParams):
         self.blacklisting_duration: int = self._ensure(
             "blacklisting_duration", kwargs, int
         )
-        self._ipfs_address: str = self._ensure("ipfs_address", kwargs, str)
         self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
         check_prompt_template(self.prompt_template)
-        multisend_address = kwargs.get("multisend_address", None)
-        enforce(multisend_address is not None, "Multisend address not specified!")
-        self.multisend_address: str = multisend_address
         self.dust_threshold: int = self._ensure("dust_threshold", kwargs, int)
         self.conditional_tokens_address: str = self._ensure(
             "conditional_tokens_address", kwargs, str
@@ -292,7 +294,7 @@ class DecisionMakerParams(MarketManagerParams):
         self.agent_registry_address: str = self._ensure(
             "agent_registry_address", kwargs, str
         )
-        self.policy_store_path: Path = self.get_policy_store_path(kwargs)
+        self.store_path: Path = self.get_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
@@ -313,25 +315,20 @@ class DecisionMakerParams(MarketManagerParams):
             bool,
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
+        self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
         self.mech_to_subscription_params: Dict[
             str, Any
         ] = nested_list_todict_workaround(
             kwargs,
             "mech_to_subscription_params",
         )
+        self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         super().__init__(*args, **kwargs)
 
     @property
     def using_kelly(self) -> bool:
         """Get the max bet amount if the `bet_amount_per_conf_threshold` strategy is used."""
         return self.trading_strategy == STRATEGY_KELLY_CRITERION
-
-    @property
-    def ipfs_address(self) -> str:
-        """Get the IPFS address."""
-        if self._ipfs_address.endswith("/"):
-            return self._ipfs_address
-        return f"{self._ipfs_address}/"
 
     @property
     def prompt_template(self) -> PromptTemplate:
@@ -352,9 +349,9 @@ class DecisionMakerParams(MarketManagerParams):
             )
         self._slippage = slippage
 
-    def get_policy_store_path(self, kwargs: Dict) -> Path:
-        """Get the path of the policy store."""
-        path = self._ensure("policy_store_path", kwargs, str)
+    def get_store_path(self, kwargs: Dict) -> Path:
+        """Get the path of the store."""
+        path = self._ensure("store_path", kwargs, str)
         # check if path exists, and we can write to it
         if (
             not os.path.isdir(path)
@@ -367,8 +364,42 @@ class DecisionMakerParams(MarketManagerParams):
         return Path(path)
 
 
-class MechResponseSpecs(ApiSpecs):
-    """A model that wraps ApiSpecs for the Mech's response specifications."""
+class BenchmarkingMode(Model, TypeCheckMixin):
+    """Configuration for the benchmarking mode."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the `BenchmarkingMode` object."""
+        self.enabled: bool = self._ensure("enabled", kwargs, bool)
+        self.native_balance: int = self._ensure("native_balance", kwargs, int)
+        self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
+        self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
+        self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
+        self.outcome_token_amounts: List[int] = self._ensure(
+            "outcome_token_amounts", kwargs, List[int]
+        )
+        self.outcome_token_marginal_prices: List[float] = self._ensure(
+            "outcome_token_marginal_prices", kwargs, List[float]
+        )
+        self.sep: str = self._ensure("sep", kwargs, str)
+        self.dataset_filename: Path = Path(
+            self._ensure("dataset_filename", kwargs, str)
+        )
+        self.question_field: str = self._ensure("question_field", kwargs, str)
+        self.question_id_field: str = self._ensure("question_id_field", kwargs, str)
+        self.answer_field: str = self._ensure("answer_field", kwargs, str)
+        self.p_yes_field_part: str = self._ensure("p_yes_field_part", kwargs, str)
+        self.p_no_field_part: str = self._ensure("p_no_field_part", kwargs, str)
+        self.confidence_field_part: str = self._ensure(
+            "confidence_field_part", kwargs, str
+        )
+        # this is the mode for the p and confidence parts
+        # if the flag is `True`, then the field parts are used as prefixes, otherwise as suffixes
+        self.part_prefix_mode: bool = self._ensure("part_prefix_mode", kwargs, bool)
+        self.bet_amount_field: str = self._ensure("bet_amount_field", kwargs, str)
+        self.results_filename: Path = Path(
+            self._ensure("results_filename", kwargs, str)
+        )
+        super().__init__(*args, **kwargs)
 
 
 class AgentToolsSpecs(ApiSpecs):
@@ -396,10 +427,10 @@ class PredictionResponse:
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the mech's prediction ignoring extra keys."""
-        self.p_yes = float(kwargs.pop("p_yes"))
-        self.p_no = float(kwargs.pop("p_no"))
-        self.confidence = float(kwargs.pop("confidence"))
-        self.info_utility = float(kwargs.pop("info_utility"))
+        self.p_yes = float(kwargs.pop(P_YES_FIELD))
+        self.p_no = float(kwargs.pop(P_NO_FIELD))
+        self.confidence = float(kwargs.pop(CONFIDENCE_FIELD))
+        self.info_utility = float(kwargs.pop(INFO_UTILITY_FIELD))
 
         # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
         probabilities = (getattr(self, field_) for field_ in self.__annotations__)
@@ -422,29 +453,13 @@ class PredictionResponse:
         return max(self.p_no, self.p_yes)
 
 
-@dataclass(init=False)
-class MechInteractionResponse:
-    """A structure for the response of a mech interaction task."""
+@dataclass
+class BenchmarkingMockData:
+    """The mock data for a `BenchmarkingMode`."""
 
-    request_id: int
-    result: Optional[PredictionResponse]
-    error: str
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the mech's response ignoring extra keys."""
-        self.request_id = kwargs.pop("requestId", 0)
-        self.error = kwargs.pop("error", "Unknown")
-        self.result = kwargs.pop("result", None)
-
-        if isinstance(self.result, str):
-            self.result = PredictionResponse(**json.loads(self.result))
-
-    @classmethod
-    def incorrect_format(cls, res: Any) -> "MechInteractionResponse":
-        """Return an incorrect format response."""
-        response = cls()
-        response.error = f"The response's format was unexpected: {res}"
-        return response
+    id: str
+    question: str
+    answer: str
 
 
 class TradesSubgraph(ApiSpecs):

@@ -8,26 +8,28 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeieesrefrpo5c5upzztgm5fwfrmxeagilacuau5nacobhsfvgpbzby
-  composition.py: bafybeif75v3swf2pmxi3rdd5kqdfv4ap5uapcbszkiohhur67oemrgotay
+  behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
+  composition.py: bafybeidp3sl5uomb5stgk6y7nifxv7zomfe3emqstbuw32urorpimq7lgi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeibi3t63vwfrx5sbkfhji3rb62dtwczpajuijqgul6bpcn3altcziq
-  handlers.py: bafybeibkiqwe7hoqccjirimd44nzeqkabc7oo74romqklssion27s5sa2a
-  models.py: bafybeibrxivgpzamfmrl6bdngi67g72i32lmu5vgdn3jbwka265blk7ire
+  fsm_specification.yaml: bafybeif7fxldzdglalwgmo3u44jkjdox2tdgf6zbq7epw6ju4kyl5b7tze
+  handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
+  models.py: bafybeicovhcparwbvqdbrofv4kxiyznuezpqxsdxqx3wkkvht7patop4e4
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeidyrcd4hxl4gq7xhkcd546wkidebbvt6vnomxmrdsja6shkpysh5u
-- valory/registration_abci:0.1.0:bafybeifh4jchomng6fsagamr6adlrixw7fnby4ylkngeq42zzskf4ahfjy
-- valory/reset_pause_abci:0.1.0:bafybeialc6wdfe56dirdx3pgyh2qaq74hpp3n3ues6e3zr7yoqwgnwsqyu
-- valory/transaction_settlement_abci:0.1.0:bafybeihaad5k6adwkqwc5pui243inep2kvw7k7pgwwqaykssyx7p64peyi
-- valory/termination_abci:0.1.0:bafybeihmqrvnzhptap62nchvocmu7tzl5d2o6k4eitkaiuvo7qwvsaedua
-- valory/market_manager_abci:0.1.0:bafybeib72jm7aznzhmtxnmwlpnse23xutnurexml57ovkn2zpr2gsmpvni
-- valory/decision_maker_abci:0.1.0:bafybeiheago5yenqo5y5vqfs7hw44qt2ays2npbobfnxfvglrr2d25jy5a
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaaroy7uehbj5h5gpian7c6bhcbne6nvll7huwzbb7qfo22cr24ey
-- valory/staking_abci:0.1.0:bafybeidgivibaeant53uef3j2virsxlgr5kpd6lsenr7pjdhqktwbqxfye
+- valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
+- valory/registration_abci:0.1.0:bafybeieu7vq3pyns4t5ty6u3sbmpkd7yznpg3rmqifoz3jhy7pmqyg3w6q
+- valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
+- valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
+- valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
+- valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
+- valory/decision_maker_abci:0.1.0:bafybeid7pv3u6dul7s2muozhtiuqnkoom6eheiyzkxge3nev4ug4u5qr3m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieheiirt7i7ujivglkm65xu7lfbr32h4epxzty7ar7e4gd2zjbj34
+- valory/staking_abci:0.1.0:bafybeigo7bicej5t2rbki37cmcwkzgwpcnopokn7ijhylmkihsbqw47xr4
+- valory/check_stop_trading_abci:0.1.0:bafybeickfeuqlpmryegnfvfu2duk2v4ycowwloohu3xxrafd5md6xl5swi
+- valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
     args: {}
@@ -104,6 +106,7 @@ models:
       max_attempts: 10
       max_healthcheck: 120
       multisend_address: '0x0000000000000000000000000000000000000000'
+      multisend_batch_size: 1
       on_chain_service_id: null
       request_retry_delay: 1.0
       request_timeout: 10.0
@@ -119,7 +122,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
-      agent_registry_address: null
+      agent_registry_address: '0x0000000000000000000000000000000000000000'
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'
@@ -145,7 +148,10 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      mech_agent_address: '0xff82123dfb52ab75c417195c5fdb87630145ae81'
+      mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
+      mech_request_price: null
+      mech_chain_id: gnosis
+      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
@@ -166,7 +172,7 @@ models:
       redeeming_batch_size: 5
       slippage: 0.01
       policy_epsilon: 0.1
-      policy_store_path: /data/
+      store_path: /data/
       use_subgraph_for_redeeming: true
       irrelevant_tools:
       - openai-text-davinci-002
@@ -178,6 +184,9 @@ models:
       - stabilityai-stable-diffusion-512-v2-1
       - stabilityai-stable-diffusion-768-v2-1
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_interaction_sleep_time: 5
+      disable_trading: false
+      stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       redeem_round_timeout: 3600.0
@@ -227,7 +236,35 @@ models:
           0.8: 0
           0.9: 0
           1.0: 0
+      service_endpoint: trader.staging.autonolas.tech/
+      rpc_sleep_time: 10
+      mech_interaction_sleep_time: 10
     class_name: TraderParams
+  benchmarking_mode:
+    args:
+      enabled: false
+      native_balance: 10000000000000000000
+      collateral_balance: 10000000000000000000
+      mech_cost: 10000000000000000
+      pool_fee: 20000000000000000
+      outcome_token_amounts:
+      - 11000000000000000000
+      - 9000000000000000000
+      outcome_token_marginal_prices:
+      - 0.4
+      - 0.6
+      sep: ','
+      dataset_filename: benchmark_data.csv
+      question_field: question
+      question_id_field: question_id
+      answer_field: answer
+      p_yes_field_part: p_yes_
+      p_no_field_part: p_no_
+      confidence_field_part: confidence_
+      part_prefix_mode: true
+      bet_amount_field: collateral_amount
+      results_filename: benchmarking_results.csv
+    class_name: BenchmarkingMode
   network_subgraph:
     args:
       api_id: network
@@ -271,8 +308,8 @@ models:
         Content-Type: application/json
       method: GET
       parameters: {}
-      response_key: null
-      response_type: dict
+      response_key: result
+      response_type: str
       retries: 5
       url: ''
     class_name: MechResponseSpecs

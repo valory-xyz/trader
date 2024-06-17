@@ -34,6 +34,7 @@ class DecisionReceivePayload(BaseTxPayload):
     vote: Optional[int]
     confidence: Optional[float]
     bet_amount: Optional[int]
+    next_mock_data_row: Optional[int]
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class MultisigTxPayload(BaseTxPayload):
 
     tx_submitter: Optional[str] = None
     tx_hash: Optional[str] = None
+    mocking_mode: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -62,10 +64,11 @@ class RedeemPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
-class RequestPayload(MultisigTxPayload):
-    """Represents a transaction payload for preparing an on-chain transaction for a mech request."""
+class DecisionRequestPayload(BaseTxPayload):
+    """Represents a transaction payload for preparing mech requests."""
 
-    price: Optional[int] = None
+    mech_requests: Optional[str] = None
+    mocking_mode: Optional[bool] = None
 
 
 @dataclass(frozen=True)
