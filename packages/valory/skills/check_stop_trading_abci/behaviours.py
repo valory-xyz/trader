@@ -23,7 +23,6 @@ import math
 from typing import Generator, Set, Type, cast
 
 from packages.valory.contracts.mech.contract import Mech as MechContract
-from packages.valory.contracts.service_staking_token.contract import StakingState
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
@@ -39,6 +38,7 @@ from packages.valory.skills.staking_abci.behaviours import (
     StakingInteractBaseBehaviour,
     WaitableConditionType,
 )
+from packages.valory.skills.staking_abci.rounds import StakingState
 
 
 # Liveness ratio from the staking contract is expressed in calls per 10**18 seconds.

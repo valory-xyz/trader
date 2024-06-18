@@ -21,7 +21,7 @@
 
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, cast
+from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, Union, cast
 
 from aea.configurations.data_types import PublicId
 from aea.contracts.base import Contract
@@ -30,7 +30,6 @@ from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.mech_activity.contract import MechActivityContract
 from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
-    StakingState,
 )
 from packages.valory.contracts.staking_token.contract import StakingTokenContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -45,6 +44,7 @@ from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.staking_abci.rounds import (
     CallCheckpointRound,
     StakingAbciApp,
+    StakingState,
     SynchronizedData,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
@@ -104,14 +104,10 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         return self._service_staking_state
 
     @service_staking_state.setter
-    def service_staking_state(self, state: StakingState) -> None:
+    def service_staking_state(self, state: Union[StakingState, int]) -> None:
         """Set the service's staking state."""
-
-        # The class StakingState is redefined in several packages.
-        # This conversion is required to use a single representation.
-        if not isinstance(state, StakingState):
-            state = StakingState(state.value)
-
+        if isinstance(state, int):
+            state = StakingState(state)
         self._service_staking_state = state
 
     @property

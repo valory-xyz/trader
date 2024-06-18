@@ -27,14 +27,6 @@ from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 
 
-class StakingState(Enum):
-    """Staking state enumeration for the staking."""
-
-    UNSTAKED = 0
-    STAKED = 1
-    EVICTED = 2
-
-
 class StakingTokenContract(Contract):
     """The Service Staking contract."""
 
@@ -50,7 +42,7 @@ class StakingTokenContract(Contract):
         """Check whether the service is staked."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
         res = contract_instance.functions.getStakingState(service_id).call()
-        return dict(data=StakingState(res))
+        return dict(data=res)
 
     @classmethod
     def build_stake_tx(

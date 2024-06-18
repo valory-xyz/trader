@@ -23,7 +23,6 @@ from abc import ABC
 from enum import Enum
 from typing import Dict, Optional, Set, Tuple, Type, cast
 
-from packages.valory.contracts.service_staking_token.contract import StakingState
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
@@ -40,6 +39,14 @@ from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
+
+
+class StakingState(Enum):
+    """Staking state enumeration for the staking."""
+
+    UNSTAKED = 0
+    STAKED = 1
+    EVICTED = 2
 
 
 class Event(Enum):
