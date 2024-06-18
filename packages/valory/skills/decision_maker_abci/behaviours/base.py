@@ -52,6 +52,10 @@ from packages.valory.skills.decision_maker_abci.models import (
     MultisendBatch,
     P_NO_FIELD,
     P_YES_FIELD,
+    L0_START_FIELD,
+    L1_START_FIELD,
+    L0_END_FIELD,
+    L1_END_FIELD,
     SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
@@ -609,6 +613,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
+        l0_start: int = None,
+        l1_start: int = None,
+        l0_end: int = None,
+        l1_end: int = None,
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data
@@ -633,6 +641,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     P_NO_FIELD,
                     CONFIDENCE_FIELD,
                     self.benchmarking_mode.bet_amount_field,
+                    L0_START_FIELD,
+                    L1_START_FIELD,
+                    L0_END_FIELD,
+                    L1_END_FIELD,
                 )
                 row = ",".join(headers) + NEW_LINE
                 results_file.write(row)
@@ -647,6 +659,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 p_no,
                 confidence,
                 bet_amount,
+                l0_start,
+                l1_start,
+                l0_end,
+                l1_end,
             )
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE

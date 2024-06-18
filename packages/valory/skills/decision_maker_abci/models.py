@@ -75,6 +75,10 @@ STRATEGY_KELLY_CRITERION = "kelly_criterion"
 P_YES_FIELD = "p_yes"
 P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
+L0_START_FIELD = "l0_start"
+L1_START_FIELD = "l1_start"
+L0_END_FIELD = "l0_end"
+L1_END_FIELD = "l1_end"
 INFO_UTILITY_FIELD = "info_utility"
 
 
@@ -163,6 +167,8 @@ class SharedState(BaseSharedState):
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
+        # latest liquidity information
+        self.liquidity_info: Dict[str, List[int, int]]
 
     def setup(self) -> None:
         """Set up the model."""
@@ -300,11 +306,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "file_hash_to_strategies_json",
+            )
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -316,11 +322,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
+        self.mech_to_subscription_params: Dict[str, Any] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "mech_to_subscription_params",
+            )
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         super().__init__(*args, **kwargs)
