@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -30,6 +30,8 @@ from eth_typing import ChecksumAddress
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from web3.exceptions import ContractLogicError
+from web3.types import BlockIdentifier
+
 
 ClaimParamsType = Tuple[
     List[bytes], List[ChecksumAddress], List[int], List[bytes]
@@ -41,6 +43,26 @@ PUBLIC_ID = PublicId.from_str("valory/realitio:0.1.0")
 _logger = logging.getLogger(
     f"aea.packages.{PUBLIC_ID.author}.contracts.{PUBLIC_ID.name}.contract"
 )
+
+MARKET_FEE = 2.0
+UNIT_SEPARATOR = "␟"
+
+
+def format_answers(answers: List[str]) -> str:
+    """Format answers."""
+    return ",".join(map(lambda x: '"' + x + '"', answers))
+
+
+def build_question(question_data: Dict) -> str:
+    """Build question."""
+    return UNIT_SEPARATOR.join(
+        [
+            question_data["question"],
+            format_answers(question_data["answers"]),
+            question_data["topic"],
+            question_data["language"],
+        ]
+    )
 
 
 class RealitioContract(Contract):
@@ -177,4 +199,230 @@ class RealitioContract(Contract):
         """Get history hash for a question"""
         contract = cls.get_instance(ledger_api, contract_address)
         data = contract.functions.getHistoryHash(question_id).call()
+        return dict(data=data)
+
+    @classmethod
+    def get_raw_transaction(
+        cls, ledger_api: LedgerApi, contract_address: str, **kwargs: Any
+    ) -> JSONLike:
+        """
+        Handler method for the 'GET_RAW_TRANSACTION' requests.
+
+        Implement this method in the sub class if you want
+        to handle the contract requests manually.
+
+        :param ledger_api: the ledger apis.
+        :param contract_address: the contract address.
+        :param kwargs: the keyword arguments.
+        :return: the tx  # noqa: DAR202
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def get_raw_message(
+        cls, ledger_api: LedgerApi, contract_address: str, **kwargs: Any
+    ) -> bytes:
+        """
+        Handler method for the 'GET_RAW_MESSAGE' requests.
+
+        Implement this method in the sub class if you want
+        to handle the contract requests manually.
+
+        :param ledger_api: the ledger apis.
+        :param contract_address: the contract address.
+        :param kwargs: the keyword arguments.
+        :return: the tx  # noqa: DAR202
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def get_state(
+        cls, ledger_api: LedgerApi, contract_address: str, **kwargs: Any
+    ) -> JSONLike:
+        """
+        Handler method for the 'GET_STATE' requests.
+
+        Implement this method in the sub class if you want
+        to handle the contract requests manually.
+
+        :param ledger_api: the ledger apis.
+        :param contract_address: the contract address.
+        :param kwargs: the keyword arguments.
+        :return: the tx  # noqa: DAR202
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def get_ask_question_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_data: Dict,
+        opening_timestamp: int,
+        timeout: int,
+        arbitrator_contract: str,
+        template_id: int = 2,
+        question_nonce: int = 0,
+    ) -> JSONLike:
+        """Get ask question transaction."""
+        question = build_question(question_data=question_data)
+        kwargs = {
+            "template_id": template_id,
+            "question": question,
+            "arbitrator": ledger_api.api.to_checksum_address(arbitrator_contract),
+            "timeout": timeout,
+            "opening_ts": opening_timestamp,
+            "nonce": question_nonce,
+        }
+        return ledger_api.build_transaction(
+            contract_instance=cls.get_instance(
+                ledger_api=ledger_api, contract_address=contract_address
+            ),
+            method_name="askQuestion",
+            method_args=kwargs,
+        )
+
+    @classmethod
+    def get_ask_question_tx_data(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_data: Dict,
+        opening_timestamp: int,
+        timeout: int,
+        arbitrator_contract: str,
+        template_id: int = 2,
+        question_nonce: int = 0,
+    ) -> JSONLike:
+        """Get ask question transaction."""
+        question = build_question(question_data=question_data)
+        kwargs = {
+            "template_id": template_id,
+            "question": question,
+            "arbitrator": ledger_api.api.to_checksum_address(arbitrator_contract),
+            "timeout": timeout,
+            "opening_ts": opening_timestamp,
+            "nonce": question_nonce,
+        }
+        contract_instance = cls.get_instance(
+            ledger_api=ledger_api, contract_address=contract_address
+        )
+        data = contract_instance.encodeABI(fn_name="askQuestion", kwargs=kwargs)
+        return {"data": bytes.fromhex(data[2:])}  # type: ignore
+
+    @classmethod
+    def calculate_question_id(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_data: Dict,
+        opening_timestamp: int,
+        timeout: int,
+        arbitrator_contract: str,
+        sender: str,
+        template_id: int = 2,
+        question_nonce: int = 0,
+    ) -> JSONLike:
+        """Get ask question transaction."""
+        question = build_question(question_data=question_data)
+        content_hash = ledger_api.api.solidity_keccak(
+            ["uint256", "uint32", "string"],
+            [template_id, opening_timestamp, question],
+        )
+        question_id = ledger_api.api.solidity_keccak(
+            ["bytes32", "address", "uint32", "address", "uint256"],
+            [
+                content_hash,
+                ledger_api.api.to_checksum_address(arbitrator_contract),
+                timeout,
+                ledger_api.api.to_checksum_address(sender),
+                question_nonce,
+            ],
+        )
+        return {"question_id": question_id.hex()}
+
+    @classmethod
+    def get_question_events(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_ids: List[bytes],
+        from_block: BlockIdentifier = "earliest",
+        to_block: BlockIdentifier = "latest",
+    ) -> JSONLike:
+        """Get questions."""
+        # TODO: consider using multicall2 or constructor trick instead of filters
+        contract = cls.get_instance(
+            ledger_api=ledger_api, contract_address=contract_address
+        )
+        entries = contract.events.LogNewQuestion.create_filter(
+            fromBlock=from_block,
+            toBlock=to_block,
+            argument_filters=dict(question_id=question_ids),
+        ).get_all_entries()
+        events = list(
+            dict(
+                tx_hash=entry.transactionHash.hex(),
+                block_number=entry.blockNumber,
+                question_id=entry["args"]["question_id"],
+                user=entry["args"]["user"],
+                template_id=entry["args"]["template_id"],
+                question=entry["args"]["question"],
+                content_hash=entry["args"]["content_hash"],
+                arbitrator=entry["args"]["arbitrator"],
+                timeout=entry["args"]["timeout"],
+                opening_ts=entry["args"]["opening_ts"],
+                nonce=entry["args"]["nonce"],
+                created=entry["args"]["created"],
+            )
+            for entry in entries
+        )
+        return dict(data=events)
+
+    @classmethod
+    def get_submit_answer_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_id: bytes,
+        answer: bytes,
+        max_previous: int,
+    ) -> JSONLike:
+        """Get submit answer transaction."""
+        contract = cls.get_instance(
+            ledger_api=ledger_api, contract_address=contract_address
+        )
+        data = contract.encodeABI(
+            fn_name="submitAnswer",
+            args=[
+                question_id,
+                answer,
+                max_previous,
+            ],
+        )
+        return dict(data=data)
+
+    @classmethod
+    def balance_of(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        address: str,
+    ) -> JSONLike:
+        """Get balance for an address"""
+        contract = cls.get_instance(ledger_api, contract_address)
+        data = contract.functions.balanceOf(address).call()
+        return dict(data=data)
+
+    @classmethod
+    def build_withdraw_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Build `withdraw` transaction."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        data = contract.encodeABI(
+            fn_name="withdraw",
+        )
         return dict(data=data)
