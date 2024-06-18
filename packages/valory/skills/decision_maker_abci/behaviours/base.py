@@ -613,10 +613,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
-        l0_start: int = None,
-        l1_start: int = None,
-        l0_end: int = None,
-        l1_end: int = None,
+        old_amounts: List[int] = None,
+        new_amounts: List[int] = None,
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data
@@ -626,6 +624,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             return
 
+        l0_start, l0_end = old_amounts[0], new_amounts[0]
+        l1_start, l1_end = old_amounts[1], new_amounts[1]
         add_headers = False
         results_path = self.params.store_path / self.benchmarking_mode.results_filename
         if not os.path.isfile(results_path):

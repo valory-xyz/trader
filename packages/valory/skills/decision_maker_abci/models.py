@@ -168,7 +168,8 @@ class SharedState(BaseSharedState):
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
         # latest liquidity information
-        self.liquidity_info: Dict[str, List[int, int]]
+        self.liquidity_amounts: Dict[str, List[int]]
+        self.liquidity_prices: Dict[str, List[float]]
 
     def setup(self) -> None:
         """Set up the model."""

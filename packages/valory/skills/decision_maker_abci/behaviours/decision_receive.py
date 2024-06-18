@@ -273,17 +273,21 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return num_shares, available_shares
 
     def _get_mocked_bet(self):
-        """Function to prepare the mocked bet based on liquidity info"""
-        liquidity_info = self.shared_state.liquidity_info
-        markets = list(liquidity_info.keys())
+        """Function to prepare the mocked bet based on liquidity info at the shared state"""
+        liquidity_amounts = self.shared_state.liquidity_amounts
+        liquidity_prices = self.shared_state.liquidity_prices
+        markets = list(liquidity_amounts.keys())
         question_id = self.shared_state.mock_data.id
-
-        if question_id in markets:
-            outcome_token_amounts = liquidity_info[question_id]
+        # check if the question is at the dictionary
+        outcome_token_amounts = self.benchmarking_mode.outcome_token_amounts
+        outcome_token_prices = self.benchmarking_mode.outcome_token_marginal_prices
+        if question_id in markets:  # read the previous information
+            outcome_token_amounts = liquidity_amounts[question_id]
+            outcome_token_prices = liquidity_prices[question_id]
         else:  # initializing liquidity info
-            outcome_token_amounts = self.benchmarking_mode.outcome_token_amounts
-            liquidity_info[question_id] = outcome_token_amounts
-        # TODO do we need to update prices as well?
+            liquidity_amounts[question_id] = outcome_token_amounts
+            liquidity_prices[question_id] = outcome_token_prices
+
         mocked_bet = Bet(
             id="",
             market="",
@@ -294,11 +298,53 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             openingTimestamp=0,
             outcomeSlotCount=2,
             outcomeTokenAmounts=outcome_token_amounts,
-            outcomeTokenMarginalPrices=self.benchmarking_mode.outcome_token_marginal_prices,
+            outcomeTokenMarginalPrices=outcome_token_prices,
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=10,
         )
         return mocked_bet
+
+    def _update_liquidity_info(self, bet_amount: float, vote: int):
+        """Function to update the liquidity information after placing a bet for a market
+        and to return the old and new prices"""
+        liquidity_amounts = self.shared_state.liquidity_amounts
+        liquidity_prices = self.shared_state.liquidity_prices
+        markets = list(liquidity_amounts.keys())
+        question_id = self.shared_state.mock_data.id
+        if question_id not in markets:
+            raise ValueError(
+                f"The market id {question_id} is not at the shared state dictionary"
+            )
+
+        old_liquidity_amounts = liquidity_amounts[question_id]
+        selected_type_tokens_in_pool = old_liquidity_amounts[vote]
+        opposite_vote = vote ^ 1
+        other_tokens_in_pool = old_liquidity_amounts[opposite_vote]
+
+        if vote == 0:
+            old_L0, old_L1 = selected_type_tokens_in_pool, other_tokens_in_pool
+            new_L0, new_L1 = old_L0 + bet_amount, old_L0 * old_L1 / (
+                old_L0 + bet_amount
+            )
+        else:
+            old_L0, old_L1 = other_tokens_in_pool, selected_type_tokens_in_pool
+            new_L0, new_L1 = (
+                old_L0 * old_L1 / (old_L1 + bet_amount),
+                old_L1 + bet_amount,
+            )
+        # new liquidity prices computed from the new amounts
+        new_p0 = (new_L0 + new_L1) / new_L0
+        new_p1 = (new_L0 + new_L1) / new_L1
+        liquidity_prices[question_id] = [new_p0, new_p1]
+        self.shared_state.liquidity_prices = liquidity_prices
+
+        # updating liquidity amounts
+        new_amounts = [new_L0, new_L1]
+        liquidity_amounts[question_id] = new_amounts
+        old_amounts = [old_L0, old_L1]
+        self.shared_state.liquidity_amounts = liquidity_amounts
+
+        return old_amounts, new_amounts
 
     def _is_profitable(
         self,
@@ -364,7 +410,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
-                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+                old_amounts, new_amounts = self._update_liquidity_info(bet_amount, vote)
+                self._write_benchmark_results(
+                    p_yes, p_no, confidence, bet_amount, old_amounts, new_amounts
+                )
             else:
                 self._write_benchmark_results(p_yes, p_no, confidence)
 
