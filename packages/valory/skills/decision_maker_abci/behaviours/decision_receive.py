@@ -339,12 +339,18 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         new_p0 = (new_L0 + new_L1) / new_L0
         new_p1 = (new_L0 + new_L1) / new_L1
         liquidity_prices[question_id] = [new_p0, new_p1]
+        self.context.logger.info(
+            f"updating liquidity prices for question: {question_id}"
+        )
         self.shared_state.liquidity_prices = liquidity_prices
 
         # updating liquidity amounts
         new_amounts = [new_L0, new_L1]
         liquidity_amounts[question_id] = new_amounts
         old_amounts = [old_L0, old_L1]
+        self.context.logger.info(
+            f"updating liquidity prices for question: {question_id}"
+        )
         self.shared_state.liquidity_amounts = liquidity_amounts
 
         return old_amounts, new_amounts
