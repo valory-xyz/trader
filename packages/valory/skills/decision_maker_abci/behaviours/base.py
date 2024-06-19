@@ -613,8 +613,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
-        old_amounts: List[int] = None,
-        new_amounts: List[int] = None,
+        old_amounts: Optional[List[int]] = None,
+        new_amounts: Optional[List[int]] = None,
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data
