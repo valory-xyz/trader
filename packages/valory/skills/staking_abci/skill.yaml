@@ -8,18 +8,20 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeietee5ixgoyj4eakndgrq7yd53tp5anjcwtbura3nsaed53gf4sgm
+  behaviours.py: bafybeidke7jrikywzysz35m4s74yzm7hy6klvjwmedynziu5igrsqqwh2m
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeib4h3wevw4puw7vyanwpfsr4x4cngkm6twzqqtqywpo6xfyqwbele
+  models.py: bafybeidc6aghkskpy5ze62xpjbinwgsyvtzvyrlsfckrygcnj4cts54zpa
   payloads.py: bafybeibnub5ehb2mvpcoan3x23pp5oz4azpofwrtcl32abswcfl4cmjlwq
-  rounds.py: bafybeigrzzs6c2kf3lrqh3nw2ww6zhq2riyjbwaponblsnu42zciachgwe
+  rounds.py: bafybeic7kre4hriounn6at63fjzttw45zoivxatg23cmojok4ah6fca7ca
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeidcb25wneezfd2iaiqa7ygxlimwwacvycahhenvpw7tdvwdigllzm
-- valory/service_staking_token:0.1.0:bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem
+- valory/service_staking_token:0.1.0:bafybeieyfto5xwmvxiu52qxxudp2zaa22idrvw3jr6bytbok6bg3nylgqi
+- valory/staking_token:0.1.0:bafybeig4fl35dn7d5gnprux2nwsqbirm7zkiujz3xvrwcjuktz6hkq4as4
+- valory/mech_activity:0.1.0:bafybeiec6nnvfs6captlncrtjfygpp275vkfajvj4frrnab7thsca6337e
 protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 skills:
@@ -127,6 +129,7 @@ models:
       slash_threshold_amount: 10000000000000000
       light_slash_unit_amount: 5000000000000000
       serious_slash_unit_amount: 8000000000000000
+      mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
       staking_interaction_sleep_time: 5
     class_name: StakingParams
