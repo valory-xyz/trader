@@ -323,7 +323,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         selected_type_tokens_in_pool = old_liquidity_amounts[vote]
         opposite_vote = vote ^ 1
         other_tokens_in_pool = old_liquidity_amounts[opposite_vote]
-
+        self.context.logger.info(f"Voting for option = {vote}")
         if vote == 0:
             old_L0, old_L1 = selected_type_tokens_in_pool, other_tokens_in_pool
             new_L0, new_L1 = old_L0 + bet_amount, old_L0 * old_L1 / (
@@ -336,8 +336,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 old_L1 + bet_amount,
             )
         # new liquidity prices computed from the new amounts
-        new_p0 = (new_L0 + new_L1) / new_L0
-        new_p1 = (new_L0 + new_L1) / new_L1
+        new_p0 = new_L0 / (new_L0 + new_L1)
+        new_p1 = new_L1 / (new_L0 + new_L1)
         liquidity_prices[question_id] = [new_p0, new_p1]
         self.context.logger.info(
             f"updating liquidity prices for question: {question_id}"
