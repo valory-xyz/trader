@@ -11,6 +11,9 @@ agent: valory/trader:0.1.0:bafybeidi4tswlb7ndecgb4ji2bzu2a6zvznp45aloiyass33cd4t
 number_of_agents: 1
 deployment:
   agent:
+    ports:
+      0:
+        8716: 8716
     volumes:
       ./data: /data
 ---
