@@ -437,7 +437,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None
-            # TODO to read default liquidity info
             if (
                 vote is not None
                 and p_yes is not None
@@ -453,7 +452,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             elif self.benchmarking_mode.enabled and not self._rows_exceeded:
-                # TODO add default liquidity info
                 self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
