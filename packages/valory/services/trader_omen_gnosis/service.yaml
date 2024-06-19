@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidcj64dqbwok3c33nupjo2khr5n3gwzfz7pfkkjzjmgd3xiljc4s4
+agent: valory/trader:0.1.0:bafybeidi4tswlb7ndecgb4ji2bzu2a6zvznp45aloiyass33cd4txxmma4
 number_of_agents: 1
 deployment:
   agent:
@@ -124,4 +124,4 @@ public_id: valory/http_server:0.22.0
 type: connection
 config:
   host: ${HTTP_SERVER_HOST:str:0.0.0.0}
-  port: ${HTTP_SERVER_PORT:int:8001}
+  port: ${HTTP_SERVER_PORT:int:8716}
