@@ -624,8 +624,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             return
 
-        l0_start, l0_end = old_amounts[0], new_amounts[0]
-        l1_start, l1_end = old_amounts[1], new_amounts[1]
+        if old_amounts is not None:
+            l0_start, l0_end = old_amounts[0], new_amounts[0]
+            l1_start, l1_end = old_amounts[1], new_amounts[1]
+        else:
+            self.context.logger.info("No market liquidity information.")
+            l0_start, l0_end = None, None
+            l1_start, l1_end = None, None
         add_headers = False
         results_path = self.params.store_path / self.benchmarking_mode.results_filename
         if not os.path.isfile(results_path):

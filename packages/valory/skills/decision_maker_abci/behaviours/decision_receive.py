@@ -349,8 +349,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         liquidity_amounts[question_id] = new_amounts
         old_amounts = [old_L0, old_L1]
         self.context.logger.info(
-            f"updating liquidity prices for question: {question_id}"
+            f"updating liquidity amounts for question: {question_id}"
         )
+        self.context.logger.info(f"New amounts={new_amounts}")
         self.shared_state.liquidity_amounts = liquidity_amounts
 
         return old_amounts, new_amounts
