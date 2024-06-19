@@ -27,10 +27,10 @@ from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 
 
-class ServiceStakingTokenContract(Contract):
+class StakingTokenContract(Contract):
     """The Service Staking contract."""
 
-    contract_id = PublicId.from_str("valory/service_staking_token:0.1.0")
+    contract_id = PublicId.from_str("valory/staking_token:0.1.0")
 
     @classmethod
     def get_service_staking_state(
@@ -41,7 +41,7 @@ class ServiceStakingTokenContract(Contract):
     ) -> JSONLike:
         """Check whether the service is staked."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        res = contract_instance.functions.getServiceStakingState(service_id).call()
+        res = contract_instance.functions.getStakingState(service_id).call()
         return dict(data=res)
 
     @classmethod
@@ -99,7 +99,7 @@ class ServiceStakingTokenContract(Contract):
     ) -> JSONLike:
         """Get the service's staking rewards."""
         contract = cls.get_instance(ledger_api, contract_address)
-        reward = contract.functions.calculateServiceStakingReward(service_id).call()
+        reward = contract.functions.calculateStakingReward(service_id).call()
         return dict(data=reward)
 
     @classmethod
@@ -182,9 +182,9 @@ class ServiceStakingTokenContract(Contract):
 
     @classmethod
     def get_min_staking_duration(
-            cls,
-            ledger_api: LedgerApi,
-            contract_address: str,
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
     ) -> JSONLike:
         """Retrieve the service IDs."""
         contract = cls.get_instance(ledger_api, contract_address)
