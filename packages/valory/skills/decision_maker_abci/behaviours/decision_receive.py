@@ -288,6 +288,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             liquidity_amounts[question_id] = outcome_token_amounts
             liquidity_prices[question_id] = outcome_token_prices
 
+        self.context.logger.info(f"outcome token amounts: {outcome_token_amounts}")
+        self.context.logger.info(f"outcome token prices: {outcome_token_prices}")
+
         mocked_bet = Bet(
             id="",
             market="",
