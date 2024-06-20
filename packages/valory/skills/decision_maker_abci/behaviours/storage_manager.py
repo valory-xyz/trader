@@ -365,8 +365,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._acc_policy = self._get_init_accuracy_policy(local_tools)
         self._update_accuracy_store()
 
-        # now update the accuracy policy
-
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
         if self.is_first_period or not self.synchronized_data.is_policy_set:
@@ -411,7 +409,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self._mech_tools is None:
             return False
 
-        self._set_policy()
+        if self.benchmarking_mode.enabled:
+            self._set_accuracy_policy()
+        else:
+            self._set_policy()
         return True
 
     def _store_policy(self) -> None:

@@ -186,17 +186,28 @@ class EGreedyAccuracyPolicy:
         return len(self.available_tools)
 
     @property
-    def best_tool(self) -> str:
+    def best_tool(self) -> int:
         """Get the best tool."""
         index_of_best_tool = argmax(self.weighted_accuracy)
-        return self.available_tools[index_of_best_tool]
+        return index_of_best_tool
 
     @property
-    def random_tool(self) -> str:
+    def random_tool(self) -> int:
         """Get the index of a tool randomly."""
         n_tools = len(self.available_tools)
         index_of_random_tool = random.randrange(n_tools)
-        return self.available_tools[index_of_random_tool]
+        return index_of_random_tool
+
+    def select_tool(self, randomness: RandomnessType) -> Optional[int]:
+        """Select a Mech tool and return its index."""
+        if self.n_tools == 0:
+            return None
+
+        random.seed(randomness)
+        if sum(self.reward_rates) == 0 or random.random() < self.eps:  # nosec
+            return self.random_tool
+
+        return self.best_tool
 
     def update_available_tools(self, tools: List[str]):
         self.available_tools = tools
