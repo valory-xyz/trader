@@ -422,7 +422,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
-                old_amounts, new_amounts = self._update_liquidity_info(bet_amount, vote)
+                old_amounts, new_amounts = self._update_liquidity_info(
+                    net_bet_amount, vote
+                )
                 self._write_benchmark_results(
                     p_yes, p_no, confidence, bet_amount, old_amounts, new_amounts
                 )
