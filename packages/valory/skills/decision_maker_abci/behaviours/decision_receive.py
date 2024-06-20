@@ -22,7 +22,7 @@
 import csv
 import json
 from math import prod
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union, List
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -272,7 +272,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
-    def _get_mocked_bet(self):
+    def _get_mocked_bet(self) -> Bet:
         """Function to prepare the mocked bet based on liquidity info at the shared state"""
         liquidity_amounts = self.shared_state.liquidity_amounts
         liquidity_prices = self.shared_state.liquidity_prices
@@ -307,7 +307,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         )
         return mocked_bet
 
-    def _update_liquidity_info(self, bet_amount: float, vote: int):
+    def _update_liquidity_info(
+        self, bet_amount: float, vote: int
+    ) -> Tuple[List[int], List[int]]:
         """Function to update the liquidity information after placing a bet for a market
         and to return the old and new prices"""
         liquidity_amounts = self.shared_state.liquidity_amounts
@@ -345,7 +347,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.shared_state.liquidity_prices = liquidity_prices
 
         # updating liquidity amounts
-        new_amounts = [new_L0, new_L1]
+        new_amounts = [int(new_L0), int(new_L1)]
         liquidity_amounts[question_id] = new_amounts
         old_amounts = [old_L0, old_L1]
         self.context.logger.info(

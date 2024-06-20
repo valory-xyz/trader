@@ -626,7 +626,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             return
 
         liquidity_info = LiquidityInfo()
-        liquidity_info.update_liquidity_amounts(old_amounts, new_amounts)
+        if old_amounts is not None:
+            liquidity_info.update_liquidity_amounts(old_amounts, new_amounts)
+        else:
+            self.context.logger.info("No market liquidity information.")
 
         add_headers = False
         results_path = self.params.store_path / self.benchmarking_mode.results_filename
