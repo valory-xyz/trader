@@ -277,7 +277,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         liquidity_amounts = self.shared_state.liquidity_amounts
         liquidity_prices = self.shared_state.liquidity_prices
         markets = list(liquidity_amounts.keys())
-        question_id = self.shared_state.mock_data.id
+        if self.shared_state.mock_data is not None:
+            question_id = self.shared_state.mock_data.id
+        else:
+            raise ValueError("No mocked data information")
+
         # check if the question is at the dictionary
         outcome_token_amounts = self.benchmarking_mode.outcome_token_amounts
         outcome_token_prices = self.benchmarking_mode.outcome_token_marginal_prices
@@ -315,7 +319,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         liquidity_amounts = self.shared_state.liquidity_amounts
         liquidity_prices = self.shared_state.liquidity_prices
         markets = list(liquidity_amounts.keys())
-        question_id = self.shared_state.mock_data.id
+        if self.shared_state.mock_data is not None:
+            question_id = self.shared_state.mock_data.id
+        else:
+            raise ValueError("No mocked data information")
         if question_id not in markets:
             raise ValueError(
                 f"The market id {question_id} is not at the shared state dictionary"

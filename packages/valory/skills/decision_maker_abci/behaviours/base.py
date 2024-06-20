@@ -626,7 +626,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             return
 
         liquidity_info = LiquidityInfo()
-        if old_amounts is not None:
+        if old_amounts is not None and new_amounts is not None:
             liquidity_info.update_liquidity_amounts(old_amounts, new_amounts)
         else:
             self.context.logger.info("No market liquidity information.")

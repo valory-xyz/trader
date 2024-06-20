@@ -113,7 +113,6 @@ class LiquidityInfo:
         """Function to update the liquidity amounts"""
         self.l0_start, self.l0_end = old_amounts[0], new_amounts[0]
         self.l1_start, self.l1_end = old_amounts[1], new_amounts[1]
-        return
 
 
 @dataclass
