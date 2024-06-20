@@ -93,6 +93,24 @@ BenchmarkTool = BaseBenchmarkTool
 
 
 @dataclass
+class LiquidityInfo:
+    """The structure to have liquidity information before and after a bet is done"""
+
+    l0_start: int = None  # Liquidity of tokens for option 0, before placing the bet
+    l1_start: int = None  # Liquidity of tokens for option 1, before placing the bet
+    l0_end: int = None  # Liquidity of tokens for option 0, after placing the bet
+    l1_end: int = None  # Liquidity of tokens for option 1, after placing the bet
+
+    def update_liquidity_amounts(self, old_amounts: List[int], new_amounts: List[int]):
+        """Function to update the liquidity amounts"""
+        if old_amounts is not None:
+            self.l0_start, self.l0_end = old_amounts[0], new_amounts[0]
+            self.l1_start, self.l1_end = old_amounts[1], new_amounts[1]
+        else:
+            self.context.logger.info("No market liquidity information.")
+
+
+@dataclass
 class RedeemingProgress:
     """A structure to keep track of the redeeming check progress."""
 

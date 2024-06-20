@@ -57,6 +57,7 @@ from packages.valory.skills.decision_maker_abci.models import (
     L0_END_FIELD,
     L1_END_FIELD,
     SharedState,
+    LiquidityInfo,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
@@ -624,13 +625,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             return
 
-        if old_amounts is not None:
-            l0_start, l0_end = old_amounts[0], new_amounts[0]
-            l1_start, l1_end = old_amounts[1], new_amounts[1]
-        else:
-            self.context.logger.info("No market liquidity information.")
-            l0_start, l0_end = None, None
-            l1_start, l1_end = None, None
+        liquidity_info = LiquidityInfo()
+        liquidity_info.update_liquidity_amounts(old_amounts, new_amounts)
+
         add_headers = False
         results_path = self.params.store_path / self.benchmarking_mode.results_filename
         if not os.path.isfile(results_path):
@@ -664,10 +661,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 p_no,
                 confidence,
                 bet_amount,
-                l0_start,
-                l1_start,
-                l0_end,
-                l1_end,
+                liquidity_info.l0_start,
+                liquidity_info.l1_start,
+                liquidity_info.l0_end,
+                liquidity_info.l1_end,
             )
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE
