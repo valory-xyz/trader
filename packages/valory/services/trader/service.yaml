@@ -94,6 +94,7 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+        tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`

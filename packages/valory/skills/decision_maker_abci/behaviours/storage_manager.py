@@ -20,8 +20,9 @@
 """This module contains a behaviour for managing the storage of the agent."""
 
 import json
+import csv
 from abc import ABC
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -32,12 +33,16 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import AgentToolsSpecs
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.policy import (
+    EGreedyPolicy,
+    EGreedyAccuracyPolicy,
+)
 
 
 POLICY_STORE = "policy_store.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
+ACCURACY_STORE = "accuracy_store.json"
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -280,6 +285,87 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         n_relevant = len(self.mech_tools)
         policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
         return policy
+
+    def _get_init_accuracy_policy(
+        self, available_tools: List[str]
+    ) -> EGreedyAccuracyPolicy:
+        """Get the initial accuracy policy object"""
+        acc_policy: EGreedyAccuracyPolicy = None
+        self.context.logger.info("Initializing the accuracy policy")
+        try:
+            acc_path = self.params.store_path / ACCURACY_STORE
+            with open(acc_path, "r") as f:
+                acc_policy_json = f.read()
+                acc_policy = EGreedyAccuracyPolicy.deserialize(acc_policy_json)
+        except Exception as e:
+            self.context.logger.warning(
+                f"The accuracy store was not found. Creating new empty one"
+            )
+            acc_policy = EGreedyAccuracyPolicy.initial_state(
+                self.params.epsilon, available_tools
+            )
+        finally:
+            return acc_policy
+
+    def _update_accuracy_store(self):
+        """Update the accuracy store file with the latest information available"""
+        accuracy_store = self.accuracy_policy.accuracy_store
+        try:
+            # get the csv file from IPFS
+            self.context.logger.info("Reading accuracy information from IPFS")
+            accuracy_link = self.params.ipfs_address + self.params.tools_accuracy_hash
+            response = yield from self.get_http_response(
+                method="GET", url=accuracy_link
+            )
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"Could not retrieve data from the url {accuracy_link}. "
+                    f"Received status code {response.status_code}."
+                )
+                return None
+        except (ValueError, TypeError) as e:
+            self.context.logger.error(
+                f"Could not parse response from ipfs server, "
+                f"the following error was encountered {type(e).__name__}: {e}"
+            )
+            return None
+
+        sep = self.benchmarking_mode.sep
+        reader = csv.DictReader(response.body, delimiter=sep)
+        for row in reader:
+            accuracy_store[row["tool"]] = [
+                row["total_requests"],
+                row["tool_accuracy"],
+            ]
+
+        self.context.logger.info("Parsed accuracy information of the tools")
+        print(accuracy_store)
+        try:
+            # save the updated information at the accuracy_store.json
+            self.accuracy_policy.update_accuracy_store(accuracy_store)
+            acc_path = self.params.store_path / ACCURACY_STORE
+            with open(acc_path, "w") as f:
+                f.write(self.accuracy_policy.serialize())
+                self.context.logger.info(
+                    "Accuracy information updated and saved into the json file"
+                )
+        except:
+            self.context.logger.error("Error trying to save the accuracy policy")
+
+    def _set_accuracy_policy(self) -> None:
+        """Set the E Greedy accuracy policy"""
+        self.context.logger.warning(
+            "This new policy only working now in benchmarking mode"
+        )
+        local_tools = self._get_tools_from_benchmark_file()
+        if local_tools is None:
+            local_tools = self.mech_tools
+
+        # set the list of available tools
+        self._acc_policy = self._get_init_accuracy_policy(local_tools)
+        self._update_accuracy_store()
+
+        # now update the accuracy policy
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""

@@ -22,7 +22,7 @@
 import json
 import random
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, Dict, Tuple
 
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
@@ -142,3 +142,99 @@ class EGreedyPolicy:
     def serialize(self) -> str:
         """Return the policy serialized."""
         return json.dumps(self, cls=DataclassEncoder, sort_keys=True)
+
+
+@dataclass
+class EGreedyAccuracyPolicy:
+    """An e-Greedy policy for the tool selection based on tool accuracy."""
+
+    eps: float
+    # The requests list is computed only for the available tools
+    requests: List[int]
+    # The weighted accuracy metric is computed only for the available tools
+    weighted_accuracy: List[float]
+    available_tools: List[str]
+    accuracy_store: Dict[str, Tuple[int, float]] = {}
+
+    # TODO We need the names of the available tools
+
+    @classmethod
+    def initial_state(
+        cls, eps: float, available_tools: List[str]
+    ) -> "EGreedyAccuracyPolicy":
+        """Return an instance on its initial state."""
+        n_tools = len(available_tools)
+        if n_tools <= 0 or eps > 1 or eps < 0:
+            error = f"Cannot initialize an e Greedy Policy with {eps=} and {n_tools=}"
+            raise ValueError(error)
+
+        return EGreedyAccuracyPolicy(
+            eps,
+            [0] * n_tools,
+            [0.0] * n_tools,
+            available_tools,
+        )
+
+    @classmethod
+    def deserialize(cls, policy: str) -> "EGreedyAccuracyPolicy":
+        """Deserialize a string to an `EGreedyAccuracyPolicy` object."""
+        return EGreedyAccuracyPolicy(**json.loads(policy))
+
+    @property
+    def n_tools(self) -> int:
+        """Get the number of the policy's tools."""
+        return len(self.available_tools)
+
+    @property
+    def best_tool(self) -> str:
+        """Get the best tool."""
+        index_of_best_tool = argmax(self.weighted_accuracy)
+        return self.available_tools[index_of_best_tool]
+
+    @property
+    def random_tool(self) -> str:
+        """Get the index of a tool randomly."""
+        n_tools = len(self.available_tools)
+        index_of_random_tool = random.randrange(n_tools)
+        return self.available_tools[index_of_random_tool]
+
+    def update_available_tools(self, tools: List[str]):
+        self.available_tools = tools
+        # Update the requests array based on available tools
+        # Update the metrics array based on available tools
+        self._update_requests_and_metrics()
+
+    def update_accuracy_store(self, new_store: Dict[str, Tuple[int, float]]):
+        self.accuracy_store = new_store
+        # Update the requests array based on available tools
+        # Update the metrics array based on available tools
+        self._update_requests_and_metrics()
+
+    def serialize(self) -> str:
+        """Return the policy serialized."""
+        return json.dumps(self, cls=DataclassEncoder, sort_keys=True)
+
+    def _compute_weighted_accuracy(self, requests: List[int], accuracy: List[float]):
+        """Function to compute the weighted accuracy for each tool"""
+        total_nr_requests = sum(requests)
+        weighted_accuracy = []
+        for i in range(len(accuracy)):
+            w_a = accuracy[i] * requests[i] / total_nr_requests
+            weighted_accuracy.append(w_a)
+        self.weighted_accuracy = weighted_accuracy
+
+    def _update_requests_and_metrics(self):
+        n_tools = len(self.available_tools)
+        store_tools = list(self.accuracy_store.keys())
+        tool_requests = []
+        tool_accuracies = []
+        for i in range(n_tools):
+            tool = self.available_tools[i]
+            if tool not in store_tools:
+                raise ValueError(f"The tool {tool} was not found at the accuracy store")
+
+            requests, accuracy = self.accuracy_store[tool]
+            tool_requests.append(requests)
+            tool_accuracies.append(accuracy)
+        self.requests = tool_requests
+        self._compute_weighted_accuracy(tool_requests, tool_accuracies)

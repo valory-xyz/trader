@@ -54,7 +54,10 @@ from packages.valory.skills.decision_maker_abci.models import (
     P_YES_FIELD,
     SharedState,
 )
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.policy import (
+    EGreedyPolicy,
+    EGreedyAccuracyPolicy,
+)
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.decision_maker_abci.utils.nevermined import (
     no_did_prefixed,
@@ -104,6 +107,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.multisend_data = b""
         self._safe_tx_hash = ""
         self._policy: Optional[EGreedyPolicy] = None
+        self._acc_policy: Optional[EGreedyAccuracyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
 
     @property
@@ -231,6 +235,15 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 "Attempting to retrieve the policy before it has been established."
             )
         return self._policy
+
+    @property
+    def accuracy_policy(self) -> EGreedyAccuracyPolicy:
+        """Get the accuracy policy."""
+        if self._acc_policy is None:
+            raise ValueError(
+                "Attempting to retrieve the accuracy policy before it has been established."
+            )
+        return self._acc_policy
 
     @property
     def is_first_period(self) -> bool:
