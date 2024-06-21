@@ -301,9 +301,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self.context.logger.warning(
                 f"The accuracy store was not found. Creating new empty one"
             )
-            acc_policy = EGreedyAccuracyPolicy.initial_state(
-                self.params.epsilon, available_tools
-            )
+            acc_policy = EGreedyAccuracyPolicy(self.params.epsilon, available_tools)
         finally:
             return acc_policy
 

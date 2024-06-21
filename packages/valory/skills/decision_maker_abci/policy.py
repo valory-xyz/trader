@@ -154,24 +154,24 @@ class EGreedyAccuracyPolicy:
     # The weighted accuracy metric is computed only for the available tools
     weighted_accuracy: List[float]
     available_tools: List[str]
-    accuracy_store: Dict[str, Tuple[int, float]] = {}
+    accuracy_store: Dict[str, Tuple[int, float]]
 
-    @classmethod
-    def initial_state(
-        cls, eps: float, available_tools: List[str]
+    def __init__(
+        self, eps: float, available_tools: List[str]
     ) -> "EGreedyAccuracyPolicy":
         """Return an instance on its initial state."""
         n_tools = len(available_tools)
         if n_tools <= 0 or eps > 1 or eps < 0:
-            error = f"Cannot initialize an e Greedy Policy with {eps=} and {n_tools=}"
+            error = f"Cannot initialize the accuracy Policy with {eps=} and {n_tools=}"
             raise ValueError(error)
-
-        return EGreedyAccuracyPolicy(
-            eps,
-            [0] * n_tools,
-            [0.0] * n_tools,
-            available_tools,
-        )
+        store: Dict[str, Tuple[int, float]]
+        # no accuracy information from the tools
+        for tool in available_tools:
+            store[tool] = [0, 0.0]
+        self.eps = eps
+        self.requests = [0] * n_tools
+        self.weighted_accuracy = [0.0] * n_tools
+        self.accuracy_store = store
 
     @classmethod
     def deserialize(cls, policy: str) -> "EGreedyAccuracyPolicy":
