@@ -96,23 +96,19 @@ BenchmarkTool = BaseBenchmarkTool
 class LiquidityInfo:
     """The structure to have liquidity information before and after a bet is done"""
 
-    l0_start: Optional[int] = (
-        None  # Liquidity of tokens for option 0, before placing the bet
-    )
-    l1_start: Optional[int] = (
-        None  # Liquidity of tokens for option 1, before placing the bet
-    )
-    l0_end: Optional[int] = (
-        None  # Liquidity of tokens for option 0, after placing the bet
-    )
-    l1_end: Optional[int] = (
-        None  # Liquidity of tokens for option 1, after placing the bet
-    )
+    # Liquidity of tokens for option 0, before placing the bet
+    l0_start: int
+    # Liquidity of tokens for option 1, before placing the bet
+    l1_start: int
+    # Liquidity of tokens for option 0, after placing the bet
+    l0_end: int
+    # Liquidity of tokens for option 1, after placing the bet
+    l1_end: int
 
-    def update_liquidity_amounts(self, old_amounts: List[int], new_amounts: List[int]):
+    def __init__(self, l0_start, l1_start, l0_end, l1_end):
         """Function to update the liquidity amounts"""
-        self.l0_start, self.l0_end = old_amounts[0], new_amounts[0]
-        self.l1_start, self.l1_end = old_amounts[1], new_amounts[1]
+        self.l0_start, self.l0_end = l0_start, l0_end
+        self.l1_start, self.l1_end = l1_start, l1_end
 
 
 @dataclass

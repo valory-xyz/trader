@@ -614,8 +614,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
-        old_amounts: Optional[List[int]] = None,
-        new_amounts: Optional[List[int]] = None,
+        liquidity_info: Optional[LiquidityInfo] = None,
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data
@@ -625,10 +624,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             return
 
-        liquidity_info = LiquidityInfo()
-        if old_amounts is not None and new_amounts is not None:
-            liquidity_info.update_liquidity_amounts(old_amounts, new_amounts)
-        else:
+        if liquidity_info is None:
             self.context.logger.info("No market liquidity information.")
 
         add_headers = False
@@ -664,10 +660,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 p_no,
                 confidence,
                 bet_amount,
-                liquidity_info.l0_start,
-                liquidity_info.l1_start,
-                liquidity_info.l0_end,
-                liquidity_info.l1_end,
+                liquidity_info.l0_start if liquidity_info is not None else None,
+                liquidity_info.l1_start if liquidity_info is not None else None,
+                liquidity_info.l0_end if liquidity_info is not None else None,
+                liquidity_info.l1_end if liquidity_info is not None else None,
             )
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE

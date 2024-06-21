@@ -36,6 +36,7 @@ from packages.valory.skills.decision_maker_abci.models import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
+    LiquidityInfo,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
@@ -311,9 +312,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         )
         return mocked_bet
 
-    def _update_liquidity_info(
-        self, bet_amount: float, vote: int
-    ) -> Tuple[List[int], List[int]]:
+    def _update_liquidity_info(self, bet_amount: float, vote: int) -> LiquidityInfo:
         """Function to update the liquidity information after placing a bet for a market
         and to return the old and new prices"""
         liquidity_amounts = self.shared_state.liquidity_amounts
@@ -356,14 +355,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # updating liquidity amounts
         new_amounts = [int(new_L0), int(new_L1)]
         liquidity_amounts[question_id] = new_amounts
-        old_amounts = [old_L0, old_L1]
+
         self.context.logger.info(
             f"updating liquidity amounts for question: {question_id}"
         )
         self.context.logger.info(f"New amounts={new_amounts}")
         self.shared_state.liquidity_amounts = liquidity_amounts
 
-        return old_amounts, new_amounts
+        return LiquidityInfo(old_L0, old_L1, int(new_L0), int(new_L1))
 
     def _is_profitable(
         self,
@@ -429,11 +428,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
-                old_amounts, new_amounts = self._update_liquidity_info(
+                liquidity_info: LiquidityInfo = self._update_liquidity_info(
                     net_bet_amount, vote
                 )
                 self._write_benchmark_results(
-                    p_yes, p_no, confidence, bet_amount, old_amounts, new_amounts
+                    p_yes, p_no, confidence, bet_amount, liquidity_info
                 )
             else:
                 self._write_benchmark_results(p_yes, p_no, confidence)
