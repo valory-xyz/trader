@@ -305,7 +305,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         finally:
             return acc_policy
 
-    def _update_accuracy_store(self):
+    def _update_accuracy_store(self) -> Generator[None, None, bool]:
         """Update the accuracy store file with the latest information available"""
         accuracy_store = self.accuracy_policy.accuracy_store
         try:
@@ -320,13 +320,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                     f"Could not retrieve data from the url {accuracy_link}. "
                     f"Received status code {response.status_code}."
                 )
-                return None
+                return False
+            return True
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from ipfs server, "
                 f"the following error was encountered {type(e).__name__}: {e}"
             )
-            return None
+            return False
 
         sep = self.benchmarking_mode.sep
         reader = csv.DictReader(response.body, delimiter=sep)
@@ -361,7 +362,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         # set the list of available tools
         self._acc_policy = self._get_init_accuracy_policy(local_tools)
-        self._update_accuracy_store()
+        self.context.logger.info("The accuracy policy has been initialized")
+        success = yield from self._update_accuracy_store()
+        self.context.logger.info(f"Success of the accuracy store update {success}")
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
@@ -408,6 +411,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         if self.benchmarking_mode.enabled:
+            self.context.logger.info("Setting the accuracy policy")
             self._set_accuracy_policy()
         else:
             self._set_policy()
