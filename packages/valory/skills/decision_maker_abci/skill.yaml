@@ -32,7 +32,7 @@ fingerprint:
   handlers.py: bafybeigod6gbjrxy4mbmulbzsbokeaoycoqys64vqtxnumishfukzf73za
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeidkox7gjwvqucyjlxs4z6s32hxzybswxua7krxzacvd4rjyyugcxa
+  models.py: bafybeieiexvdkwbxhfu7giswtbnosowtkpsf3xmnfbpvstlbrfzijm47gq
   payloads.py: bafybeianpm6f5yuv4t2dza2nezn5uunoyv4aa6ppsjlskmdrbrwumgjutu
   policy.py: bafybeihntpzjxom2zdivm3vfsm3vwknvo7ir4drkzuviogew3t4ybzzmba
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -207,7 +207,7 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
-      tools_accuracy_hash: 'QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk'
+      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
