@@ -307,7 +307,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     def _update_accuracy_store(self) -> Generator[None, None, bool]:
         """Update the accuracy store file with the latest information available"""
-        accuracy_store = self.acc_policy.accuracy_store
         try:
             # get the csv file from IPFS
             self.context.logger.info("Reading accuracy information from IPFS")
@@ -331,6 +330,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         sep = self.benchmarking_mode.sep
         reader = csv.DictReader(response.body, delimiter=sep)
+        if self.acc_policy is None:
+            self.context.logger.warning("The accuracy policy has not been initialized")
+            self._setup_policy_and_tools()
+        accuracy_store = self.acc_policy
         for row in reader:
             accuracy_store[row["tool"]] = [
                 row["total_requests"],
@@ -357,14 +360,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.context.logger.warning(
             "The accuracy policy is only working now in benchmarking mode"
         )
-        local_tools = self._get_tools_from_benchmark_file()
-        if local_tools is None:
-            local_tools = self.mech_tools
-
-        # set the list of available tools
-        self._acc_policy = self._get_init_accuracy_policy(local_tools)
-        self.context.logger.info("The accuracy policy has been initialized")
-        self._update_accuracy_store()
+        if self.is_first_period or not self.synchronized_data.is_policy_set:
+            # set the list of available tools
+            self._acc_policy = self._get_init_accuracy_policy(self.mech_tools)
+            self.context.logger.info("The accuracy policy has been initialized")
+            self._update_accuracy_store()
+        else:
+            self._acc_policy = self.synchronized_data.acc_policy
+            local_tools = self.synchronized_data.available_mech_tools
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""
@@ -423,6 +426,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         with open(policy_path, "w") as f:
             f.write(self.policy.serialize())
 
+    def _store_acc_policy(self) -> None:
+        """Store the accuracy policy"""
+        acc_policy_path = self.params.store_path / ACCURACY_STORE
+        with open(acc_policy_path, "w") as f:
+            f.write(self.acc_policy.serialize())
+
     def _store_available_mech_tools(self) -> None:
         """Store the policy"""
         policy_path = self.params.store_path / AVAILABLE_TOOLS_STORE
@@ -438,5 +447,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _store_all(self) -> None:
         """Store the policy, the available tools and the utilized tools."""
         self._store_policy()
+        self._store_acc_policy()
         self._store_available_mech_tools()
         self._store_utilized_tools()
