@@ -220,7 +220,7 @@ class EGreedyAccuracyPolicy:
         self._update_requests_and_metrics()
 
     def serialize(self) -> str:
-        """Return the policy serialized."""
+        """Return the accuracy policy serialized."""
         return json.dumps(self, cls=DataclassEncoder, sort_keys=True)
 
     def _compute_weighted_accuracy(self, requests: List[int], accuracy: List[float]):

@@ -44,7 +44,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
         randomness = self.synchronized_data.most_voted_randomness
         if self.benchmarking_mode.enabled:
-            selected_idx = self.accuracy_policy.select_tool(randomness)
+            selected_idx = self.acc_policy.select_tool(randomness)
         else:
             selected_idx = self.policy.select_tool(randomness)
         selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
@@ -59,6 +59,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             if selected_tool is not None:
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
+                acc_policy = self.acc_policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
                 self._store_all()
 
@@ -66,6 +67,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 self.context.agent_address,
                 mech_tools,
                 policy,
+                acc_policy,
                 utilized_tools,
                 selected_tool,
             )

@@ -237,7 +237,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return self._policy
 
     @property
-    def accuracy_policy(self) -> EGreedyAccuracyPolicy:
+    def acc_policy(self) -> EGreedyAccuracyPolicy:
         """Get the accuracy policy."""
         if self._acc_policy is None:
             raise ValueError(

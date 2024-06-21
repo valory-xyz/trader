@@ -307,7 +307,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     def _update_accuracy_store(self) -> Generator[None, None, bool]:
         """Update the accuracy store file with the latest information available"""
-        accuracy_store = self.accuracy_policy.accuracy_store
+        accuracy_store = self.acc_policy.accuracy_store
         try:
             # get the csv file from IPFS
             self.context.logger.info("Reading accuracy information from IPFS")
@@ -321,7 +321,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                     f"Received status code {response.status_code}."
                 )
                 return False
-            return True
+
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from ipfs server, "
@@ -341,15 +341,16 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         print(accuracy_store)
         try:
             # save the updated information at the accuracy_store.json
-            self.accuracy_policy.update_accuracy_store(accuracy_store)
+            self.acc_policy.update_accuracy_store(accuracy_store)
             acc_path = self.params.store_path / ACCURACY_STORE
             with open(acc_path, "w") as f:
-                f.write(self.accuracy_policy.serialize())
+                f.write(self.acc_policy.serialize())
                 self.context.logger.info(
                     "Accuracy information updated and saved into the json file"
                 )
         except:
             self.context.logger.error("Error trying to save the accuracy policy")
+        return True
 
     def _set_accuracy_policy(self) -> None:
         """Set the E Greedy accuracy policy"""
@@ -363,8 +364,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # set the list of available tools
         self._acc_policy = self._get_init_accuracy_policy(local_tools)
         self.context.logger.info("The accuracy policy has been initialized")
-        success = yield from self._update_accuracy_store()
-        self.context.logger.info(f"Success of the accuracy store update {success}")
+        self._update_accuracy_store()
 
     def _set_policy(self) -> None:
         """Set the E Greedy Policy."""

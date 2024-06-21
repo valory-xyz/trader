@@ -30,7 +30,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.policy import (
+    EGreedyPolicy,
+    EGreedyAccuracyPolicy,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
 )
@@ -100,6 +103,17 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the policy."""
         policy = self.db.get_strict("policy")
         return EGreedyPolicy.deserialize(policy)
+
+    @property
+    def is_acc_policy_set(self) -> bool:
+        """Get whether the accuracy policy is set."""
+        return bool(self.db.get("acc_policy", False))
+
+    @property
+    def acc_policy(self) -> EGreedyAccuracyPolicy:
+        """Get the accuracy policy."""
+        acc_policy = self.db.get_strict("accuracy policy")
+        return EGreedyAccuracyPolicy.deserialize(acc_policy)
 
     @property
     def has_tool_selection_run(self) -> bool:
