@@ -207,6 +207,7 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
+      tools_accuracy_hash: 'QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk'
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?

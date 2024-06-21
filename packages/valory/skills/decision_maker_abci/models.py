@@ -251,6 +251,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.use_fallback_strategy: bool = self._ensure(
             "use_fallback_strategy", kwargs, bool
         )
+        self.tools_accuracy_hash: str = self._ensure("tools_accuracy_hash", kwargs, str)
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
@@ -300,11 +301,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "file_hash_to_strategies_json",
+            )
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -316,11 +317,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
+        self.mech_to_subscription_params: Dict[str, Any] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "mech_to_subscription_params",
+            )
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         super().__init__(*args, **kwargs)
