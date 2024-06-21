@@ -355,7 +355,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _set_accuracy_policy(self) -> None:
         """Set the E Greedy accuracy policy"""
         self.context.logger.warning(
-            "This new policy only working now in benchmarking mode"
+            "The accuracy policy is only working now in benchmarking mode"
         )
         local_tools = self._get_tools_from_benchmark_file()
         if local_tools is None:

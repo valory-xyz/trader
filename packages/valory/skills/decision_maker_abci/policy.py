@@ -156,8 +156,6 @@ class EGreedyAccuracyPolicy:
     available_tools: List[str]
     accuracy_store: Dict[str, Tuple[int, float]] = {}
 
-    # TODO We need the names of the available tools
-
     @classmethod
     def initial_state(
         cls, eps: float, available_tools: List[str]
@@ -227,6 +225,7 @@ class EGreedyAccuracyPolicy:
 
     def _compute_weighted_accuracy(self, requests: List[int], accuracy: List[float]):
         """Function to compute the weighted accuracy for each tool"""
+        self.context.logger.info("Computing the weighted accuracy")
         total_nr_requests = sum(requests)
         weighted_accuracy = []
         for i in range(len(accuracy)):
