@@ -357,7 +357,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"New amounts={new_amounts}")
         self.shared_state.liquidity_amounts = liquidity_amounts
 
-        return LiquidityInfo(old_L0, old_L1, int(new_L0), int(new_L1))
+        return LiquidityInfo(int(old_L0), int(old_L1), int(new_L0), int(new_L1))
 
     def _is_profitable(
         self,
