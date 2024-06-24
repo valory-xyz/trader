@@ -206,7 +206,7 @@ models:
       slippage: ${float:0.01}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.1}
-      store_path: ${str:/data/}
+      store_path: ${str:/tmp/data/}
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
