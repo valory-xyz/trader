@@ -278,10 +278,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         liquidity_amounts = self.shared_state.liquidity_amounts
         liquidity_prices = self.shared_state.liquidity_prices
         markets = list(liquidity_amounts.keys())
-        if self.shared_state.mock_data is not None:
-            question_id = self.shared_state.mock_data.id
-        else:
-            raise ValueError("No mocked data information")
+        question_id = self.shared_state.mock_data.id
 
         # check if the question is at the dictionary
         outcome_token_amounts = self.benchmarking_mode.outcome_token_amounts
@@ -318,10 +315,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         liquidity_amounts = self.shared_state.liquidity_amounts
         liquidity_prices = self.shared_state.liquidity_prices
         markets = list(liquidity_amounts.keys())
-        if self.shared_state.mock_data is not None:
-            question_id = self.shared_state.mock_data.id
-        else:
-            raise ValueError("No mocked data information")
+        question_id = self.shared_state.mock_data.id
+
         if question_id not in markets:
             raise ValueError(
                 f"The market id {question_id} is not at the shared state dictionary"
@@ -435,9 +430,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     p_yes, p_no, confidence, bet_amount, liquidity_info
                 )
             else:
-                self._write_benchmark_results(
-                    p_yes, p_no, confidence, LiquidityInfo(None, None, None, None)
-                )
+                self._write_benchmark_results(p_yes, p_no, confidence)
 
         return is_profitable, bet_amount
 
@@ -469,7 +462,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     p_no,
                     confidence,
                     bet_amount,
-                    LiquidityInfo(None, None, None, None),
                 )
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 

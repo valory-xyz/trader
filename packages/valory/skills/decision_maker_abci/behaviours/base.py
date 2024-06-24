@@ -614,7 +614,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
-        liquidity_info: LiquidityInfo = None,
+        liquidity_info: LiquidityInfo = LiquidityInfo(None, None, None, None),
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data
@@ -623,9 +623,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 "The mock data are empty! Cannot write the benchmark result."
             )
             return
-
-        if liquidity_info.l0_start is None:
-            self.context.logger.info("No market liquidity information.")
 
         add_headers = False
         results_path = self.params.store_path / self.benchmarking_mode.results_filename
