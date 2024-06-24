@@ -97,13 +97,13 @@ class LiquidityInfo:
     """The structure to have liquidity information before and after a bet is done"""
 
     # Liquidity of tokens for option 0, before placing the bet
-    l0_start: int
+    l0_start: Optional[int]
     # Liquidity of tokens for option 1, before placing the bet
-    l1_start: int
+    l1_start: Optional[int]
     # Liquidity of tokens for option 0, after placing the bet
-    l0_end: int
+    l0_end: Optional[int]
     # Liquidity of tokens for option 1, after placing the bet
-    l1_end: int
+    l1_end: Optional[int]
 
     def __init__(self, l0_start, l1_start, l0_end, l1_end):
         """Function to update the liquidity amounts"""

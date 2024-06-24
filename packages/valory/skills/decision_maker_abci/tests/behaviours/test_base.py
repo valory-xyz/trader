@@ -34,7 +34,9 @@ from packages.valory.skills.abstract_round_abci.test_tools.base import (
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
-    remove_fraction_wei, DecisionMakerBaseBehaviour, WXDAI,
+    DecisionMakerBaseBehaviour,
+    WXDAI,
+    remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
@@ -189,7 +191,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert result == wei / 10**18
 
     @given(st.integers(), st.booleans(), st.booleans())
-    def test_collateral_amount_info(self, amount: int, benchmarking_mode_enabled: bool, is_wxdai: bool) -> None:
+    def test_collateral_amount_info(
+        self, amount: int, benchmarking_mode_enabled: bool, is_wxdai: bool
+    ) -> None:
         """Test the `collateral_amount_info` method."""
         # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
         self.ffw(BlacklistingBehaviour, {"sampled_bet_index": 0})
@@ -205,10 +209,15 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         if benchmarking_mode_enabled or is_wxdai:
             assert result == f"{behaviour.wei_to_native(amount)} wxDAI"
         else:
-            assert result == f"{amount} WEI of the collateral token with address {collateral_token}"
+            assert (
+                result
+                == f"{amount} WEI of the collateral token with address {collateral_token}"
+            )
 
     @given(st.integers(), st.integers())
-    def test_mock_balance_check(self, collateral_balance: int, native_balance: int) -> None:
+    def test_mock_balance_check(
+        self, collateral_balance: int, native_balance: int
+    ) -> None:
         """Test the `_mock_balance_check` method."""
         # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
         self.ffw(BlacklistingBehaviour)
