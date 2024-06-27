@@ -97,6 +97,21 @@ models:
   benchmark_tool:
     args:
       log_dir: /benchmarks
+  network_subgraph:
+    args:
+      url: https://gnosis.subgraph.autonolas.tech
+  omen_subgraph:
+    args:
+      url: https://omen.subgraph.autonolas.tech
+  trades_subgraph:
+    args:
+      url: https://trades.subgraph.autonolas.tech
+  conditional_tokens_subgraph:
+    args:
+      url: https://conditional-tokens.subgraph.autonolas.tech
+  realitio_subgraph:
+    args:
+      url: https://realitio.subgraph.autonolas.tech
 ---
 public_id: valory/ledger:0.19.0
 type: connection
