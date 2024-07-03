@@ -49,6 +49,11 @@ from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMode,
     CONFIDENCE_FIELD,
     DecisionMakerParams,
+    L0_END_FIELD,
+    L0_START_FIELD,
+    L1_END_FIELD,
+    L1_START_FIELD,
+    LiquidityInfo,
     MultisendBatch,
     P_NO_FIELD,
     P_YES_FIELD,
@@ -82,6 +87,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 NEW_LINE = "\n"
 QUOTE = '"'
 TWO_QUOTES = '""'
+INIT_LIQUIDITY_INFO = LiquidityInfo()
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -609,6 +615,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
+        liquidity_info: LiquidityInfo = INIT_LIQUIDITY_INFO,
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data
@@ -633,6 +640,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     P_NO_FIELD,
                     CONFIDENCE_FIELD,
                     self.benchmarking_mode.bet_amount_field,
+                    L0_START_FIELD,
+                    L1_START_FIELD,
+                    L0_END_FIELD,
+                    L1_END_FIELD,
                 )
                 row = ",".join(headers) + NEW_LINE
                 results_file.write(row)
@@ -647,6 +658,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 p_no,
                 confidence,
                 bet_amount,
+                liquidity_info.l0_start,
+                liquidity_info.l1_start,
+                liquidity_info.l0_end,
+                liquidity_info.l1_end,
             )
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE

@@ -75,6 +75,10 @@ STRATEGY_KELLY_CRITERION = "kelly_criterion"
 P_YES_FIELD = "p_yes"
 P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
+L0_START_FIELD = "l0_start"
+L1_START_FIELD = "l1_start"
+L0_END_FIELD = "l0_end"
+L1_END_FIELD = "l1_end"
 INFO_UTILITY_FIELD = "info_utility"
 
 
@@ -86,6 +90,40 @@ class PromptTemplate(Template):
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
+
+
+@dataclass
+class LiquidityInfo:
+    """The structure to have liquidity information before and after a bet is done"""
+
+    # Liquidity of tokens for option 0, before placing the bet
+    l0_start: Optional[int] = None
+    # Liquidity of tokens for option 1, before placing the bet
+    l1_start: Optional[int] = None
+    # Liquidity of tokens for option 0, after placing the bet
+    l0_end: Optional[int] = None
+    # Liquidity of tokens for option 1, after placing the bet
+    l1_end: Optional[int] = None
+
+    def validate_end_information(self) -> Tuple[int, int]:
+        """Check if the end liquidity information is complete, otherwise raise an error."""
+        if self.l0_end is None or self.l1_end is None:
+            raise ValueError("The liquidity information is incomplete!")
+        # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
+        return self.l0_end, self.l1_end
+
+    def get_new_prices(self) -> List[float]:
+        """Calculate and return the new prices based on the end liquidity."""
+        l0_end, l1_end = self.validate_end_information()
+        total_end_liquidity = l0_end + l1_end
+        new_p0 = l0_end / total_end_liquidity
+        new_p1 = l1_end / total_end_liquidity
+        return [new_p0, new_p1]
+
+    def get_end_liquidity(self) -> List[int]:
+        """Return the end liquidity."""
+        l0_end, l1_end = self.validate_end_information()
+        return [l0_end, l1_end]
 
 
 @dataclass
@@ -163,6 +201,48 @@ class SharedState(BaseSharedState):
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
+        # latest liquidity information
+        self.liquidity_amounts: Dict[str, List[int]] = {}
+        self.liquidity_prices: Dict[str, List[float]] = {}
+
+    @property
+    def mock_question_id(self) -> Any:
+        """Get the mock question id."""
+        mock_data = self.mock_data
+        if mock_data is None:
+            raise ValueError("The mock data have not been set!")
+        return mock_data.id
+
+    def _get_liquidity_info(
+        self, liquidity_data: Union[Dict[str, List[int]], Dict[str, List[float]]]
+    ) -> Any:
+        """Get the current liquidity information from the given data."""
+        _id = self.mock_question_id
+        if _id not in liquidity_data:
+            raise ValueError(
+                f"There are no liquidity information for benchmarking mock data with question id {_id!r}."
+            )
+        return liquidity_data[_id]
+
+    @property
+    def current_liquidity_prices(self) -> List[float]:
+        """Return the current liquidity prices."""
+        return self._get_liquidity_info(self.liquidity_prices)
+
+    @current_liquidity_prices.setter
+    def current_liquidity_prices(self, value: List[float]) -> None:
+        """Set the current liquidity prices."""
+        self.liquidity_prices[self.mock_question_id] = value
+
+    @property
+    def current_liquidity_amounts(self) -> List[int]:
+        """Return the current liquidity amounts."""
+        return self._get_liquidity_info(self.liquidity_amounts)
+
+    @current_liquidity_amounts.setter
+    def current_liquidity_amounts(self, value: List[int]) -> None:
+        """Set the current liquidity amounts."""
+        self.liquidity_amounts[self.mock_question_id] = value
 
     def setup(self) -> None:
         """Set up the model."""
