@@ -49,15 +49,15 @@ from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMode,
     CONFIDENCE_FIELD,
     DecisionMakerParams,
+    L0_END_FIELD,
+    L0_START_FIELD,
+    L1_END_FIELD,
+    L1_START_FIELD,
+    LiquidityInfo,
     MultisendBatch,
     P_NO_FIELD,
     P_YES_FIELD,
-    L0_START_FIELD,
-    L1_START_FIELD,
-    L0_END_FIELD,
-    L1_END_FIELD,
     SharedState,
-    LiquidityInfo,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
@@ -87,6 +87,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 NEW_LINE = "\n"
 QUOTE = '"'
 TWO_QUOTES = '""'
+INIT_LIQUIDITY_INFO = LiquidityInfo()
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -614,7 +615,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         p_no: Optional[float] = None,
         confidence: Optional[float] = None,
         bet_amount: Optional[float] = None,
-        liquidity_info: LiquidityInfo = LiquidityInfo(None, None, None, None),
+        liquidity_info: LiquidityInfo = INIT_LIQUIDITY_INFO,
     ) -> None:
         """Write the results to the benchmarking file."""
         mock_data = self.shared_state.mock_data

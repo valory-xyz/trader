@@ -22,7 +22,7 @@
 import csv
 import json
 from math import prod
-from typing import Any, Dict, Generator, Optional, Tuple, Union, List
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -33,10 +33,10 @@ from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMockData,
     CONFIDENCE_FIELD,
     INFO_UTILITY_FIELD,
+    LiquidityInfo,
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
-    LiquidityInfo,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
@@ -274,26 +274,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return num_shares, available_shares
 
     def _get_mocked_bet(self) -> Bet:
-        """Function to prepare the mocked bet based on liquidity info at the shared state"""
-        liquidity_amounts = self.shared_state.liquidity_amounts
-        liquidity_prices = self.shared_state.liquidity_prices
-        markets = list(liquidity_amounts.keys())
-        question_id = self.shared_state.mock_data.id
-
-        # check if the question is at the dictionary
-        outcome_token_amounts = self.benchmarking_mode.outcome_token_amounts
-        outcome_token_prices = self.benchmarking_mode.outcome_token_marginal_prices
-        if question_id in markets:  # read the previous information
-            outcome_token_amounts = liquidity_amounts[question_id]
-            outcome_token_prices = liquidity_prices[question_id]
-        else:  # initializing liquidity info
-            liquidity_amounts[question_id] = outcome_token_amounts
-            liquidity_prices[question_id] = outcome_token_prices
-
-        self.context.logger.info(f"outcome token amounts: {outcome_token_amounts}")
-        self.context.logger.info(f"outcome token prices: {outcome_token_prices}")
-
-        mocked_bet = Bet(
+        """Prepare the mocked bet based on the stored liquidity info."""
+        shared_state = self.shared_state
+        question_id = shared_state.mock_question_id
+        benchmarking_mode = self.benchmarking_mode
+        outcome_token_amounts = shared_state.liquidity_amounts.setdefault(
+            question_id, benchmarking_mode.outcome_token_amounts
+        )
+        outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
+            question_id, benchmarking_mode.outcome_token_marginal_prices
+        )
+        return Bet(
             id="",
             market="",
             title="",
@@ -303,61 +294,39 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             openingTimestamp=0,
             outcomeSlotCount=2,
             outcomeTokenAmounts=outcome_token_amounts,
-            outcomeTokenMarginalPrices=outcome_token_prices,
+            outcomeTokenMarginalPrices=outcome_token_marginal_prices,
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=10,
         )
-        return mocked_bet
 
-    def _update_liquidity_info(self, bet_amount: float, vote: int) -> LiquidityInfo:
-        """Function to update the liquidity information after placing a bet for a market
-        and to return the old and new prices"""
-        liquidity_amounts = self.shared_state.liquidity_amounts
-        liquidity_prices = self.shared_state.liquidity_prices
-        markets = list(liquidity_amounts.keys())
-        question_id = self.shared_state.mock_data.id
-
-        if question_id not in markets:
-            raise ValueError(
-                f"The market id {question_id} is not at the shared state dictionary"
-            )
-
-        old_liquidity_amounts = liquidity_amounts[question_id]
-        selected_type_tokens_in_pool = old_liquidity_amounts[vote]
+    def _calculate_new_liquidity(self, bet_amount: int, vote: int) -> LiquidityInfo:
+        """Calculate and return the new liquidity information."""
+        liquidity_amounts = self.shared_state.current_liquidity_amounts
+        selected_type_tokens_in_pool = liquidity_amounts[vote]
         opposite_vote = vote ^ 1
-        other_tokens_in_pool = old_liquidity_amounts[opposite_vote]
-        self.context.logger.info(f"Voting for option = {vote}")
+        other_tokens_in_pool = liquidity_amounts[opposite_vote]
+        new_selected = selected_type_tokens_in_pool + bet_amount
+        new_other = other_tokens_in_pool * selected_type_tokens_in_pool / new_selected
         if vote == 0:
-            old_L0, old_L1 = selected_type_tokens_in_pool, other_tokens_in_pool
-            new_L0, new_L1 = old_L0 + bet_amount, old_L0 * old_L1 / (
-                old_L0 + bet_amount
+            return LiquidityInfo(
+                selected_type_tokens_in_pool,
+                other_tokens_in_pool,
+                new_selected,
+                int(new_other),
             )
-        else:
-            old_L0, old_L1 = other_tokens_in_pool, selected_type_tokens_in_pool
-            new_L0, new_L1 = (
-                old_L0 * old_L1 / (old_L1 + bet_amount),
-                old_L1 + bet_amount,
-            )
-        # new liquidity prices computed from the new amounts
-        new_p0 = new_L0 / (new_L0 + new_L1)
-        new_p1 = new_L1 / (new_L0 + new_L1)
-        liquidity_prices[question_id] = [new_p0, new_p1]
-        self.context.logger.info(
-            f"updating liquidity prices for question: {question_id}"
+        return LiquidityInfo(
+            other_tokens_in_pool,
+            selected_type_tokens_in_pool,
+            int(new_other),
+            new_selected,
         )
-        self.shared_state.liquidity_prices = liquidity_prices
 
-        # updating liquidity amounts
-        new_amounts = [int(new_L0), int(new_L1)]
-        liquidity_amounts[question_id] = new_amounts
-
-        self.context.logger.info(
-            f"updating liquidity amounts for question: {question_id}"
-        )
-        self.context.logger.info(f"New amounts={new_amounts}")
-        self.shared_state.liquidity_amounts = liquidity_amounts
-
-        return LiquidityInfo(int(old_L0), int(old_L1), int(new_L0), int(new_L1))
+    def _update_liquidity_info(self, bet_amount: int, vote: int) -> LiquidityInfo:
+        """Update the liquidity information and the prices after placing a bet for a market."""
+        liquidity_info = self._calculate_new_liquidity(bet_amount, vote)
+        self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices()
+        self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
+        return liquidity_info
 
     def _is_profitable(
         self,
@@ -423,9 +392,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
-                liquidity_info: LiquidityInfo = self._update_liquidity_info(
-                    net_bet_amount, vote
-                )
+                liquidity_info = self._update_liquidity_info(net_bet_amount, vote)
                 self._write_benchmark_results(
                     p_yes, p_no, confidence, bet_amount, liquidity_info
                 )
