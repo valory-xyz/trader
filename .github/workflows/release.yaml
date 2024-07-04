@@ -162,18 +162,14 @@ jobs:
         arch: [ x64, arm64 ]
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          poetry-version: '1.4.0'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
+        run: poetry install
 
       - name: Build with PyInstaller
         run: |
@@ -184,8 +180,6 @@ jobs:
           --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core \ 
           --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz  \
           --onefile pyinstaller/trader_bin.py
-        env:
-          ARCHFLAGS: '-arch $(echo ${{ matrix.arch }})'
 
       - name: Upload Release Assets
         uses: actions/upload-artifact@v2
