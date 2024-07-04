@@ -33,6 +33,7 @@ from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMockData,
     CONFIDENCE_FIELD,
     INFO_UTILITY_FIELD,
+    LiquidityInfo,
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
@@ -272,6 +273,61 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
+    def _get_mocked_bet(self) -> Bet:
+        """Prepare the mocked bet based on the stored liquidity info."""
+        shared_state = self.shared_state
+        question_id = shared_state.mock_question_id
+        benchmarking_mode = self.benchmarking_mode
+        outcome_token_amounts = shared_state.liquidity_amounts.setdefault(
+            question_id, benchmarking_mode.outcome_token_amounts
+        )
+        outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
+            question_id, benchmarking_mode.outcome_token_marginal_prices
+        )
+        return Bet(
+            id="",
+            market="",
+            title="",
+            collateralToken="",
+            creator="",
+            fee=self.benchmarking_mode.pool_fee,
+            openingTimestamp=0,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=outcome_token_amounts,
+            outcomeTokenMarginalPrices=outcome_token_marginal_prices,
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=10,
+        )
+
+    def _calculate_new_liquidity(self, bet_amount: int, vote: int) -> LiquidityInfo:
+        """Calculate and return the new liquidity information."""
+        liquidity_amounts = self.shared_state.current_liquidity_amounts
+        selected_type_tokens_in_pool = liquidity_amounts[vote]
+        opposite_vote = vote ^ 1
+        other_tokens_in_pool = liquidity_amounts[opposite_vote]
+        new_selected = selected_type_tokens_in_pool + bet_amount
+        new_other = other_tokens_in_pool * selected_type_tokens_in_pool / new_selected
+        if vote == 0:
+            return LiquidityInfo(
+                selected_type_tokens_in_pool,
+                other_tokens_in_pool,
+                new_selected,
+                int(new_other),
+            )
+        return LiquidityInfo(
+            other_tokens_in_pool,
+            selected_type_tokens_in_pool,
+            int(new_other),
+            new_selected,
+        )
+
+    def _update_liquidity_info(self, bet_amount: int, vote: int) -> LiquidityInfo:
+        """Update the liquidity information and the prices after placing a bet for a market."""
+        liquidity_info = self._calculate_new_liquidity(bet_amount, vote)
+        self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices()
+        self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
+        return liquidity_info
+
     def _is_profitable(
         self,
         vote: int,
@@ -281,23 +337,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         confidence: float,
     ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
+
         bet = (
             self.sampled_bet
             if not self.benchmarking_mode.enabled
-            else Bet(
-                id="",
-                market="",
-                title="",
-                collateralToken="",
-                creator="",
-                fee=self.benchmarking_mode.pool_fee,
-                openingTimestamp=0,
-                outcomeSlotCount=2,
-                outcomeTokenAmounts=self.benchmarking_mode.outcome_token_amounts,
-                outcomeTokenMarginalPrices=self.benchmarking_mode.outcome_token_marginal_prices,
-                outcomes=["Yes", "No"],
-                scaledLiquidityMeasure=10,
-            )
+            else self._get_mocked_bet()
         )
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, vote
@@ -348,7 +392,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
-                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+                liquidity_info = self._update_liquidity_info(net_bet_amount, vote)
+                self._write_benchmark_results(
+                    p_yes, p_no, confidence, bet_amount, liquidity_info
+                )
             else:
                 self._write_benchmark_results(p_yes, p_no, confidence)
 
@@ -377,7 +424,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             elif self.benchmarking_mode.enabled and not self._rows_exceeded:
-                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
+                self._write_benchmark_results(
+                    p_yes,
+                    p_no,
+                    confidence,
+                    bet_amount,
+                )
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             payload = DecisionReceivePayload(

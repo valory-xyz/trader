@@ -22,6 +22,7 @@
 import re
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, cast
+from unittest import mock
 
 import pytest
 from hypothesis import given, settings
@@ -33,6 +34,8 @@ from packages.valory.skills.abstract_round_abci.test_tools.base import (
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
+    DecisionMakerBaseBehaviour,
+    WXDAI,
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
@@ -179,6 +182,55 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         res = behaviour.execute_strategy(*args, **kwargs)
         assert res == expected_result
+
+    @given(st.integers())
+    def test_wei_to_native(self, wei: int) -> None:
+        """Test the `wei_to_native` method."""
+        result = DecisionMakerBaseBehaviour.wei_to_native(wei)
+        assert isinstance(result, float)
+        assert result == wei / 10**18
+
+    @given(st.integers(), st.booleans(), st.booleans())
+    def test_collateral_amount_info(
+        self, amount: int, benchmarking_mode_enabled: bool, is_wxdai: bool
+    ) -> None:
+        """Test the `collateral_amount_info` method."""
+        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
+        self.ffw(BlacklistingBehaviour, {"sampled_bet_index": 0})
+        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
+        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+
+        behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
+        with mock.patch.object(behaviour, "read_bets"):
+            collateral_token = WXDAI if is_wxdai else "unknown"
+            behaviour.bets = [(mock.MagicMock(collateralToken=collateral_token))]
+            result = behaviour._collateral_amount_info(amount)
+
+        if benchmarking_mode_enabled or is_wxdai:
+            assert result == f"{behaviour.wei_to_native(amount)} wxDAI"
+        else:
+            assert (
+                result
+                == f"{amount} WEI of the collateral token with address {collateral_token}"
+            )
+
+    @given(st.integers(), st.integers())
+    def test_mock_balance_check(
+        self, collateral_balance: int, native_balance: int
+    ) -> None:
+        """Test the `_mock_balance_check` method."""
+        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
+        self.ffw(BlacklistingBehaviour)
+        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
+        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+
+        behaviour.benchmarking_mode.collateral_balance = collateral_balance
+        behaviour.benchmarking_mode.native_balance = native_balance
+        with mock.patch.object(behaviour, "_report_balance") as mock_report_balance:
+            behaviour._mock_balance_check()
+            mock_report_balance.assert_called_once()
+        assert behaviour.token_balance == collateral_balance
+        assert behaviour.wallet_balance == native_balance
 
     @pytest.mark.parametrize(
         "mocked_result, expected_result",

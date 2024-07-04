@@ -12,12 +12,12 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeif5sakneqr5krl35pahotm5avkrmj37p6xbdyf3zjtpeabnkyejmq
+  behaviours/base.py: bafybeihkdoii3gjnmwknqa4lzqb3whjh7o75lvirzvkmnzq3kiavhewtge
   behaviours/bet_placement.py: bafybeia62an6dpkf6b46fzc4epcyh3zuvpvoge3ewmussclxbldjf3bdue
   behaviours/blacklisting.py: bafybeihlxgnzocsuk2fjysgidvag2n4ixmyrd3gldjtsojg2wauaqgcbm4
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
-  behaviours/decision_receive.py: bafybeiggpof3f6b5epdoywyfpi6xhnrdy5brbsjfq2r6bww2cusqcqb7g4
+  behaviours/decision_receive.py: bafybeihigsoxbvchkt64sw52p4s2mu5l5jh5ncuhao5e24bke2nhv5qrmi
   behaviours/decision_request.py: bafybeiabjzzcwcfbfmtoftjhewmkgbhxfnigbc5cwmmxl6cob5gv64jwwa
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeibl5ktq5lcwzr3komg77o67yebiokqyii7r3fsshatpww5tr5r3ke
@@ -32,9 +32,9 @@ fingerprint:
   handlers.py: bafybeigod6gbjrxy4mbmulbzsbokeaoycoqys64vqtxnumishfukzf73za
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeieiexvdkwbxhfu7giswtbnosowtkpsf3xmnfbpvstlbrfzijm47gq
-  payloads.py: bafybeianpm6f5yuv4t2dza2nezn5uunoyv4aa6ppsjlskmdrbrwumgjutu
-  policy.py: bafybeihntpzjxom2zdivm3vfsm3vwknvo7ir4drkzuviogew3t4ybzzmba
+  models.py: bafybeigyb5t7mw4k6eudaw435zwqn46yovj3dv5vyuw4zpx52wzxbzukca
+  payloads.py: bafybeiheazhwvvg4e5p6g32vlawc7imswjznku2i47u5nsruk4agaxtf7m
+  policy.py: bafybeidbsu5zn456jpku65jajwlxyg5kn2ltlkctkculkj2i2tfmmwm4jq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeihzr4tovdz2dzgzm4elwifejrtkto6mcdb5zwfk5lyzp63nmuzepa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
@@ -57,7 +57,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
-  tests/behaviours/test_base.py: bafybeifuh6qhdksgishs46bwzyoroe3bzd2umaxgz4hwkxmdiebn4zynme
+  tests/behaviours/test_base.py: bafybeiagdrveenk62parzchxg2nd2krpzm2pflfv3p4gszjfpnv3r2kpf4
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi

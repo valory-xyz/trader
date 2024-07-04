@@ -1,4 +1,4 @@
-name: trader_omen_gnosis
+name: trader_pearl
 author: valory
 version: 0.1.0
 description: A single-agent service (sovereign agent) placing bets on Omen, used by
@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifnng4opjeks7yajzmscgvythssmte6ppm5mjvq5zqf2hi6ln4ere
+agent: valory/trader:0.1.0:bafybeiab4sdfpm4jma2mvlujjpj5rehf2zazqxpmx4zwogs7mmavorm3ae
 number_of_agents: 1
 deployment:
   agent:
@@ -97,6 +97,21 @@ models:
   benchmark_tool:
     args:
       log_dir: /benchmarks
+  network_subgraph:
+    args:
+      url: https://gnosis.subgraph.autonolas.tech
+  omen_subgraph:
+    args:
+      url: https://omen.subgraph.autonolas.tech
+  trades_subgraph:
+    args:
+      url: https://trades.subgraph.autonolas.tech
+  conditional_tokens_subgraph:
+    args:
+      url: https://conditional-tokens.subgraph.autonolas.tech
+  realitio_subgraph:
+    args:
+      url: https://realitio.subgraph.autonolas.tech
 ---
 public_id: valory/ledger:0.19.0
 type: connection
