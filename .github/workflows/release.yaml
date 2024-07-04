@@ -184,32 +184,32 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: trader_bin-${{ matrix.arch }}
-          path: dist/trader_bin
-  create-release:
-      needs: build-macos-pyinstaller
-      runs-on: ubuntu-latest
-
-      steps:
-        - name: Download artifacts
-          uses: actions/download-artifact@v2
-          with:
-            name: trader_bin-x64
-            path: ./dist/x64
-        - name: Download artifacts
-          uses: actions/download-artifact@v2
-          with:
-            name: trader_bin-arm64
-            path: ./dist/arm64
-
-        - name: Create GitHub Release
-          uses: actions/create-release@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            tag_name: ${{ github.ref }}
-            release_name: Release ${{ github.ref }}
-            draft: false
-            prerelease: false
-            files: |
-              ./dist/x64/trader_bin
-              ./dist/arm64/trader_bin
+          path: dist/trader_bin_${{ matrix.arch }}
+#  create-release:
+#      needs: build-macos-pyinstaller
+#      runs-on: ubuntu-latest
+#
+#      steps:
+#        - name: Download artifacts
+#          uses: actions/download-artifact@v2
+#          with:
+#            name: trader_bin-x64
+#            path: ./dist/x64
+#        - name: Download artifacts
+#          uses: actions/download-artifact@v2
+#          with:
+#            name: trader_bin-arm64
+#            path: ./dist/arm64
+#
+#        - name: Create GitHub Release
+#          uses: actions/create-release@v1
+#          env:
+#            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          with:
+#            tag_name: ${{ github.ref }}
+#            release_name: Release ${{ github.ref }}
+#            draft: false
+#            prerelease: false
+#            files: |
+#              ./dist/x64/trader_bin
+#              ./dist/arm64/trader_bin
