@@ -181,35 +181,35 @@ jobs:
         run: |
            poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name trader_bin_${{ matrix.arch }}
       - name: Upload Release Assets
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: trader_bin_${{ matrix.arch }}
           path: dist/trader_bin_${{ matrix.arch }}
-#  create-release:
-#      needs: build-macos-pyinstaller
-#      runs-on: ubuntu-latest
-#
-#      steps:
-#        - name: Download artifacts
-#          uses: actions/download-artifact@v2
-#          with:
-#            name: trader_bin-x64
-#            path: ./dist/x64
-#        - name: Download artifacts
-#          uses: actions/download-artifact@v2
-#          with:
-#            name: trader_bin-arm64
-#            path: ./dist/arm64
-#
-#        - name: Create GitHub Release
-#          uses: actions/create-release@v1
-#          env:
-#            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          with:
-#            tag_name: ${{ github.ref }}
-#            release_name: Release ${{ github.ref }}
-#            draft: false
-#            prerelease: false
-#            files: |
-#              ./dist/x64/trader_bin
-#              ./dist/arm64/trader_bin
+  create-release:
+      needs: build-macos-pyinstaller
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Download artifacts
+          uses: actions/download-artifact@v2
+          with:
+            name: trader_bin_x64
+            path: ./dist/trader_bin_x64
+        - name: Download artifacts
+          uses: actions/download-artifact@v2
+          with:
+            name: trader_bin_arm64
+            path: ./dist/trader_bin_arm64
+
+        - name: Create GitHub Release
+          uses: actions/create-release@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            tag_name: ${{ github.ref }}
+            release_name: Release ${{ github.ref }}
+            draft: false
+            prerelease: false
+            files: |
+              ./dist/trader_bin_arm64
+              ./dist/trader_bin_x64
