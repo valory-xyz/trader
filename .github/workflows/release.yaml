@@ -185,7 +185,7 @@ jobs:
         with:
           name: trader_bin_${{ matrix.arch }}
           path: dist/trader_bin_${{ matrix.arch }}
-  create-release:
+  upload-assets:
       needs: build-macos-pyinstaller
       runs-on: ubuntu-latest
 
@@ -194,22 +194,17 @@ jobs:
           uses: actions/download-artifact@v2
           with:
             name: trader_bin_x64
-            path: ./dist/trader_bin_x64
+            path: ./dist/
         - name: Download artifacts
           uses: actions/download-artifact@v2
           with:
             name: trader_bin_arm64
-            path: ./dist/trader_bin_arm64
+            path: ./dist/
 
-        - name: Create GitHub Release
-          uses: actions/create-release@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        - name: Publish Release
+          uses: softprops/action-gh-release@v2
+          if: startsWith(github.ref, 'refs/tags/')
           with:
-            tag_name: ${{ github.ref }}
-            release_name: Release ${{ github.ref }}
-            draft: false
-            prerelease: false
             files: |
-              ./dist/trader_bin_arm64
               ./dist/trader_bin_x64
+              ./dist/trader_bin_arm64
