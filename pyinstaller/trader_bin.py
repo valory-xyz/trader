@@ -24,6 +24,7 @@ from pathlib import Path
 import aea.configurations.validation as validation_module
 
 # patch for the _CUR_DIR value
+# we need this because pyinstaller generated binaries handle paths differently
 validation_module._CUR_DIR = Path(sys._MEIPASS) / validation_module._CUR_DIR
 validation_module._SCHEMAS_DIR = os.path.join(validation_module._CUR_DIR, "schemas")
 
