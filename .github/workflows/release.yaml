@@ -1,8 +1,9 @@
 name: Release Flow
 
 on:
-  release:
-    types: [prereleased, released]
+    push:
+        tags:
+            - 'v*.*.*'
 
 jobs:
   publish-packages:
@@ -126,7 +127,7 @@ jobs:
           # for staging
           export IP_ADDR=$(dig +short balancer.tcp.propel.staging.autonolas.tech)
           echo -e "\n$IP_ADDR\tapp.propel.staging.valory.xyz\n"  | sudo tee -a /etc/hosts
-          
+
           # for prod
           export IP_ADDR=$(dig +short balancer.tcp.propel.autonolas.tech)
           echo -e "\n$IP_ADDR\tapp.propel.valory.xyz\n"  | sudo tee -a /etc/hosts
@@ -151,3 +152,59 @@ jobs:
           echo '${{ toJSON(vars) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' >> github.vars
           source github.vars
           $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
+
+  build-macos-pyinstaller:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [ x64, arm64 ]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: '1.4.0'
+          virtualenvs-create: true
+          virtualenvs-in-project: false
+          virtualenvs-path: ~/my-custom-path
+          installer-parallel: true
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build with PyInstaller
+        run: |
+           poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name trader_bin_${{ matrix.arch }}
+      - name: Upload Release Assets
+        uses: actions/upload-artifact@v2
+        with:
+          name: trader_bin_${{ matrix.arch }}
+          path: dist/trader_bin_${{ matrix.arch }}
+  upload-assets:
+      needs: build-macos-pyinstaller
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Download artifacts
+          uses: actions/download-artifact@v2
+          with:
+            name: trader_bin_x64
+            path: ./dist/
+        - name: Download artifacts
+          uses: actions/download-artifact@v2
+          with:
+            name: trader_bin_arm64
+            path: ./dist/
+
+        - name: Publish Release
+          uses: softprops/action-gh-release@v2
+          if: startsWith(github.ref, 'refs/tags/')
+          with:
+            files: |
+              ./dist/trader_bin_x64
+              ./dist/trader_bin_arm64
