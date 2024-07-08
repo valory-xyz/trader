@@ -130,24 +130,24 @@ class LiquidityInfo:
 class RedeemingProgress:
     """A structure to keep track of the redeeming check progress."""
 
-    trades: Set[Trade] = field(default_factory=lambda: set())
-    utilized_tools: Dict[str, int] = field(default_factory=lambda: {})
+    trades: Set[Trade] = field(default_factory=set)
+    utilized_tools: Dict[str, str] = field(default_factory=dict)
     policy: Optional[EGreedyPolicy] = None
-    claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
+    claimable_amounts: Dict[HexBytes, int] = field(default_factory=dict)
     earliest_block_number: int = 0
     event_filtering_batch_size: int = 0
     check_started: bool = False
     check_from_block: BlockIdentifier = "earliest"
     check_to_block: BlockIdentifier = "latest"
     cleaned: bool = False
-    payouts: Dict[str, int] = field(default_factory=lambda: {})
-    unredeemed_trades: Dict[str, int] = field(default_factory=lambda: {})
+    payouts: Dict[str, int] = field(default_factory=dict)
+    unredeemed_trades: Dict[str, int] = field(default_factory=dict)
     claim_started: bool = False
     claim_from_block: BlockIdentifier = "earliest"
     claim_to_block: BlockIdentifier = "latest"
-    answered: list = field(default_factory=lambda: [])
-    claiming_condition_ids: List[str] = field(default_factory=lambda: [])
-    claimed_condition_ids: List[str] = field(default_factory=lambda: [])
+    answered: list = field(default_factory=list)
+    claiming_condition_ids: List[str] = field(default_factory=list)
+    claimed_condition_ids: List[str] = field(default_factory=list)
 
     @property
     def check_finished(self) -> bool:
@@ -381,11 +381,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[str, List[str]] = (
-            nested_list_todict_workaround(
-                kwargs,
-                "file_hash_to_strategies_json",
-            )
+        self.file_hash_to_strategies: Dict[
+            str, List[str]
+        ] = nested_list_todict_workaround(
+            kwargs,
+            "file_hash_to_strategies_json",
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -397,11 +397,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[str, Any] = (
-            nested_list_todict_workaround(
-                kwargs,
-                "mech_to_subscription_params",
-            )
+        self.mech_to_subscription_params: Dict[
+            str, Any
+        ] = nested_list_todict_workaround(
+            kwargs,
+            "mech_to_subscription_params",
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         super().__init__(*args, **kwargs)
@@ -480,6 +480,18 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.results_filename: Path = Path(
             self._ensure("results_filename", kwargs, str)
         )
+        super().__init__(*args, **kwargs)
+
+
+class AccuracyInfoFields(Model, TypeCheckMixin):
+    """Configuration which holds the accuracy information file's fieldnames."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the `AccuracyInfoFields` object."""
+        self.tool: str = self._ensure("tool", kwargs, str)
+        self.requests: str = self._ensure("requests", kwargs, str)
+        self.accuracy: str = self._ensure("accuracy", kwargs, str)
+        self.sep: str = self._ensure("sep", kwargs, str)
         super().__init__(*args, **kwargs)
 
 

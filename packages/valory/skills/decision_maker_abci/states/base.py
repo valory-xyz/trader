@@ -30,10 +30,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
-from packages.valory.skills.decision_maker_abci.policy import (
-    EGreedyPolicy,
-    EGreedyAccuracyPolicy,
-)
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
 )
@@ -105,38 +102,18 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return EGreedyPolicy.deserialize(policy)
 
     @property
-    def is_acc_policy_set(self) -> bool:
-        """Get whether the accuracy policy is set."""
-        return bool(self.db.get("acc_policy", False))
-
-    @property
-    def acc_policy(self) -> EGreedyAccuracyPolicy:
-        """Get the accuracy policy."""
-        acc_policy = self.db.get_strict("accuracy policy")
-        return EGreedyAccuracyPolicy.deserialize(acc_policy)
-
-    @property
     def has_tool_selection_run(self) -> bool:
         """Get whether the tool selection has run."""
-        mech_tool_idx = self.db.get("mech_tool_idx", None)
-        return mech_tool_idx is not None
-
-    @property
-    def mech_tool_idx(self) -> int:
-        """Get the mech tool's index."""
-        return int(self.db.get_strict("mech_tool_idx"))
+        mech_tool = self.db.get("mech_tool", None)
+        return mech_tool is not None
 
     @property
     def mech_tool(self) -> str:
         """Get the selected mech tool."""
-        try:
-            return self.available_mech_tools[self.mech_tool_idx]
-        except IndexError as exc:
-            error = f"{self.mech_tool_idx=} is not available in {self.available_mech_tools=}."
-            raise IndexError(error) from exc
+        return str(self.db.get_strict("mech_tool"))
 
     @property
-    def utilized_tools(self) -> Dict[str, int]:
+    def utilized_tools(self) -> Dict[str, str]:
         """Get a mapping of the utilized tools' indexes for each transaction."""
         tools = str(self.db.get_strict("utilized_tools"))
         return json.loads(tools)

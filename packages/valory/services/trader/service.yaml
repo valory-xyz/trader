@@ -163,6 +163,12 @@ type: skill
         part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
+    acc_info_fields: &id013
+      args:
+        tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
+        requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
+        accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
+        sep: ${ACC_INFO_FIELDS_SEP:str:,}
     network_subgraph: &id005
       args:
         headers:
@@ -337,6 +343,7 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    acc_info_fields: *id013
     network_subgraph: *id005
     omen_subgraph: *id006
     randomness_api: *id007
@@ -448,6 +455,7 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    acc_info_fields: *id013
     network_subgraph: *id005
     omen_subgraph: *id006
     randomness_api: *id007
@@ -559,6 +567,7 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
+    acc_info_fields: *id013
     network_subgraph: *id005
     omen_subgraph: *id006
     randomness_api: *id007

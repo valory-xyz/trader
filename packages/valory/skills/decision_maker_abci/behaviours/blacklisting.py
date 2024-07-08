@@ -46,30 +46,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         return synced_time.timestamp()
 
     def _blacklist(self) -> None:
-        """Update the policy and blacklist the sampled bet."""
-        # calculate the penalty
-        if self.synchronized_data.is_mech_price_set:
-            # impose a penalty equivalent to the mech's price on the tool responsible for blacklisting the market
-            penalty_wei = self.synchronized_data.mech_price
-        elif self.benchmarking_mode.enabled:
-            # penalize using the simulated mech's cost
-            penalty_wei = self.benchmarking_mode.mech_cost
-        else:
-            # if the price has not been set or a nevermined subscription is used, penalize using a small amount,
-            # approximating the cost of a transaction
-            penalty_wei = -TX_COST_APPROX
-
-        # update the policy to penalize the most recently utilized mech tool
-        tool_idx = self.synchronized_data.mech_tool_idx
-        penalty = -self.wei_to_native(penalty_wei)
-        penalty *= self.params.tool_punishment_multiplier
-        self.policy.add_reward(tool_idx, penalty)
-
-        if self.benchmarking_mode.enabled:
-            # skip blacklisting the market as we should be based solely on the input data of the simulation
-            return
-
-        # blacklist the sampled bet
+        """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index
         sampled_bet = self.bets[sampled_bet_index]
         sampled_bet.status = BetStatus.BLACKLISTED
@@ -79,30 +56,25 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
     def setup(self) -> None:
         """Setup the behaviour"""
         self._policy = self.synchronized_data.policy
-        self._acc_policy = self.synchronized_data.acc_policy
 
     def async_act(self) -> Generator:
         """Do the action."""
         # if the tool selection has not been run for the current period, do not do anything
         if not self.synchronized_data.has_tool_selection_run:
             policy = self.policy.serialize()
-            acc_policy = self.acc_policy.serialize()
-            payload = BlacklistingPayload(
-                self.context.agent_address, None, policy, acc_policy
-            )
+            payload = BlacklistingPayload(self.context.agent_address, None, policy)
             yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.read_bets()
-            self._blacklist()
+            # skip blacklisting when benchmarking as we should be based solely on the input data of the simulation
+            if not self.benchmarking_mode.enabled:
+                self._blacklist()
             self.store_bets()
             bets_hash = (
                 None if self.benchmarking_mode.enabled else self.hash_stored_bets()
             )
             policy = self.policy.serialize()
-            acc_policy = self.acc_policy.serialize()
-            payload = BlacklistingPayload(
-                self.context.agent_address, bets_hash, policy, acc_policy
-            )
+            payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)
 
         yield from self.finish_behaviour(payload)

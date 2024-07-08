@@ -308,6 +308,13 @@ models:
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
     class_name: BenchmarkingMode
+  acc_info_fields:
+    args:
+      tool: tool
+      requests: total_requests
+      accuracy: tool_accuracy
+      sep: ','
+    class_name: AccuracyInfoFields
   trades_subgraph:
     args:
       api_id: trades

@@ -254,6 +254,12 @@ models:
       part_prefix_mode: ${bool:true}
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
+  acc_info_fields:
+    args:
+      tool: ${str:tool}
+      requests: ${str:total_requests}
+      accuracy: ${str:tool_accuracy}
+      sep: ${str:,}
   network_subgraph:
     args:
       headers:

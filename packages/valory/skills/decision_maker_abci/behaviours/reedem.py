@@ -75,7 +75,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize a `RedeemInfo` object."""
         super().__init__(**kwargs)
-        self.utilized_tools: Dict[str, int] = {}
+        self.utilized_tools: Dict[str, str] = {}
         self.redeemed_condition_ids: Set[str] = set()
         self.payout_so_far: int = 0
         self.trades: Set[Trade] = set()
@@ -116,34 +116,18 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
     def _update_policy(self, update: Trade) -> None:
         """Update the policy."""
         # the mapping might not contain a tool for a bet placement because it might have happened on a previous run
-        tool_index = self.utilized_tools.get(update.transactionHash, None)
-        if tool_index is not None:
+        tool = self.utilized_tools.get(update.transactionHash, None)
+        if tool is not None:
             # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
             del self.utilized_tools[update.transactionHash]
-            claimable_xdai = self.wei_to_native(update.claimable_amount)
-            mech_price = self.wei_to_native(self.synchronized_data.mech_price)
-            reward = claimable_xdai - mech_price
             try:
-                self.policy.add_reward(tool_index, reward)
+                self.policy.reward(tool)
             except IndexError:
                 self.context.logger.warning(
-                    f"The stored utilized tools seem to be outdated as no tool with an index {tool_index!r} was found. "
+                    f"The stored utilized tools seem to be outdated as no {tool=} was found. "
                     "The policy will not be updated. "
                     "No action is required as this will be automatically resolved."
                 )
-
-    def _stats_report(self) -> None:
-        """Report policy statistics."""
-        stats_report = "Policy statistics so far (only for resolved markets):\n"
-        for i, tool in enumerate(self.mech_tools):
-            stats_report += (
-                f"{tool} tool:\n"
-                f"\tTimes used: {self.policy.counts[i]}\n"
-                f"\tReward rate: {self.policy.reward_rates[i]}\n"
-            )
-        best_tool = self.mech_tools[self.policy.best_tool]
-        stats_report += f"Best tool so far is {best_tool!r}."
-        self.context.logger.info(stats_report)
 
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
@@ -178,8 +162,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
                 if update == unique_obj:
                     self.claimable_amounts[condition_id] += update.claimable_amount
 
-        if self.policy.has_updated:
-            self._stats_report()
+        self.context.logger.info(self.policy.stats_report())
 
 
 class RedeemBehaviour(RedeemInfoBehaviour):
