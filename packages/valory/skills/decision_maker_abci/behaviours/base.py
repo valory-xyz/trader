@@ -46,6 +46,7 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
+    AccuracyInfoFields,
     BenchmarkingMode,
     CONFIDENCE_FIELD,
     DecisionMakerParams,
@@ -170,6 +171,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def benchmarking_mode(self) -> BenchmarkingMode:
         """Return the benchmarking mode configurations."""
         return cast(BenchmarkingMode, self.context.benchmarking_mode)
+
+    @property
+    def acc_info_fields(self) -> AccuracyInfoFields:
+        """Return the accuracy information fieldnames."""
+        return cast(AccuracyInfoFields, self.context.acc_info_fields)
 
     @property
     def shared_state(self) -> SharedState:
@@ -580,6 +586,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self,
         condition_gen: Callable[[], WaitableConditionType],
         timeout: Optional[float] = None,
+        sleep_time_override: Optional[int] = None,
     ) -> Generator[None, None, None]:
         """Wait for a condition to happen and sleep in-between checks.
 
@@ -589,6 +596,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         :param condition_gen: a generator of the condition to wait for
         :param timeout: the maximum amount of time to wait
+        :param sleep_time_override: override for the sleep time.
+            If None is given, the default value is used, which is the RPC timeout set in the configuration.
         :yield: None
         """
 
@@ -598,16 +607,15 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             else datetime.max
         )
 
+        sleep_time = sleep_time_override or self.params.rpc_sleep_time
         while True:
             condition_satisfied = yield from condition_gen()
             if condition_satisfied:
                 break
             if timeout is not None and datetime.now() > deadline:
                 raise TimeoutException()
-            self.context.logger.info(
-                f"Retrying in {self.params.rpc_sleep_time} seconds."
-            )
-            yield from self.sleep(self.params.rpc_sleep_time)
+            self.context.logger.info(f"Retrying in {sleep_time} seconds.")
+            yield from self.sleep(sleep_time)
 
     def _write_benchmark_results(
         self,

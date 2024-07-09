@@ -12,9 +12,9 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeihkdoii3gjnmwknqa4lzqb3whjh7o75lvirzvkmnzq3kiavhewtge
+  behaviours/base.py: bafybeifejpbnxr6kuic2pvt6zztcdawjriuspwawj2gqnh7oxjfkukuyne
   behaviours/bet_placement.py: bafybeia62an6dpkf6b46fzc4epcyh3zuvpvoge3ewmussclxbldjf3bdue
-  behaviours/blacklisting.py: bafybeiascy4axrqofvv3yivpxxdhkkoe2loyidl46el35wqfjbb6lm6hha
+  behaviours/blacklisting.py: bafybeibofq3emoxxcndkozupsyo2xrigewy6ojvzfdvzwruvsvgyilokbu
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeihv5dg74deifzk46ppdwcvz6lgamgl6m7qr6sgqv2zie35j2576ca
   behaviours/decision_receive.py: bafybeihigsoxbvchkt64sw52p4s2mu5l5jh5ncuhao5e24bke2nhv5qrmi
@@ -22,23 +22,23 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeibl5ktq5lcwzr3komg77o67yebiokqyii7r3fsshatpww5tr5r3ke
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
-  behaviours/reedem.py: bafybeie423ydv4n3sa7dtr7abri46bvg7bm64ly53js37i32h3tmzbruwa
+  behaviours/reedem.py: bafybeifpl7qos4a5kzsosziuoiawwjgm4d7nt7m2knwmwn4bg3ztgrbh2e
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
-  behaviours/storage_manager.py: bafybeigthyyyof7jvusz4mqtzgh5ptkqitnv2e6aetfjghhlhiebcavmpy
-  behaviours/tool_selection.py: bafybeienrzqmgttqzxk7f5ytb2htuablcerkhraiby74eiv2z2rpd6lqfa
+  behaviours/storage_manager.py: bafybeifelwjwstg5dwrnzeav5mumz47kqrlmv4crfn27a3vliomychd2x4
+  behaviours/tool_selection.py: bafybeihu6urr2kdjhtstmfoaijrbhkjgyfxlejqyg2wnpoojndtcvypz6e
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeif2kas4eho4aielucf3ihjzjsog32icccbxrvje6kkw7aw4m4zg6q
   handlers.py: bafybeigod6gbjrxy4mbmulbzsbokeaoycoqys64vqtxnumishfukzf73za
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeigyb5t7mw4k6eudaw435zwqn46yovj3dv5vyuw4zpx52wzxbzukca
-  payloads.py: bafybeiheazhwvvg4e5p6g32vlawc7imswjznku2i47u5nsruk4agaxtf7m
-  policy.py: bafybeidbsu5zn456jpku65jajwlxyg5kn2ltlkctkculkj2i2tfmmwm4jq
+  models.py: bafybeigw5arm3wol2kyrusrf73ncq3ovudpvinszivcyel7i6bmcwhuwzm
+  payloads.py: bafybeia32ds4ks5g3rhd43w6siy74vi5inaheuxhswiy5ndykxtgncoeu4
+  policy.py: bafybeiaqbvfyvume3zikqrlpfjcvvlbksmyasqd77tigwwz5wdbx3cl3ai
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeihzr4tovdz2dzgzm4elwifejrtkto6mcdb5zwfk5lyzp63nmuzepa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeiglhscyt3dmht2s5adeqmwo5buvpezhw3pkgarm7jslazkil3lsse
+  states/base.py: bafybeiayitlxvdnl3pcm54l3zt5z5bcexbxixchrwtrmbhwoimm4555p7m
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
@@ -51,7 +51,7 @@ fingerprint:
   states/randomness.py: bafybeifgsyipvvu2e6caggyoo5vsmd64uexuho5ybyf3ry424r7kldcfre
   states/redeem.py: bafybeiblidmpt73ocac73wmakusrnf5267vs7s2foc5pqkrz4vuqgy3b4u
   states/sampling.py: bafybeihriyyskmlupjiwytx2pdpftms7plkjku5bip64c3ztx7oi3n43ci
-  states/tool_selection.py: bafybeiaaijv6dukp3bmsptcwkcmumc6wu6ztzkvaqzsqqjbfn4ozgyuykq
+  states/tool_selection.py: bafybeiak5ihuie4nxh3sguiea6pcdgyxr4k4xyzvq6o2uj5xpf7urocawy
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
   tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
@@ -207,6 +207,7 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
+      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
@@ -307,6 +308,13 @@ models:
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
     class_name: BenchmarkingMode
+  acc_info_fields:
+    args:
+      tool: tool
+      requests: total_requests
+      accuracy: tool_accuracy
+      sep: ','
+    class_name: AccuracyInfoFields
   trades_subgraph:
     args:
       api_id: trades

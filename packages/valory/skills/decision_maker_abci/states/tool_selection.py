@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -42,6 +42,6 @@ class ToolSelectionRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.available_mech_tools),
         get_name(SynchronizedData.policy),
         get_name(SynchronizedData.utilized_tools),
-        get_name(SynchronizedData.mech_tool_idx),
+        get_name(SynchronizedData.mech_tool),
     )
     collection_key = get_name(SynchronizedData.participant_to_selection)
