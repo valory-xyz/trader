@@ -39,7 +39,7 @@ models:
       tendermint_p2p_url: node0:26656
       creator_per_subgraph:
         omen_subgraph:
-        - '0x0000000000000000000000000000000000000000'
+        - '0xFfc8029154ECD55ABED15BD428bA596E7D23f557'
       slot_count: 2
       opening_margin: 300
       languages:
