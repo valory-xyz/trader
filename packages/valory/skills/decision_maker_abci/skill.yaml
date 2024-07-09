@@ -25,7 +25,7 @@ fingerprint:
   behaviours/reedem.py: bafybeibw7ssoymfubvcbevucnoypwrzcdkrmxihnutxj6wjacr4na3idfu
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
-  behaviours/storage_manager.py: bafybeiha7ok3rmnq6utskrphmh6goyj2nspcol3jbqnl7o365idnfqvp34
+  behaviours/storage_manager.py: bafybeifelwjwstg5dwrnzeav5mumz47kqrlmv4crfn27a3vliomychd2x4
   behaviours/tool_selection.py: bafybeihu6urr2kdjhtstmfoaijrbhkjgyfxlejqyg2wnpoojndtcvypz6e
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeif2kas4eho4aielucf3ihjzjsog32icccbxrvje6kkw7aw4m4zg6q
