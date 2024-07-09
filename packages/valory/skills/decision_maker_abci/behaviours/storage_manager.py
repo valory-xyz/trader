@@ -311,7 +311,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._update_accuracy_store(local_tools)
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
-        """Try to recover the available tools from the tools store."""
+        """Try to recover the utilized tools from the tools store."""
         tools_path = self.params.store_path / UTILIZED_TOOLS_STORE
         try:
             with open(tools_path, "r") as tools_file:
