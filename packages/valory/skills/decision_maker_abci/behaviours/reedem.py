@@ -121,7 +121,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
             # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
             del self.utilized_tools[update.transactionHash]
             try:
-                self.policy.reward(tool)
+                self.policy.update_accuracy_store(tool)
             except IndexError:
                 self.context.logger.warning(
                     f"The stored utilized tools seem to be outdated as no {tool=} was found. "

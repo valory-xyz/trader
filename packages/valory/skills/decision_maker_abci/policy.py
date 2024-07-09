@@ -153,8 +153,8 @@ class EGreedyPolicy:
         self.accuracy_store[tool].pending += 1
         self.update_weighted_accuracy()
 
-    def reward(self, tool: str) -> None:
-        """Reward the given tool."""
+    def update_accuracy_store(self, tool: str) -> None:
+        """Update the accuracy store for the given tool."""
         self.accuracy_store[tool].requests += 1
         self.accuracy_store[tool].pending -= 1
         self.update_weighted_accuracy()
