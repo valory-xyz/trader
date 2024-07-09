@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeif7fxldzdglalwgmo3u44jkjdox2tdgf6zbq7epw6ju4kyl5b7tze
   handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
-  models.py: bafybeicovhcparwbvqdbrofv4kxiyznuezpqxsdxqx3wkkvht7patop4e4
+  models.py: bafybeidrtcycxhuig776kjhnuonwlvjmn4kb2n3uvxdrpmc3hwn65qsolm
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeibrov6rng7izfrx5ssa2vdvqavcr3x2vncfwbyk5jvgzmmlog3sue
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiffkqkvtgdupj62my5eaykxtcadmazgunclovrnbvxybcu2axsbqi
+- valory/decision_maker_abci:0.1.0:bafybeiguy5zvyhw24j7a3kq6oembth7g6mq3pjk62hfelh5mg3shlrxmoy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidl2tljkrdqirl4q2md34syfwjw26onjpecslmqvmesed27w3fx5u
 - valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
 - valory/check_stop_trading_abci:0.1.0:bafybeie6vnp4oovs3k6qnqjcjcjiok6u2uu4dkyd5gqibu77zxpcmztbnq
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -158,6 +158,7 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
+      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
@@ -266,6 +267,13 @@ models:
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
     class_name: BenchmarkingMode
+  acc_info_fields:
+    args:
+      tool: tool
+      requests: total_requests
+      accuracy: tool_accuracy
+      sep: ','
+    class_name: AccuracyInfoFields
   network_subgraph:
     args:
       api_id: network

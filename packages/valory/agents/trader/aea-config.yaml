@@ -47,10 +47,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiffkqkvtgdupj62my5eaykxtcadmazgunclovrnbvxybcu2axsbqi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidl2tljkrdqirl4q2md34syfwjw26onjpecslmqvmesed27w3fx5u
 - valory/market_manager_abci:0.1.0:bafybeicbvxvjkoksbknujaid5hx7krjlgm6barcjcwo33tdccanrcp674a
-- valory/decision_maker_abci:0.1.0:bafybeibrov6rng7izfrx5ssa2vdvqavcr3x2vncfwbyk5jvgzmmlog3sue
-- valory/trader_abci:0.1.0:bafybeie7orrxhez7t663zqhkgp67oj4h6a5wtnkyjtn4ha6jo4qire2gjm
+- valory/decision_maker_abci:0.1.0:bafybeiguy5zvyhw24j7a3kq6oembth7g6mq3pjk62hfelh5mg3shlrxmoy
+- valory/trader_abci:0.1.0:bafybeig3gpr4lwu6tqeuwjip5qddomn2ce4ukqdyg47uie6xqfqqik2f5u
 - valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
 - valory/check_stop_trading_abci:0.1.0:bafybeie6vnp4oovs3k6qnqjcjcjiok6u2uu4dkyd5gqibu77zxpcmztbnq
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -189,6 +189,7 @@ models:
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
+      tools_accuracy_hash: ${str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
       prompt_template: ${str:With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?}
@@ -253,6 +254,12 @@ models:
       part_prefix_mode: ${bool:true}
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
+  acc_info_fields:
+    args:
+      tool: ${str:tool}
+      requests: ${str:total_requests}
+      accuracy: ${str:tool_accuracy}
+      sep: ${str:,}
   network_subgraph:
     args:
       headers:

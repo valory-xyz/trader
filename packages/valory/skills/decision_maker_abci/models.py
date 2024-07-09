@@ -130,24 +130,24 @@ class LiquidityInfo:
 class RedeemingProgress:
     """A structure to keep track of the redeeming check progress."""
 
-    trades: Set[Trade] = field(default_factory=lambda: set())
-    utilized_tools: Dict[str, int] = field(default_factory=lambda: {})
+    trades: Set[Trade] = field(default_factory=set)
+    utilized_tools: Dict[str, str] = field(default_factory=dict)
     policy: Optional[EGreedyPolicy] = None
-    claimable_amounts: Dict[HexBytes, int] = field(default_factory=lambda: {})
+    claimable_amounts: Dict[HexBytes, int] = field(default_factory=dict)
     earliest_block_number: int = 0
     event_filtering_batch_size: int = 0
     check_started: bool = False
     check_from_block: BlockIdentifier = "earliest"
     check_to_block: BlockIdentifier = "latest"
     cleaned: bool = False
-    payouts: Dict[str, int] = field(default_factory=lambda: {})
-    unredeemed_trades: Dict[str, int] = field(default_factory=lambda: {})
+    payouts: Dict[str, int] = field(default_factory=dict)
+    unredeemed_trades: Dict[str, int] = field(default_factory=dict)
     claim_started: bool = False
     claim_from_block: BlockIdentifier = "earliest"
     claim_to_block: BlockIdentifier = "latest"
-    answered: list = field(default_factory=lambda: [])
-    claiming_condition_ids: List[str] = field(default_factory=lambda: [])
-    claimed_condition_ids: List[str] = field(default_factory=lambda: [])
+    answered: list = field(default_factory=list)
+    claiming_condition_ids: List[str] = field(default_factory=list)
+    claimed_condition_ids: List[str] = field(default_factory=list)
 
     @property
     def check_finished(self) -> bool:
@@ -331,6 +331,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.use_fallback_strategy: bool = self._ensure(
             "use_fallback_strategy", kwargs, bool
         )
+        self.tools_accuracy_hash: str = self._ensure("tools_accuracy_hash", kwargs, str)
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
@@ -479,6 +480,18 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.results_filename: Path = Path(
             self._ensure("results_filename", kwargs, str)
         )
+        super().__init__(*args, **kwargs)
+
+
+class AccuracyInfoFields(Model, TypeCheckMixin):
+    """Configuration which holds the accuracy information file's fieldnames."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the `AccuracyInfoFields` object."""
+        self.tool: str = self._ensure("tool", kwargs, str)
+        self.requests: str = self._ensure("requests", kwargs, str)
+        self.accuracy: str = self._ensure("accuracy", kwargs, str)
+        self.sep: str = self._ensure("sep", kwargs, str)
         super().__init__(*args, **kwargs)
 
 

@@ -19,8 +19,10 @@
 
 """This module contains a behaviour for managing the storage of the agent."""
 
+import csv
 import json
 from abc import ABC
+from io import StringIO
 from typing import Any, Dict, Generator, List, Optional
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
@@ -32,12 +34,17 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import AgentToolsSpecs
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.policy import (
+    AccuracyInfo,
+    EGreedyPolicy,
+)
 
 
 POLICY_STORE = "policy_store.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
+GET = "GET"
+OK_CODE = 200
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -48,8 +55,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         super().__init__(**kwargs)
         self._mech_id: int = 0
         self._mech_hash: str = ""
-        self._utilized_tools: Dict[str, int] = {}
+        self._utilized_tools: Dict[str, str] = {}
         self._mech_tools: Optional[List[str]] = None
+        self._accuracy_information: StringIO = StringIO()
 
     @property
     def mech_tools(self) -> List[str]:
@@ -62,6 +70,16 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def mech_tools(self, mech_tools: List[str]) -> None:
         """Set the mech agent's tools."""
         self._mech_tools = mech_tools
+
+    @property
+    def accuracy_information(self) -> StringIO:
+        """Get the accuracy information."""
+        return self._accuracy_information
+
+    @accuracy_information.setter
+    def accuracy_information(self, accuracy_information: StringIO) -> None:
+        """Set the accuracy information."""
+        self._accuracy_information = accuracy_information
 
     @property
     def mech_id(self) -> int:
@@ -84,12 +102,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_hash = mech_hash
 
     @property
-    def utilized_tools(self) -> Dict[str, int]:
+    def utilized_tools(self) -> Dict[str, str]:
         """Get the utilized tools."""
         return self._utilized_tools
 
     @utilized_tools.setter
-    def utilized_tools(self, utilized_tools: Dict[str, int]) -> None:
+    def utilized_tools(self, utilized_tools: Dict[str, str]) -> None:
         """Get the utilized tools."""
         self._utilized_tools = utilized_tools
 
@@ -208,55 +226,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _update_utilized_tools(
-        self, indexes: List[int], remove_mode: bool = False
-    ) -> None:
-        """Update the utilized tools' indexes to match the fact that the given ones have been removed or added."""
-        if len(indexes) == 0:
-            return
-
-        updated_tools = {}
-        for tx_hash, tool_idx in self.utilized_tools.items():
-            removed = False
-            updated_idx = tool_idx
-
-            for idx in indexes:
-                if removed:
-                    continue
-
-                if tool_idx == idx and remove_mode:
-                    removed = True
-                    continue
-
-                if tool_idx == idx:
-                    updated_idx += 1
-                if tool_idx > idx:
-                    updated_idx += -1 if remove_mode else 1
-
-            if not removed:
-                updated_tools[tx_hash] = updated_idx
-
-        self.context.logger.info(
-            f"Updated the utilized tools' indexes: {self.utilized_tools} -> {updated_tools}."
-        )
-        self.utilized_tools = updated_tools
-
-    def _adjust_policy_tools(self, local: List[str]) -> None:
-        """Add or remove tools from the policy to match the remote tools."""
-        # remove tools if they are not available anymore
-        # process the indices in reverse order to avoid index shifting when removing the unavailable tools later
-        reversed_idx = range(len(local) - 1, -1, -1)
-        removed_idx = [idx for idx in reversed_idx if local[idx] not in self.mech_tools]
-        self.policy.remove_tools(removed_idx)
-        self._update_utilized_tools(sorted(removed_idx), remove_mode=True)
-
-        # add tools if there are new ones available
-        # process the indices in reverse order to avoid index shifting when adding the new tools later
-        reversed_idx = range(len(self.mech_tools) - 1, -1, -1)
-        new_idx = [idx for idx in reversed_idx if self.mech_tools[idx] not in local]
-        self.policy.add_new_tools(new_idx)
-        self._update_utilized_tools(new_idx)
-
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
         """Try to recover the policy from the policy store."""
         try:
@@ -269,19 +238,62 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return None
 
     def _get_init_policy(self) -> EGreedyPolicy:
-        """Get the initial policy"""
-        # try to read the policy from the policy store
-        policy = self._try_recover_policy()
-        if policy is not None:
-            # we successfully recovered the policy, so we return it
-            return policy
+        """Get the initial policy."""
+        # try to read the policy from the policy store, and if we cannot recover the policy, we create a new one
+        return self._try_recover_policy() or EGreedyPolicy(self.params.epsilon)
 
-        # we could not recover the policy, so we create a new one
-        n_relevant = len(self.mech_tools)
-        policy = EGreedyPolicy.initial_state(self.params.epsilon, n_relevant)
-        return policy
+    def _fetch_accuracy_info(self) -> Generator[None, None, bool]:
+        """Fetch the latest accuracy information available."""
+        # get the CSV file from IPFS
+        self.context.logger.info("Reading accuracy information from IPFS...")
+        accuracy_link = self.params.ipfs_address + self.params.tools_accuracy_hash
+        response = yield from self.get_http_response(method=GET, url=accuracy_link)
+        if response.status_code != OK_CODE:
+            self.context.logger.error(
+                f"Could not retrieve data from the url {accuracy_link}. "
+                f"Received status code {response.status_code}."
+            )
+            return False
 
-    def _set_policy(self) -> None:
+        self.context.logger.info("Parsing accuracy information of the tools...")
+        try:
+            self.accuracy_information = StringIO(response.body.decode())
+        except (ValueError, TypeError) as e:
+            self.context.logger.error(
+                f"Could not parse response from ipfs server, "
+                f"the following error was encountered {type(e).__name__}: {e}"
+            )
+            return False
+
+        return True
+
+    def _update_accuracy_store(self, local_tools: List[str]) -> None:
+        """Update the accuracy store file with the latest information available"""
+        self.context.logger.info("Updating accuracy information of the policy...")
+        sep = self.acc_info_fields.sep
+        reader: csv.DictReader = csv.DictReader(
+            self.accuracy_information, delimiter=sep
+        )
+        accuracy_store = self.policy.accuracy_store
+
+        # update the accuracy store using the latest accuracy information (only entered during the first period)
+        for row in reader:
+            tool = row[self.acc_info_fields.tool]
+            # overwrite local with global information (naturally, no global information is available for pending)
+            accuracy_store[tool] = AccuracyInfo(
+                int(row[self.acc_info_fields.requests]),
+                # set the pending using the local policy if this information exists
+                accuracy_store.get(tool, AccuracyInfo()).pending,
+                float(row[self.acc_info_fields.accuracy]),
+            )
+
+        # update the accuracy store by adding tools which we do not have any global information about yet
+        for tool in local_tools:
+            accuracy_store.setdefault(tool, AccuracyInfo())
+
+        self.policy.update_weighted_accuracy()
+
+    def _set_policy(self) -> Generator:
         """Set the E Greedy Policy."""
         if self.is_first_period or not self.synchronized_data.is_policy_set:
             self._policy = self._get_init_policy()
@@ -292,10 +304,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._policy = self.synchronized_data.policy
             local_tools = self.synchronized_data.available_mech_tools
 
-        self._adjust_policy_tools(local_tools)
+        if self.is_first_period:
+            yield from self.wait_for_condition_with_sleep(
+                self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
+            )
+        self._update_accuracy_store(local_tools)
 
-    def _try_recover_utilized_tools(self) -> Dict[str, int]:
-        """Try to recover the available tools from the tools store."""
+    def _try_recover_utilized_tools(self) -> Dict[str, str]:
+        """Try to recover the utilized tools from the tools store."""
         tools_path = self.params.store_path / UTILIZED_TOOLS_STORE
         try:
             with open(tools_path, "r") as tools_file:
@@ -325,7 +341,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self._mech_tools is None:
             return False
 
-        self._set_policy()
+        yield from self._set_policy()
         return True
 
     def _store_policy(self) -> None:
