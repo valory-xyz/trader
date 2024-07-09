@@ -22,7 +22,7 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeibl5ktq5lcwzr3komg77o67yebiokqyii7r3fsshatpww5tr5r3ke
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
-  behaviours/reedem.py: bafybeibw7ssoymfubvcbevucnoypwrzcdkrmxihnutxj6wjacr4na3idfu
+  behaviours/reedem.py: bafybeifpl7qos4a5kzsosziuoiawwjgm4d7nt7m2knwmwn4bg3ztgrbh2e
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
   behaviours/storage_manager.py: bafybeifelwjwstg5dwrnzeav5mumz47kqrlmv4crfn27a3vliomychd2x4
@@ -34,7 +34,7 @@ fingerprint:
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeigw5arm3wol2kyrusrf73ncq3ovudpvinszivcyel7i6bmcwhuwzm
   payloads.py: bafybeia32ds4ks5g3rhd43w6siy74vi5inaheuxhswiy5ndykxtgncoeu4
-  policy.py: bafybeih2rdq62uypya3pzz36egdtb2wueqw2tolz3haodxtqkvg7zkz3ny
+  policy.py: bafybeiaqbvfyvume3zikqrlpfjcvvlbksmyasqd77tigwwz5wdbx3cl3ai
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeihzr4tovdz2dzgzm4elwifejrtkto6mcdb5zwfk5lyzp63nmuzepa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
