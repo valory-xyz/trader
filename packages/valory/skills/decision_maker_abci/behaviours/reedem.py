@@ -113,21 +113,29 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
             f"Chose block number {self.earliest_block_number!r} as closest to timestamp {timestamp!r}"
         )
 
+    def _try_update_policy(self, tool: str) -> None:
+        """Try to update the policy."""
+        try:
+            self.policy.update_accuracy_store(tool)
+        except KeyError:
+            self.context.logger.warning(
+                f"The stored utilized tools seem to be outdated as no {tool=} was found. "
+                "The policy will not be updated. "
+                "No action is required as this will be automatically resolved."
+            )
+
     def _update_policy(self, update: Trade) -> None:
         """Update the policy."""
         # the mapping might not contain a tool for a bet placement because it might have happened on a previous run
         tool = self.utilized_tools.get(update.transactionHash, None)
-        if tool is not None:
-            # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
-            del self.utilized_tools[update.transactionHash]
-            try:
-                self.policy.update_accuracy_store(tool)
-            except IndexError:
-                self.context.logger.warning(
-                    f"The stored utilized tools seem to be outdated as no {tool=} was found. "
-                    "The policy will not be updated. "
-                    "No action is required as this will be automatically resolved."
-                )
+        if tool is None:
+            return
+
+        # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
+        del self.utilized_tools[update.transactionHash]
+        if not update.is_winning:
+            return
+        self._try_update_policy(tool)
 
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
