@@ -143,7 +143,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - fetch error: 19.
         9. BetPlacementRound
             - done: 12.
-            - mock tx: 4.
+            - mock tx: 10.
             - insufficient balance: 18.
             - no majority: 9.
             - round timeout: 9.
@@ -258,8 +258,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            # skip the bet placement tx and the redeeming
-            Event.MOCK_TX: RandomnessRound,
+            # skip the bet placement tx
+            Event.MOCK_TX: RedeemRound,
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
