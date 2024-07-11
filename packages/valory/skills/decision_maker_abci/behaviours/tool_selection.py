@@ -53,6 +53,9 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             mech_tools = policy = utilized_tools = None
             selected_tool = yield from self._select_tool()
             if selected_tool is not None:
+                # the period will increment when the benchmarking finishes
+                if self.benchmarking_mode.enabled and self.is_first_period:
+                    self.policy.tool_used(selected_tool)
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
