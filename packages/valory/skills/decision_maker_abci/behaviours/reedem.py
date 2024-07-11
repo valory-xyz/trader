@@ -364,7 +364,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if trades_market_chunk is not None:
                 yield from self.update_redeem_info(trades_market_chunk)
 
-        self.context.logger.info(f"Fetched redeeming information: {self.trades}")
+        # truncate the trades to 1000 characters, otherwise logs get too big
+        max_log_size = 1000
+        trades_str = str(self.trades)[:max_log_size]
+        self.context.logger.info(f"Fetched redeeming information: {trades_str}")
 
     def _filter_trades(self) -> None:
         """Filter the trades, removing the redeemed condition ids."""

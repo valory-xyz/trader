@@ -162,7 +162,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         if self._fetch_status != FetchStatus.SUCCESS:
             self.bets = []
 
-        self.context.logger.info(f"Updated bets: {self.bets}")
+        # truncate the bets to 1000 characters, otherwise logs get too big
+        max_log_size = 1000
+        bets_str = str(self.bets)[:max_log_size]
+        self.context.logger.info(f"Updated bets: {bets_str}")
 
     def async_act(self) -> Generator:
         """Do the action."""

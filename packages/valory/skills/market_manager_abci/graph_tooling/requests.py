@@ -162,7 +162,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 yield from self.sleep(sleep_time)
             return None
 
-        self.context.logger.info(f"Retrieved {res_context}: {res}.")
+        # truncate the response to 1000 characters, otherwise logs get too big
+        max_log_size = 1000
+        res_str = str(res)[:max_log_size]
+        self.context.logger.info(f"Retrieved {res_context}: {res_str}.")
         self._call_failed = False
         subgraph.reset_retries()
         self._fetch_status = FetchStatus.SUCCESS
