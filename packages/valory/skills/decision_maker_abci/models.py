@@ -80,6 +80,8 @@ L1_START_FIELD = "l1_start"
 L0_END_FIELD = "l0_end"
 L1_END_FIELD = "l1_end"
 INFO_UTILITY_FIELD = "info_utility"
+YES = "yes"
+NO = "no"
 
 
 class PromptTemplate(Template):
@@ -553,6 +555,17 @@ class BenchmarkingMockData:
     id: str
     question: str
     answer: str
+    p_yes: float
+
+    @property
+    def is_winning(self) -> bool:
+        """Whether the current position is winning."""
+        return (
+            self.answer == YES
+            and self.p_yes > 0.5
+            or self.answer == NO
+            and self.p_yes < 0.5
+        )
 
 
 class TradesSubgraph(ApiSpecs):
