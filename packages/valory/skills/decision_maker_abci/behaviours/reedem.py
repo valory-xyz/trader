@@ -907,45 +907,69 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         status = yield from super()._setup_policy_and_tools()
         return status
 
+    def _build_payload(self, redeem_tx_hex: Optional[str] = None) -> RedeemPayload:
+        """Build the redeeming round's payload."""
+        agent = self.context.agent_address
+        tx_submitter = self.matching_round.auto_round_id()
+        benchmarking_enabled = self.benchmarking_mode.enabled
+        policy = self.policy.serialize()
+        utilized_tools = json.dumps(self.utilized_tools)
+        condition_ids = json.dumps(list(self.redeemed_condition_ids))
+        payout = self.payout_so_far
+        return RedeemPayload(
+            agent,
+            tx_submitter,
+            redeem_tx_hex,
+            benchmarking_enabled,
+            policy,
+            utilized_tools,
+            condition_ids,
+            payout,
+        )
+
+    def _benchmarking_act(self) -> RedeemPayload:
+        """The act of the agent while running in benchmarking mode."""
+        if self.mock_data.is_winning:
+            tool = self.synchronized_data.mech_tool
+            self._try_update_policy(tool)
+        return self._build_payload()
+
+    def _normal_act(self) -> Generator[None, None, Optional[RedeemPayload]]:
+        """The act of the agent while running in normal mode."""
+        if not self.redeeming_progress.check_started:
+            yield from self._get_redeem_info()
+            self._store_progress()
+        else:
+            msg = "Picking up progress from where it was left off before the timeout occurred."
+            self.context.logger.info(msg)
+            self._load_progress()
+
+        if not self.redeeming_progress.check_finished:
+            self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
+
+        payload = RedeemPayload(self.context.agent_address)
+        if self.redeeming_progress.cleaned:
+            redeem_tx_hex = yield from self._prepare_safe_tx()
+            if redeem_tx_hex is not None:
+                payload = self._build_payload(redeem_tx_hex)
+
+        return payload
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             success = yield from self._setup_policy_and_tools()
             if not success:
-                return
+                return None
 
-            if not self.redeeming_progress.check_started:
-                yield from self._get_redeem_info()
-                self._store_progress()
+            payload: Optional[RedeemPayload]
+            if self.benchmarking_mode.enabled:
+                payload = self._benchmarking_act()
             else:
-                msg = "Picking up progress from where it was left off before the timeout occurred."
-                self.context.logger.info(msg)
-                self._load_progress()
+                payload = yield from self._normal_act()
+                if payload is None:
+                    return
 
-            if not self.redeeming_progress.check_finished:
-                self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
-
-            agent = self.context.agent_address
-            payload = RedeemPayload(agent)
-
-            if self.redeeming_progress.cleaned:
-                redeem_tx_hex = yield from self._prepare_safe_tx()
-                if redeem_tx_hex is not None:
-                    tx_submitter = self.matching_round.auto_round_id()
-                    policy = self.policy.serialize()
-                    utilized_tools = json.dumps(self.utilized_tools)
-                    condition_ids = json.dumps(list(self.redeemed_condition_ids))
-                    payout = self.payout_so_far
-                    self._store_all()
-                    payload = RedeemPayload(
-                        agent,
-                        tx_submitter,
-                        redeem_tx_hex,
-                        None,
-                        policy,
-                        utilized_tools,
-                        condition_ids,
-                        payout,
-                    )
+            self._store_all()
 
         yield from self.finish_behaviour(payload)
