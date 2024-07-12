@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2023 Valory AG
+#   Copyright 2021-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
 
 
 QUERY_BATCH_SIZE = 1000
+MAX_LOG_SIZE = 1000
 
 
 def to_content(query: str) -> bytes:
@@ -162,9 +163,8 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 yield from self.sleep(sleep_time)
             return None
 
-        # truncate the response to 1000 characters, otherwise logs get too big
-        max_log_size = 1000
-        res_str = str(res)[:max_log_size]
+        # truncate the response, otherwise logs get too big
+        res_str = str(res)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Retrieved {res_context}: {res_str}.")
         self._call_failed = False
         subgraph.reset_retries()
