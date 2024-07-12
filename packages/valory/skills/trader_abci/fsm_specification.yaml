@@ -94,7 +94,7 @@ states:
 transition_func:
     (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
-    (BetPlacementRound, MOCK_TX): RandomnessRound
+    (BetPlacementRound, MOCK_TX): RedeemRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
