@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeif43tu3tbwd6gm2wgr7muvr65l4sgxt6nf5ogxlfadql6ebeii2ae
+  behaviours/base.py: bafybeidpo2jaunr2odotiapfkc7v6pxq6nzqckjjge6vavbsh3ejc54pti
   behaviours/bet_placement.py: bafybeihmia64t2payxfqcnfdqg675ui2yp3hnyfwb2xhj2hn7wl237b4re
   behaviours/blacklisting.py: bafybeibofq3emoxxcndkozupsyo2xrigewy6ojvzfdvzwruvsvgyilokbu
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -22,7 +22,7 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeibl5ktq5lcwzr3komg77o67yebiokqyii7r3fsshatpww5tr5r3ke
   behaviours/randomness.py: bafybeidmr33teizrs4uxlo5tdz766ds6os4pe5lttstm7jpmhgmjz5ti3q
-  behaviours/reedem.py: bafybeie7m5hyalp45w4r76wmekzgnycnlpzdnzzberkw6b5t5z5oa2d7nq
+  behaviours/reedem.py: bafybeigddys4zqpztjma3rakgcmkrk55hiskgivhq2cgxsqnhl5wikmrym
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
   behaviours/storage_manager.py: bafybeifelwjwstg5dwrnzeav5mumz47kqrlmv4crfn27a3vliomychd2x4
@@ -82,7 +82,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/market_manager_abci:0.1.0:bafybeidayqddoyalurnycpakbulzt4csa2ilud774ghy2cwo7v3fp3gh3y
+- valory/market_manager_abci:0.1.0:bafybeigvo6hh2lz4h4om67qxugxdeq23inbezyo6u4bb3uth23tniuka6m
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:

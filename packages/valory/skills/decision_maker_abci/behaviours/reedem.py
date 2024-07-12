@@ -55,7 +55,8 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
-    QueryingBehaviour, MAX_LOG_SIZE,
+    MAX_LOG_SIZE,
+    QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     filter_claimed_conditions,

@@ -91,6 +91,7 @@ QUOTE = '"'
 TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
 
+
 def remove_fraction_wei(amount: int, fraction: float) -> int:
     """Removes the given fraction from the given integer amount and returns the value as an integer."""
     if 0 <= fraction <= 1:
