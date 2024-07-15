@@ -131,7 +131,7 @@ class EGreedyPolicy:
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
         self.weighted_accuracy = {
-            tool: acc_info.accuracy
+            tool: (acc_info.accuracy / 100)
             * (acc_info.requests - acc_info.pending)
             / self.n_requests
             for tool, acc_info in self.accuracy_store.items()
