@@ -42,7 +42,11 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         if not success:
             return None
 
-        randomness = self.synchronized_data.most_voted_randomness
+        randomness = (
+            self.benchmarking_mode.randomness
+            if self.benchmarking_mode.enabled
+            else self.synchronized_data.most_voted_randomness
+        )
         selected_tool = self.policy.select_tool(randomness)
         self.context.logger.info(f"Selected the mech tool {selected_tool!r}.")
         return selected_tool

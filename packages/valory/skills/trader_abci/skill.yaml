@@ -266,6 +266,7 @@ models:
       part_prefix_mode: true
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
+      randomness: benchmarking_randomness
     class_name: BenchmarkingMode
   acc_info_fields:
     args:

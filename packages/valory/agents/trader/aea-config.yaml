@@ -254,6 +254,7 @@ models:
       part_prefix_mode: ${bool:true}
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
+      randomness: ${str:benchmarking_randomness}
   acc_info_fields:
     args:
       tool: ${str:tool}
