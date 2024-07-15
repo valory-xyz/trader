@@ -482,6 +482,7 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.results_filename: Path = Path(
             self._ensure("results_filename", kwargs, str)
         )
+        self.randomness: str = self._ensure("randomness", kwargs, str)
         super().__init__(*args, **kwargs)
 
 

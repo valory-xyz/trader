@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/market_manager_abci:0.1.0:bafybeigvo6hh2lz4h4om67qxugxdeq23inbezyo6u4bb3uth23tniuka6m
-- valory/decision_maker_abci:0.1.0:bafybeiext3kgnhndoegmfluryu3etkyavhfolqp4gfpaqz7pokhjrig3zu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaz3eu45njjplwpfp5xmga5cm2262gnco5iezcgwbvwt7n7wm5ery
+- valory/decision_maker_abci:0.1.0:bafybeihiaqtntfiimcigik3flpzkukx75iy7swik362sl223xxhdmhzp6i
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiai3nfeq2yza5h74cwjgxrqtpinr7zrzswsxccsfbpspjw4iv7zbe
 - valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
 - valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -266,6 +266,7 @@ models:
       part_prefix_mode: true
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
+      randomness: benchmarking_randomness
     class_name: BenchmarkingMode
   acc_info_fields:
     args:
