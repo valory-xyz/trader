@@ -137,12 +137,14 @@ class EGreedyPolicy:
             for tool, acc_info in self.accuracy_store.items()
         }
 
-    def select_tool(self, randomness: RandomnessType) -> Optional[str]:
+    def select_tool(self, randomness: RandomnessType = None) -> Optional[str]:
         """Select a Mech tool and return its index."""
         if self.n_tools == 0:
             return None
 
-        random.seed(randomness)
+        if randomness is not None:
+            random.seed(randomness)
+
         if not self.has_updated or random.random() < self.eps:  # nosec
             return self.random_tool
 

@@ -43,7 +43,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             return None
 
         randomness = (
-            self.benchmarking_mode.randomness
+            (self.benchmarking_mode.randomness if self.is_first_period else None)
             if self.benchmarking_mode.enabled
             else self.synchronized_data.most_voted_randomness
         )
