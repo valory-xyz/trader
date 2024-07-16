@@ -28,7 +28,8 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
-protocols: []
+protocols:
+- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
 behaviours:
@@ -141,6 +142,8 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
+      the_graph_error_message_key: message
+      the_graph_payment_required_error: payment required for subsequent requests for this API key
     class_name: MarketManagerParams
   network_subgraph:
     args:
@@ -152,6 +155,9 @@ models:
       response_key: data:blocks
       response_index: 0
       response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis
     class_name: NetworkSubgraph
@@ -164,6 +170,9 @@ models:
       parameters: {}
       response_key: data:fixedProductMarketMakers
       response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph

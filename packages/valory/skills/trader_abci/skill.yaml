@@ -148,6 +148,8 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
+      the_graph_error_message_key: message
+      the_graph_payment_required_error: payment required for subsequent requests for this API key
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
       mech_request_price: null
       mech_chain_id: gnosis
@@ -285,6 +287,9 @@ models:
       response_key: data:blocks
       response_index: 0
       response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis
     class_name: NetworkSubgraph
@@ -297,6 +302,9 @@ models:
       parameters: {}
       response_key: data:fixedProductMarketMakers
       response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
@@ -344,6 +352,9 @@ models:
       parameters: {}
       response_key: data:fpmmTrades
       response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: TradesSubgraph
@@ -356,6 +367,9 @@ models:
       parameters: {}
       response_key: data:user:userPositions
       response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc
     class_name: ConditionalTokensSubgraph
@@ -368,6 +382,9 @@ models:
       parameters: {}
       response_key: data:answers
       response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis
     class_name: RealitioSubgraph

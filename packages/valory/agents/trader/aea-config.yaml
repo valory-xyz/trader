@@ -178,6 +178,8 @@ models:
       languages: ${list:["en_US"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
+      the_graph_error_message_key: ${str:message}
+      the_graph_payment_required_error: ${str:payment required for subsequent requests for this API key}
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_request_price: ${int:null}
       mech_chain_id: ${str:gnosis}
@@ -269,6 +271,9 @@ models:
       response_key: ${str:data:blocks}
       response_index: ${int:0}
       response_type: ${str:dict}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
   omen_subgraph:
@@ -278,6 +283,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:fixedProductMarketMakers}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   randomness_api:
@@ -312,6 +320,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:fpmmTrades}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   conditional_tokens_subgraph:
@@ -321,6 +332,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:user:userPositions}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
   realitio_subgraph:
@@ -330,6 +344,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:answers}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 ---

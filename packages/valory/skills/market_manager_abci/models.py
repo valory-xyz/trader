@@ -20,8 +20,10 @@
 
 """Custom objects for the MarketManager ABCI application."""
 
+import builtins
 from typing import Any, Dict, Iterator, List, Tuple
 
+from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
@@ -44,11 +46,31 @@ class SharedState(BaseSharedState):
     abci_app_cls = MarketManagerAbciApp
 
 
-class OmenSubgraph(ApiSpecs):
+class Subgraph(ApiSpecs):
+    """Specifies `ApiSpecs` with common functionality for subgraphs."""
+
+    def process_response(self, response: HttpMessage) -> Any:
+        """Process the response."""
+        res = super().process_response(response)
+        if res is not None:
+            return res
+
+        error_data = self.response_info.error_data
+        expected_error_type = getattr(builtins, self.response_info.error_type)
+        if isinstance(error_data, expected_error_type):
+            error_message_key = self.context.params.the_graph_error_message_key
+            error_message = error_data.get(error_message_key, None)
+            if self.context.params.the_graph_payment_required_error in error_message:
+                err = "Payment required for subsequent requests for the current 'The Graph' API key!"
+                self.context.logger.error(err)
+        return None
+
+
+class OmenSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications."""
 
 
-class NetworkSubgraph(ApiSpecs):
+class NetworkSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the network's subgraph specifications."""
 
 
@@ -72,6 +94,12 @@ class MarketManagerParams(BaseParams):
         self.languages: List[str] = self._ensure("languages", kwargs, List[str])
         self.average_block_time: int = self._ensure("average_block_time", kwargs, int)
         self.abt_error_mult: int = self._ensure("abt_error_mult", kwargs, int)
+        self.the_graph_error_message_key: str = self._ensure(
+            "the_graph_error_message_key", kwargs, str
+        )
+        self.the_graph_payment_required_error: str = self._ensure(
+            "the_graph_payment_required_error", kwargs, str
+        )
         super().__init__(*args, **kwargs)
 
     @property
