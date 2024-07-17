@@ -131,9 +131,8 @@ class EGreedyPolicy:
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
         self.weighted_accuracy = {
-            tool: (acc_info.accuracy / 100)
-            * (acc_info.requests - acc_info.pending)
-            / self.n_requests
+            tool: acc_info.accuracy
+            + ((acc_info.requests - acc_info.pending) / self.n_requests * 2)
             for tool, acc_info in self.accuracy_store.items()
         }
 
@@ -155,10 +154,16 @@ class EGreedyPolicy:
         self.accuracy_store[tool].pending += 1
         self.update_weighted_accuracy()
 
-    def update_accuracy_store(self, tool: str) -> None:
+    def update_accuracy_store(self, tool: str, winning: bool) -> None:
         """Update the accuracy store for the given tool."""
-        self.accuracy_store[tool].requests += 1
-        self.accuracy_store[tool].pending -= 1
+        acc_info = self.accuracy_store[tool]
+        total_correct_answers = acc_info.accuracy * acc_info.requests
+        if winning:
+            total_correct_answers += 1
+
+        acc_info.requests += 1
+        acc_info.pending -= 1
+        acc_info.accuracy = total_correct_answers / acc_info.requests
         self.update_weighted_accuracy()
 
     def serialize(self) -> str:
