@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeieg4lgfobmbqavfrjtrdrhp57jxid3llxvqkevixna3kgtm6fnigu
+  behaviours.py: bafybeiafcd3m6sviezhxjr5rtcwsybauanjplchgabjctr3ukikajczrha
   bets.py: bafybeid5jw3o57bivq32ojphjmu3xoulf6y6r2pnzuhyp7u6nz3pojpbuu
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
@@ -19,16 +19,17 @@ fingerprint:
   graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeib4bazwax5gz2dcisw4775kuawvnqa5vx6wvni4xj3kk6mwmdlfj4
+  graph_tooling/requests.py: bafybeibjyb6av33aswnptttekj6t7k7xysgphh2bigoorcgkc54y2j3xkm
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeifmb4cojxesv2lcw6j3pm3yqjpsiuwyxpuexjbz656fpapdqcj2ba
+  models.py: bafybeibjttnga54y4auz6f33ecfrngyw53b2xzpompm72drjsr4xoytmiy
   payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
-  rounds.py: bafybeig4767ilvcz6w5xbp42y6ih3av7p4oz4a7tpm2yqmtezrjs5acebe
+  rounds.py: bafybeigdwc4sr7gvxth4suaz36x7fmrn3jhlertwq4rcch4clyuxq435wa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
-protocols: []
+protocols:
+- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
 behaviours:
@@ -141,6 +142,9 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
+      the_graph_error_message_key: message
+      the_graph_payment_required_error: payment required for subsequent requests for
+        this API key
     class_name: MarketManagerParams
   network_subgraph:
     args:
@@ -152,6 +156,9 @@ models:
       response_key: data:blocks
       response_index: 0
       response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis
     class_name: NetworkSubgraph
@@ -164,6 +171,9 @@ models:
       parameters: {}
       response_key: data:fixedProductMarketMakers
       response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph

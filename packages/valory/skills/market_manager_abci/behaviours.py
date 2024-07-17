@@ -173,7 +173,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.read_bets()
             yield from self._update_bets()
             self.store_bets()
-            bets_hash = self.hash_stored_bets()
+            bets_hash = self.hash_stored_bets() if self.bets else None
             payload = UpdateBetsPayload(self.context.agent_address, bets_hash)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
