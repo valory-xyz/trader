@@ -111,6 +111,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self._rows_exceeded = True
                 return None
 
+            next_row: Optional[Dict[str, str]] = next(reader, {})
+            if not next_row:
+                self.shared_state.last_benchmarking_has_run = True
+
         msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
         self.context.logger.info(msg)
         return row_with_headers
