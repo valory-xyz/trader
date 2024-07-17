@@ -32,7 +32,7 @@ fingerprint:
   handlers.py: bafybeigod6gbjrxy4mbmulbzsbokeaoycoqys64vqtxnumishfukzf73za
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeihsvfsa5dbx54p3twnln5wbln2annmnszfrrzdguweugffdlsuigu
+  models.py: bafybeif76bwktyx6i4h7gqunn33q2s4fjlstm4xb5hhsj3zmq4jsofmq4i
   payloads.py: bafybeia32ds4ks5g3rhd43w6siy74vi5inaheuxhswiy5ndykxtgncoeu4
   policy.py: bafybeihp4lzv4ejyu6k5reukbpa6kamglicpymxfx6obm5pgugik4vc63y
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -82,7 +82,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/market_manager_abci:0.1.0:bafybeigvo6hh2lz4h4om67qxugxdeq23inbezyo6u4bb3uth23tniuka6m
+- valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
@@ -202,7 +202,8 @@ models:
       average_block_time: 5
       abt_error_mult: 5
       the_graph_error_message_key: message
-      the_graph_payment_required_error: payment required for subsequent requests for this API key
+      the_graph_payment_required_error: payment required for subsequent requests for
+        this API key
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
