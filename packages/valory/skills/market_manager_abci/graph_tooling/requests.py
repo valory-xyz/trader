@@ -399,3 +399,16 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
             all_positions.extend(positions)
             user_positions_id_gt = positions[-1]["id"]
+
+    def clean_up(self) -> None:
+        """Clean up the resources."""
+        markets_subgraphs = tuple(market for market, _ in self.params.creators_iterator)
+        other_subgraphs = (
+            "conditional_tokens_subgraph",
+            "network_subgraph",
+            "realitio_subgraph",
+            "trades_subgraph",
+        )
+        for subgraph in markets_subgraphs + other_subgraphs:
+            subgraph_specs = getattr(self.context, subgraph)
+            subgraph_specs.reset_retries()
