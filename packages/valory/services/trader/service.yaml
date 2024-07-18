@@ -97,7 +97,6 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
-        tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
@@ -167,13 +166,7 @@ type: skill
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
         randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
-    acc_info_fields: &id005
-      args:
-        tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
-        requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
-        accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
-        sep: ${ACC_INFO_FIELDS_SEP:str:,}
-    network_subgraph: &id006
+    network_subgraph: &id005
       args:
         headers:
           Content-Type: ${NETWORK_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -365,15 +358,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -480,15 +472,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -595,15 +586,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection

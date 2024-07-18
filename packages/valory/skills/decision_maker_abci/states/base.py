@@ -104,16 +104,25 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def has_tool_selection_run(self) -> bool:
         """Get whether the tool selection has run."""
-        mech_tool = self.db.get("mech_tool", None)
-        return mech_tool is not None
+        mech_tool_idx = self.db.get("mech_tool_idx", None)
+        return mech_tool_idx is not None
+
+    @property
+    def mech_tool_idx(self) -> int:
+        """Get the mech tool's index."""
+        return int(self.db.get_strict("mech_tool_idx"))
 
     @property
     def mech_tool(self) -> str:
         """Get the selected mech tool."""
-        return str(self.db.get_strict("mech_tool"))
+        try:
+            return self.available_mech_tools[self.mech_tool_idx]
+        except IndexError as exc:
+            error = f"{self.mech_tool_idx=} is not available in {self.available_mech_tools=}."
+            raise IndexError(error) from exc
 
     @property
-    def utilized_tools(self) -> Dict[str, str]:
+    def utilized_tools(self) -> Dict[str, int]:
         """Get a mapping of the utilized tools' indexes for each transaction."""
         tools = str(self.db.get_strict("utilized_tools"))
         return json.loads(tools)

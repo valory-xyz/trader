@@ -312,13 +312,6 @@ models:
       results_filename: benchmarking_results.csv
       randomness: benchmarking_randomness
     class_name: BenchmarkingMode
-  acc_info_fields:
-    args:
-      tool: tool
-      requests: total_requests
-      accuracy: tool_accuracy
-      sep: ','
-    class_name: AccuracyInfoFields
   trades_subgraph:
     args:
       api_id: trades

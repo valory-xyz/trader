@@ -46,8 +46,6 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
-    AccuracyInfoFields,
-    BenchmarkingMockData,
     BenchmarkingMode,
     CONFIDENCE_FIELD,
     DecisionMakerParams,
@@ -174,19 +172,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return cast(BenchmarkingMode, self.context.benchmarking_mode)
 
     @property
-    def mock_data(self) -> BenchmarkingMockData:
-        """Return the mock data for the benchmarking mode."""
-        mock_data = self.shared_state.mock_data
-        if mock_data is None:
-            raise ValueError("Attempted to access the mock data while being empty!")
-        return mock_data
-
-    @property
-    def acc_info_fields(self) -> AccuracyInfoFields:
-        """Return the accuracy information fieldnames."""
-        return cast(AccuracyInfoFields, self.context.acc_info_fields)
-
-    @property
     def shared_state(self) -> SharedState:
         """Get the shared state."""
         return cast(SharedState, self.context.state)
@@ -256,11 +241,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     @property
     def is_first_period(self) -> bool:
         """Return whether it is the first period of the service."""
-        return (
-            self.synchronized_data.period_count == 0
-            and not self.benchmarking_mode.enabled
-            or self.shared_state.mock_data is None
-        )
+        return self.synchronized_data.period_count == 0
 
     @property
     def sampled_bet(self) -> Bet:
@@ -599,7 +580,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self,
         condition_gen: Callable[[], WaitableConditionType],
         timeout: Optional[float] = None,
-        sleep_time_override: Optional[int] = None,
     ) -> Generator[None, None, None]:
         """Wait for a condition to happen and sleep in-between checks.
 
@@ -609,8 +589,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         :param condition_gen: a generator of the condition to wait for
         :param timeout: the maximum amount of time to wait
-        :param sleep_time_override: override for the sleep time.
-            If None is given, the default value is used, which is the RPC timeout set in the configuration.
         :yield: None
         """
 
@@ -620,15 +598,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             else datetime.max
         )
 
-        sleep_time = sleep_time_override or self.params.rpc_sleep_time
         while True:
             condition_satisfied = yield from condition_gen()
             if condition_satisfied:
                 break
             if timeout is not None and datetime.now() > deadline:
                 raise TimeoutException()
-            self.context.logger.info(f"Retrying in {sleep_time} seconds.")
-            yield from self.sleep(sleep_time)
+            self.context.logger.info(
+                f"Retrying in {self.params.rpc_sleep_time} seconds."
+            )
+            yield from self.sleep(self.params.rpc_sleep_time)
 
     def _write_benchmark_results(
         self,
@@ -639,6 +618,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         liquidity_info: LiquidityInfo = INIT_LIQUIDITY_INFO,
     ) -> None:
         """Write the results to the benchmarking file."""
+        mock_data = self.shared_state.mock_data
+        if mock_data is None:
+            self.context.logger.error(
+                "The mock data are empty! Cannot write the benchmark result."
+            )
+            return
+
         add_headers = False
         results_path = self.params.store_path / self.benchmarking_mode.results_filename
         if not os.path.isfile(results_path):
@@ -663,11 +649,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 results_file.write(row)
 
             results = (
-                self.mock_data.id,
+                mock_data.id,
                 # reintroduce duplicate quotes and quote the question
                 # as it may contain commas which are also used as separators
-                QUOTE + self.mock_data.question.replace(QUOTE, TWO_QUOTES) + QUOTE,
-                self.mock_data.answer,
+                QUOTE + mock_data.question.replace(QUOTE, TWO_QUOTES) + QUOTE,
+                mock_data.answer,
                 p_yes,
                 p_no,
                 confidence,

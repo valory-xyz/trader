@@ -258,8 +258,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            # skip the bet placement tx
-            Event.MOCK_TX: RedeemRound,
+            # skip the bet placement tx and the redeeming
+            Event.MOCK_TX: RandomnessRound,
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
