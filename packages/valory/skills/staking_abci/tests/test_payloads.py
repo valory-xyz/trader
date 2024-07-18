@@ -17,9 +17,18 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the staking abci."""
+from typing import Dict, Type, TypeVar
+
 import pytest
 
-from packages.valory.skills.staking_abci.payloads import MultisigTxPayload, CallCheckpointPayload
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.staking_abci.payloads import (
+    CallCheckpointPayload,
+    MultisigTxPayload,
+)
+
+
+base_tx_payload_type = TypeVar("base_tx_payload_type", bound=BaseTxPayload)
 
 
 @pytest.mark.parametrize(
@@ -27,22 +36,21 @@ from packages.valory.skills.staking_abci.payloads import MultisigTxPayload, Call
     [
         (
             MultisigTxPayload,
-            {
-                "tx_submitter": "dummy tx submitter",
-                "tx_hash": "dummy tx hash"
-            }
+            {"tx_submitter": "dummy tx submitter", "tx_hash": "dummy tx hash"},
         ),
         (
             CallCheckpointPayload,
             {
                 "service_staking_state": 1,
                 "tx_submitter": "dummy tx submitter",
-                "tx_hash": "dummy tx hash"
-            }
-        )
-    ]
+                "tx_hash": "dummy tx hash",
+            },
+        ),
+    ],
 )
-def test_payload(payload_class, payload_kwargs):
+def test_payload(
+    payload_class: Type[base_tx_payload_type], payload_kwargs: Dict
+) -> None:
     """Test payloads."""
     payload = payload_class(sender="sender", **payload_kwargs)
 
