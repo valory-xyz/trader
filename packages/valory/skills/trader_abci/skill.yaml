@@ -24,11 +24,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
-- valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
-- valory/decision_maker_abci:0.1.0:bafybeigwldz6glu2twnltkpsivxpgqauxyeozqijt2zlbzppafolbw7sn4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih5wylffcb3cyy5hpzn53yrzemm3hmyhmvpz6jfcipb4x7aagxa64
-- valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
-- valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
+- valory/market_manager_abci:0.1.0:bafybeia7k5432xnz2c7t6qmqzlp5adelxsktsg4r5wsqtnh7ahvmdknu3i
+- valory/decision_maker_abci:0.1.0:bafybeia4dfxcekzqwmgunyry5cemcsjmwpk36jnccbawl3pvdm5fyovuvu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeideitskw45s7xy4xymdwnb3qfqwe2zy5u7aw27z55r7otatimjk3y
+- valory/staking_abci:0.1.0:bafybeie4g6ck4gfri4jh4cibgebrpjv2fatkxe5gbeqjq3mh577xlxzcu4
+- valory/check_stop_trading_abci:0.1.0:bafybeiggacooq6hjgeox6nj4cwqmeuk4zs5ys7k6pzvyxsda2v44fyohvq
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
@@ -148,9 +148,6 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      the_graph_error_message_key: message
-      the_graph_payment_required_error: payment required for subsequent requests for
-        this API key
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
       mech_request_price: null
       mech_chain_id: gnosis
@@ -269,7 +266,6 @@ models:
       part_prefix_mode: true
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
-      randomness: benchmarking_randomness
     class_name: BenchmarkingMode
   acc_info_fields:
     args:
@@ -288,9 +284,6 @@ models:
       response_key: data:blocks
       response_index: 0
       response_type: dict
-      error_key: errors
-      error_index: 0
-      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis
     class_name: NetworkSubgraph
@@ -303,9 +296,6 @@ models:
       parameters: {}
       response_key: data:fixedProductMarketMakers
       response_type: list
-      error_key: errors
-      error_index: 0
-      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: OmenSubgraph
@@ -353,9 +343,6 @@ models:
       parameters: {}
       response_key: data:fpmmTrades
       response_type: list
-      error_key: errors
-      error_index: 0
-      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: TradesSubgraph
@@ -368,9 +355,6 @@ models:
       parameters: {}
       response_key: data:user:userPositions
       response_type: list
-      error_key: errors
-      error_index: 0
-      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc
     class_name: ConditionalTokensSubgraph
@@ -383,9 +367,6 @@ models:
       parameters: {}
       response_key: data:answers
       response_type: list
-      error_key: errors
-      error_index: 0
-      error_type: dict
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis
     class_name: RealitioSubgraph
