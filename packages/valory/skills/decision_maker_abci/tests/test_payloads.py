@@ -17,11 +17,26 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
+from typing import Dict, Type, TypeVar
+
 import pytest
 
-from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, SamplingPayload, \
-    MultisigTxPayload, RedeemPayload, DecisionRequestPayload, SubscriptionPayload, ClaimPayload, VotingPayload, \
-    BlacklistingPayload, ToolSelectionPayload
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    BlacklistingPayload,
+    ClaimPayload,
+    DecisionReceivePayload,
+    DecisionRequestPayload,
+    MultisigTxPayload,
+    RedeemPayload,
+    SamplingPayload,
+    SubscriptionPayload,
+    ToolSelectionPayload,
+    VotingPayload,
+)
+
+
+base_tx_payload_type = TypeVar("base_tx_payload_type", bound=BaseTxPayload)
 
 
 @pytest.mark.parametrize(
@@ -39,10 +54,7 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
         ),
         (
             SamplingPayload,
-            {
-                "index": 1,
-                "bets_hash": "dummy_bets_hash"
-            },
+            {"index": 1, "bets_hash": "dummy_bets_hash"},
         ),
         (
             MultisigTxPayload,
@@ -82,22 +94,15 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
         ),
         (
             ClaimPayload,
-            {
-                "vote": True
-            },
+            {"vote": True},
         ),
         (
             VotingPayload,
-            {
-                "vote": True
-            },
+            {"vote": True},
         ),
         (
             BlacklistingPayload,
-            {
-                "policy": "dummy policy",
-                "bets_hash": "dummy bets hash"
-            },
+            {"policy": "dummy policy", "bets_hash": "dummy bets hash"},
         ),
         (
             ToolSelectionPayload,
@@ -105,12 +110,14 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
                 "mech_tools": "dummy mech tools",
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
-                "selected_tool": "dummy selected tool"
+                "selected_tool": "dummy selected tool",
             },
         ),
-    ]
+    ],
 )
-def test_payload(payload_class, payload_kwargs):
+def test_payload(
+    payload_class: Type[base_tx_payload_type], payload_kwargs: Dict
+) -> None:
     """Test payloads."""
     payload = payload_class(sender="sender", **payload_kwargs)
 
