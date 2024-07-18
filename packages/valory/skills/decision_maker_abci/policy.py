@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Union
 
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
+WEIGHTED_ACCURACY_MAX = 101
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -131,8 +132,13 @@ class EGreedyPolicy:
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
         self.weighted_accuracy = {
-            tool: acc_info.accuracy
-            + ((acc_info.requests - acc_info.pending) / self.n_requests * 2)
+            tool: (
+                (
+                    acc_info.accuracy
+                    + (acc_info.requests - acc_info.pending) / self.n_requests
+                )
+                / WEIGHTED_ACCURACY_MAX
+            )
             for tool, acc_info in self.accuracy_store.items()
         }
 
