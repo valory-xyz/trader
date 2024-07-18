@@ -110,7 +110,10 @@ class EGreedyPolicy:
     @property
     def n_requests(self) -> int:
         """Get the total number of requests."""
-        return sum(acc_info.requests for acc_info in self.accuracy_store.values())
+        return sum(
+            acc_info.requests + acc_info.pending
+            for acc_info in self.accuracy_store.values()
+        )
 
     @property
     def has_updated(self) -> bool:
