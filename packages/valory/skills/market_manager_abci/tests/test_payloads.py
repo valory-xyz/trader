@@ -18,7 +18,9 @@
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the market manager abci."""
 
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import (
+    UpdateBetsPayload,
+)
 
 
 def test_check_stop_trading_abci_payload() -> None:
