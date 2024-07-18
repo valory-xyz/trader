@@ -37,6 +37,7 @@ from packages.valory.skills.market_manager_abci.bets import (
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
+    MAX_LOG_SIZE,
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
@@ -162,7 +163,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         if self._fetch_status != FetchStatus.SUCCESS:
             self.bets = []
 
-        self.context.logger.info(f"Updated bets: {self.bets}")
+        # truncate the bets, otherwise logs get too big
+        bets_str = str(self.bets)[:MAX_LOG_SIZE]
+        self.context.logger.info(f"Updated bets: {bets_str}")
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -170,7 +173,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.read_bets()
             yield from self._update_bets()
             self.store_bets()
-            bets_hash = self.hash_stored_bets()
+            bets_hash = self.hash_stored_bets() if self.bets else None
             payload = UpdateBetsPayload(self.context.agent_address, bets_hash)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

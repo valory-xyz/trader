@@ -47,12 +47,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeideitskw45s7xy4xymdwnb3qfqwe2zy5u7aw27z55r7otatimjk3y
-- valory/market_manager_abci:0.1.0:bafybeia7k5432xnz2c7t6qmqzlp5adelxsktsg4r5wsqtnh7ahvmdknu3i
-- valory/decision_maker_abci:0.1.0:bafybeia4dfxcekzqwmgunyry5cemcsjmwpk36jnccbawl3pvdm5fyovuvu
-- valory/trader_abci:0.1.0:bafybeidbn6keu5eyxq5am6snjf6lbxaxk6ddlzaoodj75bum4l7wigcxia
-- valory/staking_abci:0.1.0:bafybeie4g6ck4gfri4jh4cibgebrpjv2fatkxe5gbeqjq3mh577xlxzcu4
-- valory/check_stop_trading_abci:0.1.0:bafybeiggacooq6hjgeox6nj4cwqmeuk4zs5ys7k6pzvyxsda2v44fyohvq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaiek6b3p7dro45qjoecmgseznhixhrgqgxfiap7lqw4rbi5fyhvy
+- valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
+- valory/decision_maker_abci:0.1.0:bafybeiejbfkl4im6srigta53ysan3tu5hlbb44cbd2mgryp2hsanyxpdge
+- valory/trader_abci:0.1.0:bafybeigfccxw5v76pectrmh2a3ibd4gt2hhtskkqay6an3g7lgdyotuz34
+- valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
+- valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -178,6 +178,9 @@ models:
       languages: ${list:["en_US"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
+      the_graph_error_message_key: ${str:message}
+      the_graph_payment_required_error: ${str:payment required for subsequent requests
+        for this API key}
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_request_price: ${int:null}
       mech_chain_id: ${str:gnosis}
@@ -254,6 +257,7 @@ models:
       part_prefix_mode: ${bool:true}
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
+      randomness: ${str:benchmarking_randomness}
   acc_info_fields:
     args:
       tool: ${str:tool}
@@ -268,6 +272,9 @@ models:
       response_key: ${str:data:blocks}
       response_index: ${int:0}
       response_type: ${str:dict}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
   omen_subgraph:
@@ -277,6 +284,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:fixedProductMarketMakers}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   randomness_api:
@@ -311,6 +321,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:fpmmTrades}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   conditional_tokens_subgraph:
@@ -320,6 +333,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:user:userPositions}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
   realitio_subgraph:
@@ -329,6 +345,9 @@ models:
       method: ${str:POST}
       response_key: ${str:data:answers}
       response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 ---

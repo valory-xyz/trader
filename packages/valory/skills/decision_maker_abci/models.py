@@ -56,7 +56,10 @@ from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
-from packages.valory.skills.market_manager_abci.models import MarketManagerParams
+from packages.valory.skills.market_manager_abci.models import (
+    MarketManagerParams,
+    Subgraph,
+)
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
@@ -482,6 +485,7 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.results_filename: Path = Path(
             self._ensure("results_filename", kwargs, str)
         )
+        self.randomness: str = self._ensure("randomness", kwargs, str)
         super().__init__(*args, **kwargs)
 
 
@@ -568,13 +572,13 @@ class BenchmarkingMockData:
         )
 
 
-class TradesSubgraph(ApiSpecs):
+class TradesSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
 
 
-class ConditionalTokensSubgraph(ApiSpecs):
-    """A model that wraps ApiSpecs for the Coniditonal Tokens's subgraph specifications."""
+class ConditionalTokensSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Conditional Tokens' subgraph specifications."""
 
 
-class RealitioSubgraph(ApiSpecs):
+class RealitioSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Realitio's subgraph specifications."""

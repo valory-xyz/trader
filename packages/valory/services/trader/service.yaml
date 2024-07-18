@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihwp5cbuptu23bs6voi4ydsqaqnwv7zpuf6ibgfvidgadztcolnsq
+agent: valory/trader:0.1.0:bafybeiaxm4ts4odvhmbltyaa7rngm6jio7b4fdwvwszahw2ndfjdpd547a
 number_of_agents: 4
 deployment:
   agent:
@@ -83,6 +83,9 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
+        the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+          required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
@@ -163,6 +166,7 @@ type: skill
         part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
+        randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
     acc_info_fields: &id005
       args:
         tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
@@ -177,6 +181,9 @@ type: skill
         response_key: ${NETWORK_SUBGRAPH_RESPONSE_KEY:str:data:blocks}
         response_index: ${NETWORK_SUBGRAPH_RESPONSE_INDEX:int:0}
         response_type: ${NETWORK_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
         url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
     omen_subgraph: &id007
@@ -186,6 +193,9 @@ type: skill
         method: ${OMEN_SUBGRAPH_METHOD:str:POST}
         response_key: ${OMEN_SUBGRAPH_RESPONSE_KEY:str:data:fixedProductMarketMakers}
         response_type: ${OMEN_SUBGRAPH_RESPONSE_TYPE:str:list}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
         url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
     randomness_api: &id008
@@ -220,6 +230,9 @@ type: skill
         method: ${TRADES_SUBGRAPH_METHOD:str:POST}
         response_key: ${TRADES_SUBGRAPH_RESPONSE_KEY:str:data:fpmmTrades}
         response_type: ${TRADES_SUBGRAPH_RESPONSE_TYPE:str:list}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
         url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
     conditional_tokens_subgraph: &id012
@@ -229,6 +242,9 @@ type: skill
         method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
         response_key: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_KEY:str:data:user:userPositions}
         response_type: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_TYPE:str:list}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
         url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
     realitio_subgraph: &id013
@@ -238,6 +254,9 @@ type: skill
         method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
         response_key: ${REALITIO_SUBGRAPH_RESPONSE_KEY:str:data:answers}
         response_type: ${REALITIO_SUBGRAPH_RESPONSE_TYPE:str:list}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
         url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
 1:
@@ -287,6 +306,9 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
+        the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+          required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
@@ -399,6 +421,9 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
+        the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+          required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
@@ -511,6 +536,9 @@ type: skill
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
+        the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+          required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}

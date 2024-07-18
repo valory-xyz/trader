@@ -55,6 +55,7 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
+    MAX_LOG_SIZE,
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
@@ -372,7 +373,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if trades_market_chunk is not None:
                 yield from self.update_redeem_info(trades_market_chunk)
 
-        self.context.logger.info(f"Fetched redeeming information: {self.trades}")
+        # truncate the trades, otherwise logs get too big
+        trades_str = str(self.trades)[:MAX_LOG_SIZE]
+        self.context.logger.info(f"Fetched redeeming information: {trades_str}")
 
     def _filter_trades(self) -> None:
         """Filter the trades, removing the redeemed condition ids."""
