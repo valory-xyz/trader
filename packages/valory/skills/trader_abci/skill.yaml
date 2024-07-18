@@ -24,11 +24,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
-- valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
-- valory/decision_maker_abci:0.1.0:bafybeiejbfkl4im6srigta53ysan3tu5hlbb44cbd2mgryp2hsanyxpdge
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaiek6b3p7dro45qjoecmgseznhixhrgqgxfiap7lqw4rbi5fyhvy
-- valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
-- valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
+- valory/market_manager_abci:0.1.0:bafybeiay5j7w3tqcqghrywzufr475psamrdsl35dg6dzyhr5vzpktza6gi
+- valory/decision_maker_abci:0.1.0:bafybeiexdcmz5dsw6v6dqgllubtg4to37ejun7mh464tbthgo7qhvsbfky
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibxfcnpdwubwz2ph6iqhmj3yhdjnuw7f44sizv23qu7isdupe537q
+- valory/staking_abci:0.1.0:bafybeie4g6ck4gfri4jh4cibgebrpjv2fatkxe5gbeqjq3mh577xlxzcu4
+- valory/check_stop_trading_abci:0.1.0:bafybeiggacooq6hjgeox6nj4cwqmeuk4zs5ys7k6pzvyxsda2v44fyohvq
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
