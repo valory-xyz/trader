@@ -24,9 +24,14 @@ import random
 from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, Dict, List, Optional, Union
 
+from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
+
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
-WEIGHTED_ACCURACY_MAX = 101
+
+VOLUME_FACTOR_REGULARIZATION = 0.5
+UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (0.5, 100.5)
+SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -135,12 +140,14 @@ class EGreedyPolicy:
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
         self.weighted_accuracy = {
-            tool: (
+            tool: scale_value(
                 (
                     acc_info.accuracy
-                    + (acc_info.requests - acc_info.pending) / self.n_requests
-                )
-                / WEIGHTED_ACCURACY_MAX
+                    + ((acc_info.requests - acc_info.pending) / self.n_requests)
+                    * VOLUME_FACTOR_REGULARIZATION
+                ),
+                UNSCALED_WEIGHTED_ACCURACY_INTERVAL,
+                SCALED_WEIGHTED_ACCURACY_INTERVAL,
             )
             for tool, acc_info in self.accuracy_store.items()
         }
