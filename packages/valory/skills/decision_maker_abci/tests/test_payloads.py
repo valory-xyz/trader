@@ -17,23 +17,11 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
-from typing import Dict, Type
-
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.decision_maker_abci.payloads import (
-    BlacklistingPayload,
-    ClaimPayload,
-    DecisionReceivePayload,
-    DecisionRequestPayload,
-    MultisigTxPayload,
-    RedeemPayload,
-    SamplingPayload,
-    SubscriptionPayload,
-    ToolSelectionPayload,
-    VotingPayload,
-)
+from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload, SamplingPayload, \
+    MultisigTxPayload, RedeemPayload, DecisionRequestPayload, SubscriptionPayload, ClaimPayload, VotingPayload, \
+    BlacklistingPayload, ToolSelectionPayload
 
 
 @pytest.mark.parametrize(
@@ -51,7 +39,10 @@ from packages.valory.skills.decision_maker_abci.payloads import (
         ),
         (
             SamplingPayload,
-            {"index": 1, "bets_hash": "dummy_bets_hash"},
+            {
+                "index": 1,
+                "bets_hash": "dummy_bets_hash"
+            },
         ),
         (
             MultisigTxPayload,
@@ -91,15 +82,22 @@ from packages.valory.skills.decision_maker_abci.payloads import (
         ),
         (
             ClaimPayload,
-            {"vote": True},
+            {
+                "vote": True
+            },
         ),
         (
             VotingPayload,
-            {"vote": True},
+            {
+                "vote": True
+            },
         ),
         (
             BlacklistingPayload,
-            {"policy": "dummy policy", "bets_hash": "dummy bets hash"},
+            {
+                "policy": "dummy policy",
+                "bets_hash": "dummy bets hash"
+            },
         ),
         (
             ToolSelectionPayload,
@@ -107,12 +105,12 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "mech_tools": "dummy mech tools",
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
-                "selected_tool": "dummy_selected_tool",
+                "selected_tool": "dummy selected tool"
             },
         ),
-    ],
+    ]
 )
-def test_payload(payload_class: Type[BaseTxPayload], payload_kwargs: Dict) -> None:
+def test_payload(payload_class, payload_kwargs):
     """Test payloads."""
     payload = payload_class(sender="sender", **payload_kwargs)
 
