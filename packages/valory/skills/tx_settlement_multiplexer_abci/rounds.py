@@ -103,14 +103,14 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         # if a mech request was just performed, increase the utilized tool's counter
         if event == Event.MECH_REQUESTING_DONE:
             policy = synced_data.policy
-            policy.tool_used(synced_data.mech_tool)
+            policy.tool_used(synced_data.mech_tool_idx)
             policy_update = policy.serialize()
             self.synchronized_data.update(policy=policy_update)
 
         # if a bet was just placed, edit the utilized tools mapping
         if event == Event.BET_PLACEMENT_DONE:
             utilized_tools = synced_data.utilized_tools
-            utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool
+            utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool_idx
             tools_update = json.dumps(utilized_tools, sort_keys=True)
             self.synchronized_data.update(utilized_tools=tools_update)
 
