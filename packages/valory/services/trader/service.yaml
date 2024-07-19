@@ -179,7 +179,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
         url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
-    omen_subgraph: &id007
+    omen_subgraph: &id006
       args:
         headers:
           Content-Type: ${OMEN_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -191,14 +191,14 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
         url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    randomness_api: &id008
+    randomness_api: &id007
       args:
         method: ${RANDOMNESS_API_METHOD:str:GET}
         response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
         response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
         retries: ${RANDOMNESS_API_RETRIES:int:5}
         url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
-    mech_response: &id009
+    mech_response: &id008
       args:
         headers:
           Content-Type: ${MECH_RESPONSE_API_CONTENT_TYPE:str:application/json}
@@ -207,7 +207,7 @@ type: skill
         response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
         retries: ${MECH_RESPONSE_API_RETRIES:int:5}
         url: ${MECH_RESPONSE_API_URL:str:''}
-    agent_tools: &id010
+    agent_tools: &id009
       args:
         headers:
           Content-Type: ${AGENT_TOOLS_API_CONTENT_TYPE:str:application/json}
@@ -216,7 +216,7 @@ type: skill
         response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
         retries: ${AGENT_TOOLS_API_RETRIES:int:5}
         url: ${AGENT_TOOLS_API_URL:str:''}
-    trades_subgraph: &id011
+    trades_subgraph: &id010
       args:
         headers:
           Content-Type: ${TRADES_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -228,7 +228,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
         url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    conditional_tokens_subgraph: &id012
+    conditional_tokens_subgraph: &id011
       args:
         headers:
           Content-Type: ${CONDITIONAL_TOKENS_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -240,7 +240,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
         url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
-    realitio_subgraph: &id013
+    realitio_subgraph: &id012
       args:
         headers:
           Content-Type: ${REALITIO_SUBGRAPH_CONTENT_TYPE:str:application/json}
