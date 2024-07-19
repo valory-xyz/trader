@@ -143,7 +143,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - fetch error: 19.
         9. BetPlacementRound
             - done: 12.
-            - mock tx: 10.
+            - mock tx: 4.
             - insufficient balance: 18.
             - no majority: 9.
             - round timeout: 9.
