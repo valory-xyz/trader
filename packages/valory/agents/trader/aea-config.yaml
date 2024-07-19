@@ -192,6 +192,7 @@ models:
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
+      tools_accuracy_hash: ${str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
       prompt_template: ${str:With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?}
@@ -257,6 +258,12 @@ models:
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
       randomness: ${str:benchmarking_randomness}
+  acc_info_fields:
+    args:
+      tool: ${str:tool}
+      requests: ${str:total_requests}
+      accuracy: ${str:tool_accuracy}
+      sep: ${str:,}
   network_subgraph:
     args:
       headers:

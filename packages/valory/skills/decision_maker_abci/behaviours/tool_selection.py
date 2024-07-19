@@ -36,7 +36,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
     matching_round = ToolSelectionRound
 
-    def _select_tool(self) -> Generator[None, None, Optional[int]]:
+    def _select_tool(self) -> Generator[None, None, Optional[str]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         success = yield from self._setup_policy_and_tools()
         if not success:
@@ -47,10 +47,9 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             if self.benchmarking_mode.enabled
             else self.synchronized_data.most_voted_randomness
         )
-        selected_idx = self.policy.select_tool(randomness)
-        selected = self.mech_tools[selected_idx] if selected_idx is not None else "NaN"
-        self.context.logger.info(f"Selected the mech tool {selected!r}.")
-        return selected_idx
+        selected_tool = self.policy.select_tool(randomness)
+        self.context.logger.info(f"Selected the mech tool {selected_tool!r}.")
+        return selected_tool
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -58,6 +57,10 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             mech_tools = policy = utilized_tools = None
             selected_tool = yield from self._select_tool()
             if selected_tool is not None:
+                # the period will increment when the benchmarking finishes
+                benchmarking_running = self.synchronized_data.period_count == 0
+                if self.benchmarking_mode.enabled and benchmarking_running:
+                    self.policy.tool_used(selected_tool)
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)

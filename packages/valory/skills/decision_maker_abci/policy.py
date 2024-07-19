@@ -21,8 +21,8 @@
 
 import json
 import random
-from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, List, Optional, Union
+from dataclasses import asdict, dataclass, field, is_dataclass
+from typing import Any, Dict, List, Optional, Union
 
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
@@ -44,101 +44,139 @@ def argmax(li: List) -> int:
 
 
 @dataclass
+class AccuracyInfo:
+    """The accuracy information of a tool."""
+
+    # the number of requests that this tool has responded to
+    requests: int = 0
+    # the number of pending evaluations, i.e., responses for which we have not redeemed yet
+    pending: int = 0
+    # the accuracy of the tool
+    accuracy: float = 0.0
+
+
+class EGreedyPolicyDecoder(json.JSONDecoder):
+    """A custom JSON decoder for the e greedy policy."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the custom JSON decoder."""
+        super().__init__(object_hook=self.hook, *args, **kwargs)
+
+    @staticmethod
+    def hook(
+        data: Dict[str, Any]
+    ) -> Union["EGreedyPolicy", AccuracyInfo, Dict[str, "EGreedyPolicy"]]:
+        """Perform the custom decoding."""
+        for cls_ in (AccuracyInfo, EGreedyPolicy):
+            cls_attributes = cls_.__annotations__.keys()  # pylint: disable=no-member
+            if sorted(cls_attributes) == sorted(data.keys()):
+                # if the attributes match the ones of the current class, use it to perform the deserialization
+                return cls_(**data)
+
+        return data
+
+
+@dataclass
 class EGreedyPolicy:
-    """An e-Greedy policy for the tool selection."""
+    """An e-Greedy policy for the tool selection based on tool accuracy."""
 
     eps: float
-    counts: List[int]
-    rewards: List[float]
-    initial_value = 0
+    accuracy_store: Dict[str, AccuracyInfo] = field(default_factory=dict)
+    weighted_accuracy: Dict[str, float] = field(default_factory=dict)
 
-    @classmethod
-    def initial_state(cls, eps: float, n_tools: int) -> "EGreedyPolicy":
-        """Return an instance on its initial state."""
-        if n_tools <= 0 or eps > 1 or eps < 0:
-            error = f"Cannot initialize an e Greedy Policy with {eps=} and {n_tools=}"
+    def __post_init__(self) -> None:
+        """Perform post-initialization checks."""
+        if not (0 <= self.eps <= 1):
+            error = f"Cannot initialize the policy with an epsilon value of {self.eps}. Must be between 0 and 1."
             raise ValueError(error)
-
-        return EGreedyPolicy(
-            eps,
-            [cls.initial_value] * n_tools,
-            [float(cls.initial_value)] * n_tools,
-        )
+        self.update_weighted_accuracy()
 
     @classmethod
     def deserialize(cls, policy: str) -> "EGreedyPolicy":
         """Deserialize a string to an `EGreedyPolicy` object."""
-        return EGreedyPolicy(**json.loads(policy))
+        return json.loads(policy, cls=EGreedyPolicyDecoder)
+
+    @property
+    def tools(self) -> List[str]:
+        """Get the number of the policy's tools."""
+        return list(self.accuracy_store.keys())
 
     @property
     def n_tools(self) -> int:
         """Get the number of the policy's tools."""
-        return len(self.counts)
+        return len(self.accuracy_store)
 
     @property
-    def random_tool(self) -> int:
-        """Get the index of a tool randomly."""
-        return random.randrange(self.n_tools)  # nosec
+    def n_requests(self) -> int:
+        """Get the total number of requests."""
+        return sum(acc_info.requests for acc_info in self.accuracy_store.values())
 
     @property
     def has_updated(self) -> bool:
         """Whether the policy has ever been updated since its genesis or not."""
-        return sum(self.counts) > 0
+        return self.n_requests > 0
 
     @property
-    def reward_rates(self) -> List[float]:
-        """Get the reward rates."""
-        return [
-            reward / count if count > 0 else 0
-            for reward, count in zip(self.rewards, self.counts)
-        ]
+    def random_tool(self) -> str:
+        """Get the name of a tool randomly."""
+        return random.choice(list(self.accuracy_store.keys()))  # nosec
 
     @property
-    def best_tool(self) -> int:
+    def best_tool(self) -> str:
         """Get the best tool."""
-        return argmax(self.reward_rates)
+        weighted_accuracy = list(self.weighted_accuracy.values())
+        best = argmax(weighted_accuracy)
+        return self.tools[best]
 
-    def add_new_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
-        """Add new tools to the current policy."""
-        if avoid_shift:
-            indexes = sorted(indexes, reverse=True)
+    def update_weighted_accuracy(self) -> None:
+        """Update the weighted accuracy for each tool."""
+        self.weighted_accuracy = {
+            tool: (acc_info.accuracy / 100)
+            * (acc_info.requests - acc_info.pending)
+            / self.n_requests
+            for tool, acc_info in self.accuracy_store.items()
+        }
 
-        for i in indexes:
-            self.counts.insert(i, self.initial_value)
-            self.rewards.insert(i, float(self.initial_value))
-
-    def remove_tools(self, indexes: List[int], avoid_shift: bool = False) -> None:
-        """Remove the knowledge for the tools corresponding to the given indexes."""
-        if avoid_shift:
-            indexes = sorted(indexes, reverse=True)
-
-        for i in indexes:
-            try:
-                del self.counts[i]
-                del self.rewards[i]
-            except IndexError as exc:
-                error = "Attempted to remove tools using incorrect indexes!"
-                raise ValueError(error) from exc
-
-    def select_tool(self, randomness: RandomnessType) -> Optional[int]:
+    def select_tool(self, randomness: RandomnessType = None) -> Optional[str]:
         """Select a Mech tool and return its index."""
         if self.n_tools == 0:
             return None
 
-        random.seed(randomness)
-        if sum(self.reward_rates) == 0 or random.random() < self.eps:  # nosec
+        if randomness is not None:
+            random.seed(randomness)
+
+        if not self.has_updated or random.random() < self.eps:  # nosec
             return self.random_tool
 
         return self.best_tool
 
-    def tool_used(self, index: int) -> None:
-        """Increase the times used for the tool corresponding to the given index."""
-        self.counts[index] += 1
+    def tool_used(self, tool: str) -> None:
+        """Increase the times used for the given tool."""
+        self.accuracy_store[tool].pending += 1
+        self.update_weighted_accuracy()
 
-    def add_reward(self, index: int, reward: float = 0) -> None:
-        """Add a reward for the tool corresponding to the given index."""
-        self.rewards[index] += reward
+    def update_accuracy_store(self, tool: str) -> None:
+        """Update the accuracy store for the given tool."""
+        self.accuracy_store[tool].requests += 1
+        self.accuracy_store[tool].pending -= 1
+        self.update_weighted_accuracy()
 
     def serialize(self) -> str:
-        """Return the policy serialized."""
+        """Return the accuracy policy serialized."""
         return json.dumps(self, cls=DataclassEncoder, sort_keys=True)
+
+    def stats_report(self) -> str:
+        """Report policy statistics."""
+        if not self.has_updated:
+            return "No policy statistics available."
+
+        report = "Policy statistics so far (only for resolved markets):\n"
+        stats = (
+            f"{tool} tool:\n"
+            f"\tTimes used: {self.accuracy_store[tool].requests}\n"
+            f"\tWeighted Accuracy: {self.weighted_accuracy[tool]}"
+            for tool in self.tools
+        )
+        report += "\n".join(stats)
+        report += f"Best tool so far is {self.best_tool!r}."
+        return report
