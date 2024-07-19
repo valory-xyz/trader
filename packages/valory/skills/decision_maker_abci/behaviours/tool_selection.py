@@ -59,7 +59,11 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             if selected_tool is not None:
                 # the period will increment when the benchmarking finishes
                 benchmarking_running = self.synchronized_data.period_count == 0
-                if self.benchmarking_mode.enabled and benchmarking_running:
+                if (
+                    self.benchmarking_mode.enabled
+                    and benchmarking_running
+                    and not self.shared_state.last_benchmarking_has_run
+                ):
                     self.policy.tool_used(selected_tool)
                 mech_tools = json.dumps(self.mech_tools)
                 policy = self.policy.serialize()

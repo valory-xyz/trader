@@ -114,10 +114,10 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
             f"Chose block number {self.earliest_block_number!r} as closest to timestamp {timestamp!r}"
         )
 
-    def _try_update_policy(self, tool: str) -> None:
+    def _try_update_policy(self, tool: str, winning: bool) -> None:
         """Try to update the policy."""
         try:
-            self.policy.update_accuracy_store(tool)
+            self.policy.update_accuracy_store(tool, winning)
         except KeyError:
             self.context.logger.warning(
                 f"The stored utilized tools seem to be outdated as no {tool=} was found. "
@@ -134,9 +134,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
 
         # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
         del self.utilized_tools[update.transactionHash]
-        if not update.is_winning:
-            return
-        self._try_update_policy(tool)
+        self._try_update_policy(tool, update.is_winning)
 
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
@@ -932,9 +930,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _benchmarking_act(self) -> RedeemPayload:
         """The act of the agent while running in benchmarking mode."""
-        if self.mock_data.is_winning:
-            tool = self.synchronized_data.mech_tool
-            self._try_update_policy(tool)
+        tool = self.synchronized_data.mech_tool
+        winning = self.mock_data.is_winning
+        self._try_update_policy(tool, winning)
         return self._build_payload()
 
     def _normal_act(self) -> Generator[None, None, Optional[RedeemPayload]]:
