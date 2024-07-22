@@ -16,7 +16,7 @@ fingerprint:
   payloads.py: bafybeibnub5ehb2mvpcoan3x23pp5oz4azpofwrtcl32abswcfl4cmjlwq
   rounds.py: bafybeic7kre4hriounn6at63fjzttw45zoivxatg23cmojok4ah6fca7ca
   tests/__init__.py: bafybeiebjb2hkzsfskt5ecjqxbdkn6fiutaitk2cpb6gx5yfywijbiga2m
-  tests/test_payloads.py: bafybeiba45wbxji34vjfqxvet6w4b2sqfoe2j3x3eypfo7nnwlbweezjye
+  tests/test_payloads.py: bafybeiaq2dxpbein6qhipalibi57x6niiydxi6kvbpeqripzlngcgpb3qq
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
