@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
-from typing import Dict, Type, TypeVar
+from typing import Dict, Type
 
 import pytest
 
@@ -34,9 +34,6 @@ from packages.valory.skills.decision_maker_abci.payloads import (
     ToolSelectionPayload,
     VotingPayload,
 )
-
-
-base_tx_payload_type = TypeVar("base_tx_payload_type", bound=BaseTxPayload)
 
 
 @pytest.mark.parametrize(
@@ -116,7 +113,7 @@ base_tx_payload_type = TypeVar("base_tx_payload_type", bound=BaseTxPayload)
     ],
 )
 def test_payload(
-    payload_class: Type[base_tx_payload_type], payload_kwargs: Dict
+    payload_class: Type[BaseTxPayload], payload_kwargs: Dict
 ) -> None:
     """Test payloads."""
     payload = payload_class(sender="sender", **payload_kwargs)

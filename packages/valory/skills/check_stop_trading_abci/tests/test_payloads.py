@@ -23,7 +23,7 @@ from packages.valory.skills.check_stop_trading_abci.payloads import (
 )
 
 
-def test_check_stop_trading_abci_payload() -> None:
+def test_check_stop_trading_payload() -> None:
     """Test `CheckStopTradingPayload`."""
 
     payload = CheckStopTradingPayload(sender="sender", vote=True)
