@@ -403,6 +403,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         selected_type_tokens_in_pool: int,
         other_tokens_in_pool: int,
         bet_fee: int,
+        weighted_accuracy: float,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
@@ -423,6 +424,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
                     "other_tokens_in_pool": other_tokens_in_pool,
                     "bet_fee": bet_fee,
+                    "weighted_accuracy": weighted_accuracy,
                 }
             )
             results = self.execute_strategy(**kwargs)

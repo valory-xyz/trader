@@ -151,6 +151,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return int(self.db.get_strict("bet_amount"))
 
     @property
+    def weighted_accuracy(self) -> int:
+        """Get the weighted accuracy of the selected tool."""
+        return int(self.db.get_strict("weighted_accuracy"))
+
+    @property
     def is_profitable(self) -> bool:
         """Get whether the current vote is profitable or not."""
         return bool(self.db.get_strict("is_profitable"))
