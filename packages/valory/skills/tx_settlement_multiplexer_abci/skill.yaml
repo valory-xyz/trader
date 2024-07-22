@@ -13,7 +13,7 @@ fingerprint:
   fsm_specification.yaml: bafybeicd7us5ffvsrxm7ybaanyzojbhmo7xtsfd3swtdem4dfsxkidxw7a
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
   models.py: bafybeigtmxoecoow663hgqnyinxarlrttyyt5ghpbdamdv4tc4kikcfx3a
-  rounds.py: bafybeig77b7m5fyhy4bsdnmveszagq27v2ck7627tyhw6zzn7spmz5qalu
+  rounds.py: bafybeig3dhhrf5tkj63b3bk2mqfprcwzk3galz2ukzvdenz4g2femaixku
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -21,7 +21,7 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/decision_maker_abci:0.1.0:bafybeifa6dunlujza4kf6uc2wulrz44o7q6ufyyvzqzjazewqf3pnicko4
+- valory/decision_maker_abci:0.1.0:bafybeig5jrbi6oua7demy3e7nupmzynlozs3fd6d2ain7a2pyst7kboesu
 - valory/staking_abci:0.1.0:bafybeiafzonb4h4ahn2n5mmbx4vtkckbylbzrxnr2gmrhhltw6xa35d6ve
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
