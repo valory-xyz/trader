@@ -112,9 +112,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
         ),
     ],
 )
-def test_payload(
-    payload_class: Type[BaseTxPayload], payload_kwargs: Dict
-) -> None:
+def test_payload(payload_class: Type[BaseTxPayload], payload_kwargs: Dict) -> None:
     """Test payloads."""
     payload = payload_class(sender="sender", **payload_kwargs)
 
