@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeievwlanzqutpj24cg3fqfmvkeh2lebnjfnct5rnpgjp3poqosuy2u
+agent: valory/trader:0.1.0:bafybeicpf66igauitqbhnt24scqrmlxfu6ervkfyq2tucejxxz33f2rbtu
 number_of_agents: 4
 deployment:
   agent:
@@ -97,7 +97,6 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
-        tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
@@ -167,13 +166,7 @@ type: skill
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
         randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
-    acc_info_fields: &id005
-      args:
-        tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
-        requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
-        accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
-        sep: ${ACC_INFO_FIELDS_SEP:str:,}
-    network_subgraph: &id006
+    network_subgraph: &id005
       args:
         headers:
           Content-Type: ${NETWORK_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -186,7 +179,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
         url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
-    omen_subgraph: &id007
+    omen_subgraph: &id006
       args:
         headers:
           Content-Type: ${OMEN_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -198,14 +191,14 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
         url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    randomness_api: &id008
+    randomness_api: &id007
       args:
         method: ${RANDOMNESS_API_METHOD:str:GET}
         response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
         response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
         retries: ${RANDOMNESS_API_RETRIES:int:5}
         url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
-    mech_response: &id009
+    mech_response: &id008
       args:
         headers:
           Content-Type: ${MECH_RESPONSE_API_CONTENT_TYPE:str:application/json}
@@ -214,7 +207,7 @@ type: skill
         response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
         retries: ${MECH_RESPONSE_API_RETRIES:int:5}
         url: ${MECH_RESPONSE_API_URL:str:''}
-    agent_tools: &id010
+    agent_tools: &id009
       args:
         headers:
           Content-Type: ${AGENT_TOOLS_API_CONTENT_TYPE:str:application/json}
@@ -223,7 +216,7 @@ type: skill
         response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
         retries: ${AGENT_TOOLS_API_RETRIES:int:5}
         url: ${AGENT_TOOLS_API_URL:str:''}
-    trades_subgraph: &id011
+    trades_subgraph: &id010
       args:
         headers:
           Content-Type: ${TRADES_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -235,7 +228,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
         url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    conditional_tokens_subgraph: &id012
+    conditional_tokens_subgraph: &id011
       args:
         headers:
           Content-Type: ${CONDITIONAL_TOKENS_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -247,7 +240,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
         url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
-    realitio_subgraph: &id013
+    realitio_subgraph: &id012
       args:
         headers:
           Content-Type: ${REALITIO_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -365,15 +358,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -480,15 +472,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -595,15 +586,14 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection

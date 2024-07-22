@@ -47,12 +47,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibxfcnpdwubwz2ph6iqhmj3yhdjnuw7f44sizv23qu7isdupe537q
-- valory/market_manager_abci:0.1.0:bafybeiay5j7w3tqcqghrywzufr475psamrdsl35dg6dzyhr5vzpktza6gi
-- valory/decision_maker_abci:0.1.0:bafybeiexdcmz5dsw6v6dqgllubtg4to37ejun7mh464tbthgo7qhvsbfky
-- valory/trader_abci:0.1.0:bafybeifmbvhijpkwqvboda5rqjegtre4rvher6i3u4uqf2kkl7zp3rj264
-- valory/staking_abci:0.1.0:bafybeie4g6ck4gfri4jh4cibgebrpjv2fatkxe5gbeqjq3mh577xlxzcu4
-- valory/check_stop_trading_abci:0.1.0:bafybeiggacooq6hjgeox6nj4cwqmeuk4zs5ys7k6pzvyxsda2v44fyohvq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiggsvl7zxifj3haydd4njb3griljqpr4wledvqi3gh2lvcbbphxdq
+- valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
+- valory/decision_maker_abci:0.1.0:bafybeiapszwgdpq6ipu5ffjgzi3r7ylyuaju6n26xalclnnixnzprnynuu
+- valory/trader_abci:0.1.0:bafybeidvlov6ktapczwfeipyaalakbvb4eqcw6brctxzp6hqplf2pfpr7a
+- valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
+- valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -192,7 +192,6 @@ models:
       bet_threshold: ${int:100000000000000000}
       blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
-      tools_accuracy_hash: ${str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
       prompt_template: ${str:With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?}
@@ -258,12 +257,6 @@ models:
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
       randomness: ${str:benchmarking_randomness}
-  acc_info_fields:
-    args:
-      tool: ${str:tool}
-      requests: ${str:total_requests}
-      accuracy: ${str:tool_accuracy}
-      sep: ${str:,}
   network_subgraph:
     args:
       headers:
