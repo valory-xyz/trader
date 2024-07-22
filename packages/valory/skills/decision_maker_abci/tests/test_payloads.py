@@ -107,7 +107,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "mech_tools": "dummy mech tools",
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
-                "selected_tool": "dummy selected tool",
+                "index": 1,
             },
         ),
     ],
