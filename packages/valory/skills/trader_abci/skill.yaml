@@ -26,9 +26,9 @@ skills:
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/market_manager_abci:0.1.0:bafybeifcfbepv676petgzo23rzc2ourxk5qodj2gas5sabrocrns52ta6y
 - valory/decision_maker_abci:0.1.0:bafybeiaczpfpc3mqtlp27kqbokc2lllb5pc2s7xbv77auxgjadwwesz2k4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihq77plkraumxunqgm46yxtiotleulqr452congph6dpgayooz5ru
-- valory/staking_abci:0.1.0:bafybeiccpyttobg6jrhetzea4c7ovwdcwwduzqtcdegvbkrae5ov3boe5i
-- valory/check_stop_trading_abci:0.1.0:bafybeica6axgrc2vuoytt6fw3bqrr2lvrghph56ta547ln2h5aq7fxb77a
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifzqz4nc63cznudcngfedblgopjasz3arzltao2vslzgxziygc724
+- valory/staking_abci:0.1.0:bafybeiafzonb4h4ahn2n5mmbx4vtkckbylbzrxnr2gmrhhltw6xa35d6ve
+- valory/check_stop_trading_abci:0.1.0:bafybeici3fpa2g74l3ospknt3llrfjjdtrmlxatzdowvqwlfk2ok6ybp6e
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:
