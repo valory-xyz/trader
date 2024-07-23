@@ -34,7 +34,6 @@ class DecisionReceivePayload(BaseTxPayload):
     vote: Optional[int]
     confidence: Optional[float]
     bet_amount: Optional[int]
-    weighted_accuracy: Optional[float]
     next_mock_data_row: Optional[int]
 
 

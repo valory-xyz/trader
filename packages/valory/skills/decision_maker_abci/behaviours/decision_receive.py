@@ -164,16 +164,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         self._mech_response = mech_responses[0]
 
-    def _get_weighted_accuracy(self) -> Optional[float]:
-        tool_name = self.synchronized_data.mech_tool
-        store_tools = list(self.policy.weighted_accuracy.keys())
-
-        if tool_name not in store_tools:
-            self.context.logger.error(f"No accuracy information found for {tool_name}")
-            return None
-
-        return store_tools[tool_name]
-
     def _get_decision(
         self,
     ) -> Tuple[
@@ -424,7 +414,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             vote, p_yes, p_no, win_probability, confidence = self._get_decision()
-            weighted_accuracy = self._get_weighted_accuracy()
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None
@@ -457,7 +446,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 vote,
                 confidence,
                 bet_amount,
-                weighted_accuracy,
                 next_mock_data_row,
             )
 
