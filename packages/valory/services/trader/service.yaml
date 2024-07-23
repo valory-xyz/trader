@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeighyioiop2kmqfqogll5zzcynofq33zkzt66guwcg4brjf5disari
+agent: valory/trader:0.1.0:bafybeigmtqf34n3ggrbgi7o4fptka3xl4zxs3f6qbjtose2t6qk4gnl4vq
 number_of_agents: 4
 deployment:
   agent:
@@ -127,7 +127,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeiffg7dohioywaseou6cntk2qutn5a72zm7y46hwcbc5eedjns6vie",["kelly_criterion_no_conf"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.2],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -348,7 +348,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeiffg7dohioywaseou6cntk2qutn5a72zm7y46hwcbc5eedjns6vie",["kelly_criterion_no_conf"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.2],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -463,7 +463,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeiffg7dohioywaseou6cntk2qutn5a72zm7y46hwcbc5eedjns6vie",["kelly_criterion_no_conf"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.2],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -578,7 +578,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeiffg7dohioywaseou6cntk2qutn5a72zm7y46hwcbc5eedjns6vie",["kelly_criterion_no_conf"]]]}
+        file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae",["kelly_criterion_no_conf"]]]}
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.2],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
