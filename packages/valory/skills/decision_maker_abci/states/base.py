@@ -161,7 +161,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
                 f"The tool {tool_name} was selected but it is not available at the store_tools"
             )
 
-        return store_tools[tool_name]
+        return self.policy.weighted_accuracy[tool_name]
 
     @property
     def is_profitable(self) -> bool:
