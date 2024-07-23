@@ -46,7 +46,6 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.vote),
         get_name(SynchronizedData.confidence),
         get_name(SynchronizedData.bet_amount),
-        get_name(SynchronizedData.weighted_accuracy),
         get_name(SynchronizedData.next_mock_data_row),
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)

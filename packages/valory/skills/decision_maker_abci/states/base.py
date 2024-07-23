@@ -153,7 +153,13 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def weighted_accuracy(self) -> int:
         """Get the weighted accuracy of the selected tool."""
-        return int(self.db.get_strict("weighted_accuracy"))
+        tool_name = self.mech_tool
+        store_tools = list(self.policy.weighted_accuracy.keys())
+
+        if tool_name not in store_tools:
+            return None
+
+        return store_tools[tool_name]
 
     @property
     def is_profitable(self) -> bool:
