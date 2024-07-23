@@ -64,9 +64,16 @@ def get_adjusted_kelly_amount(
     of the selected tool to make the prediction. Default use-case: it uses the static kelly fraction
     """
     if weighted_accuracy is None:
-        error.append(f"No weighted accuracy information for this tool")
+        error.append(
+            f"No weighted accuracy information for this tool. Using static fraction."
+        )
         return int(kelly_bet_amount * static_kelly_fraction)
     # weighted_accuracy must be always between [0, 1]
+    if weighted_accuracy < 0 or weighted_accuracy > 1:
+        error.append(
+            f"Wrong value for the weighted accuracy {weighted_accuracy}. Accepted range [0, 1]. Using static fraction"
+        )
+        return int(kelly_bet_amount * static_kelly_fraction)
     dynamic_kelly_fraction = static_kelly_fraction + weighted_accuracy
     return int(kelly_bet_amount * dynamic_kelly_fraction)
 
