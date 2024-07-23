@@ -169,7 +169,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         store_tools = list(self.policy.weighted_accuracy.keys())
 
         if tool_name not in store_tools:
-            self.context.logger.info(f"No accuracy information found for {tool_name}")
+            self.context.logger.error(f"No accuracy information found for {tool_name}")
             return None
 
         return store_tools[tool_name]

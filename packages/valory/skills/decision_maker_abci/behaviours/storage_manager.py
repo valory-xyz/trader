@@ -296,11 +296,15 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _set_policy(self) -> Generator:
         """Set the E Greedy Policy."""
         if self.is_first_period or not self.synchronized_data.is_policy_set:
+            self.context.logger.info("Setting initial policy")
             self._policy = self._get_init_policy()
             local_tools = self._try_recover_mech_tools()
             if local_tools is None:
                 local_tools = self.mech_tools
         else:
+            self.context.logger.info(
+                "Reading policy information from synchronized data"
+            )
             self._policy = self.synchronized_data.policy
             local_tools = self.synchronized_data.available_mech_tools
 

@@ -55,19 +55,18 @@ def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_adjusted_kelly_amount(
-    info: Optional[str],
     kelly_bet_amount: float,
     weighted_accuracy: Optional[float],
     static_kelly_fraction: float,
+    error: list,
 ):
     """This function adjusts the kelly bet amount based on the weighted accuracy metric
     of the selected tool to make the prediction. Default use-case: it uses the static kelly fraction
     """
     if weighted_accuracy is None:
-        info.append(f"No weighted accuracy information for this tool")
+        error.append(f"No weighted accuracy information for this tool")
         return int(kelly_bet_amount * static_kelly_fraction)
     # weighted_accuracy must be always between [0, 1]
-    info.append(f"Weighted accuracy information: {weighted_accuracy}")
     dynamic_kelly_fraction = static_kelly_fraction + weighted_accuracy
     return int(kelly_bet_amount * dynamic_kelly_fraction)
 
@@ -162,7 +161,7 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     info.append("Applying STATIC kelly fraction to all bets")
     adj_kelly_bet_amount = int(kelly_bet_amount * bet_kelly_fraction)
     # adj_kelly_bet_amount = get_adjusted_kelly_amount(
-    #     info, kelly_bet_amount, weighted_accuracy, bet_kelly_fraction
+    #     kelly_bet_amount, weighted_accuracy, bet_kelly_fraction, error
     # )
     info.append(
         f"Adjusted Kelly bet amount: {wei_to_native(adj_kelly_bet_amount)} xDAI"
