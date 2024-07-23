@@ -25,7 +25,7 @@ fingerprint:
   behaviours/reedem.py: bafybeiaszvuwfamdq5m7zaxf3tvbyp6wocsksezfajqv5xpkh43r62cj6u
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
-  behaviours/storage_manager.py: bafybeiessf2lljyk3rzrshmlgohzwq2m5jpwrhnlkzmoyr4jzoo7sbznzq
+  behaviours/storage_manager.py: bafybeibnlg2eirzcxdpnuwbhzne77ear44cqwm4yae5bacgfu4vqqq7d7a
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeicvrvzcjt4hg5jyr2eleoajpbb7q2fbq2bopmbnwy33fsjdblzygu
@@ -38,7 +38,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeieffmnu3sivnagmhrhcufnh5zun6pxligc6wp26me43u6cjy2y3xi
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeico4b35oatbkgbi65xpu66fn42dneciqjzs6qc5zrdy7s45kkdmaq
+  states/base.py: bafybeihyuzkw5myfa2bdbsmfar6vrnoz26rca2mski4yykkvbx56kkfgdm
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni

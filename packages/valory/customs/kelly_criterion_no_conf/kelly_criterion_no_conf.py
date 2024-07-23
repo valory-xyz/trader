@@ -69,7 +69,7 @@ def get_adjusted_kelly_amount(
         )
         return int(kelly_bet_amount * static_kelly_fraction)
     # weighted_accuracy must be always between [0, 1]
-    if weighted_accuracy < 0 or weighted_accuracy > 1:
+    if not (0 <= weighted_accuracy <= 1):
         error.append(
             f"Wrong value for the weighted accuracy {weighted_accuracy}. Accepted range [0, 1]. Using static fraction"
         )

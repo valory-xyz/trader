@@ -47,17 +47,17 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidaedeewks6nmlnvuq33zvharub3gjs5puocv5obpscuoisnwj46y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictz2l5ionzynaie5x67oer2o34nkicywhekatmzngij2kuvmozla
 - valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
-- valory/decision_maker_abci:0.1.0:bafybeiatkwow3jmsqx46mlt64nlcmxeln6ltjsgojokh5efatmchzqslwa
-- valory/trader_abci:0.1.0:bafybeibn3h32oefevgdryj2ogf7r776rphyoe4mdtc4qps6pti7qz4dmpu
+- valory/decision_maker_abci:0.1.0:bafybeifuvofq63naxvzdreacj3tu2ak46enhverf4u3d4wkg3az62ig5te
+- valory/trader_abci:0.1.0:bafybeiggfteuvujuhnahjpqbivjq72gvfdjtvadaebnq3iemaqzklypmim
 - valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
 - valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
-- valory/kelly_criterion_no_conf:0.1.0:bafybeidvj4jdw5thmmf2ejaqgnycwy4pp7tdlkrnw6r3s6vm47kzw4hloy
+- valory/kelly_criterion_no_conf:0.1.0:bafybeiffg7dohioywaseou6cntk2qutn5a72zm7y46hwcbc5eedjns6vie
 - w1kke/always_blue:0.1.0:bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm
 - jhehemann/kelly_criterion:0.1.0:bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
 default_ledger: ethereum
