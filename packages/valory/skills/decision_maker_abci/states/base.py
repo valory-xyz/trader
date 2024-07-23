@@ -158,7 +158,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
 
         if tool_name not in store_tools:
             raise ValueError(
-                f"The tool {tool_name} was selected but it is not available at the store_tools"
+                f"The tool {tool_name} was selected but it is not available in the policy"
             )
 
         return self.policy.weighted_accuracy[tool_name]

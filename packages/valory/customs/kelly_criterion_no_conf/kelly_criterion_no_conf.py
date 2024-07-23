@@ -165,11 +165,12 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
 
     info.append(f"Kelly bet amount: {wei_to_native(kelly_bet_amount)} xDAI")
     info.append(f"Bet kelly fraction: {bet_kelly_fraction}")
-    info.append("Applying STATIC kelly fraction to all bets")
-    adj_kelly_bet_amount = int(kelly_bet_amount * bet_kelly_fraction)
-    # adj_kelly_bet_amount = get_adjusted_kelly_amount(
-    #     kelly_bet_amount, weighted_accuracy, bet_kelly_fraction, error
-    # )
+    info.append(
+        f"Applying dynamic kelly fraction to all bets. Weighted accuracy of the tool={weighted_accuracy}"
+    )
+    adj_kelly_bet_amount = get_adjusted_kelly_amount(
+        kelly_bet_amount, weighted_accuracy, bet_kelly_fraction, error
+    )
     info.append(
         f"Adjusted Kelly bet amount: {wei_to_native(adj_kelly_bet_amount)} xDAI"
     )
