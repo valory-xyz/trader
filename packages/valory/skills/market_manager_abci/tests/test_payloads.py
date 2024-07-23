@@ -16,18 +16,15 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-"""This module contains the transaction payloads for the check stop trading abci."""
+"""This module contains the transaction payloads for the market manager abci."""
 
-from packages.valory.skills.check_stop_trading_abci.payloads import (
-    CheckStopTradingPayload,
-)
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
-def test_check_stop_trading_payload() -> None:
-    """Test `CheckStopTradingPayload`."""
+def test_update_bets_payload() -> None:
+    """Test `UpdateBetsPayload`."""
 
-    payload = CheckStopTradingPayload(sender="sender", vote=True)
+    payload = UpdateBetsPayload(sender="sender", bets_hash="dummy bets hash")
 
-    assert payload.vote
-    assert payload.data == {"vote": True}
-    assert CheckStopTradingPayload.from_json(payload.json) == payload
+    assert payload.bets_hash == "dummy bets hash"
+    assert UpdateBetsPayload.from_json(payload.json) == payload
