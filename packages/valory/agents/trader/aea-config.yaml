@@ -47,17 +47,17 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiglzfw2p4wuiyzlrkkqg44ijgsj3urplpzojhsx57otsdz6dwpqcq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiazho52hktwiuhgikbyns4tslhsawnxo25qiyvxz7yfbxbwi6jp54
 - valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
-- valory/decision_maker_abci:0.1.0:bafybeiafxsj5hbymw4a7nyl576vsnuwqjiw4juajgfcxdyyw3k32wucgmy
-- valory/trader_abci:0.1.0:bafybeidlh7a2vitvko5m4tbjj6oiegsf6fxbm3g7y4ns4tpjzegyse3opy
+- valory/decision_maker_abci:0.1.0:bafybeidlixh4nvxzpjuki6eiyegzth45fvtlnwcrfmiwn2itk5g6nzg4re
+- valory/trader_abci:0.1.0:bafybeiagnesfivpc5wv2svfitjb3khzdjmiruce6px76i5yjocifzd4yui
 - valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
 - valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24
-- valory/kelly_criterion_no_conf:0.1.0:bafybeichtciitdkkzgk27s5f5fpbcnolecqkgbwztdg6bkyb3kclwm7pkq
+- valory/kelly_criterion_no_conf:0.1.0:bafybeic4o3gdzqk6lnwpusbdkgugwhuyx5or7jebopuiqn6ioh5eunkesa
 - w1kke/always_blue:0.1.0:bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm
 - jhehemann/kelly_criterion:0.1.0:bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq
 default_ledger: ethereum
