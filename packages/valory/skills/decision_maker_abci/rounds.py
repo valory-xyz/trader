@@ -302,6 +302,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.mech_price),
             get_name(SynchronizedData.mocking_mode),
             get_name(SynchronizedData.next_mock_data_row),
+            get_name(SynchronizedData.agreement_id),
         }
     )
     final_states: Set[AppState] = {
@@ -342,6 +343,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedSubscriptionRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
+            get_name(SynchronizedData.agreement_id),
         },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
         FinishedWithoutRedeemingRound: set(),
