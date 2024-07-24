@@ -66,10 +66,8 @@ class SubscriptionRound(TxPreparationRound):
         if update is None:
             return None
 
-        self.context.logger.info(f"Log most voted payload: {self.most_voted_payload_values}")
-
         sync_data, event = update
-        agreement_id = self.most_voted_payload_values[2]
+        agreement_id = self.most_voted_payload_values[3]
         sync_data = sync_data.update(
             agreement_id=agreement_id,
         )
