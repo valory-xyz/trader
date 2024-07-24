@@ -106,4 +106,4 @@ class ToolSelectionPayload(BaseTxPayload):
     mech_tools: Optional[str]
     policy: Optional[str]
     utilized_tools: Optional[str]
-    index: Optional[int]
+    selected_tool: Optional[str]

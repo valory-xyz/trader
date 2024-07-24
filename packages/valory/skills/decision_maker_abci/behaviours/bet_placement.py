@@ -195,7 +195,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         outcome = self.sampled_bet.get_outcome(self.outcome_index)
         investment = self._collateral_amount_info(self.investment_amount)
         self.context.logger.info(
-            f"Preparing a mutlisig transaction to place a bet for {outcome!r}, with confidence "
+            f"Preparing a multisig transaction to place a bet for {outcome!r}, with confidence "
             f"{self.synchronized_data.confidence!r}, for the amount of {investment}, which is equal to the amount of "
             f"{self.buy_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )

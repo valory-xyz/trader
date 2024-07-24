@@ -28,6 +28,9 @@ from packages.valory.skills.abstract_round_abci.models import (
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.decision_maker_abci.models import (
+    AccuracyInfoFields as BaseAccuracyInfoFields,
+)
+from packages.valory.skills.decision_maker_abci.models import (
     AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
 )
 from packages.valory.skills.decision_maker_abci.models import (
@@ -92,6 +95,7 @@ TradesSubgraph = DecisionMakerTradesSubgraph
 ConditionalTokensSubgraph = DecisionMakerConditionalTokensSubgraph
 RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
+AccuracyInfoFields = BaseAccuracyInfoFields
 
 
 MARGIN = 5
