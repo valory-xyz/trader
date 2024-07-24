@@ -47,7 +47,7 @@ fingerprint:
   states/decision_request.py: bafybeiarv3r5j7cfvxmudki2llbdl2pvf24p5mvsva6bdgrylnwdyag5xy
   states/final_states.py: bafybeicjrrojo3gmfaxzicwloyorlnqgzl6a2avevo4nvhoh424zwzmbti
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
-  states/order_subscription.py: bafybeiblxbxp57wethm3qhbcu422ulmus6fc6hwwhk3hwmh5f7l25kh6yi
+  states/order_subscription.py: bafybeihxa6k6fmxng6hjnksvueldirlt7i4eeep73wotgkva4nuhzexc64
   states/randomness.py: bafybeifgsyipvvu2e6caggyoo5vsmd64uexuho5ybyf3ry424r7kldcfre
   states/redeem.py: bafybeiblidmpt73ocac73wmakusrnf5267vs7s2foc5pqkrz4vuqgy3b4u
   states/sampling.py: bafybeihriyyskmlupjiwytx2pdpftms7plkjku5bip64c3ztx7oi3n43ci
