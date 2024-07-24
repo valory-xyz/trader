@@ -343,6 +343,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
                     return SubscriptionRound.ERROR_PAYLOAD
 
         purchase_params = yield from self._get_purchase_params()
+        self.context.logger.info(f"Purchase params for subscription: {purchase_params}")
         if purchase_params is None:
             return SubscriptionRound.ERROR_PAYLOAD
 
