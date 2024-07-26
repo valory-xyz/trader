@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicdbgv3sricq6uafa6ps7rdjvqhelkbqktp5j4i6wzr2eetm4fn74
+agent: valory/trader:0.1.0:bafybeigw6e7b5riiinbxa263q2k7qrk3zbejuabngdm2g4w2uu42qyyzsy
 number_of_agents: 4
 deployment:
   agent:
@@ -136,7 +136,7 @@ type: skill
           ["escrow_payment_condition_address", "0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446"],
           ["lock_payment_condition_address", "0x2749DDEd394196835199471027713773736bffF2"],
           ["transfer_nft_condition_address", "0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8"],
-          ["token_address", "0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce"], ["order_address",
+          ["token_address", "0x1b5DeaD7309b56ca7663b3301A503e077Be18cba"], ["order_address",
           "0x72201948087aE83f8Eac22cf7A9f2139e4cFA829"], ["nft_amount", "100"], ["payment_token",
           "0x0000000000000000000000000000000000000000"], ["order_address", "0x72201948087aE83f8Eac22cf7A9f2139e4cFA829"],
           ["price", "1000000000000000000"]]}
