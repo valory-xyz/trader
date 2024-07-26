@@ -16,14 +16,14 @@
         "contract/valory/staking_token/0.1.0": "bafybeig4fl35dn7d5gnprux2nwsqbirm7zkiujz3xvrwcjuktz6hkq4as4",
         "contract/valory/relayer/0.1.0": "bafybeihzgjyvhtorugjw3yldznqsbwo3aqpxowm7k2nrvj6qtwpsc7jl7u",
         "skill/valory/market_manager_abci/0.1.0": "bafybeihuianzp5qrlxysdokrxzjrkt4pkruickdbzew5sngysel5obkwfm",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeif4z56cct2ixfx3p675xkdurua5yrpoov5xv2dobtsqpwbhufbbp4",
-        "skill/valory/trader_abci/0.1.0": "bafybeib42pak7gqtw55pwgsc2v4yhpjfp3lso3pgphfeits7cdlgcsukne",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibstiy3cuhf7jg3evj3v4onqvlfprxozlpjuojppfsjdxbbrqdoae",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeig7bvjkf53lvbfvlf2xpre6dsjarun2hdugsi27xruqfbae5r4t4e",
+        "skill/valory/trader_abci/0.1.0": "bafybeifqlpdininougvj2lto6d2uplcp5iablsthkvc7cbkcc7pr6yp6pi",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiaqh2cxqcf7mazmsjuiuakwj6xkcva3s77ucelcnwu7ugp2mw2fy4",
         "skill/valory/staking_abci/0.1.0": "bafybeiafzonb4h4ahn2n5mmbx4vtkckbylbzrxnr2gmrhhltw6xa35d6ve",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeieyw7kanelhv3dnbd5ypo26ivnyqfg3ueiqt6s4wkvoz3gvfisihe",
-        "agent/valory/trader/0.1.0": "bafybeieplp55xxh4bnufeuknqmhyxc5qfnihyj5v56o2225hn5x6iny3wa",
-        "service/valory/trader/0.1.0": "bafybeif6d4jwhwgrr37ltcfgtz7fswcm67wfbvm7cu46f3duflcrocbcbu",
-        "service/valory/trader_pearl/0.1.0": "bafybeiaz5rbqk3vlf2kjdfhuy2ol5dtimkuotilorbubxgcr2wqqrchc6y"
+        "agent/valory/trader/0.1.0": "bafybeibcvvf7dujjeytg7qcpfmktzaodzyroopwlr4qugkc4wkls3vdmgm",
+        "service/valory/trader/0.1.0": "bafybeigg3zn5ujk54mkm6mn2blqosvih554ppljmzfwa6ne6cnwwb2f72e",
+        "service/valory/trader_pearl/0.1.0": "bafybeieexstxhfu7mn47cmyrubq4h3jbmhyvp3c5xieqrurhktpcbkrlxq"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
