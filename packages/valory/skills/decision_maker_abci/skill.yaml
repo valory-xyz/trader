@@ -53,7 +53,6 @@ fingerprint:
   states/sampling.py: bafybeihriyyskmlupjiwytx2pdpftms7plkjku5bip64c3ztx7oi3n43ci
   states/tool_selection.py: bafybeiak5ihuie4nxh3sguiea6pcdgyxr4k4xyzvq6o2uj5xpf7urocawy
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
-  tests/behaviours/.coverage: bafybeigpapif6g2wseb6rgh53m7bxti4lnnfyhmepudcyx2c7gxgurqxai
   tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
