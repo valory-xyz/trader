@@ -16,7 +16,7 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-"""This module contains tests for the handlers for the check stop trading abci."""
+"""This module contains the tests for the handlers for the staking abci."""
 
 from unittest.mock import MagicMock
 
@@ -43,8 +43,8 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
-from packages.valory.skills.check_stop_trading_abci.handlers import (
-    ABCICheckStopTradingHandler,
+from packages.valory.skills.staking_abci.handlers import (
+    ABCIStakingHandler,
     ContractApiHandler,
     HttpHandler,
     IpfsHandler,
@@ -57,7 +57,7 @@ from packages.valory.skills.check_stop_trading_abci.handlers import (
 @pytest.mark.parametrize(
     "handler, base_handler",
     [
-        (ABCICheckStopTradingHandler, ABCIRoundHandler),
+        (ABCIStakingHandler, ABCIRoundHandler),
         (HttpHandler, BaseHttpHandler),
         (SigningHandler, BaseSigningHandler),
         (LedgerApiHandler, BaseLedgerApiHandler),
@@ -67,7 +67,7 @@ from packages.valory.skills.check_stop_trading_abci.handlers import (
     ],
 )
 def test_handler(handler: Handler, base_handler: Handler) -> None:
-    """Test that the 'handlers.py' of the CheckStopTradingAbci can be imported."""
+    """Test that the 'handlers.py' of the StakingAbci can be imported."""
     handler = handler(
         name="dummy_handler",
         skill_context=MagicMock(skill_id=PublicId.from_str("dummy/skill:0.1.0")),
