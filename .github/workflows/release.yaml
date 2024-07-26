@@ -98,7 +98,7 @@ jobs:
 
   deploy-service-on-propel:
     name: Deploy service on propel
-    environment: ${{ github.event.action == 'released' && 'production' || 'staging' }}
+    environment: production
     needs:
     - "publish-packages"
     - "publish-images"
