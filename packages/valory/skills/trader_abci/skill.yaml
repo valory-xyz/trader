@@ -11,9 +11,9 @@ fingerprint:
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
   composition.py: bafybeidp3sl5uomb5stgk6y7nifxv7zomfe3emqstbuw32urorpimq7lgi
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeif7fxldzdglalwgmo3u44jkjdox2tdgf6zbq7epw6ju4kyl5b7tze
+  fsm_specification.yaml: bafybeig72lgkum7aeieb52jch6qkfdtarzdc2w64562hutck4rowzo3dcy
   handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
-  models.py: bafybeicovhcparwbvqdbrofv4kxiyznuezpqxsdxqx3wkkvht7patop4e4
+  models.py: bafybeidrtcycxhuig776kjhnuonwlvjmn4kb2n3uvxdrpmc3hwn65qsolm
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -25,8 +25,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
-- valory/decision_maker_abci:0.1.0:bafybeidsxat2vtopkf7antp7pxlbc4de7zavznti5he4r2u5vyhmznd4b4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeielt5iz7sdkqtygkkakqr35uamqtlip7sezzyexacqt7hzmznfu54
+- valory/decision_maker_abci:0.1.0:bafybeiapszwgdpq6ipu5ffjgzi3r7ylyuaju6n26xalclnnixnzprnynuu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiggsvl7zxifj3haydd4njb3griljqpr4wledvqi3gh2lvcbbphxdq
 - valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
 - valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -161,6 +161,7 @@ models:
       bet_threshold: 100000000000000000
       blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
+      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
@@ -270,6 +271,13 @@ models:
       results_filename: benchmarking_results.csv
       randomness: benchmarking_randomness
     class_name: BenchmarkingMode
+  acc_info_fields:
+    args:
+      tool: tool
+      requests: total_requests
+      accuracy: tool_accuracy
+      sep: ','
+    class_name: AccuracyInfoFields
   network_subgraph:
     args:
       api_id: network

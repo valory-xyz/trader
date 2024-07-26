@@ -111,6 +111,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self._rows_exceeded = True
                 return None
 
+            next_row: Optional[Dict[str, str]] = next(reader, {})
+            if not next_row:
+                self.shared_state.last_benchmarking_has_run = True
+
         msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
         self.context.logger.info(msg)
         return row_with_headers
@@ -118,11 +122,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     def _parse_dataset_row(self, row: Dict[str, str]) -> str:
         """Parse a dataset's row to store the mock market data and to mock a prediction response."""
         mode = self.benchmarking_mode
-        self.shared_state.mock_data = BenchmarkingMockData(
-            row[mode.question_id_field],
-            row[mode.question_field],
-            row[mode.answer_field],
-        )
         mech_tool = self.synchronized_data.mech_tool
         fields = {}
 
@@ -135,6 +134,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 fields[prediction_attribute] = row[field_part + mech_tool]
             else:
                 fields[prediction_attribute] = row[mech_tool + field_part]
+
+        # set the benchmarking mock data
+        self.shared_state.mock_data = BenchmarkingMockData(
+            row[mode.question_id_field],
+            row[mode.question_field],
+            row[mode.answer_field],
+            float(fields[P_YES_FIELD]),
+        )
 
         # set the info utility to zero as it does not matter for the benchmark
         fields[INFO_UTILITY_FIELD] = "0"
