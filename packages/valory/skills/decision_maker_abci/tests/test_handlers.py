@@ -19,7 +19,7 @@
 """This module contains the tests for the handlers for the decision maker abci."""
 import json
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
@@ -69,7 +69,7 @@ class GetHandlerTestCase:
     name: str
     url: str
     method: str
-    expected_handler: str | None
+    expected_handler: Union[str, None]
 
 
 @dataclass
@@ -80,10 +80,10 @@ class HandleTestCase:
     message_performative: str
     message_sender: str
     get_handler_return_value: tuple
-    message_url: str | None = None
-    message_method: str | None = None
-    update_return_value: MagicMock | None = None
-    expected_logger_call: str | None = None
+    message_url: Union[str, None] = None
+    message_method: Union[str, None] = None
+    update_return_value: Union[MagicMock, None] = None
+    expected_logger_call: Union[str, None] = None
     expected_handler_call: bool = False
 
 
