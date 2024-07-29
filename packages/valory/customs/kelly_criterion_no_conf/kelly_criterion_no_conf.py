@@ -19,7 +19,7 @@
 
 """This module contains the kelly criterion strategy without confidence factor in the formula."""
 
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Optional
 
 REQUIRED_FIELDS = frozenset(
     {
@@ -31,6 +31,7 @@ REQUIRED_FIELDS = frozenset(
         "selected_type_tokens_in_pool",
         "other_tokens_in_pool",
         "bet_fee",
+        "weighted_accuracy",
         "floor_balance",
     }
 )
@@ -51,6 +52,30 @@ def check_missing_fields(kwargs: Dict[str, Any]) -> List[str]:
 def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
     """Remove the irrelevant fields from the given kwargs."""
     return {key: value for key, value in kwargs.items() if key in ALL_FIELDS}
+
+
+def get_adjusted_kelly_amount(
+    kelly_bet_amount: float,
+    weighted_accuracy: Optional[float],
+    static_kelly_fraction: float,
+    error: list,
+):
+    """This function adjusts the kelly bet amount based on the weighted accuracy metric
+    of the selected tool to make the prediction. Default use-case: it uses the static kelly fraction
+    """
+    if weighted_accuracy is None:
+        error.append(
+            f"No weighted accuracy information for this tool. Using static fraction."
+        )
+        return int(kelly_bet_amount * static_kelly_fraction)
+    # weighted_accuracy must be always between [0, 1]
+    if not (0 <= weighted_accuracy <= 1):
+        error.append(
+            f"Wrong value for the weighted accuracy {weighted_accuracy}. Accepted range [0, 1]. Using static fraction"
+        )
+        return int(kelly_bet_amount * static_kelly_fraction)
+    dynamic_kelly_fraction = static_kelly_fraction + weighted_accuracy
+    return int(kelly_bet_amount * dynamic_kelly_fraction)
 
 
 def calculate_kelly_bet_amount_no_conf(
@@ -104,6 +129,7 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     selected_type_tokens_in_pool: int,
     other_tokens_in_pool: int,
     bet_fee: int,
+    weighted_accuracy: float,
     floor_balance: int,
     max_bet: int = DEFAULT_MAX_BET,
 ) -> Dict[str, Union[int, List[str]]]:
@@ -139,7 +165,12 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
 
     info.append(f"Kelly bet amount: {wei_to_native(kelly_bet_amount)} xDAI")
     info.append(f"Bet kelly fraction: {bet_kelly_fraction}")
-    adj_kelly_bet_amount = int(kelly_bet_amount * bet_kelly_fraction)
+    info.append(
+        f"Applying dynamic kelly fraction to all bets. Weighted accuracy of the tool={weighted_accuracy}"
+    )
+    adj_kelly_bet_amount = get_adjusted_kelly_amount(
+        kelly_bet_amount, weighted_accuracy, bet_kelly_fraction, error
+    )
     info.append(
         f"Adjusted Kelly bet amount: {wei_to_native(adj_kelly_bet_amount)} xDAI"
     )

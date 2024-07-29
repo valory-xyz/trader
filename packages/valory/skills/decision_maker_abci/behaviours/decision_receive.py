@@ -360,6 +360,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             selected_type_tokens_in_pool,
             other_tokens_in_pool,
             bet.fee,
+            self.synchronized_data.weighted_accuracy,
         )
         bet_threshold = self.params.bet_threshold
         bet_amount = max(bet_amount, bet_threshold)

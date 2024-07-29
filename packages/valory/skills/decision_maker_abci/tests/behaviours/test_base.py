@@ -262,6 +262,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             0,
             0,
             0,
+            0,
         )
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls
