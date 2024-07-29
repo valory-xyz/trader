@@ -151,7 +151,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return int(self.db.get_strict("bet_amount"))
 
     @property
-    def weighted_accuracy(self) -> int:
+    def weighted_accuracy(self) -> float:
         """Get the weighted accuracy of the selected tool."""
         tool_name = self.mech_tool
         store_tools = list(self.policy.weighted_accuracy.keys())
