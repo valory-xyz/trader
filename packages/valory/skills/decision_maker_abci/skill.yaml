@@ -38,7 +38,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeieffmnu3sivnagmhrhcufnh5zun6pxligc6wp26me43u6cjy2y3xi
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeiawpbinmdx7thiwfasmwvcxunh2hdfr37gq2nrswy3zyzf53e3q5m
+  states/base.py: bafybeicrzw6p4dq52adkdjlduplt3expzajqmd3nkcpsw5yalfc3dwv75q
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni

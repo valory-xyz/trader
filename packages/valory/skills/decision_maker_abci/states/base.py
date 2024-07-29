@@ -154,13 +154,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def weighted_accuracy(self) -> float:
         """Get the weighted accuracy of the selected tool."""
         tool_name = self.mech_tool
-        store_tools = list(self.policy.weighted_accuracy.keys())
-
+        store_tools = set(self.policy.weighted_accuracy.keys())
         if tool_name not in store_tools:
             raise ValueError(
-                f"The tool {tool_name} was selected but it is not available in the policy"
+                f"The tool {tool_name} was selected but it is not available in the policy!"
             )
-
         return self.policy.weighted_accuracy[tool_name]
 
     @property
