@@ -47,12 +47,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigzeo3ijyx4jqowc6b3tbgtqminzpn74oqggovo4igh3nfa25662y
-- valory/market_manager_abci:0.1.0:bafybeig44vtxcq7aarqkg2mskly3zwwnyfc45rtdvorwz6ywspwg3obqn4
-- valory/decision_maker_abci:0.1.0:bafybeiaw2rjuh5hwl452mt3toyfdm6tqevzadyz4ejjqhr2rklrcftnwua
-- valory/trader_abci:0.1.0:bafybeicw2igaxftahdjnb6hcmfol67dttlxredy36txgozak4cseo4ypia
-- valory/staking_abci:0.1.0:bafybeidubhfvlf6x627t4wetc6ran5sb4pttjphyhv6vefp2a4kcuca2be
-- valory/check_stop_trading_abci:0.1.0:bafybeiboctfgetji6xlzw2buts5zsejnlrrhqkppme2p6fwzu26zznb324
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiatr5y2qhqkqc7xtllwagk66wfnmbvdjmokb6ptlrhczzwwn76fce
+- valory/market_manager_abci:0.1.0:bafybeiai6djelf6d4dkxgkv46l24q2gz7736b3jdhbxslvcydpvnvrse6e
+- valory/decision_maker_abci:0.1.0:bafybeieaenzaucsz7234gynswn7f2ufsvhkhbniuc4mhh3kvu7atvdjqwu
+- valory/trader_abci:0.1.0:bafybeidqh5nmjg6jk5hwqzf3abvjd4jiabs6eroisw5nh6d557isorxely
+- valory/staking_abci:0.1.0:bafybeiduborfqevheegy3plk7bzhkl4fukwixvlb57tenijdepintubbdi
+- valory/check_stop_trading_abci:0.1.0:bafybeiepylk35n3faurvp7dskjkdovehftzfjrjxfkpekzuaovt5gojxne
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -216,13 +216,13 @@ models:
         "stabilityai-stable-diffusion-768-v2-1"]}
       use_nevermined: ${bool:true}
       mech_to_subscription_params: ${list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
-        ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
-        ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
-        ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
-        ["transfer_nft_condition_address", "0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979"],
-        ["token_address", "0x80A9b55F8604acC26dF2Ac6e07F9dC5B0eAa05Ce"], ["order_address",
-        "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
-        "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
+        ["did", "did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c"],
+        ["escrow_payment_condition_address", "0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446"],
+        ["lock_payment_condition_address", "0x2749DDEd394196835199471027713773736bffF2"],
+        ["transfer_nft_condition_address", "0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8"],
+        ["token_address", "0x1b5DeaD7309b56ca7663b3301A503e077Be18cba"], ["order_address",
+        "0x72201948087aE83f8Eac22cf7A9f2139e4cFA829"], ["nft_amount", "100"], ["payment_token",
+        "0x0000000000000000000000000000000000000000"], ["order_address", "0x72201948087aE83f8Eac22cf7A9f2139e4cFA829"],
         ["price", "1000000000000000000"]]}
       staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
       staking_interaction_sleep_time: ${int:5}

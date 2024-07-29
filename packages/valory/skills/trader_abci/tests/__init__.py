@@ -16,18 +16,4 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-"""This module contains the transaction payloads for the check stop trading abci."""
-
-from packages.valory.skills.check_stop_trading_abci.payloads import (
-    CheckStopTradingPayload,
-)
-
-
-def test_check_stop_trading_payload() -> None:
-    """Test `CheckStopTradingPayload`."""
-
-    payload = CheckStopTradingPayload(sender="sender", vote=True)
-
-    assert payload.vote
-    assert payload.data == {"vote": True}
-    assert CheckStopTradingPayload.from_json(payload.json) == payload
+"""This module contains the tests for trader abci."""

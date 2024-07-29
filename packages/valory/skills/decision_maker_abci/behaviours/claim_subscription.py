@@ -67,6 +67,9 @@ class ClaimSubscriptionBehaviour(BaseSubscriptionBehaviour):
             "nftType": ERC1155,
             "serviceIndex": SERVICE_INDEX,
         }
+        self.context.logger.info(
+            "Claiming subscription with body: %s", json.dumps(body)
+        )
         res = yield from self.get_http_response(
             "POST",
             claim_endpoint,
