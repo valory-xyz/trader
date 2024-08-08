@@ -6,9 +6,9 @@ description: Relayer contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeibi3ij5t2qq2isuq4rtomvlmrcvreggzpzbzn3u7s6ndbo3tiv5c4
-  build/Relayer.json: bafybeiao22dbtjh6nvtwzxkis6hgmi3yphwc6ghzmgbvqrl3dxsvhroike
-  contract.py: bafybeih6yyutxweno7eqikpzxw3v6pkfcoj6swgnyfazu6lbnwovkjji3e
+  __init__.py: bafybeieij4agsmuuixobmyq3232j6ryigbmhewvtmw3kpnvhmkfkktauza
+  build/Relayer.json: bafybeiguoakvfjouwtsn737ma6zbwptsrpmjmkw6fxhze3yw5zfsjidnyy
+  contract.py: bafybeid5rahjkswvo7u65ukrue5lznjyg2k3m3jh5qwlpmeh4soveetd5y
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: RelayerContract

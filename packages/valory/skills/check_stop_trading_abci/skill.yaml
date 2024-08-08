@@ -6,18 +6,19 @@ description: This skill implements the check for stop trading for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
-  __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeid63rkrrta3hjp7cnlyws2xyqfaotur77caimyb47m5p3nroo62eu
-  dialogues.py: bafybeictrrnwcijiejczy23dfvbx5kujgef3dulzqhs3etl2juvz5spm2e
-  fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
-  handlers.py: bafybeiard64fwxib3rtyp67ymhf222uongcyqhfhdyttpsyqkmyh5ajipu
-  models.py: bafybeif4vl5pcmrens4lydvkjhq4unwurznirmnnbarnlroke7pleevouy
-  payloads.py: bafybeidh5bqywun4chrbsci2xbcrnnzuys5sswxwbxq3yl2ksawi3xsi5q
-  rounds.py: bafybeigqkzikghmzjj2ceqrnvmiiagtris3livgvn6r5z5ossk73xcfqfy
-  tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
-  tests/test_handlers.py: bafybeigpmtx2hyunzn6nxk2x4bvvybek7jvuhbk34fqlj7fgfsszcoqhxy
-  tests/test_payloads.py: bafybeih7q7kdfxsf4ejxxqwjumwglfwwcrbqcjnuy42mkhnfwccxuhiviy
+  README.md: bafybeigfxbbzyalsuuyng3a6a2ijo6ocxpez7zvdxvzsyzcjt6ki4jco34
+  __init__.py: bafybeigqzrm2ogub6tx7p3inco2qekjj7hm2yv3cyrvdowjti7pip6lnjm
+  behaviours.py: bafybeibex7ykt6ukxaw2mbptiq3dz3sy5zwd7e6xdcjh7zdyzofmovqcqq
+  dialogues.py: bafybeihptcyhn5vqqybgfxbs4nzwc6rayo5fotvb6m57ee6ha4dfyl743a
+  fsm_specification.yaml: bafybeia23hgzlunh2prelyjdahyu2hdkporwhj5nlya53jxq5rc6hqfsli
+  handlers.py: bafybeib6ts2yeurwlzzq46qudtnukadpnax7ruirz5h2ezukhe2mckfyhm
+  models.py: bafybeihojwvzgobp2dxhe3l3twhq42cqmsyez4tpc7btnkvkhha2sf35r4
+  payloads.py: bafybeibkoar24g7tn4je5wsa3hzyeipof3hpbnwd7mr2uz552rbzywjuci
+  rounds.py: bafybeihuebu6dovuuurlv5nhhzfasq2mzqvzri2zsvqqiqcjdv2jsq7lea
+  tests/__init__.py: bafybeih4dnv5ejlmvglkq7rjjbiyht47su34bsxm7pxnjib3onldzdbmpu
+  tests/test_behaviours.py: bafybeicqv36qxfveimwrek5o4zxtmyr2q5thdmvii6737obdwbt3nkti5e
+  tests/test_handlers.py: bafybeig3e7a4h5ae2fks5icuqz4yiimlap2rxgquzko2tasfx7sxzr4w4u
+  tests/test_payloads.py: bafybeigtd7xucgs5ucdsjkzh37lbqmilnxlitf2h3zcaj4o5xmxbpc2dpa
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -25,7 +26,7 @@ contracts:
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/staking_abci:0.1.0:bafybeiduborfqevheegy3plk7bzhkl4fukwixvlb57tenijdepintubbdi
+- valory/staking_abci:0.1.0:bafybeihstgwlqacjqofykzq4sie5orgjpibdm44ygdnmxvnu4zeam2g5k4
 behaviours:
   main:
     args: {}
@@ -66,9 +67,6 @@ models:
   http_dialogues:
     args: {}
     class_name: HttpDialogues
-  ipfs_dialogues:
-    args: {}
-    class_name: IpfsDialogues
   ledger_api_dialogues:
     args: {}
     class_name: LedgerApiDialogues
@@ -130,6 +128,9 @@ models:
       serious_slash_unit_amount: 8000000000000000
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
+      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_interaction_sleep_time: 5
+      mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
     class_name: CheckStopTradingParams
   requests:
     args: {}

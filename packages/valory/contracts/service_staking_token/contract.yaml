@@ -6,9 +6,9 @@ description: Service staking token contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
-  build/ServiceStakingToken.json: bafybeib6frfpqtr4dfyxuylehqmic2iawofydx7u24t7j5zbrsc4m4ijoi
-  contract.py: bafybeiboxlbmmhnsreimqyrnn3yamzueiucno6v75xjfrvfvbx4pqrnlsy
+  __init__.py: bafybeie7hbilhku3b37b5t26e4nfbynzqwo6aovvkxfmzerl4conifh6y4
+  build/ServiceStakingToken.json: bafybeidkpq7moiip3ijt5qeay6qh4ajeklv3m7a7kqu56fmyltijwvg4di
+  contract.py: bafybeiggnq6oh2vaey2mjprsfjvcw5bngdjqgrid7saio65vhbvlg5kkfm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: ServiceStakingTokenContract

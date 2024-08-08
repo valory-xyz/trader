@@ -6,25 +6,25 @@ description: This skill implements the Staking for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
-  __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeidke7jrikywzysz35m4s74yzm7hy6klvjwmedynziu5igrsqqwh2m
-  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
-  handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeidc6aghkskpy5ze62xpjbinwgsyvtzvyrlsfckrygcnj4cts54zpa
-  payloads.py: bafybeibnub5ehb2mvpcoan3x23pp5oz4azpofwrtcl32abswcfl4cmjlwq
-  rounds.py: bafybeic7kre4hriounn6at63fjzttw45zoivxatg23cmojok4ah6fca7ca
-  tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
-  tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
-  tests/test_payloads.py: bafybeiaq2dxpbein6qhipalibi57x6niiydxi6kvbpeqripzlngcgpb3qq
+  README.md: bafybeibfoh7ist7oqdibsmljr7qyjdoroitvznibinfexvp4nmmoniyyqe
+  __init__.py: bafybeicyinepsfqcbfh3sz4omqwnwbybfn4m3d2xz4gppxsmlvc35anfii
+  behaviours.py: bafybeig2qmstjcog4zwbf7sgnzc5lr7gerjpa3exig45id6czruubgpiey
+  dialogues.py: bafybeiafkhi6asyzdrkasuujjjxnqt2r5ypbnwfu2l65lowlltqgen6coq
+  fsm_specification.yaml: bafybeibijq3rgmrzrt5hwcztce5ep7bnmrqn6iq6ybhuec4ixfb7ulc57u
+  handlers.py: bafybeifsj44z2qlyoehh7fdwkprkeyearqiaaikgsqqfurcuhx52lz5u3u
+  models.py: bafybeigdmuxkrxkwlnozajvqxdcmyacql4raodtnultl6mw4x6khvrnmp4
+  payloads.py: bafybeicr7k7by4kue522cmmdkxkdio4kizgjjjii7gfoehhh663ez4pg2i
+  rounds.py: bafybeido7pnzzemzala3xmzqqf47srt5ye3embq67gab3esozuba7ubcem
+  tests/__init__.py: bafybeiahpqk6ogri27pi7mnoykjt2r7pynytqd5vdethiorldhtifcqclu
+  tests/test_handers.py: bafybeibnyxovlgoy4pqiiq6nrguprpicgbghx35tlsv5dnri3spgpu5btu
+  tests/test_payloads.py: bafybeia4bzpr3pifbnkhcj3nssuaej2hn4dnkl3aaemgkqiuuci6pkv5uu
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeidcb25wneezfd2iaiqa7ygxlimwwacvycahhenvpw7tdvwdigllzm
-- valory/service_staking_token:0.1.0:bafybeieyfto5xwmvxiu52qxxudp2zaa22idrvw3jr6bytbok6bg3nylgqi
-- valory/staking_token:0.1.0:bafybeig4fl35dn7d5gnprux2nwsqbirm7zkiujz3xvrwcjuktz6hkq4as4
-- valory/mech_activity:0.1.0:bafybeiec6nnvfs6captlncrtjfygpp275vkfajvj4frrnab7thsca6337e
+- valory/service_staking_token:0.1.0:bafybeiabr2y7unabl37y3hkotrymmdd3hwcjiahafeeyeaztivioyw4754
+- valory/staking_token:0.1.0:bafybeighyc3l2ahc6edw5hr37ef3ucy7ttcyxmkjqsrtclszmjvjgwekoa
+- valory/mech_activity:0.1.0:bafybeierd54y3awztbjwna6tygln3ybdzktw4wrrzkh4mgex6butyco77u
 protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 skills:

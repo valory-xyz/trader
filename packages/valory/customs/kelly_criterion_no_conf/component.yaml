@@ -7,8 +7,8 @@ description: The kelly criterion trading strategy without confidence factor in t
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeidog73nvs6bfta5pmaxufwly6pc52knbnxqlwcwka4cpnyneeykqi
-  kelly_criterion_no_conf.py: bafybeifrdnpes4jbhnkesuuk5pktyz2udlx4d5yr73ebgqpzpiqywixhom
+  __init__.py: bafybeiezrikalct4bgbswtxekykke3fel6deqqpdp5scgpggppc445u7ni
+  kelly_criterion_no_conf.py: bafybeic6gjdpogmn6oq4erxgyfn4rxvqpvzd4c6zl6yjxexo3t4sbprdrm
 fingerprint_ignore_patterns: []
 entry_point: kelly_criterion_no_conf.py
 callable: run

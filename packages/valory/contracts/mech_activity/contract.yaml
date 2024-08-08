@@ -6,9 +6,9 @@ description: Mech activity checker contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeid4hg5rx75ltdjmekmxdddwqzbvblygmvlhws5samjxfirnkp666i
-  build/MechActivity.json: bafybeiagrufcoljrlo2zklc7kxwh7eyrf67usos2bqnf7hss47hgm6low4
-  contract.py: bafybeihgiwyy5gj5tpyz6wnjlfsywssanrbuzskqctt557f3galofewqse
+  __init__.py: bafybeiaaouw3ok3xidzymp5lp6ftluoojftworu3rrrwp2otj3gtiw7qsa
+  build/MechActivity.json: bafybeid6b2fhsk3jaog352tavmfwl4d3o4lk4u4x3u4tfhyygodj2pjdge
+  contract.py: bafybeiber57ewooljifj4etmbp4xju4dyjmztfuqi3edfm5mkbivhqqogm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: MechActivityContract

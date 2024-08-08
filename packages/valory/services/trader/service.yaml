@@ -5,9 +5,9 @@ description: A set of agents placing bets
 aea_version: '>=1.0.0, <2.0.0'
 license: Apache-2.0
 fingerprint:
-  README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
+  README.md: bafybeidykhazop7u5muiq4o2owtqdivciolaics6drs4pe2cdakgmg36bq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifinxnuxu4ye2catrgrma7uyqm3f2hlurs4xsch27xftfo6im5ihm
+agent: valory/trader:0.1.0:bafybeifpswtzy4ants3r2eneowmars7vqftgbfeznk6jjkcdjm2txcvfty
 number_of_agents: 4
 deployment:
   agent:

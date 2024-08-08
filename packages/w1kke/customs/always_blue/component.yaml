@@ -6,8 +6,8 @@ description: A simple testing strategy strategy.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeibkl7srd6nmuo7p6vcrueviwryjo6y25xfkckndkghnos7okadzpm
-  always_blue.py: bafybeidyj2m7hwfrufjpzsqdihsvdmbzvqjatqasfs4r7ihxx2pwhoe6li
+  __init__.py: bafybeiamvcezlsxp2be567yyc2onp2unsbu3e64ht4wb45u37jnc6jse34
+  always_blue.py: bafybeigp3ookwmcflrkynekyvn5mfi6tyr4kj6plbm6ukhmr57spbu4y4q
 fingerprint_ignore_patterns: []
 entry_point: always_blue.py
 callable: run
