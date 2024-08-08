@@ -154,7 +154,7 @@ jobs:
 #          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
 
   build-macos-pyinstaller:
-    runs-on: macos-latest
+    runs-on: macos-14
     strategy:
       matrix:
         arch: [ x86_64 ]
@@ -206,5 +206,5 @@ jobs:
           if: startsWith(github.ref, 'refs/tags/')
           with:
             files: |
-              ./dist/trader_bin_x64
+              ./dist/trader_bin_x86_64
 #              ./dist/trader_bin_arm64
