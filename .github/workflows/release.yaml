@@ -178,21 +178,21 @@ jobs:
         run: poetry install
 
       - name: Set arch environment variable for macos-latest-large
-        if: matrix.os == 'macos-14-large'
-        run: echo "ARCH=x64" >> $GITHUB_ENV
+        if: contains(matrix.os, 'large')
+        run: echo "OS_ARCH=x64" >> $GITHUB_ENV
 
       - name: Set arch environment variable for other macOS versions
-        if: matrix.os != 'macos-14-large'
-        run: echo "ARCH=arm64" >> $GITHUB_ENV
+        if: ${{ !contains(matrix.os, 'large') }}
+        run: echo "OS_ARCH=arm64" >> $GITHUB_ENV
 
       - name: Build with PyInstaller
         run: |
-           poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name trader_bin_${ARCH}
+           poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name trader_bin_${{env.OS_ARCH}}
       - name: Upload Release Assets
         uses: actions/upload-artifact@v2
         with:
-          name: "trader_bin_$ARCH"
-          path: "dist/trader_bin_$ARCH"
+          name: trader_bin_${{env.OS_ARCH}}
+          path: dist/trader_bin_${{env.OS_ARCH}}
 
   upload-assets:
       needs: build-macos-pyinstaller
@@ -204,11 +204,11 @@ jobs:
           with:
             name: trader_bin_x64
             path: ./dist/
-#        - name: Download artifacts
-#          uses: actions/download-artifact@v2
-#          with:
-#            name: trader_bin_arm64
-#            path: ./dist/
+        - name: Download artifacts
+          uses: actions/download-artifact@v2
+          with:
+            name: trader_bin_arm64
+            path: ./dist/
 
         - name: Publish Release
           uses: softprops/action-gh-release@v2
@@ -216,4 +216,4 @@ jobs:
           with:
             files: |
               ./dist/trader_bin_x64
-#              ./dist/trader_bin_arm64
+              ./dist/trader_bin_arm64
