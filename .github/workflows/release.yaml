@@ -154,10 +154,10 @@ jobs:
 #          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
 
   build-macos-pyinstaller:
-    runs-on: macos-14-large
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        arch: [ x86_64 ]
+        os: [ macos-14, macos-14-large ]
 
     steps:
       - uses: actions/checkout@v3
@@ -177,14 +177,22 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: Set arch environment variable for macos-latest-large
+        if: matrix.os == 'macos-latest-large'
+        run: echo "ARCH=x64" >> $GITHUB_ENV
+
+      - name: Set arch environment variable for other macOS versions
+        if: matrix.os != 'macos-latest-large'
+        run: echo "ARCH=arm64" >> $GITHUB_ENV
+
       - name: Build with PyInstaller
         run: |
-           poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name trader_bin_${{ matrix.arch }}
+           poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name "trader_bin_$ARCH"
       - name: Upload Release Assets
         uses: actions/upload-artifact@v2
         with:
-          name: trader_bin_${{ matrix.arch }}
-          path: dist/trader_bin_${{ matrix.arch }}
+          name: "trader_bin_$ARCH"
+          path: "dist/trader_bin_$ARCH"
   upload-assets:
       needs: build-macos-pyinstaller
       runs-on: ubuntu-latest
@@ -206,5 +214,5 @@ jobs:
           if: startsWith(github.ref, 'refs/tags/')
           with:
             files: |
-              ./dist/trader_bin_x86_64
+              ./dist/trader_bin_x64
 #              ./dist/trader_bin_arm64
