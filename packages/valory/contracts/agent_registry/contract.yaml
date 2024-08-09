@@ -6,9 +6,9 @@ description: Agent Registry contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
-  build/AgentRegistry.json: bafybeicoe5elvvsv2neiirsdn4uddrilizmyib3x4mvpklr7olhj2kh4ue
-  contract.py: bafybeihrv6blme3v6diwci6zxxn72qbg5sanzmfq5tobhs4375ebcuyday
+  __init__.py: bafybeie7hbilhku3b37b5t26e4nfbynzqwo6aovvkxfmzerl4conifh6y4
+  build/AgentRegistry.json: bafybeiej4g3ljuyd5xnc5wrqri4q3qiksteym2e7iaymeq73udhtzorizq
+  contract.py: bafybeihfwegsopw3fcb4mikpv3pwhgb6mlbssc7jxguwrobnqdtswerv4a
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: AgentRegistryContract

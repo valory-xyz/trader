@@ -6,28 +6,28 @@ description: This skill implements the MarketManager for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
-  __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeiafcd3m6sviezhxjr5rtcwsybauanjplchgabjctr3ukikajczrha
-  bets.py: bafybeid5jw3o57bivq32ojphjmu3xoulf6y6r2pnzuhyp7u6nz3pojpbuu
-  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
-  graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
-  graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
-  graph_tooling/queries/conditional_tokens.py: bafybeic6ohkdp4rvkcfglieksv6gbzm4qocpgdjaz4sroutl37sxijthji
-  graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
-  graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
-  graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
-  graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeibjyb6av33aswnptttekj6t7k7xysgphh2bigoorcgkc54y2j3xkm
-  graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
-  handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeibjttnga54y4auz6f33ecfrngyw53b2xzpompm72drjsr4xoytmiy
-  payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
-  rounds.py: bafybeigdwc4sr7gvxth4suaz36x7fmrn3jhlertwq4rcch4clyuxq435wa
-  tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
-  tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
-  tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
+  README.md: bafybeidzaefmxjxffakifgx4pseq3q57d3geyoqzuqwobhqxchliinqir4
+  __init__.py: bafybeiaoqivj43nf6yk6ddg3mlrg5oqyvbhabhuz7adaonlj2nmyseipgq
+  behaviours.py: bafybeif45pwfe25ocacfthkh6iaq543calz32paaup37sj73dsxye6xphi
+  bets.py: bafybeifwvsxf5we6h24zjlcwrp5zpsfyk7vmt3cuauj67q2c2yf7yj3rs4
+  dialogues.py: bafybeiafkhi6asyzdrkasuujjjxnqt2r5ypbnwfu2l65lowlltqgen6coq
+  fsm_specification.yaml: bafybeidxgk7pry2t4tpfpvbtrn3l2kpux6potafqqekqsuaxq4j6wezmha
+  graph_tooling/__init__.py: bafybeiefkxryagexqfwzwhwt7ppjeberxzm27r3knomvq5zzvqbgpbzfx4
+  graph_tooling/queries/__init__.py: bafybeibdn7hzgsxlbopus7quoozb2kavsm6a45r74pl7dhiysk3sbhfz3e
+  graph_tooling/queries/conditional_tokens.py: bafybeicrxgr3vljdegdxh2f7kjhyyqhqwdcsceyjyybhpsgep4gfazmb54
+  graph_tooling/queries/network.py: bafybeifva3lyu5wd33owqsh6f73pze4hf3q6nn6lwgbsz5gfpt7gechfhq
+  graph_tooling/queries/omen.py: bafybeiazwiufseycucjeb7fp4rlyi74jvhmlxviprj5q5okennd7dduenm
+  graph_tooling/queries/realitio.py: bafybeihgel2l4luyfak4tsb2xgqpgjbjihfxdn67pphh6zyq3bkhx36eie
+  graph_tooling/queries/trades.py: bafybeihspwm65awkoocmrejwqahier7embmnyo2ek3xf6gncid4t7pdati
+  graph_tooling/requests.py: bafybeiddy73mcsq2xtj4ukddeoiowonjhwsgafhtordfls7c7nqbbfzfyy
+  graph_tooling/utils.py: bafybeige65h7shrjyy6cwamid2nvhluzcaxzdkcwsgpspvkva3ievrrswi
+  handlers.py: bafybeicbgd3r2g3sbzp622zjhv3yg55ccuhudpgjeuhkqbl3egzds33pwi
+  models.py: bafybeidom6bxnexs7mq3bmxdo6nf6tv6b27u5dd5gyg5bfguppv6zgf6by
+  payloads.py: bafybeicl4g32ymqi6elbpitj2rxcizl45ibcdb3or2stbyk7gtuvomsrdu
+  rounds.py: bafybeidc73czehluwcbhc5suagfstggo2u3rq6tgghphdfzlbkxbj6rc3u
+  tests/__init__.py: bafybeigypl36y3sdq5wx4qqgfv3eq635g36ejyrdercegsltcrgj75ysbu
+  tests/test_handlers.py: bafybeibrrikovxmx4luwokmjvtxo74zbf4rowqc5aty67lc7sy6ew6tbfi
+  tests/test_payloads.py: bafybeie4wkphrg5yiapasmohwbjyxlof55uex4jgfi5ykqh6qy22x6wq4m
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []

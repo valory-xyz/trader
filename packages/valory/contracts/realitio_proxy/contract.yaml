@@ -6,9 +6,9 @@ description: RealitioProxy contract.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeickfnpykdx2ffgrrza6yhn7gfr2plis354oohzljhlnpwnp4kpe2u
-  build/Realitio.json: bafybeiaqw4aid7mitc4vfzhlcxhbncei4hd3ywok2ugzs3zkhcx3pliatm
-  contract.py: bafybeidcouc7xpdcntmzi5dgv5qwnp23dmctdzvof7kwsmzsk27iguaa2e
+  __init__.py: bafybeic4vfrzszmvvwy4p6xggxik6jlpwkcscefeaiigl7vvxjrewl4uyi
+  build/Realitio.json: bafybeihhgloqwhpks5zdlqubjy3oba2eeadg4qdmdwnouyzzsdjx4dtoxy
+  contract.py: bafybeigbbvgpkottzoeu6iqzstnvxu5vgzznwrrf23q4gibrrhpzvgqzci
 fingerprint_ignore_patterns: []
 class_name: RealitioProxyContract
 contract_interface_paths:
