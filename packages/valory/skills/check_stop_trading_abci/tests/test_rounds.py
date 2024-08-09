@@ -126,7 +126,7 @@ def test_abci_app_initialization(abci_app):
         FinishedWithSkipTradingRound: set(),
     }
 def test_synchronized_data_initialization():
-    """Test the initialization and attributes of SynchronizedData."""
+    """Test the initialization and attribute of SynchronizedData."""
     # Initialize SynchronizedData
     data = SynchronizedData(db=dict())
 
