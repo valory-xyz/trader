@@ -44,7 +44,7 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     SynchronizedData,
     CheckStopTradingAbciApp
 )
-#from packages.valory.skills.check_stop_trading_abci.app import CheckStopTradingAbciApp  
+ 
 
 from packages.valory.skills.check_stop_trading_abci.payloads import (
     CheckStopTradingPayload,
@@ -125,3 +125,10 @@ def test_abci_app_initialization(abci_app):
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
     }
+def test_synchronized_data_initialization():
+    """Test the initialization and attributes of SynchronizedData."""
+    # Initialize SynchronizedData
+    data = SynchronizedData(db=dict())
+
+    # Test initial attributes
+    assert data.db == {}
