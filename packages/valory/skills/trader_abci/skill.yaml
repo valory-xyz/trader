@@ -200,39 +200,23 @@ models:
       tool_punishment_multiplier: 1
       use_nevermined: true
       mech_to_subscription_params:
-      - - base_url
-        - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
-      - - did
-        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
-      - - escrow_payment_condition_address
-        - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
-      - - lock_payment_condition_address
-        - '0xDE85A368Ee6f374d236500d176814365370778dA'
-      - - transfer_nft_condition_address
-        - '0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979'
-      - - token_address
-        - '0xa30DE8C6aC39B825192e5F1FADe0770332D279A8'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - nft_amount
-        - '100'
-      - - payment_token
-        - '0x0000000000000000000000000000000000000000'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - price
-        - '1000000000000000000'
+        base_url: url
+        did: did
+        escrow_payment_condition_address: address
+        lock_payment_condition_address: address
+        transfer_nft_condition_address: address
+        token_address: address
+        order_address: address
+        nft_amount: amount
+        payment_token: address
+        price: price
       contract_timeout: 300.0
-      file_hash_to_strategies_json:
-      - - hash
-        - - strategy_name
+      file_hash_to_strategies: {}
       strategies_kwargs:
-      - - bet_kelly_fraction
-        - 1.0
-      - - floor_balance
-        - 500000000000000000
-      - - bet_amount_per_threshold
-        - 0.0: 0
+        bet_kelly_fraction: 1.0
+        floor_balance: 500000000000000000
+        bet_amount_per_threshold:
+          0.0: 0
           0.1: 0
           0.2: 0
           0.3: 0
