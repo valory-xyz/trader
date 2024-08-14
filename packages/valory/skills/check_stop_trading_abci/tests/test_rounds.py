@@ -22,7 +22,7 @@
 import pytest
 import logging  # noqa: F401
 from unittest.mock import MagicMock
-from typing import Set
+from typing import Any, Dict, Callable, Set
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
@@ -67,6 +67,58 @@ def abci_app():
     # Instantiate CheckStopTradingAbciApp with mocked parameters
     return CheckStopTradingAbciApp(synchronized_data=synchronized_data, logger=logger, context=context)
 
+class BaseCheckStopTradingRoundTestClass:
+    """Base test class for CheckStopTradingRound."""
+
+    synchronized_data: SynchronizedData
+    round_class = CheckStopTradingRound
+    _synchronized_data_class = SynchronizedData
+    _event_class = Event
+
+    def _complete_run(self, test_func: Callable[[], None]) -> None:
+        """Complete the run of the test."""
+        test_func()
+
+    def _test_round(
+        self,
+        test_round: CheckStopTradingRound,
+        round_payloads: list,
+        synchronized_data_update_fn: Callable[[SynchronizedData, Any], None],
+        synchronized_data_attr_checks: Dict[str, Any],
+        most_voted_payload: CheckStopTradingPayload,
+        exit_event: Event,
+    ) -> None:
+        """Test the round processing."""
+        for payload in round_payloads:
+            test_round.process_payload(payload)
+
+        synchronized_data_update_fn(self.synchronized_data, most_voted_payload)
+
+        for attr, expected_value in synchronized_data_attr_checks.items():
+            assert getattr(self.synchronized_data, attr) == expected_value
+
+        assert test_round.event == exit_event
+
+    def run_test(self, test_case: Dict[str, Any], **kwargs: Any) -> None:
+        """Run the test using the provided test case."""
+        self.synchronized_data.update(**test_case["initial_data"])
+
+        test_round = self.round_class(
+            synchronized_data=self.synchronized_data, context=mock.MagicMock()
+        )
+
+        self._complete_run(
+            self._test_round(
+                test_round=test_round,
+                round_payloads=test_case["payloads"],
+                synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
+                    **test_case["final_data"]
+                ),
+                synchronized_data_attr_checks=test_case["synchronized_data_attr_checks"],
+                most_voted_payload=test_case["most_voted_payload"],
+                exit_event=test_case["event"],
+            )
+        )       
 
 
 def test_check_stop_trading_round_initialization(synchronized_data):
@@ -132,3 +184,4 @@ def test_synchronized_data_initialization():
 
     # Test initial attributes
     assert data.db == {}
+
