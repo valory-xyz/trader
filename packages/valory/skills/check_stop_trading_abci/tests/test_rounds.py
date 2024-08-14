@@ -48,6 +48,9 @@ from packages.valory.skills.abstract_round_abci.base import (
     VotingRound,
     get_name,
 )
+from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
+    BaseVotingRoundTest
+)
 
 DUMMY_PAYLOAD_DATA = {
     "example_key": "example_value"
@@ -100,63 +103,39 @@ class RoundTestCase:
 MAX_PARTICIPANTS: int = 4
 
 
-class BaseCheckStopTradingRoundTestClass:
+class BaseCheckStopTradingRoundTestClass(BaseVotingRoundTest):
     """Base test class for CheckStopTradingRound."""
-
-    synchronized_data: SynchronizedData
-    round_class = CheckStopTradingRound
     _synchronized_data_class = SynchronizedData
+    payload_class = CheckStopTradingPayload
     _event_class = Event
-
-    def _complete_run(self, test_function: Callable) -> None:
-        """Run the test function and handle completion."""
-        test_function()
-
-    def _test_round(
-        self,
-        test_round: AbstractRound,
-        round_payloads: Dict[str, CheckStopTradingPayload],
-        synchronized_data_update_fn: Callable,
-        synchronized_data_attr_checks: List[Callable],
-        most_voted_payload: str,
-        exit_event: Event
-    ) -> None:
-        """Test the round logic."""
-        # Process payloads
-        for agent_id, payload in round_payloads.items():
-            test_round.process_payload(agent_id, payload)
-
-        # Simulate the end of the round
-        test_round.finish()
-
-        # Validate the synchronized data
-        synchronized_data_update_fn(test_round.synchronized_data, test_round)
-
-        for check_fn in synchronized_data_attr_checks:
-            assert check_fn(test_round.synchronized_data) == True
-
-        assert test_round.exit_event == exit_event
 
     def run_test(self, test_case: RoundTestCase, **kwargs: Any) -> None:
         """Run the test"""
-        db = Mock()
-        synchronized_data_instance = self._synchronized_data_class(db=db)  # Create an instance
-        synchronized_data_instance.update(**test_case.initial_data) 
+
+        self.synchronized_data.update(**test_case.initial_data)
 
         test_round = self.round_class(
-            synchronized_data=synchronized_data_instance,  # Use the synchronized_data_instance here
-            context=Mock()  # Or a real context if needed
+            synchronized_data=self.synchronized_data, context=MagicMock()
         )
 
+        # Use the appropriate test method based on the expected exit event
+        if test_case.event == Event.SKIP_TRADING:
+            threshold_check = lambda x: x.positive_vote_threshold_reached
+            test_method = self._test_voting_round_positive
+        elif test_case.event == Event.NO_MAJORITY:
+            threshold_check = lambda x: x.none_vote_threshold_reached
+            test_method = self._test_voting_round_none
+        else:
+            raise ValueError(f"Unexpected event: {test_case.event}")
+
         self._complete_run(
-            lambda: self._test_round(
+            test_method(
                 test_round=test_round,
                 round_payloads=test_case.payloads,
                 synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
                     **test_case.final_data
                 ),
                 synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
-                most_voted_payload=test_case.most_voted_payload,
                 exit_event=test_case.event,
             )
         )
@@ -164,6 +143,8 @@ class BaseCheckStopTradingRoundTestClass:
 
 class TestCheckStopTradingRound(BaseCheckStopTradingRoundTestClass):
     """Tests for CheckStopTradingRound."""
+
+    round_class = CheckStopTradingRound  # Added this line
 
     @pytest.mark.parametrize(
         "test_case",
@@ -179,9 +160,7 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTestClass):
                 event=Event.SKIP_TRADING,
                 most_voted_payload=get_dummy_check_stop_trading_payload_serialized(),
                 synchronized_data_attr_checks=[
-                    lambda sync_data: sync_data.db.get_strict(
-                        get_name(SynchronizedData.participant_to_votes)
-                    ) == CollectionRound.deserialize_collection(
+                    lambda sync_data: sync_data.db.get(get_name(SynchronizedData.participant_to_votes)) == CollectionRound.deserialize_collection(
                         get_dummy_check_stop_trading_payload_serialized()
                     ),
                 ],
@@ -203,7 +182,6 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTestClass):
     def test_run(self, test_case: RoundTestCase) -> None:
         """Run tests."""
         self.run_test(test_case)
-
 
 class TestFinishedCheckStopTradingRound:
     """Tests for FinishedCheckStopTradingRound."""
