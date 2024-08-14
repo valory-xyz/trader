@@ -17,12 +17,25 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the tests for the check stop trading ABCI application."""
+"""This package contains the tests for the CheckStopTradingAbciApp."""
+
+import json
+from unittest.mock import MagicMock, Mock
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
+from unittest import mock
 
 import pytest
-import logging  # noqa: F401
-from unittest.mock import MagicMock
-from typing import Any, Dict, Callable, Set
+
+from packages.valory.skills.check_stop_trading_abci.rounds import (
+    CheckStopTradingRound,
+    FinishedCheckStopTradingRound,
+    FinishedWithSkipTradingRound,
+    Event,
+    SynchronizedData,
+    CheckStopTradingAbciApp,
+)
+from packages.valory.skills.check_stop_trading_abci.payloads import CheckStopTradingPayload
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
@@ -36,36 +49,56 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 
-from packages.valory.skills.check_stop_trading_abci.rounds import (
-    CheckStopTradingRound,
-    Event,
-    FinishedCheckStopTradingRound,
-    FinishedWithSkipTradingRound,
-    SynchronizedData,
-    CheckStopTradingAbciApp
-)
- 
-
-from packages.valory.skills.check_stop_trading_abci.payloads import (
-    CheckStopTradingPayload,
-)
-
-@pytest.fixture
-def synchronized_data():
-    """Get the synchronized data"""
-    return SynchronizedData(db=dict())
-
+DUMMY_PAYLOAD_DATA = {
+    "example_key": "example_value"
+}
 
 @pytest.fixture
 def abci_app():
-    """Fixture to get the ABCI app with necessary parameters."""
-    # Create mocks for the required parameters
-    synchronized_data = MagicMock()
-    logger = MagicMock()
-    context = MagicMock()
+    """Fixture for CheckStopTradingAbciApp."""
+    synchronized_data = Mock()  # Replace with actual synchronized_data if available
+    logger = Mock()  # Replace with actual logger if available
+    context = Mock()  # Replace with actual context if available
 
-    # Instantiate CheckStopTradingAbciApp with mocked parameters
     return CheckStopTradingAbciApp(synchronized_data=synchronized_data, logger=logger, context=context)
+
+
+def get_participants() -> FrozenSet[str]:
+    """Participants"""
+    return frozenset([f"agent_{i}" for i in range(MAX_PARTICIPANTS)])
+
+
+def get_payloads(
+    payload_cls: CheckStopTradingPayload,
+    data: Optional[str],
+) -> Mapping[str, CheckStopTradingPayload]:
+    """Get payloads."""
+    return {
+        participant: payload_cls(participant, data)
+        for participant in get_participants()
+    }
+
+
+def get_dummy_check_stop_trading_payload_serialized() -> str:
+    """Dummy payload serialization"""
+    return json.dumps(DUMMY_PAYLOAD_DATA, sort_keys=True)
+
+
+@dataclass
+class RoundTestCase:
+    """RoundTestCase"""
+
+    name: str
+    initial_data: Dict[str, Hashable]
+    payloads: Mapping[str, CheckStopTradingPayload]
+    final_data: Dict[str, Hashable]
+    event: Event
+    most_voted_payload: Any
+    synchronized_data_attr_checks: List[Callable] = field(default_factory=list)
+
+
+MAX_PARTICIPANTS: int = 4
+
 
 class BaseCheckStopTradingRoundTestClass:
     """Base test class for CheckStopTradingRound."""
@@ -75,80 +108,123 @@ class BaseCheckStopTradingRoundTestClass:
     _synchronized_data_class = SynchronizedData
     _event_class = Event
 
-    def _complete_run(self, test_func: Callable[[], None]) -> None:
-        """Complete the run of the test."""
-        test_func()
+    def _complete_run(self, test_function: Callable) -> None:
+        """Run the test function and handle completion."""
+        test_function()
 
     def _test_round(
         self,
-        test_round: CheckStopTradingRound,
-        round_payloads: list,
-        synchronized_data_update_fn: Callable[[SynchronizedData, Any], None],
-        synchronized_data_attr_checks: Dict[str, Any],
-        most_voted_payload: CheckStopTradingPayload,
-        exit_event: Event,
+        test_round: AbstractRound,
+        round_payloads: Dict[str, CheckStopTradingPayload],
+        synchronized_data_update_fn: Callable,
+        synchronized_data_attr_checks: List[Callable],
+        most_voted_payload: str,
+        exit_event: Event
     ) -> None:
-        """Test the round processing."""
-        for payload in round_payloads:
-            test_round.process_payload(payload)
+        """Test the round logic."""
+        # Process payloads
+        for agent_id, payload in round_payloads.items():
+            test_round.process_payload(agent_id, payload)
 
-        synchronized_data_update_fn(self.synchronized_data, most_voted_payload)
+        # Simulate the end of the round
+        test_round.finish()
 
-        for attr, expected_value in synchronized_data_attr_checks.items():
-            assert getattr(self.synchronized_data, attr) == expected_value
+        # Validate the synchronized data
+        synchronized_data_update_fn(test_round.synchronized_data, test_round)
 
-        assert test_round.event == exit_event
+        for check_fn in synchronized_data_attr_checks:
+            assert check_fn(test_round.synchronized_data) == True
 
-    def run_test(self, test_case: Dict[str, Any], **kwargs: Any) -> None:
-        """Run the test using the provided test case."""
-        self.synchronized_data.update(**test_case["initial_data"])
+        assert test_round.exit_event == exit_event
+
+    def run_test(self, test_case: RoundTestCase, **kwargs: Any) -> None:
+        """Run the test"""
+        db = Mock()
+        synchronized_data_instance = self._synchronized_data_class(db=db)  # Create an instance
+        synchronized_data_instance.update(**test_case.initial_data) 
 
         test_round = self.round_class(
-            synchronized_data=self.synchronized_data, context=mock.MagicMock()
+            synchronized_data=synchronized_data_instance,  # Use the synchronized_data_instance here
+            context=Mock()  # Or a real context if needed
         )
 
         self._complete_run(
-            self._test_round(
+            lambda: self._test_round(
                 test_round=test_round,
-                round_payloads=test_case["payloads"],
+                round_payloads=test_case.payloads,
                 synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
-                    **test_case["final_data"]
+                    **test_case.final_data
                 ),
-                synchronized_data_attr_checks=test_case["synchronized_data_attr_checks"],
-                most_voted_payload=test_case["most_voted_payload"],
-                exit_event=test_case["event"],
+                synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
+                most_voted_payload=test_case.most_voted_payload,
+                exit_event=test_case.event,
             )
-        )       
+        )
 
 
-def test_check_stop_trading_round_initialization(synchronized_data):
-    """Test the initialization of CheckStopTradingRound."""
-    round_ = CheckStopTradingRound(
-        synchronized_data=synchronized_data, context=MagicMock()
+class TestCheckStopTradingRound(BaseCheckStopTradingRoundTestClass):
+    """Tests for CheckStopTradingRound."""
+
+    @pytest.mark.parametrize(
+        "test_case",
+        (
+            RoundTestCase(
+                name="Happy path",
+                initial_data={},
+                payloads=get_payloads(
+                    payload_cls=CheckStopTradingPayload,
+                    data=get_dummy_check_stop_trading_payload_serialized(),
+                ),
+                final_data={},
+                event=Event.SKIP_TRADING,
+                most_voted_payload=get_dummy_check_stop_trading_payload_serialized(),
+                synchronized_data_attr_checks=[
+                    lambda sync_data: sync_data.db.get_strict(
+                        get_name(SynchronizedData.participant_to_votes)
+                    ) == CollectionRound.deserialize_collection(
+                        get_dummy_check_stop_trading_payload_serialized()
+                    ),
+                ],
+            ),
+            RoundTestCase(
+                name="No majority",
+                initial_data={},
+                payloads=get_payloads(
+                    payload_cls=CheckStopTradingPayload,
+                    data=get_dummy_check_stop_trading_payload_serialized(),
+                ),
+                final_data={},
+                event=Event.NO_MAJORITY,
+                most_voted_payload=get_dummy_check_stop_trading_payload_serialized(),
+                synchronized_data_attr_checks=[],
+            ),
+        ),
     )
-    assert round_.payload_class is CheckStopTradingPayload
-    assert round_.synchronized_data_class is SynchronizedData
-    assert round_.done_event == Event.SKIP_TRADING
-    assert round_.negative_event == Event.DONE
-    assert round_.none_event == Event.NONE
-    assert round_.no_majority_event == Event.NO_MAJORITY
-    assert round_.collection_key == "participant_to_votes"
+    def test_run(self, test_case: RoundTestCase) -> None:
+        """Run tests."""
+        self.run_test(test_case)
 
 
-def test_finished_check_stop_trading_round_initialization():
-    """Test the initialization of FinishedCheckStopTradingRound."""
-    round_ = FinishedCheckStopTradingRound(
-        synchronized_data=MagicMock(), context=MagicMock()
-    )
-    assert isinstance(round_, FinishedCheckStopTradingRound)
+class TestFinishedCheckStopTradingRound:
+    """Tests for FinishedCheckStopTradingRound."""
+
+    def test_finished_check_stop_trading_round_initialization(self):
+        """Test the initialization of FinishedCheckStopTradingRound."""
+        round_ = FinishedCheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinishedCheckStopTradingRound)
 
 
-def test_finished_with_skip_trading_round_initialization():
-    """Test the initialization of FinishedWithSkipTradingRound."""
-    round_ = FinishedWithSkipTradingRound(
-        synchronized_data=MagicMock(), context=MagicMock()
-    )
-    assert isinstance(round_, FinishedWithSkipTradingRound)
+class TestFinishedWithSkipTradingRound:
+    """Tests for FinishedWithSkipTradingRound."""
+
+    def test_finished_with_skip_trading_round_initialization(self):
+        """Test the initialization of FinishedWithSkipTradingRound."""
+        round_ = FinishedWithSkipTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinishedWithSkipTradingRound)
 
 
 def test_abci_app_initialization(abci_app):
@@ -177,11 +253,9 @@ def test_abci_app_initialization(abci_app):
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
     }
+
+
 def test_synchronized_data_initialization():
     """Test the initialization and attributes of SynchronizedData."""
-    # Initialize SynchronizedData
     data = SynchronizedData(db=dict())
-
-    # Test initial attributes
     assert data.db == {}
-

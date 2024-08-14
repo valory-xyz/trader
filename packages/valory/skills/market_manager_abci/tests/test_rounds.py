@@ -174,3 +174,6 @@ class TestMarketManagerAppTransitions:
             FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},
             FailedMarketManagerRound: set(),
         }
+    
+    
+
