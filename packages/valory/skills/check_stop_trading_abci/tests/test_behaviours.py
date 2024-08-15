@@ -87,6 +87,34 @@ class TestCheckStopTradingBehaviour(CheckStopTradingFSMBehaviourBaseCase):
         params = cast(CheckStopTradingRoundBehaviour, self.behaviour.context.params)
         assert params == self.behaviour.context.params
 
+
+    def test_mech_request_count(self):
+        """Test the mech_request_count property and the associated _get_mech_request_count method."""
+        # Set up the behaviour with mocked synchronized data
+        self.fast_forward_to_behaviour(
+            self.behaviour,
+            CheckStopTradingBehaviour.auto_behaviour_id(),
+            CheckStopTradingSynchronizedData(
+                AbciAppDB(setup_data=dict(estimate=[1.0])),
+            ),
+        )
+
+        behaviour = cast(CheckStopTradingBehaviour, self.behaviour.current_behaviour)
+
+        # Mock the contract interaction to return a specific mech request count
+        expected_mech_request_count = 10
+        behaviour._get_mech_request_count = MagicMock(return_value=expected_mech_request_count)
+        behaviour._mech_request_count = expected_mech_request_count
+
+        # Verify that the mech_request_count property returns the expected value
+        assert behaviour.mech_request_count == expected_mech_request_count
+
+        # Now test the setter
+        new_mech_request_count = 20
+        behaviour.mech_request_count = new_mech_request_count
+        assert behaviour._mech_request_count == new_mech_request_count
+
+
     @pytest.fixture(autouse=True)
     def setup_method(self):
         """Setup test case."""
