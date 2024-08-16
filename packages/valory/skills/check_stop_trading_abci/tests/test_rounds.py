@@ -22,7 +22,7 @@
 import json
 from unittest.mock import MagicMock, Mock
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
+from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional, Type
 from unittest import mock
 
 import pytest
@@ -65,11 +65,29 @@ def abci_app():
 
     return CheckStopTradingAbciApp(synchronized_data=synchronized_data, logger=logger, context=context)
 
+    
+
 
 def get_participants() -> FrozenSet[str]:
     """Participants"""
     return frozenset([f"agent_{i}" for i in range(MAX_PARTICIPANTS)])
 
+def get_participant_to_votes(
+    participants: FrozenSet[str], vote: Optional[bool] = True
+) -> Dict[str, CheckStopTradingPayload]:
+    """participant_to_votes"""
+    return {
+        participant: CheckStopTradingPayload(sender=participant, vote=vote)
+        for participant in participants
+    }
+
+def get_participant_to_votes_serialized(
+    participants: FrozenSet[str], vote: Optional[bool] = True
+) -> Dict[str, Dict[str, Any]]:
+    """participant_to_votes"""
+    return CollectionRound.serialize_collection(
+        get_participant_to_votes(participants, vote)
+    )
 
 def get_payloads(
     payload_cls: CheckStopTradingPayload,
@@ -103,49 +121,92 @@ class RoundTestCase:
 MAX_PARTICIPANTS: int = 4
 
 
-class BaseCheckStopTradingRoundTestClass(BaseVotingRoundTest):
-    """Base test class for CheckStopTradingRound."""
-    _synchronized_data_class = SynchronizedData
-    payload_class = CheckStopTradingPayload
-    _event_class = Event
+class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
 
-    def run_test(self, test_case: RoundTestCase, **kwargs: Any) -> None:
-        """Run the test"""
+    test_class: Type[VotingRound]
+    test_payload: Type[CheckStopTradingPayload]
 
-        self.synchronized_data.update(**test_case.initial_data)
+    def test_positive_votes(
+        self
+    ) -> None:
+        """Test ValidateRound."""
 
-        test_round = self.round_class(
-            synchronized_data=self.synchronized_data, context=MagicMock()
+        test_round = self.test_class(
+            synchronized_data=self.synchronized_data,
+            context=MagicMock(),
         )
 
-        # Use the appropriate test method based on the expected exit event
-        if test_case.event == Event.SKIP_TRADING:
-            threshold_check = lambda x: x.positive_vote_threshold_reached
-            test_method = self._test_voting_round_positive
-        elif test_case.event == Event.NO_MAJORITY:
-            threshold_check = lambda x: x.none_vote_threshold_reached
-            test_method = self._test_voting_round_none
-        else:
-            raise ValueError(f"Unexpected event: {test_case.event}")
-
         self._complete_run(
-            test_method(
+            self._test_voting_round_positive(
                 test_round=test_round,
-                round_payloads=test_case.payloads,
-                synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
-                    **test_case.final_data
+                round_payloads=get_participant_to_votes(self.participants),
+                synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
+                    participant_to_votes=get_participant_to_votes_serialized(
+                        self.participants
+                    )
                 ),
-                synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
-                exit_event=test_case.event,
+                synchronized_data_attr_checks=[
+                    lambda _synchronized_data: _synchronized_data.participant_to_votes.keys()
+                ],
+                exit_event=self._event_class.SKIP_TRADING,
             )
         )
 
+    def test_negative_votes(
+        self
+    ) -> None:
+        """Test ValidateRound."""
 
-class TestCheckStopTradingRound(BaseCheckStopTradingRoundTestClass):
+        test_round = self.test_class(
+            synchronized_data=self.synchronized_data,
+            context=MagicMock(),
+        )
+
+        self._complete_run(
+            self._test_voting_round_negative(
+                test_round=test_round,
+                round_payloads=get_participant_to_votes(self.participants, vote=False),
+                synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
+                    participant_to_votes=get_participant_to_votes_serialized(
+                        self.participants, vote=False
+                    )
+                ),
+                synchronized_data_attr_checks=[],
+                exit_event=self._event_class.DONE,
+            )
+        )
+
+    def test_none_votes(
+        self
+    ) -> None:
+        """Test ValidateRound."""
+
+        test_round = self.test_class(
+            synchronized_data=self.synchronized_data,
+            context=MagicMock(),
+        )
+
+        self._complete_run(
+            self._test_voting_round_none(
+                test_round=test_round,
+                round_payloads=get_participant_to_votes(self.participants, vote=None),
+                synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
+                    participant_to_votes=get_participant_to_votes_serialized(
+                        self.participants, vote=None
+                    )
+                ),
+                synchronized_data_attr_checks=[],
+                exit_event=self._event_class.NONE,
+            )
+        )
+
+class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
     """Tests for CheckStopTradingRound."""
 
-    round_class = CheckStopTradingRound  # Added this line
-
+    #round_class = CheckStopTradingRound  # Added this line
+    test_class = CheckStopTradingRound
+    _event_class = Event
+    _synchronized_data_class = SynchronizedData
     @pytest.mark.parametrize(
         "test_case",
         (
@@ -182,6 +243,14 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTestClass):
     def test_run(self, test_case: RoundTestCase) -> None:
         """Run tests."""
         self.run_test(test_case)
+    
+    def run_test(self, test_case:RoundTestCase):
+        if test_case.event==Event.SKIP_TRADING:
+            self.test_positive_votes()
+        elif test_case.event==Event.NO_MAJORITY:
+            self.test_negative_votes()
+        else:
+            self.test_none_votes()        
 
 class TestFinishedCheckStopTradingRound:
     """Tests for FinishedCheckStopTradingRound."""
