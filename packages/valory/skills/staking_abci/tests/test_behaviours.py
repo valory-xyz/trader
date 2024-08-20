@@ -1,78 +1,139 @@
+# -*- coding: utf-8 -*-
+# ------------------------------------------------------------------------------
+#
+#   Copyright 2024 Valory AG
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# ------------------------------------------------------------------------------
+
+"""Tests for valory/staking_abci skill's behaviours."""
+
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from datetime import datetime, timedelta
-
-from packages.valory.skills.staking_abci.behaviours import CallCheckpointBehaviour, StakingInteractBaseBehaviour
-from packages.valory.skills.staking_abci.rounds import SynchronizedData, CallCheckpointRound
-from packages.valory.skills.staking_abci.models import StakingParams
-from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
-
+from typing import Any, Dict, Type, Optional
+from dataclasses import dataclass
+from datetime import datetime
+from packages.valory.skills.abstract_round_abci.base import AbciAppDB
 from packages.valory.skills.abstract_round_abci.test_tools.base import (
     FSMBehaviourBaseCase,
 )
-
+from packages.valory.skills.abstract_round_abci.behaviour_utils import (
+    BaseBehaviour,
+    make_degenerate_behaviour,
+)
+from packages.valory.skills.staking_abci.behaviours import (
+    CallCheckpointBehaviour,
+    StakingRoundBehaviour,
+)
+from packages.valory.skills.staking_abci.rounds import (
+    Event,
+    SynchronizedData,
+    FinishedStakingRound,
+    StakingState,
+    CheckpointCallPreparedRound
+)
 
 PACKAGE_DIR = Path(__file__).parent.parent
 
 
-class StackingFSMBehaviourBaseCase(FSMBehaviourBaseCase):
-    """Base case for testing Stacking FSMBehaviour."""
+@dataclass
+class BehaviourTestCase:
+    """BehaviourTestCase"""
+
+    name: str
+    initial_data: Dict[str, Any]
+    event: Event
+    next_behaviour_class: Optional[Type[BaseBehaviour]] = None
+
+
+class BaseBehaviourTest(FSMBehaviourBaseCase):
+    """Base test case."""
 
     path_to_skill = PACKAGE_DIR
 
+    behaviour: StakingRoundBehaviour
+    behaviour_class: Type[CallCheckpointBehaviour]
+    next_behaviour_class: Type[CallCheckpointBehaviour]
+    synchronized_data: SynchronizedData
+    done_event = Event.DONE
 
-class TestCallCheckpointBehaviour(StackingFSMBehaviourBaseCase):
-    def setUp(self):
-        # Set up the behaviour instance
-        self.behaviour = CallCheckpointBehaviour(name="test_behaviour", skill_context=MagicMock())
-        self.behaviour.context.params = MagicMock(spec=StakingParams)
-        self.behaviour.context.params.mech_activity_checker_contract = "0x0000000000000000000000000000000000000000"
-        self.behaviour.context.params.staking_contract_address = "0xStakingContractAddress"
-        self.behaviour.context.params.on_chain_service_id = 1
-        self.behaviour.context.params.staking_interaction_sleep_time = 1
-        self.behaviour.context.logger = MagicMock()
-        self.behaviour.synchronized_data = MagicMock(spec=SynchronizedData)
-        self.behaviour.synchronized_data.safe_contract_address = "0xSafeContractAddress"
-        self.behaviour._service_staking_state = StakingInteractBaseBehaviour.StakingState.UNSTAKED
+    def fast_forward(self, data: Optional[Dict[str, Any]] = None) -> None:
+        """Fast-forward on initialization"""
 
-    @patch('packages.valory.skills.staking_abci.behaviours.CallCheckpointBehaviour.wait_for_condition_with_sleep')
-    def test_async_act_service_staked(self, mock_wait_for_condition_with_sleep):
-        # Mock the wait_for_condition_with_sleep method
-        mock_wait_for_condition_with_sleep.side_effect = [True, True]
+        data = data if data is not None else {}
+        self.fast_forward_to_behaviour(
+            self.behaviour,  # type: ignore
+            self.behaviour_class.auto_behaviour_id(),
+            SynchronizedData(AbciAppDB(setup_data=AbciAppDB.data_to_lists(data))),
+        )
+        self.skill.skill_context.state.round_sequence._last_round_transition_timestamp = (
+            datetime.now()
+        )
 
-        # Mock the interaction with the staking contract
-        self.behaviour._check_service_staked = MagicMock(return_value=True)
-        self.behaviour._get_next_checkpoint = MagicMock(return_value=True)
-        self.behaviour._prepare_safe_tx = MagicMock(return_value="0x123")
+        assert (
+            self.behaviour.current_behaviour.auto_behaviour_id()  # type: ignore
+            == self.behaviour_class.auto_behaviour_id()
+        )
 
-        # Set the service staking state to STAKED
-        self.behaviour.service_staking_state = StakingInteractBaseBehaviour.StakingState.STAKED
-        self.behaviour.is_checkpoint_reached = True
+    def complete(self, event: Event) -> None:
+        """Complete test"""
+        self.behaviour.act_wrapper()
+        self.mock_a2a_transaction()
+        self._test_done_flag_set()
+        self.end_round(done_event=event)
+        assert (
+            self.behaviour.current_behaviour.auto_behaviour_id()  # type: ignore
+            == self.next_behaviour_class.auto_behaviour_id()
+        )
 
-        # Run the async_act method
-        with patch.object(self.behaviour, 'send_a2a_transaction', return_value=None) as mock_send_a2a_transaction, \
-             patch.object(self.behaviour, 'wait_until_round_end', return_value=None):
-            self.behaviour.async_act()
 
-        # Assert that the checkpoint transaction was prepared and sent
-        self.behaviour._prepare_safe_tx.assert_called_once()
-        mock_send_a2a_transaction.assert_called_once()
+class TestStackingBehaviour(BaseBehaviourTest):
+    """Test cases for the stacking behaviour."""
 
-    @patch('packages.valory.skills.staking_abci.behaviours.CallCheckpointBehaviour.wait_for_condition_with_sleep')
-    def test_async_act_service_evicted(self, mock_wait_for_condition_with_sleep):
-        # Mock the wait_for_condition_with_sleep method
-        mock_wait_for_condition_with_sleep.side_effect = [True, True]
+    behaviour_class: Type[BaseBehaviour] = CallCheckpointBehaviour
+    next_behaviour_class: Type[BaseBehaviour] = make_degenerate_behaviour(
+        FinishedStakingRound
+    )
 
-        # Set the service staking state to EVICTED
-        self.behaviour.service_staking_state = StakingInteractBaseBehaviour.StakingState.EVICTED
-
-        # Run the async_act method
-        with patch.object(self.behaviour, 'send_a2a_transaction', return_value=None) as mock_send_a2a_transaction, \
-             patch.object(self.behaviour, 'wait_until_round_end', return_value=None):
-            self.behaviour.async_act()
-
-        # Assert that no transaction was prepared or sent
-        self.behaviour._prepare_safe_tx.assert_not_called()
-        mock_send_a2a_transaction.assert_not_called()
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            # Test for a successful stacking scenario
+            BehaviourTestCase(
+                name="successful stacking",
+                initial_data={
+                    "service_staking_state": StakingState.STAKED.value,  # The state of staking must be "STAKED"
+                    "is_checkpoint_reached": True,  # Ensure the checkpoint has been reached in the test case
+                    "stack_amount": 1000,  # Staked amount; ensure this is consistent with the use in the behavior
+                    "context.agent_address": "0xAgentAddress",  # Mock or provide the agent address needed for context
+                },
+                event=Event.DONE,  # The expected event in this case
+                next_behaviour_class=make_degenerate_behaviour(CheckpointCallPreparedRound),  # Next behavior class
+            ),
+            # Test for failed stacking due to insufficient balance
+            BehaviourTestCase(
+                name="failed stacking due to insufficient balance",
+                initial_data={
+                    "stack_amount": 1000, 
+                    "current_balance": 500  # Simulate insufficient balance scenario
+                },
+                event=Event.SERVICE_NOT_STAKED,  # The expected event for this failure scenario
+                next_behaviour_class=make_degenerate_behaviour(FinishedStakingRound),  # The next expected behavior
+            ),
+        ],
+    )
+    def test_run(self, test_case: BehaviourTestCase) -> None:
+        """Run the behaviour tests."""
+        self.fast_forward(test_case.initial_data)  # Set up the initial state with the provided data
+        self.complete(test_case.event)  # Complete the round with the expected event

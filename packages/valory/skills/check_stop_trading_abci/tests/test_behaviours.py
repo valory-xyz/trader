@@ -61,7 +61,7 @@ class BehaviourTestCase:
 class BaseBehaviourTest(FSMBehaviourBaseCase):
     """Base test case."""
 
-    path_to_skill = Path(__file__).parent.parent
+    path_to_skill = PACKAGE_DIR
 
     behaviour: CheckStopTradingRoundBehaviour
     behaviour_class: Type[CheckStopTradingBehaviour]
@@ -121,8 +121,8 @@ class TestCheckStopTradingBehaviour(BaseBehaviourTest):
             # Test for staking KPI met
             BehaviourTestCase(
                 name="staking KPI met",
-                event=Event.DONE,
                 initial_data={
+                    "period_count": 0,
                     "service_staking_state": StakingState.STAKED.value,  # Convert to int or use .name for string
                     "mech_request_count": 10,
                     "mech_request_count_on_last_checkpoint": 5,
@@ -131,6 +131,7 @@ class TestCheckStopTradingBehaviour(BaseBehaviourTest):
                     "ts_checkpoint": 1000,
                     "synced_timestamp": 1100,
                 },
+                event=Event.DONE,
                 next_behaviour_class=make_degenerate_behaviour(
                     FinishedCheckStopTradingRound
                 ),
@@ -180,6 +181,7 @@ class TestCheckStopTradingBehaviour(BaseBehaviourTest):
                 name="edge case for KPI calculation",
                 event=Event.DONE,
                 initial_data={
+                    "period_count": -1,
                     "service_staking_state": StakingState.STAKED.value,
                     "mech_request_count": 20,
                     "mech_request_count_on_last_checkpoint": 10,
