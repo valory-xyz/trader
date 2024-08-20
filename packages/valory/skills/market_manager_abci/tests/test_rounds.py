@@ -32,11 +32,12 @@ from packages.valory.skills.market_manager_abci.rounds import (
 
 
 DUMMY_BETS_HASH = "dummy_bets_hash"
-DUMMY_PARTICIPANT_BETS = {
-    "participant_1": "bet_1",
-    "participant_2": "bet_2",
-    "participant_3": "bet_3",
+DUMMY_PARTICIPANT_TO_BETS = {
+    "agent_0": "bet_1",
+    "agent_1": "bet_2",
+    "agent_2": "bet_3",
 }
+
 
 def get_participants() -> FrozenSet[str]:
     """Participants"""
@@ -46,15 +47,11 @@ def get_participants() -> FrozenSet[str]:
 def get_payloads(
     payload_cls: BaseTxPayload,
     data: Optional[str],
-    senders: Optional[List[str]] = None  # Accept a list of senders
 ) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
-    if senders is None:
-        senders = [f'agent_{i}' for i in range(MAX_PARTICIPANTS)]
-
     return {
-        participant: payload_cls(sender, data)
-        for participant, sender in zip(get_participants(), senders)
+        participant: payload_cls(participant, data)
+        for participant in get_participants()
     }
 
 
@@ -63,7 +60,7 @@ def get_dummy_update_bets_payload_serialized() -> str:
     return json.dumps(
         {
             "bets_hash": DUMMY_BETS_HASH,
-            "participant_to_bets": DUMMY_PARTICIPANT_BETS,
+            "participant_to_bets": DUMMY_PARTICIPANT_TO_BETS,
         },
         sort_keys=True,
     )
@@ -118,10 +115,14 @@ class BaseMarketManagerRoundTestClass(BaseCollectSameUntilThresholdRoundTest):
             )
         )
 
+
 class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
     """Tests for UpdateBetsRound."""
 
     round_class = UpdateBetsRound
+    synchronized_data: SynchronizedData
+    _synchronized_data_class = SynchronizedData
+    _event_class = Event
 
     @pytest.mark.parametrize(
         "test_case",
@@ -132,17 +133,16 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 payloads=get_payloads(
                     payload_cls=UpdateBetsPayload,
                     data=get_dummy_update_bets_payload_serialized(),
-                    senders=['agent_0', 'agent_1', 'agent_2', 'agent_3']
                 ),
                 final_data={
                     "bets_hash": DUMMY_BETS_HASH,
-                    "participant_to_bets": DUMMY_PARTICIPANT_BETS,
+                    "participant_to_bets": DUMMY_PARTICIPANT_TO_BETS,
                 },
                 event=Event.DONE,
                 most_voted_payload=get_dummy_update_bets_payload_serialized(),
                 synchronized_data_attr_checks=[
-                    lambda sync_data: sync_data.bets_hash == DUMMY_BETS_HASH,
-                    lambda sync_data: sync_data.participant_to_bets == DUMMY_PARTICIPANT_BETS,
+                    lambda _synchronized_data: _synchronized_data.bets_hash,
+                    lambda _synchronized_data: _synchronized_data.participant_to_bets_hash,
                 ],
             ),
             RoundTestCase(
@@ -151,30 +151,23 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 payloads=get_payloads(
                     payload_cls=UpdateBetsPayload,
                     data=get_dummy_update_bets_payload_error_serialized(),
-                    senders=['agent_0', 'agent_1', 'agent_2', 'agent_3']
                 ),
                 final_data={},
                 event=Event.FETCH_ERROR,
                 most_voted_payload=get_dummy_update_bets_payload_error_serialized(),
                 synchronized_data_attr_checks=[],
             ),
+            RoundTestCase(
+                name="No majority",
+                initial_data={},
+                payloads={},  # Handle the case with no payloads
+                final_data={},
+                event=Event.NO_MAJORITY,
+                most_voted_payload=None,  # Handle the case with no most voted payload
+                synchronized_data_attr_checks=[],
+            ),
         ),
     )
     def test_run(self, test_case: RoundTestCase) -> None:
         """Run tests."""
-        print(f"Running test case: {test_case.name}")
-        print(f"Initial synchronized_data: {self.synchronized_data}")
-
         self.run_test(test_case)
-
-        print(f"Final synchronized_data: {self.synchronized_data}")
-        # Debugging synchronized data checks
-        for check in test_case.synchronized_data_attr_checks:
-            expected_value = check(self.synchronized_data)
-            actual_value = check(self.synchronized_data)
-            print(f"Check function: {check.__name__}")
-            print(f"Expected value: {expected_value}")
-            print(f"Actual value: {actual_value}")
-            assert expected_value == actual_value, (
-                f"Mismatch in synchronized_data. Expected {expected_value}, but got {actual_value}"
-            )
