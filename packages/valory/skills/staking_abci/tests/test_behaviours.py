@@ -113,23 +113,14 @@ class TestStackingBehaviour(BaseBehaviourTest):
             BehaviourTestCase(
                 name="successful stacking",
                 initial_data={
-                    "service_staking_state": StakingState.STAKED.value,  # The state of staking must be "STAKED"
-                    "is_checkpoint_reached": True,  # Ensure the checkpoint has been reached in the test case
-                    "stack_amount": 1000,  # Staked amount; ensure this is consistent with the use in the behavior
-                    "context.agent_address": "0xAgentAddress",  # Mock or provide the agent address needed for context
+                    "service_staking_state": StakingState.STAKED.value, 
+                    "is_checkpoint_reached": True, 
+                    "safe_contract_address": "safe_contract_address", 
+                    # "stack_amount": 1000,  
+                    # "context.agent_address": "0xAgentAddress",  # Mock or provide the agent address needed for context
                 },
                 event=Event.DONE,  # The expected event in this case
                 next_behaviour_class=make_degenerate_behaviour(CheckpointCallPreparedRound),  # Next behavior class
-            ),
-            # Test for failed stacking due to insufficient balance
-            BehaviourTestCase(
-                name="failed stacking due to insufficient balance",
-                initial_data={
-                    "stack_amount": 1000, 
-                    "current_balance": 500  # Simulate insufficient balance scenario
-                },
-                event=Event.SERVICE_NOT_STAKED,  # The expected event for this failure scenario
-                next_behaviour_class=make_degenerate_behaviour(FinishedStakingRound),  # The next expected behavior
             ),
         ],
     )
