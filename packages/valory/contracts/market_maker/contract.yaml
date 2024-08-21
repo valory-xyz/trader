@@ -6,10 +6,10 @@ description: Fixed product market maker contract
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeiegnihrovfkk5big52pl4bo6evt5toqvvmft2jgnq6ofdbhfp7xwa
-  __init__.py: bafybeicoucixii3fv5xlpk3zfewm4ys4okidcng54bhtjxvwup7g2jcjza
-  build/FixedProductMarketMaker.json: bafybeigim7n3f67r5czfc5wp2m7cxzxwvnhxops3n5j2zlawenan7qrrtu
-  contract.py: bafybeicfiicuke4ly5hpcxtyvnob5bgzrqsopuxalruxp2m3w4koxmhrqa
+  README.md: bafybeicow3kxqd6pozvy3knt6yqb7vggwqhmgp726jjrnsgf6nnl2bcwxi
+  __init__.py: bafybeicjn676m6bjwugrs55m4u6mh4a3tknk7nxqrhklvo5ray74e4kzuy
+  build/FixedProductMarketMaker.json: bafybeidbozhjcboqo22ead2duuir4vgetgi6ex2rzdx5d23nsaliffeohe
+  contract.py: bafybeiaw27wb2rtraikaap4hfcolkvun5h5pv5tkxkyq77norlnuxl5vka
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: FixedProductMarketMakerContract

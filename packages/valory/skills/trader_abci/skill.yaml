@@ -6,16 +6,16 @@ description: This skill implements the trader skill for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
-  __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeidp3sl5uomb5stgk6y7nifxv7zomfe3emqstbuw32urorpimq7lgi
-  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeig72lgkum7aeieb52jch6qkfdtarzdc2w64562hutck4rowzo3dcy
-  handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
-  models.py: bafybeidrtcycxhuig776kjhnuonwlvjmn4kb2n3uvxdrpmc3hwn65qsolm
-  tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/tests_handlers.py: bafybeifxvd63qblqpsmyvj7k4dbqubab2pshao5zd2zs2srs7rt32zvciu
+  README.md: bafybeifjfiy2a7hwi5gatcbzczwbj6oq54us27wn6hfqmzd52x5u6ovc7a
+  __init__.py: bafybeicwmowgxra4ek6iuzpqotumgoduwljawccxalrr3rdnhpzvtxdhne
+  behaviours.py: bafybeiebbymopaks2obywec43x4bvouwsaqywntvtfgimi4ip6cvfsotim
+  composition.py: bafybeih2oph53xoaapyil6wbqvlecmkdl7ve2zvt4evqjuxjqcus7cjshm
+  dialogues.py: bafybeiafkhi6asyzdrkasuujjjxnqt2r5ypbnwfu2l65lowlltqgen6coq
+  fsm_specification.yaml: bafybeie7lireyftjz7itgbtiawdhnk4istkqeeqbxwbmeqw6z6ctt2vgie
+  handlers.py: bafybeia7wjbqgk3dwx7zunbnaxs5yubj4gngwib42gzmwa6nubud2g7lfy
+  models.py: bafybeiewj5kaucheoohlkzn5wl3gr2ber33w2cclghtkng64rc6dqrczme
+  tests/__init__.py: bafybeid7v3gnizwqkhb4llov6h6ugrlhomht3tfhmthhjfmidnitt6ijlu
+  tests/tests_handlers.py: bafybeigvxr7k45ap7ukyohrutaqn7k25ov64zejawieoclurzfa447js3u
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -26,11 +26,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
-- valory/market_manager_abci:0.1.0:bafybeiai6djelf6d4dkxgkv46l24q2gz7736b3jdhbxslvcydpvnvrse6e
-- valory/decision_maker_abci:0.1.0:bafybeieaenzaucsz7234gynswn7f2ufsvhkhbniuc4mhh3kvu7atvdjqwu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiatr5y2qhqkqc7xtllwagk66wfnmbvdjmokb6ptlrhczzwwn76fce
-- valory/staking_abci:0.1.0:bafybeiduborfqevheegy3plk7bzhkl4fukwixvlb57tenijdepintubbdi
-- valory/check_stop_trading_abci:0.1.0:bafybeiepylk35n3faurvp7dskjkdovehftzfjrjxfkpekzuaovt5gojxne
+- valory/market_manager_abci:0.1.0:bafybeictr7eonyvbdkzwrfg4cpabjcahy3oidefz7f3asppfvznwlbwema
+- valory/decision_maker_abci:0.1.0:bafybeiefaq3desjtfzzyx2zmbatrlfjhmyvls7oj2krienihd4ckqhv2h4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidjpa6cdtk2h4mnvtgsi5dwpuzqkytqnfew7atrkaan5ly5q6ww7y
+- valory/staking_abci:0.1.0:bafybeihstgwlqacjqofykzq4sie5orgjpibdm44ygdnmxvnu4zeam2g5k4
+- valory/check_stop_trading_abci:0.1.0:bafybeiahe2zrguz7may4xkbwcizwkh2xil73ozip4r5xwfbt2kty7uqkte
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:
   main:

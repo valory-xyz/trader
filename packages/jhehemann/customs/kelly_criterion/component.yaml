@@ -6,8 +6,8 @@ description: The kelly criterion trading strategy.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeiatntqojmmkgwtqubfzp2zf4viusno2vkf7dfy4b343hmymhtf72y
-  kelly_criterion.py: bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy
+  __init__.py: bafybeihcpnc4gstg5oitakcuzdfpkyadhzeyhr4sokdczwwhmhbkg24tpy
+  kelly_criterion.py: bafybeiaywlsyr53yhhqqsyuhid4dzqdm7qirxymrcidjvllh5w6pho6zum
 fingerprint_ignore_patterns: []
 entry_point: kelly_criterion.py
 callable: run
