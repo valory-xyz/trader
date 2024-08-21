@@ -611,8 +611,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         batch = MultisendBatch(
-            to=self.params.realitio_proxy_address,
-            data=HexBytes(self.built_data),
+            to=self.params.realitio_proxy_address, data=HexBytes(self.built_data)
         )
         self.multisend_batches.append(batch)
         return True
@@ -650,8 +649,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         batch = MultisendBatch(
-            to=self.params.realitio_address,
-            data=HexBytes(self.built_data),
+            to=self.params.realitio_address, data=HexBytes(self.built_data)
         )
         self.multisend_batches.append(batch)
         return True
@@ -735,8 +733,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         batch = MultisendBatch(
-            to=self.params.conditional_tokens_address,
-            data=HexBytes(self.built_data),
+            to=self.params.conditional_tokens_address, data=HexBytes(self.built_data)
         )
         self.multisend_batches.append(batch)
         return True

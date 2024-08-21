@@ -183,15 +183,12 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         )
 
         res_raw = yield from self.get_http_response(
-            content=to_content(query),
-            **self.current_subgraph.get_spec(),
+            content=to_content(query), **self.current_subgraph.get_spec()
         )
         res = self.current_subgraph.process_response(res_raw)
 
         bets = yield from self._handle_response(
-            self.current_subgraph,
-            res,
-            res_context="questions",
+            self.current_subgraph, res, res_context="questions"
         )
 
         return bets
@@ -215,14 +212,11 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             )
 
             res_raw = yield from self.get_http_response(
-                content=to_content(query),
-                **current_subgraph.get_spec(),
+                content=to_content(query), **current_subgraph.get_spec()
             )
             res = current_subgraph.process_response(res_raw)
             trades_chunk = yield from self._handle_response(
-                current_subgraph,
-                res,
-                res_context="trades",
+                current_subgraph, res, res_context="trades"
             )
             if res is None:
                 # something went wrong
@@ -253,15 +247,12 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
         current_subgraph = self.context.network_subgraph
         res_raw = yield from self.get_http_response(
-            content=to_content(query),
-            **current_subgraph.get_spec(),
+            content=to_content(query), **current_subgraph.get_spec()
         )
         res = current_subgraph.process_response(res_raw)
 
         block = yield from self._handle_response(
-            current_subgraph,
-            res,
-            res_context="block number",
+            current_subgraph, res, res_context="block number"
         )
 
         return {} if block is None else block
@@ -272,18 +263,13 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         """Fetch claim parameters from the subgraph."""
         self._fetch_status = FetchStatus.IN_PROGRESS
         current_subgraph = self.context.realitio_subgraph
-        query = answers_query.substitute(
-            question_id=question_id,
-        )
+        query = answers_query.substitute(question_id=question_id)
         res_raw = yield from self.get_http_response(
-            content=to_content(query),
-            **current_subgraph.get_spec(),
+            content=to_content(query), **current_subgraph.get_spec()
         )
         res = current_subgraph.process_response(res_raw)
         raw_answers = yield from self._handle_response(
-            current_subgraph,
-            res,
-            res_context="answers",
+            current_subgraph, res, res_context="answers"
         )
         if raw_answers is None:
             # we failed to get the answers
@@ -310,10 +296,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         return answers
 
     def fetch_trades(
-        self,
-        creator: str,
-        from_timestamp: float,
-        to_timestamp: float,
+        self, creator: str, from_timestamp: float, to_timestamp: float
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
         """Fetch trades from the subgraph."""
         self._fetch_status = FetchStatus.IN_PROGRESS
@@ -334,14 +317,11 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             )
 
             res_raw = yield from self.get_http_response(
-                content=to_content(query),
-                **current_subgraph.get_spec(),
+                content=to_content(query), **current_subgraph.get_spec()
             )
             res = current_subgraph.process_response(res_raw)
             trades_chunk = yield from self._handle_response(
-                current_subgraph,
-                res,
-                res_context="trades",
+                current_subgraph, res, res_context="trades"
             )
             if res is None:
                 # something went wrong
@@ -377,15 +357,12 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 userPositions_id_gt=user_positions_id_gt,
             )
             res_raw = yield from self.get_http_response(
-                content=to_content(query),
-                **current_subgraph.get_spec(),
+                content=to_content(query), **current_subgraph.get_spec()
             )
             res = current_subgraph.process_response(res_raw)
 
             positions = yield from self._handle_response(
-                current_subgraph,
-                res,
-                res_context="positions",
+                current_subgraph, res, res_context="positions"
             )
             if res is None:
                 # something went wrong

@@ -432,12 +432,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             elif self.benchmarking_mode.enabled and not self._rows_exceeded:
-                self._write_benchmark_results(
-                    p_yes,
-                    p_no,
-                    confidence,
-                    bet_amount,
-                )
+                self._write_benchmark_results(p_yes, p_no, confidence, bet_amount)
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             payload = DecisionReceivePayload(

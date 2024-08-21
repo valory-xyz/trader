@@ -186,9 +186,7 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         FinishedStakingRound,
         ServiceEvictedRound,
     }
-    event_to_timeout: Dict[Event, float] = {
-        Event.ROUND_TIMEOUT: 30.0,
-    }
+    event_to_timeout: Dict[Event, float] = {Event.ROUND_TIMEOUT: 30.0}
     db_pre_conditions: Dict[AppState, Set[str]] = {CallCheckpointRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
         CheckpointCallPreparedRound: {
@@ -196,10 +194,6 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
             get_name(SynchronizedData.most_voted_tx_hash),
             get_name(SynchronizedData.service_staking_state),
         },
-        FinishedStakingRound: {
-            get_name(SynchronizedData.service_staking_state),
-        },
-        ServiceEvictedRound: {
-            get_name(SynchronizedData.service_staking_state),
-        },
+        FinishedStakingRound: {get_name(SynchronizedData.service_staking_state)},
+        ServiceEvictedRound: {get_name(SynchronizedData.service_staking_state)},
     }

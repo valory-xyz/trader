@@ -49,10 +49,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "next_mock_data_row": 1,
             },
         ),
-        (
-            SamplingPayload,
-            {"index": 1, "bets_hash": "dummy_bets_hash"},
-        ),
+        (SamplingPayload, {"index": 1, "bets_hash": "dummy_bets_hash"}),
         (
             MultisigTxPayload,
             {
@@ -75,10 +72,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
         ),
         (
             DecisionRequestPayload,
-            {
-                "mech_requests": "dummy mech requests",
-                "mocking_mode": True,
-            },
+            {"mech_requests": "dummy mech requests", "mocking_mode": True},
         ),
         (
             SubscriptionPayload,
@@ -89,14 +83,8 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "mocking_mode": True,
             },
         ),
-        (
-            ClaimPayload,
-            {"vote": True},
-        ),
-        (
-            VotingPayload,
-            {"vote": True},
-        ),
+        (ClaimPayload, {"vote": True}),
+        (VotingPayload, {"vote": True}),
         (
             BlacklistingPayload,
             {"policy": "dummy policy", "bets_hash": "dummy bets hash"},

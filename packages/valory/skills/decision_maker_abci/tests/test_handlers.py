@@ -162,8 +162,8 @@ class TestHttpHandler:
         assert self.handler.handler_url_regex == rf"{hostname_regex}\/.*"
         assert self.handler.routes == {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-                (health_url_regex, self.handler._handle_get_health),
-            ],
+                (health_url_regex, self.handler._handle_get_health)
+            ]
         }
         assert self.handler.json_content_header == "Content-Type: application/json\n"
 

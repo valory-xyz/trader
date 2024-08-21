@@ -78,7 +78,7 @@ class ClaimSubscriptionBehaviour(BaseSubscriptionBehaviour):
         )
         if res.status_code == 201:
             self.context.logger.info(
-                f"Successfully claimed subscription: {res.status_code!r} - {res.body!r}",
+                f"Successfully claimed subscription: {res.status_code!r} - {res.body!r}"
             )
             return True
 
@@ -102,8 +102,5 @@ class ClaimSubscriptionBehaviour(BaseSubscriptionBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             claim = yield from self._claim_subscription()
             sender = self.context.agent_address
-            payload = ClaimPayload(
-                sender,
-                vote=claim,
-            )
+            payload = ClaimPayload(sender, vote=claim)
         yield from self.finish_behaviour(payload)

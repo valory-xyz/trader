@@ -117,10 +117,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.info(f"Could not build approval tx: {response_msg}")
             return False
 
-        batch = MultisendBatch(
-            to=self.collateral_token,
-            data=HexBytes(approval_data),
-        )
+        batch = MultisendBatch(to=self.collateral_token, data=HexBytes(approval_data))
         self.multisend_batches.append(batch)
         return True
 
@@ -175,8 +172,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             return False
 
         batch = MultisendBatch(
-            to=self.market_maker_contract_address,
-            data=HexBytes(buy_data),
+            to=self.market_maker_contract_address, data=HexBytes(buy_data)
         )
         self.multisend_batches.append(batch)
         return True

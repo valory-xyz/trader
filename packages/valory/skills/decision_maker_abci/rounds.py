@@ -323,12 +323,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRound: set(),
         ClaimRound: set(),
-        DecisionReceiveRound: {
-            get_name(SynchronizedData.final_tx_hash),
-        },
-        HandleFailedTxRound: {
-            get_name(SynchronizedData.bets_hash),
-        },
+        DecisionReceiveRound: {get_name(SynchronizedData.final_tx_hash)},
+        HandleFailedTxRound: {get_name(SynchronizedData.bets_hash)},
         SamplingRound: set(),
         CheckBenchmarkingModeRound: set(),
     }

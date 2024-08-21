@@ -43,8 +43,7 @@ class MarketState(Enum):
 
 
 def get_position_balance(
-    user_positions: List[Dict[str, Any]],
-    condition_id: str,
+    user_positions: List[Dict[str, Any]], condition_id: str
 ) -> int:
     """Get the balance of a position."""
     for position in user_positions:
@@ -57,8 +56,7 @@ def get_position_balance(
 
 
 def get_position_lifetime_value(
-    user_positions: List[Dict[str, Any]],
-    condition_id: str,
+    user_positions: List[Dict[str, Any]], condition_id: str
 ) -> int:
     """Get the balance of a position."""
     for position in user_positions:
@@ -71,8 +69,7 @@ def get_position_lifetime_value(
 
 
 def get_condition_id_to_balances(
-    creator_trades: List[Dict[str, Any]],
-    user_positions: List[Dict[str, Any]],
+    creator_trades: List[Dict[str, Any]], user_positions: List[Dict[str, Any]]
 ) -> Tuple[Dict[str, int], Dict[str, int]]:
     """Get the condition id to balances."""
     condition_id_to_payout = {}

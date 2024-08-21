@@ -173,10 +173,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
             self.context.logger.info(f"Could not build deposit tx: {response_msg}")
             return False
 
-        batch = MultisendBatch(
-            to=WXDAI,
-            data=HexBytes(approval_data),
-        )
+        batch = MultisendBatch(to=WXDAI, data=HexBytes(approval_data))
         self.multisend_batches.append(batch)
         return True
 
@@ -221,9 +218,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         value = self.price if self.is_xdai else 0
         self.multisend_batches.append(
             MultisendBatch(
-                to=contract_address,
-                data=HexBytes(self.order_tx),
-                value=value,
+                to=contract_address, data=HexBytes(self.order_tx), value=value
             )
         )
         return True
@@ -246,10 +241,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
             return False
 
         self.multisend_batches.append(
-            MultisendBatch(
-                to=token,
-                data=HexBytes(self.approval_tx),
-            )
+            MultisendBatch(to=token, data=HexBytes(self.approval_tx))
         )
         return True
 

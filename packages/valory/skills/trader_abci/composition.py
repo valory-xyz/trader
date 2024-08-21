@@ -146,9 +146,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
 }
 
 termination_config = BackgroundAppConfig(
-    round_cls=BackgroundRound,
-    start_event=Event.TERMINATE,
-    abci_app=TerminationAbciApp,
+    round_cls=BackgroundRound, start_event=Event.TERMINATE, abci_app=TerminationAbciApp
 )
 
 

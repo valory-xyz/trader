@@ -57,8 +57,7 @@ def scale_value(
 
 
 def min_max_scale(
-    li: List[float],
-    scale_bounds: Tuple[float, float] = (0, 1),
+    li: List[float], scale_bounds: Tuple[float, float] = (0, 1)
 ) -> List[float]:
     """Perform min-max scaling on a list of values."""
     min_max_ = min_max(li)

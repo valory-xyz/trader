@@ -219,11 +219,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._get_tools_from_benchmark_file()
             return
 
-        for step in (
-            self._get_mech_id,
-            self._get_mech_hash,
-            self._get_mech_tools,
-        ):
+        for step in (self._get_mech_id, self._get_mech_hash, self._get_mech_tools):
             yield from self.wait_for_condition_with_sleep(step)
 
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:

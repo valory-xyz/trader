@@ -137,8 +137,8 @@ class HttpHandler(BaseHttpHandler):
         # Routes
         self.routes = {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-                (health_url_regex, self._handle_get_health),
-            ],
+                (health_url_regex, self._handle_get_health)
+            ]
         }
 
         self.json_content_header = "Content-Type: application/json\n"
@@ -222,9 +222,7 @@ class HttpHandler(BaseHttpHandler):
         # Handle message
         self.context.logger.info(
             "Received http request with method={}, url={} and body={!r}".format(
-                http_msg.method,
-                http_msg.url,
-                http_msg.body,
+                http_msg.method, http_msg.url, http_msg.body
             )
         )
         handler(http_msg, http_dialogue, **kwargs)

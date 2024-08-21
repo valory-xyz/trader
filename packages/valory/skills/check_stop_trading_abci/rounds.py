@@ -29,9 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     AppState,
     BaseSynchronizedData,
-    CollectionRound,
     DegenerateRound,
-    DeserializedCollection,
     VotingRound,
     get_name,
 )
@@ -55,11 +53,6 @@ class SynchronizedData(BaseSynchronizedData):
 
     This data is replicated by the tendermint application.
     """
-
-    def _get_deserialized(self, key: str) -> DeserializedCollection:
-        """Strictly get a collection and return it deserialized."""
-        serialized = self.db.get_strict(key)
-        return CollectionRound.deserialize_collection(serialized)
 
 
 class CheckStopTradingRound(VotingRound):
@@ -121,9 +114,7 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
         FinishedCheckStopTradingRound,
         FinishedWithSkipTradingRound,
     }
-    event_to_timeout: Dict[Event, float] = {
-        Event.ROUND_TIMEOUT: 30.0,
-    }
+    event_to_timeout: Dict[Event, float] = {Event.ROUND_TIMEOUT: 30.0}
     db_pre_conditions: Dict[AppState, Set[str]] = {CheckStopTradingRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedCheckStopTradingRound: set(),

@@ -80,8 +80,7 @@ EventType = Union[
     Type[ResetPauseEvent],
 ]
 EventToTimeoutMappingType = Dict[
-    Union[MarketManagerEvent, DecisionMakerEvent, TSEvent, ResetPauseEvent],
-    float,
+    Union[MarketManagerEvent, DecisionMakerEvent, TSEvent, ResetPauseEvent], float
 ]
 
 

@@ -111,9 +111,12 @@ class Pipfile:
             expected = self.packages[dependency.name]
             if expected != dependency:
                 return (
-                    f"in Pipfile {expected.get_pip_install_args()[0]}; "
-                    f"got {dependency.get_pip_install_args()[0]}"
-                ), logging.WARNING
+                    (
+                        f"in Pipfile {expected.get_pip_install_args()[0]}; "
+                        f"got {dependency.get_pip_install_args()[0]}"
+                    ),
+                    logging.WARNING,
+                )
             return None, 0
 
         if dependency.name not in self.dev_packages:
@@ -122,9 +125,12 @@ class Pipfile:
         expected = self.dev_packages[dependency.name]
         if expected != dependency:
             return (
-                f"in Pipfile {expected.get_pip_install_args()[0]}; "
-                f"got {dependency.get_pip_install_args()[0]}"
-            ), logging.WARNING
+                (
+                    f"in Pipfile {expected.get_pip_install_args()[0]}; "
+                    f"got {dependency.get_pip_install_args()[0]}"
+                ),
+                logging.WARNING,
+            )
 
         return None, 0
 
@@ -186,9 +192,7 @@ class Pipfile:
     @classmethod
     def load(cls, file: Path) -> "Pipfile":
         """Load from file."""
-        sources, sections = cls.parse(
-            content=file.read_text(encoding="utf-8"),
-        )
+        sources, sections = cls.parse(content=file.read_text(encoding="utf-8"))
         return cls(
             sources=sources,
             packages=sections.get("[packages]", OrderedDict()),
@@ -210,11 +214,7 @@ class ToxFile:
         "open-aea-ledger-fetchai",
     ]
 
-    def __init__(
-        self,
-        dependencies: Dict[str, Dict[str, Any]],
-        file: Path,
-    ) -> None:
+    def __init__(self, dependencies: Dict[str, Dict[str, Any]], file: Path) -> None:
         """Initialize object."""
         self.dependencies = dependencies
         self.file = file
@@ -248,9 +248,12 @@ class ToxFile:
                 and expected.version != dependency.version
             ):
                 return (
-                    f"in tox.ini {expected.get_pip_install_args()[0]}; "
-                    f"got {dependency.get_pip_install_args()[0]}"
-                ), logging.WARNING
+                    (
+                        f"in tox.ini {expected.get_pip_install_args()[0]}; "
+                        f"got {dependency.get_pip_install_args()[0]}"
+                    ),
+                    logging.WARNING,
+                )
             return None, 0
         return f"{dependency.name} not found in tox.ini", logging.ERROR
 
@@ -273,10 +276,7 @@ class ToxFile:
                     ):
                         continue
                     dep = Dependency.from_string(line.lstrip())
-                    deps[dep.name] = {
-                        "original": line,
-                        "dep": dep,
-                    }
+                    deps[dep.name] = {"original": line, "dep": dep}
         return deps
 
     @classmethod
@@ -284,10 +284,7 @@ class ToxFile:
         """Load tox.ini file."""
         content = file.read_text(encoding="utf-8")
         dependencies = cls.parse(content=content)
-        return cls(
-            dependencies=dependencies,
-            file=file,
-        )
+        return cls(dependencies=dependencies, file=file)
 
     def _include_extra(self, content: str) -> str:
         """Include extra dependencies."""
@@ -330,9 +327,7 @@ class ToxFile:
 class PyProjectToml:
     """Class to represent pyproject.toml file."""
 
-    ignore = [
-        "python",
-    ]
+    ignore = ["python"]
 
     def __init__(
         self,
@@ -370,9 +365,12 @@ class PyProjectToml:
         expected = self.dependencies[dependency.name]
         if expected.name != dependency.name and expected.version != dependency.version:
             return (
-                f"in pyproject.toml {expected.get_pip_install_args()[0]}; "
-                f"got {dependency.get_pip_install_args()[0]}"
-            ), logging.WARNING
+                (
+                    f"in pyproject.toml {expected.get_pip_install_args()[0]}; "
+                    f"got {dependency.get_pip_install_args()[0]}"
+                ),
+                logging.WARNING,
+            )
 
         return None, 0
 
@@ -398,17 +396,11 @@ class PyProjectToml:
                 if re.match(r"^\d", version):
                     version = f"=={version}"
                 dependencies[name] = Dependency(
-                    name=name,
-                    version=version,
-                    extras=data["extras"],
+                    name=name, version=version, extras=data["extras"]
                 )
                 continue
 
-        return cls(
-            dependencies=dependencies,
-            config=config,
-            file=pyproject_path,
-        )
+        return cls(dependencies=dependencies, config=config, file=pyproject_path)
 
     def dump(self) -> None:
         """Dump to file."""
@@ -565,49 +557,29 @@ def _check(
 
 
 @click.command(name="dm")
-@click.option(
-    "--check",
-    is_flag=True,
-    help="Perform dependency checks.",
-)
+@click.option("--check", is_flag=True, help="Perform dependency checks.")
 @click.option(
     "--packages",
     "packages_dir",
-    type=PathArgument(
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-    ),
+    type=PathArgument(exists=True, file_okay=False, dir_okay=True),
     help="Path of the packages directory.",
 )
 @click.option(
     "--tox",
     "tox_path",
-    type=PathArgument(
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-    ),
+    type=PathArgument(exists=True, file_okay=True, dir_okay=False),
     help="Tox config path.",
 )
 @click.option(
     "--pipfile",
     "pipfile_path",
-    type=PathArgument(
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-    ),
+    type=PathArgument(exists=True, file_okay=True, dir_okay=False),
     help="Pipfile path.",
 )
 @click.option(
     "--pyproject",
     "pyproject_path",
-    type=PathArgument(
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-    ),
+    type=PathArgument(exists=True, file_okay=True, dir_okay=False),
     help="Pipfile path.",
 )
 def main(

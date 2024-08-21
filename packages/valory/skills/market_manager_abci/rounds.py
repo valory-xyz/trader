@@ -141,9 +141,7 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
     }
     cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets_hash)})
     final_states: Set[AppState] = {FinishedMarketManagerRound, FailedMarketManagerRound}
-    event_to_timeout: Dict[Event, float] = {
-        Event.ROUND_TIMEOUT: 30.0,
-    }
+    event_to_timeout: Dict[Event, float] = {Event.ROUND_TIMEOUT: 30.0}
     db_pre_conditions: Dict[AppState, Set[str]] = {UpdateBetsRound: set()}
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},

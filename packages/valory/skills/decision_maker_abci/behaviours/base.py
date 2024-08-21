@@ -496,11 +496,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Interact with a contract."""
         contract_id = str(contract_public_id)
         response_msg = yield from self.get_contract_api_response(
-            performative,
-            contract_address,
-            contract_id,
-            contract_callable,
-            **kwargs,
+            performative, contract_address, contract_id, contract_callable, **kwargs
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
             self.default_error(contract_id, contract_callable, response_msg)
@@ -764,9 +760,7 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Resolve and parse the did."""
         did_url = f"{self.base_url}/{self.did}"
         response = yield from self.get_http_response(
-            method="GET",
-            url=did_url,
-            headers={"accept": "application/json"},
+            method="GET", url=did_url, headers={"accept": "application/json"}
         )
         if response.status_code != 200:
             self.context.logger.error(

@@ -305,10 +305,7 @@ def _raise_incorrect_config(key: str, values: Any) -> None:
     )
 
 
-def nested_list_todict_workaround(
-    kwargs: Dict,
-    key: str,
-) -> Dict:
+def nested_list_todict_workaround(kwargs: Dict, key: str) -> Dict:
     """Get a nested list from the kwargs and convert it to a dictionary."""
     values = list(kwargs.get(key, []))
     if len(values) == 0:
@@ -390,26 +387,18 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
         self.file_hash_to_strategies: Dict[
             str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
-        )
+        ] = nested_list_todict_workaround(kwargs, "file_hash_to_strategies_json")
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
         )
         self.use_subgraph_for_redeeming = self._ensure(
-            "use_subgraph_for_redeeming",
-            kwargs,
-            bool,
+            "use_subgraph_for_redeeming", kwargs, bool
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
         self.mech_to_subscription_params: Dict[
             str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
-        )
+        ] = nested_list_todict_workaround(kwargs, "mech_to_subscription_params")
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         super().__init__(*args, **kwargs)
 

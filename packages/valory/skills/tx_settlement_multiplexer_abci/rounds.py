@@ -206,9 +206,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedStakingTxRound: {},
         FailedMultiplexerRound: {},
     }
-    event_to_timeout: Dict[Event, float] = {
-        Event.ROUND_TIMEOUT: 30.0,
-    }
+    event_to_timeout: Dict[Event, float] = {Event.ROUND_TIMEOUT: 30.0}
     final_states: Set[AppState] = {
         ChecksPassedRound,
         FinishedMechRequestTxRound,

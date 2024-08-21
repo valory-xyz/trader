@@ -58,10 +58,7 @@ OPEN_AEA_REPO = "valory-xyz/open-aea"
 OPEN_AUTONOMY_REPO = "valory-xyz/open-autonomy"
 
 DEPENDENCY_SPECS = {
-    "open-aea": {
-        "repo": OPEN_AEA_REPO,
-        "file": "aea/__version__.py",
-    },
+    "open-aea": {"repo": OPEN_AEA_REPO, "file": "aea/__version__.py"},
     "open-aea-ledger-ethereum": {
         "repo": OPEN_AEA_REPO,
         "file": "plugins/aea-ledger-ethereum/setup.py",
@@ -86,10 +83,7 @@ DEPENDENCY_SPECS = {
         "repo": OPEN_AEA_REPO,
         "file": "plugins/aea-cli-ipfs/setup.py",
     },
-    "open-autonomy": {
-        "repo": OPEN_AUTONOMY_REPO,
-        "file": "autonomy/__version__.py",
-    },
+    "open-autonomy": {"repo": OPEN_AUTONOMY_REPO, "file": "autonomy/__version__.py"},
     "open-aea-test-autonomy": {
         "repo": OPEN_AUTONOMY_REPO,
         "file": "plugins/aea-test-autonomy/setup.py",
@@ -143,11 +137,7 @@ def get_latest_tag(repo: str) -> str:
 def get_dependency_version(repo: str, file: str) -> str:
     """Get version spec ."""
     response = make_git_request(
-        FILE_URL.format(
-            repo=repo,
-            tag=get_latest_tag(repo=repo),
-            file=file,
-        )
+        FILE_URL.format(repo=repo, tag=get_latest_tag(repo=repo), file=file)
     )
     if response.status_code != 200:
         raise ValueError(
@@ -164,11 +154,7 @@ def get_dependencies() -> t.Dict:
     dependencies = {}
     for dependency, specs in DEPENDENCY_SPECS.items():
         version = _version_cache.get(
-            dependency,
-            get_dependency_version(
-                repo=specs["repo"],
-                file=specs["file"],
-            ),
+            dependency, get_dependency_version(repo=specs["repo"], file=specs["file"])
         )
         dependencies[dependency] = version
     _version_cache.update(dependencies)
@@ -190,11 +176,7 @@ def bump_pipfile_or_pyproject(file: Path, dependencies: t.Dict[str, str]) -> Non
             if update is None:
                 updated += line + "\n"
                 continue
-            spec = Dependency(
-                name=spec.name,
-                version=update,
-                extras=spec.extras,
-            )
+            spec = Dependency(name=spec.name, version=update, extras=spec.extras)
             updated += spec.to_pipfile_string() + "\n"
         except ValueError:
             updated += line + "\n"
@@ -216,11 +198,7 @@ def bump_tox(dependencies: t.Dict[str, str]) -> None:
             if update is None:
                 updated += line + "\n"
                 continue
-            spec = Dependency(
-                name=spec.name,
-                version=update,
-                extras=spec.extras,
-            )
+            spec = Dependency(name=spec.name, version=update, extras=spec.extras)
             updated += "    " + spec.to_pip_string() + "\n"
         except ValueError:
             updated += line + "\n"
@@ -233,9 +211,7 @@ def bump_packages(dependencies: t.Dict[str, str]) -> None:
     manager = PackageManagerV1.from_dir(Path(PACKAGES))
     for package_id in manager.dev_packages:
         path = (
-            manager.package_path_from_package_id(
-                package_id=package_id,
-            )
+            manager.package_path_from_package_id(package_id=package_id)
             / PACKAGE_TYPE_TO_CONFIG_FILE[package_id.package_type.value]
         )
         with path.open("r", encoding="utf-8") as stream:
@@ -270,10 +246,7 @@ def bump_packages(dependencies: t.Dict[str, str]) -> None:
 )
 @click.option("--sync", is_flag=True, help="Perform sync.")
 @click.option(
-    "--no-cache",
-    is_flag=True,
-    default=False,
-    help="Avoid using cache to bump.",
+    "--no-cache", is_flag=True, default=False, help="Avoid using cache to bump."
 )
 def main(
     extra: t.Tuple[Dependency, ...],

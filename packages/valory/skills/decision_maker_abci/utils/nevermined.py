@@ -180,10 +180,7 @@ def input_match(input_string: str, pattern: re.Pattern) -> Dict[str, Any]:
         return {"valid": False, "output": ""}
 
 
-def hash_data(
-    types: List[str],
-    values: List[Any],
-) -> str:
+def hash_data(types: List[str], values: List[Any]) -> str:
     """Hash data."""
     encoded_data = encode(types, values)
     return Web3.keccak(encoded_data).hex()
@@ -228,13 +225,16 @@ def get_lock_payment_seed(
             receivers,
         ],
     )
-    return hash_values, hash_data(
-        ["bytes32", "address", "bytes32"],
-        [
-            bytes.fromhex(agreement_id[2:]),
-            lock_payment_condition_address,
-            bytes.fromhex(hash_values[2:]),
-        ],
+    return (
+        hash_values,
+        hash_data(
+            ["bytes32", "address", "bytes32"],
+            [
+                bytes.fromhex(agreement_id[2:]),
+                lock_payment_condition_address,
+                bytes.fromhex(hash_values[2:]),
+            ],
+        ),
     )
 
 
@@ -266,13 +266,16 @@ def get_transfer_nft_condition_seed(
         ],
     )
 
-    return hash_values, hash_data(
-        ["bytes32", "address", "bytes32"],
-        [
-            bytes.fromhex(agreement_id[2:]),
-            transfer_nft_condition_address,
-            bytes.fromhex(hash_values[2:]),
-        ],
+    return (
+        hash_values,
+        hash_data(
+            ["bytes32", "address", "bytes32"],
+            [
+                bytes.fromhex(agreement_id[2:]),
+                transfer_nft_condition_address,
+                bytes.fromhex(hash_values[2:]),
+            ],
+        ),
     )
 
 
@@ -319,13 +322,16 @@ def get_escrow_payment_seed(
         ],
     )
 
-    return values_hash, hash_data(
-        ["bytes32", "address", "bytes32"],
-        [
-            bytes.fromhex(agreement_id[2:]),
-            escrow_payment_condition_address,
-            bytes.fromhex(values_hash[2:]),
-        ],
+    return (
+        values_hash,
+        hash_data(
+            ["bytes32", "address", "bytes32"],
+            [
+                bytes.fromhex(agreement_id[2:]),
+                escrow_payment_condition_address,
+                bytes.fromhex(values_hash[2:]),
+            ],
+        ),
     )
 
 

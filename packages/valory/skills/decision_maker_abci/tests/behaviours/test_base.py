@@ -69,10 +69,7 @@ def test_remove_fraction_wei(strategy: Tuple[int, float, int]) -> None:
     assert remove_fraction_wei(amount, fraction) == expected
 
 
-@given(
-    amount=st.integers(),
-    fraction=st.floats().filter(lambda x: x < 0 or x > 1),
-)
+@given(amount=st.integers(), fraction=st.floats().filter(lambda x: x < 0 or x > 1))
 def test_remove_fraction_wei_incorrect_fraction(amount: int, fraction: float) -> None:
     """Test the `remove_fraction_wei` function."""
     with pytest.raises(
@@ -102,11 +99,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
     path_to_skill = PACKAGE_DIR
 
-    def ffw(
-        self,
-        behaviour_cls: Any,
-        db_items: Optional[Dict] = None,
-    ) -> None:
+    def ffw(self, behaviour_cls: Any, db_items: Optional[Dict] = None) -> None:
         """Fast-forward to the given behaviour."""
         if db_items is None:
             db_items = {}
@@ -115,16 +108,13 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             behaviour=self.behaviour,
             behaviour_id=behaviour_cls.auto_behaviour_id(),
             synchronized_data=SynchronizedData(
-                AbciAppDB(
-                    setup_data=AbciAppDB.data_to_lists(db_items),
-                )
+                AbciAppDB(setup_data=AbciAppDB.data_to_lists(db_items))
             ),
         )
 
     @given(strategy_executables())
     def test_strategy_exec(
-        self,
-        strategy: Tuple[str, Dict[str, Tuple[str, str]], Optional[str]],
+        self, strategy: Tuple[str, Dict[str, Tuple[str, str]], Optional[str]]
     ) -> None:
         """Test the `strategy_exec` method."""
         strategy_name, strategies_executables, expected_result = strategy
@@ -243,11 +233,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             ({BET_AMOUNT_FIELD: 23456}, 23456),
         ),
     )
-    def test_get_bet_amount(
-        self,
-        mocked_result: int,
-        expected_result: int,
-    ) -> None:
+    def test_get_bet_amount(self, mocked_result: int, expected_result: int) -> None:
         """Test the `get_bet_amount` method."""
         # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
         self.ffw(BlacklistingBehaviour)
@@ -256,14 +242,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.download_strategies = lambda: (yield)  # type: ignore
         behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
         behaviour.execute_strategy = lambda *_, **__: mocked_result  # type: ignore
-        gen = behaviour.get_bet_amount(
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        )
+        gen = behaviour.get_bet_amount(0, 0, 0, 0, 0, 0)
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls
             next(gen)

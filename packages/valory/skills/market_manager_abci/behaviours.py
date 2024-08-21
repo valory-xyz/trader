@@ -187,6 +187,4 @@ class MarketManagerRoundBehaviour(AbstractRoundBehaviour):
 
     initial_behaviour_cls = UpdateBetsBehaviour
     abci_app_cls = MarketManagerAbciApp
-    behaviours: Set[Type[BaseBehaviour]] = {
-        UpdateBetsBehaviour,  # type: ignore
-    }
+    behaviours: Set[Type[BaseBehaviour]] = {UpdateBetsBehaviour}  # type: ignore
