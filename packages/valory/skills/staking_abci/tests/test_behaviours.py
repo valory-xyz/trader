@@ -35,6 +35,7 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 from packages.valory.skills.staking_abci.behaviours import (
     CallCheckpointBehaviour,
     StakingRoundBehaviour,
+    StakingInteractBaseBehaviour,
 )
 from packages.valory.skills.staking_abci.rounds import (
     Event,
@@ -45,6 +46,8 @@ from packages.valory.skills.staking_abci.rounds import (
 )
 from packages.valory.skills.staking_abci.models import SharedState
 from aea.exceptions import AEAActException  # type: ignore
+from packages.valory.skills.abstract_round_abci.tests.test_common import dummy_generator
+from unittest import mock
 
 PACKAGE_DIR = Path(__file__).parent.parent
 
@@ -56,6 +59,7 @@ class BehaviourTestCase:
     name: str
     initial_data: Dict[str, Any]
     event: Event
+    return_value: Any
     next_behaviour_class: Optional[Type[BaseBehaviour]] = None
 
 
@@ -111,11 +115,16 @@ class TestStackingBehaviour(BaseBehaviourTest):
             BehaviourTestCase(
                 name="successful stacking",
                 initial_data={
-                    # "service_staking_state": StakingState.STAKED.value,
+                    "service_staking_state": StakingState.STAKED.value,
                     "is_checkpoint_reached": True,
                     "safe_contract_address": "safe_contract_address",
                 },
                 event=Event.DONE,
+                return_value={
+                    "stacking_contract": None,
+                    "checkpoint": None,
+                    "safe_tx": None,
+                },
                 next_behaviour_class=make_degenerate_behaviour(
                     CheckpointCallPreparedRound
                 ),
@@ -125,26 +134,29 @@ class TestStackingBehaviour(BaseBehaviourTest):
     def test_run(self, test_case: BehaviourTestCase) -> None:
         """Run the behaviour tests."""
         self.next_behaviour_class = test_case.next_behaviour_class
-        params = cast(SharedState, self._skill.skill_context.params)
-        params.__dict__["_frozen"] = False
+        with mock.patch.object(
+            StakingInteractBaseBehaviour,
+            "_staking_contract_interact",
+            dummy_generator(test_case.return_value["stacking_contract"]),
+        ), mock.patch.object(
+            StakingInteractBaseBehaviour,
+            "_get_next_checkpoint",
+            dummy_generator(test_case.return_value["checkpoint"]),
+        ), mock.patch.object(
+            CallCheckpointBehaviour,
+            "_get_safe_tx_hash",
+            dummy_generator(test_case.return_value["safe_tx"]),
+        ):
 
-        # Set params using the `initial_data` mapping
-        self.set_params(
-            params,
-            {
-                "on_chain_service_id": "new_on_chain_service_id",
-                # Add more mappings here if needed
-            },
-        )
+            params = cast(SharedState, self._skill.skill_context.params)
+            params.__dict__["_frozen"] = False
+            params.on_chain_service_id = "new_on_chain_service_id"
+            self.fast_forward(test_case.initial_data)
+            self.behaviour.act_wrapper()
+            self.behaviour.act_wrapper()
+            self.behaviour.act_wrapper()
 
-        self.fast_forward(test_case.initial_data)
+            # with pytest.raises(AEAActException, match=test_case.raises_message):
+            #     self.behaviour.act_wrapper()
 
-        # with pytest.raises(AEAActException, match=test_case.raises_message):
-        #     self.behaviour.act_wrapper()
-
-        self.complete(test_case.event)
-
-    def set_params(self, params: SharedState, param_mapping: Dict[str, Any]) -> None:
-        """Set parameters based on the provided mapping."""
-        for param_name, param_value in param_mapping.items():
-            setattr(params, param_name, param_value)
+            self.complete(test_case.event)
