@@ -21,7 +21,7 @@
 
 import pytest
 from pathlib import Path
-from typing import Any, Dict, Type, Optional
+from typing import Any, Dict, Type, Optional, cast
 from dataclasses import dataclass
 from datetime import datetime
 from packages.valory.skills.abstract_round_abci.base import AbciAppDB
@@ -41,8 +41,10 @@ from packages.valory.skills.staking_abci.rounds import (
     SynchronizedData,
     FinishedStakingRound,
     StakingState,
-    CheckpointCallPreparedRound
+    CheckpointCallPreparedRound,
 )
+from packages.valory.skills.staking_abci.models import SharedState
+from aea.exceptions import AEAActException  # type: ignore
 
 PACKAGE_DIR = Path(__file__).parent.parent
 
@@ -102,29 +104,47 @@ class TestStackingBehaviour(BaseBehaviourTest):
     """Test cases for the stacking behaviour."""
 
     behaviour_class: Type[BaseBehaviour] = CallCheckpointBehaviour
-    next_behaviour_class: Type[BaseBehaviour] = make_degenerate_behaviour(
-        FinishedStakingRound
-    )
 
     @pytest.mark.parametrize(
         "test_case",
         [
-            # Test for a successful stacking scenario
             BehaviourTestCase(
                 name="successful stacking",
                 initial_data={
-                    "service_staking_state": StakingState.STAKED.value, 
-                    "is_checkpoint_reached": True, 
-                    "safe_contract_address": "safe_contract_address", 
-                    # "stack_amount": 1000,  
-                    # "context.agent_address": "0xAgentAddress",  # Mock or provide the agent address needed for context
+                    # "service_staking_state": StakingState.STAKED.value,
+                    "is_checkpoint_reached": True,
+                    "safe_contract_address": "safe_contract_address",
                 },
-                event=Event.DONE,  # The expected event in this case
-                next_behaviour_class=make_degenerate_behaviour(CheckpointCallPreparedRound),  # Next behavior class
+                event=Event.DONE,
+                next_behaviour_class=make_degenerate_behaviour(
+                    CheckpointCallPreparedRound
+                ),
             ),
         ],
     )
     def test_run(self, test_case: BehaviourTestCase) -> None:
         """Run the behaviour tests."""
-        self.fast_forward(test_case.initial_data)  # Set up the initial state with the provided data
-        self.complete(test_case.event)  # Complete the round with the expected event
+        self.next_behaviour_class = test_case.next_behaviour_class
+        params = cast(SharedState, self._skill.skill_context.params)
+        params.__dict__["_frozen"] = False
+
+        # Set params using the `initial_data` mapping
+        self.set_params(
+            params,
+            {
+                "on_chain_service_id": "new_on_chain_service_id",
+                # Add more mappings here if needed
+            },
+        )
+
+        self.fast_forward(test_case.initial_data)
+
+        # with pytest.raises(AEAActException, match=test_case.raises_message):
+        #     self.behaviour.act_wrapper()
+
+        self.complete(test_case.event)
+
+    def set_params(self, params: SharedState, param_mapping: Dict[str, Any]) -> None:
+        """Set parameters based on the provided mapping."""
+        for param_name, param_value in param_mapping.items():
+            setattr(params, param_name, param_value)
