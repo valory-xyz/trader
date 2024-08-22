@@ -45,7 +45,7 @@ _logger = logging.getLogger(
 )
 
 MARKET_FEE = 2.0
-UNIT_SEPARATOR = "␟"
+UNIT_SEPARATOR = chr(9247)
 
 
 def format_answers(answers: List[str]) -> str:
