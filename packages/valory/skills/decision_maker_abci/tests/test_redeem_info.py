@@ -73,17 +73,16 @@ class TestFPMM:
         fpmm = FPMM(
             answerFinalizedTimestamp=1,
             collateralToken="dummy_collateral_token",
-            condition={
-                "id": HexBytes("0x00000000000000001234567890abcdef"),
-                "outcomeSlotCount": 2,
-            },
+            condition=Condition(
+                id=HexBytes("0x00000000000000001234567890abcdef"), outcomeSlotCount=2
+            ),
             creator="dummy_creator",
             creationTimestamp=1,
             currentAnswer="0x1A2B3C",
-            question={
-                "id": b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-                "data": "dummy_data",
-            },
+            question=Question(
+                id=b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                data="dummy_data",
+            ),
             templateId=1,
         )
         fpmm.__post_init__()
@@ -115,7 +114,7 @@ class TestTrade:
     def test_initialization(self, outcomeIndex: int) -> None:
         """Test initialization."""
         trade = Trade(
-            fpmm=dict(
+            fpmm=FPMM(
                 answerFinalizedTimestamp=1,
                 collateralToken="dummy_collateral_token",
                 condition=Condition(
@@ -159,7 +158,8 @@ class TestTrade:
             and trade.outcomeTokensTraded == 1
             and trade.outcomeTokenMarginalPrice == 1.00
             and trade.outcomeTokensTraded == 1
-            and trade.transactionHash == "0x5b6a3f8eaa6c8a5c3b123d456e7890abcdef1234567890abcdef1234567890ab"
+            and trade.transactionHash
+            == "0x5b6a3f8eaa6c8a5c3b123d456e7890abcdef1234567890abcdef1234567890ab"
         )
 
         if trade.outcomeIndex == 1:

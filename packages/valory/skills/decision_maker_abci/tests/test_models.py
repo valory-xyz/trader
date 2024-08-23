@@ -82,11 +82,15 @@ class TestRedeemingProgress:
             {"args": {"history_hash": "h1", "user": "u1", "bond": "b1", "answer": "a1"}}
         ]
         claim_params = self.redeeming_progress.claim_params
-        assert claim_params == ([b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                                b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'],
-                                ['u1'],
-                                ['b1'],
-                                ['a1'])
+        assert claim_params == (
+            [
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            ],
+            ["u1"],
+            ["b1"],
+            ["a1"],
+        )
 
 
 class TestSharedState:
@@ -125,7 +129,7 @@ class TestSharedState:
     def test_current_liquidity_prices_setter(self) -> None:
         """Test current_liquidity_prices setter."""
         self.shared_state.current_liquidity_prices = [2.1]
-        assert self.shared_state.liquidity_prices == {'dummy_id': [2.1]}
+        assert self.shared_state.liquidity_prices == {"dummy_id": [2.1]}
 
     def test_current_liquidity_amounts(self) -> None:
         """Test current_liquidity_amounts."""
