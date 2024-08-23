@@ -30,7 +30,6 @@ fingerprint:
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
   tests/test_models.py: bafybeiddkkekl2xsebvpisfkixhg5aqdnpes234s6mcwjvxv5xlqw7sowi
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
-  tests/test_rounds.py: bafybeidkwfdu5svrtxme3w7enwit45jghanywfke6ivaacawsoyqw6f4sa
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
