@@ -19,7 +19,9 @@
 
 """Test the models.py module of the StakingAbci skill."""
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
-from packages.valory.skills.abstract_round_abci.tests.test_models import BASE_DUMMY_PARAMS
+from packages.valory.skills.abstract_round_abci.tests.test_models import (
+    BASE_DUMMY_PARAMS,
+)
 from packages.valory.skills.staking_abci.models import SharedState, StakingParams
 
 
@@ -28,10 +30,12 @@ class TestStakingParams:
 
     def test_initialization(self) -> None:
         """Test initialization."""
-        StakingParams(**BASE_DUMMY_PARAMS,
-                      staking_contract_address="test",
-                      staking_interaction_sleep_time=1,
-                      mech_activity_checker_contract="test")
+        StakingParams(
+            **BASE_DUMMY_PARAMS,
+            staking_contract_address="test",
+            staking_interaction_sleep_time=1,
+            mech_activity_checker_contract="test"
+        )
 
 
 class TestSharedState:

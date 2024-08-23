@@ -17,21 +17,30 @@
 #
 # ------------------------------------------------------------------------------
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
-from packages.valory.skills.abstract_round_abci.tests.test_models import BASE_DUMMY_PARAMS
-from packages.valory.skills.tx_settlement_multiplexer_abci.models import TxSettlementMultiplexerParams, SharedState
+from packages.valory.skills.abstract_round_abci.tests.test_models import (
+    BASE_DUMMY_PARAMS,
+)
+from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
+    SharedState,
+    TxSettlementMultiplexerParams,
+)
+
 
 DUMMY_TX_SETTLEMENT_MULTIPLEXER_PARAMS = {
     "agent_balance_threshold": 1,
-    "refill_check_interval": 1
+    "refill_check_interval": 1,
 }
+
 
 class TestTxSettlementMultiplexerParams:
     """Test the TxSettlementMultiplexerParams of the TxSettlementMultiplexerAbci."""
 
     def test_initialization(self) -> None:
         """Test initialization."""
-        TxSettlementMultiplexerParams(**DUMMY_TX_SETTLEMENT_MULTIPLEXER_PARAMS,
-                                      **BASE_DUMMY_PARAMS)
+        TxSettlementMultiplexerParams(
+            **DUMMY_TX_SETTLEMENT_MULTIPLEXER_PARAMS, **BASE_DUMMY_PARAMS
+        )
+
 
 class TestSharedState:
     """Test SharedState of TxSettlementMultiplexer skill."""

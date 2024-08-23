@@ -16,13 +16,18 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-from typing import Union, Dict
+from typing import Dict, Union
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
-from packages.valory.skills.decision_maker_abci.models import PromptTemplate, LiquidityInfo, RedeemingProgress, \
-    SharedState, BenchmarkingMockData
+from packages.valory.skills.decision_maker_abci.models import (
+    BenchmarkingMockData,
+    LiquidityInfo,
+    PromptTemplate,
+    RedeemingProgress,
+    SharedState,
+)
 
 
 class TestLiquidityInfo:
@@ -57,9 +62,7 @@ class TestRedeemingProgress:
 
     def setup(self) -> None:
         """Set up tests."""
-        self.redeeming_progress = RedeemingProgress(
-
-        )
+        self.redeeming_progress = RedeemingProgress()
 
     def test_check_finished(self) -> None:
         self.redeeming_progress.check_started = True
@@ -72,20 +75,21 @@ class TestRedeemingProgress:
         assert self.redeeming_progress.claim_finished is True
 
     def test_claim_params(self) -> None:
-        self.redeeming_progress.answered = [{"args": {"history_hash": "h1", "user": "u1", "bond": "b1", "answer": "a1"}}]
+        self.redeeming_progress.answered = [
+            {"args": {"history_hash": "h1", "user": "u1", "bond": "b1", "answer": "a1"}}
+        ]
         claim_params = self.redeeming_progress.claim_params
 
 
 class TestSharedState:
     """Test SharedState of DecisionMakerAbci."""
 
-    def setup(self)-> None:
+    def setup(self) -> None:
         """Set up tests."""
         self.shared_state = SharedState(name="", skill_context=DummyContext())
-        self.shared_state.mock_data = BenchmarkingMockData(id="dummy_id",
-                                                           question="dummy_question",
-                                                           answer="dummy_answer",
-                                                           p_yes=1.1)
+        self.shared_state.mock_data = BenchmarkingMockData(
+            id="dummy_id", question="dummy_question", answer="dummy_answer", p_yes=1.1
+        )
         self.shared_state.liquidity_prices = {"test_1": [1.1]}
         self.shared_state.liquidity_amounts = {"dummy_id": [1]}
 
@@ -123,4 +127,3 @@ class TestSharedState:
         """Test current_liquidity_prices setter."""
         self.shared_state.current_liquidity_amounts = [2]
         assert self.shared_state.liquidity_amounts == {"dummy_id": [2]}
-
