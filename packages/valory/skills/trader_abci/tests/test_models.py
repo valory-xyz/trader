@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """Test the models.py module of the trader skill."""
-import os.path
+
 from pathlib import Path
 
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
@@ -30,7 +30,6 @@ from packages.valory.skills.market_manager_abci.tests.test_models import (
     MARKET_MANAGER_PARAMS,
 )
 from packages.valory.skills.trader_abci.models import (
-    MARGIN,
     RandomnessApi,
     SharedState,
     TraderParams,

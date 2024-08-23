@@ -54,7 +54,6 @@ class Subgraph(ApiSpecs):
         res = super().process_response(response)
         print(f"RES: {res}")
         if res is not None:
-            # return res
             return res
 
         error_data = self.response_info.error_data

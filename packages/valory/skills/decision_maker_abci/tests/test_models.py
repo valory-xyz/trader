@@ -16,7 +16,7 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-from typing import Dict, Union
+"""This file contains tests for the models of decision maker skill."""
 
 import pytest
 
@@ -24,7 +24,6 @@ from packages.valory.skills.abstract_round_abci.test_tools.base import DummyCont
 from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMockData,
     LiquidityInfo,
-    PromptTemplate,
     RedeemingProgress,
     SharedState,
 )
@@ -33,7 +32,8 @@ from packages.valory.skills.decision_maker_abci.models import (
 class TestLiquidityInfo:
     """Test LiquidityInfo of DecisionMakerAbci."""
 
-    def setup(self):
+    def setup(self) -> None:
+        """Set up tests."""
         self.liquidity_info = LiquidityInfo(l0_end=1, l1_end=1, l0_start=1, l1_start=1)
 
     def test_validate_end_information_raises(self) -> None:
@@ -65,20 +65,28 @@ class TestRedeemingProgress:
         self.redeeming_progress = RedeemingProgress()
 
     def test_check_finished(self) -> None:
+        """Test check finished."""
         self.redeeming_progress.check_started = True
         self.redeeming_progress.check_from_block = "latest"
         assert self.redeeming_progress.check_finished is True
 
     def test_claim_finished(self) -> None:
+        """Test claim finished."""
         self.redeeming_progress.claim_started = True
         self.redeeming_progress.claim_from_block = "latest"
         assert self.redeeming_progress.claim_finished is True
 
     def test_claim_params(self) -> None:
+        """Test claim params."""
         self.redeeming_progress.answered = [
             {"args": {"history_hash": "h1", "user": "u1", "bond": "b1", "answer": "a1"}}
         ]
         claim_params = self.redeeming_progress.claim_params
+        assert claim_params == ([b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                                b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'],
+                                ['u1'],
+                                ['b1'],
+                                ['a1'])
 
 
 class TestSharedState:
@@ -90,8 +98,9 @@ class TestSharedState:
         self.shared_state.mock_data = BenchmarkingMockData(
             id="dummy_id", question="dummy_question", answer="dummy_answer", p_yes=1.1
         )
-        self.shared_state.liquidity_prices = {"test_1": [1.1]}
+        self.shared_state.liquidity_prices = {"dummy_id": [1.1]}
         self.shared_state.liquidity_amounts = {"dummy_id": [1]}
+        self.shared_state.liquidity_data = {"current_liquidity_prices": [1.1]}
 
     def test_initialization(self) -> None:
         """Test initialization."""
@@ -103,8 +112,8 @@ class TestSharedState:
         assert mock_question_id == "dummy_id"
 
     def test_get_liquidity_info(self) -> None:
-        """test _get_liquidity_info."""
-        liquidity_data = {"dummy_id": [1], "test_1": [1.1]}
+        """Test _get_liquidity_info."""
+        liquidity_data = {"dummy_id": [1]}
         liquidity_info = self.shared_state._get_liquidity_info(liquidity_data)
         assert liquidity_info == [1]
 
@@ -116,10 +125,10 @@ class TestSharedState:
     def test_current_liquidity_prices_setter(self) -> None:
         """Test current_liquidity_prices setter."""
         self.shared_state.current_liquidity_prices = [2.1]
-        assert self.shared_state.liquidity_prices == {"dummy_id": [2.1]}
+        assert self.shared_state.liquidity_prices == {'dummy_id': [2.1]}
 
     def test_current_liquidity_amounts(self) -> None:
-        """test current_liquidity_amounts."""
+        """Test current_liquidity_amounts."""
         current_liquidity_amounts = self.shared_state.current_liquidity_amounts
         assert current_liquidity_amounts == [1]
 

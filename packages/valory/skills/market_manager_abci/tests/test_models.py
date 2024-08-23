@@ -18,22 +18,17 @@
 # ------------------------------------------------------------------------------
 
 """Test the models.py module of the MarketManager skill."""
-import builtins
-import unittest
 from copy import deepcopy
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
 from packages.valory.skills.abstract_round_abci.tests.test_models import (
-    BASE_DUMMY_PARAMS,
     BASE_DUMMY_SPECS_CONFIG,
 )
 from packages.valory.skills.market_manager_abci.models import (
-    MarketManagerParams,
     NetworkSubgraph,
     OmenSubgraph,
     SharedState,
@@ -146,6 +141,3 @@ class TestNetworkSubgraph:
     def test_initialization(self) -> None:
         """Test initialization of NetworkSubgraph."""
         NetworkSubgraph(**BASE_DUMMY_SPECS_CONFIG)
-
-
-

@@ -16,6 +16,8 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
+"""Tests for the models of the tx settlement multiplexer."""
+
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
 from packages.valory.skills.abstract_round_abci.tests.test_models import (
     BASE_DUMMY_PARAMS,
