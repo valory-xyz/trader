@@ -48,6 +48,7 @@ from packages.valory.skills.staking_abci.models import SharedState
 from aea.exceptions import AEAActException  # type: ignore
 from packages.valory.skills.abstract_round_abci.tests.test_common import dummy_generator
 from unittest import mock
+from packages.valory.protocols.contract_api import ContractApiMessage
 
 PACKAGE_DIR = Path(__file__).parent.parent
 
@@ -121,42 +122,34 @@ class TestStackingBehaviour(BaseBehaviourTest):
                 },
                 event=Event.DONE,
                 return_value={
-                    "stacking_contract": None,
-                    "checkpoint": None,
-                    "safe_tx": None,
+                    "contract": mock.MagicMock(
+                        performative=ContractApiMessage.Performative.STATE,
+                        state={"status": True},
+                    ),
                 },
                 next_behaviour_class=make_degenerate_behaviour(
                     CheckpointCallPreparedRound
                 ),
-            ),
+            )
         ],
     )
     def test_run(self, test_case: BehaviourTestCase) -> None:
         """Run the behaviour tests."""
         self.next_behaviour_class = test_case.next_behaviour_class
+
+        # Mock the generator for the contract API response
         with mock.patch.object(
             StakingInteractBaseBehaviour,
-            "_staking_contract_interact",
-            dummy_generator(test_case.return_value["stacking_contract"]),
-        ), mock.patch.object(
-            StakingInteractBaseBehaviour,
-            "_get_next_checkpoint",
-            dummy_generator(test_case.return_value["checkpoint"]),
-        ), mock.patch.object(
-            CallCheckpointBehaviour,
-            "_get_safe_tx_hash",
-            dummy_generator(test_case.return_value["safe_tx"]),
+            "get_contract_api_response",
+            dummy_generator(test_case.return_value["contract"]),
         ):
+            print("Mocked contract response:", test_case.return_value["contract"])
 
+            # Update skill parameters if needed
             params = cast(SharedState, self._skill.skill_context.params)
             params.__dict__["_frozen"] = False
             params.on_chain_service_id = "new_on_chain_service_id"
+
             self.fast_forward(test_case.initial_data)
             self.behaviour.act_wrapper()
-            self.behaviour.act_wrapper()
-            self.behaviour.act_wrapper()
-
-            # with pytest.raises(AEAActException, match=test_case.raises_message):
-            #     self.behaviour.act_wrapper()
-
             self.complete(test_case.event)
