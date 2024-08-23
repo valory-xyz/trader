@@ -60,6 +60,7 @@ fingerprint:
   tests/behaviours/test_base.py: bafybeif6pglmr7pvojylatfzaxtlk65igx6a2omyrbxfihnnft6o7p75p4
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   tests/test_handlers.py: bafybeihpkgtjjm3uegpup6zkznpoaxqpu6kmp3ujiggrzbe73p5fzlq7im
+  tests/test_loader.py: bafybeighetz2cls333d5xci2pdai4i7r5kyu7nr5mpajpddls6klos6yc4
   tests/test_payloads.py: bafybeigsftkoc7ursy7okfznbwfiy3pk2kitndfgbn35ebbz4yoptkw3zy
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi
@@ -85,7 +86,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiar2yhzxacfe3qqamqhaihtlcimquwedffctw55sowx6rac3cm3ui
-- valory/market_manager_abci:0.1.0:bafybeiai6djelf6d4dkxgkv46l24q2gz7736b3jdhbxslvcydpvnvrse6e
+- valory/market_manager_abci:0.1.0:bafybeifbgr5jhnhmsc5v7z77bogzo2x37rkhlqptovsifv6pxu7p4kw4vu
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 behaviours:

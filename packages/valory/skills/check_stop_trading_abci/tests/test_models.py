@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -20,23 +20,29 @@
 """Test the models.py module of the CheckStopTrading skill."""
 
 from packages.valory.skills.abstract_round_abci.test_tools.base import DummyContext
-from packages.valory.skills.abstract_round_abci.tests.test_models import BASE_DUMMY_PARAMS
-from packages.valory.skills.check_stop_trading_abci.models import SharedState, CheckStopTradingParams
+from packages.valory.skills.abstract_round_abci.tests.test_models import (
+    BASE_DUMMY_PARAMS,
+)
+from packages.valory.skills.check_stop_trading_abci.models import (
+    CheckStopTradingParams,
+    SharedState,
+)
 
 
 class TestCheckStopTradingParams:
     """Test CheckStopTradingParams of CheckStopTrading."""
 
     def test_initialization(self) -> None:
-        """ Test initialization."""
+        """Test initialization."""
 
-        CheckStopTradingParams(disable_trading=True,
-                               stop_trading_if_staking_kpi_met=True,
-                               staking_contract_address="",
-                               staking_interaction_sleep_time=1,
-                               mech_activity_checker_contract="",
-                               **BASE_DUMMY_PARAMS,
-                               )
+        CheckStopTradingParams(
+            disable_trading=True,
+            stop_trading_if_staking_kpi_met=True,
+            staking_contract_address="",
+            staking_interaction_sleep_time=1,
+            mech_activity_checker_contract="",
+            **BASE_DUMMY_PARAMS,
+        )
 
 
 class TestSharedState:
