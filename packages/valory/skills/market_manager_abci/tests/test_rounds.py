@@ -152,8 +152,12 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                     data=get_dummy_update_bets_payload_serialized(),
                 ),
                 final_data={
-                    "bets_hash": DUMMY_BETS_HASH,
-                    "participant_to_bets": DUMMY_PARTICIPANT_TO_BETS,
+                    "bets_hash": json.loads(
+                        get_dummy_update_bets_payload_serialized()
+                    )["bets_hash"],
+                    "participant_to_bets": json.loads(
+                        get_dummy_update_bets_payload_serialized()
+                    )["participant_to_bets"],
                 },
                 event=Event.DONE,
                 most_voted_payload=get_dummy_update_bets_payload_serialized(),
