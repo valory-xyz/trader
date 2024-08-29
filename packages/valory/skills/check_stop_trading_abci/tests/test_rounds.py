@@ -109,6 +109,7 @@ def get_payloads(
         for participant in get_participants()
     }
 
+
 def get_dummy_check_stop_trading_payload_serialized() -> str:
     """Dummy payload serialization"""
     return json.dumps(DUMMY_PAYLOAD_DATA, sort_keys=True)
@@ -137,16 +138,13 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
     test_payload: Type[CheckStopTradingPayload]
 
     def _test_voting_round(
-        self,
-        vote: bool,
-        expected_event: Any,
-        threshold_check: Callable
+        self, vote: bool, expected_event: Any, threshold_check: Callable
     ) -> None:
         """Helper method to test voting rounds with positive or negative votes."""
 
         test_round = self.test_class(
             synchronized_data=self.synchronized_data, context=MagicMock()
-        )   
+        )
 
         self._complete_run(
             self._test_round(
@@ -159,9 +157,11 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
                 ),
                 synchronized_data_attr_checks=[
                     lambda _synchronized_data: _synchronized_data.participant_to_votes.keys()
-                ] if vote else [],
+                ]
+                if vote
+                else [],
                 exit_event=expected_event,
-                threshold_check=threshold_check
+                threshold_check=threshold_check,
             )
         )
 
@@ -170,7 +170,7 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
         self._test_voting_round(
             vote=True,
             expected_event=self._event_class.SKIP_TRADING,
-            threshold_check=lambda x: x.positive_vote_threshold_reached
+            threshold_check=lambda x: x.positive_vote_threshold_reached,
         )
 
     def test_negative_votes(self) -> None:
@@ -178,8 +178,9 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
         self._test_voting_round(
             vote=False,
             expected_event=self._event_class.DONE,
-            threshold_check=lambda x: x.negative_vote_threshold_reached
+            threshold_check=lambda x: x.negative_vote_threshold_reached,
         )
+
 
 class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
     """Tests for CheckStopTradingRound."""
@@ -231,7 +232,6 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
         elif test_case.event == Event.NO_MAJORITY:
             self.test_negative_votes()
 
-
     """Tests for FinishedCheckStopTradingRound."""
 
     def test_finished_check_stop_trading_round_initialization(self) -> None:
@@ -282,4 +282,4 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
 def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
     data = SynchronizedData(db=AbciAppDB(setup_data={"test": ["test"]}))
-    assert data.db._data == {0: {"test": ["test"]}}                    
+    assert data.db._data == {0: {"test": ["test"]}}
