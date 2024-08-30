@@ -22,7 +22,6 @@
 from abc import ABC
 from enum import Enum
 from typing import Dict, Set, Tuple, Type, cast
-
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
@@ -66,7 +65,7 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def participant_to_bets_hash(self) -> DeserializedCollection:
         """Get the participants to bets' hash."""
-        return self._get_deserialized("participant_to_bets")
+        return self._get_deserialized("participant_to_bets_hash")
 
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
