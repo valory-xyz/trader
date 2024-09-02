@@ -23,7 +23,7 @@
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeiepylk35n3faurvp7dskjkdovehftzfjrjxfkpekzuaovt5gojxne",
         "agent/valory/trader/0.1.0": "bafybeiexvarbsj25xevrtuqavwmgpvmz753a74im7su7jzamhhkuqjcl3y",
         "service/valory/trader/0.1.0": "bafybeighrps33nlltr7gwdeaftkii3t2itwshvk5ulpazjyxdmed6gmbo4",
-        "service/valory/trader_pearl/0.1.0": "bafybeihqtqgohejyebrb4jvd2fgccuasmqk3gc456ylyfa7tcn6rucdrxm"
+        "service/valory/trader_pearl/0.1.0": "bafybeictjmyutp32ifgc3it2yt626tmxtk4izjp3gxfytimih4ao5z6kmq"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
