@@ -12,12 +12,12 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeidpo2jaunr2odotiapfkc7v6pxq6nzqckjjge6vavbsh3ejc54pti
+  behaviours/base.py: bafybeidmat7boku24xi3rtkj26aytnu2eynydm5dcxiswi6flrsj3lxgm4
   behaviours/bet_placement.py: bafybeihmia64t2payxfqcnfdqg675ui2yp3hnyfwb2xhj2hn7wl237b4re
   behaviours/blacklisting.py: bafybeibofq3emoxxcndkozupsyo2xrigewy6ojvzfdvzwruvsvgyilokbu
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
-  behaviours/decision_receive.py: bafybeiay7cbzzngvtatswrgxczt5257jgwc6ppfi43fwc6rso36kipxmr4
+  behaviours/decision_receive.py: bafybeifbgsa7ssnqgnyxkbzcc6t2pt372z3jhgn5rzw6yhevad6r7qiapy
   behaviours/decision_request.py: bafybeiabjzzcwcfbfmtoftjhewmkgbhxfnigbc5cwmmxl6cob5gv64jwwa
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeicrmdvhci5prfldvuf3bclbbqi6j7lpv6hmphw3qwgmkmwat3od44
@@ -25,7 +25,7 @@ fingerprint:
   behaviours/reedem.py: bafybeiaszvuwfamdq5m7zaxf3tvbyp6wocsksezfajqv5xpkh43r62cj6u
   behaviours/round_behaviour.py: bafybeibvhobpvzzd37ecleuyp2jrbed6nontcw7urtsilbbzvqsmmupx64
   behaviours/sampling.py: bafybeibtkli72qsvotkrsepkgpiumtr5sershtkpb427oygnszs3dpgxry
-  behaviours/storage_manager.py: bafybeifelwjwstg5dwrnzeav5mumz47kqrlmv4crfn27a3vliomychd2x4
+  behaviours/storage_manager.py: bafybeibnlg2eirzcxdpnuwbhzne77ear44cqwm4yae5bacgfu4vqqq7d7a
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeicvrvzcjt4hg5jyr2eleoajpbb7q2fbq2bopmbnwy33fsjdblzygu
@@ -38,7 +38,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeihmj6x7utewuo6yqk4li7pxwkumiz4nsm5mfb6sd35j7kmfhzkhm4
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeiayitlxvdnl3pcm54l3zt5z5bcexbxixchrwtrmbhwoimm4555p7m
+  states/base.py: bafybeicrzw6p4dq52adkdjlduplt3expzajqmd3nkcpsw5yalfc3dwv75q
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
@@ -57,7 +57,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
-  tests/behaviours/test_base.py: bafybeiagdrveenk62parzchxg2nd2krpzm2pflfv3p4gszjfpnv3r2kpf4
+  tests/behaviours/test_base.py: bafybeif6pglmr7pvojylatfzaxtlk65igx6a2omyrbxfihnnft6o7p75p4
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   tests/test_handlers.py: bafybeihpkgtjjm3uegpup6zkznpoaxqpu6kmp3ujiggrzbe73p5fzlq7im
   tests/test_payloads.py: bafybeigsftkoc7ursy7okfznbwfiy3pk2kitndfgbn35ebbz4yoptkw3zy
@@ -74,7 +74,7 @@ contracts:
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeidwpijhdwj5abewa44k3tzxuanxykzmgnnffeq7re2rxp7pqbd2ou
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
-- valory/realitio:0.1.0:bafybeignaxfk7fjlfa4lioflwsfru2z5xln5cyvyew3if5oas2sgm5wuii
+- valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeifsb2krg4qnr4nxdrhcdgpncfr5ra2nahebvn2f2yff7ebwe7ooae
 - valory/transfer_nft_condition:0.1.0:bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi
