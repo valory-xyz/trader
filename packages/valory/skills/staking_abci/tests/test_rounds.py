@@ -212,15 +212,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
         ],
     )
     def test_run(self, test_case: RoundTestCase) -> None:
-        """Run tests with debugging."""
-        # Print test case details
-        print(f"Running test case: {test_case.name}")
-        print(f"Initial Data: {test_case.initial_data}")
-        print(f"Payloads: {test_case.payloads}")
-        print(f"Final Data: {test_case.final_data}")
-        print(f"Event: {test_case.event}")
-        print(f"Most Voted Payload: {test_case.most_voted_payload}")
-
+      
         # Run the test
         self.run_test(test_case)
 
