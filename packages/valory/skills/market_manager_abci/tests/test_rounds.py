@@ -1,3 +1,22 @@
+# -*- coding: utf-8 -*-
+# ------------------------------------------------------------------------------
+#
+#   Copyright 2024 Valory AG
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# ------------------------------------------------------------------------------
+
 import json
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -38,7 +57,7 @@ def abci_app() -> MarketManagerAbciApp:
         synchronized_data=synchronized_data,
         logger=logger,
         context=context
-    )
+    )   
 
 DUMMY_BETS_HASH = "dummy_bets_hash"
 DUMMY_PARTICIPANT_TO_BETS_HASH = json.dumps({
@@ -69,6 +88,7 @@ def get_dummy_update_bets_payload_serialized() -> str:
     return json.dumps(
         {
             "bets_hash": DUMMY_BETS_HASH,
+            "participnt_to_bets_hash": DUMMY_PARTICIPANT_TO_BETS_HASH,
         },
         sort_keys=True,
     )
@@ -145,6 +165,7 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 ),
                 final_data={
                     "bets_hash": DUMMY_BETS_HASH,
+                    "participant_to_bets_hash": DUMMY_PARTICIPANT_TO_BETS_HASH,
                 },
                 event=Event.DONE,
                 most_voted_payload=DUMMY_BETS_HASH,
@@ -170,7 +191,16 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
         """Run tests."""
         
         self.run_test(test_case)
-        
+
+    def test_return_no_majority_event(self) -> None:
+        """Test the _return_no_majority_event method."""
+        # Mock synchronized data and create an instance of the round
+        synchronized_data = MagicMock(spec=SynchronizedData)
+        update_bets_round = UpdateBetsRound(synchronized_data=synchronized_data, context=MagicMock())
+
+        # Call the method and check the results
+        result = update_bets_round._return_no_majority_event()
+        assert result == (synchronized_data, Event.NO_MAJORITY)   
 
 
 class TestFinishedMarketManagerRound:
