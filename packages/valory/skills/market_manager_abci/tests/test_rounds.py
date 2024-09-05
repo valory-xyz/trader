@@ -22,7 +22,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from packages.valory.skills.abstract_round_abci.base import (
@@ -249,12 +249,61 @@ def test_market_manager_abci_app_initialization(abci_app: MarketManagerAbciApp) 
         FailedMarketManagerRound: set(),
     }
 
+
+
+# Mock serialized collections for different keys
+DUMMY_PARTICIPANT_TO_BETS_HASH = {
+    "agent_0": {"sender": "agent_0", "data": "bet_1"},
+    "agent_1": {"sender": "agent_1", "data": "bet_2"},
+}
+DUMMY_BETS_HASH = {"bets_hash": "dummy_bets_hash"}
+
+DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH = json.dumps(DUMMY_PARTICIPANT_TO_BETS_HASH)
+DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH)
+
+
+@pytest.mark.parametrize(
+    "key,serialized_data,expected_result",
+    [
+        (
+            "participant_to_bets_hash",
+            DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH,
+            DUMMY_PARTICIPANT_TO_BETS_HASH,
+        ),
+        (
+            "bets_hash",
+            DUMMY_SERIALIZED_BETS_HASH,
+            DUMMY_BETS_HASH,
+        ),
+    ],
+)
+@patch("packages.valory.skills.market_manager_abci.rounds.CollectionRound.deserialize_collection")
+def test_synchronized_data_get_deserialized(
+    mock_deserialize_collection, key, serialized_data, expected_result
+) -> None:
+    """Test the _get_deserialized method in SynchronizedData."""
+    # Mock the db.get_strict to return the serialized data
+    mock_db = mock.MagicMock()
+    mock_db.get_strict.return_value = serialized_data
+    synchronized_data = SynchronizedData(db=mock_db)
+
+    # Mock the deserialize_collection function to return the expected deserialized result
+    mock_deserialize_collection.return_value = expected_result
+    deserialized_data = synchronized_data._get_deserialized(key)
+
+    # Ensure that get_strict is called with the correct key
+    mock_db.get_strict.assert_called_once_with(key)
+
+    # Ensure that deserialize_collection is called with the correct serialized data
+    mock_deserialize_collection.assert_called_once_with(serialized_data)
+
+    # Check that the deserialized data is correct
+    assert deserialized_data == expected_result
+
+
 def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
-    data = SynchronizedData(db=AbciAppDB(setup_data={"test": ["test"]}))
-    synchronized_data = SynchronizedData(db=AbciAppDB(setup_data={"participant_to_bets_hash":["participant_to_bets_hash"]}))
-    
-    # Call the _get_deserialized method
-    deserialized_data = synchronized_data._get_deserialized
-    assert data.db._data == {0: {"test": ["test"]}}
+    setup_data = {"test": ["test"]}
+    synchronized_data = SynchronizedData(db=AbciAppDB(setup_data=setup_data))
 
+    assert synchronized_data.db._data == {0: {"test": ["test"]}}
