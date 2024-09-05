@@ -252,4 +252,9 @@ def test_market_manager_abci_app_initialization(abci_app: MarketManagerAbciApp) 
 def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
     data = SynchronizedData(db=AbciAppDB(setup_data={"test": ["test"]}))
+    synchronized_data = SynchronizedData(db=AbciAppDB(setup_data={"participant_to_bets_hash":["participant_to_bets_hash"]}))
+    
+    # Call the _get_deserialized method
+    deserialized_data = synchronized_data._get_deserialized
     assert data.db._data == {0: {"test": ["test"]}}
+
