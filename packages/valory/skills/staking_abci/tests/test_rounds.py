@@ -20,29 +20,31 @@
 """This package contains the tests for rounds of StakingAbciApp."""
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, FrozenSet, Hashable, Mapping, List, Type
+from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Type
 from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
-    BaseTxPayload,
     AbciAppDB,
-    get_name, CollectSameUntilThresholdRound
+    BaseTxPayload,
+    CollectSameUntilThresholdRound,
+    get_name,
 )
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
 from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.staking_abci.rounds import (
-    Event,
-    SynchronizedData,
     CallCheckpointRound,
     CheckpointCallPreparedRound,
+    Event,
     FinishedStakingRound,
     ServiceEvictedRound,
-    StakingAbciApp, StakingState
+    StakingAbciApp,
+    StakingState,
+    SynchronizedData,
 )
 
 
@@ -54,9 +56,7 @@ def abci_app() -> StakingAbciApp:
     context = MagicMock()
 
     return StakingAbciApp(
-        synchronized_data=synchronized_data,
-        logger=logger,
-        context=context
+        synchronized_data=synchronized_data, logger=logger, context=context
     )
 
 
@@ -107,10 +107,12 @@ class BaseStakingRoundTestClass(BaseCollectSameUntilThresholdRoundTest):
     _synchronized_data_class = SynchronizedData
     _event_class = Event
 
-    def run_test(self, test_case: RoundTestCase, **kwargs: Any) -> None:
+    def run_test(self, test_case: RoundTestCase) -> None:
         """Run the test"""
 
-        self.synchronized_data.update(**test_case.initial_data)
+        self.synchronized_data.update(
+            self._synchronized_data_class, **test_case.initial_data
+        )
 
         test_round = self.round_class(
             synchronized_data=self.synchronized_data, context=mock.MagicMock()
@@ -141,11 +143,13 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
             RoundTestCase(
                 name="Happy path",
                 initial_data={},
-                payloads=get_checkpoint_payloads({
-                    "service_staking_state": StakingState.STAKED.value,
-                    "tx_submitter": "dummy_submitter",
-                    "tx_hash": "dummy_tx_hash",
-                }),
+                payloads=get_checkpoint_payloads(
+                    {
+                        "service_staking_state": StakingState.STAKED.value,
+                        "tx_submitter": "dummy_submitter",
+                        "tx_hash": "dummy_tx_hash",
+                    }
+                ),
                 final_data={
                     "service_staking_state": StakingState.STAKED.value,
                     "tx_submitter": "dummy_submitter",
@@ -154,8 +158,10 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                 event=Event.DONE,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
                 synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.service_staking_state == StakingState.STAKED.value,
-                    lambda synchronized_data: synchronized_data.tx_submitter == "dummy_submitter",
+                    lambda synchronized_data: synchronized_data.service_staking_state
+                    == StakingState.STAKED.value,
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == "dummy_submitter",
                 ],
             ),
             RoundTestCase(
@@ -166,44 +172,53 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                 event=Event.SERVICE_NOT_STAKED,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
                 synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.service_staking_state == 0,
+                    lambda synchronized_data: synchronized_data.service_staking_state
+                    == 0,
                 ],
             ),
             RoundTestCase(
                 name="Service evicted",
                 initial_data={},
-                payloads=get_checkpoint_payloads({
-                    "service_staking_state": StakingState.EVICTED.value,
-                    "tx_submitter": "dummy_submitter",
-                    "tx_hash": "dummy_tx_hash",
-                }),
+                payloads=get_checkpoint_payloads(
+                    {
+                        "service_staking_state": StakingState.EVICTED.value,
+                        "tx_submitter": "dummy_submitter",
+                        "tx_hash": "dummy_tx_hash",
+                    }
+                ),
                 final_data={},
                 event=Event.SERVICE_EVICTED,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
                 synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.service_staking_state == 0,
+                    lambda synchronized_data: synchronized_data.service_staking_state
+                    == 0,
                 ],
             ),
             RoundTestCase(
                 name="Next checkpoint not reached",
                 initial_data={},
-                payloads=get_checkpoint_payloads({
-                    "service_staking_state": StakingState.STAKED.value,
-                    "tx_submitter": "dummy_submitter",
-                    "tx_hash": None,
-                }),
+                payloads=get_checkpoint_payloads(
+                    {
+                        "service_staking_state": StakingState.STAKED.value,
+                        "tx_submitter": "dummy_submitter",
+                        "tx_hash": None,
+                    }
+                ),
                 final_data={},
                 event=Event.NEXT_CHECKPOINT_NOT_REACHED_YET,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
                 synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.service_staking_state == 0,
+                    lambda synchronized_data: synchronized_data.service_staking_state
+                    == 0,
                 ],
             ),
         ],
     )
     def test_run(self, test_case: RoundTestCase) -> None:
         """Run the test."""
-        self.synchronized_data.update(**test_case.initial_data)
+        self.synchronized_data.update(
+            self._synchronized_data_class, **test_case.initial_data
+        )
 
         test_round = self.round_class(
             synchronized_data=self.synchronized_data, context=mock.MagicMock()
@@ -250,9 +265,7 @@ class TestServiceEvictedRound:
 
     def test_service_evicted_round_initialization(self) -> None:
         """Test the initialization of ServiceEvictedRound."""
-        round_ = ServiceEvictedRound(
-            synchronized_data=MagicMock(), context=MagicMock()
-        )
+        round_ = ServiceEvictedRound(synchronized_data=MagicMock(), context=MagicMock())
         assert isinstance(round_, ServiceEvictedRound)
 
 
