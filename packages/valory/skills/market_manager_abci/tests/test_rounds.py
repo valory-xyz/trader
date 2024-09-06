@@ -30,7 +30,7 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Type,
+    Union,
 )
 from unittest import mock
 from unittest.mock import MagicMock, patch
@@ -86,30 +86,13 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_payloads(
-    payload_cls: Type[BaseTxPayload],
     data: Optional[str],
 ) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
     return {
-        participant: payload_cls(participant, data)
+        participant: UpdateBetsPayload(participant, data)
         for participant in get_participants()
     }
-
-
-def get_dummy_update_bets_payload_serialized() -> str:
-    """Dummy update bets payload"""
-    return json.dumps(
-        {
-            "bets_hash": DUMMY_BETS_HASH,
-            "participnt_to_bets_hash": DUMMY_PARTICIPANT_TO_BETS_HASH,
-        },
-        sort_keys=True,
-    )
-
-
-def get_dummy_update_bets_payload_error_serialized() -> str:
-    """Dummy update bets payload error"""
-    return json.dumps({"error": True}, sort_keys=True)
 
 
 @dataclass
@@ -136,11 +119,13 @@ class BaseMarketManagerRoundTestClass(BaseCollectSameUntilThresholdRoundTest):
     _event_class = Event
     round_class = UpdateBetsRound
 
-    def run_test(self, test_case: RoundTestCase, **kwargs: Any) -> None:
+    def run_test(self, test_case: RoundTestCase) -> None:
         """Run the test"""
 
         # Set initial data
-        self.synchronized_data.update(**test_case.initial_data)
+        self.synchronized_data.update(
+            self._synchronized_data_class, **test_case.initial_data
+        )
 
         test_round = self.round_class(
             synchronized_data=self.synchronized_data, context=mock.MagicMock()
@@ -175,7 +160,6 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 name="Happy path",
                 initial_data={},
                 payloads=get_payloads(
-                    payload_cls=UpdateBetsPayload,
                     data=DUMMY_BETS_HASH,
                 ),
                 final_data={
@@ -192,7 +176,6 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 name="Fetch error",
                 initial_data={},
                 payloads=get_payloads(
-                    payload_cls=UpdateBetsPayload,
                     data=None,
                 ),
                 final_data={},
@@ -318,6 +301,7 @@ def test_synchronized_data_get_deserialized(
     # Mock the deserialize_collection function to return the expected deserialized result
     mock_deserialize_collection.return_value = expected_result
 
+    deserialized_data: Union[str, Mapping[str, BaseTxPayload]]
     if property_to_check == "participant_to_bets_hash":
         deserialized_data = synchronized_data.participant_to_bets_hash
     else:
