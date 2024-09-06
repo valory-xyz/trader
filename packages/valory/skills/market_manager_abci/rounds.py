@@ -22,6 +22,7 @@
 from abc import ABC
 from enum import Enum
 from typing import Dict, Set, Tuple, Type, cast
+
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
     AbciAppTransitionFunction,
