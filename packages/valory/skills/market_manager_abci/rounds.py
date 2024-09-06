@@ -66,7 +66,7 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def participant_to_bets_hash(self) -> DeserializedCollection:
         """Get the participants to bets' hash."""
-        return self._get_deserialized("participant_to_bets")
+        return self._get_deserialized("participant_to_bets_hash")
 
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
