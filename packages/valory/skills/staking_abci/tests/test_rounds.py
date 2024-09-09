@@ -21,7 +21,7 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Type
+from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
@@ -30,7 +30,6 @@ import pytest
 from packages.valory.skills.abstract_round_abci.base import (
     AbciAppDB,
     BaseTxPayload,
-    CollectSameUntilThresholdRound,
     get_name,
 )
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
@@ -103,7 +102,7 @@ MAX_PARTICIPANTS: int = 4
 class BaseStakingRoundTestClass(BaseCollectSameUntilThresholdRoundTest):
     """Base test class for Staking rounds."""
 
-    round_class: Type[CollectSameUntilThresholdRound]
+    round_class = CallCheckpointRound
     synchronized_data: SynchronizedData
     _synchronized_data_class = SynchronizedData
     _event_class = Event
