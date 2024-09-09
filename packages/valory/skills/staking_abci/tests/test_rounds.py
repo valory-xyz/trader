@@ -216,26 +216,8 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
     )
     def test_run(self, test_case: RoundTestCase) -> None:
         """Run the test."""
-        self.synchronized_data.update(
-            self._synchronized_data_class, **test_case.initial_data
-        )
 
-        test_round = self.round_class(
-            synchronized_data=self.synchronized_data, context=mock.MagicMock()
-        )
-
-        result = self._test_round(
-            test_round=test_round,
-            round_payloads=test_case.payloads,
-            synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
-                **test_case.final_data
-            ),
-            synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
-            most_voted_payload=test_case.most_voted_payload,
-            exit_event=test_case.event,
-        )
-
-        self._complete_run(result)
+        self.run_test(test_case)
 
 
 class TestCheckpointCallPreparedRound:
