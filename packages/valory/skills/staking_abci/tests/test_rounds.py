@@ -307,12 +307,14 @@ def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
         },
     }
 
+
 DUMMY_PARTICIPANT_TO_CHECKPOINT = json.dumps(
     {
         "agent_0": {"sender": "agent_0", "data": "checkpoint_1"},
         "agent_1": {"sender": "agent_1", "data": "checkpoint_2"},
     }
 )
+
 
 @pytest.mark.parametrize(
     "key,serialized_data,expected_result,property_to_check",
@@ -378,6 +380,7 @@ def test_synchronized_data_service_staking_state() -> None:
     staking_state = synchronized_data.service_staking_state
     assert isinstance(staking_state, StakingState)
     mock_db.get.assert_called_once_with("service_staking_state", 0)
+
 
 def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
