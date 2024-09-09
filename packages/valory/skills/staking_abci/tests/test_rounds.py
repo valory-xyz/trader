@@ -19,10 +19,11 @@
 
 """This package contains the tests for rounds of StakingAbciApp."""
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Type
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -306,6 +307,77 @@ def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
         },
     }
 
+DUMMY_PARTICIPANT_TO_CHECKPOINT = json.dumps(
+    {
+        "agent_0": {"sender": "agent_0", "data": "checkpoint_1"},
+        "agent_1": {"sender": "agent_1", "data": "checkpoint_2"},
+    }
+)
+
+@pytest.mark.parametrize(
+    "key,serialized_data,expected_result,property_to_check",
+    [
+        (
+            "participant_to_checkpoint",
+            DUMMY_PARTICIPANT_TO_CHECKPOINT,
+            json.loads(DUMMY_PARTICIPANT_TO_CHECKPOINT),
+            "participant_to_checkpoint",  # Corresponds to _get_deserialized method
+        ),
+    ],
+)
+@patch(
+    "packages.valory.skills.staking_abci.rounds.CollectionRound.deserialize_collection"
+)
+def test_synchronized_data_get_deserialized(
+    mock_deserialize_collection: MagicMock,
+    key: str,
+    serialized_data: str,
+    expected_result: Mapping[str, Any],
+    property_to_check: str,
+) -> None:
+    """Test the deserialization and property access in SynchronizedData."""
+    # Mock the db.get_strict to return the serialized data
+    mock_db = mock.MagicMock()
+    mock_db.get_strict.return_value = serialized_data
+
+    # Initialize SynchronizedData with the mocked db
+    synchronized_data = SynchronizedData(db=mock_db)
+
+    # Mock the deserialize_collection function to return the expected deserialized result
+    mock_deserialize_collection.return_value = expected_result
+
+    # Access the property using the appropriate property access method
+    deserialized_data = synchronized_data.participant_to_checkpoint
+
+    # Ensure that get_strict is called with the correct key
+    mock_db.get_strict.assert_called_once_with(key)
+
+    # Ensure that deserialize_collection is called with the correct serialized data
+    mock_deserialize_collection.assert_called_once_with(serialized_data)
+    assert deserialized_data == expected_result
+
+
+def test_synchronized_data_tx_submitter() -> None:
+    """Test the tx_submitter property in SynchronizedData."""
+    mock_db = mock.MagicMock()
+    mock_db.get_strict.return_value = "agent_0"
+
+    synchronized_data = SynchronizedData(db=mock_db)
+
+    assert synchronized_data.tx_submitter == "agent_0"
+    mock_db.get_strict.assert_called_once_with("tx_submitter")
+
+
+def test_synchronized_data_service_staking_state() -> None:
+    """Test the service_staking_state property in SynchronizedData."""
+    mock_db = mock.MagicMock()
+    mock_db.get.return_value = 0
+
+    synchronized_data = SynchronizedData(db=mock_db)
+
+    staking_state = synchronized_data.service_staking_state
+    assert isinstance(staking_state, StakingState)
+    mock_db.get.assert_called_once_with("service_staking_state", 0)
 
 def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
