@@ -15,7 +15,9 @@ fingerprint:
   models.py: bafybeigtmxoecoow663hgqnyinxarlrttyyt5ghpbdamdv4tc4kikcfx3a
   rounds.py: bafybeig3dhhrf5tkj63b3bk2mqfprcwzk3galz2ukzvdenz4g2femaixku
   tests/__init__.py: bafybeiat74pbtmxvylsz7karp57qp2v7y6wtrsz572jkrghbcssoudgjay
+  tests/test_dialogues.py: bafybeidzr3xck5mi4ot3awq46ixkxlv37s6igk5zwh2bycx5bw25s7j54m
   tests/test_handlers.py: bafybeiayuktfupylm3p3ygufjb66swzxhpbmioqoffwuauakfgbkwrv7ma
+  tests/test_rounds.py: bafybeig5nnrjx2kzszk6gvnk3t3stlxfjrdceq6uclrwy63ztpdcvaenf4
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []

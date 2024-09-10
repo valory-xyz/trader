@@ -19,7 +19,7 @@
 
 """Test the dialogues.py module of the skill."""
 
-# pylint: skip-file 
+# pylint: skip-file
 
 
 import packages.valory.skills.tx_settlement_multiplexer_abci.dialogues  # noqa

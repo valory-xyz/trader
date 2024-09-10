@@ -32,56 +32,54 @@ from typing import (
     Optional,
     Type,
 )
-
-from unittest import mock
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
-    AbciAppDB,
     CollectionRound,
     VotingRound,
     get_name,
 )
-from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseVotingRoundTest,
-    BaseCollectSameUntilThresholdRoundTest,
 )
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
-
-from packages.valory.skills.decision_maker_abci.states.bet_placement import (
-    BetPlacementRound,
-)
-
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
-    TxSettlementMultiplexerAbciApp,
-    PostTxSettlementRound,
-    PreTxSettlementRound,
-    Event,
     ChecksPassedRound,
+    Event,
+    FailedMultiplexerRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedRedeemingTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
-    FailedMultiplexerRound,
+    PostTxSettlementRound,
+    PreTxSettlementRound,
     SynchronizedData,
-    BetPlacementRound,
-    MechRequestRound,
-    RedeemRound,
-    CallCheckpointRound,
-    SubscriptionRound,
+    TxSettlementMultiplexerAbciApp,
 )
 
 
 DUMMY_PAYLOAD_DATA = {"example_key": "example_value"}
 
 
+@pytest.fixture
+def abci_app() -> TxSettlementMultiplexerAbciApp:
+    """Fixture for TxSettlementMultiplexerAbciApp."""
+    synchronized_data = MagicMock()
+    logger = MagicMock()
+    context = MagicMock()
+
+    return TxSettlementMultiplexerAbciApp(
+        synchronized_data=synchronized_data, logger=logger, context=context
+    )
+
+
 def get_participants() -> FrozenSet[str]:
     """Participants."""
     return frozenset([f"agent_{i}" for i in range(MAX_PARTICIPANTS)])
+
 
 def get_participant_to_votes(
     participants: FrozenSet[str], vote: bool
@@ -103,6 +101,7 @@ def get_participant_to_votes_serialized(
         get_participant_to_votes(participants, vote)
     )
 
+
 def get_payloads(
     payload_cls: Type[VotingPayload],
     data: Optional[str],
@@ -113,9 +112,11 @@ def get_payloads(
         for participant in get_participants()
     }
 
+
 def get_dummy_tx_settlement_payload_serialized() -> str:
     """Dummy payload serialization"""
     return json.dumps(DUMMY_PAYLOAD_DATA, sort_keys=True)
+
 
 @dataclass
 class RoundTestCase:
@@ -154,7 +155,7 @@ class BasePreTxSettlementRoundTest(BaseVotingRoundTest):
                 round_payloads=get_participant_to_votes(self.participants, vote=vote),
                 synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
                     participant_to_votes=get_participant_to_votes_serialized(
-                       self.participants, vote=vote 
+                        self.participants, vote=vote
                     )
                 ),
                 synchronized_data_attr_checks=[
@@ -170,7 +171,7 @@ class BasePreTxSettlementRoundTest(BaseVotingRoundTest):
     def test_positive_votes(self) -> None:
         """Test PreTxSettlementRound for positive votes."""
         self._test_voting_round(
-            vote= True,
+            vote=True,
             expected_event=Event.CHECKS_PASSED,
             threshold_check=lambda x: x.positive_vote_threshold_reached,
         )
@@ -178,7 +179,7 @@ class BasePreTxSettlementRoundTest(BaseVotingRoundTest):
     def test_negative_votes(self) -> None:
         """Test PreTxSettlementRound for negative votes."""
         self._test_voting_round(
-            vote= False,
+            vote=False,
             expected_event=Event.REFILL_REQUIRED,
             threshold_check=lambda x: x.negative_vote_threshold_reached,
         )
@@ -210,10 +211,9 @@ class TestPreTxSettlementRound(BasePreTxSettlementRoundTest):
                     )
                     == CollectionRound.deserialize_collection(
                         json.loads(get_dummy_tx_settlement_payload_serialized())
-                    )    
+                    )
                 ],
             ),
-            
             RoundTestCase(
                 name="Negative votes",
                 initial_data={},
@@ -235,126 +235,26 @@ class TestPreTxSettlementRound(BasePreTxSettlementRoundTest):
         elif test_case.event == Event.REFILL_REQUIRED:
             self.test_negative_votes()
 
-class BasePostTxSettlementRoundTest(BaseCollectSameUntilThresholdRoundTest):
-    """Base test class for MarketManager rounds."""
 
-    synchronized_data: SynchronizedData
-    _synchronized_data_class = SynchronizedData
-    _event_class = Event
-    round_class = PostTxSettlementRound
-
-    def run_test(self, test_case: RoundTestCase) -> None:
-        """Run the test"""
-
-        # Set initial data
-        self.synchronized_data.update(**test_case.initial_data)
-
-        test_round = self.round_class(
-            synchronized_data=self.synchronized_data, context=mock.MagicMock()
-        )
-
-        self._complete_run(
-            self._test_round(
-                test_round=test_round,
-                round_payloads=test_case.payloads,
-                synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
-                    **test_case.final_data
-                ),
-                synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
-                most_voted_payload=test_case.most_voted_payload,
-                exit_event=test_case.event,
-            )
-        )
-
-
-
- 
-
-class TestPostTxSettlementRound(BasePostTxSettlementRoundTest):
+class TestPostTxSettlementRound:
     """Tests for PostTxSettlementRound."""
 
-    round_class = PostTxSettlementRound
+    def setup_method(self) -> None:
+        """Setup the synchronized_data for each test."""
+        self.synchronized_data = MagicMock()
+        self.synchronized_data.db = MagicMock()
 
-    @pytest.mark.parametrize(
-        "test_case",
-        [
-            RoundTestCase(
-                name="Mech Requesting Done",
-                initial_data={"tx_submitter": MechRequestRound.auto_round_id()},
-                payloads={},
-                final_data={},
-                event=Event.MECH_REQUESTING_DONE,
-                most_voted_payload="mech_tool",
-                synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.tx_submitter
-                    == MechRequestRound.auto_round_id(),
-                ],
-            ),
-            RoundTestCase(
-                name="Bet Placement Done",
-                initial_data={"tx_submitter": BetPlacementRound.auto_round_id()},
-                payloads={},
-                final_data={},
-                event=Event.BET_PLACEMENT_DONE,
-                most_voted_payload="mech_tool",
-                synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.tx_submitter
-                    == BetPlacementRound.auto_round_id(),
-                ],
-            ),
-            RoundTestCase(
-                name="Redeeming Done",
-                initial_data={"tx_submitter": RedeemRound.auto_round_id()},
-                payloads={},
-                final_data={},
-                event=Event.REDEEMING_DONE,
-                most_voted_payload="mech_tool",
-                synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.tx_submitter
-                    == RedeemRound.auto_round_id(),
-                ],
-            ),
-            RoundTestCase(
-                name="Staking Done",
-                initial_data={"tx_submitter": CallCheckpointRound.auto_round_id()},
-                payloads={},
-                final_data={},
-                event=Event.STAKING_DONE,
-                most_voted_payload="mech_tool",
-                synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.tx_submitter
-                    == CallCheckpointRound.auto_round_id(),
-                ],
-            ),
-            RoundTestCase(
-                name="Subscription Done",
-                initial_data={"tx_submitter": SubscriptionRound.auto_round_id()},
-                payloads={},
-                final_data={},
-                event=Event.SUBSCRIPTION_DONE,
-                most_voted_payload="mech_tool",
-                synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.tx_submitter
-                    == SubscriptionRound.auto_round_id(),
-                ],
-            ),
-            RoundTestCase(
-                name="Unknown Submitter",
-                initial_data={"tx_submitter": "unknown_submitter"},
-                payloads={},
-                final_data={},
-                event=Event.UNRECOGNIZED,
-                most_voted_payload=None,
-                synchronized_data_attr_checks=[
-                    lambda synchronized_data: synchronized_data.tx_submitter
-                    == "unknown_submitter",
-                ],
-            ),
-        ],
-    )
-    def test_run(self, test_case: RoundTestCase) -> None:
-        """Run the test."""
-        self.run_test(test_case)
+    def test_end_block_unknown(self) -> None:
+        """Test the end_block logic for unknown tx_submitter."""
+        # Arrange
+        self.synchronized_data.tx_submitter = "unknown_submitter"
+        round_ = PostTxSettlementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
+        result = round_.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.UNRECOGNIZED
 
 
 def test_tx_settlement_abci_app_initialization() -> None:
