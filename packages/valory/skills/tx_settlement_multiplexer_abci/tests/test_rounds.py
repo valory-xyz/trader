@@ -32,6 +32,8 @@ from typing import (
     Optional,
     Type,
 )
+
+from unittest import mock
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -42,17 +44,37 @@ from packages.valory.skills.abstract_round_abci.base import (
     VotingRound,
     get_name,
 )
+from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseVotingRoundTest,
     BaseCollectSameUntilThresholdRoundTest,
 )
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
-from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
-    PreTxSettlementRound,
-    PostTxSettlementRound,
-    Event,
-    SynchronizedData,
+
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
 )
+
+from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    TxSettlementMultiplexerAbciApp,
+    PostTxSettlementRound,
+    PreTxSettlementRound,
+    Event,
+    ChecksPassedRound,
+    FinishedBetPlacementTxRound,
+    FinishedMechRequestTxRound,
+    FinishedRedeemingTxRound,
+    FinishedStakingTxRound,
+    FinishedSubscriptionTxRound,
+    FailedMultiplexerRound,
+    SynchronizedData,
+    BetPlacementRound,
+    MechRequestRound,
+    RedeemRound,
+    CallCheckpointRound,
+    SubscriptionRound,
+)
+
 
 DUMMY_PAYLOAD_DATA = {"example_key": "example_value"}
 
@@ -221,7 +243,7 @@ class BasePostTxSettlementRoundTest(BaseCollectSameUntilThresholdRoundTest):
     _event_class = Event
     round_class = PostTxSettlementRound
 
-    def run_test(self, test_case: RoundTestCase, **kwargs: Any) -> None:
+    def run_test(self, test_case: RoundTestCase) -> None:
         """Run the test"""
 
         # Set initial data
@@ -244,4 +266,134 @@ class BasePostTxSettlementRoundTest(BaseCollectSameUntilThresholdRoundTest):
             )
         )
 
+
+
+ 
+
 class TestPostTxSettlementRound(BasePostTxSettlementRoundTest):
+    """Tests for PostTxSettlementRound."""
+
+    round_class = PostTxSettlementRound
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            RoundTestCase(
+                name="Mech Requesting Done",
+                initial_data={"tx_submitter": MechRequestRound.auto_round_id()},
+                payloads={},
+                final_data={},
+                event=Event.MECH_REQUESTING_DONE,
+                most_voted_payload="mech_tool",
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == MechRequestRound.auto_round_id(),
+                ],
+            ),
+            RoundTestCase(
+                name="Bet Placement Done",
+                initial_data={"tx_submitter": BetPlacementRound.auto_round_id()},
+                payloads={},
+                final_data={},
+                event=Event.BET_PLACEMENT_DONE,
+                most_voted_payload="mech_tool",
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == BetPlacementRound.auto_round_id(),
+                ],
+            ),
+            RoundTestCase(
+                name="Redeeming Done",
+                initial_data={"tx_submitter": RedeemRound.auto_round_id()},
+                payloads={},
+                final_data={},
+                event=Event.REDEEMING_DONE,
+                most_voted_payload="mech_tool",
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == RedeemRound.auto_round_id(),
+                ],
+            ),
+            RoundTestCase(
+                name="Staking Done",
+                initial_data={"tx_submitter": CallCheckpointRound.auto_round_id()},
+                payloads={},
+                final_data={},
+                event=Event.STAKING_DONE,
+                most_voted_payload="mech_tool",
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == CallCheckpointRound.auto_round_id(),
+                ],
+            ),
+            RoundTestCase(
+                name="Subscription Done",
+                initial_data={"tx_submitter": SubscriptionRound.auto_round_id()},
+                payloads={},
+                final_data={},
+                event=Event.SUBSCRIPTION_DONE,
+                most_voted_payload="mech_tool",
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == SubscriptionRound.auto_round_id(),
+                ],
+            ),
+            RoundTestCase(
+                name="Unknown Submitter",
+                initial_data={"tx_submitter": "unknown_submitter"},
+                payloads={},
+                final_data={},
+                event=Event.UNRECOGNIZED,
+                most_voted_payload=None,
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.tx_submitter
+                    == "unknown_submitter",
+                ],
+            ),
+        ],
+    )
+    def test_run(self, test_case: RoundTestCase) -> None:
+        """Run the test."""
+        self.run_test(test_case)
+
+
+def test_tx_settlement_abci_app_initialization() -> None:
+    """Test the initialization of TxSettlementMultiplexerAbciApp."""
+    abci_app = TxSettlementMultiplexerAbciApp(
+        synchronized_data=MagicMock(), logger=MagicMock(), context=MagicMock()
+    )
+    assert abci_app.initial_round_cls is PreTxSettlementRound
+    assert abci_app.final_states == {
+        ChecksPassedRound,
+        FinishedMechRequestTxRound,
+        FinishedBetPlacementTxRound,
+        FinishedRedeemingTxRound,
+        FinishedStakingTxRound,
+        FinishedSubscriptionTxRound,
+        FailedMultiplexerRound,
+    }
+    assert abci_app.transition_function == {
+        PreTxSettlementRound: {
+            Event.CHECKS_PASSED: ChecksPassedRound,
+            Event.REFILL_REQUIRED: PreTxSettlementRound,
+            Event.NO_MAJORITY: PreTxSettlementRound,
+            Event.ROUND_TIMEOUT: PreTxSettlementRound,
+        },
+        PostTxSettlementRound: {
+            Event.MECH_REQUESTING_DONE: FinishedMechRequestTxRound,
+            Event.BET_PLACEMENT_DONE: FinishedBetPlacementTxRound,
+            Event.REDEEMING_DONE: FinishedRedeemingTxRound,
+            Event.STAKING_DONE: FinishedStakingTxRound,
+            Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
+            Event.ROUND_TIMEOUT: PostTxSettlementRound,
+            Event.UNRECOGNIZED: FailedMultiplexerRound,
+        },
+        ChecksPassedRound: {},
+        FinishedMechRequestTxRound: {},
+        FinishedBetPlacementTxRound: {},
+        FinishedRedeemingTxRound: {},
+        FinishedStakingTxRound: {},
+        FinishedSubscriptionTxRound: {},
+        FailedMultiplexerRound: {},
+    }
+    assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
