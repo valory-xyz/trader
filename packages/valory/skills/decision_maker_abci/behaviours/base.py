@@ -70,6 +70,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     CONFIDENCE_FIELD,
     P_NO_FIELD,
     P_YES_FIELD,
+    PredictionResponse,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
@@ -636,9 +637,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _write_benchmark_results(
         self,
-        p_yes: Optional[float] = None,
-        p_no: Optional[float] = None,
-        confidence: Optional[float] = None,
+        prediction_response: PredictionResponse,
         bet_amount: Optional[float] = None,
         liquidity_info: LiquidityInfo = INIT_LIQUIDITY_INFO,
     ) -> None:
@@ -672,9 +671,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 # as it may contain commas which are also used as separators
                 QUOTE + self.mock_data.question.replace(QUOTE, TWO_QUOTES) + QUOTE,
                 self.mock_data.answer,
-                p_yes,
-                p_no,
-                confidence,
+                prediction_response.p_yes,
+                prediction_response.p_no,
+                prediction_response.confidence,
                 bet_amount,
                 liquidity_info.l0_start,
                 liquidity_info.l1_start,
