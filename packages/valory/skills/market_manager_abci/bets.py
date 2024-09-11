@@ -24,7 +24,6 @@ import builtins
 import dataclasses
 import json
 import sys
-from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Union
 
 
@@ -72,14 +71,6 @@ class PredictionResponse:
         return max(self.p_no, self.p_yes)
 
 
-class BetStatus(Enum):
-    """A bet's status."""
-
-    UNPROCESSED = auto()
-    PROCESSED = auto()
-    BLACKLISTED = auto()
-
-
 @dataclasses.dataclass
 class Bet:
     """A bet's structure."""
@@ -96,8 +87,13 @@ class Bet:
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     scaledLiquidityMeasure: float
-    status: BetStatus = BetStatus.UNPROCESSED
-    blacklist_expiration: float = -1
+    prediction_response: PredictionResponse = PredictionResponse(
+        p_yes=0.5, p_no=0.5, confidence=0.5, info_utility=0.5
+    )
+    position_liquidity: int = 0
+    potential_net_profit: int = 0
+    processed_timestamp: int = 0
+    n_bets: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -112,8 +108,7 @@ class Bet:
     def _blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
         self.outcomes = None
-        self.status = BetStatus.BLACKLISTED
-        self.blacklist_expiration = sys.maxsize
+        self.processed_timestamp = sys.maxsize
 
     def _validate(self) -> None:
         """Validate the values of the instance."""
@@ -149,9 +144,6 @@ class Bet:
 
     def _cast(self) -> None:
         """Cast the values of the instance."""
-        if isinstance(self.status, int):
-            self.status = BetStatus(self.status)
-
         types_to_cast = ("int", "float", "str")
         str_to_type = {getattr(builtins, type_): type_ for type_ in types_to_cast}
         for field, hinted_type in self.__annotations__.items():
@@ -206,8 +198,6 @@ class BetsEncoder(json.JSONEncoder):
 
     def default(self, o: Any) -> Any:
         """The default encoder."""
-        if isinstance(o, BetStatus):
-            return o.value
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
@@ -221,11 +211,17 @@ class BetsDecoder(json.JSONDecoder):
         super().__init__(object_hook=self.hook, *args, **kwargs)
 
     @staticmethod
-    def hook(data: Dict[str, Any]) -> Union[Bet, Dict[str, Bet]]:
+    def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:
         """Perform the custom decoding."""
+        # if this is a `PredictionResponse`
+        prediction_attributes = sorted(PredictionResponse.__annotations__.keys())
+        data_attributes = sorted(data.keys())
+        if prediction_attributes == data_attributes:
+            return PredictionResponse(**data)
+
         # if this is a `Bet`
-        status_attributes = Bet.__annotations__.keys()
-        if sorted(status_attributes) == sorted(data.keys()):
+        bet_annotations = sorted(Bet.__annotations__.keys())
+        if bet_annotations == data_attributes:
             return Bet(**data)
 
         return data
