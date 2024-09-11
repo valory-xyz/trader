@@ -28,6 +28,10 @@ from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Union
 
 
+P_YES_FIELD = "p_yes"
+P_NO_FIELD = "p_no"
+CONFIDENCE_FIELD = "confidence"
+INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
 
 

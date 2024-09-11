@@ -49,7 +49,6 @@ from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
     BenchmarkingMockData,
     BenchmarkingMode,
-    CONFIDENCE_FIELD,
     DecisionMakerParams,
     L0_END_FIELD,
     L0_START_FIELD,
@@ -57,8 +56,6 @@ from packages.valory.skills.decision_maker_abci.models import (
     L1_START_FIELD,
     LiquidityInfo,
     MultisendBatch,
-    P_NO_FIELD,
-    P_YES_FIELD,
     SharedState,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
@@ -68,7 +65,12 @@ from packages.valory.skills.decision_maker_abci.utils.nevermined import (
     zero_x_transformer,
 )
 from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
-from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.market_manager_abci.bets import (
+    Bet,
+    CONFIDENCE_FIELD,
+    P_NO_FIELD,
+    P_YES_FIELD,
+)
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )

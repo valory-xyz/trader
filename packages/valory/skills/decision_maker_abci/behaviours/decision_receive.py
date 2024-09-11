@@ -31,18 +31,21 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMockData,
-    CONFIDENCE_FIELD,
-    INFO_UTILITY_FIELD,
     LiquidityInfo,
-    P_NO_FIELD,
-    P_YES_FIELD,
-    PredictionResponse,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS, Bet
+from packages.valory.skills.market_manager_abci.bets import (
+    BINARY_N_SLOTS,
+    Bet,
+    CONFIDENCE_FIELD,
+    INFO_UTILITY_FIELD,
+    P_NO_FIELD,
+    P_YES_FIELD,
+    PredictionResponse,
+)
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
 )

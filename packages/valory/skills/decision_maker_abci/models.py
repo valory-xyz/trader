@@ -75,14 +75,10 @@ DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
-P_YES_FIELD = "p_yes"
-P_NO_FIELD = "p_no"
-CONFIDENCE_FIELD = "confidence"
 L0_START_FIELD = "l0_start"
 L1_START_FIELD = "l1_start"
 L0_END_FIELD = "l0_end"
 L1_END_FIELD = "l1_end"
-INFO_UTILITY_FIELD = "info_utility"
 YES = "yes"
 NO = "no"
 
