@@ -513,43 +513,6 @@ class MultisendBatch:
     operation: MultiSendOperation = MultiSendOperation.CALL
 
 
-@dataclass(init=False)
-class PredictionResponse:
-    """A response of a prediction."""
-
-    p_yes: float
-    p_no: float
-    confidence: float
-    info_utility: float
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the mech's prediction ignoring extra keys."""
-        self.p_yes = float(kwargs.pop(P_YES_FIELD))
-        self.p_no = float(kwargs.pop(P_NO_FIELD))
-        self.confidence = float(kwargs.pop(CONFIDENCE_FIELD))
-        self.info_utility = float(kwargs.pop(INFO_UTILITY_FIELD))
-
-        # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
-        probabilities = (getattr(self, field_) for field_ in self.__annotations__)
-        if (
-            any(not (0 <= prob <= 1) for prob in probabilities)
-            or self.p_yes + self.p_no != 1
-        ):
-            raise ValueError("Invalid prediction response initialization.")
-
-    @property
-    def vote(self) -> Optional[int]:
-        """Return the vote. `0` represents "yes" and `1` represents "no"."""
-        if self.p_no != self.p_yes:
-            return int(self.p_no > self.p_yes)
-        return None
-
-    @property
-    def win_probability(self) -> Optional[float]:
-        """Return the probability estimation for winning with vote."""
-        return max(self.p_no, self.p_yes)
-
-
 @dataclass
 class BenchmarkingMockData:
     """The mock data for a `BenchmarkingMode`."""
