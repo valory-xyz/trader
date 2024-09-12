@@ -50,6 +50,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.order_subscription im
     OrderSubscriptionBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
+    BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
@@ -79,5 +80,6 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         OrderSubscriptionBehaviour,
         ClaimSubscriptionBehaviour,
         RandomnessBehaviour,  # type: ignore
+        BenchmarkingRandomnessBehaviour,  # type: ignore
         CheckBenchmarkingModeBehaviour,  # type: ignore
     }

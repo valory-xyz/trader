@@ -66,7 +66,10 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.order_subscription import (
     SubscriptionRound,
 )
-from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
+from packages.valory.skills.decision_maker_abci.states.randomness import (
+    BenchmarkingRandomnessRound,
+    RandomnessRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
@@ -179,7 +182,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     initial_round_cls: AppState = CheckBenchmarkingModeRound
     initial_states: Set[AppState] = {
         CheckBenchmarkingModeRound,
-        SamplingRound,
+        RandomnessRound,
         HandleFailedTxRound,
         DecisionReceiveRound,
         RedeemRound,
@@ -187,13 +190,23 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
-            Event.BENCHMARKING_ENABLED: RandomnessRound,
+            Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs` falsely reporting them as missing from the transition
             Event.NO_OP: ImpossibleRound,
             Event.BLACKLIST: ImpossibleRound,
+        },
+        BenchmarkingRandomnessRound: {
+            Event.DONE: ToolSelectionRound,
+            Event.ROUND_TIMEOUT: BenchmarkingRandomnessRound,
+            Event.NO_MAJORITY: BenchmarkingRandomnessRound,
+        },
+        RandomnessRound: {
+            Event.DONE: SamplingRound,
+            Event.ROUND_TIMEOUT: RandomnessRound,
+            Event.NO_MAJORITY: RandomnessRound,
         },
         SamplingRound: {
             Event.DONE: SubscriptionRound,
@@ -206,23 +219,18 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         SubscriptionRound: {
             Event.DONE: FinishedSubscriptionRound,
             # skip placing the subscription tx and the claiming round
-            Event.MOCK_TX: RandomnessRound,
-            Event.NO_SUBSCRIPTION: RandomnessRound,
+            Event.MOCK_TX: ToolSelectionRound,
+            Event.NO_SUBSCRIPTION: ToolSelectionRound,
             Event.NONE: SubscriptionRound,
             Event.SUBSCRIPTION_ERROR: SubscriptionRound,
             Event.NO_MAJORITY: SubscriptionRound,
             Event.ROUND_TIMEOUT: SubscriptionRound,
         },
         ClaimRound: {
-            Event.DONE: RandomnessRound,
+            Event.DONE: ToolSelectionRound,
             Event.SUBSCRIPTION_ERROR: ClaimRound,
             Event.NO_MAJORITY: ClaimRound,
             Event.ROUND_TIMEOUT: ClaimRound,
-        },
-        RandomnessRound: {
-            Event.DONE: ToolSelectionRound,
-            Event.ROUND_TIMEOUT: RandomnessRound,
-            Event.NO_MAJORITY: RandomnessRound,
         },
         ToolSelectionRound: {
             Event.DONE: DecisionRequestRound,
@@ -249,7 +257,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
-            Event.MOCK_TX: RandomnessRound,
+            Event.MOCK_TX: ToolSelectionRound,
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
@@ -268,7 +276,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         RedeemRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            Event.MOCK_TX: RandomnessRound,
+            Event.MOCK_TX: ToolSelectionRound,
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.NO_MAJORITY: RedeemRound,
             # in case of a round timeout, there likely is something wrong with redeeming
@@ -329,7 +337,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound: {
             get_name(SynchronizedData.bets_hash),
         },
-        SamplingRound: set(),
+        RandomnessRound: set(),
         CheckBenchmarkingModeRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
