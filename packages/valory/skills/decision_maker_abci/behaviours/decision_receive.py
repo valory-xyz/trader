@@ -161,11 +161,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     def _get_response(self) -> None:
         """Get the response data."""
         mech_responses = self.synchronized_data.mech_responses
-        if not mech_responses:
-            error = "No Mech responses in synchronized_data."
-            self._mech_response = MechInteractionResponse(error=error)
-
-        self._mech_response = mech_responses[0]
+        if mech_responses:
+            self._mech_response = mech_responses[0]
+            return
+        error = "No Mech responses in synchronized_data."
+        self._mech_response = MechInteractionResponse(error=error)
 
     def _get_decision(
         self,
