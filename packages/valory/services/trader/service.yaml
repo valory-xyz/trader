@@ -95,7 +95,6 @@ type: skill
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
-        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
@@ -319,7 +318,6 @@ type: skill
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
-        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
@@ -436,7 +434,6 @@ type: skill
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
-        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
@@ -553,7 +550,6 @@ type: skill
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
-        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented

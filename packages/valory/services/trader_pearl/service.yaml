@@ -55,7 +55,6 @@ models:
       trading_strategy: kelly_criterion
       use_fallback_strategy: true
       bet_threshold: 100000000000000000
-      blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
       tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: Please take over the role of a Data Scientist to evaluate the
