@@ -407,6 +407,8 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "mech_to_subscription_params",
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
+        self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
+        self.rebet_chance = self._ensure("rebet_chance", kwargs, float)
         super().__init__(*args, **kwargs)
 
     @property

@@ -142,6 +142,8 @@ type: skill
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
+        rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: &id004
       args:
@@ -363,6 +365,8 @@ type: skill
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
+        rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
     acc_info_fields: *id005
@@ -478,6 +482,8 @@ type: skill
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
+        rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
     acc_info_fields: *id005
@@ -593,6 +599,8 @@ type: skill
           ["price", "1000000000000000000"]]}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+        safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
+        rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: *id004
     acc_info_fields: *id005

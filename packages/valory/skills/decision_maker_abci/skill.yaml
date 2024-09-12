@@ -288,6 +288,8 @@ models:
           1.0: 0
       service_endpoint: trader.staging.autonolas.tech/
       rpc_sleep_time: 10
+      safe_voting_range: 600
+      rebet_chance: 0.6
     class_name: DecisionMakerParams
   benchmarking_mode:
     args:

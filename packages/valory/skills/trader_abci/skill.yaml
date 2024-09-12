@@ -245,6 +245,8 @@ models:
           1.0: 0
       service_endpoint: trader.staging.autonolas.tech/
       rpc_sleep_time: 10
+      safe_voting_range: 600
+      rebet_chance: 0.6
       mech_interaction_sleep_time: 10
     class_name: TraderParams
   benchmarking_mode:

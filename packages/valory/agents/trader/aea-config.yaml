@@ -236,6 +236,8 @@ models:
       strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
+      safe_voting_range: ${int:600}
+      rebet_chance: ${float:0.6}
       mech_interaction_sleep_time: ${int:10}
   benchmarking_mode:
     args:
