@@ -192,6 +192,40 @@ class Bet:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
 
+    def update_market_info(self, bet: "Bet") -> None:
+        """Update the bet's market information."""
+        if (
+            self.processed_timestamp == sys.maxsize
+            or bet.processed_timestamp == sys.maxsize
+        ):
+            # do not update the bet if it has been blacklisted forever
+            return
+        self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
+        self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
+        self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
+
+    def rebet_allowed(
+        self,
+        prediction_response: PredictionResponse,
+        liquidity: int,
+        potential_net_profit: int,
+    ) -> bool:
+        """Check if a rebet is allowed based on the previous bet's information."""
+        if self.n_bets < 2:
+            # it's the first time betting, always allow it
+            return True
+
+        more_confident = (
+            self.prediction_response.win_probability
+            >= prediction_response.win_probability
+        )
+        if self.prediction_response.vote == prediction_response.vote:
+            higher_liquidity = self.position_liquidity >= liquidity
+            return more_confident and higher_liquidity
+        else:
+            profit_increases = self.potential_net_profit >= potential_net_profit
+            return more_confident and profit_increases
+
 
 class BetsEncoder(json.JSONEncoder):
     """JSON encoder for bets."""
