@@ -46,6 +46,8 @@ from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
 )
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    BetPlacementRound,
+    CallCheckpointRound,
     ChecksPassedRound,
     Event,
     FailedMultiplexerRound,
@@ -54,8 +56,11 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedRedeemingTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
+    MechRequestRound,
     PostTxSettlementRound,
     PreTxSettlementRound,
+    RedeemRound,
+    SubscriptionRound,
     SynchronizedData,
     TxSettlementMultiplexerAbciApp,
 )
@@ -287,6 +292,49 @@ class TestPostTxSettlementRound:
 
                 mock_tool_used.assert_called_once_with(self.synchronized_data.mech_tool)
                 mock_serialize.assert_called_once()
+
+    def test_end_block_mech_requesting_done(self) -> None:
+        """Test the end_block logic for MECH_REQUESTING_DONE event."""
+        # Arrange
+
+        self.synchronized_data.tx_submitter = MechRequestRound.auto_round_id()
+        round_ = PostTxSettlementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
+        # Act
+        result = round_.end_block()
+        assert result is not None
+        _, event = result
+        # Assert
+        if self.synchronized_data.tx_submitter in [
+            MechRequestRound.auto_round_id(),
+            BetPlacementRound.auto_round_id(),
+            RedeemRound.auto_round_id(),
+            CallCheckpointRound.auto_round_id(),
+            SubscriptionRound.auto_round_id(),
+        ]:
+            assert event == Event.UNRECOGNIZED
+
+    def test_end_block_bet_placement_done(self) -> None:
+        """Test the end_block logic for BET_PLACEMENT_DONE event."""
+        # Arrange
+        self.synchronized_data.tx_submitter = BetPlacementRound.auto_round_id()
+        round_ = PostTxSettlementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
+        # Act
+        result = round_.end_block()
+        assert result is not None
+        _, event = result
+        # Assert
+        if self.synchronized_data.tx_submitter in [
+            MechRequestRound.auto_round_id(),
+            BetPlacementRound.auto_round_id(),
+            RedeemRound.auto_round_id(),
+            CallCheckpointRound.auto_round_id(),
+            SubscriptionRound.auto_round_id(),
+        ]:
+            assert event == Event.UNRECOGNIZED
 
 
 def test_tx_settlement_abci_app_initialization() -> None:
