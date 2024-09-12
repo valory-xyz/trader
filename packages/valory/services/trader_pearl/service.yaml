@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiepmomqpnpmzwe2ed5qexpdnkmeaxhthuia4iqk7v24d6il4mgrh4
+agent: valory/trader:0.1.0:bafybeibm4sgqk4yn5ywszcpjyml5th7ln7kogexyaww3p6ot4n3anmekbu
 number_of_agents: 1
 deployment:
   agent:
@@ -138,7 +138,7 @@ cert_requests:
   not_before: '2022-01-01'
   public_key: 02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77
   save_path: .certs/acn_cosmos_11000.txt
-is_abstract: false
+is_abstract: true
 ---
 public_id: valory/http_server:0.22.0
 type: connection
