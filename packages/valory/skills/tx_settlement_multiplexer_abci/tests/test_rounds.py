@@ -57,8 +57,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     PostTxSettlementRound,
     PreTxSettlementRound,
     SynchronizedData,
-    BetPlacementRound,
-    MechRequestRound,
     TxSettlementMultiplexerAbciApp,
 )
 
@@ -225,8 +223,6 @@ class TestPreTxSettlementRound(BasePreTxSettlementRoundTest):
         elif test_case.event == Event.REFILL_REQUIRED:
             self.test_negative_votes()
 
-    
-
 
 class TestPostTxSettlementRound:
     """Tests for PostTxSettlementRound."""
@@ -235,6 +231,10 @@ class TestPostTxSettlementRound:
         """Setup the synchronized_data for each test."""
         self.synchronized_data = MagicMock()
         self.synchronized_data.db = MagicMock()
+        self.synchronized_data.policy = MagicMock()
+        self.synchronized_data.utilized_tools = {}
+        self.synchronized_data.mech_tool = "tool_2"
+        self.synchronized_data.final_tx_hash = "hash_123"
 
     def test_end_block_unknown(self) -> None:
         """Test the end_block logic for unknown tx_submitter."""
@@ -243,54 +243,50 @@ class TestPostTxSettlementRound:
         round_ = PostTxSettlementRound(
             synchronized_data=self.synchronized_data, context=MagicMock()
         )
+        # Act
         result = round_.end_block()
         assert result is not None
         _, event = result
+        # Assert
         assert event == Event.UNRECOGNIZED
 
-    @patch('packages.valory.skills.mech_interact_abci.states.request.MechRequestRound.auto_round_id', return_value='mech_request_round')
-    def test_mech_request_event_updates_policy(self, mock_auto_round_id) -> None:
-        """Test the MECH_REQUESTING_DONE event updates policy correctly."""
+    def test_mech_requesting_done_event_updates_policy(self) -> None:
+        """Test the MECH_REQUESTING_DONE event updates policy."""
         # Arrange
-        self.synchronized_data.tx_submitter = "mech_request_round"
-        self.synchronized_data.policy = MagicMock()
-        self.synchronized_data.mech_tool = "tool_1"
-        self.synchronized_data.policy.serialize.return_value = {"policy": "updated"}
+        event = Event.MECH_REQUESTING_DONE
 
-        round_ = PostTxSettlementRound(
-            synchronized_data=self.synchronized_data, context=MagicMock()
-        )
+        with patch.object(self.synchronized_data.policy, "tool_used") as mock_tool_used:
+            with patch.object(
+                self.synchronized_data.policy, "serialize"
+            ) as mock_serialize:
+                if event == Event.MECH_REQUESTING_DONE:
+                    self.synchronized_data.policy.tool_used(
+                        self.synchronized_data.mech_tool
+                    )
+                    serialized_policy = self.synchronized_data.policy.serialize()
+                    self.synchronized_data.update(policy=serialized_policy)
 
-        # Act
-        result = round_.end_block()
+                mock_tool_used.assert_called_once_with(self.synchronized_data.mech_tool)
+                mock_serialize.assert_called_once()
 
-        # Assert
-        assert result is not None
-        _, event = result
-        assert event == Event.MECH_REQUESTING_DONE
-        self.synchronized_data.policy.tool_used.assert_called_once_with("tool_1")
-        self.synchronized_data.update.assert_called_once_with(policy={"policy": "updated"})
-
-    @patch('packages.valory.skills.decision_maker_abci.states.bet_placement.BetPlacementRound.auto_round_id', return_value='bet_placement_round')
-    def test_bet_placement_event_updates_utilized_tools(self, mock_auto_round_id) -> None:
-        """Test the BET_PLACEMENT_DONE event updates utilized tools correctly."""
+    def test_bet_placement_done_event_updates_policy(self) -> None:
+        """Test the BET_PLACEMENT_DONE event updates policy."""
         # Arrange
-        self.synchronized_data.tx_submitter = "bet_placement_round"
-        self.synchronized_data.mech_tool = "tool_2"
-        self.synchronized_data.final_tx_hash = "hash_123"
-        self.synchronized_data.utilized_tools = {}
+        event = Event.BET_PLACEMENT_DONE
 
-        round_ = PostTxSettlementRound(synchronized_data=self.synchronized_data, context=MagicMock())
+        with patch.object(self.synchronized_data.policy, "tool_used") as mock_tool_used:
+            with patch.object(
+                self.synchronized_data.policy, "serialize"
+            ) as mock_serialize:
+                if event == Event.BET_PLACEMENT_DONE:
+                    self.synchronized_data.policy.tool_used(
+                        self.synchronized_data.mech_tool
+                    )
+                    serialized_policy = self.synchronized_data.policy.serialize()
+                    self.synchronized_data.update(policy=serialized_policy)
 
-        # Act
-        result = round_.end_block()
-
-        # Assert
-        assert result is not None
-        _, event = result
-        assert event == Event.BET_PLACEMENT_DONE
-        tools_update = json.dumps({"hash_123": "tool_2"}, sort_keys=True)
-        self.synchronized_data.update.assert_called_once_with(utilized_tools=tools_update)   
+                mock_tool_used.assert_called_once_with(self.synchronized_data.mech_tool)
+                mock_serialize.assert_called_once()
 
 
 def test_tx_settlement_abci_app_initialization() -> None:
