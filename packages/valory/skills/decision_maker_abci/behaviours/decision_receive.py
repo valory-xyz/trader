@@ -21,6 +21,7 @@
 
 import csv
 import json
+from copy import deepcopy
 from math import prod
 from typing import Any, Dict, Generator, Optional, Tuple, Union
 
@@ -324,6 +325,27 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
         return liquidity_info
 
+    def rebet_allowed(
+        self, prediction_response: PredictionResponse, potential_net_profit: int
+    ) -> bool:
+        """Whether a rebet is allowed or not."""
+        bet = self.sampled_bet
+        previous_response = deepcopy(bet.prediction_response)
+        previous_liquidity = bet.position_liquidity
+        previous_net_profit = bet.potential_net_profit
+        bet.prediction_response = prediction_response
+        vote = bet.prediction_response.vote
+        bet.position_liquidity = bet.outcomeTokenAmounts[vote] if vote else 0
+        bet.potential_net_profit = potential_net_profit
+        rebet_allowed = bet.rebet_allowed(
+            previous_response, previous_liquidity, previous_net_profit
+        )
+        if not rebet_allowed:
+            # reset the in-memory bets so that the updates of the sampled bet above are reverted
+            self.read_bets()
+            self.context.logger.info("Conditions for rebetting are not met!")
+        return rebet_allowed
+
     def _is_profitable(
         self, prediction_response: PredictionResponse
     ) -> Generator[None, None, Tuple[bool, int]]:
@@ -395,6 +417,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             else:
                 self._write_benchmark_results(prediction_response)
 
+        if is_profitable:
+            is_profitable = self.rebet_allowed(
+                prediction_response, potential_net_profit
+            )
+
         return is_profitable, bet_amount
 
     def async_act(self) -> Generator:
@@ -405,10 +432,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None
+            bets_hash = None
             if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
                     prediction_response
                 )
+                if is_profitable:
+                    self.store_bets()
+                    bets_hash = self.hash_stored_bets()
 
                 if self.benchmarking_mode.enabled:
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
@@ -426,6 +457,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
             payload = DecisionReceivePayload(
                 self.context.agent_address,
+                bets_hash,
                 is_profitable,
                 prediction_response.vote if prediction_response else None,
                 prediction_response.confidence if prediction_response else None,

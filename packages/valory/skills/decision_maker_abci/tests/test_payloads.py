@@ -42,6 +42,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
         (
             DecisionReceivePayload,
             {
+                "bets_hash": "dummy bets hash",
                 "is_profitable": True,
                 "vote": True,
                 "confidence": 0.90,
