@@ -46,11 +46,11 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      mech_contract_address: '0x77af31De935740567Cf4fF1986D04B2c964A786a'
+      mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_request_price: 0
       mech_chain_id: ethereum
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
-      mech_activity_checker_contract: '0x155547857680A6D51bebC5603397488988DEb1c8'
+      mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x155547857680A6D51bebC5603397488988DEb1c8}
       sample_bets_closing_days: 10
       trading_strategy: kelly_criterion
       use_fallback_strategy: true
@@ -75,7 +75,7 @@ models:
       store_path: ./data
       policy_epsilon: 0.1
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization","deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
-      staking_contract_address: '0xeF44Fb0842DDeF59D37f85D61A1eF492bbA6135d'
+      staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
