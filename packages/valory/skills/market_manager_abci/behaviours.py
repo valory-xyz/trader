@@ -58,7 +58,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Initialize `BetsManagerBehaviour`."""
         super().__init__(**kwargs)
         self.bets: List[Bet] = []
-        self.bets_filepath: str = os.path.join(self.context.data_dir, BETS_FILENAME)
+        self.bets_filepath: str = self.params.store_path / BETS_FILENAME
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
