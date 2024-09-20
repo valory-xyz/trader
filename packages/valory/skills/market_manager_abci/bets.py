@@ -71,6 +71,11 @@ class PredictionResponse:
         return max(self.p_no, self.p_yes)
 
 
+def get_default_prediction_response() -> PredictionResponse:
+    """Get the default prediction response."""
+    return PredictionResponse(p_yes=0.5, p_no=0.5, confidence=0.5, info_utility=0.5)
+
+
 @dataclasses.dataclass
 class Bet:
     """A bet's structure."""
@@ -87,8 +92,8 @@ class Bet:
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     scaledLiquidityMeasure: float
-    prediction_response: PredictionResponse = PredictionResponse(
-        p_yes=0.5, p_no=0.5, confidence=0.5, info_utility=0.5
+    prediction_response: PredictionResponse = dataclasses.field(
+        default_factory=get_default_prediction_response
     )
     position_liquidity: int = 0
     potential_net_profit: int = 0
