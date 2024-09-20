@@ -27,7 +27,7 @@ from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayloa
 
 
 @dataclass(frozen=True)
-class DecisionReceivePayload(BaseTxPayload):
+class DecisionReceivePayload(UpdateBetsPayload):
     """Represents a transaction payload for the decision-making."""
 
     is_profitable: Optional[bool]

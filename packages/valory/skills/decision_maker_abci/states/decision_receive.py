@@ -20,7 +20,7 @@
 """This module contains the decision receiving state of the decision-making abci app."""
 
 from enum import Enum
-from typing import Optional, Tuple, cast
+from typing import Any, Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
@@ -31,6 +31,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
+from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
 class DecisionReceiveRound(CollectSameUntilThresholdRound):
@@ -41,7 +42,8 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
     done_event = Event.DONE
     none_event = Event.MECH_RESPONSE_ERROR
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (
+    selection_key: Any = (
+        UpdateBetsRound.selection_key,
         get_name(SynchronizedData.is_profitable),
         get_name(SynchronizedData.vote),
         get_name(SynchronizedData.confidence),

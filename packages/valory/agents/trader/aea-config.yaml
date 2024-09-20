@@ -47,10 +47,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6w4wdyvicy3mvmvskp3fg2snthofb3z5kmqhfohqfiv65k7hlgq
-- valory/market_manager_abci:0.1.0:bafybeicymkyk7e5rohauml6xazai6mv2rqd3euz3ifbk2ftfkylhpgo4ra
-- valory/decision_maker_abci:0.1.0:bafybeicr3o4z5ytp6njmsxlj3p6cbaxyad6tdv5kyoxaeon5da2wn6hxqy
-- valory/trader_abci:0.1.0:bafybeieya5jxda7vacxeaowaoyafqtyldzjsloxnj5gcnschxoicfmua3y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicv4whre6yuie77j7mfwgtvt4qqnw7vr6kvlbsyzly4ymwypotfnm
+- valory/market_manager_abci:0.1.0:bafybeicfdptiseyvorks2ji2nycjqxf4ef43jr5ygdswon6hgkckzgqjfe
+- valory/decision_maker_abci:0.1.0:bafybeibx462crs7pojjj5d7v43t2nd6igtpitzpcsrtvavjrs5k76k5iuu
+- valory/trader_abci:0.1.0:bafybeifnilxdlvwanlf446e4qqd56z7l2dmfl2ep5pfub3cfhwjkjhljfi
 - valory/staking_abci:0.1.0:bafybeiegy5iny4x3jk2kjuykebxksoqhfl7irdcldbcwzrsvpopxooys2q
 - valory/check_stop_trading_abci:0.1.0:bafybeif6w4uc3pzrbuuhyktgehvwsq2gxv6udeivhlhijlguhmctxokdqa
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
@@ -190,7 +190,6 @@ models:
       trading_strategy: ${str:kelly_criterion_no_conf}
       use_fallback_strategy: ${bool:true}
       bet_threshold: ${int:100000000000000000}
-      blacklisting_duration: ${int:3600}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
       tools_accuracy_hash: ${str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
       prompt_template: ${str:With the given question "@{question}" and the `yes` option
@@ -236,6 +235,8 @@ models:
       strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
+      safe_voting_range: ${int:600}
+      rebet_chance: ${float:0.6}
       mech_interaction_sleep_time: ${int:10}
   benchmarking_mode:
     args:

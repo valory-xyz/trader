@@ -37,11 +37,12 @@ start_states:
 - ClaimRound
 - DecisionReceiveRound
 - HandleFailedTxRound
+- RandomnessRound
 - RedeemRound
-- SamplingRound
 states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
+- BenchmarkingRandomnessRound
 - BetPlacementRound
 - BlacklistingRound
 - CheckBenchmarkingModeRound
@@ -62,6 +63,9 @@ states:
 - SubscriptionRound
 - ToolSelectionRound
 transition_func:
+    (BenchmarkingRandomnessRound, DONE): ToolSelectionRound
+    (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
+    (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (BetPlacementRound, MOCK_TX): RedeemRound
@@ -70,17 +74,17 @@ transition_func:
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): RandomnessRound
+    (BlacklistingRound, MOCK_TX): ToolSelectionRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): RandomnessRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
-    (ClaimRound, DONE): RandomnessRound
+    (ClaimRound, DONE): ToolSelectionRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
@@ -99,11 +103,11 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
-    (RandomnessRound, DONE): ToolSelectionRound
+    (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
-    (RedeemRound, MOCK_TX): RandomnessRound
+    (RedeemRound, MOCK_TX): ToolSelectionRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
@@ -114,10 +118,10 @@ transition_func:
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
-    (SubscriptionRound, MOCK_TX): RandomnessRound
+    (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
-    (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
+    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
     (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
     (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (ToolSelectionRound, DONE): DecisionRequestRound

@@ -23,7 +23,7 @@ import json
 import os.path
 from abc import ABC
 from json import JSONDecodeError
-from typing import Any, Generator, Iterator, List, Set, Tuple, Type
+from typing import Any, Dict, Generator, List, Optional, Set, Type
 
 from aea.helpers.ipfs.base import IPFSHashOnly
 
@@ -31,7 +31,6 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehav
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
-    BetStatus,
     BetsDecoder,
     serialize_bets,
 )
@@ -59,7 +58,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Initialize `BetsManagerBehaviour`."""
         super().__init__(**kwargs)
         self.bets: List[Bet] = []
-        self.bets_filepath: str = os.path.join(self.context.data_dir, BETS_FILENAME)
+        self.bets_filepath: str = self.params.store_path / BETS_FILENAME
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
@@ -118,49 +117,37 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Initialize `UpdateBetsBehaviour`."""
         super().__init__(**kwargs)
 
-    def is_frozen_bet(self, bet: Bet) -> bool:
-        """Return if a bet should not be updated."""
-        return (
-            bet.blacklist_expiration > self.synced_time
-            and bet.status == BetStatus.BLACKLISTED
-        ) or bet.status == BetStatus.PROCESSED
+    def get_bet_idx(self, bet_id: str) -> Optional[int]:
+        """Get the index of the bet with the given id, if it exists, otherwise `None`."""
+        return next((i for i, bet in enumerate(self.bets) if bet.id == bet_id), None)
 
-    @property
-    def frozen_local_bets(self) -> Iterator[Bet]:
-        """Get the frozen, already existing, bets."""
-        return filter(self.is_frozen_bet, self.bets)
+    def _process_chunk(self, chunk: Optional[List[Dict[str, Any]]]) -> None:
+        """Process a chunk of bets."""
+        if chunk is None:
+            return
 
-    @property
-    def frozen_bets_and_ids(self) -> Tuple[List[Bet], Set[str]]:
-        """Get the ids of the frozen, already existing, bets."""
-        bets = []
-        ids = set()
-        for bet in self.frozen_local_bets:
-            bets.append(bet)
-            ids.add(bet.id)
-        return bets, ids
+        for raw_bet in chunk:
+            bet = Bet(**raw_bet, market=self._current_market)
+            index = self.get_bet_idx(bet.id)
+            if index is None:
+                self.bets.append(bet)
+            else:
+                self.bets[index].update_market_info(bet)
 
     def _update_bets(
         self,
     ) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
-        self.bets, existing_ids = self.frozen_bets_and_ids
-
         while True:
             can_proceed = self._prepare_fetching()
             if not can_proceed:
                 break
 
             bets_market_chunk = yield from self._fetch_bets()
-            if bets_market_chunk is not None:
-                bets_updates = (
-                    Bet(**bet, market=self._current_market)
-                    for bet in bets_market_chunk
-                    if bet.get("id", "") not in existing_ids
-                )
-                self.bets.extend(bets_updates)
+            self._process_chunk(bets_market_chunk)
 
         if self._fetch_status != FetchStatus.SUCCESS:
+            # this won't wipe the bets as the `store_bets` of the `BetsManagerBehaviour` takes this into consideration
             self.bets = []
 
         # truncate the bets, otherwise logs get too big
