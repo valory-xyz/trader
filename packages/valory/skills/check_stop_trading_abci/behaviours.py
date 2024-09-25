@@ -100,7 +100,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
 
         yield from self.wait_for_condition_with_sleep(self._get_mech_request_count)
         mech_request_count = self.mech_request_count
-        self.context.logger.debug(f"{self.mech_request_count=}")
+        self.context.logger.debug(f"{mech_request_count=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_service_info)
         mech_request_count_on_last_checkpoint = self.service_info[2][1]
