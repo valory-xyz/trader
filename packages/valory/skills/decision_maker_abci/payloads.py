@@ -57,6 +57,7 @@ class MultisigTxPayload(BaseTxPayload):
 class RedeemPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
 
+    mech_tools: str = "[]"
     policy: Optional[str] = None
     utilized_tools: Optional[str] = None
     redeemed_condition_ids: Optional[str] = None
