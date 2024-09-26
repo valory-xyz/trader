@@ -68,6 +68,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "tx_submitter": "dummy tx submitter",
                 "tx_hash": "dummy tx hash",
                 "mocking_mode": True,
+                "mech_tools": "dummy mech tools",
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
                 "redeemed_condition_ids": "dummy redeemed condition ids",
