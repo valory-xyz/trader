@@ -47,8 +47,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def setup(self) -> None:
         """Setup the behaviour."""
-        random.seed(self.synchronized_data.most_voted_randomness)
-        self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
+        self.read_bets()
+        has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
+        if has_bet_in_the_past:
+            random.seed(self.synchronized_data.most_voted_randomness)
+            self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
         rebetting_status = "enabled" if self.should_rebet else "disabled"
         self.context.logger.info(f"Rebetting {rebetting_status}.")
 
@@ -114,7 +117,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            self.read_bets()
             idx = self._sample()
             self.store_bets()
             if idx is None:
