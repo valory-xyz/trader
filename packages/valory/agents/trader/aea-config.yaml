@@ -47,12 +47,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiameewywqigpupy3u2iwnkfczeiiucue74x2l5lbge74rmw6bgaie
 - valory/termination_abci:0.1.0:bafybeif2zim2de356eo3sipkmoev5emwadpqqzk3huwqarywh4tmqt3vzq
 - valory/transaction_settlement_abci:0.1.0:bafybeic3tccdjypuge2lewtlgprwkbb53lhgsgn7oiwzyrcrrptrbeyote
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihnfp7sjqoyhjglljial3wud5jvgqmhe7cy5zj2v4qmuzgwf4s3ue
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid3ghnj6vy6scf73pmuaepjslkwbrheeniwzohz4ba7g5g5fp45a4
 - valory/market_manager_abci:0.1.0:bafybeicfdptiseyvorks2ji2nycjqxf4ef43jr5ygdswon6hgkckzgqjfe
-- valory/decision_maker_abci:0.1.0:bafybeigtz4wqpobnuj2ixul5gb5nyopaauizq2cwlu57ibczefkppmnvau
-- valory/trader_abci:0.1.0:bafybeie6om77a4lol6o7rlpsvoy75rxte6fqfhsneqy2xjmoxjw76r3qbm
-- valory/staking_abci:0.1.0:bafybeiegy5iny4x3jk2kjuykebxksoqhfl7irdcldbcwzrsvpopxooys2q
-- valory/check_stop_trading_abci:0.1.0:bafybeif6w4uc3pzrbuuhyktgehvwsq2gxv6udeivhlhijlguhmctxokdqa
+- valory/decision_maker_abci:0.1.0:bafybeiaiop5mkdk52cczc2fvecmzsvkkwthuz67dto5d5jc7czu6p4dqf4
+- valory/trader_abci:0.1.0:bafybeihxwc7itiggugw7i66jqnxriwbkznffivddmzdo6wwinklvv5yzvi
+- valory/staking_abci:0.1.0:bafybeicdubaxhjmrqlewtveukjlth55zhenj723az3gv24di43n5julmra
+- valory/check_stop_trading_abci:0.1.0:bafybeieuljdaepxnrboddow2g3d4gqjw2bvljgzodw6bwd63wtppej35gm
 - valory/mech_interact_abci:0.1.0:bafybeih2cck5xu6yaibomwtm5zbcp6llghr3ighdnk56fzwu3ihu5xx35e
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m

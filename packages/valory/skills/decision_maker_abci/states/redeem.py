@@ -100,7 +100,7 @@ class RedeemRound(TxPreparationRound):
             mech_tools_update = most_voted_payload.mech_tools
             updated_data = synced_data.update(
                 self.synchronized_data_class,
-                **{get_name(SynchronizedData.available_mech_tools): mech_tools_update},
+                **{self.mech_tools_name: mech_tools_update},
             )
             return updated_data, event
 
