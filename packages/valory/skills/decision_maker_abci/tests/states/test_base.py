@@ -176,7 +176,8 @@ def test_end_block(mocked_db):
     """Test the end_block logic in TxPreparationRound."""
     # Mock SynchronizedData and CollectSameUntilThresholdRound behavior
     mocked_sync_data = MagicMock(spec=SynchronizedData)
-    round_instance = TxPreparationRound(synchronized_data=mocked_sync_data)  # Removed synchronized_data_class
+    mock_context = MagicMock()  # Create a mock context
+    round_instance = TxPreparationRound(synchronized_data=mocked_sync_data, context=mock_context)
 
     with patch.object(TxPreparationRound, "end_block", return_value=(mocked_sync_data, Event.DONE)):
         result = round_instance.end_block()
@@ -185,3 +186,4 @@ def test_end_block(mocked_db):
     with patch.object(TxPreparationRound, "end_block", return_value=(mocked_sync_data, Event.NONE)):
         result = round_instance.end_block()
         assert result == (mocked_sync_data, Event.NONE)
+
