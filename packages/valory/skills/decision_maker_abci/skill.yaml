@@ -287,6 +287,14 @@ models:
           1.0: 0
       service_endpoint: trader.staging.autonolas.tech/
       rpc_sleep_time: 10
+      use_mech_marketplace: false
+      mech_marketplace_config:
+        mech_marketplace_address: '0x0000000000000000000000000000000000000000'
+        priority_mech_address: '0x0000000000000000000000000000000000000000'
+        priority_mech_staking_instance_address: '0x0000000000000000000000000000000000000000'
+        priority_mech_service_id: 0
+        requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
+        response_timeout: 300
     class_name: DecisionMakerParams
   benchmarking_mode:
     args:
