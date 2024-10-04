@@ -25,10 +25,10 @@ contracts:
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
 - valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeifsb2krg4qnr4nxdrhcdgpncfr5ra2nahebvn2f2yff7ebwe7ooae
-- valory/service_staking_token:0.1.0:bafybeigzpmgizwxiptscj6bieumby5sjs54w3ps6f3kdnlyxpiwwxy5iem
-- valory/transfer_nft_condition:0.1.0:bafybeihnict3irtvnyxtkwyg6wphe44wz3dogijiha45xrkcrh5ktq2lsi
-- valory/erc20:0.1.0:bafybeia7a7mfjeok4ywpmejz74msofagagcentsudqxfojadmxlur5qolu
+- valory/agent_registry:0.1.0:bafybeiblc4i5xjxbywnfccwtv3unhaghrgqls7panfbuqbpstbc34h42xq
+- valory/service_staking_token:0.1.0:bafybeihhcs3ewwzhy7yto4y36uqmice3pdvyl54fvxxv6jsxonesie4dxu
+- valory/transfer_nft_condition:0.1.0:bafybeid6z2tf7nc4rhwggktxk5f62bowxdczykrxc3y76sbt2ttlw5hmtq
+- valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
 protocols:
 - open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
 - valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
@@ -48,7 +48,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih6uiqec5buugsxh2zi4geadrqlc6l6q5czltzxoexpthxgylc764
 - valory/market_manager_abci:0.1.0:bafybeidmipituxl4xva6h3aeorhqstketwxd7ka7z5fog3jprfr6qx2d3i
 - valory/decision_maker_abci:0.1.0:bafybeihc6vzoyh3ovhmqiwhm4hen3bbybfskut4ef5i3il36kxqlwt66yq
-- valory/trader_abci:0.1.0:bafybeid3bvj4kz4qbrvn3k2tinpfkz7trtu3ox47jr5ffcdyxjempmetse
+- valory/trader_abci:0.1.0:bafybeib2k6pr7c4wic2uj5ebnqvpbuwikrpzormg7agikipefvdybul2om
 - valory/staking_abci:0.1.0:bafybeifyqszbiccxwwfldrl6lz5dspuaxbqd5qnniyecusddwvxpfwiyr4
 - valory/check_stop_trading_abci:0.1.0:bafybeicsrrxjs6bup267jiek3r7eutd42ssfyjthyvxfku6qozw3xebxta
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
