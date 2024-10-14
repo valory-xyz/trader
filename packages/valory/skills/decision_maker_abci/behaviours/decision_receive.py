@@ -365,6 +365,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return None
         # to compute the new price we need the previous constants
         prices = self.shared_state.current_liquidity_prices
+        assert liquidity_info is not None
         liquidity_constants = [
             liquidity_info.l0_start * prices[0],
             liquidity_info.l1_start * prices[1],
