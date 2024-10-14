@@ -675,10 +675,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 prediction_response.p_no,
                 prediction_response.confidence,
                 bet_amount,
-                liquidity_info.l0_start,
-                liquidity_info.l1_start,
-                liquidity_info.l0_end,
-                liquidity_info.l1_end,
+                liquidity_info.l0_start if liquidity_info is not None else 0,
+                liquidity_info.l1_start if liquidity_info is not None else 0,
+                liquidity_info.l0_end if liquidity_info is not None else 0,
+                liquidity_info.l1_end if liquidity_info is not None else 0,
             )
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE

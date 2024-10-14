@@ -304,7 +304,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             scaledLiquidityMeasure=10,
         )
 
-    def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
+    def _calculate_new_liquidity(
+        self, net_bet_amount: int, vote: int
+    ) -> Optional[LiquidityInfo]:
         """Calculate and return the new liquidity information."""
         token_amounts = self.shared_state.current_liquidity_amounts
         k = prod(token_amounts)
@@ -314,7 +316,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         # calculate the number of the traded tokens
         if prices is None:
-            return 0, 0
+            return None
         tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
 
         # get the shares for the answer that the service has selected
@@ -354,9 +356,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
-    def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
+    def _update_liquidity_info(
+        self, net_bet_amount: int, vote: int
+    ) -> Optional[LiquidityInfo]:
         """Update the liquidity information and the prices after placing a bet for a market."""
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
+        if liquidity_info is None:
+            return None
         # to compute the new price we need the previous constants
         prices = self.shared_state.current_liquidity_prices
         liquidity_constants = [
