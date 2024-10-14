@@ -639,7 +639,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self,
         prediction_response: PredictionResponse,
         bet_amount: Optional[float] = None,
-        liquidity_info: LiquidityInfo = INIT_LIQUIDITY_INFO,
+        liquidity_info: Optional[LiquidityInfo] = INIT_LIQUIDITY_INFO,
     ) -> None:
         """Write the results to the benchmarking file."""
         add_headers = False
