@@ -17,7 +17,7 @@ include = "packages"
 [tool.poetry.dependencies]
 python = "<3.12,>=3.8"
 open-autonomy = "==0.14.14.post1"
-requests = "==2.28.1"
+requests = "<2.31.2,>=2.28.1"
 py-multibase = "==1.0.3"
 py-multicodec = "==0.2.1"
 py-eth-sig-utils = "*"
