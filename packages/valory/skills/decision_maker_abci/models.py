@@ -114,7 +114,7 @@ class LiquidityInfo:
         return self.l0_end, self.l1_end
 
     def get_new_prices(self, liquidity_constants: List) -> List[float]:
-        """Calculate and return the new prices based on the end liquidity."""
+        """Calculate and return the new prices based on the end liquidity and the liquidity constants of the market."""
         l0_end, l1_end = self.validate_end_information()
         new_p0 = liquidity_constants[0] / l0_end
         new_p1 = liquidity_constants[1] / l1_end
