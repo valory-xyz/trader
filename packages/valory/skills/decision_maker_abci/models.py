@@ -113,12 +113,11 @@ class LiquidityInfo:
         # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
         return self.l0_end, self.l1_end
 
-    def get_new_prices(self) -> List[float]:
+    def get_new_prices(self, liquidity_constants: List) -> List[float]:
         """Calculate and return the new prices based on the end liquidity."""
         l0_end, l1_end = self.validate_end_information()
-        total_end_liquidity = l0_end + l1_end
-        new_p0 = l0_end / total_end_liquidity
-        new_p1 = l1_end / total_end_liquidity
+        new_p0 = liquidity_constants[0] / l0_end
+        new_p1 = liquidity_constants[1] / l1_end
         return [new_p0, new_p1]
 
     def get_end_liquidity(self) -> List[int]:
@@ -380,11 +379,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "file_hash_to_strategies_json",
+            )
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -396,11 +395,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
+        self.mech_to_subscription_params: Dict[str, Any] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "mech_to_subscription_params",
+            )
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
