@@ -17,35 +17,46 @@
 #
 # ------------------------------------------------------------------------------
 
+
+"""This package contains the tests for Decision Maker"""
+
 import pytest
-from unittest import mock
-from packages.valory.skills.decision_maker_abci.states.base import Event, SynchronizedData
-from packages.valory.skills.decision_maker_abci.rounds import SamplingRound
-from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+
 from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
+from packages.valory.skills.decision_maker_abci.rounds import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
+from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
 # Mock classes to simulate required attributes
 class MockSynchronizedData(SynchronizedData):
     """A mock class for SynchronizedData to provide necessary attributes."""
+
     sampled_bet_index = 0  # Default value for sampled_bet_index
 
 
 class MockContext:
     """A mock class for context used in AbstractRound."""
+
     def __init__(self):
+        """Mock function"""
         self.sender = "mock_sender"
         self.bets_hash = "mock_bets_hash"
 
 
 class TestSamplingRound:
-
+    """The class for testing Sampling Round"""
     @pytest.fixture
     def setup_sampling_round(self):
         """Fixture to set up a SamplingRound instance."""
         context = MockContext()
-        synchronized_data = MockSynchronizedData(db=dict())  # Passing a mock dictionary for 'db'
+        synchronized_data = MockSynchronizedData(
+            db=dict()
+        )  # Passing a mock dictionary for 'db'
         return SamplingRound(context=context, synchronized_data=synchronized_data)
 
     def test_sampling_round_properties(self, setup_sampling_round):
@@ -61,7 +72,9 @@ class TestSamplingRound:
     def test_sampling_payload_initialization(self):
         """Test the initialization of the SamplingPayload."""
         # Adjust according to the actual initialization parameters
-        payload = SamplingPayload(sender="mock_sender", bets_hash="mock_bets_hash", index=0)  # Added index
+        payload = SamplingPayload(
+            sender="mock_sender", bets_hash="mock_bets_hash", index=0
+        )  # Added index
         assert payload is not None
         assert payload.sender == "mock_sender"
         assert payload.bets_hash == "mock_bets_hash"
@@ -76,7 +89,9 @@ class TestSamplingRound:
         sampling_round = setup_sampling_round
         expected_selection_key = (
             UpdateBetsRound.selection_key,
-            get_name(SynchronizedData.sampled_bet_index)  # Pass the property, not the value
+            get_name(
+                SynchronizedData.sampled_bet_index
+            ),  # Pass the property, not the value
         )
         assert sampling_round.selection_key == expected_selection_key
 

@@ -17,9 +17,16 @@
 #
 # ------------------------------------------------------------------------------
 
+
+"""This package contains the tests for Decision Maker"""
+
 import pytest
-from packages.valory.skills.decision_maker_abci.states.bet_placement import BetPlacementRound
+
 from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
+)
+
 
 @pytest.fixture
 def bet_placement_round():
@@ -28,8 +35,7 @@ def bet_placement_round():
     context = {}  # Example placeholder
     return BetPlacementRound(synchronized_data, context)
 
+
 def test_initial_event(bet_placement_round):
     """Test that the initial event is set correctly."""
     assert bet_placement_round.none_event == Event.INSUFFICIENT_BALANCE
-
-

@@ -18,23 +18,29 @@
 # ------------------------------------------------------------------------------
 
 
+"""This package contains the tests for Decision Maker"""
 
 import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
-from unittest.mock import MagicMock
+
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.test_tools.rounds import BaseCollectSameUntilThresholdRoundTest
+from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
+    BaseCollectSameUntilThresholdRoundTest,
+)
 from packages.valory.skills.decision_maker_abci.payloads import DecisionRequestPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_request import DecisionRequestRound
+from packages.valory.skills.decision_maker_abci.states.decision_request import (
+    DecisionRequestRound,
+)
+
 
 DUMMY_REQUEST_HASH = "dummy_request_hash"
 DUMMY_PARTICIPANT_TO_SELECTION_HASH = json.dumps(
@@ -45,9 +51,11 @@ DUMMY_PARTICIPANT_TO_SELECTION_HASH = json.dumps(
     }
 )
 
+
 def get_participants() -> FrozenSet[str]:
     """Participants."""
     return frozenset([f"agent_{i}" for i in range(4)])
+
 
 def get_payloads(data: Optional[str]) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
@@ -56,9 +64,11 @@ def get_payloads(data: Optional[str]) -> Mapping[str, BaseTxPayload]:
         for participant in get_participants()
     }
 
+
 @dataclass
 class RoundTestCase:
     """RoundTestCase for DecisionRequestRound."""
+
     name: str
     initial_data: Dict[str, Hashable]
     payloads: Mapping[str, BaseTxPayload]
@@ -66,6 +76,7 @@ class RoundTestCase:
     event: Event
     most_voted_payload: Any
     synchronized_data_attr_checks: List[Callable] = field(default_factory=list)
+
 
 class TestDecisionRequestRound(BaseCollectSameUntilThresholdRoundTest):
     """Tests for DecisionRequestRound."""
@@ -129,9 +140,7 @@ class TestDecisionRequestRound(BaseCollectSameUntilThresholdRoundTest):
 
     def run_test(self, test_case: RoundTestCase) -> None:
         """Run the test."""
-        self.synchronized_data.update(
-            SynchronizedData, **test_case.initial_data
-        )
+        self.synchronized_data.update(SynchronizedData, **test_case.initial_data)
 
         test_round = DecisionRequestRound(
             synchronized_data=self.synchronized_data, context=mock.MagicMock()

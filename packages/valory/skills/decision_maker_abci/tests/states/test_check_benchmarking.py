@@ -16,11 +16,17 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-import pytest
+
+
+"""This package contains the tests for Decision Maker"""
+
 from unittest.mock import MagicMock
+
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound
 from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import HandleFailedTxRound
+from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
+    HandleFailedTxRound,
+)
 
 
 def test_check_benchmarking_mode_round_initialization():

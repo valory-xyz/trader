@@ -18,23 +18,28 @@
 # ------------------------------------------------------------------------------
 
 
+"""This package contains the tests for Decision Maker"""
 
 import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
-from unittest.mock import MagicMock
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.test_tools.rounds import BaseCollectSameUntilThresholdRoundTest
+from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
+    BaseCollectSameUntilThresholdRoundTest,
+)
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_receive import DecisionReceiveRound
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
+)
+
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"
 DUMMY_PARTICIPANT_TO_DECISION_HASH = json.dumps(
@@ -45,20 +50,32 @@ DUMMY_PARTICIPANT_TO_DECISION_HASH = json.dumps(
     }
 )
 
+
 def get_participants() -> FrozenSet[str]:
     """Participants."""
     return frozenset([f"agent_{i}" for i in range(4)])
 
-def get_payloads(vote: Optional[str], confidence: Optional[float], bet_amount: Optional[float], next_mock_data_row: Optional[str], is_profitable: bool) -> Mapping[str, BaseTxPayload]:
+
+def get_payloads(
+    vote: Optional[str],
+    confidence: Optional[float],
+    bet_amount: Optional[float],
+    next_mock_data_row: Optional[str],
+    is_profitable: bool,
+) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
     return {
-        participant: DecisionReceivePayload(participant, vote, confidence, bet_amount, next_mock_data_row, is_profitable)
+        participant: DecisionReceivePayload(
+            participant, vote, confidence, bet_amount, next_mock_data_row, is_profitable
+        )
         for participant in get_participants()
     }
+
 
 @dataclass
 class RoundTestCase:
     """RoundTestCase for DecisionReceiveRound."""
+
     name: str
     initial_data: Dict[str, Hashable]
     payloads: Mapping[str, BaseTxPayload]
@@ -67,10 +84,11 @@ class RoundTestCase:
     most_voted_payload: Any
     synchronized_data_attr_checks: List[Callable] = field(default_factory=list)
 
+
 class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
     """Tests for DecisionReceiveRound."""
 
-    _synchronized_data_class = SynchronizedData  
+    _synchronized_data_class = SynchronizedData
 
     @pytest.mark.parametrize(
         "test_case",
@@ -78,7 +96,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
             RoundTestCase(
                 name="Happy path",
                 initial_data={},
-                payloads=get_payloads(vote="yes", confidence=0.8, bet_amount=100.0, next_mock_data_row="row_1", is_profitable=True),
+                payloads=get_payloads(
+                    vote="yes",
+                    confidence=0.8,
+                    bet_amount=100.0,
+                    next_mock_data_row="row_1",
+                    is_profitable=True,
+                ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
                     "participant_to_decision_hash": DUMMY_PARTICIPANT_TO_DECISION_HASH,
@@ -92,7 +116,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
             RoundTestCase(
                 name="Unprofitable decision",
                 initial_data={"is_profitable": False},
-                payloads=get_payloads(vote="no", confidence=0.5, bet_amount=50.0, next_mock_data_row="row_2", is_profitable=False),
+                payloads=get_payloads(
+                    vote="no",
+                    confidence=0.5,
+                    bet_amount=50.0,
+                    next_mock_data_row="row_2",
+                    is_profitable=False,
+                ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
                     "participant_to_decision_hash": DUMMY_PARTICIPANT_TO_DECISION_HASH,
@@ -106,7 +136,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
             RoundTestCase(
                 name="No majority",
                 initial_data={},
-                payloads=get_payloads(vote=None, confidence=None, bet_amount=None, next_mock_data_row=None, is_profitable=True),  # Simulating insufficient votes
+                payloads=get_payloads(
+                    vote=None,
+                    confidence=None,
+                    bet_amount=None,
+                    next_mock_data_row=None,
+                    is_profitable=True,
+                ),  # Simulating insufficient votes
                 final_data={},
                 event=Event.NO_MAJORITY,
                 most_voted_payload=None,
@@ -115,7 +151,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
             RoundTestCase(
                 name="Tie event",
                 initial_data={},
-                payloads=get_payloads(vote=None, confidence=None, bet_amount=None, next_mock_data_row=None, is_profitable=True),  # Simulating a tie situation
+                payloads=get_payloads(
+                    vote=None,
+                    confidence=None,
+                    bet_amount=None,
+                    next_mock_data_row=None,
+                    is_profitable=True,
+                ),  # Simulating a tie situation
                 final_data={},
                 event=Event.TIE,
                 most_voted_payload=None,
@@ -124,7 +166,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
             RoundTestCase(
                 name="Mechanism response error",
                 initial_data={"mocking_mode": True},
-                payloads=get_payloads(vote=None, confidence=None, bet_amount=None, next_mock_data_row=None, is_profitable=True),  # Simulating mocking mode response
+                payloads=get_payloads(
+                    vote=None,
+                    confidence=None,
+                    bet_amount=None,
+                    next_mock_data_row=None,
+                    is_profitable=True,
+                ),  # Simulating mocking mode response
                 final_data={},
                 event=Event.MECH_RESPONSE_ERROR,
                 most_voted_payload=None,
@@ -138,9 +186,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
 
     def run_test(self, test_case: RoundTestCase) -> None:
         """Run the test."""
-        self.synchronized_data.update(
-            SynchronizedData, **test_case.initial_data
-        )
+        self.synchronized_data.update(SynchronizedData, **test_case.initial_data)
 
         test_round = DecisionReceiveRound(
             synchronized_data=self.synchronized_data, context=mock.MagicMock()

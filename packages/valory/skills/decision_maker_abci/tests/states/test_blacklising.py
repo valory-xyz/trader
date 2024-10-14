@@ -17,14 +17,21 @@
 #
 # ------------------------------------------------------------------------------
 
-import pytest
+
+"""This package contains the tests for Decision Maker"""
 from unittest.mock import MagicMock, patch
-from typing import Tuple, Optional, Type, Any
-from packages.valory.skills.decision_maker_abci.states.blacklisting import BlacklistingRound
+
+import pytest
+
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
-from packages.valory.skills.decision_maker_abci.states.base import Event, SynchronizedData
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
+from packages.valory.skills.decision_maker_abci.states.blacklisting import (
+    BlacklistingRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
-from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData, get_name
 
 
 @pytest.fixture
@@ -44,7 +51,9 @@ def mocked_synchronized_data():
 @pytest.fixture
 def blacklisting_round(mocked_context, mocked_synchronized_data):
     """Fixture to create an instance of BlacklistingRound."""
-    return BlacklistingRound(context=mocked_context, synchronized_data=mocked_synchronized_data)
+    return BlacklistingRound(
+        context=mocked_context, synchronized_data=mocked_synchronized_data
+    )
 
 
 def test_blacklisting_round_initialization(blacklisting_round):
@@ -57,11 +66,15 @@ def test_blacklisting_round_initialization(blacklisting_round):
     assert len(blacklisting_round.selection_key) == 2
 
 
-def test_blacklisting_round_end_block_done_event_no_benchmarking(blacklisting_round, mocked_context):
+def test_blacklisting_round_end_block_done_event_no_benchmarking(
+    blacklisting_round, mocked_context
+):
     """Test end_block when event is DONE and benchmarking is disabled."""
     # Mock the superclass end_block to return DONE event
     synced_data = MagicMock(spec=SynchronizedData)
-    with patch.object(UpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)) as mock_super_end_block:
+    with patch.object(
+        UpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)
+    ) as mock_super_end_block:
         result = blacklisting_round.end_block()
 
         mock_super_end_block.assert_called_once()
@@ -69,25 +82,34 @@ def test_blacklisting_round_end_block_done_event_no_benchmarking(blacklisting_ro
         assert not mocked_context.benchmarking_mode.enabled  # Benchmarking disabled
 
 
-def test_blacklisting_round_end_block_done_event_with_benchmarking(blacklisting_round, mocked_context):
+def test_blacklisting_round_end_block_done_event_with_benchmarking(
+    blacklisting_round, mocked_context
+):
     """Test end_block when event is DONE and benchmarking is enabled."""
     # Set benchmarking mode to enabled
     mocked_context.benchmarking_mode.enabled = True
 
     # Mock the superclass end_block to return DONE event
     synced_data = MagicMock(spec=SynchronizedData)
-    with patch.object(UpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)) as mock_super_end_block:
+    with patch.object(
+        UpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)
+    ) as mock_super_end_block:
         result = blacklisting_round.end_block()
 
         mock_super_end_block.assert_called_once()
-        assert result == (synced_data, Event.MOCK_TX)  # Should return MOCK_TX since benchmarking is enabled
+        assert result == (
+            synced_data,
+            Event.MOCK_TX,
+        )  # Should return MOCK_TX since benchmarking is enabled
         assert mocked_context.benchmarking_mode.enabled  # Benchmarking enabled
 
 
 def test_blacklisting_round_end_block_none_event(blacklisting_round):
     """Test end_block when the superclass returns None."""
     # Mock the superclass end_block to return None
-    with patch.object(UpdateBetsRound, "end_block", return_value=None) as mock_super_end_block:
+    with patch.object(
+        UpdateBetsRound, "end_block", return_value=None
+    ) as mock_super_end_block:
         result = blacklisting_round.end_block()
 
         mock_super_end_block.assert_called_once()

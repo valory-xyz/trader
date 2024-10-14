@@ -17,23 +17,32 @@
 #
 # ------------------------------------------------------------------------------
 
+"""This package contains the tests for Decision Maker"""
 import pytest
+
+from packages.valory.skills.decision_maker_abci.rounds import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.transaction_settlement_abci.rounds import RandomnessTransactionSubmissionRound
-from packages.valory.skills.decision_maker_abci.rounds import RandomnessRound  
+from packages.valory.skills.transaction_settlement_abci.rounds import (
+    RandomnessTransactionSubmissionRound,
+)
+
 
 class MockSynchronizedData:
     """A mock class for SynchronizedData to provide necessary attributes."""
+
     pass
+
 
 class MockContext:
     """A mock class for context used in RandomnessTransactionSubmissionRound."""
+
     def __init__(self):
+        """Mock function"""
         self.sender = "mock_sender"
-        
+
 
 class TestRandomnessRound:
-
+    """The class for testing Randomness Round"""
     @pytest.fixture
     def setup_randomness_round(self):
         """Fixture to set up a RandomnessRound instance."""
@@ -58,5 +67,7 @@ class TestRandomnessRound:
         randomness_round.current_event = Event.DONE  # Simulate setting the event
         assert randomness_round.current_event == Event.DONE
 
-        randomness_round.current_event = Event.NO_MAJORITY  # Simulate setting another event
+        randomness_round.current_event = (
+            Event.NO_MAJORITY
+        )  # Simulate setting another event
         assert randomness_round.current_event == Event.NO_MAJORITY
