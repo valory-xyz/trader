@@ -367,8 +367,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         prices = self.shared_state.current_liquidity_prices
 
         # linter checks
-        assert liquidity_info.l0_start is not None
-        assert liquidity_info.l1_start is not None
+        if liquidity_info.l0_start is None or liquidity_info.l1_start is None:
+            return None
 
         liquidity_constants = [
             liquidity_info.l0_start * prices[0],
