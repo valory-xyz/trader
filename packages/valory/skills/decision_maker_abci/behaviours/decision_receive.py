@@ -304,7 +304,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             scaledLiquidityMeasure=10,
         )
 
-    def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
+    def _calculate_new_liquidity(
+        self, net_bet_amount: int, vote: int
+    ) -> Optional[LiquidityInfo]:
         """Calculate and return the new liquidity information."""
         token_amounts = self.shared_state.current_liquidity_amounts
         k = prod(token_amounts)
@@ -354,7 +356,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
-    def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
+    def _update_liquidity_info(
+        self, net_bet_amount: int, vote: int
+    ) -> Optional[LiquidityInfo]:
         """Update the liquidity information and the prices after placing a bet for a market."""
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
         if liquidity_info is None:
