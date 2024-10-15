@@ -43,6 +43,7 @@ class MockContext:
 
 class TestRandomnessRound:
     """The class for testing Randomness Round"""
+
     @pytest.fixture
     def setup_randomness_round(self):
         """Fixture to set up a RandomnessRound instance."""

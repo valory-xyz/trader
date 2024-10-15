@@ -25,7 +25,6 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
 
-
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload

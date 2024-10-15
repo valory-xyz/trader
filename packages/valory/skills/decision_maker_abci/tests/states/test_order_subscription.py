@@ -33,8 +33,10 @@ from packages.valory.skills.decision_maker_abci.states.order_subscription import
 
 # Dummy values for testing
 class MockSynchronizedData(BaseSynchronizedData):
-    """The class for testing """
+    """The class for testing"""
+
     def __init__(self, db):
+        """Mock"""
         super().__init__(db=db)
         self.agreement_id = "dummy_agreement_id"
 

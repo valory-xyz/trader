@@ -25,14 +25,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.policy import (
+    AccuracyInfo,
+    EGreedyPolicy,
+)
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
     TxPreparationRound,
-)
-from packages.valory.skills.market_manager_abci.rounds import (
-    SynchronizedData as MarketManagerSyncedData,
 )
 from packages.valory.skills.mech_interact_abci.states.base import MechMetadata
 
@@ -193,15 +193,17 @@ def test_mech_requests(sync_data, mocked_db):
 
 def test_weighted_accuracy(sync_data, mocked_db):
     """Test the weighted_accuracy property."""
-    mocked_db.get_strict.return_value = json.dumps(
-        {"epsilon": 0.1, "weighted_accuracy": {"tool1": 0.8}}
+    selected_mech_tool = "tool1"
+    policy_db_name = "policy"
+    policy_mock = EGreedyPolicy(
+        eps=0.1, accuracy_store={selected_mech_tool: AccuracyInfo(requests=1)}
+    ).serialize()
+    mocked_db.get_strict = lambda name: (
+        policy_mock if name == policy_db_name else selected_mech_tool
     )
-    mocked_db.get.return_value = "tool1"
-    sync_data._policy = None  # Reset cached value
-    policy = EGreedyPolicy.deserialize(mocked_db.get_strict.return_value)
-
-    # Access the weighted accuracy correctly
-    assert sync_data.weighted_accuracy == policy.weighted_accuracy["tool1"]
+    policy = EGreedyPolicy.deserialize(policy_mock)
+    assert selected_mech_tool in policy.weighted_accuracy
+    assert sync_data.weighted_accuracy == policy.weighted_accuracy[selected_mech_tool]
 
 
 def test_end_block(mocked_db):

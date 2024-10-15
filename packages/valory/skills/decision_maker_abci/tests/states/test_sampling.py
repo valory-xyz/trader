@@ -50,6 +50,7 @@ class MockContext:
 
 class TestSamplingRound:
     """The class for testing Sampling Round"""
+
     @pytest.fixture
     def setup_sampling_round(self):
         """Fixture to set up a SamplingRound instance."""

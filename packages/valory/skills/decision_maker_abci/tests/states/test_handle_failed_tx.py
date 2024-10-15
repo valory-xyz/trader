@@ -21,7 +21,7 @@
 """This package contains the tests for Decision Maker"""
 
 import json
-from typing import Any, Callable, Dict, FrozenSet, List, Mapping, Type
+from typing import Any, Callable, Dict, FrozenSet, Type
 from unittest.mock import MagicMock
 
 import pytest
