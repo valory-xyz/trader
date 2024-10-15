@@ -275,7 +275,15 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         shared_state = self.shared_state
         question_id = shared_state.mock_question_id
         benchmarking_mode = self.benchmarking_mode
-        outcome_token_amounts = shared_state.liquidity_amounts.setdefault(
+        current_liquidity_dictionary = shared_state.liquidity_amounts
+
+        # temporary solution since this situation was faced on the experiments
+        if len(benchmarking_mode.outcome_token_amounts) == 0:
+            benchmarking_mode.outcome_token_amounts = [
+                7000000000000000000,
+                7000000000000000000,
+            ]
+        outcome_token_amounts = current_liquidity_dictionary.setdefault(
             question_id, benchmarking_mode.outcome_token_amounts
         )
         outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
@@ -296,14 +304,42 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             scaledLiquidityMeasure=10,
         )
 
-    def _calculate_new_liquidity(self, bet_amount: int, vote: int) -> LiquidityInfo:
+    def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
-        liquidity_amounts = self.shared_state.current_liquidity_amounts
-        selected_type_tokens_in_pool = liquidity_amounts[vote]
-        opposite_vote = vote ^ 1
-        other_tokens_in_pool = liquidity_amounts[opposite_vote]
-        new_selected = selected_type_tokens_in_pool + bet_amount
-        new_other = other_tokens_in_pool * selected_type_tokens_in_pool / new_selected
+        token_amounts = self.shared_state.current_liquidity_amounts
+        k = prod(token_amounts)
+        prices = self.shared_state.current_liquidity_prices
+        self.context.logger.info(f"Token prices: {prices}")
+        bet_per_token = net_bet_amount / BINARY_N_SLOTS
+
+        # calculate the number of the traded tokens
+        if prices is None:
+            return None
+        tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
+
+        # get the shares for the answer that the service has selected
+        selected_shares = tokens_traded.pop(vote)
+        self.context.logger.info(f"Selected shares: {selected_shares}")
+
+        # get the shares for the opposite answer
+        other_shares = tokens_traded.pop()
+        self.context.logger.info(f"Other shares: {other_shares}")
+
+        # get the number of tokens in the pool for the answer that the service has selected
+        selected_type_tokens_in_pool = token_amounts.pop(vote)
+        self.context.logger.info(
+            f"Selected type tokens in pool: {selected_type_tokens_in_pool}"
+        )
+
+        # get the number of tokens in the pool for the opposite answer
+        other_tokens_in_pool = token_amounts.pop()
+        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool}")
+
+        # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
+        # preserving the balance of the pool
+        # here we calculate the number of shares that we get after trading the tokens for the opposite answer
+        new_other = other_tokens_in_pool + other_shares
+        new_selected = int(k / new_other)
         if vote == 0:
             return LiquidityInfo(
                 selected_type_tokens_in_pool,
@@ -318,10 +354,26 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
-    def _update_liquidity_info(self, bet_amount: int, vote: int) -> LiquidityInfo:
+    def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Update the liquidity information and the prices after placing a bet for a market."""
-        liquidity_info = self._calculate_new_liquidity(bet_amount, vote)
-        self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices()
+        liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
+        if liquidity_info is None:
+            return None
+        # to compute the new price we need the previous constants
+        prices = self.shared_state.current_liquidity_prices
+
+        # linter checks
+        assert liquidity_info.l0_start is not None
+        assert liquidity_info.l1_start is not None
+
+        liquidity_constants = [
+            liquidity_info.l0_start * prices[0],
+            liquidity_info.l1_start * prices[1],
+        ]
+
+        self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
+            liquidity_constants
+        )
         self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
         return liquidity_info
 
