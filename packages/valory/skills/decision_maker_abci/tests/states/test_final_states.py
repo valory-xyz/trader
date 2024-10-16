@@ -20,6 +20,7 @@
 
 """This package contains the tests for Decision Maker"""
 
+
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -42,20 +43,24 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 class MockSynchronizedData(BaseSynchronizedData):
     """A mock class for SynchronizedData."""
 
-    def __init__(self, db=None):
+    def __init__(self, db=None) -> None:
+        """Mock function"""
         super().__init__(db)  # Pass db to the parent class
 
 
 class MockContext:
     """A mock class for context used in the rounds."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Mock function"""
         self.some_attribute = "mock_value"  # Add any necessary attributes here
 
 
 class TestFinalStates:
+    """The class for test of Final States"""
+
     @pytest.fixture
-    def setup_round(self):
+    def setup_round(self) -> tuple[MockSynchronizedData, MockContext]:
         """Fixture to set up a round instance."""
         synchronized_data = MockSynchronizedData(
             db="mock_db"
@@ -63,7 +68,9 @@ class TestFinalStates:
         context = MockContext()
         return synchronized_data, context
 
-    def test_benchmarking_mode_disabled_round(self, setup_round):
+    def test_benchmarking_mode_disabled_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of BenchmarkingModeDisabledRound."""
         synchronized_data, context = setup_round
         round_instance = BenchmarkingModeDisabledRound(
@@ -72,7 +79,9 @@ class TestFinalStates:
         assert isinstance(round_instance, BenchmarkingModeDisabledRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_finished_decision_maker_round(self, setup_round):
+    def test_finished_decision_maker_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of FinishedDecisionMakerRound."""
         synchronized_data, context = setup_round
         round_instance = FinishedDecisionMakerRound(
@@ -81,7 +90,9 @@ class TestFinalStates:
         assert isinstance(round_instance, FinishedDecisionMakerRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_finished_decision_request_round(self, setup_round):
+    def test_finished_decision_request_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of FinishedDecisionRequestRound."""
         synchronized_data, context = setup_round
         round_instance = FinishedDecisionRequestRound(
@@ -90,7 +101,9 @@ class TestFinalStates:
         assert isinstance(round_instance, FinishedDecisionRequestRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_finished_subscription_round(self, setup_round):
+    def test_finished_subscription_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of FinishedSubscriptionRound."""
         synchronized_data, context = setup_round
         round_instance = FinishedSubscriptionRound(
@@ -99,7 +112,9 @@ class TestFinalStates:
         assert isinstance(round_instance, FinishedSubscriptionRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_finished_without_redeeming_round(self, setup_round):
+    def test_finished_without_redeeming_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of FinishedWithoutRedeemingRound."""
         synchronized_data, context = setup_round
         round_instance = FinishedWithoutRedeemingRound(
@@ -108,7 +123,9 @@ class TestFinalStates:
         assert isinstance(round_instance, FinishedWithoutRedeemingRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_finished_without_decision_round(self, setup_round):
+    def test_finished_without_decision_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of FinishedWithoutDecisionRound."""
         synchronized_data, context = setup_round
         round_instance = FinishedWithoutDecisionRound(
@@ -117,7 +134,9 @@ class TestFinalStates:
         assert isinstance(round_instance, FinishedWithoutDecisionRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_refill_required_round(self, setup_round):
+    def test_refill_required_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of RefillRequiredRound."""
         synchronized_data, context = setup_round
         round_instance = RefillRequiredRound(
@@ -126,7 +145,9 @@ class TestFinalStates:
         assert isinstance(round_instance, RefillRequiredRound)
         assert isinstance(round_instance, DegenerateRound)
 
-    def test_benchmarking_done_round(self, setup_round):
+    def test_benchmarking_done_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of BenchmarkingDoneRound and its end_block method."""
         synchronized_data, context = setup_round
         round_instance = BenchmarkingDoneRound(
@@ -139,7 +160,9 @@ class TestFinalStates:
         with pytest.raises(SystemExit):
             round_instance.end_block()  # Should exit the program
 
-    def test_impossible_round(self, setup_round):
+    def test_impossible_round(
+        self, setup_round: tuple[MockSynchronizedData, MockContext]
+    ) -> None:
         """Test instantiation of ImpossibleRound."""
         synchronized_data, context = setup_round
         round_instance = ImpossibleRound(
