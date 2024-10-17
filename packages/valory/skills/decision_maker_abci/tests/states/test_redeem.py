@@ -87,10 +87,10 @@ def test_end_block_with_period_count_update(redeem_round):
     # Set up the necessary attributes
     redeem_round.synchronized_data.period_count = 1
 
-    # Directly assign a valid integer to nb_participants
-    redeem_round.nb_participants = 3
+    # Directly set nb_participants as an integer within the synchronized_data mock
+    redeem_round.synchronized_data.nb_participants = 3
 
-    # Set up mock return values for db.get if needed
+    # Set up mock return values for db.get as needed
     mock_keys = RedeemRound.selection_key
     for key in mock_keys:
         redeem_round.synchronized_data.db.get = MagicMock(return_value="mock_value")
@@ -98,6 +98,6 @@ def test_end_block_with_period_count_update(redeem_round):
     # Call the actual end_block method
     result = redeem_round.end_block()
 
-    # Add assertions based on what you expect the result to be
+    # Assertions to check the result
     assert isinstance(result, tuple)  # Ensure it returns a tuple
     assert result[1] == Event.NO_REDEEMING  # Adjust based on expected behavior
