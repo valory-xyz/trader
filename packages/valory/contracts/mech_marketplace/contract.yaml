@@ -1,0 +1,23 @@
+name: mech_marketplace
+author: valory
+version: 0.1.0
+type: contract
+description: Agent mech marketplace contract.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeihygfmkbo4cegrqnz5ws6bbjaifubvk7r2uyvuanxpqy24l634tba
+  __init__.py: bafybeie6625ddrcph7pcxef4fbfcuhyd6yuzdyyqcoqpc5xdjb4rttw7my
+  build/mech.json: bafybeif2doizav5rs5hig6bruaoz2bedlyesyh23s735llblh64vazespi
+  contract.py: bafybeiawzcqvkx7tip7tck2czf47d5rnolebmet3fbmv5p4hzpv3fmarwq
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: MechMarketplace
+contract_interface_paths:
+  ethereum: build/mech.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==1.53.0
+  web3:
+    version: <7,>=6.0.0
+  eth_typing: {}
