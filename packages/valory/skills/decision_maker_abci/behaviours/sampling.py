@@ -77,6 +77,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
         can_rebet = now >= bet.processed_timestamp + t_rebetting
+
+        # filter for changed liquidity when not bet on a market already to avoid resampling the same market repeatedly
+        if bet.n_bets == 0 and bet.processed_timestamp > 0:
+            bet_id = bet.id
+            scaled_liquidity_changed = (
+                bet.scaledLiquidityMeasure
+                != self.shared_state.bet_selection_stats[bet_id][
+                    "scaledLiquidityMeasure"
+                ]
+            )
+            return within_ranges and can_rebet and scaled_liquidity_changed
+
         return within_ranges and can_rebet
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
@@ -94,6 +106,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
         available_bets = list(filter(self.processable_bet, self.bets))
+
+        # store the bet selection stats for each processable bet at the time of sampling
+        for bet in available_bets:
+            self.shared_state.bet_selection_stats[bet.id][
+                "scaled_liquidity_measure"
+            ] = bet.scaledLiquidityMeasure
+            self.shared_state.bet_selection_stats[bet.id][
+                "outcome_token_amounts"
+            ] = bet.outcomeTokenAmounts
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
