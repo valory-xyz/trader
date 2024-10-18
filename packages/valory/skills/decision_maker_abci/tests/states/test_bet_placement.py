@@ -17,8 +17,9 @@
 #
 # ------------------------------------------------------------------------------
 
-
 """This package contains the tests for Decision Maker"""
+
+from typing import Any, Dict
 
 import pytest
 
@@ -29,13 +30,13 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 
 
 @pytest.fixture
-def bet_placement_round():
+def bet_placement_round() -> BetPlacementRound:
     """Fixture to set up a BetPlacementRound instance for testing."""
-    synchronized_data = {}  # Example placeholder
-    context = {}  # Example placeholder
+    synchronized_data: Dict[str, Any] = {}  # Added type annotation
+    context: Dict[str, Any] = {}  # Added type annotation
     return BetPlacementRound(synchronized_data, context)
 
 
-def test_initial_event(bet_placement_round):
+def test_initial_event(bet_placement_round: BetPlacementRound) -> None:
     """Test that the initial event is set correctly."""
     assert bet_placement_round.none_event == Event.INSUFFICIENT_BALANCE

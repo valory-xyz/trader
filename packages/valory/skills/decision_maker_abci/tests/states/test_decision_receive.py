@@ -17,7 +17,6 @@
 #
 # ------------------------------------------------------------------------------
 
-
 """This package contains the tests for Decision Maker"""
 
 import json
@@ -57,10 +56,10 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_payloads(
-    vote: Optional[str],
-    confidence: Optional[float],
+    vote: Optional[bool],  # Changed from Optional[str] to Optional[bool]
+    confidence: Optional[int],  # Changed from Optional[float] to Optional[int]
     bet_amount: Optional[float],
-    next_mock_data_row: Optional[str],
+    next_mock_data_row: Optional[int],  # Changed from Optional[str] to Optional[int]
     is_profitable: bool,
 ) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
@@ -97,10 +96,10 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Happy path",
                 initial_data={},
                 payloads=get_payloads(
-                    vote="yes",
-                    confidence=0.8,
+                    vote=True,  # Changed to bool
+                    confidence=80,  # Changed to int
                     bet_amount=100.0,
-                    next_mock_data_row="row_1",
+                    next_mock_data_row=1,  # Changed to int
                     is_profitable=True,
                 ),
                 final_data={
@@ -117,10 +116,10 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Unprofitable decision",
                 initial_data={"is_profitable": False},
                 payloads=get_payloads(
-                    vote="no",
-                    confidence=0.5,
+                    vote=False,  # Changed to bool
+                    confidence=50,  # Changed to int
                     bet_amount=50.0,
-                    next_mock_data_row="row_2",
+                    next_mock_data_row=2,  # Changed to int
                     is_profitable=False,
                 ),
                 final_data={
@@ -137,10 +136,10 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="No majority",
                 initial_data={},
                 payloads=get_payloads(
-                    vote=None,
-                    confidence=None,
-                    bet_amount=None,
-                    next_mock_data_row=None,
+                    vote=None,  # No vote
+                    confidence=None,  # No confidence
+                    bet_amount=None,  # No bet amount
+                    next_mock_data_row=None,  # No data row
                     is_profitable=True,
                 ),  # Simulating insufficient votes
                 final_data={},
@@ -152,10 +151,10 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Tie event",
                 initial_data={},
                 payloads=get_payloads(
-                    vote=None,
-                    confidence=None,
-                    bet_amount=None,
-                    next_mock_data_row=None,
+                    vote=None,  # No vote
+                    confidence=None,  # No confidence
+                    bet_amount=None,  # No bet amount
+                    next_mock_data_row=None,  # No data row
                     is_profitable=True,
                 ),  # Simulating a tie situation
                 final_data={},
@@ -167,10 +166,10 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Mechanism response error",
                 initial_data={"mocking_mode": True},
                 payloads=get_payloads(
-                    vote=None,
-                    confidence=None,
-                    bet_amount=None,
-                    next_mock_data_row=None,
+                    vote=None,  # No vote
+                    confidence=None,  # No confidence
+                    bet_amount=None,  # No bet amount
+                    next_mock_data_row=None,  # No data row
                     is_profitable=True,
                 ),  # Simulating mocking mode response
                 final_data={},

@@ -17,7 +17,6 @@
 #
 # ------------------------------------------------------------------------------
 
-
 """This package contains the tests for Decision Maker"""
 
 from unittest.mock import MagicMock
@@ -29,7 +28,7 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 
 
-def test_check_benchmarking_mode_round_initialization():
+def test_check_benchmarking_mode_round_initialization() -> None:
     """Test the initialization of CheckBenchmarkingModeRound."""
     round_instance = CheckBenchmarkingModeRound(MagicMock(), MagicMock())
 
@@ -41,7 +40,7 @@ def test_check_benchmarking_mode_round_initialization():
     assert isinstance(round_instance, HandleFailedTxRound)
 
 
-def test_check_benchmarking_mode_round_events():
+def test_check_benchmarking_mode_round_events() -> None:
     """Test that the correct events are used in the CheckBenchmarkingModeRound."""
     round_instance = CheckBenchmarkingModeRound(MagicMock(), MagicMock())
 

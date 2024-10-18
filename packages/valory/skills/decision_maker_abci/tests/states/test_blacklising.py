@@ -17,7 +17,6 @@
 #
 # ------------------------------------------------------------------------------
 
-
 """This package contains the tests for Decision Maker"""
 from unittest.mock import MagicMock, patch
 
@@ -35,7 +34,7 @@ from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
 @pytest.fixture
-def mocked_context():
+def mocked_context() -> MagicMock:
     """Fixture to mock the context."""
     context = MagicMock()
     context.benchmarking_mode.enabled = False  # Default for the test
@@ -43,20 +42,24 @@ def mocked_context():
 
 
 @pytest.fixture
-def mocked_synchronized_data():
+def mocked_synchronized_data() -> MagicMock:
     """Fixture to mock the synchronized data."""
     return MagicMock(spec=SynchronizedData)
 
 
 @pytest.fixture
-def blacklisting_round(mocked_context, mocked_synchronized_data):
+def blacklisting_round(
+    mocked_context: MagicMock, mocked_synchronized_data: MagicMock
+) -> BlacklistingRound:
     """Fixture to create an instance of BlacklistingRound."""
     return BlacklistingRound(
         context=mocked_context, synchronized_data=mocked_synchronized_data
     )
 
 
-def test_blacklisting_round_initialization(blacklisting_round):
+def test_blacklisting_round_initialization(
+    blacklisting_round: BlacklistingRound,
+) -> None:
     """Test the initialization of the BlacklistingRound."""
     assert blacklisting_round.done_event == Event.DONE
     assert blacklisting_round.none_event == Event.NONE
@@ -67,8 +70,8 @@ def test_blacklisting_round_initialization(blacklisting_round):
 
 
 def test_blacklisting_round_end_block_done_event_no_benchmarking(
-    blacklisting_round, mocked_context
-):
+    blacklisting_round: BlacklistingRound, mocked_context: MagicMock
+) -> None:
     """Test end_block when event is DONE and benchmarking is disabled."""
     # Mock the superclass end_block to return DONE event
     synced_data = MagicMock(spec=SynchronizedData)
@@ -83,8 +86,8 @@ def test_blacklisting_round_end_block_done_event_no_benchmarking(
 
 
 def test_blacklisting_round_end_block_done_event_with_benchmarking(
-    blacklisting_round, mocked_context
-):
+    blacklisting_round: BlacklistingRound, mocked_context: MagicMock
+) -> None:
     """Test end_block when event is DONE and benchmarking is enabled."""
     # Set benchmarking mode to enabled
     mocked_context.benchmarking_mode.enabled = True
@@ -104,7 +107,9 @@ def test_blacklisting_round_end_block_done_event_with_benchmarking(
         assert mocked_context.benchmarking_mode.enabled  # Benchmarking enabled
 
 
-def test_blacklisting_round_end_block_none_event(blacklisting_round):
+def test_blacklisting_round_end_block_none_event(
+    blacklisting_round: BlacklistingRound,
+) -> None:
     """Test end_block when the superclass returns None."""
     # Mock the superclass end_block to return None
     with patch.object(

@@ -92,7 +92,7 @@ def test_end_block_with_period_count_update(redeem_round):
 
     # Set up mock return values for db.get as needed
     mock_keys = RedeemRound.selection_key
-    for key in mock_keys:
+    for _key in mock_keys:
         redeem_round.synchronized_data.db.get = MagicMock(return_value="mock_value")
 
     # Call the actual end_block method
