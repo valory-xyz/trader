@@ -28,10 +28,6 @@ from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayl
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.market_manager_abci.bets import BetStatus
-
-
-TX_COST_APPROX = int(1e15)
 
 
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
@@ -49,9 +45,9 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index
         sampled_bet = self.bets[sampled_bet_index]
-        sampled_bet.status = BetStatus.BLACKLISTED
-        blacklist_expiration = self.synced_time + self.params.blacklisting_duration
-        sampled_bet.blacklist_expiration = blacklist_expiration
+        # the question is blacklisted, i.e., we did not place a bet on it,
+        # therefore, we decrease the number of bets which was increased on sampling
+        sampled_bet.n_bets -= 1
 
     def setup(self) -> None:
         """Setup the behaviour"""

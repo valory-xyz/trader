@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2021-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,22 +17,12 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the randomness state of the decision-making abci app."""
+"""Test the dialogues.py module of the skill."""
 
-from typing import Any
+# pylint: skip-file
 
-from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.transaction_settlement_abci.rounds import (
-    RandomnessTransactionSubmissionRound,
-)
+import packages.valory.skills.staking_abci.dialogues  # noqa
 
 
-class RandomnessRound(RandomnessTransactionSubmissionRound):
-    """A round for gathering randomness."""
-
-    done_event: Any = Event.DONE
-    no_majority_event: Any = Event.NO_MAJORITY
-
-
-class BenchmarkingRandomnessRound(RandomnessRound):
-    """A round for gathering randomness in benchmarking mode."""
+def test_import() -> None:
+    """Test that the 'dialogues.py' Python module can be imported."""

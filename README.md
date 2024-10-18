@@ -155,8 +155,6 @@ Please take into consideration the following:
 - If the service determines that a bet is not profitable 
  (i.e., `potential_net_profit - BET_THRESHOLD < 0`), you will see an `Event.UNPROFITABLE` in the service logs, 
  and the service will transition into the blacklisting round. 
- This round blacklists a bet for a predetermined amount of time. 
- This can be adjusted by using the `BLACKLISTING_DURATION` environment variable.
 - For simplicity, 
  the current implementation considers `potential_net_profit = num_shares - net_bet_amount - mech_price - BET_THRESHOLD`, 
  although this calculation might be refined. 
