@@ -292,6 +292,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             outcomeSlotCount=2,
             outcomeTokenAmounts=outcome_token_amounts,
             outcomeTokenMarginalPrices=outcome_token_marginal_prices,
+            outcomeIndex=0,
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=10,
         )

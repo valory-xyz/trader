@@ -89,6 +89,7 @@ class Bet:
     openingTimestamp: int
     outcomeSlotCount: int
     outcomeTokenAmounts: List[int]
+    outcomeIndex: int
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     scaledLiquidityMeasure: float
@@ -108,7 +109,14 @@ class Bet:
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
-        return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
+        if self.n_bets > 0:
+            return (
+                self.outcomeTokenAmounts[self.outcomeIndex]
+                < other.outcomeTokenAmounts[self.outcomeIndex]
+            )
+
+        else:
+            return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
 
     def _blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
