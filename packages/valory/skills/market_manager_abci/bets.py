@@ -89,7 +89,6 @@ class Bet:
     openingTimestamp: int
     outcomeSlotCount: int
     outcomeTokenAmounts: List[int]
-    outcomeIndex: int
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     scaledLiquidityMeasure: float
@@ -109,10 +108,12 @@ class Bet:
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
-        if self.n_bets > 0:
+        outcome_index = self.prediction_response.vote
+
+        if self.n_bets > 0 and outcome_index:
             return (
-                self.outcomeTokenAmounts[self.outcomeIndex]
-                < other.outcomeTokenAmounts[self.outcomeIndex]
+                self.outcomeTokenAmounts[outcome_index]
+                < other.outcomeTokenAmounts[outcome_index]
             )
 
         else:
