@@ -22,6 +22,7 @@
 import csv
 import json
 from abc import ABC
+from datetime import datetime, timedelta
 from io import StringIO
 from typing import Any, Dict, Generator, List, Optional
 
@@ -38,7 +39,6 @@ from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
 )
-
 
 POLICY_STORE = "policy_store.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
@@ -138,7 +138,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _get_tools_from_benchmark_file(self) -> None:
         """Get the tools from the benchmark dataset."""
         dataset_filepath = (
-            self.params.store_path / self.benchmarking_mode.dataset_filename
+                self.params.store_path / self.benchmarking_mode.dataset_filename
         )
         with open(dataset_filepath) as read_dataset:
             row = read_dataset.readline()
@@ -212,7 +212,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         return True
 
     def _get_tools(
-        self,
+            self,
     ) -> Generator[None, None, None]:
         """Get the Mech's tools."""
         if self.benchmarking_mode.enabled:
@@ -220,9 +220,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return
 
         for step in (
-            self._get_mech_id,
-            self._get_mech_hash,
-            self._get_mech_tools,
+                self._get_mech_id,
+                self._get_mech_hash,
+                self._get_mech_tools,
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
@@ -232,6 +232,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             policy_path = self.params.store_path / POLICY_STORE
             with open(policy_path, "r") as f:
                 policy = f.read()
+                self.context.logger.info("Policy recovered.")
                 return EGreedyPolicy.deserialize(policy)
         except Exception as e:
             self.context.logger.warning(f"Could not recover the policy: {e}.")
@@ -267,6 +268,98 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
+    # def _read_accuracy_info_from_local(self) -> None:
+    #     policy_path = self.params.store_path / POLICY_STORE
+    #
+    #     with open(policy_path, "r") as f:
+    #         accuracy_information = json.load(f)
+    #         self.context.logger.info(f"Accuracy information: {accuracy_information}")
+    #         self.accuracy_information = accuracy_information.deserialize()
+
+    def _read_local_policy_date(self) -> int:
+        """Reads the updated timestamp from the policy file."""
+
+        self.context.logger.info("Reading policy updated timestamp...")
+        policy_path = self.params.store_path / POLICY_STORE
+
+        try:
+            with open(policy_path, "r") as f:
+                policy_data = json.load(f)
+                updated_timestamp = policy_data.get("updated_timestamp")
+
+                if updated_timestamp is not None:
+                    self.context.logger.info(f"Local updated timestamp found {updated_timestamp}")
+                    return updated_timestamp
+                else:
+                    self.context.logger.info("No timestamp found. Using minium}")
+                    return 1717586000
+
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            self.context.logger.error(f"Error reading timestamp: {e}")
+
+    def _fetch_remote_tool_date(self) -> Generator[None, None, int]:
+        """ Fetch the max transaction date from the remote accuracy storage."""
+        self.context.logger.info("Checking remote accuracy information date... ")
+        self.context.logger.info("Trying to read max date in file...")
+        accuracy_link = self.params.ipfs_address + self.params.tools_accuracy_hash
+        response = yield from self.get_http_response(method=GET, url=accuracy_link)
+        if response.status_code != OK_CODE:
+            self.context.logger.error(
+                f"Could not retrieve data from the url {accuracy_link}. "
+                f"Received status code {response.status_code}."
+            )
+            return False
+
+        self.context.logger.info("Parsing accuracy information of the tools...")
+        try:
+            tool_accuracy_data = StringIO(response.body.decode())
+        except (ValueError, TypeError) as e:
+            self.context.logger.error(
+                f"Could not parse response from ipfs server, "
+                f"the following error was encountered {type(e).__name__}: {e}"
+            )
+        sep = self.acc_info_fields.sep
+        reader: csv.DictReader = csv.DictReader(
+            tool_accuracy_data, delimiter=sep
+        )
+
+        max_transaction_date = None
+
+        # try to read the maximum transaction date in the remote accuracy info
+        try:
+            for row in reader:
+                current_transaction_date = row.get('max')
+                if max_transaction_date is None or current_transaction_date > max_transaction_date:
+                    max_transaction_date = current_transaction_date
+
+        except TypeError:
+            self.context.logger("Invalid transaction date found. Continuing with local accuracy information...")
+            return 1717586000
+
+        if max_transaction_date:
+            self.context.logger.info(f"Maximum date found: {max_transaction_date}")
+            format_str = "%Y-%m-%d %H:%M:%S"
+            max_datetime = datetime.strptime(max_transaction_date, format_str)
+            unix_timestamp = int(max_datetime.timestamp())
+            return unix_timestamp
+
+        else:
+            self.context.logger.info("No maximum date found.")
+            return 1717586000
+
+    def _check_local_policy_store_overwrite(self) -> Generator[None, None, bool]:
+        """Compare the local and remote policy store dates and decide which to use."""
+
+        local_policy_store_date = self._read_local_policy_date()
+        remote_policy_store_date = yield from self._fetch_remote_tool_date()
+        three_days_in_seconds = 3 * 24 * 3600
+
+        self.context.logger.info("Comparing tool accuracy dates...")
+        if remote_policy_store_date < (local_policy_store_date - three_days_in_seconds):
+            return True
+
+        return False
+
     def _update_accuracy_store(self, local_tools: List[str]) -> None:
         """Update the accuracy store file with the latest information available"""
         self.context.logger.info("Updating accuracy information of the policy...")
@@ -291,6 +384,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         for tool in local_tools:
             accuracy_store.setdefault(tool, AccuracyInfo())
 
+        self.policy.updated_timestamp = int(datetime.now().timestamp())
         self.policy.update_weighted_accuracy()
 
     def _set_policy(self) -> Generator:
@@ -308,11 +402,19 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._policy = self.synchronized_data.policy
             local_tools = self.synchronized_data.available_mech_tools
 
-        if self.is_first_period:
+        overwrite_local_store = yield from self._check_local_policy_store_overwrite()
+        if self.is_first_period: #and overwrite_local_store:
             yield from self.wait_for_condition_with_sleep(
                 self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
             )
+
         self._update_accuracy_store(local_tools)
+
+        # elif self.is_first_period:
+        #     self.context.logger.info(f"Policy is: {self.policy}")
+        #     self.accuracy_information = self._policy
+
+
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""
@@ -351,6 +453,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _store_policy(self) -> None:
         """Store the policy"""
         policy_path = self.params.store_path / POLICY_STORE
+
         with open(policy_path, "w") as f:
             f.write(self.policy.serialize())
 
