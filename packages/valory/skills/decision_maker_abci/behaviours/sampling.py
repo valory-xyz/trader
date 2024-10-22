@@ -109,12 +109,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # store the bet selection stats for each processable bet at the time of sampling
         for bet in available_bets:
-            self.shared_state.bet_selection_stats[bet.id][
-                "scaled_liquidity_measure"
-            ] = bet.scaledLiquidityMeasure
-            self.shared_state.bet_selection_stats[bet.id][
-                "outcome_token_amounts"
-            ] = bet.outcomeTokenAmounts
+            self.shared_state.bet_selection_stats[bet.id] = {
+                "scaled_liquidity_measure": bet.scaledLiquidityMeasure,
+                "outcome_token_amounts": bet.outcomeTokenAmounts,
+            }
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
