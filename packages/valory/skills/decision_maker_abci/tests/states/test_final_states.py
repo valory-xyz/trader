@@ -20,10 +20,12 @@
 
 """This package contains the tests for Decision Maker"""
 
+from typing import Any, Dict, List
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
+    AbciAppDB,
     BaseSynchronizedData,
     DegenerateRound,
 )
@@ -43,7 +45,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 class MockSynchronizedData(BaseSynchronizedData):
     """A mock class for SynchronizedData."""
 
-    def __init__(self, db=None) -> None:
+    def __init__(self, db: AbciAppDB) -> None:
         """Mock function"""
         super().__init__(db)  # Pass db to the parent class
 
@@ -62,9 +64,9 @@ class TestFinalStates:
     @pytest.fixture
     def setup_round(self) -> tuple[MockSynchronizedData, MockContext]:
         """Fixture to set up a round instance."""
-        synchronized_data = MockSynchronizedData(
-            db="mock_db"
-        )  # Provide a mock db value
+        setup_data: Dict[str, List[Any]] = {}
+        mock_db = AbciAppDB(setup_data)
+        synchronized_data = MockSynchronizedData(db=mock_db)  # Provide a mock db value
         context = MockContext()
         return synchronized_data, context
 
