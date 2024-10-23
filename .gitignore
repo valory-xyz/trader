@@ -20,6 +20,7 @@ packages/valory/skills/termination_abci/
 packages/valory/contracts/erc20/
 packages/valory/contracts/mech/
 packages/valory/contracts/gnosis_safe_proxy_factory/
+packages/valory/contracts/mech_marketplace/
 packages/valory/contracts/multisend/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/

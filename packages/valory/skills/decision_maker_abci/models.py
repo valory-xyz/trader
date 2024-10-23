@@ -113,12 +113,11 @@ class LiquidityInfo:
         # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
         return self.l0_end, self.l1_end
 
-    def get_new_prices(self) -> List[float]:
-        """Calculate and return the new prices based on the end liquidity."""
+    def get_new_prices(self, liquidity_constants: List[float]) -> List[float]:
+        """Calculate and return the new prices based on the end liquidity and the liquidity constants of the market."""
         l0_end, l1_end = self.validate_end_information()
-        total_end_liquidity = l0_end + l1_end
-        new_p0 = l0_end / total_end_liquidity
-        new_p1 = l1_end / total_end_liquidity
+        new_p0 = liquidity_constants[0] / l0_end
+        new_p1 = liquidity_constants[1] / l1_end
         return [new_p0, new_p1]
 
     def get_end_liquidity(self) -> List[int]:
