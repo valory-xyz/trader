@@ -23,7 +23,7 @@ import csv
 import json
 from copy import deepcopy
 from math import prod
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union, List
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -204,13 +204,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return selected_type_tokens_in_pool, other_tokens_in_pool
 
-    def _calc_binary_shares(
-        self, bet: Bet, net_bet_amount: int, vote: int
-    ) -> Tuple[int, int]:
-        """Calculate the claimed shares. This calculation only works for binary markets."""
-        # calculate the pool's k (x*y=k)
-        token_amounts = bet.outcomeTokenAmounts
-        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
+    def _compute_new_tokens_distribution(
+        self,
+        token_amounts: List[int],
+        prices: List[float],
+        net_bet_amount: int,
+        vote: int,
+    ) -> Tuple:
+
         k = prod(token_amounts)
         self.context.logger.info(f"k: {k}")
 
@@ -219,12 +220,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         bet_per_token = net_bet_amount / BINARY_N_SLOTS
         self.context.logger.info(f"Bet per token: {bet_per_token}")
 
-        # calculate the number of the traded tokens
-        prices = bet.outcomeTokenMarginalPrices
-        self.context.logger.info(f"Prices: {prices}")
-
-        if prices is None:
-            return 0, 0
         tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
         self.context.logger.info(f"Tokens traded: {[x for x in tokens_traded]}")
 
@@ -267,6 +262,33 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         available_shares = int(selected_type_tokens_in_pool * price)
         self.context.logger.info(f"Available shares: {available_shares}")
+
+        return (
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            other_shares,
+            num_shares,
+            available_shares,
+        )
+
+    def _calc_binary_shares(
+        self, bet: Bet, net_bet_amount: int, vote: int
+    ) -> Tuple[int, int]:
+        """Calculate the claimed shares. This calculation only works for binary markets."""
+        # calculate the pool's k (x*y=k)
+        token_amounts = bet.outcomeTokenAmounts
+        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
+
+        # calculate the number of the traded tokens
+        prices = bet.outcomeTokenMarginalPrices
+        self.context.logger.info(f"Prices: {prices}")
+
+        if prices is None:
+            return 0, 0
+
+        _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
+            token_amounts, prices, net_bet_amount, vote
+        )
 
         return num_shares, available_shares
 
@@ -311,35 +333,15 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         token_amounts = self.shared_state.current_liquidity_amounts
         k = prod(token_amounts)
         prices = self.shared_state.current_liquidity_prices
-        self.context.logger.info(f"Token prices: {prices}")
-        bet_per_token = net_bet_amount / BINARY_N_SLOTS
-
-        # calculate the number of the traded tokens
         if prices is None:
             return None
-        tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
 
-        # get the shares for the answer that the service has selected
-        selected_shares = tokens_traded.pop(vote)
-        self.context.logger.info(f"Selected shares: {selected_shares}")
-
-        # get the shares for the opposite answer
-        other_shares = tokens_traded.pop()
-        self.context.logger.info(f"Other shares: {other_shares}")
-
-        # get the number of tokens in the pool for the answer that the service has selected
-        selected_type_tokens_in_pool = token_amounts.pop(vote)
-        self.context.logger.info(
-            f"Selected type tokens in pool: {selected_type_tokens_in_pool}"
+        selected_type_tokens_in_pool, other_tokens_in_pool, other_shares, _, _ = (
+            self._compute_new_tokens_distribution(
+                token_amounts, prices, net_bet_amount, vote
+            )
         )
 
-        # get the number of tokens in the pool for the opposite answer
-        other_tokens_in_pool = token_amounts.pop()
-        self.context.logger.info(f"Other tokens in pool: {other_tokens_in_pool}")
-
-        # the OMEN market then trades the opposite tokens to the tokens of the answer that has been selected,
-        # preserving the balance of the pool
-        # here we calculate the number of shares that we get after trading the tokens for the opposite answer
         new_other = other_tokens_in_pool + other_shares
         new_selected = int(k / new_other)
         if vote == 0:
@@ -363,12 +365,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
         if liquidity_info is None:
             return None
-        # to compute the new price we need the previous constants
-        prices = self.shared_state.current_liquidity_prices
 
         # linter checks
         if liquidity_info.l0_start is None or liquidity_info.l1_start is None:
             return None
+
+        # to compute the new price we need the previous constants
+        prices = self.shared_state.current_liquidity_prices
 
         liquidity_constants = [
             liquidity_info.l0_start * prices[0],
