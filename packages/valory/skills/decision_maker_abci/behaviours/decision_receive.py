@@ -210,7 +210,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         prices: List[float],
         net_bet_amount: int,
         vote: int,
-    ) -> Tuple:
+    ) -> Tuple[int, int, int, int, int]:
         k = prod(token_amounts)
         self.context.logger.info(f"k: {k}")
 
@@ -362,7 +362,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if liquidity_info is None:
             return None
 
-        # linter checks
         if liquidity_info.l0_start is None or liquidity_info.l1_start is None:
             return None
 
