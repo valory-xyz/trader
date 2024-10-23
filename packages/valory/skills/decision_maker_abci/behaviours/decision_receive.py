@@ -302,7 +302,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             question_id, benchmarking_mode.outcome_token_amounts.copy()
         )
         outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
-            question_id, benchmarking_mode.outcome_token_marginal_prices
+            question_id, benchmarking_mode.outcome_token_marginal_prices.copy()
         )
         return Bet(
             id="",
