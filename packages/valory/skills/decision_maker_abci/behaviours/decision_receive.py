@@ -21,9 +21,10 @@
 
 import csv
 import json
+import os
 from copy import deepcopy
 from math import prod
-from typing import Any, Dict, Generator, Optional, Tuple, Union, List
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -211,7 +212,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         net_bet_amount: int,
         vote: int,
     ) -> Tuple:
-
         k = prod(token_amounts)
         self.context.logger.info(f"k: {k}")
 
@@ -298,15 +298,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         question_id = shared_state.mock_question_id
         benchmarking_mode = self.benchmarking_mode
         current_liquidity_dictionary = shared_state.liquidity_amounts
-
-        # temporary solution since this situation was faced on the experiments
-        if len(benchmarking_mode.outcome_token_amounts) == 0:
-            benchmarking_mode.outcome_token_amounts = [
-                7000000000000000000,
-                7000000000000000000,
-            ]
         outcome_token_amounts = current_liquidity_dictionary.setdefault(
-            question_id, benchmarking_mode.outcome_token_amounts
+            question_id, benchmarking_mode.outcome_token_amounts.copy()
         )
         outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
             question_id, benchmarking_mode.outcome_token_marginal_prices
@@ -336,10 +329,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if prices is None:
             return None
 
-        selected_type_tokens_in_pool, other_tokens_in_pool, other_shares, _, _ = (
-            self._compute_new_tokens_distribution(
-                token_amounts, prices, net_bet_amount, vote
-            )
+        (
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            other_shares,
+            _,
+            _,
+        ) = self._compute_new_tokens_distribution(
+            token_amounts, prices, net_bet_amount, vote
         )
 
         new_other = other_tokens_in_pool + other_shares
