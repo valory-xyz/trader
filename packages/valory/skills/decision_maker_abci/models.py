@@ -106,6 +106,13 @@ class LiquidityInfo:
     # Liquidity of tokens for option 1, after placing the bet
     l1_end: Optional[int] = None
 
+    def validate_start_information(self) -> Tuple[int, int]:
+        """Check if the start liquidity information is complete, otherwise raise an error."""
+        if self.l0_start is None or self.l1_start is None:
+            raise ValueError("The liquidity information is incomplete!")
+        # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
+        return self.l0_start, self.l1_start
+
     def validate_end_information(self) -> Tuple[int, int]:
         """Check if the end liquidity information is complete, otherwise raise an error."""
         if self.l0_end is None or self.l1_end is None:
