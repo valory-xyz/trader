@@ -318,15 +318,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             scaledLiquidityMeasure=10,
         )
 
-    def _calculate_new_liquidity(
-        self, net_bet_amount: int, vote: int
-    ) -> Optional[LiquidityInfo]:
+    def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
         token_amounts = self.shared_state.current_liquidity_amounts
         k = prod(token_amounts)
         prices = self.shared_state.current_liquidity_prices
-        if prices is None:
-            return None
 
         (
             selected_type_tokens_in_pool,
@@ -354,23 +350,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
-    def _update_liquidity_info(
-        self, net_bet_amount: int, vote: int
-    ) -> Optional[LiquidityInfo]:
+    def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Update the liquidity information and the prices after placing a bet for a market."""
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
-        if liquidity_info is None:
-            return None
-
-        if liquidity_info.l0_start is None or liquidity_info.l1_start is None:
-            return None
+        l0_start, l1_start = liquidity_info.validate_start_information()
 
         # to compute the new price we need the previous constants
         prices = self.shared_state.current_liquidity_prices
 
         liquidity_constants = [
-            liquidity_info.l0_start * prices[0],
-            liquidity_info.l1_start * prices[1],
+            l0_start * prices[0],
+            l1_start * prices[1],
         ]
 
         self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
@@ -478,6 +468,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return is_profitable, bet_amount
 
+    def _update_selected_bet(self) -> None:
+        """Update the selected bet."""
+        # update the bet's timestamp of processing and its number of bets for the given id
+        self.sampled_bet.processed_timestamp = self.synced_timestamp
+        self.sampled_bet.n_bets += 1
+        self.store_bets()
+
     def async_act(self) -> Generator:
         """Do the action."""
 
@@ -509,6 +506,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 )
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
+            self._update_selected_bet()
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 bets_hash,

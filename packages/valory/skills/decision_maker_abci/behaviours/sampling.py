@@ -55,6 +55,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         rebetting_status = "enabled" if self.should_rebet else "disabled"
         self.context.logger.info(f"Rebetting {rebetting_status}.")
 
+    def has_liquidity_changed(self, bet: Bet) -> bool:
+        """Whether the liquidity of a specific market has changed since it was last selected."""
+        previous_bet_liquidity = self.shared_state.liquidity_cache.get(bet.id, None)
+        return bet.scaledLiquidityMeasure != previous_bet_liquidity
+
     def processable_bet(self, bet: Bet) -> bool:
         """Whether we can process the given bet."""
         now = self.synced_timestamp
@@ -67,7 +72,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
-            return within_ranges
+            # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
+            # e.g.:
+            #     1. a market is selected
+            #     2. the mech is uncertain
+            #     3. a bet is not placed
+            #     4. the market's liquidity never changes
+            #     5. the market is never selected again, and therefore a bet is never placed on it
+            return within_ranges and self.has_liquidity_changed(bet)
 
         # if we should rebet, we should have at least one bet processed in the past
         if not bool(bet.n_bets):
@@ -101,16 +113,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             return None
 
         idx = self._sampled_bet_idx(available_bets)
-
-        if self.bets[idx].scaledLiquidityMeasure == 0:
+        sampled_bet = self.bets[idx]
+        liquidity = sampled_bet.scaledLiquidityMeasure
+        if liquidity == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
             return None
+        self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
 
-        # update the bet's timestamp of processing and its number of rebets for the given id
-        self.bets[idx].processed_timestamp = self.synced_timestamp
-        self.bets[idx].n_bets += 1
-        msg = f"Sampled bet: {self.bets[idx]}"
+        msg = f"Sampled bet: {sampled_bet}"
         self.context.logger.info(msg)
         return idx
 
