@@ -202,7 +202,7 @@ class SharedState(BaseSharedState):
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
-        self.bet_selection_stats: Dict[str, Dict[str, Union[float, List[int]]]] = {}
+        self.bet_selection_stats: Dict[str, Dict[str, Any]] = {}
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
         self.liquidity_prices: Dict[str, List[float]] = {}

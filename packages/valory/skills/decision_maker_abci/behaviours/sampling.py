@@ -97,13 +97,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                     f"Prediction response vote: {bet.prediction_response}"
                 )
                 outcome_index = bet.prediction_response.vote
-                outcome_liquidity_change = (
-                    bet.outcomeTokenAmounts[outcome_index]
-                    != self.shared_state.bet_selection_stats.get(bet_id, {}).get(
-                        "outcome_token_amounts", [0]
-                    )[outcome_index]
-                )
-                return within_ranges and can_rebet and outcome_liquidity_change
+                if outcome_index is not None:
+                    outcome_liquidity_change = (
+                        bet.outcomeTokenAmounts[outcome_index]
+                        != self.shared_state.bet_selection_stats.get(bet_id, {}).get(
+                            "outcome_token_amounts", [0, 0]
+                        )[outcome_index]
+                    )
+                    return within_ranges and can_rebet and outcome_liquidity_change
+                else:
+                    # market cannot be processed as it doesn't actually have a previous bet
+                    return False
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """

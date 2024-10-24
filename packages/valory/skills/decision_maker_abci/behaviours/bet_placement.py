@@ -232,5 +232,5 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             payload = MultisigTxPayload(
                 agent, tx_submitter, betting_tx_hex, mocking_mode
             )
-
+        self.store_bets()
         yield from self.finish_behaviour(payload)
