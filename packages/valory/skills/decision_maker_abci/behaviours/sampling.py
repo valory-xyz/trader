@@ -121,9 +121,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             return None
         self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
 
-        # update the bet's timestamp of processing and its number of rebets for the given id
-        self.bets[idx].processed_timestamp = self.synced_timestamp
-        self.bets[idx].n_bets += 1
         msg = f"Sampled bet: {sampled_bet}"
         self.context.logger.info(msg)
         return idx
