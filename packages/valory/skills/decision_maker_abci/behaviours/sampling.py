@@ -65,31 +65,45 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         within_safe_range = now < bet.openingTimestamp + self.params.safe_voting_range
         within_ranges = within_opening_range and within_safe_range
 
-        # if we should not rebet, we have all the information we need
-        if not self.should_rebet:
-            return within_ranges
-
-        # if we should rebet, we should have at least one bet processed in the past
-        if not bool(bet.n_bets):
-            return False
-
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
         can_rebet = now >= bet.processed_timestamp + t_rebetting
+        bet_id = bet.id
 
-        # filter for changed liquidity when not bet on a market already to avoid resampling the same market repeatedly
-        if bet.n_bets == 0 and bet.processed_timestamp > 0:
-            bet_id = bet.id
-            scaled_liquidity_changed = (
-                bet.scaledLiquidityMeasure
-                != self.shared_state.bet_selection_stats[bet_id][
-                    "scaledLiquidityMeasure"
-                ]
-            )
-            return within_ranges and can_rebet and scaled_liquidity_changed
+        # if we should not rebet we need to ignore markets that have been bet upon in the past
+        if not self.should_rebet:
+            if bet.n_bets != 0:
+                return False
+            else:
+                # filter for changed liquidity on previously processed markets to avoid resampling the same market repeatedly
+                if bet.processed_timestamp > 0:
+                    scaled_liquidity_changed = (
+                        bet.scaledLiquidityMeasure
+                        != self.shared_state.bet_selection_stats.get(bet_id, {}).get(
+                            "scaledLiquidityMeasure", 0
+                        )
+                    )
+                    return within_ranges and can_rebet and scaled_liquidity_changed
+                else:
+                    return within_ranges and can_rebet
 
-        return within_ranges and can_rebet
+        else:
+            # if we should rebet, we should have at least one bet processed in the past
+            if not bool(bet.n_bets):
+                return False
+            else:
+                self.context.logger.info(
+                    f"Prediction response vote: {bet.prediction_response}"
+                )
+                outcome_index = bet.prediction_response.vote
+                outcome_liquidity_change = (
+                    bet.outcomeTokenAmounts[outcome_index]
+                    != self.shared_state.bet_selection_stats.get(bet_id, {}).get(
+                        "outcome_token_amounts", [0]
+                    )[outcome_index]
+                )
+                return within_ranges and can_rebet and outcome_liquidity_change
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
