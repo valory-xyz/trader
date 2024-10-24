@@ -205,6 +205,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         agent = self.context.agent_address
+        self.store_bets()
 
         if self.benchmarking_mode.enabled:
             # simulate the bet placement
