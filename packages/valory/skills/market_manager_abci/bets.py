@@ -216,7 +216,7 @@ class Bet:
         potential_net_profit: int,
     ) -> bool:
         """Check if a rebet is allowed based on the previous bet's information."""
-        if self.n_bets < 2:
+        if self.n_bets == 0:
             # it's the first time betting, always allow it
             return True
 
