@@ -32,3 +32,7 @@ class RandomnessRound(RandomnessTransactionSubmissionRound):
 
     done_event: Any = Event.DONE
     no_majority_event: Any = Event.NO_MAJORITY
+
+
+class BenchmarkingRandomnessRound(RandomnessRound):
+    """A round for gathering randomness in benchmarking mode."""

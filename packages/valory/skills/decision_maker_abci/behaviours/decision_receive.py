@@ -21,8 +21,9 @@
 
 import csv
 import json
+from copy import deepcopy
 from math import prod
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -31,18 +32,21 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     BenchmarkingMockData,
-    CONFIDENCE_FIELD,
-    INFO_UTILITY_FIELD,
     LiquidityInfo,
-    P_NO_FIELD,
-    P_YES_FIELD,
-    PredictionResponse,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS, Bet
+from packages.valory.skills.market_manager_abci.bets import (
+    BINARY_N_SLOTS,
+    Bet,
+    CONFIDENCE_FIELD,
+    INFO_UTILITY_FIELD,
+    P_NO_FIELD,
+    P_YES_FIELD,
+    PredictionResponse,
+)
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
 )
@@ -158,21 +162,15 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     def _get_response(self) -> None:
         """Get the response data."""
         mech_responses = self.synchronized_data.mech_responses
-        if not mech_responses:
-            error = "No Mech responses in synchronized_data."
-            self._mech_response = MechInteractionResponse(error=error)
-
-        self._mech_response = mech_responses[0]
+        if mech_responses:
+            self._mech_response = mech_responses[0]
+            return
+        error = "No Mech responses in synchronized_data."
+        self._mech_response = MechInteractionResponse(error=error)
 
     def _get_decision(
         self,
-    ) -> Tuple[
-        Optional[int],
-        Optional[float],
-        Optional[float],
-        Optional[float],
-        Optional[float],
-    ]:
+    ) -> Optional[PredictionResponse]:
         """Get vote, win probability and confidence."""
         if self.benchmarking_mode.enabled:
             self._mock_response()
@@ -181,28 +179,20 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self._mech_response is None:
             self.context.logger.info("The benchmarking has finished!")
-            return None, None, None, None, None
+            return None
 
         self.context.logger.info(f"Decision has been received:\n{self.mech_response}")
         if self.mech_response.result is None:
             self.context.logger.error(
                 f"There was an error on the mech's response: {self.mech_response.error}"
             )
-            return None, None, None, None, None
+            return None
 
         try:
-            result = PredictionResponse(**json.loads(self.mech_response.result))
+            return PredictionResponse(**json.loads(self.mech_response.result))
         except (json.JSONDecodeError, ValueError) as exc:
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
-            return None, None, None, None, None
-
-        return (
-            result.vote,
-            result.p_yes,
-            result.p_no,
-            result.win_probability,
-            result.confidence,
-        )
+            return None
 
     @staticmethod
     def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
@@ -214,13 +204,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return selected_type_tokens_in_pool, other_tokens_in_pool
 
-    def _calc_binary_shares(
-        self, bet: Bet, net_bet_amount: int, vote: int
-    ) -> Tuple[int, int]:
-        """Calculate the claimed shares. This calculation only works for binary markets."""
-        # calculate the pool's k (x*y=k)
-        token_amounts = bet.outcomeTokenAmounts
-        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
+    def _compute_new_tokens_distribution(
+        self,
+        token_amounts: List[int],
+        prices: List[float],
+        net_bet_amount: int,
+        vote: int,
+    ) -> Tuple[int, int, int, int, int]:
         k = prod(token_amounts)
         self.context.logger.info(f"k: {k}")
 
@@ -229,12 +219,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         bet_per_token = net_bet_amount / BINARY_N_SLOTS
         self.context.logger.info(f"Bet per token: {bet_per_token}")
 
-        # calculate the number of the traded tokens
-        prices = bet.outcomeTokenMarginalPrices
-        self.context.logger.info(f"Prices: {prices}")
-
-        if prices is None:
-            return 0, 0
         tokens_traded = [int(bet_per_token / prices[i]) for i in range(BINARY_N_SLOTS)]
         self.context.logger.info(f"Tokens traded: {[x for x in tokens_traded]}")
 
@@ -278,6 +262,33 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         available_shares = int(selected_type_tokens_in_pool * price)
         self.context.logger.info(f"Available shares: {available_shares}")
 
+        return (
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            other_shares,
+            num_shares,
+            available_shares,
+        )
+
+    def _calc_binary_shares(
+        self, bet: Bet, net_bet_amount: int, vote: int
+    ) -> Tuple[int, int]:
+        """Calculate the claimed shares. This calculation only works for binary markets."""
+        # calculate the pool's k (x*y=k)
+        token_amounts = bet.outcomeTokenAmounts
+        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
+
+        # calculate the number of the traded tokens
+        prices = bet.outcomeTokenMarginalPrices
+        self.context.logger.info(f"Prices: {prices}")
+
+        if prices is None:
+            return 0, 0
+
+        _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
+            token_amounts, prices, net_bet_amount, vote
+        )
+
         return num_shares, available_shares
 
     def _get_mocked_bet(self) -> Bet:
@@ -285,11 +296,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         shared_state = self.shared_state
         question_id = shared_state.mock_question_id
         benchmarking_mode = self.benchmarking_mode
-        outcome_token_amounts = shared_state.liquidity_amounts.setdefault(
-            question_id, benchmarking_mode.outcome_token_amounts
+        current_liquidity_dictionary = shared_state.liquidity_amounts
+        outcome_token_amounts = current_liquidity_dictionary.setdefault(
+            question_id, benchmarking_mode.outcome_token_amounts.copy()
         )
         outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
-            question_id, benchmarking_mode.outcome_token_marginal_prices
+            question_id, benchmarking_mode.outcome_token_marginal_prices.copy()
         )
         return Bet(
             id="",
@@ -306,14 +318,28 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             scaledLiquidityMeasure=10,
         )
 
-    def _calculate_new_liquidity(self, bet_amount: int, vote: int) -> LiquidityInfo:
+    def _calculate_new_liquidity(
+        self, net_bet_amount: int, vote: int
+    ) -> Optional[LiquidityInfo]:
         """Calculate and return the new liquidity information."""
-        liquidity_amounts = self.shared_state.current_liquidity_amounts
-        selected_type_tokens_in_pool = liquidity_amounts[vote]
-        opposite_vote = vote ^ 1
-        other_tokens_in_pool = liquidity_amounts[opposite_vote]
-        new_selected = selected_type_tokens_in_pool + bet_amount
-        new_other = other_tokens_in_pool * selected_type_tokens_in_pool / new_selected
+        token_amounts = self.shared_state.current_liquidity_amounts
+        k = prod(token_amounts)
+        prices = self.shared_state.current_liquidity_prices
+        if prices is None:
+            return None
+
+        (
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            other_shares,
+            _,
+            _,
+        ) = self._compute_new_tokens_distribution(
+            token_amounts, prices, net_bet_amount, vote
+        )
+
+        new_other = other_tokens_in_pool + other_shares
+        new_selected = int(k / new_other)
         if vote == 0:
             return LiquidityInfo(
                 selected_type_tokens_in_pool,
@@ -328,22 +354,58 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
-    def _update_liquidity_info(self, bet_amount: int, vote: int) -> LiquidityInfo:
+    def _update_liquidity_info(
+        self, net_bet_amount: int, vote: int
+    ) -> Optional[LiquidityInfo]:
         """Update the liquidity information and the prices after placing a bet for a market."""
-        liquidity_info = self._calculate_new_liquidity(bet_amount, vote)
-        self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices()
+        liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
+        if liquidity_info is None:
+            return None
+
+        if liquidity_info.l0_start is None or liquidity_info.l1_start is None:
+            return None
+
+        # to compute the new price we need the previous constants
+        prices = self.shared_state.current_liquidity_prices
+
+        liquidity_constants = [
+            liquidity_info.l0_start * prices[0],
+            liquidity_info.l1_start * prices[1],
+        ]
+
+        self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
+            liquidity_constants
+        )
         self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
         return liquidity_info
 
+    def rebet_allowed(
+        self, prediction_response: PredictionResponse, potential_net_profit: int
+    ) -> bool:
+        """Whether a rebet is allowed or not."""
+        bet = self.sampled_bet
+        previous_response = deepcopy(bet.prediction_response)
+        previous_liquidity = bet.position_liquidity
+        previous_net_profit = bet.potential_net_profit
+        bet.prediction_response = prediction_response
+        vote = bet.prediction_response.vote
+        bet.position_liquidity = bet.outcomeTokenAmounts[vote] if vote else 0
+        bet.potential_net_profit = potential_net_profit
+        rebet_allowed = bet.rebet_allowed(
+            previous_response, previous_liquidity, previous_net_profit
+        )
+        if not rebet_allowed:
+            # reset the in-memory bets so that the updates of the sampled bet above are reverted
+            self.read_bets()
+            self.context.logger.info("Conditions for rebetting are not met!")
+        return rebet_allowed
+
     def _is_profitable(
-        self,
-        vote: int,
-        p_yes: float,
-        p_no: float,
-        win_probability: float,
-        confidence: float,
+        self, prediction_response: PredictionResponse
     ) -> Generator[None, None, Tuple[bool, int]]:
         """Whether the decision is profitable or not."""
+        if prediction_response.vote is None:
+            return False, 0
 
         bet = (
             self.sampled_bet
@@ -351,12 +413,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             else self._get_mocked_bet()
         )
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
-            bet, vote
+            bet, prediction_response.vote
         )
 
         bet_amount = yield from self.get_bet_amount(
-            win_probability,
-            confidence,
+            prediction_response.win_probability,
+            prediction_response.confidence,
             selected_type_tokens_in_pool,
             other_tokens_in_pool,
             bet.fee,
@@ -371,7 +433,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
 
         num_shares, available_shares = self._calc_binary_shares(
-            bet, net_bet_amount, vote
+            bet, net_bet_amount, prediction_response.vote
         )
 
         self.context.logger.info(f"Adjusted available shares: {available_shares}")
@@ -394,18 +456,25 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
             f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
-            f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(vote)}.\n"
+            f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
-                liquidity_info = self._update_liquidity_info(net_bet_amount, vote)
+                liquidity_info = self._update_liquidity_info(
+                    net_bet_amount, prediction_response.vote
+                )
                 self._write_benchmark_results(
-                    p_yes, p_no, confidence, bet_amount, liquidity_info
+                    prediction_response, bet_amount, liquidity_info
                 )
             else:
-                self._write_benchmark_results(p_yes, p_no, confidence)
+                self._write_benchmark_results(prediction_response)
+
+        if is_profitable:
+            is_profitable = self.rebet_allowed(
+                prediction_response, potential_net_profit
+            )
 
         return is_profitable, bet_amount
 
@@ -413,38 +482,39 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            vote, p_yes, p_no, win_probability, confidence = self._get_decision()
+            prediction_response = self._get_decision()
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None
-            if (
-                vote is not None
-                and p_yes is not None
-                and p_no is not None
-                and confidence is not None
-                and win_probability is not None
-            ):
+            bets_hash = None
+            if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
-                    vote, p_yes, p_no, win_probability, confidence
+                    prediction_response
                 )
+                if is_profitable:
+                    self.store_bets()
+                    bets_hash = self.hash_stored_bets()
 
                 if self.benchmarking_mode.enabled:
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
-            elif self.benchmarking_mode.enabled and not self._rows_exceeded:
+            elif (
+                prediction_response is not None
+                and self.benchmarking_mode.enabled
+                and not self._rows_exceeded
+            ):
                 self._write_benchmark_results(
-                    p_yes,
-                    p_no,
-                    confidence,
+                    prediction_response,
                     bet_amount,
                 )
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             payload = DecisionReceivePayload(
                 self.context.agent_address,
+                bets_hash,
                 is_profitable,
-                vote,
-                confidence,
+                prediction_response.vote if prediction_response else None,
+                prediction_response.confidence if prediction_response else None,
                 bet_amount,
                 next_mock_data_row,
             )

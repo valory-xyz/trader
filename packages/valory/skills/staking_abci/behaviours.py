@@ -72,6 +72,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
+        self._service_staking_state: StakingState = StakingState.UNSTAKED
 
     @property
     def params(self) -> StakingParams:

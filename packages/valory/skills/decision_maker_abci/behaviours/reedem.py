@@ -913,6 +913,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         agent = self.context.agent_address
         tx_submitter = self.matching_round.auto_round_id()
         benchmarking_enabled = self.benchmarking_mode.enabled
+        serialized_tools = json.dumps(self.mech_tools)
         policy = self.policy.serialize()
         utilized_tools = json.dumps(self.utilized_tools)
         condition_ids = json.dumps(list(self.redeemed_condition_ids))
@@ -922,6 +923,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             tx_submitter,
             redeem_tx_hex,
             benchmarking_enabled,
+            serialized_tools,
             policy,
             utilized_tools,
             condition_ids,
@@ -948,7 +950,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if not self.redeeming_progress.check_finished:
             self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
 
-        payload = RedeemPayload(self.context.agent_address)
+        serialized_tools = json.dumps(self.mech_tools)
+        payload = RedeemPayload(self.context.agent_address, mech_tools=serialized_tools)
         if self.redeeming_progress.cleaned:
             redeem_tx_hex = yield from self._prepare_safe_tx()
             if redeem_tx_hex is not None:

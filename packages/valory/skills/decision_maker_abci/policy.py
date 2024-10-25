@@ -199,5 +199,5 @@ class EGreedyPolicy:
             for tool in self.tools
         )
         report += "\n".join(stats)
-        report += f"Best tool so far is {self.best_tool!r}."
+        report += f"\nBest tool so far is {self.best_tool!r}."
         return report

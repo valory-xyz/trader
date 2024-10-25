@@ -22,7 +22,10 @@
 from packages.valory.skills.abstract_round_abci.common import (
     RandomnessBehaviour as RandomnessBehaviourBase,
 )
-from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
+from packages.valory.skills.decision_maker_abci.states.randomness import (
+    BenchmarkingRandomnessRound,
+    RandomnessRound,
+)
 from packages.valory.skills.transaction_settlement_abci.payloads import (
     RandomnessPayload,
 )
@@ -33,3 +36,9 @@ class RandomnessBehaviour(RandomnessBehaviourBase):
 
     matching_round = RandomnessRound
     payload_class = RandomnessPayload
+
+
+class BenchmarkingRandomnessBehaviour(RandomnessBehaviour):
+    """Retrieve randomness in benchmarking mode."""
+
+    matching_round = BenchmarkingRandomnessRound

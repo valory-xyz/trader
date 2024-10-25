@@ -55,6 +55,7 @@ start_states:
 - RegistrationRound
 - RegistrationStartupRound
 states:
+- BenchmarkingRandomnessRound
 - BetPlacementRound
 - BlacklistingRound
 - CallCheckpointRound
@@ -92,6 +93,9 @@ states:
 - UpdateBetsRound
 - ValidateTransactionRound
 transition_func:
+    (BenchmarkingRandomnessRound, DONE): ToolSelectionRound
+    (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
+    (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
     (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
     (BetPlacementRound, MOCK_TX): RedeemRound
@@ -100,7 +104,7 @@ transition_func:
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): RandomnessRound
+    (BlacklistingRound, MOCK_TX): ToolSelectionRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -111,7 +115,7 @@ transition_func:
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): RandomnessRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
@@ -122,7 +126,7 @@ transition_func:
     (CheckLateTxHashesRound, NEGATIVE): HandleFailedTxRound
     (CheckLateTxHashesRound, NONE): HandleFailedTxRound
     (CheckLateTxHashesRound, NO_MAJORITY): HandleFailedTxRound
-    (CheckStopTradingRound, DONE): SamplingRound
+    (CheckStopTradingRound, DONE): RandomnessRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
@@ -133,7 +137,7 @@ transition_func:
     (CheckTransactionHistoryRound, NEGATIVE): SelectKeeperTransactionSubmissionBRound
     (CheckTransactionHistoryRound, NONE): HandleFailedTxRound
     (CheckTransactionHistoryRound, NO_MAJORITY): CheckTransactionHistoryRound
-    (ClaimRound, DONE): RandomnessRound
+    (ClaimRound, DONE): ToolSelectionRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
@@ -179,14 +183,14 @@ transition_func:
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
     (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
     (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound
-    (RandomnessRound, DONE): ToolSelectionRound
+    (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RandomnessTransactionSubmissionRound, DONE): SelectKeeperTransactionSubmissionARound
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
     (RedeemRound, DONE): PreTxSettlementRound
-    (RedeemRound, MOCK_TX): RandomnessRound
+    (RedeemRound, MOCK_TX): ToolSelectionRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
@@ -220,10 +224,10 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
     (SubscriptionRound, DONE): PreTxSettlementRound
-    (SubscriptionRound, MOCK_TX): RandomnessRound
+    (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound
     (SubscriptionRound, NO_MAJORITY): SubscriptionRound
-    (SubscriptionRound, NO_SUBSCRIPTION): RandomnessRound
+    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
     (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
     (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (SynchronizeLateMessagesRound, DONE): CheckLateTxHashesRound
