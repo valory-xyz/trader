@@ -227,7 +227,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _read_tool_accuracy_local(self) -> str | None:
+    def _read_tool_accuracy_local(self) -> Optional[str]:
         """Reads the accuracy info from the local policy store file."""
         try:
             policy_path = self.params.store_path / POLICY_STORE
@@ -259,7 +259,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # try to read the policy from the policy store, and if we cannot recover the policy, we create a new one
         return self._try_recover_policy() or EGreedyPolicy(self.params.epsilon)
 
-    def _fetch_accuracy_info(self) -> Generator[None, None, StringIO | None]:
+    def _fetch_accuracy_info(self) -> Generator[None, None, Optional[StringIO]]:
         """Fetch the latest accuracy information available."""
         # get the CSV file from IPFS
         self.context.logger.info("Reading accuracy information from IPFS...")
