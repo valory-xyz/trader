@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifjmfgkqgzzf72x7qchb4yufmvizvojcwi3gueqwstoomfxhui5z4
+agent: valory/trader:0.1.0:bafybeiaqh7kgy3ylvjue4fcukxyqjnb6xfz3lpsu5w4ewdiu5xrm77eg7u
 number_of_agents: 4
 deployment:
   agent:
@@ -95,6 +95,7 @@ type: skill
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
+        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
@@ -316,6 +317,7 @@ type: skill
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
+        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
@@ -430,6 +432,7 @@ type: skill
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
+        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
@@ -544,6 +547,7 @@ type: skill
         trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
+        blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented

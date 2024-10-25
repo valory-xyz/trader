@@ -211,6 +211,7 @@ models:
       trading_strategy: strategy_name
       use_fallback_strategy: true
       bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
       tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifjmfgkqgzzf72x7qchb4yufmvizvojcwi3gueqwstoomfxhui5z4
+agent: valory/trader:0.1.0:bafybeiaqh7kgy3ylvjue4fcukxyqjnb6xfz3lpsu5w4ewdiu5xrm77eg7u
 number_of_agents: 1
 deployment:
   agent:
@@ -88,6 +88,7 @@ models:
       tool_punishment_multiplier: 1
       redeem_round_timeout: 3600.0
       contract_timeout: 300.0
+      blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
       file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
         ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],

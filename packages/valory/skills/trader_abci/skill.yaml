@@ -27,8 +27,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/market_manager_abci:0.1.0:bafybeibpxmwwr7oishyfddhcniczprwiwlgtathw3yutincwcpu6hh6fpy
-- valory/decision_maker_abci:0.1.0:bafybeiel4bfrmfftnzia6sx6ywvpogjw4xe4ead4mtw73utvaabom3bb4e
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihqxrpjvec2ul7ymefcgmljbcjehzht37lqrzehzsiayy5shvhpci
+- valory/decision_maker_abci:0.1.0:bafybeidodckr53j4blt4yqesg4hfn5y3wjulxgt222cb6qyp4ehejxdrpu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibedhxtbibgng2zmfx6fpet55k3ajo6imwtfi4shr6gh3zmsz3uu4
 - valory/staking_abci:0.1.0:bafybeifsnqfm53lpiqnkbkco5j7l66ou4epvq6m3kmsy7q3ts6qtvxxxdq
 - valory/check_stop_trading_abci:0.1.0:bafybeic7u2oxssynmbtydgjjvc7ml5cbfk3fppzs7erbqhvact5g4eacye
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
@@ -161,6 +161,7 @@ models:
       trading_strategy: strategy_name
       use_fallback_strategy: true
       bet_threshold: 100000000000000000
+      blacklisting_duration: 3600
       ipfs_address: https://gateway.autonolas.tech/ipfs/
       tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option
