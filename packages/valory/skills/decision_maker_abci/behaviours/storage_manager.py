@@ -268,13 +268,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
-    # def _read_accuracy_info_from_local(self) -> None:
-    #     policy_path = self.params.store_path / POLICY_STORE
-    #
-    #     with open(policy_path, "r") as f:
-    #         accuracy_information = json.load(f)
-    #         self.context.logger.info(f"Accuracy information: {accuracy_information}")
-    #         self.accuracy_information = accuracy_information.deserialize()
+    def _read_accuracy_info_from_local(self) -> None:
+        policy_path = self.params.store_path / POLICY_STORE
+
+        with open(policy_path, "r") as f:
+            accuracy_information = json.load(f)
+            self.context.logger.info(f"Accuracy information: {accuracy_information}")
+            self.accuracy_information = accuracy_information.deserialize()
 
     def _read_local_policy_date(self) -> int:
         """Reads the updated timestamp from the policy file."""
@@ -291,7 +291,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                     self.context.logger.info(f"Local updated timestamp found {updated_timestamp}")
                     return updated_timestamp
                 else:
-                    self.context.logger.info("No timestamp found. Using minium}")
+                    self.context.logger.info("No timestamp found. Using minium: 1717586000")
                     return 1717586000
 
         except (json.JSONDecodeError, FileNotFoundError) as e:
@@ -341,6 +341,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             format_str = "%Y-%m-%d %H:%M:%S"
             max_datetime = datetime.strptime(max_transaction_date, format_str)
             unix_timestamp = int(max_datetime.timestamp())
+            print(f"returning timestamp: {unix_timestamp}")
             return unix_timestamp
 
         else:
@@ -352,12 +353,17 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         local_policy_store_date = self._read_local_policy_date()
         remote_policy_store_date = yield from self._fetch_remote_tool_date()
+        print(f"Local policy store date: {local_policy_store_date}")
+        print(f"Remote policy store date: {remote_policy_store_date}")
+
         three_days_in_seconds = 3 * 24 * 3600
 
         self.context.logger.info("Comparing tool accuracy dates...")
-        if remote_policy_store_date < (local_policy_store_date - three_days_in_seconds):
+        if remote_policy_store_date > (local_policy_store_date - three_days_in_seconds):
+            self.context.logger.info("Local policy store overwrite: True")
             return True
 
+        self.context.logger.info("Local policy store overwrite: False")
         return False
 
     def _update_accuracy_store(self, local_tools: List[str]) -> None:
@@ -367,6 +373,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         reader: csv.DictReader = csv.DictReader(
             self.accuracy_information, delimiter=sep
         )
+        print(f"POLICY: {self.policy}")
         accuracy_store = self.policy.accuracy_store
 
         # update the accuracy store using the latest accuracy information (only entered during the first period)
@@ -392,6 +399,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self.is_first_period or not self.synchronized_data.is_policy_set:
             self.context.logger.debug("Setting initial policy")
             self._policy = self._get_init_policy()
+            print(f"THIS IS THE POLICY: {self.policy}")
             local_tools = self._try_recover_mech_tools()
             if local_tools is None:
                 local_tools = self.mech_tools
@@ -403,17 +411,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             local_tools = self.synchronized_data.available_mech_tools
 
         overwrite_local_store = yield from self._check_local_policy_store_overwrite()
-        if self.is_first_period: #and overwrite_local_store:
+        if self.is_first_period and overwrite_local_store:
             yield from self.wait_for_condition_with_sleep(
                 self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
             )
+            self._update_accuracy_store(local_tools)
 
-        self._update_accuracy_store(local_tools)
-
-        # elif self.is_first_period:
-        #     self.context.logger.info(f"Policy is: {self.policy}")
-        #     self.accuracy_information = self._policy
-
+        elif self.is_first_period:
+            self._read_accuracy_info_from_local()
 
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
