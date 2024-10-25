@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiboflcvl66ddqbr7jxphryrncb5u2xntb4h44vvjc4pvbqtgdztoa
+agent: valory/trader:0.1.0:bafybeifjmfgkqgzzf72x7qchb4yufmvizvojcwi3gueqwstoomfxhui5z4
 number_of_agents: 1
 deployment:
   agent:
@@ -73,7 +73,13 @@ models:
       slippage: 0.01
       store_path: ./data
       policy_epsilon: 0.1
-      irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization","deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
+      irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-offline", "prediction-online",
+        "prediction-online-sme", "prediction-request-reasoning","native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","prediction-offline-sme","deepmind-optimization",
+        "deepmind-optimization-strong", "openai-gpt-3.5-turbo", "openai-gpt-3.5-turbo-instruct",
+        "openai-gpt-4", "openai-text-davinci-002", "openai-text-davinci-003", "prediction-online-sum-url-content",
+        "prediction-online-summarized-info", "stabilityai-stable-diffusion-512-v2-1",
+        "stabilityai-stable-diffusion-768-v2-1", "stabilityai-stable-diffusion-v1-5",
+        "stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
