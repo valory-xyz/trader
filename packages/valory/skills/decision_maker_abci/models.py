@@ -106,6 +106,13 @@ class LiquidityInfo:
     # Liquidity of tokens for option 1, after placing the bet
     l1_end: Optional[int] = None
 
+    def validate_start_information(self) -> Tuple[int, int]:
+        """Check if the start liquidity information is complete, otherwise raise an error."""
+        if self.l0_start is None or self.l1_start is None:
+            raise ValueError("The liquidity information is incomplete!")
+        # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
+        return self.l0_start, self.l1_start
+
     def validate_end_information(self) -> Tuple[int, int]:
         """Check if the end liquidity information is complete, otherwise raise an error."""
         if self.l0_end is None or self.l1_end is None:
@@ -113,12 +120,11 @@ class LiquidityInfo:
         # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
         return self.l0_end, self.l1_end
 
-    def get_new_prices(self) -> List[float]:
-        """Calculate and return the new prices based on the end liquidity."""
+    def get_new_prices(self, liquidity_constants: List[float]) -> List[float]:
+        """Calculate and return the new prices based on the end liquidity and the liquidity constants of the market."""
         l0_end, l1_end = self.validate_end_information()
-        total_end_liquidity = l0_end + l1_end
-        new_p0 = l0_end / total_end_liquidity
-        new_p1 = l1_end / total_end_liquidity
+        new_p0 = liquidity_constants[0] / l0_end
+        new_p1 = liquidity_constants[1] / l1_end
         return [new_p0, new_p1]
 
     def get_end_liquidity(self) -> List[int]:
@@ -202,6 +208,8 @@ class SharedState(BaseSharedState):
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
+        # a mapping from market id to scaled liquidity measure
+        self.liquidity_cache: Dict[str, float] = {}
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
         self.liquidity_prices: Dict[str, List[float]] = {}
