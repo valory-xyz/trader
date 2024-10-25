@@ -226,13 +226,35 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
+    def _read_tool_accuracy_local(self) -> [str|None]:
+        """Reads the accuracy info from the local policy store file."""
+        try:
+            policy_path = self.params.store_path / POLICY_STORE
+            with open(policy_path, "r") as f:
+                policy = f.read()
+                return policy
+
+        except Exception as e:
+            self.context.logger.warning(f"Could not recover the policy: {e}.")
+            return None
+
+            # self.accuracy_information = policy
+
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
         """Try to recover the policy from the policy store."""
         try:
             policy_path = self.params.store_path / POLICY_STORE
             with open(policy_path, "r") as f:
                 policy = f.read()
-                self.context.logger.info("Policy recovered.")
+
+
+                # verify for updated_ts in policy, deserialize won't work if it's not there
+                if "updated_ts" not in policy:
+                    # convert json str to dictionary
+                    policy_data = json.loads(policy)
+                    # add updated_ts to policy
+                    policy_data["updated_ts"] = 1717586000
+                    policy = json.dumps(policy_data)
                 return EGreedyPolicy.deserialize(policy)
         except Exception as e:
             self.context.logger.warning(f"Could not recover the policy: {e}.")
@@ -268,13 +290,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
-    def _read_accuracy_info_from_local(self) -> None:
-        policy_path = self.params.store_path / POLICY_STORE
 
-        with open(policy_path, "r") as f:
-            accuracy_information = json.load(f)
-            self.context.logger.info(f"Accuracy information: {accuracy_information}")
-            self.accuracy_information = accuracy_information.deserialize()
 
     def _read_local_policy_date(self) -> int:
         """Reads the updated timestamp from the policy file."""
@@ -285,7 +301,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         try:
             with open(policy_path, "r") as f:
                 policy_data = json.load(f)
-                updated_timestamp = policy_data.get("updated_timestamp")
+                updated_timestamp = policy_data.get("updated_ts")
 
                 if updated_timestamp is not None:
                     self.context.logger.info(f"Local updated timestamp found {updated_timestamp}")
@@ -353,8 +369,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         local_policy_store_date = self._read_local_policy_date()
         remote_policy_store_date = yield from self._fetch_remote_tool_date()
-        print(f"Local policy store date: {local_policy_store_date}")
-        print(f"Remote policy store date: {remote_policy_store_date}")
 
         three_days_in_seconds = 3 * 24 * 3600
 
@@ -373,7 +387,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         reader: csv.DictReader = csv.DictReader(
             self.accuracy_information, delimiter=sep
         )
-        print(f"POLICY: {self.policy}")
         accuracy_store = self.policy.accuracy_store
 
         # update the accuracy store using the latest accuracy information (only entered during the first period)
@@ -391,7 +404,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         for tool in local_tools:
             accuracy_store.setdefault(tool, AccuracyInfo())
 
-        self.policy.updated_timestamp = int(datetime.now().timestamp())
+        self.policy.updated_ts = int(datetime.now().timestamp())
         self.policy.update_weighted_accuracy()
 
     def _set_policy(self) -> Generator:
@@ -399,7 +412,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self.is_first_period or not self.synchronized_data.is_policy_set:
             self.context.logger.debug("Setting initial policy")
             self._policy = self._get_init_policy()
-            print(f"THIS IS THE POLICY: {self.policy}")
             local_tools = self._try_recover_mech_tools()
             if local_tools is None:
                 local_tools = self.mech_tools
