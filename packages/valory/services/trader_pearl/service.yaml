@@ -47,7 +47,7 @@ models:
       average_block_time: 5
       abt_error_mult: 5
       mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-      mech_request_price: 0
+      mech_request_price: ${MECH_REQUEST_PRICE:int:0}
       mech_chain_id: ethereum
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x155547857680A6D51bebC5603397488988DEb1c8}
@@ -103,10 +103,10 @@ models:
       use_nevermined: false
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       mech_marketplace_config:
-        mech_marketplace_address: ${MECH_MARKETPLACE_ADDRESS:str:0x0000000000000000000000000000000000000000}
+        mech_marketplace_address: ${MECH_MARKETPLACE_ADDRESS:str:0x4554fE75c1f5576c1d7F765B2A036c199Adae329}
         priority_mech_address: ${PRIORITY_MECH_ADDRESS:str:0x0000000000000000000000000000000000000000}
-        priority_mech_staking_instance_address: ${PRIORITY_MECH_STAKING_INSTANCE_ADDRESS:str:0x0000000000000000000000000000000000000000}
-        priority_mech_service_id: ${PRIORITY_MECH_SERVICE_ID:int:0}
+        priority_mech_staking_instance_address: ${PRIORITY_MECH_STAKING_INSTANCE_ADDRESS:str:0x998dEFafD094817EF329f6dc79c703f1CF18bC90}
+        priority_mech_service_id: ${PRIORITY_MECH_SERVICE_ID:int:975}
         requester_staking_instance_address: ${REQUESTER_STAKING_INSTANCE_ADDRESS:str:0x0000000000000000000000000000000000000000}
         response_timeout: ${RESPONSE_TIMEOUT:int:300}
   benchmark_tool:
