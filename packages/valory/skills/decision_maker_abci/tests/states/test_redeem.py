@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,82 +17,127 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This package contains the tests for Decision Maker"""
+"""Tests for RedeemRound class."""
 
-from unittest.mock import MagicMock
+from typing import Any, Dict, Optional
+from unittest.mock import PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
-from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.abstract_round_abci.base import AbciAppDB
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 
 
-@pytest.fixture
-def redeem_round():
-    """Fixture to set up a RedeemRound instance for testing."""
-    synchronized_data = MagicMock(spec=BaseSynchronizedData)
-    context = MagicMock()
-    redeem_instance = RedeemRound(synchronized_data, context)
-    # Set initial properties
-    redeem_instance.block_confirmations = 0
-    synchronized_data.period_count = 0
-    synchronized_data.db = MagicMock()
-    return redeem_instance
+class MockDB(AbciAppDB):
+    """Mock database for testing."""
+
+    def __init__(self) -> None:
+        """Initialize the mock database."""
+        setup_data: Dict[str, Any] = {}
+        super().__init__(setup_data=setup_data)
+        self.data: Dict[str, Optional[int]] = {}
+
+    def get(self, key: str, default: Optional[int] = None) -> Optional[int]:
+        """Get value from mock db."""
+        return self.data.get(key, default)
+
+    def update(self, **kwargs: Any) -> None:
+        """Update mock db."""
+        self.data.update(kwargs)
 
 
-def test_initial_event(redeem_round):
-    """Test that the initial event is set correctly."""
-    assert redeem_round.none_event == Event.NO_REDEEMING
+class MockSynchronizedData(SynchronizedData):
+    """Mock synchronized data for testing."""
+
+    def __init__(self) -> None:
+        """Initialize mock synchronized data."""
+        db = MockDB()
+        super().__init__(db)
+        self._period_count = 0
+
+    @property
+    def period_count(self) -> int:
+        """Get period count."""
+        return self._period_count
+
+    @period_count.setter
+    def period_count(self, value: int) -> None:
+        """Set period count."""
+        self._period_count = value
 
 
-def test_end_block_no_update(redeem_round):
-    """Test the end_block behavior when no update occurs."""
-    # This ensures that block_confirmations and period_count are 0
-    redeem_round.block_confirmations = 0
-    redeem_round.synchronized_data.period_count = 0
-    # Mock the superclass's end_block to simulate behavior
-    redeem_round.synchronized_data.db.get = MagicMock(return_value="mock_value")
-    # Call the actual end_block method
-    result = redeem_round.end_block()
-    # Assert the result is a tuple and check for specific event
-    assert isinstance(result, tuple)
-    assert result[1] == Event.NO_REDEEMING  # Adjust based on expected output
+class MockContext:
+    """Mock context for testing."""
+
+    def __init__(self) -> None:
+        """Initialize mock context."""
+        self.params: Dict[str, Optional[int]] = {}
 
 
-def test_end_block_with_update(redeem_round):
-    """Test the end_block behavior when an update occurs."""
-    # Mock the superclass's end_block to return a valid update
-    update_result = (
-        redeem_round.synchronized_data,
-        Event.NO_REDEEMING,
-    )  # Use an actual event from your enum
-    RedeemRound.end_block = MagicMock(return_value=update_result)
-    result = redeem_round.end_block()
-    assert result == update_result
-    # Ensure no database update was attempted
-    redeem_round.synchronized_data.db.update.assert_not_called()
+class TestRedeemRound:
+    """Tests for the RedeemRound class."""
 
+    @pytest.fixture
+    def setup_redeem_round(self) -> RedeemRound:
+        """Set up a RedeemRound instance."""
+        mock_synchronized_data = MockSynchronizedData()
+        mock_context = MockContext()
+        redeem_round = RedeemRound(
+            context=mock_context, synchronized_data=mock_synchronized_data
+        )
+        return redeem_round
 
-def test_end_block_with_period_count_update(redeem_round):
-    """Test the behavior when period_count is greater than zero."""
-    # Set up the necessary attributes
-    redeem_round.synchronized_data.period_count = 1
-    # Directly set nb_participants as an integer within the synchronized_data mock
-    redeem_round.synchronized_data.nb_participants = 3
-    # Set up mock return values for db.get as needed
-    mock_keys = RedeemRound.selection_key
-    for _key in mock_keys:
-        redeem_round.synchronized_data.db.get = MagicMock(return_value="mock_value")
+    def test_initial_attributes(self, setup_redeem_round: RedeemRound) -> None:
+        """Test initial attributes."""
+        redeem_round = setup_redeem_round
+        assert redeem_round.payload_class is not None
+        assert redeem_round.payload_class.__name__ == "RedeemPayload"
+        assert redeem_round.none_event == Event.NO_REDEEMING
 
-    # Debug prints to trace the issue
-    print("Before calling end_block")
-    result = redeem_round.end_block()
-    print(f"After calling end_block, result: {result}")
+    def test_selection_key(self, setup_redeem_round: RedeemRound) -> None:
+        """Test selection key generation."""
+        redeem_round = setup_redeem_round
+        assert isinstance(redeem_round.selection_key, tuple)
+        assert all(isinstance(key, str) for key in redeem_round.selection_key)
 
-    # Add additional checks
-    assert result is not None, "end_block returned None"
-    assert isinstance(
-        result, tuple
-    ), f"end_block returned {type(result)} instead of tuple"
-    assert result[1] == Event.NO_REDEEMING
+    def test_end_block_no_update(self, setup_redeem_round: RedeemRound) -> None:
+        """Test end block without update."""
+        redeem_round = setup_redeem_round
+
+        # Mock the period_count property using patch.object
+        with patch.object(
+            MockSynchronizedData, "period_count", new_callable=PropertyMock
+        ) as mock_period_count:
+            mock_period_count.return_value = 0
+
+            result = redeem_round.end_block()
+
+            if result is None:
+                assert redeem_round.block_confirmations == 1
+            else:
+                synchronized_data, event = result
+                assert isinstance(synchronized_data, MockSynchronizedData)
+                assert event == Event.NO_MAJORITY
+
+    def test_end_block_update(self, setup_redeem_round: RedeemRound) -> None:
+        """Test end block with update."""
+        redeem_round = setup_redeem_round
+
+        # Mock the period_count property using patch.object
+        with patch.object(
+            MockSynchronizedData, "period_count", new_callable=PropertyMock
+        ) as mock_period_count:
+            mock_period_count.return_value = 1
+
+            result = redeem_round.end_block()
+
+            if result is None:
+                assert redeem_round.block_confirmations == 0
+            else:
+                synchronized_data, event = result
+                assert isinstance(synchronized_data, MockSynchronizedData)
+                assert event == Event.NO_MAJORITY

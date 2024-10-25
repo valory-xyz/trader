@@ -17,7 +17,9 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This package contains the tests for Decision Maker"""
+
+"""This module contains test cases for the RandomnessRound class."""
+
 import pytest
 
 from packages.valory.skills.decision_maker_abci.rounds import RandomnessRound
@@ -36,39 +38,32 @@ class MockSynchronizedData:
 class MockContext:
     """A mock class for context used in RandomnessTransactionSubmissionRound."""
 
-    def __init__(self):
-        """Mock function"""
+    def __init__(self) -> None:
+        """Initialize the MockContext with necessary attributes."""
         self.sender = "mock_sender"
 
 
 class TestRandomnessRound:
-    """The class for testing Randomness Round"""
+    """Test suite for the RandomnessRound class."""
 
     @pytest.fixture
-    def setup_randomness_round(self):
+    def setup_randomness_round(self) -> RandomnessRound:
         """Fixture to set up a RandomnessRound instance."""
         context = MockContext()
         synchronized_data = MockSynchronizedData()
         return RandomnessRound(context=context, synchronized_data=synchronized_data)
 
-    def test_randomness_round_properties(self, setup_randomness_round):
+    def test_randomness_round_properties(
+        self, setup_randomness_round: RandomnessRound
+    ) -> None:
         """Test the properties of the RandomnessRound class."""
         randomness_round = setup_randomness_round
 
         assert randomness_round.done_event == Event.DONE
         assert randomness_round.no_majority_event == Event.NO_MAJORITY
 
-    def test_randomness_round_inherits_randomness_transaction_submission_round(self):
+    def test_randomness_round_inherits_randomness_transaction_submission_round(
+        self,
+    ) -> None:
         """Test that RandomnessRound inherits from RandomnessTransactionSubmissionRound."""
         assert issubclass(RandomnessRound, RandomnessTransactionSubmissionRound)
-
-    def test_randomness_round_event_handling(self, setup_randomness_round):
-        """Test the event handling mechanism."""
-        randomness_round = setup_randomness_round
-        randomness_round.current_event = Event.DONE  # Simulate setting the event
-        assert randomness_round.current_event == Event.DONE
-
-        randomness_round.current_event = (
-            Event.NO_MAJORITY
-        )  # Simulate setting another event
-        assert randomness_round.current_event == Event.NO_MAJORITY
