@@ -89,7 +89,7 @@ class EGreedyPolicy:
     eps: float
     accuracy_store: Dict[str, AccuracyInfo] = field(default_factory=dict)
     weighted_accuracy: Dict[str, float] = field(default_factory=dict)
-    updated_timestamp: int = 1717586000
+    updated_ts: int = 1717586000
 
     def __post_init__(self) -> None:
         """Perform post-initialization checks."""
