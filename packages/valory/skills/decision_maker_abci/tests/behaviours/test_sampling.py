@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2024 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,275 +17,120 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Unified test script for sampling behaviour."""
+"""Test for SamplingBehaviour."""
 
 import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime
-from packages.valory.skills.decision_maker_abci.behaviours.sampling import SamplingBehaviour
+from unittest.mock import MagicMock
+from pathlib import Path
+from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
+    SamplingBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
+from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.abstract_round_abci.test_tools.base import FSMBehaviourBaseCase
+from packages.valory.skills.abstract_round_abci.base import AbciAppDB, BaseSynchronizedData
 
-# Constants
-UNIX_DAY = 86400
-UNIX_WEEK = 604800
+WEEKDAYS = 7
+UNIX_DAY = 60 * 60 * 24
+UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
-# Mock classes to simulate required attributes
-class MockObject:
-    def __init__(self):
-        self.bets = []
-        self.synced_timestamp = 0
 
-    def processable_bet(self, bet):
-        now = self.synced_timestamp
-        within_opening_range = bet.openingTimestamp <= (now + self.params.sample_bets_closing_days * UNIX_DAY)
-        within_safe_range = now < bet.openingTimestamp + self.params.safe_voting_range
-        within_ranges = within_opening_range and within_safe_range
-        if not self.should_rebet:
-            return within_ranges
-        if not bool(bet.n_bets):
-            return False
-        lifetime = bet.openingTimestamp - now
-        t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
-        can_rebet = now >= bet.processed_timestamp + t_rebetting
-        if can_rebet:
-            return within_ranges
-        return False
-
-    def _sample(self):
-        available_bets = list(filter(self.processable_bet, self.bets))
-        if len(available_bets) == 0:
-            self.context.logger.warning("There were no unprocessed bets available to sample from!")
-            return None
-        idx = self._sampled_bet_idx(available_bets)
-        if self.bets[idx].scaledLiquidityMeasure == 0:
-            self.context.logger.warning("There were no unprocessed bets with non-zero liquidity!")
-            return None
-        self.bets[idx].processed_timestamp = self.synced_timestamp
-        self.bets[idx].n_bets += 1
-        self.context.logger.info(f"Sampled bet: {self.bets[idx]}")
-        return idx
-
-class MockParams:
-    def __init__(self, sample_bets_closing_days, safe_voting_range):
-        self.sample_bets_closing_days = sample_bets_closing_days
-        self.safe_voting_range = safe_voting_range
-
-class MockBet:
-    def __init__(self, openingTimestamp, n_bets=1, processed_timestamp=0, scaledLiquidityMeasure=0.0):
-        self.openingTimestamp = openingTimestamp
-        self.n_bets = n_bets
-        self.processed_timestamp = processed_timestamp
-        self.scaledLiquidityMeasure = scaledLiquidityMeasure
-
-class MockContext:
-    def __init__(self):
-        self.logger = MockLogger()
-
-class MockLogger:
-    def warning(self, msg):
-        print(f"WARNING: {msg}")
-
-    def info(self, msg):
-        print(f"INFO: {msg}")
-
-@pytest.fixture
-def setup_mock_object():
-    """Fixture to set up the mock object for testing."""
-    obj = MockObject()
-    obj.synced_timestamp = datetime.now().timestamp()
-    obj.params = MockParams(sample_bets_closing_days=5, safe_voting_range=2 * UNIX_DAY)
-    obj.should_rebet = True  # Initially set to allow rebetting
-    obj.context = MockContext()  # Mock context for logging
-    return obj
-
-@pytest.fixture
-def mock_params():
-    """Fixture for mock parameters."""
-    mock = MagicMock()
-    mock.rebet_chance = 0.5  # Set default rebet chance
-    return mock
-
-@pytest.fixture
-def mock_synced_data():
-    """Fixture for mock synchronized data."""
-    mock = MagicMock()
-    mock.most_voted_randomness = 0.1  # Set default randomness
-    return mock
-
-@pytest.fixture
-def mock_skill_context():
-    """Fixture for mock skill context."""
-    mock_context = MagicMock()
-    mock_context.logger = MagicMock()
-    return mock_context
-
-@pytest.fixture
-def behaviour(mock_params, mock_synced_data, mock_skill_context):
-    """Fixture for SamplingBehaviour."""
-    return SamplingBehaviour(
-        name="sampling_behaviour",
-        skill_context=mock_skill_context,
-        params=mock_params,
-        synchronized_data=mock_synced_data,
-    )
-
-@patch("random.random")
-def test_setup_rebet_enabled(mock_random, behaviour):
-    """Test setup when rebetting is enabled."""
-    mock_bet = Bet(
-        id="bet_1",
+def create_bet(**kwargs) -> Bet:
+    """Helper function to create a Bet instance with default values."""
+    defaults = dict(
+        id=1,
         market="market_1",
-        title="Test Bet",
-        collateralToken="token_1",
-        creator="creator_1",
-        fee=0,
+        title="Test Market",
+        collateralToken="0xToken",
+        creator="0xCreator",
+        fee=0.01,
         outcomeSlotCount=2,
         outcomeTokenAmounts=[100, 200],
         outcomeTokenMarginalPrices=[0.5, 0.5],
-        outcomes=["Outcome A", "Outcome B"],
-        scaledLiquidityMeasure=1000,
-        openingTimestamp=1600000000,
-        processed_timestamp=1599995000,
-        n_bets=1,
-    )
-
-    behaviour.bets = [mock_bet]
-    behaviour.params.rebet_chance = 0.5
-    mock_random.return_value = 0.4
-
-    behaviour.setup()
-
-    assert behaviour.should_rebet is True
-    behaviour.context.logger.info.assert_called_with("Rebetting enabled.")
-
-@patch("random.random")
-def test_setup_rebet_disabled(mock_random, behaviour):
-    """Test setup when rebetting is disabled."""
-    mock_bet = Bet(
-        id="bet_1",
-        market="market_1",
-        title="Test Bet",
-        collateralToken="token_1",
-        creator="creator_1",
-        fee=0,
-        outcomeSlotCount=2,
-        outcomeTokenAmounts=[100, 200],
-        outcomeTokenMarginalPrices=[0.5, 0.5],
-        outcomes=["Outcome A", "Outcome B"],
-        scaledLiquidityMeasure=1000,
-        openingTimestamp=1600000000,
-        processed_timestamp=1599995000,
-        n_bets=1,
-    )
-
-    behaviour.bets = [mock_bet]
-    behaviour.params.rebet_chance = 0.5
-    mock_random.return_value = 0.6
-
-    behaviour.setup()
-
-    assert behaviour.should_rebet is False
-    behaviour.context.logger.info.assert_called_with("Rebetting disabled.")
-
-def test_setup_no_previous_bets(behaviour):
-    """Test setup when there are no previous bets."""
-    behaviour.bets = []
-
-    behaviour.setup()
-
-    assert behaviour.should_rebet is False
-    behaviour.context.logger.info.assert_called_with("Rebetting disabled.")
-
-def test_within_opening_and_safe_range_no_rebet(setup_mock_object):
-    """Test bet within opening and safe range, no rebetting."""
-    obj = setup_mock_object
-    obj.should_rebet = False
-    bet = MockBet(
-        openingTimestamp=obj.synced_timestamp + 2 * UNIX_DAY,
-        n_bets=1,
-        processed_timestamp=obj.synced_timestamp - 2 * UNIX_DAY
-    )
-    result = obj.processable_bet(bet)
-    assert result is True
-
-def test_outside_opening_range(setup_mock_object):
-    """Test bet outside the opening range."""
-    obj = setup_mock_object
-    bet = MockBet(
-        openingTimestamp=obj.synced_timestamp + 10 * UNIX_DAY,
-        n_bets=1,
-        processed_timestamp=obj.synced_timestamp - 2 * UNIX_DAY
-    )
-    result = obj.processable_bet(bet)
-    assert result is False
-
-def test_outside_safe_range(setup_mock_object):
-    """Test bet outside the safe range."""
-    obj = setup_mock_object
-    bet = MockBet(
-        openingTimestamp=obj.synced_timestamp - 3 * UNIX_DAY,
-        n_bets=1,
-        processed_timestamp=obj.synced_timestamp - 2 * UNIX_DAY
-    )
-    result = obj.processable_bet(bet)
-    assert result is False
-
-def test_no_previous_bets_with_rebet(setup_mock_object):
-    """Test no previous bets exist, but rebetting is enabled."""
-    obj = setup_mock_object
-    obj.should_rebet = True
-    bet = MockBet(
-        openingTimestamp=obj.synced_timestamp + 2 * UNIX_DAY,
+        outcomes=["Outcome 1", "Outcome 2"],
+        openingTimestamp=UNIX_DAY * 5,
+        processed_timestamp=0,
         n_bets=0,
-        processed_timestamp=obj.synced_timestamp - 2 * UNIX_DAY
+        scaledLiquidityMeasure=1,
     )
-    result = obj.processable_bet(bet)
-    assert result is False
+    defaults.update(kwargs)
+    return Bet(**defaults)
 
-def test_valid_rebet_condition(setup_mock_object):
-    """Test valid rebet condition when rebetting is allowed."""
-    obj = setup_mock_object
-    obj.should_rebet = True
-    bet = MockBet(
-        openingTimestamp=obj.synced_timestamp + 2 * UNIX_DAY,
-        n_bets=1,
-        processed_timestamp=obj.synced_timestamp - 3 * UNIX_DAY
+
+class TestSamplingBehaviour(FSMBehaviourBaseCase):
+    """Tests for the SamplingBehaviour class."""
+
+    
+    path_to_skill = Path(__file__).parent.parent # Update this path as per your skill structure
+    behaviour_class = SamplingBehaviour
+    next_behaviour_class = None  # Replace with the actual next behaviour if available
+
+    def fast_forward(self, data: dict) -> None:
+        """Fast-forward to the SamplingBehaviour."""
+        self.fast_forward_to_behaviour(
+            self.behaviour,
+            self.behaviour_class.auto_behaviour_id(),
+            BaseSynchronizedData(AbciAppDB(data_to_lists=data)),
+        )
+
+    def test_setup_rebetting_enabled(self) -> None:
+        """Test setup when rebetting is enabled."""
+        self.behaviour.context.params.rebet_chance = 1.0  # Ensure rebetting
+        self.behaviour.bets = [create_bet(n_bets=1)]
+        self.behaviour.synchronized_data = MagicMock(most_voted_randomness=1)
+        self.behaviour.setup()
+        assert self.behaviour.should_rebet is True
+        self.behaviour.context.logger.info.assert_called_with("Rebetting enabled.")
+
+    def test_setup_rebetting_disabled(self) -> None:
+        """Test setup when rebetting is disabled."""
+        self.behaviour.context.params.rebet_chance = 0.0  # Ensure no rebetting
+        self.behaviour.bets = [create_bet(n_bets=0)]
+        self.behaviour.synchronized_data = MagicMock(most_voted_randomness=1)
+        self.behaviour.setup()
+        assert self.behaviour.should_rebet is False
+        self.behaviour.context.logger.info.assert_called_with("Rebetting disabled.")
+
+    @pytest.mark.parametrize(
+        "bet,n_bets,within_ranges,expected",
+        [
+            (create_bet(n_bets=0), 0, True, True),
+            (create_bet(n_bets=1), 1, True, True),
+            (create_bet(openingTimestamp=UNIX_DAY * 2), 0, False, False),
+        ],
     )
-    result = obj.processable_bet(bet)
-    assert result is True
+    def test_processable_bet(self, bet: Bet, n_bets: int, within_ranges: bool, expected: bool) -> None:
+        """Test the processable_bet method."""
+        self.behaviour.should_rebet = n_bets > 0
+        self.behaviour.synced_timestamp = UNIX_DAY * 3
+        self.behaviour.params.sample_bets_closing_days = 7
+        self.behaviour.params.safe_voting_range = UNIX_DAY * 10
+        assert self.behaviour.processable_bet(bet) == expected
 
-def test_rebetting_not_allowed_due_to_timing(setup_mock_object):
-    """Test rebetting not allowed due to insufficient time since last processed."""
-    obj = setup_mock_object
-    obj.should_rebet = True
-    bet = MockBet(
-        openingTimestamp=obj.synced_timestamp + 4 * UNIX_DAY,
-        n_bets=1,
-        processed_timestamp=obj.synced_timestamp - 1 * UNIX_DAY  # Recently processed
-    )
-    result = obj.processable_bet(bet)
-    assert result is False
+    def test_sample_no_available_bets(self) -> None:
+        """Test sampling when no available bets."""
+        self.behaviour.bets = [create_bet(scaledLiquidityMeasure=0)]
+        idx = self.behaviour._sample()
+        assert idx is None
+        self.behaviour.context.logger.warning.assert_called_with(
+            "There were no unprocessed bets with non-zero liquidity!"
+        )
 
-def test_sample_function(setup_mock_object):
-    """Test the _sample function."""
-    obj = setup_mock_object
-    # Set up bets for sampling
-    obj.bets = [
-        MockBet(openingTimestamp=obj.synced_timestamp + 2 * UNIX_DAY, n_bets=0, processed_timestamp=0, scaledLiquidityMeasure=0.5),
-        MockBet(openingTimestamp=obj.synced_timestamp + 2 * UNIX_DAY, n_bets=1, processed_timestamp=0, scaledLiquidityMeasure=0.3),
-        MockBet(openingTimestamp=obj.synced_timestamp + 2 * UNIX_DAY, n_bets=1, processed_timestamp=0, scaledLiquidityMeasure=0.0),  # Zero liquidity
-    ]
-    # Mock the _sampled_bet_idx method to return the first available bet's index
-    obj._sampled_bet_idx = lambda bets: 0
+    def test_sample_successful(self) -> None:
+        """Test successful sampling."""
+        bet = create_bet()
+        self.behaviour.bets = [bet]
+        self.behaviour.synced_timestamp = UNIX_DAY * 2
+        idx = self.behaviour._sample()
+        assert idx == 0
+        assert self.behaviour.bets[0].n_bets == 1
+        self.behaviour.context.logger.info.assert_called_with(f"Sampled bet: {bet}")
 
-    # Test the sampling function
-    result = obj._sample()
-    assert result is not None, "Expected a valid bet index to be sampled."
-    assert result == 0, "Expected to sample the first bet."
-    assert obj.bets[0].processed_timestamp == obj.synced_timestamp, "Processed timestamp not updated correctly."
-    assert obj.bets[0].n_bets == 1, "Number of bets not incremented correctly."
-
-    # Test when all bets have zero liquidity
-    obj.bets[0].scaledLiquidityMeasure = 0
-    result = obj._sample()
-    assert result is None, "Expected no bet to be sampled due to zero liquidity."
+    def test_async_act(self) -> None:
+        """Test async_act method."""
+        self.behaviour.bets = [create_bet()]
+        self.fast_forward({"bets": self.behaviour.bets})
+        self.behaviour.act_wrapper()
+        payload = SamplingPayload(self.behaviour.context.agent_address, None, 0)
+        assert isinstance(payload, SamplingPayload)
