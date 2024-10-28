@@ -26,7 +26,6 @@ from unittest import mock
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
@@ -38,6 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
+from packages.valory.skills.market_manager_abci.rounds import UpdateBetsPayload
 
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"
@@ -48,6 +48,7 @@ DUMMY_PARTICIPANT_TO_DECISION_HASH = json.dumps(
         "agent_2": "decision_3",
     }
 )
+DUMMY_BETS_HASH = "dummy_bets_hash"  # Added a dummy bets hash
 
 
 def get_participants() -> FrozenSet[str]:
@@ -56,16 +57,23 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_payloads(
-    vote: Optional[bool],  # Changed from Optional[str] to Optional[bool]
-    confidence: Optional[int],  # Changed from Optional[float] to Optional[int]
-    bet_amount: Optional[float],
-    next_mock_data_row: Optional[int],  # Changed from Optional[str] to Optional[int]
-    is_profitable: bool,
-) -> Mapping[str, BaseTxPayload]:
+    vote: Optional[int],
+    confidence: Optional[float],
+    bet_amount: Optional[int],
+    next_mock_data_row: Optional[int],
+    is_profitable: Optional[bool],
+    bets_hash: str,
+) -> Mapping[str, UpdateBetsPayload]:
     """Get payloads."""
     return {
         participant: DecisionReceivePayload(
-            participant, vote, confidence, bet_amount, next_mock_data_row, is_profitable
+            sender=participant,
+            vote=vote,
+            confidence=confidence,
+            bet_amount=bet_amount,
+            next_mock_data_row=next_mock_data_row,
+            is_profitable=is_profitable,
+            bets_hash=bets_hash,  # Added bets_hash parameter
         )
         for participant in get_participants()
     }
@@ -77,7 +85,7 @@ class RoundTestCase:
 
     name: str
     initial_data: Dict[str, Hashable]
-    payloads: Mapping[str, BaseTxPayload]
+    payloads: Mapping[str, UpdateBetsPayload]
     final_data: Dict[str, Hashable]
     event: Event
     most_voted_payload: Any
@@ -96,11 +104,12 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Happy path",
                 initial_data={},
                 payloads=get_payloads(
-                    vote=True,  # Changed to bool
-                    confidence=80,  # Changed to int
-                    bet_amount=100.0,
-                    next_mock_data_row=1,  # Changed to int
+                    vote=1,
+                    confidence=80.0,
+                    bet_amount=100,
+                    next_mock_data_row=1,
                     is_profitable=True,
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
@@ -116,11 +125,12 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Unprofitable decision",
                 initial_data={"is_profitable": False},
                 payloads=get_payloads(
-                    vote=False,  # Changed to bool
-                    confidence=50,  # Changed to int
-                    bet_amount=50.0,
-                    next_mock_data_row=2,  # Changed to int
+                    vote=0,
+                    confidence=50.0,
+                    bet_amount=50,
+                    next_mock_data_row=2,
                     is_profitable=False,
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
@@ -136,12 +146,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="No majority",
                 initial_data={},
                 payloads=get_payloads(
-                    vote=None,  # No vote
-                    confidence=None,  # No confidence
-                    bet_amount=None,  # No bet amount
-                    next_mock_data_row=None,  # No data row
+                    vote=None,
+                    confidence=None,
+                    bet_amount=None,
+                    next_mock_data_row=None,
                     is_profitable=True,
-                ),  # Simulating insufficient votes
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                ),
                 final_data={},
                 event=Event.NO_MAJORITY,
                 most_voted_payload=None,
@@ -151,12 +162,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Tie event",
                 initial_data={},
                 payloads=get_payloads(
-                    vote=None,  # No vote
-                    confidence=None,  # No confidence
-                    bet_amount=None,  # No bet amount
-                    next_mock_data_row=None,  # No data row
+                    vote=None,
+                    confidence=None,
+                    bet_amount=None,
+                    next_mock_data_row=None,
                     is_profitable=True,
-                ),  # Simulating a tie situation
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                ),
                 final_data={},
                 event=Event.TIE,
                 most_voted_payload=None,
@@ -166,12 +178,13 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 name="Mechanism response error",
                 initial_data={"mocking_mode": True},
                 payloads=get_payloads(
-                    vote=None,  # No vote
-                    confidence=None,  # No confidence
-                    bet_amount=None,  # No bet amount
-                    next_mock_data_row=None,  # No data row
+                    vote=None,
+                    confidence=None,
+                    bet_amount=None,
+                    next_mock_data_row=None,
                     is_profitable=True,
-                ),  # Simulating mocking mode response
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                ),
                 final_data={},
                 event=Event.MECH_RESPONSE_ERROR,
                 most_voted_payload=None,
