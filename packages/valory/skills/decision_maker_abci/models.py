@@ -106,6 +106,13 @@ class LiquidityInfo:
     # Liquidity of tokens for option 1, after placing the bet
     l1_end: Optional[int] = None
 
+    def validate_start_information(self) -> Tuple[int, int]:
+        """Check if the start liquidity information is complete, otherwise raise an error."""
+        if self.l0_start is None or self.l1_start is None:
+            raise ValueError("The liquidity information is incomplete!")
+        # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
+        return self.l0_start, self.l1_start
+
     def validate_end_information(self) -> Tuple[int, int]:
         """Check if the end liquidity information is complete, otherwise raise an error."""
         if self.l0_end is None or self.l1_end is None:
@@ -201,6 +208,8 @@ class SharedState(BaseSharedState):
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
+        # a mapping from market id to scaled liquidity measure
+        self.liquidity_cache: Dict[str, float] = {}
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
         self.liquidity_prices: Dict[str, List[float]] = {}
