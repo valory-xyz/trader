@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib26xend6jcwxzedk3qce2ckblluohdyjsqsxpvtgrwmtphhok4r4
+agent: valory/trader:0.1.0:bafybeihestigpsuxwuoizkyeupdffdyqxli42qkspgl4aqeu5sfhnwdhgq
 number_of_agents: 1
 deployment:
   agent:
@@ -88,9 +88,9 @@ models:
         "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
         "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
         "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-        "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba",
-        "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829", "nft_amount":"100",
-        "payment_token":"0x0000000000000000000000000000000000000000", "price":"1000000000000000000"}}
+        "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
+        "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
+        "price":"1000000000000000000"}}
       use_subgraph_for_redeeming: true
       use_nevermined: false
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}

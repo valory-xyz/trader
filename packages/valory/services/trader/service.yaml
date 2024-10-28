@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib26xend6jcwxzedk3qce2ckblluohdyjsqsxpvtgrwmtphhok4r4
+agent: valory/trader:0.1.0:bafybeihestigpsuxwuoizkyeupdffdyqxli42qkspgl4aqeu5sfhnwdhgq
 number_of_agents: 4
 deployment:
   agent:
@@ -134,15 +134,15 @@ type: skill
           "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
           "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
           "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba",
-          "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829", "nft_amount":"100",
-          "payment_token":"0x0000000000000000000000000000000000000000", "price":"1000000000000000000"}}
+          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
+          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
+          "price":"1000000000000000000"}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
-    benchmark_tool: &id004
+    benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
     benchmarking_mode:
@@ -166,13 +166,13 @@ type: skill
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
         randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
-    acc_info_fields: &id005
+    acc_info_fields: &id004
       args:
         tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
         requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
         accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
         sep: ${ACC_INFO_FIELDS_SEP:str:,}
-    network_subgraph: &id006
+    network_subgraph: &id005
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
@@ -184,7 +184,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
         url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
-    omen_subgraph: &id007
+    omen_subgraph: &id006
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${OMEN_SUBGRAPH_METHOD:str:POST}
@@ -195,14 +195,14 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
         url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    randomness_api: &id008
+    randomness_api: &id007
       args:
         method: ${RANDOMNESS_API_METHOD:str:GET}
         response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
         response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
         retries: ${RANDOMNESS_API_RETRIES:int:5}
         url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
-    mech_response: &id009
+    mech_response: &id008
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${MECH_RESPONSE_API_METHOD:str:GET}
@@ -210,7 +210,7 @@ type: skill
         response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
         retries: ${MECH_RESPONSE_API_RETRIES:int:5}
         url: ${MECH_RESPONSE_API_URL:str:''}
-    agent_tools: &id010
+    agent_tools: &id009
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${AGENT_TOOLS_API_METHOD:str:GET}
@@ -218,7 +218,7 @@ type: skill
         response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
         retries: ${AGENT_TOOLS_API_RETRIES:int:5}
         url: ${AGENT_TOOLS_API_URL:str:''}
-    trades_subgraph: &id011
+    trades_subgraph: &id010
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${TRADES_SUBGRAPH_METHOD:str:POST}
@@ -229,7 +229,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
         url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    conditional_tokens_subgraph: &id012
+    conditional_tokens_subgraph: &id011
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
@@ -240,7 +240,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
         url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
-    realitio_subgraph: &id013
+    realitio_subgraph: &id012
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
@@ -348,24 +348,24 @@ type: skill
           "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
           "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
           "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba",
-          "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829", "nft_amount":"100",
-          "payment_token":"0x0000000000000000000000000000000000000000", "price":"1000000000000000000"}}
+          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
+          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
+          "price":"1000000000000000000"}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
-    benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -463,24 +463,24 @@ type: skill
           "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
           "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
           "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba",
-          "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829", "nft_amount":"100",
-          "payment_token":"0x0000000000000000000000000000000000000000", "price":"1000000000000000000"}}
+          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
+          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
+          "price":"1000000000000000000"}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
-    benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -578,24 +578,24 @@ type: skill
           "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
           "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
           "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba",
-          "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829", "nft_amount":"100",
-          "payment_token":"0x0000000000000000000000000000000000000000", "price":"1000000000000000000"}}
+          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
+          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
+          "price":"1000000000000000000"}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
-    benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection
