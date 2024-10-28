@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiaqh7kgy3ylvjue4fcukxyqjnb6xfz3lpsu5w4ewdiu5xrm77eg7u
+agent: valory/trader:0.1.0:bafybeig2ciyurnl4xao5e4hbozrywicuvjhxuw5yz5dbdfd5uwp4rutony
 number_of_agents: 1
 deployment:
   agent:
@@ -54,7 +54,7 @@ models:
       sample_bets_closing_days: 10
       trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_threshold}
       use_fallback_strategy: true
-      bet_threshold: 10000000000000000
+      bet_threshold: ${BET_THRESHOLD:int:10000000000000000}
       ipfs_address: https://gateway.autonolas.tech/ipfs/
       tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: Please take over the role of a Data Scientist to evaluate the
