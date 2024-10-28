@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the test for rounds for the DecisionMaker ABCI application."""
-
+"""This module contains the test for rounds of decision maker"""
 from unittest.mock import MagicMock
 
 import pytest
@@ -56,7 +55,10 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.order_subscription import (
     SubscriptionRound,
 )
-from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
+from packages.valory.skills.decision_maker_abci.states.randomness import (
+    BenchmarkingRandomnessRound,
+    RandomnessRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
@@ -89,7 +91,9 @@ def test_check_benchmarking_transition(setup_app: DecisionMakerAbciApp) -> None:
     transition_function = app.transition_function[CheckBenchmarkingModeRound]
 
     # Transition on benchmarking enabled
-    assert transition_function[Event.BENCHMARKING_ENABLED] == RandomnessRound
+    assert (
+        transition_function[Event.BENCHMARKING_ENABLED] == BenchmarkingRandomnessRound
+    )
 
     # Transition on benchmarking disabled
     assert (
@@ -123,8 +127,8 @@ def test_subscription_round_transition(setup_app: DecisionMakerAbciApp) -> None:
     assert transition_function[Event.DONE] == FinishedSubscriptionRound
 
     # Mock transaction cases
-    assert transition_function[Event.MOCK_TX] == RandomnessRound
-    assert transition_function[Event.NO_SUBSCRIPTION] == RandomnessRound
+    assert transition_function[Event.MOCK_TX] == ToolSelectionRound
+    assert transition_function[Event.NO_SUBSCRIPTION] == ToolSelectionRound
 
 
 def test_claim_round_transition(setup_app: DecisionMakerAbciApp) -> None:
@@ -133,7 +137,7 @@ def test_claim_round_transition(setup_app: DecisionMakerAbciApp) -> None:
     transition_function = app.transition_function[ClaimRound]
 
     # Test transition on done
-    assert transition_function[Event.DONE] == RandomnessRound
+    assert transition_function[Event.DONE] == ToolSelectionRound
 
 
 def test_randomness_round_transition(setup_app: DecisionMakerAbciApp) -> None:
@@ -142,7 +146,7 @@ def test_randomness_round_transition(setup_app: DecisionMakerAbciApp) -> None:
     transition_function = app.transition_function[RandomnessRound]
 
     # Transition on done
-    assert transition_function[Event.DONE] == ToolSelectionRound
+    assert transition_function[Event.DONE] == SamplingRound
 
 
 def test_tool_selection_round_transition(setup_app: DecisionMakerAbciApp) -> None:
