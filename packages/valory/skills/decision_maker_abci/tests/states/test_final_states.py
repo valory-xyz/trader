@@ -20,7 +20,7 @@
 
 """This package contains the tests for Decision Maker"""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pytest
 
@@ -62,7 +62,7 @@ class TestFinalStates:
     """The class for test of Final States"""
 
     @pytest.fixture
-    def setup_round(self) -> tuple[MockSynchronizedData, MockContext]:
+    def setup_round(self) -> Tuple[MockSynchronizedData, MockContext]:
         """Fixture to set up a round instance."""
         setup_data: Dict[str, List[Any]] = {}
         mock_db = AbciAppDB(setup_data)
@@ -71,7 +71,7 @@ class TestFinalStates:
         return synchronized_data, context
 
     def test_benchmarking_mode_disabled_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of BenchmarkingModeDisabledRound."""
         synchronized_data, context = setup_round
@@ -82,7 +82,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_finished_decision_maker_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of FinishedDecisionMakerRound."""
         synchronized_data, context = setup_round
@@ -93,7 +93,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_finished_decision_request_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of FinishedDecisionRequestRound."""
         synchronized_data, context = setup_round
@@ -104,7 +104,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_finished_subscription_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of FinishedSubscriptionRound."""
         synchronized_data, context = setup_round
@@ -115,7 +115,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_finished_without_redeeming_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of FinishedWithoutRedeemingRound."""
         synchronized_data, context = setup_round
@@ -126,7 +126,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_finished_without_decision_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of FinishedWithoutDecisionRound."""
         synchronized_data, context = setup_round
@@ -137,7 +137,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_refill_required_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of RefillRequiredRound."""
         synchronized_data, context = setup_round
@@ -148,7 +148,7 @@ class TestFinalStates:
         assert isinstance(round_instance, DegenerateRound)
 
     def test_benchmarking_done_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of BenchmarkingDoneRound and its end_block method."""
         synchronized_data, context = setup_round
@@ -163,7 +163,7 @@ class TestFinalStates:
             round_instance.end_block()  # Should exit the program
 
     def test_impossible_round(
-        self, setup_round: tuple[MockSynchronizedData, MockContext]
+        self, setup_round: Tuple[MockSynchronizedData, MockContext]
     ) -> None:
         """Test instantiation of ImpossibleRound."""
         synchronized_data, context = setup_round
