@@ -284,7 +284,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # update the accuracy store using the latest accuracy information (only entered during the first period)
         for row in reader:
             tool = row[self.acc_info_fields.tool]
-            if tool not in accuracy_store.keys():
+            if tool not in self.mech_tools:
                 continue
 
             # overwrite local with global information (naturally, no global information is available for pending)
