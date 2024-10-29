@@ -208,6 +208,29 @@ def test_weighted_accuracy(sync_data: SynchronizedData, mocked_db: MagicMock) ->
     assert sync_data.weighted_accuracy == policy.weighted_accuracy[selected_mech_tool]
 
 
+def test_mech_responses(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the mech_responses property."""
+
+    # Mock the response with empty dictionaries to avoid field mismatches
+    mocked_db.get.return_value = "[{}, {}]"
+
+    # Access the mech_responses property
+    responses = sync_data.mech_responses
+
+    # Validate the responses length
+    assert len(responses) == 2
+
+    # Test when db.get() returns None
+    mocked_db.get.return_value = None
+    responses = sync_data.mech_responses
+    assert responses == []
+
+    # Test when db.get() returns an empty list
+    mocked_db.get.return_value = "[]"
+    responses = sync_data.mech_responses
+    assert responses == []
+
+
 def test_end_block(mocked_db: MagicMock) -> None:
     """Test the end_block logic in TxPreparationRound."""
     mocked_sync_data = MagicMock(spec=SynchronizedData)

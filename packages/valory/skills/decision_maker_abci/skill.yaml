@@ -59,7 +59,7 @@ fingerprint:
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
   tests/behaviours/test_base.py: bafybeif6pglmr7pvojylatfzaxtlk65igx6a2omyrbxfihnnft6o7p75p4
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
-  tests/states/test_base.py: bafybeicugggb42gtrtgotsov4uzszzefa73mks64tyi3ct3qjvjhpn6rpm
+  tests/states/test_base.py: bafybeigiuctxda3npkbvx7nsq4jvqpckvbzgqlj76hdpk2ntc52ppc4vnm
   tests/states/test_bet_placement.py: bafybeibvc37n2cluep4tasvgmvwxwne2deais6ptirducpogk67v4gj4ga
   tests/states/test_blacklising.py: bafybeihm2ex6l7fhorgi3mjj2epztu2r7bqbg56unpgpzfzymghshchqzy
   tests/states/test_check_benchmarking.py: bafybeifwpi5f4fhreqptfxdsnyv3nptkqytkwbukfuqkrjo4eww7cv3sxy
@@ -68,7 +68,7 @@ fingerprint:
   tests/states/test_decision_request.py: bafybeigqbakm2olkwvcngertjplhnmu6on6tp6hxn7lxygi2gf5a5eurbe
   tests/states/test_final_states.py: bafybeiftfd3ovaqpfe7t5ry7maiziavk74wl66d6zo6ikhgodznormd2nm
   tests/states/test_handle_failed_tx.py: bafybeibuepj6fko7ba3bef6nybzetilni2iwgkxd5xeazqskadbad3l2zq
-  tests/states/test_order_subscription.py: bafybeidbpiscaubrinylzqx53qimr62uy6wwclcbqvauyqt2xr3inubgxa
+  tests/states/test_order_subscription.py: bafybeiag37uk5mitjm4yadcpr67icfmmzeucdlgvqoct4y4jeyhnebyyoi
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
   tests/states/test_redeem.py: bafybeieynxnxbnhptv5nxnps444cqtqblvjautglujheafce76sxotooja
   tests/states/test_sampling.py: bafybeibyglipxdl6f25qfxf36v2n3kckrpmwyuqcenfeqzhjujpwon6o2u

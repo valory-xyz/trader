@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib7j6mhw6r57y5jgcpkzuadzt5yobz2osn6osindfbrfxrc6bvd2q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaitvuq7f7hbbijwrptql33bijsypxfkzaogvz3r23tytjjw5d4re
 - valory/market_manager_abci:0.1.0:bafybeicia7itulcrxlwbmhfzxppgo5i33tb2nmcycwizftw7gps4dareka
-- valory/decision_maker_abci:0.1.0:bafybeifelibdufct53s3bjpkpoix4u4z6c3aprhnw2pixmbqnnfk7faoe4
-- valory/trader_abci:0.1.0:bafybeifml66724rf3urzncht7bbtqcmlutfav2o6ubtpwzericcxdtsrey
+- valory/decision_maker_abci:0.1.0:bafybeig3ccltfncuqtrnnus62hnpounv7j4ksjboyx3jlmmkn2d47fb2by
+- valory/trader_abci:0.1.0:bafybeibtyp6hs2wt2hlwomnjiw666gdpvpmysaueyll2xfpexi6gn7xiey
 - valory/staking_abci:0.1.0:bafybeifyqszbiccxwwfldrl6lz5dspuaxbqd5qnniyecusddwvxpfwiyr4
 - valory/check_stop_trading_abci:0.1.0:bafybeicsrrxjs6bup267jiek3r7eutd42ssfyjthyvxfku6qozw3xebxta
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm

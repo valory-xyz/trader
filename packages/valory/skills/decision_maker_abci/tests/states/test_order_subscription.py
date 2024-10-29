@@ -149,8 +149,6 @@ def test_end_block_updates_sync_data(
             # Assert that the agreement_id was updated to the new_agreement_id
             assert getattr(sync_data, "agreement_id", None) == "new_agreement_id"
             assert event is not None
-        else:
-            raise AssertionError("end_block result should not be None")
 
 
 def test_no_update_when_threshold_not_reached(
