@@ -21,17 +21,17 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/registration_abci:0.1.0:bafybeibc7duasoaw5b4ene5oxfba2dmdzstsrws6ipi57ymgdtoxjadn54
-- valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
-- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
-- valory/market_manager_abci:0.1.0:bafybeicia7itulcrxlwbmhfzxppgo5i33tb2nmcycwizftw7gps4dareka
-- valory/decision_maker_abci:0.1.0:bafybeiaiqddhwawt7u6stg6ujmzmnn3my7dtqa7tur5jbjfswnsasfoila
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidw5cedygh25jtxdv35zb4223kbhtwv6enfxtkkdkuhuayvply5gq
-- valory/staking_abci:0.1.0:bafybeifyqszbiccxwwfldrl6lz5dspuaxbqd5qnniyecusddwvxpfwiyr4
-- valory/check_stop_trading_abci:0.1.0:bafybeicsrrxjs6bup267jiek3r7eutd42ssfyjthyvxfku6qozw3xebxta
-- valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
+- valory/abstract_round_abci:0.1.0:bafybeigax5gzud6ytq3wypajqwzlfwhpuegcma7q5b7m534kgu7vfmfaaq
+- valory/registration_abci:0.1.0:bafybeia5lthveosdhvkpyp43w3uyeji35zt7i3qzhhy2to5br4sgpwa3nm
+- valory/reset_pause_abci:0.1.0:bafybeiag7sfbfmsvimrwurfo5w5lfmglm6doq7kcoibwuno3evr4asagqm
+- valory/transaction_settlement_abci:0.1.0:bafybeieyk527zcyrcenkacxbwywvloukjntenksdacxqzgg3stqxmrpyii
+- valory/termination_abci:0.1.0:bafybeid5c7otiex2dgiywsle2rhdmnur3mflcskd32mxn7ex34ldplddxy
+- valory/market_manager_abci:0.1.0:bafybeihz3db2ludrhlqxaxdlzfii5s3v2gz4etu7eqachb6b4u6wxoxlcu
+- valory/decision_maker_abci:0.1.0:bafybeiai7wez22gouo2ustwed3s5b3vyiwhwiv5sj5vrd5gpybr66vnae4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigftwsbwenc22ajo3ohkfeqcvd4rgkrgpz75k7tnnjq4ychgk4m4a
+- valory/staking_abci:0.1.0:bafybeieffhcqwqfyleaglo576sc2s7sjknmjuarjgqygi7iirwswl4fkeq
+- valory/check_stop_trading_abci:0.1.0:bafybeies2cgn7ksqgvyqupsgqeox6hmzkbbqhs7bia7u4sz4qnftdyxvki
+- valory/mech_interact_abci:0.1.0:bafybeiaablgvyql6psl6sckopuhzsunmr66amlm4nuueik2fkdvd6cwdtq
 behaviours:
   main:
     args: {}
@@ -199,39 +199,23 @@ models:
       tool_punishment_multiplier: 1
       use_nevermined: true
       mech_to_subscription_params:
-      - - base_url
-        - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
-      - - did
-        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
-      - - escrow_payment_condition_address
-        - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
-      - - lock_payment_condition_address
-        - '0xDE85A368Ee6f374d236500d176814365370778dA'
-      - - transfer_nft_condition_address
-        - '0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979'
-      - - token_address
-        - '0xa30DE8C6aC39B825192e5F1FADe0770332D279A8'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - nft_amount
-        - '100'
-      - - payment_token
-        - '0x0000000000000000000000000000000000000000'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - price
-        - '1000000000000000000'
+        base_url: url
+        did: did
+        escrow_payment_condition_address: address
+        lock_payment_condition_address: address
+        transfer_nft_condition_address: address
+        token_address: address
+        order_address: address
+        nft_amount: amount
+        payment_token: address
+        price: price
       contract_timeout: 300.0
-      file_hash_to_strategies_json:
-      - - hash
-        - - strategy_name
+      file_hash_to_strategies: {}
       strategies_kwargs:
-      - - bet_kelly_fraction
-        - 1.0
-      - - floor_balance
-        - 500000000000000000
-      - - bet_amount_per_threshold
-        - 0.0: 0
+        bet_kelly_fraction: 1.0
+        floor_balance: 500000000000000000
+        bet_amount_per_threshold:
+          0.0: 0
           0.1: 0
           0.2: 0
           0.3: 0
