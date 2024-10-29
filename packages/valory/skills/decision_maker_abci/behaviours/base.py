@@ -269,7 +269,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def sampled_bet(self) -> Bet:
         """Get the sampled bet."""
         self.read_bets()
-        return self.bets[self.synchronized_data.sampled_bet_index]
+        # default value
+        try:
+            bet_index = self.synchronized_data.sampled_bet_index
+        except ValueError:
+            # default value
+            bet_index = 0
+        return self.bets[bet_index]
 
     @property
     def collateral_token(self) -> str:
