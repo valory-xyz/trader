@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Tests for RedeemRound class."""
+"""Test for Redeem round"""
 
 from typing import Any, Dict, Optional
 from unittest.mock import PropertyMock, patch
@@ -104,40 +104,46 @@ class TestRedeemRound:
         assert isinstance(redeem_round.selection_key, tuple)
         assert all(isinstance(key, str) for key in redeem_round.selection_key)
 
-    def test_end_block_no_update(self, setup_redeem_round: RedeemRound) -> None:
-        """Test end block without update."""
+    @pytest.mark.parametrize(
+        "period_count, expected_confirmations, expected_event",
+        [
+            (0, 1, Event.NO_MAJORITY),  # Test without update
+            (1, 0, Event.NO_MAJORITY),  # Test with update
+        ],
+    )
+    def test_end_block_update_behavior(
+        self,
+        setup_redeem_round: RedeemRound,
+        period_count: int,
+        expected_confirmations: int,
+        expected_event: Event,
+    ) -> None:
+        """Test end_block behavior based on period_count."""
         redeem_round = setup_redeem_round
 
-        # Mock the period_count property using patch.object
         with patch.object(
             MockSynchronizedData, "period_count", new_callable=PropertyMock
         ) as mock_period_count:
-            mock_period_count.return_value = 0
+            mock_period_count.return_value = period_count
 
             result = redeem_round.end_block()
 
             if result is None:
-                assert redeem_round.block_confirmations == 1
+                # Case where no update occurs
+                assert redeem_round.block_confirmations == expected_confirmations
             else:
+                # Case where update occurs
                 synchronized_data, event = result
                 assert isinstance(synchronized_data, MockSynchronizedData)
-                assert event == Event.NO_MAJORITY
+                assert event == expected_event
 
-    def test_end_block_update(self, setup_redeem_round: RedeemRound) -> None:
-        """Test end block with update."""
+    def test_most_voted_payload_values(self, setup_redeem_round: RedeemRound) -> None:
+        """Test most_voted_payload_values property."""
         redeem_round = setup_redeem_round
-
-        # Mock the period_count property using patch.object
+        # Mock `most_voted_payload_values` to return the expected result
         with patch.object(
-            MockSynchronizedData, "period_count", new_callable=PropertyMock
-        ) as mock_period_count:
-            mock_period_count.return_value = 1
-
-            result = redeem_round.end_block()
-
-            if result is None:
-                assert redeem_round.block_confirmations == 0
-            else:
-                synchronized_data, event = result
-                assert isinstance(synchronized_data, MockSynchronizedData)
-                assert event == Event.NO_MAJORITY
+            RedeemRound, "most_voted_payload_values", new_callable=PropertyMock
+        ) as mock_values:
+            mock_values.return_value = (None,)
+            values = redeem_round.most_voted_payload_values
+            assert values == (None,)

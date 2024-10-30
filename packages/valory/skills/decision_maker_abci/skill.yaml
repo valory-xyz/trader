@@ -70,7 +70,7 @@ fingerprint:
   tests/states/test_handle_failed_tx.py: bafybeibuepj6fko7ba3bef6nybzetilni2iwgkxd5xeazqskadbad3l2zq
   tests/states/test_order_subscription.py: bafybeiag37uk5mitjm4yadcpr67icfmmzeucdlgvqoct4y4jeyhnebyyoi
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
-  tests/states/test_redeem.py: bafybeieynxnxbnhptv5nxnps444cqtqblvjautglujheafce76sxotooja
+  tests/states/test_redeem.py: bafybeicecyfe725pot6fduotlc25fivqskswf7rzu366ipcco4kuwxyrqu
   tests/states/test_sampling.py: bafybeibyglipxdl6f25qfxf36v2n3kckrpmwyuqcenfeqzhjujpwon6o2u
   tests/states/test_tool_selection.py: bafybeib7js3dj7647t33o5ybfqftwytxktwrvhbri5yuyymg6znj6y7xxa
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
