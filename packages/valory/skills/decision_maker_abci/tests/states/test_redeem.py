@@ -165,8 +165,6 @@ class TestRedeemRound:
             RedeemRound, "most_voted_payload_values", new_callable=PropertyMock
         ) as mock_values:
             mock_values.return_value = ("tool_data",)
-            try:
-                values = redeem_round.most_voted_payload_values
-                assert values is not None  # Ensure it executes without error
-            except ValueError as e:
-                assert str(e) == "`mech_tools` must not be `None`"
+
+            values = redeem_round.most_voted_payload_values
+            assert values is not None  # Ensure it executes without error
