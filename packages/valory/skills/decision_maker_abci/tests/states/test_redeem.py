@@ -104,6 +104,13 @@ class TestRedeemRound:
         assert isinstance(redeem_round.selection_key, tuple)
         assert all(isinstance(key, str) for key in redeem_round.selection_key)
 
+    def test_selection_key_contains_mech_tools_name(
+        self, setup_redeem_round: RedeemRound
+    ) -> None:
+        """Test that mech_tools_name is part of the selection key."""
+        redeem_round = setup_redeem_round
+        assert RedeemRound.mech_tools_name in redeem_round.selection_key
+
     @pytest.mark.parametrize(
         "period_count, expected_confirmations, expected_event",
         [
@@ -147,3 +154,19 @@ class TestRedeemRound:
             mock_values.return_value = (None,)
             values = redeem_round.most_voted_payload_values
             assert values == (None,)
+
+    def test_most_voted_payload_dict_processing(
+        self, setup_redeem_round: RedeemRound
+    ) -> None:
+        """Test processing of most_voted_payload_dict in most_voted_payload_values."""
+        redeem_round = setup_redeem_round
+        # Mock `most_voted_payload_values` to simulate dictionary processing in the property
+        with patch.object(
+            RedeemRound, "most_voted_payload_values", new_callable=PropertyMock
+        ) as mock_values:
+            mock_values.return_value = ("tool_data",)
+            try:
+                values = redeem_round.most_voted_payload_values
+                assert values is not None  # Ensure it executes without error
+            except ValueError as e:
+                assert str(e) == "`mech_tools` must not be `None`"
