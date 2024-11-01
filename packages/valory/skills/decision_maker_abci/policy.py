@@ -59,6 +59,8 @@ class AccuracyInfo:
     pending: int = 0
     # the accuracy of the tool
     accuracy: float = 0.0
+    # the timestamp of updating
+    updated_ts: int = 0
 
 
 class EGreedyPolicyDecoder(json.JSONDecoder):
@@ -89,7 +91,6 @@ class EGreedyPolicy:
     eps: float
     accuracy_store: Dict[str, AccuracyInfo] = field(default_factory=dict)
     weighted_accuracy: Dict[str, float] = field(default_factory=dict)
-    updated_ts: int = 0
 
     def __post_init__(self) -> None:
         """Perform post-initialization checks."""

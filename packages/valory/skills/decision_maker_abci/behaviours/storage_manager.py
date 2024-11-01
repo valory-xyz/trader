@@ -243,12 +243,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Try to recover the policy from the policy store."""
         policy = self._read_tool_accuracy_local()
         if policy:
-            # verify for updated_ts in policy, EGreedyPolicy now stores updated_ts
+            # verify for updated_ts in policy, EGreedyPolicy accuracy_store now stores updated_ts
             if policy and "updated_ts" not in policy:
                 # convert json str to dictionary
                 policy_data = json.loads(policy)
                 # add updated_ts to policy
-                policy_data["updated_ts"] = 0
+                policy_data["accuracy_store"]["updated_ts"] = 0
                 policy = json.dumps(policy_data)
             return EGreedyPolicy.deserialize(policy)
         else:
@@ -284,23 +284,25 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             )
             return None
 
-    def _set_accuracy_info_from_remote(self) -> Generator[None, None, None]:
+    def _set_accuracy_info_from_remote(
+        self,
+            remote_accuracy_info: Generator[None, None, Optional[StringIO]]
+    ) -> None:
         """Set the tool accuracy info from the remote store."""
-        # Fetch accuracy information from remote
-        tool_accuracy_data = yield from self._fetch_accuracy_info()
-        if tool_accuracy_data:
+        tool_accuracy_data = remote_accuracy_info
+
+        if tool_accuracy_data is not None:
             self.accuracy_information = tool_accuracy_data
 
     def _read_local_policy_date(self) -> int:
         """Reads the updated timestamp from the policy file."""
-
         self.context.logger.info("Reading policy updated timestamp...")
         policy = self._read_tool_accuracy_local()
         if policy:
             policy_json = json.loads(policy)
             updated_timestamp = policy_json.get("updated_ts")
 
-            if updated_timestamp is str:
+            if updated_timestamp:
                 self.context.logger.info(
                     f"Local updated timestamp found {updated_timestamp}"
                 )
@@ -310,11 +312,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                 return 0
         return 0
 
-    def _fetch_remote_tool_date(self) -> Generator[None, None, int]:
+    def _fetch_remote_tool_date(
+        self, remote_accuracy_info
+    ) -> Generator[None, None, int]:
         """Fetch the max transaction date from the remote accuracy storage."""
         self.context.logger.info("Checking remote accuracy information date... ")
         self.context.logger.info("Trying to read max date in file...")
-        tool_accuracy_data = yield from self._fetch_accuracy_info()
+        tool_accuracy_data = remote_accuracy_info
 
         if tool_accuracy_data:
             sep = self.acc_info_fields.sep
@@ -334,7 +338,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                     max_transaction_date = current_transaction_date
 
         except TypeError:
-            self.context.logger(
+            self.context.logger.warning(
                 "Invalid transaction date found. Continuing with local accuracy information..."
             )
             return 0
@@ -347,20 +351,25 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             print(f"returning timestamp: {unix_timestamp}")
             return unix_timestamp
 
-        else:
-            self.context.logger.info("No maximum date found.")
-            return 0
+        self.context.logger.info("No maximum date found.")
+        return 0
 
-    def _check_local_policy_store_overwrite(self) -> Generator[None, None, bool]:
+    def _check_local_policy_store_overwrite(
+        self, remote_accuracy_info
+    ) -> Generator[None, None, bool]:
         """Compare the local and remote policy store dates and decide which to use."""
 
         local_policy_store_date = self._read_local_policy_date()
-        remote_policy_store_date = yield from self._fetch_remote_tool_date()
+        remote_policy_store_date = yield from self._fetch_remote_tool_date(
+            remote_accuracy_info
+        )
 
-        three_days_in_seconds = 3 * 24 * 3600
+        policy_store_update_offset = self.params.policy_store_update_offset
 
         self.context.logger.info("Comparing tool accuracy dates...")
-        if remote_policy_store_date > (local_policy_store_date - three_days_in_seconds):
+        if remote_policy_store_date > (
+            local_policy_store_date - policy_store_update_offset
+        ):
             self.context.logger.info("Local policy store overwrite: True")
             return True
 
@@ -391,7 +400,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         for tool in local_tools:
             accuracy_store.setdefault(tool, AccuracyInfo())
 
-        self.policy.updated_ts = int(datetime.now().timestamp())
+        self.policy.accuracy_store["accuracy_info"].updated_ts = int(
+            datetime.now().timestamp()
+        )
         self.policy.update_weighted_accuracy()
 
     def _set_policy(self) -> Generator:
@@ -409,9 +420,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._policy = self.synchronized_data.policy
             local_tools = self.synchronized_data.available_mech_tools
 
-        overwrite_local_store = yield from self._check_local_policy_store_overwrite()
+        remote_accuracy_info = yield from self._fetch_accuracy_info()
+        overwrite_local_store = yield from self._check_local_policy_store_overwrite(
+            remote_accuracy_info
+        )
         if self.is_first_period and overwrite_local_store:
-            yield from self._set_accuracy_info_from_remote()
+            yield from self._set_accuracy_info_from_remote(remote_accuracy_info)
             self._update_accuracy_store(local_tools)
 
         elif self.is_first_period:
