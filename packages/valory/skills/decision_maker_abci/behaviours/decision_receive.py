@@ -456,6 +456,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 liquidity_info = self._update_liquidity_info(
                     net_bet_amount, prediction_response.vote
                 )
+                # TODO update the bets.json for the market
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
