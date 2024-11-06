@@ -303,6 +303,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
             question_id, benchmarking_mode.outcome_token_marginal_prices.copy()
         )
+        # TODO prepare this Bet for multibet support
         return Bet(
             id="",
             market="",
