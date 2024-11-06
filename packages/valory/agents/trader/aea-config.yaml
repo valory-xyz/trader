@@ -251,8 +251,9 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
-      outcome_token_amounts: ${list:[11000000000000000000,9000000000000000000]}
-      outcome_token_marginal_prices: ${list:[0.4,0.6]}
+      outcome_token_amounts: ${dict:{"1":[11000000000000000000,9000000000000000000],"2":[12051566363198041123,4065861525654596129],"3":[7873230340650588731,6223620785868051083]}}
+      outcome_token_marginal_prices: ${dict:{"1":[0.39537,0.60462],"2":[0.252264,0.747735],"3":[0.44149,0.5585]}}
+      scaled_liquidity_measure: ${dict:{"1":9.79065,"2":6.08036330493113,"3":6.951844672001134}}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}

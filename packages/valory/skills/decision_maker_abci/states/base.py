@@ -215,6 +215,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
 
     @property
     def next_mock_data_row(self) -> int:
+        # TODO now there is one reader pointer per market
         """Get the next_mock_data_row."""
         next_mock_data_row = self.db.get("next_mock_data_row", 1)
         if next_mock_data_row is None:

@@ -101,7 +101,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
-        next_mock_data_row = self.synchronized_data.next_mock_data_row
+        # TODO we have now one reader pointer per market
+        next_mock_data_row = (
+            self.synchronized_data.next_mock_data_row
+        )  # list [0, 1, 0] market_id -1 = index of the list
 
         row_with_headers: Optional[Dict[str, str]] = None
         with open(dataset_filepath) as read_dataset:
@@ -153,6 +156,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _mock_response(self) -> None:
         """Mock the response data."""
+        # TODO read the next row for the active market
         dataset_row = self._next_dataset_row()
         if dataset_row is None:
             return
@@ -291,33 +295,62 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
-    def _get_mocked_bet(self) -> Bet:
-        """Prepare the mocked bet based on the stored liquidity info."""
-        shared_state = self.shared_state
-        question_id = shared_state.mock_question_id
-        benchmarking_mode = self.benchmarking_mode
-        current_liquidity_dictionary = shared_state.liquidity_amounts
-        outcome_token_amounts = current_liquidity_dictionary.setdefault(
-            question_id, benchmarking_mode.outcome_token_amounts.copy()
+    def find_bet_index(self, market_id):
+        """Returns the index of the bet in self.bets with the given id, -1 if not found"""
+        for i, bet in enumerate(self.bets):
+            if bet.id == market_id:
+                return i
+        return -1
+
+    def _get_markets_liq_info(self, question_id):
+        """Function to extract the available liquidity information from a market with id=question_id"""
+        # traverse list of bets and find the market
+        bet_index = self.find_bet_index(question_id)
+        if bet_index != -1:
+            bet = self.bets[bet_index]
+            self.context.logger.info(
+                "Market found in bets.json. Returning latest information there"
+            )
+            return (
+                bet.outcomeTokenAmounts,
+                bet.outcomeTokenMarginalPrices,
+                bet.scaledLiquidityMeasure,
+            )
+        self.context.logger.info(
+            f"Market with id: {question_id} not found in bets.json. Loading default values"
         )
-        outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
-            question_id, benchmarking_mode.outcome_token_marginal_prices.copy()
+        # return default values in self.benchmarking_mode
+        default_tokens = self.benchmarking_mode.get_default_outcome_token_amounts(
+            question_id
         )
-        # TODO prepare this Bet for multibet support
-        return Bet(
-            id="",
-            market="",
-            title="",
-            collateralToken="",
-            creator="",
-            fee=self.benchmarking_mode.pool_fee,
-            openingTimestamp=0,
-            outcomeSlotCount=2,
-            outcomeTokenAmounts=outcome_token_amounts,
-            outcomeTokenMarginalPrices=outcome_token_marginal_prices,
-            outcomes=["Yes", "No"],
-            scaledLiquidityMeasure=10,
+        default_prices = (
+            self.benchmarking_mode.get_default_outcome_token_marginal_prices(
+                question_id
+            )
         )
+        default_scaled_liq_measure = (
+            self.benchmarking_mode.get_default_scaled_liquidity_measure(question_id)
+        )
+        return default_tokens, default_prices, default_scaled_liq_measure
+
+    def _update_shared_data_liquidity(self):
+        """Update the share data information from the sampled_bet"""
+
+        if self.sampled_bet:
+            question_id = self.sampled_bet.id
+
+        # updating all values in shared_state
+        self.shared_state.mock_question_id = question_id
+        self.shared_state.current_liquidity_amounts = (
+            self.sampled_bet.outcomeTokenAmounts
+        )
+        self.shared_state.current_liquidity_prices = (
+            self.sampled_bet.outcomeTokenMarginalPrices
+        )
+        self.shared_state.liquidity_cache[question_id] = (
+            self.sampled_bet.scaledLiquidityMeasure
+        )
+        return
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -351,6 +384,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
+    def _compute_scaled_liquidity_measure(
+        self, token_amounts: List[int], token_prices: List[float]
+    ):
+        """Function to compute the scaled liquidity measure from token amounts and prices"""
+        return sum(
+            amount * price for amount, price in zip(token_amounts, token_prices)
+        ) / (10**18)
+
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Update the liquidity information and the prices after placing a bet for a market."""
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
@@ -363,11 +404,20 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             l0_start * prices[0],
             l1_start * prices[1],
         ]
-
+        market_id = self.shared_state.mock_question_id
         self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
             liquidity_constants
         )
         self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
+
+        # update the scaled liquidity Measure
+        self.shared_state.liquidity_cache[market_id] = (
+            self._compute_scaled_liquidity_measure(
+                self.shared_state.current_liquidity_amounts,
+                self.shared_state.current_liquidity_amounts,
+            )
+        )
+
         return liquidity_info
 
     def rebet_allowed(
@@ -398,11 +448,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if prediction_response.vote is None:
             return False, 0
 
-        bet = (
-            self.sampled_bet
-            if not self.benchmarking_mode.enabled
-            else self._get_mocked_bet()
-        )
+        bet = self.sampled_bet
+        if self.benchmarking_mode.enabled:
+            self._update_shared_data_liquidity()
+
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, prediction_response.vote
         )
@@ -453,10 +502,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
+                # update the information at the shared state
                 liquidity_info = self._update_liquidity_info(
                     net_bet_amount, prediction_response.vote
                 )
-                # TODO update the bets.json for the market
+                # update the sample_bet from the shared state info
+                self.update_sampled_bet_from_shared_data()
+
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
@@ -494,6 +546,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     self.store_bets()
                     bets_hash = self.hash_stored_bets()
 
+                # TODO now there is one reader pointer per market (optional)
                 if self.benchmarking_mode.enabled:
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
@@ -506,6 +559,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     prediction_response,
                     bet_amount,
                 )
+                # TODO now there is one reader pointer per market
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
             self._update_selected_bet()

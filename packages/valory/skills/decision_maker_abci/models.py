@@ -209,6 +209,7 @@ class SharedState(BaseSharedState):
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
         # a mapping from market id to scaled liquidity measure
+        # also used for the benchmarking mode
         self.liquidity_cache: Dict[str, float] = {}
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
@@ -388,11 +389,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "file_hash_to_strategies_json",
+            )
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -404,11 +405,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
+        self.mech_to_subscription_params: Dict[str, Any] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "mech_to_subscription_params",
+            )
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
@@ -464,11 +465,16 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
         self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
         self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
-        self.outcome_token_amounts: List[int] = self._ensure(
-            "outcome_token_amounts", kwargs, List[int]
+        # the market parameters can be now different per simulated market
+        # these are the default values for each market
+        self.outcome_token_amounts: Dict[str, List[int]] = self._ensure(
+            "outcome_token_amounts", kwargs, Dict[str, List[int]]
         )
-        self.outcome_token_marginal_prices: List[float] = self._ensure(
-            "outcome_token_marginal_prices", kwargs, List[float]
+        self.outcome_token_marginal_prices: Dict[str, List[float]] = self._ensure(
+            "outcome_token_marginal_prices", kwargs, Dict[str, List[float]]
+        )
+        self.scaled_liquidity_measure: Dict[str, List[float]] = self._ensure(
+            "scaled_liquidity_measure", kwargs, Dict[str, float]
         )
         self.sep: str = self._ensure("sep", kwargs, str)
         self.dataset_filename: Path = Path(
@@ -491,6 +497,15 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         )
         self.randomness: str = self._ensure("randomness", kwargs, str)
         super().__init__(*args, **kwargs)
+
+    def get_default_outcome_token_amounts(self, market_id: str):
+        return self.outcome_token_amounts.get(market_id, None)
+
+    def get_default_outcome_token_marginal_prices(self, market_id: str):
+        return self.outcome_token_marginal_prices.get(market_id, None)
+
+    def get_default_scaled_liquidity_measure(self, market_id: str):
+        return self.scaled_liquidity_measure.get(market_id, None)
 
 
 class AccuracyInfoFields(Model, TypeCheckMixin):

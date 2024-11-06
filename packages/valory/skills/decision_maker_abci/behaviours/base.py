@@ -269,12 +269,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def sampled_bet(self) -> Bet:
         """Get the sampled bet."""
         self.read_bets()
-        # default value
-        try:
-            bet_index = self.synchronized_data.sampled_bet_index
-        except ValueError:
-            # default value
-            bet_index = 0
+        bet_index = self.synchronized_data.sampled_bet_index
+        # default value, how to initialize this value in the benchmarking mode
+        # try:
+        #     bet_index = self.synchronized_data.sampled_bet_index
+        # except ValueError:
+        #     # workaround
+        #     bet_index = 0
         return self.bets[bet_index]
 
     @property
@@ -313,6 +314,17 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.token_balance = self.benchmarking_mode.collateral_balance
         self.wallet_balance = self.benchmarking_mode.native_balance
         self._report_balance()
+
+    def update_sampled_bet_from_shared_data(self):
+        self.sampled_bet.outcomeTokenAmounts = (
+            self.shared_state.current_liquidity_amounts.copy()
+        )
+        self.sampled_bet.outcomeTokenMarginalPrices = (
+            self.shared_state.current_liquidity_prices.copy()
+        )
+        self.sampled_bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[
+            self.shared_state.mock_question_id
+        ]
 
     def check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
