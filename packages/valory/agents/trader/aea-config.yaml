@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigfdkxqjinfqhs2elyxity2qqmuc2csy6gksdpsfhgqatwegfaqbi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicyzrtcxnlbauunh4p2rt3n6bg5crioch7txrnxbrh63bsg5j3dry
 - valory/market_manager_abci:0.1.0:bafybeicia7itulcrxlwbmhfzxppgo5i33tb2nmcycwizftw7gps4dareka
-- valory/decision_maker_abci:0.1.0:bafybeihkc5hwpszxwyhb3ryuwl4a2bz4x6rk4kuq5czagqbszetfukkobi
-- valory/trader_abci:0.1.0:bafybeih4dkka3xx6mlomfh5n6ftk3j2ur34z7zjfxi526xvc4j6ehyqk4a
+- valory/decision_maker_abci:0.1.0:bafybeic37vayky5bpoib3iekhe5y2hxmc56ep2l3majt6u7s6ueua4vzaa
+- valory/trader_abci:0.1.0:bafybeigmitbhjltf2imhuoo5ijd4bthy3anlttx66ir6zhmto3fz2qf6oe
 - valory/staking_abci:0.1.0:bafybeifyqszbiccxwwfldrl6lz5dspuaxbqd5qnniyecusddwvxpfwiyr4
 - valory/check_stop_trading_abci:0.1.0:bafybeicsrrxjs6bup267jiek3r7eutd42ssfyjthyvxfku6qozw3xebxta
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
@@ -251,9 +251,8 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
-      outcome_token_amounts: ${dict:{"1":[11000000000000000000,9000000000000000000],"2":[12051566363198041123,4065861525654596129],"3":[7873230340650588731,6223620785868051083]}}
-      outcome_token_marginal_prices: ${dict:{"1":[0.39537,0.60462],"2":[0.252264,0.747735],"3":[0.44149,0.5585]}}
-      scaled_liquidity_measure: ${dict:{"1":9.79065,"2":6.08036330493113,"3":6.951844672001134}}
+      outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:list:[11000000000000000000,9000000000000000000]}
+      outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:list:[0.55,0.45]}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}
