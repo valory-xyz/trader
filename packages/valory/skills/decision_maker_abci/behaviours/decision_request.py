@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the behaviour of the skill which is responsible for requesting a decision from the mech."""
-
+import csv
 import json
 from dataclasses import asdict
 from typing import Any, Dict, Generator, Optional
@@ -81,6 +81,20 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
                 payload_content = json.dumps(mech_requests, sort_keys=True)
             if not self.n_slots_supported:
                 mocking_mode = None
+            
+            if self.benchmarking_mode.enabled:
+                bets_mapping = {}
+                dataset_filepath = self.params.store_path / self.benchmarking_mode.dataset_filename
+
+                with open(dataset_filepath, mode='r') as file:
+                    reader = csv.DictReader(file)
+                    for row_number, row in enumerate(reader, start=1):
+                        question_id = int(row['question_id'])
+                        if question_id not in bets_mapping:
+                            bets_mapping[question_id] = []
+                        bets_mapping[question_id].append(row_number)
+                
+                self.shared_state.bet_id_row = bets_mapping
 
             agent = self.context.agent_address
             payload = DecisionRequestPayload(agent, payload_content, mocking_mode)
