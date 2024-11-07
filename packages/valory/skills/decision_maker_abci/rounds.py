@@ -203,7 +203,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.BLACKLIST: ImpossibleRound,
         },
         BenchmarkingRandomnessRound: {
-            Event.DONE: ToolSelectionRound,
+            Event.DONE: SamplingRound,
             Event.ROUND_TIMEOUT: BenchmarkingRandomnessRound,
             Event.NO_MAJORITY: BenchmarkingRandomnessRound,
         },
@@ -217,6 +217,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
+            Event.BENCHMARKING_ENABLED: ToolSelectionRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },

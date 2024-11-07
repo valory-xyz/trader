@@ -63,7 +63,7 @@ states:
 - SubscriptionRound
 - ToolSelectionRound
 transition_func:
-    (BenchmarkingRandomnessRound, DONE): ToolSelectionRound
+    (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
     (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
@@ -117,6 +117,7 @@ transition_func:
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SamplingRound, BENCHMARK_ENABLED): ToolSelectionRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound
