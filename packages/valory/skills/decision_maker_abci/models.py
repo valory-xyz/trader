@@ -220,7 +220,6 @@ class SharedState(BaseSharedState):
         # the mapping from bet id to the row number in the dataset
         self._bet_id_row_manager: Dict[int, List[int]] = {}
 
-
     @property
     def mock_question_id(self) -> Any:
         """Get the mock question id."""
@@ -259,12 +258,12 @@ class SharedState(BaseSharedState):
     def current_liquidity_amounts(self, value: List[int]) -> None:
         """Set the current liquidity amounts."""
         self.liquidity_amounts[self.mock_question_id] = value
-    
+
     @property
     def bet_id_row_manager(self) -> Dict[int, List[int]]:
         """Get the next_mock_data_row."""
         return self._bet_id_row_manager
-    
+
     @bet_id_row_manager.setter
     def bet_id_row_manager(self, mapping: Dict[int, List[int]]) -> None:
         """Set the next_mock_data_row."""
@@ -481,15 +480,15 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
         # the market parameters can be now different per simulated market
         # these are the default values for each market
-        self.outcome_token_amounts: Dict[str, List[int]] = self._ensure(
-            "outcome_token_amounts", kwargs, Dict[str, List[int]]
-        )
-        self.outcome_token_marginal_prices: Dict[str, List[float]] = self._ensure(
-            "outcome_token_marginal_prices", kwargs, Dict[str, List[float]]
-        )
-        self.scaled_liquidity_measure: Dict[str, List[float]] = self._ensure(
-            "scaled_liquidity_measure", kwargs, Dict[str, float]
-        )
+        # self.outcome_token_amounts: Dict[str, List[int]] = self._ensure(
+        #     "outcome_token_amounts", kwargs, Dict[str, List[int]]
+        # )
+        # self.outcome_token_marginal_prices: Dict[str, List[float]] = self._ensure(
+        #     "outcome_token_marginal_prices", kwargs, Dict[str, List[float]]
+        # )
+        # self.scaled_liquidity_measure: Dict[str, List[float]] = self._ensure(
+        #     "scaled_liquidity_measure", kwargs, Dict[str, float]
+        # )
         self.sep: str = self._ensure("sep", kwargs, str)
         self.dataset_filename: Path = Path(
             self._ensure("dataset_filename", kwargs, str)

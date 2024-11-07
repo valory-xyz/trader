@@ -101,10 +101,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
+        sampled_bet_id = int(self.sampled_bet.id)
+
         # TODO we have now one reader pointer per market
-        available_rows_for_market = self.shared_state.bet_id_row_manager[self.synchronized_data.sampled_bet_index]
+        available_rows_for_market = self.shared_state.bet_id_row_manager[sampled_bet_id]
         if available_rows_for_market:
-            next_mock_data_row = self.shared_state.bet_id_row_manager[self.synchronized_data.sampled_bet_index][0]
+            next_mock_data_row = self.shared_state.bet_id_row_manager[sampled_bet_id][0]
         else:
             self.shared_state.last_benchmarking_has_run = True
             self._rows_exceeded = True
@@ -342,18 +344,15 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         if self.sampled_bet:
             question_id = self.sampled_bet.id
-
-        # updating all values in shared_state
-        self.shared_state.mock_question_id = question_id
-        self.shared_state.current_liquidity_amounts = (
-            self.sampled_bet.outcomeTokenAmounts
-        )
-        self.shared_state.current_liquidity_prices = (
-            self.sampled_bet.outcomeTokenMarginalPrices
-        )
-        self.shared_state.liquidity_cache[question_id] = (
-            self.sampled_bet.scaledLiquidityMeasure
-        )
+            self.shared_state.current_liquidity_amounts = (
+                self.sampled_bet.outcomeTokenAmounts
+            )
+            self.shared_state.current_liquidity_prices = (
+                self.sampled_bet.outcomeTokenMarginalPrices
+            )
+            self.shared_state.liquidity_cache[question_id] = (
+                self.sampled_bet.scaledLiquidityMeasure
+            )
         return
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
@@ -408,7 +407,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             l0_start * prices[0],
             l1_start * prices[1],
         ]
-        market_id = self.shared_state.mock_question_id
+        market_id = self.sampled_bet.id
         self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
             liquidity_constants
         )
@@ -542,6 +541,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_amount = None
             next_mock_data_row = None
             bets_hash = None
+            sampled_bet_id = int(self.sampled_bet.id)
             if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
                     prediction_response
@@ -555,9 +555,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
                     updated_bet_row_mapping = self.shared_state.bet_id_row_manager
-                    updated_bet_row_mapping[self.synchronized_data.sampled_bet_index].pop(0)
+                    updated_bet_row_mapping[sampled_bet_id].pop(0)
 
                     self.shared_state.bet_id_row_manager = updated_bet_row_mapping
+
+                    log_message = (
+                        f"Updated bets mapping: {self.shared_state.bet_id_row_manager}"
+                    )
+                    self.context.logger.info(log_message)
 
             elif (
                 prediction_response is not None
@@ -572,9 +577,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
                 updated_bet_row_mapping = self.shared_state.bet_id_row_manager
-                updated_bet_row_mapping[self.synchronized_data.sampled_bet_index].pop(0)
+                updated_bet_row_mapping[sampled_bet_id].pop(0)
 
                 self.shared_state.bet_id_row_manager = updated_bet_row_mapping
+
+                log_message = (
+                    f"Updated bets mapping: {self.shared_state.bet_id_row_manager}"
+                )
+                self.context.logger.info(log_message)
 
             self._update_selected_bet()
             payload = DecisionReceivePayload(
