@@ -102,9 +102,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
         # TODO we have now one reader pointer per market
-        next_mock_data_row = (
-            self.synchronized_data.next_mock_data_row
-        )  # list [0, 1, 0] market_id -1 = index of the list
+        available_rows_for_market = self.shared_state.bet_id_row_manager[self.synchronized_data.sampled_bet_index]
+        if available_rows_for_market:
+            next_mock_data_row = self.shared_state.bet_id_row_manager[self.synchronized_data.sampled_bet_index][0]
+        else:
+            self.shared_state.last_benchmarking_has_run = True
+            self._rows_exceeded = True
+            return None
 
         row_with_headers: Optional[Dict[str, str]] = None
         with open(dataset_filepath) as read_dataset:
@@ -118,9 +122,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self._rows_exceeded = True
                 return None
 
-            next_row: Optional[Dict[str, str]] = next(reader, {})
-            if not next_row:
-                self.shared_state.last_benchmarking_has_run = True
+            # next_row: Optional[Dict[str, str]] = next(reader, {})
+            # if not next_row:
+            #     self.shared_state.last_benchmarking_has_run = True
 
         msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
         self.context.logger.info(msg)
@@ -550,6 +554,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 if self.benchmarking_mode.enabled:
                     next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
+                    updated_bet_row_mapping = self.shared_state.bet_id_row_manager
+                    updated_bet_row_mapping[self.synchronized_data.sampled_bet_index].pop(0)
+
+                    self.shared_state.bet_id_row_manager = updated_bet_row_mapping
+
             elif (
                 prediction_response is not None
                 and self.benchmarking_mode.enabled
@@ -561,6 +570,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 )
                 # TODO now there is one reader pointer per market
                 next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+
+                updated_bet_row_mapping = self.shared_state.bet_id_row_manager
+                updated_bet_row_mapping[self.synchronized_data.sampled_bet_index].pop(0)
+
+                self.shared_state.bet_id_row_manager = updated_bet_row_mapping
 
             self._update_selected_bet()
             payload = DecisionReceivePayload(
