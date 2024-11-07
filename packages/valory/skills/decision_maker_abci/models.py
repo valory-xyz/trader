@@ -217,6 +217,10 @@ class SharedState(BaseSharedState):
         # whether this is the last run of the benchmarking mode
         self.last_benchmarking_has_run: bool = False
 
+        # the mapping from bet id to the row number in the dataset
+        self._bet_id_row_manager: Dict[int, List[int]] = {}
+
+
     @property
     def mock_question_id(self) -> Any:
         """Get the mock question id."""
@@ -255,6 +259,16 @@ class SharedState(BaseSharedState):
     def current_liquidity_amounts(self, value: List[int]) -> None:
         """Set the current liquidity amounts."""
         self.liquidity_amounts[self.mock_question_id] = value
+    
+    @property
+    def bet_id_row_manager(self) -> Dict[int, List[int]]:
+        """Get the next_mock_data_row."""
+        return self._bet_id_row_manager
+    
+    @bet_id_row_manager.setter
+    def bet_id_row_manager(self, mapping: Dict[int, List[int]]) -> None:
+        """Set the next_mock_data_row."""
+        self._bet_id_row_manager = mapping
 
     def setup(self) -> None:
         """Set up the model."""
