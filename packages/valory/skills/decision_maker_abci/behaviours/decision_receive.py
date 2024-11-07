@@ -414,7 +414,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.shared_state.liquidity_cache[market_id] = (
             self._compute_scaled_liquidity_measure(
                 self.shared_state.current_liquidity_amounts,
-                self.shared_state.current_liquidity_amounts,
+                self.shared_state.current_liquidity_prices,
             )
         )
 
