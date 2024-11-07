@@ -93,7 +93,7 @@ states:
 - UpdateBetsRound
 - ValidateTransactionRound
 transition_func:
-    (BenchmarkingRandomnessRound, DONE): ToolSelectionRound
+    (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
     (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
     (BetPlacementRound, DONE): PreTxSettlementRound
@@ -209,6 +209,7 @@ transition_func:
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SamplingRound, BENCHMARK_ENABLED): ToolSelectionRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
     (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound
