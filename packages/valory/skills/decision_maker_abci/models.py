@@ -218,7 +218,8 @@ class SharedState(BaseSharedState):
         self.last_benchmarking_has_run: bool = False
 
         # the mapping from bet id to the row number in the dataset
-        self._bet_id_row_manager: Dict[int, List[int]] = {}
+        # the key is the market id/question_id
+        self._bet_id_row_manager: Dict[str, List[int]] = {}
 
     @property
     def mock_question_id(self) -> Any:
@@ -260,12 +261,12 @@ class SharedState(BaseSharedState):
         self.liquidity_amounts[self.mock_question_id] = value
 
     @property
-    def bet_id_row_manager(self) -> Dict[int, List[int]]:
+    def bet_id_row_manager(self) -> Dict[str, List[int]]:
         """Get the next_mock_data_row."""
         return self._bet_id_row_manager
 
     @bet_id_row_manager.setter
-    def bet_id_row_manager(self, mapping: Dict[int, List[int]]) -> None:
+    def bet_id_row_manager(self, mapping: Dict[str, List[int]]) -> None:
         """Set the next_mock_data_row."""
         self._bet_id_row_manager = mapping
 

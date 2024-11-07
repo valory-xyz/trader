@@ -101,9 +101,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
-        sampled_bet_id = int(self.sampled_bet.id)
+        sampled_bet_id = self.sampled_bet.id
 
-        # TODO we have now one reader pointer per market
+        # we have now one reader pointer per market
         available_rows_for_market = self.shared_state.bet_id_row_manager[sampled_bet_id]
         if available_rows_for_market:
             next_mock_data_row = self.shared_state.bet_id_row_manager[sampled_bet_id][0]
@@ -308,42 +308,16 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 return i
         return -1
 
-    def _get_markets_liq_info(self, question_id):
-        """Function to extract the available liquidity information from a market with id=question_id"""
-        # traverse list of bets and find the market
-        bet_index = self.find_bet_index(question_id)
-        if bet_index != -1:
-            bet = self.bets[bet_index]
-            self.context.logger.info(
-                "Market found in bets.json. Returning latest information there"
-            )
-            return (
-                bet.outcomeTokenAmounts,
-                bet.outcomeTokenMarginalPrices,
-                bet.scaledLiquidityMeasure,
-            )
-        self.context.logger.info(
-            f"Market with id: {question_id} not found in bets.json. Loading default values"
-        )
-        # return default values in self.benchmarking_mode
-        default_tokens = self.benchmarking_mode.get_default_outcome_token_amounts(
-            question_id
-        )
-        default_prices = (
-            self.benchmarking_mode.get_default_outcome_token_marginal_prices(
-                question_id
-            )
-        )
-        default_scaled_liq_measure = (
-            self.benchmarking_mode.get_default_scaled_liquidity_measure(question_id)
-        )
-        return default_tokens, default_prices, default_scaled_liq_measure
-
     def _update_shared_data_liquidity(self):
         """Update the share data information from the sampled_bet"""
 
-        if self.sampled_bet:
-            question_id = self.sampled_bet.id
+        question_id = self.sampled_bet.id
+        # check if share state information is empty and we need to initialize
+        empty_dict = len(self.shared_state.liquidity_amounts) == 0
+        new_market = question_id not in self.shared_state.liquidity_amounts.keys()
+        if empty_dict or new_market:
+            log_message = f"Initializing shared state information from the sampled bet with market id: {question_id}"
+            self.context.logger.info(log_message)
             self.shared_state.current_liquidity_amounts = (
                 self.sampled_bet.outcomeTokenAmounts
             )
@@ -396,7 +370,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         ) / (10**18)
 
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
-        """Update the liquidity information and the prices after placing a bet for a market."""
+        """Update the liquidity information at shared state and the prices after placing a bet for a market."""
+        log_message = f"Updating liquidity info after placing the bet with net_bet_amount: {net_bet_amount}"
+        self.context.logger.info(log_message)
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
         l0_start, l1_start = liquidity_info.validate_start_information()
 
@@ -412,6 +388,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             liquidity_constants
         )
         self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
+        log_message = (
+            f"New liquidity amounts: {self.shared_state.current_liquidity_amounts}"
+        )
+        self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
         self.shared_state.liquidity_cache[market_id] = (
@@ -510,12 +490,25 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     net_bet_amount, prediction_response.vote
                 )
                 # update the sample_bet from the shared state info
-                self.update_sampled_bet_from_shared_data()
-
+                # self.update_sampled_bet_from_shared_data()
+                self.sampled_bet.outcomeTokenAmounts = (
+                    self.shared_state.current_liquidity_amounts
+                )
+                self.sampled_bet.outcomeTokenMarginalPrices = (
+                    self.shared_state.current_liquidity_prices
+                )
+                self.sampled_bet.scaledLiquidityMeasure = (
+                    self.shared_state.liquidity_cache[self.sampled_bet.id]
+                )
+                self.store_bets()
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
+                log_message = f"Writing the results for bet_amount: {bet_amount}"
+                self.context.logger.info(log_message)
             else:
+                log_message = f"Writing results when not profitable: {bet_amount}"
+                self.context.logger.info(log_message)
                 self._write_benchmark_results(prediction_response)
 
         if is_profitable:
@@ -541,7 +534,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_amount = None
             next_mock_data_row = None
             bets_hash = None
-            sampled_bet_id = int(self.sampled_bet.id)
+            sampled_bet_id = self.sampled_bet.id
+            log_message = f"Sampled bet id: {sampled_bet_id}"
+            self.context.logger.info(log_message)
             if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
                     prediction_response
@@ -550,42 +545,28 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     self.store_bets()
                     bets_hash = self.hash_stored_bets()
 
-                # TODO now there is one reader pointer per market (optional)
-                if self.benchmarking_mode.enabled:
-                    next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
-
-                    updated_bet_row_mapping = self.shared_state.bet_id_row_manager
-                    updated_bet_row_mapping[sampled_bet_id].pop(0)
-
-                    self.shared_state.bet_id_row_manager = updated_bet_row_mapping
-
-                    log_message = (
-                        f"Updated bets mapping: {self.shared_state.bet_id_row_manager}"
-                    )
-                    self.context.logger.info(log_message)
-
             elif (
                 prediction_response is not None
                 and self.benchmarking_mode.enabled
                 and not self._rows_exceeded
             ):
+                log_message = f"Writing again the results for bet_amount: {bet_amount}"
+                self.context.logger.info(log_message)
                 self._write_benchmark_results(
                     prediction_response,
                     bet_amount,
                 )
-                # TODO now there is one reader pointer per market
-                next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
 
-                updated_bet_row_mapping = self.shared_state.bet_id_row_manager
-                updated_bet_row_mapping[sampled_bet_id].pop(0)
-
-                self.shared_state.bet_id_row_manager = updated_bet_row_mapping
-
-                log_message = (
-                    f"Updated bets mapping: {self.shared_state.bet_id_row_manager}"
-                )
+            # always remove the processed trade from the benchmarking input file
+            # now there is one reader pointer per market
+            if self.benchmarking_mode.enabled:
+                # next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+                log_message = f"Before updating bets mapping: {self.shared_state.bet_id_row_manager}"
                 self.context.logger.info(log_message)
+                self.shared_state.bet_id_row_manager[sampled_bet_id].pop(0)
 
+                log_message = f"After updating bets mapping: {self.shared_state.bet_id_row_manager}"
+                self.context.logger.info(log_message)
             self._update_selected_bet()
             payload = DecisionReceivePayload(
                 self.context.agent_address,

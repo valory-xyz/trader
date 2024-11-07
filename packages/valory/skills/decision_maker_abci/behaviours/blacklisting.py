@@ -44,6 +44,8 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
     def _blacklist(self) -> None:
         """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index
+        msg = f"The index of the bet by self.synchronized_data.sampled_bet_index is: {self.synchronized_data.sampled_bet_index}"
+        self.context.logger.info(msg)
         sampled_bet = self.bets[sampled_bet_index]
         # the question is blacklisted, i.e., we did not place a bet on it,
         # therefore, we decrease the number of bets which was increased on sampling

@@ -270,6 +270,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get the sampled bet."""
         self.read_bets()
         bet_index = self.synchronized_data.sampled_bet_index
+        msg = f"The sampled_bet_index in synchronized data is: {bet_index}"
+        self.context.logger.info(msg)
         # default value, how to initialize this value in the benchmarking mode
         # try:
         #     bet_index = self.synchronized_data.sampled_bet_index
@@ -316,15 +318,20 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._report_balance()
 
     def update_sampled_bet_from_shared_data(self):
+        log_message = "Updating sample bet information from shared data"
+        self.context.logger.info(log_message)
+
         self.sampled_bet.outcomeTokenAmounts = (
-            self.shared_state.current_liquidity_amounts.copy()
+            self.shared_state.current_liquidity_amounts
         )
         self.sampled_bet.outcomeTokenMarginalPrices = (
-            self.shared_state.current_liquidity_prices.copy()
+            self.shared_state.current_liquidity_prices
         )
         self.sampled_bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[
             self.shared_state.mock_question_id
         ]
+        log_message = f"self.bets after updating sampled_bet: {self.bets}"
+        self.context.logger.info(log_message)
 
     def check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
