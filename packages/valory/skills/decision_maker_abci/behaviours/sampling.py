@@ -133,9 +133,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
 
-            if self.benchmarking_mode.enabled:
-                self.read_bets()
-
             idx = self._sample()
             self.store_bets()
             if idx is None:

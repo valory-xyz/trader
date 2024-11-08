@@ -267,17 +267,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @property
     def sampled_bet(self) -> Bet:
-        """Get the sampled bet."""
+        """Get the sampled bet and resets the self.bets list of the trader."""
         self.read_bets()
         bet_index = self.synchronized_data.sampled_bet_index
-        msg = f"The sampled_bet_index in synchronized data is: {bet_index}"
-        self.context.logger.info(msg)
-        # default value, how to initialize this value in the benchmarking mode
-        # try:
-        #     bet_index = self.synchronized_data.sampled_bet_index
-        # except ValueError:
-        #     # workaround
-        #     bet_index = 0
         return self.bets[bet_index]
 
     @property
@@ -294,6 +286,18 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def wei_to_native(wei: int) -> float:
         """Convert WEI to native token."""
         return wei / 10**18
+
+    def get_active_sampled_bet(self) -> Bet:
+        """Function to get the selected bet that is active without reseting self.bets"""
+        bet_index = self.synchronized_data.sampled_bet_index
+        msg = f"get_active_sampled_bet: The sampled_bet_index in synchronized data is: {bet_index}"
+        self.context.logger.info(msg)
+        if len(self.bets) == 0:
+            msg = "The length of self.bets is 0"
+            self.context.logger.info(msg)
+            self.read_bets()
+
+        return self.bets[bet_index]
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
@@ -321,13 +325,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         log_message = "Updating sample bet information from shared data"
         self.context.logger.info(log_message)
 
-        self.sampled_bet.outcomeTokenAmounts = (
+        active_sampled_bet = self.get_active_sampled_bet()
+        active_sampled_bet.outcomeTokenAmounts = (
             self.shared_state.current_liquidity_amounts
         )
-        self.sampled_bet.outcomeTokenMarginalPrices = (
+        active_sampled_bet.outcomeTokenMarginalPrices = (
             self.shared_state.current_liquidity_prices
         )
-        self.sampled_bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[
+        active_sampled_bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[
             self.shared_state.mock_question_id
         ]
         log_message = f"self.bets after updating sampled_bet: {self.bets}"

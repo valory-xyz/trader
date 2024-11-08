@@ -101,7 +101,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
-        sampled_bet_id = self.sampled_bet.id
+        active_sampled_bet = self.get_active_sampled_bet()
+        sampled_bet_id = active_sampled_bet.id
 
         # we have now one reader pointer per market
         available_rows_for_market = self.shared_state.bet_id_row_manager[sampled_bet_id]
@@ -162,7 +163,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _mock_response(self) -> None:
         """Mock the response data."""
-        # TODO read the next row for the active market
         dataset_row = self._next_dataset_row()
         if dataset_row is None:
             return
@@ -296,7 +296,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return 0, 0
 
         _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
-            token_amounts, prices, net_bet_amount, vote
+            token_amounts.copy(), prices.copy(), net_bet_amount, vote
         )
 
         return num_shares, available_shares
@@ -310,8 +310,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _update_shared_data_liquidity(self):
         """Update the share data information from the sampled_bet"""
-
-        question_id = self.sampled_bet.id
+        active_sampled_bet = self.get_active_sampled_bet()
+        question_id = active_sampled_bet.id
         # check if share state information is empty and we need to initialize
         empty_dict = len(self.shared_state.liquidity_amounts) == 0
         new_market = question_id not in self.shared_state.liquidity_amounts.keys()
@@ -319,13 +319,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             log_message = f"Initializing shared state information from the sampled bet with market id: {question_id}"
             self.context.logger.info(log_message)
             self.shared_state.current_liquidity_amounts = (
-                self.sampled_bet.outcomeTokenAmounts
+                active_sampled_bet.outcomeTokenAmounts
             )
             self.shared_state.current_liquidity_prices = (
-                self.sampled_bet.outcomeTokenMarginalPrices
+                active_sampled_bet.outcomeTokenMarginalPrices
             )
             self.shared_state.liquidity_cache[question_id] = (
-                self.sampled_bet.scaledLiquidityMeasure
+                active_sampled_bet.scaledLiquidityMeasure
             )
         return
 
@@ -342,7 +342,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             _,
             _,
         ) = self._compute_new_tokens_distribution(
-            token_amounts, prices, net_bet_amount, vote
+            token_amounts.copy(), prices.copy(), net_bet_amount, vote
         )
 
         new_other = other_tokens_in_pool + other_shares
@@ -383,7 +383,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             l0_start * prices[0],
             l1_start * prices[1],
         ]
-        market_id = self.sampled_bet.id
+        active_sampled_bet = self.get_active_sampled_bet()
+        market_id = active_sampled_bet.id
         self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
             liquidity_constants
         )
@@ -407,6 +408,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self, prediction_response: PredictionResponse, potential_net_profit: int
     ) -> bool:
         """Whether a rebet is allowed or not."""
+        # WARNING: Every time you call self.sampled_bet a reset in self.bets is done so any changes there will be lost
         bet = self.sampled_bet
         previous_response = deepcopy(bet.prediction_response)
         previous_liquidity = bet.position_liquidity
@@ -431,9 +433,13 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if prediction_response.vote is None:
             return False, 0
 
-        bet = self.sampled_bet
         if self.benchmarking_mode.enabled:
+            bet = self.get_active_sampled_bet()  # no reset
+            self.context.logger.info(f"Bet used for benchmarking: {bet}")
             self._update_shared_data_liquidity()
+        else:
+            # this call is destroying what it was in self.bets
+            bet = self.sampled_bet
 
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, prediction_response.vote
@@ -491,15 +497,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 )
                 # update the sample_bet from the shared state info
                 # self.update_sampled_bet_from_shared_data()
-                self.sampled_bet.outcomeTokenAmounts = (
-                    self.shared_state.current_liquidity_amounts
-                )
-                self.sampled_bet.outcomeTokenMarginalPrices = (
+                bet.outcomeTokenAmounts = self.shared_state.current_liquidity_amounts
+                bet.outcomeTokenMarginalPrices = (
                     self.shared_state.current_liquidity_prices
                 )
-                self.sampled_bet.scaledLiquidityMeasure = (
-                    self.shared_state.liquidity_cache[self.sampled_bet.id]
-                )
+                bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[bet.id]
                 self.store_bets()
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
@@ -534,9 +536,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_amount = None
             next_mock_data_row = None
             bets_hash = None
-            sampled_bet_id = self.sampled_bet.id
-            log_message = f"Sampled bet id: {sampled_bet_id}"
-            self.context.logger.info(log_message)
             if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
                     prediction_response
@@ -560,14 +559,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             # always remove the processed trade from the benchmarking input file
             # now there is one reader pointer per market
             if self.benchmarking_mode.enabled:
-                # next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
-                log_message = f"Before updating bets mapping: {self.shared_state.bet_id_row_manager}"
-                self.context.logger.info(log_message)
-                if self.shared_state.bet_id_row_manager[sampled_bet_id]:
-                    self.shared_state.bet_id_row_manager[sampled_bet_id].pop(0)
+                bet = self.get_active_sampled_bet()
+                if self.shared_state.bet_id_row_manager[bet.id]:
+                    self.shared_state.bet_id_row_manager[bet.id].pop(0)
 
-                log_message = f"After updating bets mapping: {self.shared_state.bet_id_row_manager}"
-                self.context.logger.info(log_message)
+                self.store_bets()
+
             self._update_selected_bet()
             payload = DecisionReceivePayload(
                 self.context.agent_address,
