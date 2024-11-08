@@ -290,8 +290,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def get_active_sampled_bet(self) -> Bet:
         """Function to get the selected bet that is active without reseting self.bets"""
         bet_index = self.synchronized_data.sampled_bet_index
-        msg = f"get_active_sampled_bet: The sampled_bet_index in synchronized data is: {bet_index}"
-        self.context.logger.info(msg)
         if len(self.bets) == 0:
             msg = "The length of self.bets is 0"
             self.context.logger.info(msg)
