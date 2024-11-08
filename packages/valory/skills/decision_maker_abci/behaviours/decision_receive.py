@@ -371,8 +371,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Update the liquidity information at shared state and the prices after placing a bet for a market."""
-        log_message = f"Updating liquidity info after placing the bet with net_bet_amount: {net_bet_amount}"
-        self.context.logger.info(log_message)
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
         l0_start, l1_start = liquidity_info.validate_start_information()
 
@@ -506,11 +504,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
-                log_message = f"Writing the results for bet_amount: {bet_amount}"
-                self.context.logger.info(log_message)
             else:
-                log_message = f"Writing results when not profitable: {bet_amount}"
-                self.context.logger.info(log_message)
                 self._write_benchmark_results(prediction_response)
 
         if is_profitable:
