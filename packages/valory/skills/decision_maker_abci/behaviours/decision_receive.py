@@ -563,7 +563,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 # next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
                 log_message = f"Before updating bets mapping: {self.shared_state.bet_id_row_manager}"
                 self.context.logger.info(log_message)
-                self.shared_state.bet_id_row_manager[sampled_bet_id].pop(0)
+                if self.shared_state.bet_id_row_manager[sampled_bet_id]:
+                    self.shared_state.bet_id_row_manager[sampled_bet_id].pop(0)
 
                 log_message = f"After updating bets mapping: {self.shared_state.bet_id_row_manager}"
                 self.context.logger.info(log_message)
