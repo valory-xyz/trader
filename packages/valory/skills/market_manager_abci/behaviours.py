@@ -62,8 +62,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
-        log_message = "Storing bets at the bets.json file"
-        self.context.logger.info(log_message)
         serialized = serialize_bets(self.bets)
         if serialized is None:
             self.context.logger.warning("No bets to store.")
@@ -84,8 +82,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
-        log_message = "Reading bets at the bets.json file"
-        self.context.logger.info(log_message)
         if not os.path.isfile(self.bets_filepath):
             self.context.logger.warning(
                 f"No stored bets file was detected in {self.bets_filepath}. Assuming bets are empty."

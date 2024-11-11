@@ -14,10 +14,10 @@ fingerprint:
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
   behaviours/base.py: bafybeibrqvmybazi3zhakfecomaaztfah2xolbnk3rlnihmoqjzaxlxlgy
   behaviours/bet_placement.py: bafybeihmia64t2payxfqcnfdqg675ui2yp3hnyfwb2xhj2hn7wl237b4re
-  behaviours/blacklisting.py: bafybeiccquqjts7s37ezml2gr5s5hdvbihagszaeqhy2mnewvy7owrbhsm
+  behaviours/blacklisting.py: bafybeifitqx2omj5qdwokizhqjkxvybtsyxo22dxkucbtxaocafzgbseku
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
-  behaviours/decision_receive.py: bafybeic4sewew4vlemskrdb7xcdb2yowuq4ni6psran46tma7xpt2i27l4
+  behaviours/decision_receive.py: bafybeidou3j76ukrln5xenkeayfykaygvkath6vwdt2ugquec5wsrpqmga
   behaviours/decision_request.py: bafybeifc5kmafyjae3nrydqytpn5nbjabvfxdliwlisl6ejlqk76hmcr6y
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeicrmdvhci5prfldvuf3bclbbqi6j7lpv6hmphw3qwgmkmwat3od44
@@ -85,7 +85,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeiaskdg4qd5ccr7wlsl363fjd3zurzgfy7fxzd4vhlwgllezxmth3i
+- valory/market_manager_abci:0.1.0:bafybeid42tfvzicskpdxeppatzvghj2i2bqdtkgs4wobgadwgtp3jr5rme
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:

@@ -499,31 +499,25 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
-                log_message = f"Writing the results for bet_amount: {bet_amount}"
-                self.context.logger.info(log_message)
             else:
-                log_message = f"Writing results when not profitable: {bet_amount}"
-                self.context.logger.info(log_message)
                 self._write_benchmark_results(prediction_response)
 
         return is_profitable, bet_amount
 
-    def _update_selected_bet(self, is_profitable: bool) -> None:
+    def _update_selected_bet(
+        self, prediction_response: Optional[PredictionResponse]
+    ) -> None:
         """Update the selected bet."""
         # update the bet's timestamp of processing and its number of bets for the given id
         if self.benchmarking_mode.enabled:
-            log_message = f"variable is_profitable: {is_profitable}"
-            self.context.logger.info(log_message)
-            active_sampled_bet = self.get_active_sampled_bet()
-            active_sampled_bet.processed_timestamp = self.synced_timestamp
-            active_sampled_bet.n_bets += 1
+            if prediction_response is not None:
+                active_sampled_bet = self.get_active_sampled_bet()
+                active_sampled_bet.processed_timestamp = self.synced_timestamp
+                active_sampled_bet.n_bets += 1
         else:
             self.sampled_bet.processed_timestamp = self.synced_timestamp
             self.sampled_bet.n_bets += 1
         self.store_bets()
-        self.context.logger.info(
-            f"value of n_bets after increasing: {self.sampled_bet.n_bets}"
-        )
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -547,8 +541,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 and self.benchmarking_mode.enabled
                 and not self._rows_exceeded
             ):
-                log_message = f"Writing again the results for bet_amount: {bet_amount}"
-                self.context.logger.info(log_message)
                 self._write_benchmark_results(
                     prediction_response,
                     bet_amount,
@@ -561,9 +553,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 bet = self.get_active_sampled_bet()
                 if self.shared_state.bet_id_row_manager[bet.id]:
                     self.shared_state.bet_id_row_manager[bet.id].pop(0)
-                self.store_bets()
 
-            self._update_selected_bet(is_profitable)
+            self._update_selected_bet(prediction_response)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 bets_hash,
