@@ -198,7 +198,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(
             f"Preparing a multisig transaction to sell the outcome token for {outcome!r}, with confidence "
             f"{self.synchronized_data.confidence!r}, for the amount of {investment}, which is equal to the amount of "
-            f"{self.buy_amount!r} WEI of the conditional token corresponding to {outcome!r}."
+            f"{self.sell_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )
 
         return self.tx_hex
@@ -214,6 +214,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
             # TODO: there should be some kind of check here to verify the amount being sold is not more than the
             #  previously bought amount
             #  this needs to call balanceOf on the ERC20 contract
+            #  use conditionaltokenaddress
             self.check_outcome_token_balance()
 
             if self.is_wxdai:
