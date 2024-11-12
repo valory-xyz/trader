@@ -112,11 +112,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.warning(msg)
             return None
 
-        msg = f"available bets: {available_bets}"
-        self.context.logger.info(msg)
         idx = self._sampled_bet_idx(available_bets)
-        msg = f"The index of the bet with the max scaled liquidity measure is: {idx}"
-        self.context.logger.info(msg)
         sampled_bet = self.bets[idx]
         liquidity = sampled_bet.scaledLiquidityMeasure
         if liquidity == 0:
