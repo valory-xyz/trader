@@ -20,7 +20,7 @@
 """This module contains the behaviours for the check stop trading skill."""
 
 import math
-from typing import Generator, Set, Type, cast
+from typing import Any, Generator, Set, Type, cast
 
 from packages.valory.contracts.mech.contract import Mech as MechContract
 from packages.valory.skills.abstract_round_abci.base import get_name
@@ -53,6 +53,11 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     """A behaviour that checks stop trading conditions."""
 
     matching_round = CheckStopTradingRound
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the behaviour."""
+        super().__init__(**kwargs)
+        self._mech_request_count: int = 0
 
     @property
     def mech_request_count(self) -> int:
@@ -95,7 +100,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
 
         yield from self.wait_for_condition_with_sleep(self._get_mech_request_count)
         mech_request_count = self.mech_request_count
-        self.context.logger.debug(f"{self.mech_request_count=}")
+        self.context.logger.debug(f"{mech_request_count=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_service_info)
         mech_request_count_on_last_checkpoint = self.service_info[2][1]

@@ -19,17 +19,20 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-from typing import Generator, Iterator, List, Optional
+import random
+from typing import Any, Generator, List, Optional
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
-from packages.valory.skills.market_manager_abci.bets import Bet, BetStatus
+from packages.valory.skills.market_manager_abci.bets import Bet
 
 
+WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
+UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour):
@@ -37,24 +40,56 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     matching_round = SamplingRound
 
-    @property
-    def available_bets(self) -> Iterator[Bet]:
-        """Get an iterator of the unprocessed bets."""
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize Behaviour."""
+        super().__init__(**kwargs)
+        self.should_rebet: bool = False
 
-        # Note: the openingTimestamp is misleading as it is the closing timestamp of the bet
-        if self.params.using_kelly:
-            # get only bets that close in the next 48 hours
-            self.bets = [
-                bet
-                for bet in self.bets
-                if bet.openingTimestamp
-                <= (
-                    self.synced_timestamp
-                    + self.params.sample_bets_closing_days * UNIX_DAY
-                )
-            ]
+    def setup(self) -> None:
+        """Setup the behaviour."""
+        self.read_bets()
+        has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
+        if has_bet_in_the_past:
+            random.seed(self.synchronized_data.most_voted_randomness)
+            self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
+        rebetting_status = "enabled" if self.should_rebet else "disabled"
+        self.context.logger.info(f"Rebetting {rebetting_status}.")
 
-        return filter(lambda bet: bet.status == BetStatus.UNPROCESSED, self.bets)
+    def has_liquidity_changed(self, bet: Bet) -> bool:
+        """Whether the liquidity of a specific market has changed since it was last selected."""
+        previous_bet_liquidity = self.shared_state.liquidity_cache.get(bet.id, None)
+        return bet.scaledLiquidityMeasure != previous_bet_liquidity
+
+    def processable_bet(self, bet: Bet) -> bool:
+        """Whether we can process the given bet."""
+        now = self.synced_timestamp
+        # Note: `openingTimestamp` is the timestamp when a question stops being available for voting.
+        within_opening_range = bet.openingTimestamp <= (
+            now + self.params.sample_bets_closing_days * UNIX_DAY
+        )
+        within_safe_range = now < bet.openingTimestamp + self.params.safe_voting_range
+        within_ranges = within_opening_range and within_safe_range
+
+        # if we should not rebet, we have all the information we need
+        if not self.should_rebet:
+            # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
+            # e.g.:
+            #     1. a market is selected
+            #     2. the mech is uncertain
+            #     3. a bet is not placed
+            #     4. the market's liquidity never changes
+            #     5. the market is never selected again, and therefore a bet is never placed on it
+            return within_ranges and self.has_liquidity_changed(bet)
+
+        # if we should rebet, we should have at least one bet processed in the past
+        if not bool(bet.n_bets):
+            return False
+
+        # create a filter based on whether we can rebet or not
+        lifetime = bet.openingTimestamp - now
+        t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
+        can_rebet = now >= bet.processed_timestamp + t_rebetting
+        return within_ranges and can_rebet
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
@@ -70,7 +105,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
-        available_bets = list(self.available_bets)
+        available_bets = list(filter(self.processable_bet, self.bets))
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
@@ -78,22 +113,21 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             return None
 
         idx = self._sampled_bet_idx(available_bets)
-
-        if self.bets[idx].scaledLiquidityMeasure == 0:
+        sampled_bet = self.bets[idx]
+        liquidity = sampled_bet.scaledLiquidityMeasure
+        if liquidity == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
             self.context.logger.warning(msg)
             return None
+        self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
 
-        # update the bet's status for the given id to `PROCESSED`
-        self.bets[idx].status = BetStatus.PROCESSED
-        msg = f"Sampled bet: {self.bets[idx]}"
+        msg = f"Sampled bet: {sampled_bet}"
         self.context.logger.info(msg)
         return idx
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            self.read_bets()
             idx = self._sample()
             self.store_bets()
             if idx is None:

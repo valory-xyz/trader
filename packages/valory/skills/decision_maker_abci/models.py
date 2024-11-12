@@ -75,14 +75,10 @@ DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
-P_YES_FIELD = "p_yes"
-P_NO_FIELD = "p_no"
-CONFIDENCE_FIELD = "confidence"
 L0_START_FIELD = "l0_start"
 L1_START_FIELD = "l1_start"
 L0_END_FIELD = "l0_end"
 L1_END_FIELD = "l1_end"
-INFO_UTILITY_FIELD = "info_utility"
 YES = "yes"
 NO = "no"
 
@@ -110,6 +106,13 @@ class LiquidityInfo:
     # Liquidity of tokens for option 1, after placing the bet
     l1_end: Optional[int] = None
 
+    def validate_start_information(self) -> Tuple[int, int]:
+        """Check if the start liquidity information is complete, otherwise raise an error."""
+        if self.l0_start is None or self.l1_start is None:
+            raise ValueError("The liquidity information is incomplete!")
+        # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
+        return self.l0_start, self.l1_start
+
     def validate_end_information(self) -> Tuple[int, int]:
         """Check if the end liquidity information is complete, otherwise raise an error."""
         if self.l0_end is None or self.l1_end is None:
@@ -117,12 +120,11 @@ class LiquidityInfo:
         # return the values for type checking purposes (`mypy` would complain that they might be `None` otherwise)
         return self.l0_end, self.l1_end
 
-    def get_new_prices(self) -> List[float]:
-        """Calculate and return the new prices based on the end liquidity."""
+    def get_new_prices(self, liquidity_constants: List[float]) -> List[float]:
+        """Calculate and return the new prices based on the end liquidity and the liquidity constants of the market."""
         l0_end, l1_end = self.validate_end_information()
-        total_end_liquidity = l0_end + l1_end
-        new_p0 = l0_end / total_end_liquidity
-        new_p1 = l1_end / total_end_liquidity
+        new_p0 = liquidity_constants[0] / l0_end
+        new_p1 = liquidity_constants[1] / l1_end
         return [new_p0, new_p1]
 
     def get_end_liquidity(self) -> List[int]:
@@ -206,6 +208,8 @@ class SharedState(BaseSharedState):
         self.in_flight_req: bool = False
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
+        # a mapping from market id to scaled liquidity measure
+        self.liquidity_cache: Dict[str, float] = {}
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
         self.liquidity_prices: Dict[str, List[float]] = {}
@@ -341,10 +345,6 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.tools_accuracy_hash: str = self._ensure("tools_accuracy_hash", kwargs, str)
         # the threshold amount in WEI starting from which we are willing to place a bet
         self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
-        # the duration, in seconds, of blacklisting a bet before retrying to make an estimate for it
-        self.blacklisting_duration: int = self._ensure(
-            "blacklisting_duration", kwargs, int
-        )
         self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
         check_prompt_template(self.prompt_template)
         self.dust_threshold: int = self._ensure("dust_threshold", kwargs, int)
@@ -411,6 +411,8 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "mech_to_subscription_params",
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
+        self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
+        self.rebet_chance = self._ensure("rebet_chance", kwargs, float)
         super().__init__(*args, **kwargs)
 
     @property
@@ -515,43 +517,6 @@ class MultisendBatch:
     data: HexBytes
     value: int = 0
     operation: MultiSendOperation = MultiSendOperation.CALL
-
-
-@dataclass(init=False)
-class PredictionResponse:
-    """A response of a prediction."""
-
-    p_yes: float
-    p_no: float
-    confidence: float
-    info_utility: float
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the mech's prediction ignoring extra keys."""
-        self.p_yes = float(kwargs.pop(P_YES_FIELD))
-        self.p_no = float(kwargs.pop(P_NO_FIELD))
-        self.confidence = float(kwargs.pop(CONFIDENCE_FIELD))
-        self.info_utility = float(kwargs.pop(INFO_UTILITY_FIELD))
-
-        # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
-        probabilities = (getattr(self, field_) for field_ in self.__annotations__)
-        if (
-            any(not (0 <= prob <= 1) for prob in probabilities)
-            or self.p_yes + self.p_no != 1
-        ):
-            raise ValueError("Invalid prediction response initialization.")
-
-    @property
-    def vote(self) -> Optional[int]:
-        """Return the vote. `0` represents "yes" and `1` represents "no"."""
-        if self.p_no != self.p_yes:
-            return int(self.p_no > self.p_yes)
-        return None
-
-    @property
-    def win_probability(self) -> Optional[float]:
-        """Return the probability estimation for winning with vote."""
-        return max(self.p_no, self.p_yes)
 
 
 @dataclass

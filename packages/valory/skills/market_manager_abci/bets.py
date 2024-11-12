@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -24,19 +24,56 @@ import builtins
 import dataclasses
 import json
 import sys
-from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Union
 
 
+P_YES_FIELD = "p_yes"
+P_NO_FIELD = "p_no"
+CONFIDENCE_FIELD = "confidence"
+INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
 
 
-class BetStatus(Enum):
-    """A bet's status."""
+@dataclasses.dataclass(init=False)
+class PredictionResponse:
+    """A response of a prediction."""
 
-    UNPROCESSED = auto()
-    PROCESSED = auto()
-    BLACKLISTED = auto()
+    p_yes: float
+    p_no: float
+    confidence: float
+    info_utility: float
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the mech's prediction ignoring extra keys."""
+        self.p_yes = float(kwargs.pop(P_YES_FIELD))
+        self.p_no = float(kwargs.pop(P_NO_FIELD))
+        self.confidence = float(kwargs.pop(CONFIDENCE_FIELD))
+        self.info_utility = float(kwargs.pop(INFO_UTILITY_FIELD))
+
+        # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
+        probabilities = (getattr(self, field_) for field_ in self.__annotations__)
+        if (
+            any(not (0 <= prob <= 1) for prob in probabilities)
+            or self.p_yes + self.p_no != 1
+        ):
+            raise ValueError("Invalid prediction response initialization.")
+
+    @property
+    def vote(self) -> Optional[int]:
+        """Return the vote. `0` represents "yes" and `1` represents "no"."""
+        if self.p_no != self.p_yes:
+            return int(self.p_no > self.p_yes)
+        return None
+
+    @property
+    def win_probability(self) -> float:
+        """Return the probability estimation for winning with vote."""
+        return max(self.p_no, self.p_yes)
+
+
+def get_default_prediction_response() -> PredictionResponse:
+    """Get the default prediction response."""
+    return PredictionResponse(p_yes=0.5, p_no=0.5, confidence=0.5, info_utility=0.5)
 
 
 @dataclasses.dataclass
@@ -55,8 +92,13 @@ class Bet:
     outcomeTokenMarginalPrices: List[float]
     outcomes: Optional[List[str]]
     scaledLiquidityMeasure: float
-    status: BetStatus = BetStatus.UNPROCESSED
-    blacklist_expiration: float = -1
+    prediction_response: PredictionResponse = dataclasses.field(
+        default_factory=get_default_prediction_response
+    )
+    position_liquidity: int = 0
+    potential_net_profit: int = 0
+    processed_timestamp: int = 0
+    n_bets: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -71,8 +113,7 @@ class Bet:
     def _blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
         self.outcomes = None
-        self.status = BetStatus.BLACKLISTED
-        self.blacklist_expiration = sys.maxsize
+        self.processed_timestamp = sys.maxsize
 
     def _validate(self) -> None:
         """Validate the values of the instance."""
@@ -108,9 +149,6 @@ class Bet:
 
     def _cast(self) -> None:
         """Cast the values of the instance."""
-        if isinstance(self.status, int):
-            self.status = BetStatus(self.status)
-
         types_to_cast = ("int", "float", "str")
         str_to_type = {getattr(builtins, type_): type_ for type_ in types_to_cast}
         for field, hinted_type in self.__annotations__.items():
@@ -159,14 +197,46 @@ class Bet:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
 
+    def update_market_info(self, bet: "Bet") -> None:
+        """Update the bet's market information."""
+        if (
+            self.processed_timestamp == sys.maxsize
+            or bet.processed_timestamp == sys.maxsize
+        ):
+            # do not update the bet if it has been blacklisted forever
+            return
+        self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
+        self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
+        self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
+
+    def rebet_allowed(
+        self,
+        prediction_response: PredictionResponse,
+        liquidity: int,
+        potential_net_profit: int,
+    ) -> bool:
+        """Check if a rebet is allowed based on the previous bet's information."""
+        if self.n_bets == 0:
+            # it's the first time betting, always allow it
+            return True
+
+        more_confident = (
+            self.prediction_response.win_probability
+            >= prediction_response.win_probability
+        )
+        if self.prediction_response.vote == prediction_response.vote:
+            higher_liquidity = self.position_liquidity >= liquidity
+            return more_confident and higher_liquidity
+        else:
+            profit_increases = self.potential_net_profit >= potential_net_profit
+            return more_confident and profit_increases
+
 
 class BetsEncoder(json.JSONEncoder):
     """JSON encoder for bets."""
 
     def default(self, o: Any) -> Any:
         """The default encoder."""
-        if isinstance(o, BetStatus):
-            return o.value
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
@@ -180,11 +250,17 @@ class BetsDecoder(json.JSONDecoder):
         super().__init__(object_hook=self.hook, *args, **kwargs)
 
     @staticmethod
-    def hook(data: Dict[str, Any]) -> Union[Bet, Dict[str, Bet]]:
+    def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:
         """Perform the custom decoding."""
+        # if this is a `PredictionResponse`
+        prediction_attributes = sorted(PredictionResponse.__annotations__.keys())
+        data_attributes = sorted(data.keys())
+        if prediction_attributes == data_attributes:
+            return PredictionResponse(**data)
+
         # if this is a `Bet`
-        status_attributes = Bet.__annotations__.keys()
-        if sorted(status_attributes) == sorted(data.keys()):
+        bet_annotations = sorted(Bet.__annotations__.keys())
+        if bet_annotations == data_attributes:
             return Bet(**data)
 
         return data

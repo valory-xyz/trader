@@ -22,6 +22,8 @@
 
 from typing import Any
 
+from aea.exceptions import enforce
+
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -44,6 +46,9 @@ class CheckStopTradingParams(StakingParams):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
+        mech_address = kwargs.get("mech_contract_address", None)
+        enforce(mech_address is not None, "Mech contract address not specified!")
+        self.mech_contract_address = mech_address
         self.disable_trading: bool = self._ensure("disable_trading", kwargs, bool)
         self.stop_trading_if_staking_kpi_met: bool = self._ensure(
             "stop_trading_if_staking_kpi_met", kwargs, bool
