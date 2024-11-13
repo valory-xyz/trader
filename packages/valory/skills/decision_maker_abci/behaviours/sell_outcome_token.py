@@ -22,8 +22,12 @@
 """This module contains the behaviour for selling a token."""
 from typing import Any, Generator, Optional, cast
 
+from aea.configurations.data_types import PublicId
 from hexbytes import HexBytes
 
+from packages.valory.contracts.conditional_tokens.contract import (
+    ConditionalTokensContract,
+)
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
@@ -31,23 +35,27 @@ from packages.valory.contracts.market_maker.contract import (
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
-    WXDAI,
     WaitableConditionType,
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_token import (
+    SellOutcomeTokenRound,
+)
 
 
 class SellTokenBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents sell a token."""
 
-    # matching_round = SellTokenRound
+    matching_round = SellOutcomeTokenRound
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the sell token behaviour."""
         super().__init__(**kwargs)
         self.sell_amount = 0
+        self.outcome_token_balance = 0
+        self.return_amount = 0
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -55,45 +63,28 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
         return self.sampled_bet.id
 
     @property
-    def return_amount(self) -> int:
-        """Get the return amount of the bet."""
-        # TODO:
-        #   this will need to be the amount that we have previously bet on an outcome
-        return self.synchronized_data.bet_amount
-
-    @property
     def outcome_index(self) -> int:
         """Get the index of the outcome for which the service is going to sell token."""
         return cast(int, self.synchronized_data.vote)
 
+    @property
+    def current_condition_id(self) -> PublicId:
+        """Get the current condition id."""
+        return self.shared_state.current_condition_id
+
     def check_outcome_token_balance(self) -> WaitableConditionType:
         """Check the safe's balance for a particular outcome token."""
-
-    def _build_exchange_tx(self) -> WaitableConditionType:
-        """Exchange xDAI to wxDAI."""
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
-            contract_address=WXDAI,
-            contract_id=str(ERC20.contract_id),
-            contract_callable="build_deposit_tx",
+        response_msg = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.conditional_tokens_address,
+            contract_public_id=ConditionalTokensContract.contract_id,
+            contract_callable="balanceOf",
+            data_key="data",
+            placeholder="outcome_token_balance",
+            id=self.current_condition_id,
+            owner=self.synchronized_data.safe_contract_address,
         )
-
-        if response_msg.performative != ContractApiMessage.Performative.STATE:
-            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
-            return False
-
-        approval_data = response_msg.state.body.get("data")
-        if approval_data is None:
-            self.context.logger.info(f"Could not build deposit tx: {response_msg}")
-            return False
-
-        batch = MultisendBatch(
-            to=self.collateral_token,
-            data=HexBytes(approval_data),
-            value=self.w_xdai_deficit,
-        )
-        self.multisend_batches.append(batch)
-        return True
+        return response_msg
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
@@ -211,11 +202,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             tx_submitter = betting_tx_hex = mocking_mode = None
 
-            # TODO: there should be some kind of check here to verify the amount being sold is not more than the
-            #  previously bought amount
-            #  this needs to call balanceOf on the ERC20 contract
-            #  use conditionaltokenaddress
-            self.check_outcome_token_balance()
+            self.return_amount = yield from self.check_outcome_token_balance()
 
             if self.is_wxdai:
                 tx_submitter = self.matching_round.auto_round_id()
