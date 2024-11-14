@@ -46,6 +46,8 @@ AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
 OK_CODE = 200
+MAX_STR = "max"
+DATETIME_FORMAT_STR = "%Y-%m-%d %H:%M:%S"
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -330,7 +332,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # try to read the maximum transaction date in the remote accuracy info
         try:
             for row in reader:
-                current_transaction_date = row.get("max")
+                current_transaction_date = row.get(MAX_STR)
                 if (
                     max_transaction_date is None
                     or current_transaction_date > max_transaction_date
@@ -345,8 +347,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         if max_transaction_date:
             self.context.logger.info(f"Maximum date found: {max_transaction_date}")
-            format_str = "%Y-%m-%d %H:%M:%S"
-            max_datetime = datetime.strptime(max_transaction_date, format_str)
+            max_datetime = datetime.strptime(max_transaction_date, DATETIME_FORMAT_STR)
             unix_timestamp = int(max_datetime.timestamp())
             print(f"returning timestamp: {unix_timestamp}")
             return unix_timestamp
