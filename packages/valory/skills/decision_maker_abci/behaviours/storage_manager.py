@@ -304,7 +304,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self.context.logger.info(f"Maximum date found: {max_transaction_date}")
             max_datetime = datetime.strptime(max_transaction_date, DATETIME_FORMAT_STR)
             unix_timestamp = int(max_datetime.timestamp())
-            print(f"returning timestamp: {unix_timestamp}")
             return unix_timestamp
 
         self.context.logger.info("No maximum date found.")
@@ -313,7 +312,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _check_local_policy_store_overwrite(self) -> bool:
         """Compare the local and remote policy store dates and decide which to use."""
 
-        local_policy_store_date = self._policy.updated_ts
+        local_policy_store_date = self.policy.updated_ts
         remote_policy_store_date = self._fetch_remote_tool_date()
         policy_store_update_offset = self.params.policy_store_update_offset
 
