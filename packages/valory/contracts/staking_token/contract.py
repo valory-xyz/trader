@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
+"""This module contains the class to connect to the `StakingToken` contract."""
 
 from enum import Enum
 
@@ -28,7 +28,7 @@ from aea.crypto.base import LedgerApi
 
 
 class StakingTokenContract(Contract):
-    """The Service Staking contract."""
+    """The Staking Token contract."""
 
     contract_id = PublicId.from_str("valory/staking_token:0.1.0")
 

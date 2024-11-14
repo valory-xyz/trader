@@ -510,13 +510,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Update the selected bet."""
         # update the bet's timestamp of processing and its number of bets for the given id
         if self.benchmarking_mode.enabled:
+            active_sampled_bet = self.get_active_sampled_bet()
+            active_sampled_bet.processed_timestamp = self.synced_timestamp
             if prediction_response is not None:
-                active_sampled_bet = self.get_active_sampled_bet()
-                active_sampled_bet.processed_timestamp = self.synced_timestamp
                 active_sampled_bet.n_bets += 1
+
         else:
-            self.sampled_bet.processed_timestamp = self.synced_timestamp
-            self.sampled_bet.n_bets += 1
+            # update the bet's timestamp of processing and its number of bets for the given
+            sampled_bet = self.sampled_bet
+            sampled_bet.n_bets += 1
+            sampled_bet.processed_timestamp = self.synced_timestamp
+
         self.store_bets()
 
     def async_act(self) -> Generator:
