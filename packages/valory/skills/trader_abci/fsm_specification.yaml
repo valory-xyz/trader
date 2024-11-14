@@ -1,250 +1,250 @@
 alphabet_in:
-- BENCHMARKING_DISABLED
-- BENCHMARKING_ENABLED
-- BENCHMARKING_FINISHED
-- BET_PLACEMENT_DONE
-- BLACKLIST
-- CHECKS_PASSED
-- CHECK_HISTORY
-- CHECK_LATE_ARRIVING_MESSAGE
-- CHECK_TIMEOUT
-- DONE
-- FETCH_ERROR
-- FINALIZATION_FAILED
-- FINALIZE_TIMEOUT
-- INCORRECT_SERIALIZATION
-- INSUFFICIENT_BALANCE
-- INSUFFICIENT_FUNDS
-- MECH_REQUESTING_DONE
-- MECH_RESPONSE_ERROR
-- MOCK_MECH_REQUEST
-- MOCK_TX
-- NEGATIVE
-- NEXT_CHECKPOINT_NOT_REACHED_YET
-- NONE
-- NO_MAJORITY
-- NO_OP
-- NO_REDEEMING
-- NO_SUBSCRIPTION
-- REDEEMING_DONE
-- REDEEM_ROUND_TIMEOUT
-- REFILL_REQUIRED
-- RESET_AND_PAUSE_TIMEOUT
-- RESET_TIMEOUT
-- ROUND_TIMEOUT
-- SERVICE_EVICTED
-- SERVICE_NOT_STAKED
-- SKIP_REQUEST
-- SKIP_TRADING
-- SLOTS_UNSUPPORTED_ERROR
-- STAKING_DONE
-- SUBSCRIPTION_DONE
-- SUBSCRIPTION_ERROR
-- SUSPICIOUS_ACTIVITY
-- TIE
-- UNPROFITABLE
-- UNRECOGNIZED
-- VALIDATE_TIMEOUT
+  - BENCHMARKING_DISABLED
+  - BENCHMARKING_ENABLED
+  - BENCHMARKING_FINISHED
+  - BET_PLACEMENT_DONE
+  - BLACKLIST
+  - CHECKS_PASSED
+  - CHECK_HISTORY
+  - CHECK_LATE_ARRIVING_MESSAGE
+  - CHECK_TIMEOUT
+  - DONE
+  - FETCH_ERROR
+  - FINALIZATION_FAILED
+  - FINALIZE_TIMEOUT
+  - INCORRECT_SERIALIZATION
+  - INSUFFICIENT_BALANCE
+  - INSUFFICIENT_FUNDS
+  - MECH_REQUESTING_DONE
+  - MECH_RESPONSE_ERROR
+  - MOCK_MECH_REQUEST
+  - MOCK_TX
+  - NEGATIVE
+  - NEXT_CHECKPOINT_NOT_REACHED_YET
+  - NONE
+  - NO_MAJORITY
+  - NO_OP
+  - NO_REDEEMING
+  - NO_SUBSCRIPTION
+  - REDEEMING_DONE
+  - REDEEM_ROUND_TIMEOUT
+  - REFILL_REQUIRED
+  - RESET_AND_PAUSE_TIMEOUT
+  - RESET_TIMEOUT
+  - ROUND_TIMEOUT
+  - SERVICE_EVICTED
+  - SERVICE_NOT_STAKED
+  - SKIP_REQUEST
+  - SKIP_TRADING
+  - SLOTS_UNSUPPORTED_ERROR
+  - STAKING_DONE
+  - SUBSCRIPTION_DONE
+  - SUBSCRIPTION_ERROR
+  - SUSPICIOUS_ACTIVITY
+  - TIE
+  - UNPROFITABLE
+  - UNRECOGNIZED
+  - VALIDATE_TIMEOUT
 default_start_state: RegistrationStartupRound
 final_states:
-- FailedMultiplexerRound
-- ImpossibleRound
-- ServiceEvictedRound
+  - FailedMultiplexerRound
+  - ImpossibleRound
+  - ServiceEvictedRound
 label: TraderAbciApp
 start_states:
-- RegistrationRound
-- RegistrationStartupRound
+  - RegistrationRound
+  - RegistrationStartupRound
 states:
-- BenchmarkingRandomnessRound
-- BetPlacementRound
-- BlacklistingRound
-- CallCheckpointRound
-- CheckBenchmarkingModeRound
-- CheckLateTxHashesRound
-- CheckStopTradingRound
-- CheckTransactionHistoryRound
-- ClaimRound
-- CollectSignatureRound
-- DecisionReceiveRound
-- DecisionRequestRound
-- FailedMultiplexerRound
-- FinalizationRound
-- HandleFailedTxRound
-- ImpossibleRound
-- MechRequestRound
-- MechResponseRound
-- PostTxSettlementRound
-- PreTxSettlementRound
-- RandomnessRound
-- RandomnessTransactionSubmissionRound
-- RedeemRound
-- RegistrationRound
-- RegistrationStartupRound
-- ResetAndPauseRound
-- ResetRound
-- SamplingRound
-- SelectKeeperTransactionSubmissionARound
-- SelectKeeperTransactionSubmissionBAfterTimeoutRound
-- SelectKeeperTransactionSubmissionBRound
-- ServiceEvictedRound
-- SubscriptionRound
-- SynchronizeLateMessagesRound
-- ToolSelectionRound
-- UpdateBetsRound
-- ValidateTransactionRound
+  - BenchmarkingRandomnessRound
+  - BetPlacementRound
+  - BlacklistingRound
+  - CallCheckpointRound
+  - CheckBenchmarkingModeRound
+  - CheckLateTxHashesRound
+  - CheckStopTradingRound
+  - CheckTransactionHistoryRound
+  - ClaimRound
+  - CollectSignatureRound
+  - DecisionReceiveRound
+  - DecisionRequestRound
+  - FailedMultiplexerRound
+  - FinalizationRound
+  - HandleFailedTxRound
+  - ImpossibleRound
+  - MechRequestRound
+  - MechResponseRound
+  - PostTxSettlementRound
+  - PreTxSettlementRound
+  - RandomnessRound
+  - RandomnessTransactionSubmissionRound
+  - RedeemRound
+  - RegistrationRound
+  - RegistrationStartupRound
+  - ResetAndPauseRound
+  - ResetRound
+  - SamplingRound
+  - SelectKeeperTransactionSubmissionARound
+  - SelectKeeperTransactionSubmissionBAfterTimeoutRound
+  - SelectKeeperTransactionSubmissionBRound
+  - ServiceEvictedRound
+  - SubscriptionRound
+  - SynchronizeLateMessagesRound
+  - ToolSelectionRound
+  - UpdateBetsRound
+  - ValidateTransactionRound
 transition_func:
-    (BenchmarkingRandomnessRound, DONE): SamplingRound
-    (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
-    (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
-    (BetPlacementRound, DONE): PreTxSettlementRound
-    (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
-    (BetPlacementRound, MOCK_TX): RedeemRound
-    (BetPlacementRound, NONE): ImpossibleRound
-    (BetPlacementRound, NO_MAJORITY): BetPlacementRound
-    (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
-    (BlacklistingRound, DONE): RedeemRound
-    (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): ToolSelectionRound
-    (BlacklistingRound, NONE): ImpossibleRound
-    (BlacklistingRound, NO_MAJORITY): BlacklistingRound
-    (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
-    (CallCheckpointRound, DONE): PreTxSettlementRound
-    (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
-    (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
-    (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
-    (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
-    (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
-    (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
-    (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
-    (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
-    (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
-    (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
-    (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
-    (CheckLateTxHashesRound, DONE): PostTxSettlementRound
-    (CheckLateTxHashesRound, NEGATIVE): HandleFailedTxRound
-    (CheckLateTxHashesRound, NONE): HandleFailedTxRound
-    (CheckLateTxHashesRound, NO_MAJORITY): HandleFailedTxRound
-    (CheckStopTradingRound, DONE): RandomnessRound
-    (CheckStopTradingRound, NONE): CheckStopTradingRound
-    (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
-    (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
-    (CheckStopTradingRound, SKIP_TRADING): RedeemRound
-    (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
-    (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
-    (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
-    (CheckTransactionHistoryRound, NEGATIVE): SelectKeeperTransactionSubmissionBRound
-    (CheckTransactionHistoryRound, NONE): HandleFailedTxRound
-    (CheckTransactionHistoryRound, NO_MAJORITY): CheckTransactionHistoryRound
-    (ClaimRound, DONE): ToolSelectionRound
-    (ClaimRound, NO_MAJORITY): ClaimRound
-    (ClaimRound, ROUND_TIMEOUT): ClaimRound
-    (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
-    (CollectSignatureRound, DONE): FinalizationRound
-    (CollectSignatureRound, NO_MAJORITY): ResetRound
-    (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
-    (DecisionReceiveRound, BENCHMARKING_FINISHED): ResetAndPauseRound
-    (DecisionReceiveRound, DONE): BetPlacementRound
-    (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
-    (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
-    (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
-    (DecisionReceiveRound, TIE): BlacklistingRound
-    (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
-    (DecisionRequestRound, DONE): MechRequestRound
-    (DecisionRequestRound, MOCK_MECH_REQUEST): DecisionReceiveRound
-    (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
-    (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
-    (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
-    (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
-    (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
-    (FinalizationRound, DONE): ValidateTransactionRound
-    (FinalizationRound, FINALIZATION_FAILED): SelectKeeperTransactionSubmissionBRound
-    (FinalizationRound, FINALIZE_TIMEOUT): SelectKeeperTransactionSubmissionBAfterTimeoutRound
-    (FinalizationRound, INSUFFICIENT_FUNDS): SelectKeeperTransactionSubmissionBRound
-    (HandleFailedTxRound, BLACKLIST): BlacklistingRound
-    (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
-    (HandleFailedTxRound, NO_OP): RedeemRound
-    (MechRequestRound, DONE): PreTxSettlementRound
-    (MechRequestRound, NO_MAJORITY): MechRequestRound
-    (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
-    (MechRequestRound, SKIP_REQUEST): RedeemRound
-    (MechResponseRound, DONE): DecisionReceiveRound
-    (MechResponseRound, NO_MAJORITY): MechResponseRound
-    (MechResponseRound, ROUND_TIMEOUT): MechResponseRound
-    (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
-    (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
-    (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
-    (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
-    (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
-    (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
-    (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
-    (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
-    (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
-    (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound
-    (RandomnessRound, DONE): SamplingRound
-    (RandomnessRound, NO_MAJORITY): RandomnessRound
-    (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
-    (RandomnessTransactionSubmissionRound, DONE): SelectKeeperTransactionSubmissionARound
-    (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
-    (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
-    (RedeemRound, DONE): PreTxSettlementRound
-    (RedeemRound, MOCK_TX): ToolSelectionRound
-    (RedeemRound, NONE): ImpossibleRound
-    (RedeemRound, NO_MAJORITY): RedeemRound
-    (RedeemRound, NO_REDEEMING): CallCheckpointRound
-    (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
-    (RegistrationRound, DONE): CheckBenchmarkingModeRound
-    (RegistrationRound, NO_MAJORITY): RegistrationRound
-    (RegistrationStartupRound, DONE): CheckBenchmarkingModeRound
-    (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
-    (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
-    (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
-    (ResetRound, DONE): RandomnessTransactionSubmissionRound
-    (ResetRound, NO_MAJORITY): HandleFailedTxRound
-    (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
-    (SamplingRound, DONE): SubscriptionRound
-    (SamplingRound, FETCH_ERROR): ImpossibleRound
-    (SamplingRound, NONE): RedeemRound
-    (SamplingRound, NO_MAJORITY): SamplingRound
-    (SamplingRound, ROUND_TIMEOUT): SamplingRound
-    (SamplingRound, BENCHMARK_ENABLED): ToolSelectionRound
-    (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
-    (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
-    (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound
-    (SelectKeeperTransactionSubmissionARound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionARound
-    (SelectKeeperTransactionSubmissionBAfterTimeoutRound, CHECK_HISTORY): CheckTransactionHistoryRound
-    (SelectKeeperTransactionSubmissionBAfterTimeoutRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
-    (SelectKeeperTransactionSubmissionBAfterTimeoutRound, DONE): FinalizationRound
-    (SelectKeeperTransactionSubmissionBAfterTimeoutRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
-    (SelectKeeperTransactionSubmissionBAfterTimeoutRound, NO_MAJORITY): ResetRound
-    (SelectKeeperTransactionSubmissionBAfterTimeoutRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBAfterTimeoutRound
-    (SelectKeeperTransactionSubmissionBRound, DONE): FinalizationRound
-    (SelectKeeperTransactionSubmissionBRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
-    (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
-    (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
-    (SubscriptionRound, DONE): PreTxSettlementRound
-    (SubscriptionRound, MOCK_TX): ToolSelectionRound
-    (SubscriptionRound, NONE): SubscriptionRound
-    (SubscriptionRound, NO_MAJORITY): SubscriptionRound
-    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
-    (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
-    (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
-    (SynchronizeLateMessagesRound, DONE): CheckLateTxHashesRound
-    (SynchronizeLateMessagesRound, NONE): SelectKeeperTransactionSubmissionBRound
-    (SynchronizeLateMessagesRound, ROUND_TIMEOUT): SynchronizeLateMessagesRound
-    (SynchronizeLateMessagesRound, SUSPICIOUS_ACTIVITY): HandleFailedTxRound
-    (ToolSelectionRound, DONE): DecisionRequestRound
-    (ToolSelectionRound, NONE): ToolSelectionRound
-    (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
-    (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
-    (UpdateBetsRound, DONE): CheckStopTradingRound
-    (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
-    (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
-    (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound
-    (ValidateTransactionRound, DONE): PostTxSettlementRound
-    (ValidateTransactionRound, NEGATIVE): CheckTransactionHistoryRound
-    (ValidateTransactionRound, NONE): SelectKeeperTransactionSubmissionBRound
-    (ValidateTransactionRound, NO_MAJORITY): ValidateTransactionRound
-    (ValidateTransactionRound, VALIDATE_TIMEOUT): CheckTransactionHistoryRound
+  (BenchmarkingRandomnessRound, DONE): SamplingRound
+  (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
+  (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
+  (BetPlacementRound, DONE): PreTxSettlementRound
+  (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
+  (BetPlacementRound, MOCK_TX): RedeemRound
+  (BetPlacementRound, NONE): ImpossibleRound
+  (BetPlacementRound, NO_MAJORITY): BetPlacementRound
+  (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
+  (BlacklistingRound, DONE): RedeemRound
+  (BlacklistingRound, FETCH_ERROR): ImpossibleRound
+  (BlacklistingRound, MOCK_TX): RedeemRound
+  (BlacklistingRound, NONE): ImpossibleRound
+  (BlacklistingRound, NO_MAJORITY): BlacklistingRound
+  (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
+  (CallCheckpointRound, DONE): PreTxSettlementRound
+  (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
+  (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
+  (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
+  (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
+  (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
+  (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
+  (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
+  (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
+  (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
+  (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
+  (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
+  (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
+  (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
+  (CheckLateTxHashesRound, DONE): PostTxSettlementRound
+  (CheckLateTxHashesRound, NEGATIVE): HandleFailedTxRound
+  (CheckLateTxHashesRound, NONE): HandleFailedTxRound
+  (CheckLateTxHashesRound, NO_MAJORITY): HandleFailedTxRound
+  (CheckStopTradingRound, DONE): RandomnessRound
+  (CheckStopTradingRound, NONE): CheckStopTradingRound
+  (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
+  (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
+  (CheckStopTradingRound, SKIP_TRADING): RedeemRound
+  (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
+  (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
+  (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
+  (CheckTransactionHistoryRound, NEGATIVE): SelectKeeperTransactionSubmissionBRound
+  (CheckTransactionHistoryRound, NONE): HandleFailedTxRound
+  (CheckTransactionHistoryRound, NO_MAJORITY): CheckTransactionHistoryRound
+  (ClaimRound, DONE): ToolSelectionRound
+  (ClaimRound, NO_MAJORITY): ClaimRound
+  (ClaimRound, ROUND_TIMEOUT): ClaimRound
+  (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
+  (CollectSignatureRound, DONE): FinalizationRound
+  (CollectSignatureRound, NO_MAJORITY): ResetRound
+  (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
+  (DecisionReceiveRound, BENCHMARKING_FINISHED): ResetAndPauseRound
+  (DecisionReceiveRound, DONE): BetPlacementRound
+  (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
+  (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
+  (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
+  (DecisionReceiveRound, TIE): BlacklistingRound
+  (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
+  (DecisionRequestRound, DONE): MechRequestRound
+  (DecisionRequestRound, MOCK_MECH_REQUEST): DecisionReceiveRound
+  (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
+  (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
+  (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+  (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
+  (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
+  (FinalizationRound, DONE): ValidateTransactionRound
+  (FinalizationRound, FINALIZATION_FAILED): SelectKeeperTransactionSubmissionBRound
+  (FinalizationRound, FINALIZE_TIMEOUT): SelectKeeperTransactionSubmissionBAfterTimeoutRound
+  (FinalizationRound, INSUFFICIENT_FUNDS): SelectKeeperTransactionSubmissionBRound
+  (HandleFailedTxRound, BLACKLIST): BlacklistingRound
+  (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
+  (HandleFailedTxRound, NO_OP): RedeemRound
+  (MechRequestRound, DONE): PreTxSettlementRound
+  (MechRequestRound, NO_MAJORITY): MechRequestRound
+  (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
+  (MechRequestRound, SKIP_REQUEST): RedeemRound
+  (MechResponseRound, DONE): DecisionReceiveRound
+  (MechResponseRound, NO_MAJORITY): MechResponseRound
+  (MechResponseRound, ROUND_TIMEOUT): MechResponseRound
+  (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
+  (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
+  (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
+  (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
+  (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
+  (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
+  (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
+  (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
+  (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
+  (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
+  (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound
+  (RandomnessRound, DONE): SamplingRound
+  (RandomnessRound, NO_MAJORITY): RandomnessRound
+  (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
+  (RandomnessTransactionSubmissionRound, DONE): SelectKeeperTransactionSubmissionARound
+  (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
+  (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
+  (RedeemRound, DONE): PreTxSettlementRound
+  (RedeemRound, MOCK_TX): SamplingRound
+  (RedeemRound, NONE): ImpossibleRound
+  (RedeemRound, NO_MAJORITY): RedeemRound
+  (RedeemRound, NO_REDEEMING): CallCheckpointRound
+  (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
+  (RegistrationRound, DONE): CheckBenchmarkingModeRound
+  (RegistrationRound, NO_MAJORITY): RegistrationRound
+  (RegistrationStartupRound, DONE): CheckBenchmarkingModeRound
+  (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
+  (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
+  (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
+  (ResetRound, DONE): RandomnessTransactionSubmissionRound
+  (ResetRound, NO_MAJORITY): HandleFailedTxRound
+  (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
+  (SamplingRound, DONE): SubscriptionRound
+  (SamplingRound, FETCH_ERROR): ImpossibleRound
+  (SamplingRound, NONE): RedeemRound
+  (SamplingRound, NO_MAJORITY): SamplingRound
+  (SamplingRound, ROUND_TIMEOUT): SamplingRound
+  (SamplingRound, BENCHMARK_ENABLED): ToolSelectionRound
+  (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
+  (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
+  (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound
+  (SelectKeeperTransactionSubmissionARound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionARound
+  (SelectKeeperTransactionSubmissionBAfterTimeoutRound, CHECK_HISTORY): CheckTransactionHistoryRound
+  (SelectKeeperTransactionSubmissionBAfterTimeoutRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
+  (SelectKeeperTransactionSubmissionBAfterTimeoutRound, DONE): FinalizationRound
+  (SelectKeeperTransactionSubmissionBAfterTimeoutRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
+  (SelectKeeperTransactionSubmissionBAfterTimeoutRound, NO_MAJORITY): ResetRound
+  (SelectKeeperTransactionSubmissionBAfterTimeoutRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBAfterTimeoutRound
+  (SelectKeeperTransactionSubmissionBRound, DONE): FinalizationRound
+  (SelectKeeperTransactionSubmissionBRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
+  (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
+  (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
+  (SubscriptionRound, DONE): PreTxSettlementRound
+  (SubscriptionRound, MOCK_TX): ToolSelectionRound
+  (SubscriptionRound, NONE): SubscriptionRound
+  (SubscriptionRound, NO_MAJORITY): SubscriptionRound
+  (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
+  (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
+  (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
+  (SynchronizeLateMessagesRound, DONE): CheckLateTxHashesRound
+  (SynchronizeLateMessagesRound, NONE): SelectKeeperTransactionSubmissionBRound
+  (SynchronizeLateMessagesRound, ROUND_TIMEOUT): SynchronizeLateMessagesRound
+  (SynchronizeLateMessagesRound, SUSPICIOUS_ACTIVITY): HandleFailedTxRound
+  (ToolSelectionRound, DONE): DecisionRequestRound
+  (ToolSelectionRound, NONE): ToolSelectionRound
+  (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
+  (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
+  (UpdateBetsRound, DONE): CheckStopTradingRound
+  (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
+  (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
+  (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound
+  (ValidateTransactionRound, DONE): PostTxSettlementRound
+  (ValidateTransactionRound, NEGATIVE): CheckTransactionHistoryRound
+  (ValidateTransactionRound, NONE): SelectKeeperTransactionSubmissionBRound
+  (ValidateTransactionRound, NO_MAJORITY): ValidateTransactionRound
+  (ValidateTransactionRound, VALIDATE_TIMEOUT): CheckTransactionHistoryRound

@@ -262,7 +262,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
-            Event.MOCK_TX: ToolSelectionRound,
+            Event.MOCK_TX: FinishedWithoutDecisionRound,
             Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
@@ -281,7 +281,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         RedeemRound: {
             Event.DONE: FinishedDecisionMakerRound,
-            Event.MOCK_TX: ToolSelectionRound,
+            Event.MOCK_TX: SamplingRound,
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.NO_MAJORITY: RedeemRound,
             # in case of a round timeout, there likely is something wrong with redeeming
