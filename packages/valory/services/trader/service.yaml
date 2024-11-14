@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeih2rxo7f2gwlo6tkryxvzweefjk2igg3ybq6liqopzdqoj36jmiku
+agent: valory/trader:0.1.0:bafybeifaw3dk5uklcgj5iftcdhj4p2ymkidoli3uxibq4olddd3eboey7e
 number_of_agents: 4
 deployment:
   agent:
@@ -143,7 +143,6 @@ type: skill
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
-        policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
     benchmark_tool: &id004
       args:

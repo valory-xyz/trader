@@ -327,7 +327,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.context.logger.info(f"Local policy store overwrite: {overwrite}.")
         return overwrite
 
-    def _update_accuracy_store(self, local_tools: List[str]) -> None:
+    def _update_accuracy_store(self) -> None:
         """Update the accuracy store file with the latest information available"""
         self.context.logger.info("Updating accuracy information of the policy...")
         sep = self.acc_info_fields.sep
@@ -336,9 +336,17 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         )
         accuracy_store = self.policy.accuracy_store
 
+        # remove tools which are irrelevant
+        for tool in accuracy_store.copy():
+            if tool not in self.mech_tools:
+                accuracy_store.pop(tool, None)
+
         # update the accuracy store using the latest accuracy information (only entered during the first period)
         for row in reader:
             tool = row[self.acc_info_fields.tool]
+            if tool not in self.mech_tools:
+                continue
+
             # overwrite local with global information (naturally, no global information is available for pending)
             accuracy_store[tool] = AccuracyInfo(
                 int(row[self.acc_info_fields.requests]),
@@ -348,7 +356,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             )
 
         # update the accuracy store by adding tools which we do not have any global information about yet
-        for tool in local_tools:
+        for tool in self.mech_tools:
             accuracy_store.setdefault(tool, AccuracyInfo())
 
         self.policy.update_weighted_accuracy()
@@ -358,15 +366,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self.is_first_period or not self.synchronized_data.is_policy_set:
             self.context.logger.debug("Setting initial policy")
             self._policy = self._get_init_policy()
-            local_tools = self._try_recover_mech_tools()
-            if local_tools is None:
-                local_tools = self.mech_tools
         else:
             self.context.logger.debug(
                 "Reading policy information from synchronized data"
             )
             self._policy = self.synchronized_data.policy
-            local_tools = self.synchronized_data.available_mech_tools
 
         yield from self.wait_for_condition_with_sleep(
             self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
@@ -375,7 +379,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         if self.is_first_period and overwrite_local_store:
             self.policy.updated_ts = int(datetime.now().timestamp())
-            self._update_accuracy_store(local_tools)
+            self._update_accuracy_store()
 
         elif self.is_first_period:
             policy_json = json.dumps(self.policy, cls=DataclassEncoder)
@@ -418,7 +422,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _store_policy(self) -> None:
         """Store the policy"""
         policy_path = self.params.store_path / POLICY_STORE
-
         with open(policy_path, "w") as f:
             f.write(self.policy.serialize())
 
