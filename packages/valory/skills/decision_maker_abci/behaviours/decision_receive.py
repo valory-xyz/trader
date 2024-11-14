@@ -470,9 +470,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _update_selected_bet(self) -> None:
         """Update the selected bet."""
-        # update the bet's timestamp of processing and its number of bets for the given id
-        self.sampled_bet.processed_timestamp = self.synced_timestamp
-        self.sampled_bet.n_bets += 1
+        # update the bet's timestamp of processing and its number of bets for the given
+        sampled_bet = self.sampled_bet
+        sampled_bet.n_bets += 1
+        sampled_bet.processed_timestamp = self.synced_timestamp
         self.store_bets()
 
     def async_act(self) -> Generator:
