@@ -367,14 +367,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         policy_store_update_offset = self.params.policy_store_update_offset
 
         self.context.logger.info("Comparing tool accuracy dates...")
-        if remote_policy_store_date > (
-            local_policy_store_date - policy_store_update_offset
-        ):
-            self.context.logger.info("Local policy store overwrite: True")
-            return True
 
-        self.context.logger.info("Local policy store overwrite: False")
-        return False
+        overwrite = True if remote_policy_store_date > (local_policy_store_date - policy_store_update_offset) else False
+        self.context.logger.info("Local policy store overwrite: {overwrite}")
+        return overwrite
 
     def _update_accuracy_store(self, local_tools: List[str]) -> None:
         """Update the accuracy store file with the latest information available"""
