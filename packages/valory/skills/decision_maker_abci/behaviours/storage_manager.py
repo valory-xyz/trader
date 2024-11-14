@@ -37,6 +37,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.models import AgentToolsSpecs
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
+    DataclassEncoder,
     EGreedyPolicy,
 )
 
@@ -229,31 +230,15 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         ):
             yield from self.wait_for_condition_with_sleep(step)
 
-    def _read_tool_accuracy_local(self) -> Optional[str]:
-        """Reads the accuracy info from the local policy store file."""
+    def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
+        """Try to recover the policy from the policy store."""
         try:
             policy_path = self.params.store_path / POLICY_STORE
             with open(policy_path, "r") as f:
                 policy = f.read()
-                return policy
-
+                return EGreedyPolicy.deserialize(policy)
         except Exception as e:
             self.context.logger.warning(f"Could not recover the policy: {e}.")
-            return None
-
-    def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
-        """Try to recover the policy from the policy store."""
-        policy = self._read_tool_accuracy_local()
-        if policy:
-            # verify for updated_ts in policy, EGreedyPolicy accuracy_store now stores updated_ts
-            if policy and "updated_ts" not in policy:
-                # convert json str to dictionary
-                policy_data = json.loads(policy)
-                # add updated_ts to policy
-                policy_data["accuracy_store"]["updated_ts"] = 0
-                policy = json.dumps(policy_data)
-            return EGreedyPolicy.deserialize(policy)
-        else:
             return None
 
     def _get_init_policy(self) -> EGreedyPolicy:
@@ -261,7 +246,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # try to read the policy from the policy store, and if we cannot recover the policy, we create a new one
         return self._try_recover_policy() or EGreedyPolicy(self.params.epsilon)
 
-    def _fetch_accuracy_info(self) -> Generator[None, None, Optional[StringIO]]:
+    def _fetch_accuracy_info(self) -> Generator[None, None, bool]:
         """Fetch the latest accuracy information available."""
         # get the CSV file from IPFS
         self.context.logger.info("Reading accuracy information from IPFS...")
@@ -272,60 +257,30 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                 f"Could not retrieve data from the url {accuracy_link}. "
                 f"Received status code {response.status_code}."
             )
-            return None
+            return False
 
+        self.context.logger.info("Parsing accuracy information of the tools...")
         try:
-            tool_accuracy_data = StringIO(response.body.decode())
-            self.context.logger.info("Parsing accuracy information of the tools...")
-            return tool_accuracy_data
-
+            self.accuracy_information = StringIO(response.body.decode())
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from ipfs server, "
                 f"the following error was encountered {type(e).__name__}: {e}"
             )
-            return None
+            return False
 
-    def _set_accuracy_info_from_remote(
-        self,
-            remote_accuracy_info: Generator[None, None, Optional[StringIO]]
-    ) -> None:
-        """Set the tool accuracy info from the remote store."""
-        tool_accuracy_data = remote_accuracy_info
+        return True
 
-        if tool_accuracy_data is not None:
-            self.accuracy_information = tool_accuracy_data
-
-    def _read_local_policy_date(self) -> int:
-        """Reads the updated timestamp from the policy file."""
-        self.context.logger.info("Reading policy updated timestamp...")
-        policy = self._read_tool_accuracy_local()
-        if policy:
-            policy_json = json.loads(policy)
-            updated_timestamp = policy_json.get("updated_ts")
-
-            if updated_timestamp:
-                self.context.logger.info(
-                    f"Local updated timestamp found {updated_timestamp}"
-                )
-                return updated_timestamp
-            else:
-                self.context.logger.info("No timestamp found. Using minium: 0")
-                return 0
-        return 0
-
-    def _fetch_remote_tool_date(
-        self, remote_accuracy_info
-    ) -> Generator[None, None, int]:
+    def _fetch_remote_tool_date(self) -> int:
         """Fetch the max transaction date from the remote accuracy storage."""
         self.context.logger.info("Checking remote accuracy information date... ")
         self.context.logger.info("Trying to read max date in file...")
-        tool_accuracy_data = remote_accuracy_info
+        accuracy_information = self.accuracy_information
 
-        if tool_accuracy_data:
+        if accuracy_information:
             sep = self.acc_info_fields.sep
-            tool_accuracy_data.seek(0)  # Ensure we’re at the beginning
-            reader = csv.DictReader(tool_accuracy_data.readlines(), delimiter=sep)
+            accuracy_information.seek(0)  # Ensure we’re at the beginning
+            reader = csv.DictReader(accuracy_information.readlines(), delimiter=sep)
 
         max_transaction_date = None
 
@@ -355,22 +310,22 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.context.logger.info("No maximum date found.")
         return 0
 
-    def _check_local_policy_store_overwrite(
-        self, remote_accuracy_info
-    ) -> Generator[None, None, bool]:
+    def _check_local_policy_store_overwrite(self) -> bool:
         """Compare the local and remote policy store dates and decide which to use."""
 
-        local_policy_store_date = self._read_local_policy_date()
-        remote_policy_store_date = yield from self._fetch_remote_tool_date(
-            remote_accuracy_info
-        )
-
+        local_policy_store_date = self._policy.updated_ts
+        remote_policy_store_date = self._fetch_remote_tool_date()
         policy_store_update_offset = self.params.policy_store_update_offset
 
         self.context.logger.info("Comparing tool accuracy dates...")
 
-        overwrite = True if remote_policy_store_date > (local_policy_store_date - policy_store_update_offset) else False
-        self.context.logger.info("Local policy store overwrite: {overwrite}")
+        overwrite = (
+            True
+            if remote_policy_store_date
+            > (local_policy_store_date - policy_store_update_offset)
+            else False
+        )
+        self.context.logger.info(f"Local policy store overwrite: {overwrite}.")
         return overwrite
 
     def _update_accuracy_store(self, local_tools: List[str]) -> None:
@@ -397,9 +352,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         for tool in local_tools:
             accuracy_store.setdefault(tool, AccuracyInfo())
 
-        self.policy.accuracy_store["accuracy_info"].updated_ts = int(
-            datetime.now().timestamp()
-        )
         self.policy.update_weighted_accuracy()
 
     def _set_policy(self) -> Generator:
@@ -417,17 +369,18 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._policy = self.synchronized_data.policy
             local_tools = self.synchronized_data.available_mech_tools
 
-        remote_accuracy_info = yield from self._fetch_accuracy_info()
-        overwrite_local_store = yield from self._check_local_policy_store_overwrite(
-            remote_accuracy_info
+        yield from self.wait_for_condition_with_sleep(
+            self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
         )
+        overwrite_local_store = self._check_local_policy_store_overwrite()
+
         if self.is_first_period and overwrite_local_store:
-            yield from self._set_accuracy_info_from_remote(remote_accuracy_info)
+            self.policy.updated_ts = int(datetime.now().timestamp())
             self._update_accuracy_store(local_tools)
 
         elif self.is_first_period:
-            policy = self._read_tool_accuracy_local()
-            self.accuracy_information = StringIO(json.dumps(policy))
+            policy_json = json.dumps(self.policy, cls=DataclassEncoder)
+            self.accuracy_information = StringIO(policy_json)
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""

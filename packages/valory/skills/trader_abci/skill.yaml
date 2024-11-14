@@ -178,6 +178,7 @@ models:
       slippage: 0.01
       policy_epsilon: 0.1
       store_path: /data/
+      policy_store_update_offset: 259200
       use_subgraph_for_redeeming: true
       irrelevant_tools:
       - openai-text-davinci-002

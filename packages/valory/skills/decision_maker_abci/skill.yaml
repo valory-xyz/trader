@@ -231,6 +231,7 @@ models:
       policy_epsilon: 0.1
       use_subgraph_for_redeeming: true
       use_nevermined: true
+      policy_store_update_offset: 259200
       mech_to_subscription_params:
       - - base_url
         - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo

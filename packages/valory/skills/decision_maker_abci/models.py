@@ -414,7 +414,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
         self.rebet_chance = self._ensure("rebet_chance", kwargs, float)
         self.policy_store_update_offset = self._ensure(
-            "policy_store_update_offset", kwargs, float
+            "policy_store_update_offset", kwargs, int
         )
         super().__init__(*args, **kwargs)
 
