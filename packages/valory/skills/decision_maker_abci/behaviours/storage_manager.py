@@ -37,7 +37,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.models import AgentToolsSpecs
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
-    DataclassEncoder,
     EGreedyPolicy,
 )
 
