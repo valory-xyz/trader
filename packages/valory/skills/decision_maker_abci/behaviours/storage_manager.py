@@ -61,7 +61,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_hash: str = ""
         self._utilized_tools: Dict[str, str] = {}
         self._mech_tools: Optional[List[str]] = None
-        self._accuracy_information: StringIO = StringIO()
+        self._remote_accuracy_information: StringIO = StringIO()
 
     @property
     def mech_tools(self) -> List[str]:
@@ -76,14 +76,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_tools = mech_tools
 
     @property
-    def accuracy_information(self) -> StringIO:
+    def remote_accuracy_information(self) -> StringIO:
         """Get the accuracy information."""
-        return self._accuracy_information
+        return self._remote_accuracy_information
 
-    @accuracy_information.setter
-    def accuracy_information(self, accuracy_information: StringIO) -> None:
+    @remote_accuracy_information.setter
+    def remote_accuracy_information(self, accuracy_information: StringIO) -> None:
         """Set the accuracy information."""
-        self._accuracy_information = accuracy_information
+        self._remote_accuracy_information = accuracy_information
 
     @property
     def mech_id(self) -> int:
@@ -261,7 +261,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         self.context.logger.info("Parsing accuracy information of the tools...")
         try:
-            self.accuracy_information = StringIO(response.body.decode())
+            self.remote_accuracy_information = StringIO(response.body.decode())
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from ipfs server, "
@@ -275,7 +275,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Fetch the max transaction date from the remote accuracy storage."""
         self.context.logger.info("Checking remote accuracy information date... ")
         self.context.logger.info("Trying to read max date in file...")
-        accuracy_information = self.accuracy_information
+        accuracy_information = self.remote_accuracy_information
 
         max_transaction_date = None
 
@@ -332,7 +332,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.context.logger.info("Updating accuracy information of the policy...")
         sep = self.acc_info_fields.sep
         reader: csv.DictReader = csv.DictReader(
-            self.accuracy_information, delimiter=sep
+            self.remote_accuracy_information, delimiter=sep
         )
         accuracy_store = self.policy.accuracy_store
 
@@ -380,10 +380,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self.is_first_period and overwrite_local_store:
             self.policy.updated_ts = int(datetime.now().timestamp())
             self._update_accuracy_store()
-
-        elif self.is_first_period:
-            policy_json = json.dumps(self.policy, cls=DataclassEncoder)
-            self.accuracy_information = StringIO(policy_json)
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""
