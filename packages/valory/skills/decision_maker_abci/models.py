@@ -216,7 +216,6 @@ class SharedState(BaseSharedState):
         self.liquidity_prices: Dict[str, List[float]] = {}
         # whether this is the last run of the benchmarking mode
         self.last_benchmarking_has_run: bool = False
-        self.current_condition_id: Optional[PublicId] = None
 
     @property
     def mock_question_id(self) -> Any:

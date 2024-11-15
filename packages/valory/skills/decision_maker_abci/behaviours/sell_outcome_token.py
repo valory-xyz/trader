@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2024 Valory AG
+#   Copyright 2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
     @property
     def current_condition_id(self) -> PublicId:
         """Get the current condition id."""
-        return self.shared_state.current_condition_id
+        return self.synchronized_data.current_condition_id
 
     def check_outcome_token_balance(self) -> WaitableConditionType:
         """Check the safe's balance for a particular outcome token."""
