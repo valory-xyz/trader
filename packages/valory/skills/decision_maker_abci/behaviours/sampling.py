@@ -67,7 +67,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
-        within_safe_range = now < bet.openingTimestamp + self.params.safe_voting_range
+        within_safe_range = (
+            now
+            < bet.openingTimestamp
+            - self.params.opening_margin
+            - self.params.safe_voting_range
+        )
         within_ranges = within_opening_range and within_safe_range
 
         # if we should not rebet, we have all the information we need
