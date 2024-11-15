@@ -7,8 +7,8 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeicmgkagyhgwn2ktcdjbprijalbdyj26cvza4d3b7uvmehvy4mmr3i
-  build/StakingToken.json: bafybeid5vwardpaeeggfbp4o2ea7wdhywaeamhvyolxmhv6v2ynil4st6q
-  contract.py: bafybeigzb6oxpyi7eiohftxuha5t3tcvj2bekihc77ts3dwzqpfl34ev6y
+  build/StakingToken.json: bafybeibhcwyawq377innrpq4ytpw5kotufjqo7cyd2rjhyit34mnbks5b4
+  contract.py: bafybeigjt7a2biiorp4vmj4d3qkm3xbbohnawoetywojye5akhavlvkrxm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: StakingTokenContract
@@ -16,8 +16,8 @@ contract_interface_paths:
   ethereum: build/StakingToken.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.53.0
+    version: <2,>=1.53.0
   open-aea-test-autonomy:
-    version: ==0.14.14.post1
+    version: <1,>=0.14.14.post1
   web3:
     version: <7,>=6.0.0
