@@ -66,7 +66,7 @@ code-checks:
 .PHONY: security
 security:
 	tomte check-security
-	/home/abc/work/gitleaks detect --report-format json --report-path leak_report
+	gitleaks detect --report-format json --report-path leak_report
 
 # generate abci docstrings
 # update copyright headers
