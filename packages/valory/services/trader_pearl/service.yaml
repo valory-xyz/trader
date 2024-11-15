@@ -102,6 +102,7 @@ models:
         priority_mech_service_id: ${PRIORITY_MECH_SERVICE_ID:int:0}
         requester_staking_instance_address: ${REQUESTER_STAKING_INSTANCE_ADDRESS:str:0x0000000000000000000000000000000000000000}
         response_timeout: ${RESPONSE_TIMEOUT:int:300}
+      policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
   benchmark_tool:
     args:
       log_dir: /benchmarks
