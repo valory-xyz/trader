@@ -154,7 +154,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 index = self.get_bet_idx(bet.id)
                 if index is not None:
-                    self.bets[index]._blacklist_forever()
+                    self.bets[index].blacklist_forever()
 
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]

@@ -110,7 +110,7 @@ class Bet:
         """Implements less than operator."""
         return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
 
-    def _blacklist_forever(self) -> None:
+    def blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
@@ -145,7 +145,7 @@ class Bet:
         )
 
         if nulls_exist or mismatching_outcomes:
-            self._blacklist_forever()
+            self.blacklist_forever()
 
     def _cast(self) -> None:
         """Cast the values of the instance."""
@@ -165,7 +165,7 @@ class Bet:
     def _check_usefulness(self) -> None:
         """If the bet is deemed unhelpful, then blacklist it."""
         if self.scaledLiquidityMeasure == 0:
-            self._blacklist_forever()
+            self.blacklist_forever()
 
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
