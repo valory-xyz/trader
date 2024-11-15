@@ -88,7 +88,7 @@ transition_func:
   (ClaimRound, NO_MAJORITY): ClaimRound
   (ClaimRound, ROUND_TIMEOUT): ClaimRound
   (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
-  (DecisionReceiveRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
+  (DecisionReceiveRound, MOCK_TX): FinishedWithoutDecisionRound
   (DecisionReceiveRound, DONE): BetPlacementRound
   (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
   (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -118,6 +118,7 @@ transition_func:
   (SamplingRound, NO_MAJORITY): SamplingRound
   (SamplingRound, ROUND_TIMEOUT): SamplingRound
   (SamplingRound, BENCHMARK_ENABLED): ToolSelectionRound
+  (SamplingRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
   (SubscriptionRound, DONE): FinishedSubscriptionRound
   (SubscriptionRound, MOCK_TX): ToolSelectionRound
   (SubscriptionRound, NONE): SubscriptionRound

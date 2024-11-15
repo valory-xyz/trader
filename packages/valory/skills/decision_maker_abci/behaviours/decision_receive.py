@@ -109,6 +109,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if available_rows_for_market:
             next_mock_data_row = self.shared_state.bet_id_row_manager[sampled_bet_id][0]
         else:
+            # no more bets available for this market
+            msg = f"No more mock responses for the market with id: {sampled_bet_id}"
+            self.context.logger.info(msg)
             self.shared_state.last_benchmarking_has_run = True
             self._rows_exceeded = True
             return None
@@ -184,6 +187,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self._get_response()
 
         if self._mech_response is None:
+            # TODO this use-case should never happened.
+            # no more trades for this market
             self.context.logger.info("The benchmarking has finished!")
             return None
 
@@ -511,7 +516,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # update the bet's timestamp of processing and its number of bets for the given id
         if self.benchmarking_mode.enabled:
             active_sampled_bet = self.get_active_sampled_bet()
-            active_sampled_bet.processed_timestamp = self.synced_timestamp
+            active_sampled_bet.processed_timestamp = (
+                self.shared_state.get_simulated_now_timestamp(
+                    self.bets, self.params.safe_voting_range
+                )
+            )
             if prediction_response is not None:
                 active_sampled_bet.n_bets += 1
 

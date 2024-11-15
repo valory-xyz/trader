@@ -20,8 +20,10 @@
 """This module contains the models for the skill."""
 
 import os
+import time
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
 from typing import (
@@ -60,6 +62,7 @@ from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
     Subgraph,
 )
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
@@ -211,6 +214,9 @@ class SharedState(BaseSharedState):
         # a mapping from market id to scaled liquidity measure
         # also used for the benchmarking mode
         self.liquidity_cache: Dict[str, float] = {}
+        # list with the simulated timestamps for the benchmarking mode
+        self.simulated_now_timestamps: List[int] = []
+        self.simulated_now_timestamps_idx: int = 0
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
         self.liquidity_prices: Dict[str, List[float]] = {}
@@ -269,6 +275,47 @@ class SharedState(BaseSharedState):
     def bet_id_row_manager(self, mapping: Dict[str, List[int]]) -> None:
         """Set the next_mock_data_row."""
         self._bet_id_row_manager = mapping
+
+    def _initialize_simulated_now_timestamps(
+        self, bets: List[Bet], safe_voting_range: int
+    ) -> None:
+        self.simulated_now_timestamps_idx = 0
+        # Find the maximum timestamp from openingTimestamp field
+        max_timestamp = max(bet.openingTimestamp for bet in bets)
+        # adding range to allow voting (it has to be <)
+        max_timestamp = max_timestamp - safe_voting_range - 1
+
+        # Get current timestamp
+        now_timestamp = int(time.time())
+        # Convert timestamps to datetime objects
+        max_date = datetime.fromtimestamp(max_timestamp)
+        now_date = datetime.fromtimestamp(now_timestamp)
+        self.context.logger.info(
+            f"Simulating timestamps between {now_date} and {max_date}"
+        )
+        # Generate list of timestamps with one day intervals
+        timestamps = []
+        current_date = now_date
+
+        while current_date <= max_date:
+            timestamps.append(int(current_date.timestamp()))
+            current_date += timedelta(days=1)
+        self.context.logger.info(f"Simulated timestamps: {timestamps}")
+        self.simulated_now_timestamps = timestamps
+
+    def increase_one_day_simulation(self) -> None:
+        self.simulated_now_timestamps_idx += 1
+
+    def check_benchmarking_finished(self) -> bool:
+        return self.simulated_now_timestamps_idx >= len(self.simulated_now_timestamps)
+
+    def get_simulated_now_timestamp(
+        self, bets: List[Bet], safe_voting_range: int
+    ) -> int:
+        if len(self.simulated_now_timestamps) == 0:
+            self._initialize_simulated_now_timestamps(bets, safe_voting_range)
+
+        return self.simulated_now_timestamps[self.simulated_now_timestamps_idx]
 
     def setup(self) -> None:
         """Set up the model."""

@@ -144,7 +144,8 @@ transition_func:
   (CollectSignatureRound, DONE): FinalizationRound
   (CollectSignatureRound, NO_MAJORITY): ResetRound
   (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
-  (DecisionReceiveRound, BENCHMARKING_FINISHED): ResetAndPauseRound
+  (DesisionReceiveRound, MOCK_TX): RedeemRound
+  #(DecisionReceiveRound, BENCHMARKING_FINISHED): ResetAndPauseRound
   (DecisionReceiveRound, DONE): BetPlacementRound
   (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
   (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -210,6 +211,7 @@ transition_func:
   (SamplingRound, NO_MAJORITY): SamplingRound
   (SamplingRound, ROUND_TIMEOUT): SamplingRound
   (SamplingRound, BENCHMARK_ENABLED): ToolSelectionRound
+  (SamplingRound, BENCHMARKING_FINISHED): ResetAndPauseRound
   (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
   (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
   (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound

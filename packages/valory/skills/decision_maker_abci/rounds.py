@@ -218,6 +218,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: SamplingRound,
             Event.ROUND_TIMEOUT: SamplingRound,
             Event.BENCHMARKING_ENABLED: ToolSelectionRound,
+            Event.BENCHMARKING_FINISHED: BenchmarkingDoneRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
@@ -257,7 +258,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.BENCHMARKING_FINISHED: BenchmarkingDoneRound,
+            Event.MOCK_TX: FinishedWithoutDecisionRound,
             Event.ROUND_TIMEOUT: DecisionReceiveRound,  # loop on the same state until Mech deliver is received
         },
         BlacklistingRound: {

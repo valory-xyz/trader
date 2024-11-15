@@ -80,6 +80,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return int(self.db.get_strict("sampled_bet_index"))
 
     @property
+    def benchmarking_finished(self) -> int:
+        """Get the flag of benchmarking finished."""
+        return int(self.db.get_strict("benchmarking_finished"))
+
+    @property
     def is_mech_price_set(self) -> bool:
         """Get whether mech's price is known."""
         return bool(self.db.get("mech_price", False))

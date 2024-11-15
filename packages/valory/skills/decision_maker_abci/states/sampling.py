@@ -22,7 +22,10 @@
 from enum import Enum
 from typing import Any, cast, Optional, Tuple, Type
 
-from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData, get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -42,6 +45,7 @@ class SamplingRound(UpdateBetsRound):
     selection_key: Any = (
         UpdateBetsRound.selection_key,
         get_name(SynchronizedData.sampled_bet_index),
+        get_name(SynchronizedData.benchmarking_finished),
     )
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
@@ -51,6 +55,13 @@ class SamplingRound(UpdateBetsRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        if synced_data.benchmarking_finished:
+            self.context.logger.info(
+                "No more markets to bet. The benchmarking has finished!"
+            )
+            return synced_data, Event.BENCHMARKING_FINISHED
+
         if event == Event.DONE and self.context.benchmarking_mode.enabled:
             return synced_data, Event.BENCHMARKING_ENABLED
         return res
