@@ -128,9 +128,9 @@ config:
   ledger_apis:
     ethereum:
       address: ${GNOSIS_LEDGER_RPC:str:http://host.docker.internal:8545}
-      chain_id: 100
-      default_gas_price_strategy: eip1559
-      poa_chain: false
+      chain_id: ${GNOSIS_LEDGER_CHAIN_ID:int:100}
+      default_gas_price_strategy: ${GNOSIS_LEDGER_PRICING:str:eip1559}
+      poa_chain: ${GNOSIS_LEDGER_IS_POA_CHAIN:bool:false}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
