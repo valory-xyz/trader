@@ -367,6 +367,7 @@ type: skill
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
+        policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
@@ -483,6 +484,7 @@ type: skill
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
+        policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
@@ -599,6 +601,7 @@ type: skill
         safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
+        policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
