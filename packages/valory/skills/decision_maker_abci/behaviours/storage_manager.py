@@ -277,28 +277,28 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.context.logger.info("Trying to read max date in file...")
         accuracy_information = self.accuracy_information
 
+        max_transaction_date = None
+
         if accuracy_information:
             sep = self.acc_info_fields.sep
             accuracy_information.seek(0)  # Ensure we’re at the beginning
             reader = csv.DictReader(accuracy_information.readlines(), delimiter=sep)
 
-        max_transaction_date = None
+            # try to read the maximum transaction date in the remote accuracy info
+            try:
+                for row in reader:
+                    current_transaction_date = row.get(MAX_STR)
+                    if (
+                        max_transaction_date is None
+                        or current_transaction_date > max_transaction_date
+                    ):
+                        max_transaction_date = current_transaction_date
 
-        # try to read the maximum transaction date in the remote accuracy info
-        try:
-            for row in reader:
-                current_transaction_date = row.get(MAX_STR)
-                if (
-                    max_transaction_date is None
-                    or current_transaction_date > max_transaction_date
-                ):
-                    max_transaction_date = current_transaction_date
-
-        except TypeError:
-            self.context.logger.warning(
-                "Invalid transaction date found. Continuing with local accuracy information..."
-            )
-            return 0
+            except TypeError:
+                self.context.logger.warning(
+                    "Invalid transaction date found. Continuing with local accuracy information..."
+                )
+                return 0
 
         if max_transaction_date:
             self.context.logger.info(f"Maximum date found: {max_transaction_date}")
