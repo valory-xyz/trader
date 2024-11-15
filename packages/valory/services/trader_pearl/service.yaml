@@ -127,7 +127,7 @@ type: connection
 config:
   ledger_apis:
     ethereum:
-      address: http://host.docker.internal:8545
+      address: ${GNOSIS_LEDGER_RPC:str:http://host.docker.internal:8545}
       chain_id: 100
       default_gas_price_strategy: eip1559
       poa_chain: false
