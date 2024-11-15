@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidmjabxkl5jucstegjkoyfumk452xsgeklhr5wmoiuxchrvcmmpfm
+agent: valory/trader:0.1.0:bafybeia6w4fff7o3eixfocbwjokqf6fh5c3tl65wtidqrmjjxsxeruvkli
 number_of_agents: 4
 deployment:
   agent:
@@ -303,7 +303,7 @@ type: skill
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
-        opening_margin: ${OPENING_MARGIN:int:300}
+        opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
@@ -419,7 +419,7 @@ type: skill
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
-        opening_margin: ${OPENING_MARGIN:int:300}
+        opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
@@ -535,7 +535,7 @@ type: skill
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
         creator_per_subgraph: *id003
         slot_count: ${SLOT_COUNT:int:2}
-        opening_margin: ${OPENING_MARGIN:int:300}
+        opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
