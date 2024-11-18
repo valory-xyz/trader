@@ -150,6 +150,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             # this won't wipe the bets as the `store_bets` of the `BetsManagerBehaviour` takes this into consideration
             self.bets = []
 
+        for bet in self.bets:
+            if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
+                bet.blacklist_forever()
+
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Updated bets: {bets_str}")
