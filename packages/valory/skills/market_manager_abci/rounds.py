@@ -68,6 +68,16 @@ class SynchronizedData(BaseSynchronizedData):
         """Get the participants to bets' hash."""
         return self._get_deserialized("participant_to_bets_hash")
 
+    @property
+    def benchmarking_finished(self) -> int:
+        """Get the flag of benchmarking finished."""
+        return int(self.db.get_strict("benchmarking_finished"))
+
+    @property
+    def simulated_day(self) -> int:
+        """Get the flag of simulated_day."""
+        return int(self.db.get_strict("simulated_day"))
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""

@@ -23,6 +23,7 @@ import csv
 import json
 from copy import deepcopy
 from math import prod
+from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -520,6 +521,10 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self.shared_state.get_simulated_now_timestamp(
                     self.bets, self.params.safe_voting_range
                 )
+            )
+            self.context.logger.info(f"Updating bet id: {active_sampled_bet.id}")
+            self.context.logger.info(
+                f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
             )
             if prediction_response is not None:
                 active_sampled_bet.n_bets += 1

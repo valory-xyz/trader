@@ -43,6 +43,7 @@ class SamplingPayload(UpdateBetsPayload):
 
     index: Optional[int]
     benchmarking_finished: Optional[bool]
+    simulated_day: Optional[bool]
 
 
 @dataclass(frozen=True)

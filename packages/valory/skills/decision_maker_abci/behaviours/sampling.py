@@ -21,7 +21,7 @@
 
 import random
 from typing import Any, Generator, List, Optional
-
+from datetime import datetime
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
@@ -50,7 +50,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         self.read_bets()
         has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
         if has_bet_in_the_past:
-            random.seed(self.synchronized_data.most_voted_randomness)
+            if self.benchmarking_mode.enabled:
+                random.seed(self.benchmarking_mode.randomness)
+            else:
+                random.seed(self.synchronized_data.most_voted_randomness)
             self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
         rebetting_status = "enabled" if self.should_rebet else "disabled"
         self.context.logger.info(f"Rebetting {rebetting_status}.")
@@ -63,7 +66,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
-        self.context.logger.info(f"Analyzing bet: {bet}")
+        self.context.logger.info(
+            f"Analyzing bet with id: {bet.id}, processed_timestamp: {bet.processed_timestamp} and n_bets: {bet.n_bets}"
+        )
         # Note: `openingTimestamp` is the timestamp when a question stops being available for voting.
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
@@ -94,7 +99,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
+        self.context.logger.info(f"bet.processed_timestamp: {bet.processed_timestamp}")
         can_rebet = now >= bet.processed_timestamp + t_rebetting
+        self.context.logger.info(f"can_rebet: {can_rebet}")
         return within_ranges and can_rebet
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
@@ -116,12 +123,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             now = self.shared_state.get_simulated_now_timestamp(
                 self.bets, self.params.safe_voting_range
             )
+            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
         else:
             now = self.synced_timestamp
         available_bets = list(
             filter(lambda bet: self.processable_bet(bet, now=now), self.bets)
         )
-
+        self.context.logger.info(f"length of available bets: {len(available_bets)}")
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
@@ -145,29 +153,29 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
             benchmarking_finished = False
-            if self.benchmarking_mode.enabled:
-                if idx == None:
+            simulated_day = False
+            if (idx is None) and (self.benchmarking_mode.enabled):
+                self.context.logger.info(
+                    f"No more markets to bet in the simulated day. Increasing simulated day"
+                )
+                self.shared_state.increase_one_day_simulation()
+                benchmarking_finished = self.shared_state.check_benchmarking_finished()
+                if benchmarking_finished:
                     self.context.logger.info(
-                        f"No more markets to bet in the simulated day"
+                        f"No more days to simulate in benchmarking mode"
                     )
-                    self.shared_state.increase_one_day_simulation()
-                    if self.shared_state.check_benchmarking_finished():
-                        self.context.logger.info(
-                            f"No more days to simulate in benchmarking mode"
-                        )
-                        # HERE IS the point we need to change the Payload somehow to trigger the END
-                        # then we should force this round to trigger event.NONE and then benchmarking finished.
-                        benchmarking_finished = True
-                    else:
-                        # try sampling again
-                        idx = self._sample()
+                simulated_day = True
             self.store_bets()
             if idx is None:
                 bets_hash = None
             else:
                 bets_hash = self.hash_stored_bets()
             payload = SamplingPayload(
-                self.context.agent_address, bets_hash, idx, benchmarking_finished
+                self.context.agent_address,
+                bets_hash,
+                idx,
+                benchmarking_finished,
+                simulated_day,
             )
 
         yield from self.finish_behaviour(payload)
