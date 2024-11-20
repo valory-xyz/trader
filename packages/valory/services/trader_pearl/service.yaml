@@ -46,16 +46,15 @@ models:
       - en_US
       average_block_time: 5
       abt_error_mult: 5
-      mech_contract_address: '0x77af31De935740567Cf4fF1986D04B2c964A786a'
-      mech_request_price: 0
+      mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+      mech_request_price: ${MECH_REQUEST_PRICE:int:0}
       mech_chain_id: ethereum
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
-      mech_activity_checker_contract: '0x155547857680A6D51bebC5603397488988DEb1c8'
+      mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x155547857680A6D51bebC5603397488988DEb1c8}
       sample_bets_closing_days: 10
-      trading_strategy: kelly_criterion
+      trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_threshold}
       use_fallback_strategy: true
-      bet_threshold: 100000000000000000
-      blacklisting_duration: 3600
+      bet_threshold: ${BET_THRESHOLD:int:10000000000000000}
       ipfs_address: https://gateway.autonolas.tech/ipfs/
       tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: Please take over the role of a Data Scientist to evaluate the
@@ -74,8 +73,14 @@ models:
       slippage: 0.01
       store_path: ./data
       policy_epsilon: 0.1
-      irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization","deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
-      staking_contract_address: '0xeF44Fb0842DDeF59D37f85D61A1eF492bbA6135d'
+      irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-offline", "prediction-online",
+        "prediction-online-sme", "prediction-request-reasoning","native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","prediction-offline-sme","deepmind-optimization",
+        "deepmind-optimization-strong", "openai-gpt-3.5-turbo", "openai-gpt-3.5-turbo-instruct",
+        "openai-gpt-4", "openai-text-davinci-002", "openai-text-davinci-003", "prediction-online-sum-url-content",
+        "prediction-online-summarized-info", "stabilityai-stable-diffusion-512-v2-1",
+        "stabilityai-stable-diffusion-768-v2-1", "stabilityai-stable-diffusion-v1-5",
+        "stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
+      staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
       agent_balance_threshold: 10000000000000000
@@ -83,6 +88,7 @@ models:
       tool_punishment_multiplier: 1
       redeem_round_timeout: 3600.0
       contract_timeout: 300.0
+      blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
       file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
         ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
@@ -95,6 +101,15 @@ models:
         ["price", "1000000000000000000"]]}
       use_subgraph_for_redeeming: true
       use_nevermined: false
+      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
+      mech_marketplace_config:
+        mech_marketplace_address: ${MECH_MARKETPLACE_ADDRESS:str:0x4554fE75c1f5576c1d7F765B2A036c199Adae329}
+        priority_mech_address: ${PRIORITY_MECH_ADDRESS:str:0x0000000000000000000000000000000000000000}
+        priority_mech_staking_instance_address: ${PRIORITY_MECH_STAKING_INSTANCE_ADDRESS:str:0x998dEFafD094817EF329f6dc79c703f1CF18bC90}
+        priority_mech_service_id: ${PRIORITY_MECH_SERVICE_ID:int:975}
+        requester_staking_instance_address: ${REQUESTER_STAKING_INSTANCE_ADDRESS:str:0x0000000000000000000000000000000000000000}
+        response_timeout: ${RESPONSE_TIMEOUT:int:300}
+      policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
   benchmark_tool:
     args:
       log_dir: /benchmarks
@@ -119,10 +134,10 @@ type: connection
 config:
   ledger_apis:
     ethereum:
-      address: http://host.docker.internal:8545
-      chain_id: 100
-      default_gas_price_strategy: eip1559
-      poa_chain: false
+      address: ${GNOSIS_LEDGER_RPC:str:http://host.docker.internal:8545}
+      chain_id: ${GNOSIS_LEDGER_CHAIN_ID:int:100}
+      default_gas_price_strategy: ${GNOSIS_LEDGER_PRICING:str:eip1559}
+      poa_chain: ${GNOSIS_LEDGER_IS_POA_CHAIN:bool:false}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
@@ -138,10 +153,11 @@ cert_requests:
   not_before: '2022-01-01'
   public_key: 02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77
   save_path: .certs/acn_cosmos_11000.txt
-is_abstract: false
+is_abstract: true
 ---
 public_id: valory/http_server:0.22.0
 type: connection
 config:
   host: ${HTTP_SERVER_HOST:str:0.0.0.0}
   port: ${HTTP_SERVER_PORT:int:8716}
+  target_skill_id: valory/trader_abci:0.1.0

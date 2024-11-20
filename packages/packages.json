@@ -23,7 +23,7 @@
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeiepylk35n3faurvp7dskjkdovehftzfjrjxfkpekzuaovt5gojxne",
         "agent/valory/trader/0.1.0": "bafybeieqmpzvhjgauuprkanbfwsvk7mqvaqjliemz77nymekns653lex2y",
         "service/valory/trader/0.1.0": "bafybeifix6zlmxvhzmjkrod6yn7niwjqtkn2sofl7xvwolq5zka3nsqc5y",
-        "service/valory/trader_pearl/0.1.0": "bafybeidw3rgri7r5ha7h4tmhlijz43zlw7gqcf2am75dwn3kclzoinegjy"
+        "service/valory/trader_pearl/0.1.0": "bafybeicts6zhavxzz2rxahz3wzs2pzamoq64n64wp4q4cdanfuz7id6c2q"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
@@ -40,6 +40,7 @@
         "contract/valory/service_registry/0.1.0": "bafybeiekytropd5ysnap2wkekub3byi5jbda3qll7awchvhu5plbpafhmi",
         "contract/valory/multisend/0.1.0": "bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y",
         "contract/valory/erc20/0.1.0": "bafybeia7a7mfjeok4ywpmejz74msofagagcentsudqxfojadmxlur5qolu",
+        "contract/valory/mech_marketplace/0.1.0": "bafybeiba7kh3wygwtpyf7oo3sili6givzo2gyadhbb66rvwsokswsywvuu",
         "connection/valory/abci/0.1.0": "bafybeicksmavx23ralbdw3ajxv5fq5s4c3wzhbc3zdudefm4jqsgrg72ai",
         "connection/valory/http_client/0.23.0": "bafybeihi772xgzpqeipp3fhmvpct4y6e6tpjp4sogwqrnf3wqspgeilg4u",
         "connection/valory/ledger/0.19.0": "bafybeig7woeog4srdby75hpjkmx4rhpkzncbf4h2pm5r6varsp26pf2uhu",
