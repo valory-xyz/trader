@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiabuvydv4kngz2yngpta3cb7z57qga6yfzw2lfxi7etopevj6ke6i
-- valory/market_manager_abci:0.1.0:bafybeib5jurq6rpbjqat44qt2iliy2bddrtcapmmqsobkj2yndhrgnnpfu
-- valory/decision_maker_abci:0.1.0:bafybeihbcnzz6sw3pydbopwj4qnamlj7xtn3jfnjkotiogsdwue5nset4i
-- valory/trader_abci:0.1.0:bafybeibbjilot5xc43l23v4x6v625fxqzhneatklkiqvnna7kxwd4h4rvi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibevivb6pfty5ghtzjwwn2sgnn4ij263wbiziv373yfd5m4cyotpq
+- valory/market_manager_abci:0.1.0:bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa
+- valory/decision_maker_abci:0.1.0:bafybeicngtrfoad3yqbrdslmgngpfiqipqac5t4jv3rc22yyboiimp7kjq
+- valory/trader_abci:0.1.0:bafybeie57hhm6j5jfo43oq4hu2zfrteqh67zb4eatqyvrinsbc4qg4v2ma
 - valory/staking_abci:0.1.0:bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne
 - valory/check_stop_trading_abci:0.1.0:bafybeifmi64g4ki6zwbcncb35ovhd4sllw4xrszrkturpeqdhgf5bkiini
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
@@ -172,7 +172,7 @@ models:
       creator_per_subgraph:
         omen_subgraph: ${list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
       slot_count: ${int:2}
-      opening_margin: ${int:300}
+      opening_margin: ${int:86400}
       languages: ${list:["en_US"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
@@ -237,6 +237,7 @@ models:
       rebet_chance: ${float:0.6}
       mech_interaction_sleep_time: ${int:10}
       use_mech_marketplace: ${bool:false}
+      policy_store_update_offset: ${int:259200}
       mech_marketplace_config:
         mech_marketplace_address: ${str:0x0000000000000000000000000000000000000000}
         priority_mech_address: ${str:0x0000000000000000000000000000000000000000}

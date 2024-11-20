@@ -24,17 +24,17 @@ fingerprint:
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/reedem.py: bafybeiaxwp4lx62owcaqfp6xcqh6567f5yvwnl4rage2f5hmq4nltkzjjy
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
-  behaviours/sampling.py: bafybeig4tmzj3dszn633zetcjl4ufsgr7irppzr6g3bzy6krfnzes4v574
-  behaviours/storage_manager.py: bafybeic7c23rtp3dvgstcusmyxkcm22bpf2bfydljiam2nf55tleym5j3u
+  behaviours/sampling.py: bafybeie6ab5pdwal5glhg75am2637lijz5kwqx4ctk2lgqjyllmnw335ca
+  behaviours/storage_manager.py: bafybeignur4cwwkdmoj33ll3pmylnddbaqd6gpn6m2n7idieyyti7m3jg4
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeid5d47zwe7zegrmgzswdkjr6to4veequs43uqxgcs7lol6unadary
   handlers.py: bafybeigod6gbjrxy4mbmulbzsbokeaoycoqys64vqtxnumishfukzf73za
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeid7tjyr2sat4spvex2ea2zskxxt42iermpfzraqzoria75s7bs54y
-  payloads.py: bafybeibio3sokcwjp7gqf4usrmqkasarhg5bapfwfsfj5j5lassecf45de
-  policy.py: bafybeihcltocxg7zsmvjtx44ilal4zir4fz2rupgmhacktzv5neb2lmas4
+  models.py: bafybeifhmwxoix5fqka4phtmv6324osei52zwirg3ogziondvlq33brnby
+  payloads.py: bafybeicloiy4ax7dlipwp4czlueflgjgtlev4a6vhn2m7ztoehnemiiko4
+  policy.py: bafybeihlzs4o5e7yfmfzcvvrzkf4bhxfsg5gxnzsrpepwgfugh45gafye4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeiaf7fh6b5th2vcjtzhayp4jblxuiyaxoe5fli2rg76eg6jdyi4qrq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
@@ -59,8 +59,24 @@ fingerprint:
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
   tests/behaviours/test_base.py: bafybeif6pglmr7pvojylatfzaxtlk65igx6a2omyrbxfihnnft6o7p75p4
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
+  tests/states/test_base.py: bafybeigiuctxda3npkbvx7nsq4jvqpckvbzgqlj76hdpk2ntc52ppc4vnm
+  tests/states/test_bet_placement.py: bafybeibvc37n2cluep4tasvgmvwxwne2deais6ptirducpogk67v4gj4ga
+  tests/states/test_blacklising.py: bafybeihm2ex6l7fhorgi3mjj2epztu2r7bqbg56unpgpzfzymghshchqzy
+  tests/states/test_check_benchmarking.py: bafybeifwpi5f4fhreqptfxdsnyv3nptkqytkwbukfuqkrjo4eww7cv3sxy
+  tests/states/test_claim_subscription.py: bafybeiclkxjhceb3ehgmg6klt4uywew5drk5b3w6no7mwxetpubxqrejfy
+  tests/states/test_decision_receive.py: bafybeifj7rwqyzfcvnqqhbo25pl2jppgjqnqldadwku5wl2tpskfj2zwxq
+  tests/states/test_decision_request.py: bafybeigqbakm2olkwvcngertjplhnmu6on6tp6hxn7lxygi2gf5a5eurbe
+  tests/states/test_final_states.py: bafybeiftfd3ovaqpfe7t5ry7maiziavk74wl66d6zo6ikhgodznormd2nm
+  tests/states/test_handle_failed_tx.py: bafybeibuepj6fko7ba3bef6nybzetilni2iwgkxd5xeazqskadbad3l2zq
+  tests/states/test_order_subscription.py: bafybeiag37uk5mitjm4yadcpr67icfmmzeucdlgvqoct4y4jeyhnebyyoi
+  tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
+  tests/states/test_redeem.py: bafybeiezdnfrxukb2xpwffrr357g2anmdkwy7wo3nphvlggipq5xrdzr7a
+  tests/states/test_sampling.py: bafybeibyglipxdl6f25qfxf36v2n3kckrpmwyuqcenfeqzhjujpwon6o2u
+  tests/states/test_tool_selection.py: bafybeib7js3dj7647t33o5ybfqftwytxktwrvhbri5yuyymg6znj6y7xxa
+  tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeihpkgtjjm3uegpup6zkznpoaxqpu6kmp3ujiggrzbe73p5fzlq7im
   tests/test_payloads.py: bafybeifc2os3orozmsxbrcfp4c4vrweojo6g4ebxinr5ilescraw6qm6sa
+  tests/test_rounds.py: bafybeigifftusd4ew42tyvyrr55o2uehhcik2gdq3atkpjwwlqdeskedty
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi
   utils/scaling.py: bafybeialr3z4zogp4k3l2bzcjfi4igvxzjexmlpgze2bai2ufc3plaow4y
@@ -85,7 +101,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeib5jurq6rpbjqat44qt2iliy2bddrtcapmmqsobkj2yndhrgnnpfu
+- valory/market_manager_abci:0.1.0:bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
@@ -231,6 +247,7 @@ models:
       policy_epsilon: 0.1
       use_subgraph_for_redeeming: true
       use_nevermined: true
+      policy_store_update_offset: 259200
       mech_to_subscription_params:
       - - base_url
         - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo

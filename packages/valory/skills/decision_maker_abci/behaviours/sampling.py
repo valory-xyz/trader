@@ -73,10 +73,20 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
+        within_safe_range = (
+            now
+            < bet.openingTimestamp
+            - self.params.opening_margin
+            - self.params.safe_voting_range
+        )
         self.context.logger.info(f"within_opening_range ={within_opening_range}")
-        within_safe_range = now < bet.openingTimestamp + self.params.safe_voting_range
         self.context.logger.info(f"within_safe_range ={within_safe_range}")
         within_ranges = within_opening_range and within_safe_range
+
+        # rebetting is allowed only if we have already placed at least one bet in this market.
+        # conversely, if we should not rebet, no bets should have been placed in this market.
+        if self.should_rebet ^ bool(bet.n_bets):
+            return False
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
@@ -91,10 +101,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             #     4. the market's liquidity never changes
             #     5. the market is never selected again, and therefore a bet is never placed on it
             return within_ranges and self.has_liquidity_changed(bet)
-
-        # if we should rebet, we should have at least one bet processed in the past
-        if not bool(bet.n_bets):
-            return False
 
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now

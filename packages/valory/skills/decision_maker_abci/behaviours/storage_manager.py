@@ -22,6 +22,7 @@
 import csv
 import json
 from abc import ABC
+from datetime import datetime
 from io import StringIO
 from typing import Any, Dict, Generator, List, Optional
 
@@ -45,6 +46,8 @@ AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
 OK_CODE = 200
+MAX_STR = "max"
+DATETIME_FORMAT_STR = "%Y-%m-%d %H:%M:%S"
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -57,7 +60,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_hash: str = ""
         self._utilized_tools: Dict[str, str] = {}
         self._mech_tools: Optional[List[str]] = None
-        self._accuracy_information: StringIO = StringIO()
+        self._remote_accuracy_information: StringIO = StringIO()
 
     @property
     def mech_tools(self) -> List[str]:
@@ -72,14 +75,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_tools = mech_tools
 
     @property
-    def accuracy_information(self) -> StringIO:
+    def remote_accuracy_information(self) -> StringIO:
         """Get the accuracy information."""
-        return self._accuracy_information
+        return self._remote_accuracy_information
 
-    @accuracy_information.setter
-    def accuracy_information(self, accuracy_information: StringIO) -> None:
+    @remote_accuracy_information.setter
+    def remote_accuracy_information(self, accuracy_information: StringIO) -> None:
         """Set the accuracy information."""
-        self._accuracy_information = accuracy_information
+        self._remote_accuracy_information = accuracy_information
 
     @property
     def mech_id(self) -> int:
@@ -257,7 +260,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         self.context.logger.info("Parsing accuracy information of the tools...")
         try:
-            self.accuracy_information = StringIO(response.body.decode())
+            self.remote_accuracy_information = StringIO(response.body.decode())
         except (ValueError, TypeError) as e:
             self.context.logger.error(
                 f"Could not parse response from ipfs server, "
@@ -267,12 +270,68 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
+    def _fetch_remote_tool_date(self) -> int:
+        """Fetch the max transaction date from the remote accuracy storage."""
+        self.context.logger.info("Checking remote accuracy information date... ")
+        self.context.logger.info("Trying to read max date in file...")
+        accuracy_information = self.remote_accuracy_information
+
+        max_transaction_date = None
+
+        if accuracy_information:
+            sep = self.acc_info_fields.sep
+            accuracy_information.seek(0)  # Ensure we’re at the beginning
+            reader = csv.DictReader(accuracy_information.readlines(), delimiter=sep)
+
+            # try to read the maximum transaction date in the remote accuracy info
+            try:
+                for row in reader:
+                    current_transaction_date = row.get(MAX_STR)
+                    if (
+                        max_transaction_date is None
+                        or current_transaction_date > max_transaction_date
+                    ):
+                        max_transaction_date = current_transaction_date
+
+            except TypeError:
+                self.context.logger.warning(
+                    "Invalid transaction date found. Continuing with local accuracy information..."
+                )
+                return 0
+
+        if max_transaction_date:
+            self.context.logger.info(f"Maximum date found: {max_transaction_date}")
+            max_datetime = datetime.strptime(max_transaction_date, DATETIME_FORMAT_STR)
+            unix_timestamp = int(max_datetime.timestamp())
+            return unix_timestamp
+
+        self.context.logger.info("No maximum date found.")
+        return 0
+
+    def _check_local_policy_store_overwrite(self) -> bool:
+        """Compare the local and remote policy store dates and decide which to use."""
+
+        local_policy_store_date = self.policy.updated_ts
+        remote_policy_store_date = self._fetch_remote_tool_date()
+        policy_store_update_offset = self.params.policy_store_update_offset
+
+        self.context.logger.info("Comparing tool accuracy dates...")
+
+        overwrite = (
+            True
+            if remote_policy_store_date
+            > (local_policy_store_date - policy_store_update_offset)
+            else False
+        )
+        self.context.logger.info(f"Local policy store overwrite: {overwrite}.")
+        return overwrite
+
     def _update_accuracy_store(self) -> None:
         """Update the accuracy store file with the latest information available"""
         self.context.logger.info("Updating accuracy information of the policy...")
         sep = self.acc_info_fields.sep
         reader: csv.DictReader = csv.DictReader(
-            self.accuracy_information, delimiter=sep
+            self.remote_accuracy_information, delimiter=sep
         )
         accuracy_store = self.policy.accuracy_store
 
@@ -312,11 +371,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             )
             self._policy = self.synchronized_data.policy
 
-        if self.is_first_period:
-            yield from self.wait_for_condition_with_sleep(
-                self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
-            )
-        self._update_accuracy_store()
+        yield from self.wait_for_condition_with_sleep(
+            self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
+        )
+        overwrite_local_store = self._check_local_policy_store_overwrite()
+
+        if self.is_first_period and overwrite_local_store:
+            self.policy.updated_ts = int(datetime.now().timestamp())
+            self._update_accuracy_store()
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""
