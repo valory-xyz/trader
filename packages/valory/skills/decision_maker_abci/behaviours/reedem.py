@@ -966,6 +966,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not success:
                 return None
 
+            if self.synchronized_data.tx_submitter == "bet_placement_round":
+                self.update_bet_transaction_information()
+
             payload: Optional[RedeemPayload]
             if self.benchmarking_mode.enabled:
                 payload = self._benchmarking_act()

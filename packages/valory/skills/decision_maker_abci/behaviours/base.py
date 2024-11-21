@@ -340,6 +340,20 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._report_balance()
         return True
 
+    def update_bet_transaction_information(self) -> None:
+        """Get whether the bet's invested amount should be updated."""
+        self.read_bets()
+        # Update the bet's invested amount, the new bet amount is added to previous invested amount
+        self.bets[self.synchronized_data.sampled_bet_index].add_investment(
+            self.synchronized_data.bet_amount
+        )
+        # Update bet transaction timestamp
+        self.bets[
+            self.synchronized_data.sampled_bet_index
+        ].transaction_processed_timestamp = self.synced_timestamp
+        self.store_bets()
+        return
+
     def send_message(
         self, msg: Message, dialogue: Dialogue, callback: Callable
     ) -> None:
