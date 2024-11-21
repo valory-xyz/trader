@@ -66,9 +66,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
-        self.context.logger.info(
-            f"Analyzing bet with id: {bet.id}, processed_timestamp: {bet.processed_timestamp} and n_bets: {bet.n_bets}"
-        )
+        # self.context.logger.info(
+        #     f"Analyzing bet with id: {bet.id}, processed_timestamp: {bet.processed_timestamp} and n_bets: {bet.n_bets}"
+        # )
         # Note: `openingTimestamp` is the timestamp when a question stops being available for voting.
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
@@ -79,8 +79,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             - self.params.opening_margin
             - self.params.safe_voting_range
         )
-        self.context.logger.info(f"within_opening_range ={within_opening_range}")
-        self.context.logger.info(f"within_safe_range ={within_safe_range}")
+        # self.context.logger.info(f"within_opening_range ={within_opening_range}")
+        # self.context.logger.info(f"within_safe_range ={within_safe_range}")
         within_ranges = within_opening_range and within_safe_range
 
         # rebetting is allowed only if we have already placed at least one bet in this market.

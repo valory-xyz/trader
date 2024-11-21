@@ -103,10 +103,6 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
                 if len(self.shared_state.bet_id_row_manager) == 0:
                     bets_mapping = self.initialize_bet_id_row_manager()
                     self.shared_state.bet_id_row_manager = bets_mapping
-                    log_message = (
-                        f"Loaded bets mapping: {self.shared_state.bet_id_row_manager}"
-                    )
-                    self.context.logger.info(log_message)
 
             agent = self.context.agent_address
             payload = DecisionRequestPayload(agent, payload_content, mocking_mode)

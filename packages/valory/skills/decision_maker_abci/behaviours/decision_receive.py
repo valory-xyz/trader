@@ -569,8 +569,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 # always remove the processed trade from the benchmarking input file
                 # now there is one reader pointer per market
                 bet = self.get_active_sampled_bet()
-                if self.shared_state.bet_id_row_manager[bet.id]:
-                    self.shared_state.bet_id_row_manager[bet.id].pop(0)
+                rows_queue = self.shared_state.bet_id_row_manager[bet.id]
+                if rows_queue:
+                    rows_queue.pop(0)
 
             self._update_selected_bet(prediction_response)
             payload = DecisionReceivePayload(
