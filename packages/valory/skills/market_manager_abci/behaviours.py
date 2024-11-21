@@ -95,13 +95,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
 
-                    # Extract the last queue number from the bets
-                    # This is used to determine the next queue number
-                    if self.bets:
-                        self.current_queue_number = (
-                            max(bet.queue_no for bet in self.bets) + 1
-                        )
-
                     return
                 except (JSONDecodeError, TypeError):
                     err = (
@@ -139,9 +132,8 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
-                if self.bets:
-                    bet.queue_no = self.current_queue_number
-                    self.bets.append(bet)
+                bet.queue_no = self.current_queue_number
+                self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
 
@@ -149,6 +141,12 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         self,
     ) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
+
+        # Extract the last queue number from the bets
+        # This is used to determine the next queue number
+        if self.bets:
+            self.current_queue_number = max(bet.queue_no for bet in self.bets) + 1
+
         while True:
             can_proceed = self._prepare_fetching()
             if not can_proceed:
@@ -164,6 +162,11 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         for bet in self.bets:
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
+
+        # Extract the last queue number from the bets
+        # This is used to determine the next queue number
+        if self.bets:
+            self.current_queue_number = max(bet.queue_no for bet in self.bets)
 
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
