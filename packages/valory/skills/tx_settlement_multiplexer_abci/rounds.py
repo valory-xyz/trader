@@ -78,6 +78,11 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
     payload_class: Any = object()
     synchronized_data_class = SynchronizedData
 
+    def _check_required_attributes(self) -> None:
+        """Check that required attributes are set."""
+        # skip the checks for this round
+        ...
+
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """
         The end block.

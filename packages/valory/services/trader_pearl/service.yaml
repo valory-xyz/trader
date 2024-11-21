@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicc6jkakg6dhvqpb6esidgnffl5ses2bnk67eqs3falrkbw4aa47q
+agent: valory/trader:0.1.0:bafybeiacbcivtqsou2z6vtlndpbzfbl23bldwxk76qwltd2vbqya4ew3wm
 number_of_agents: 1
 deployment:
   agent:
@@ -33,6 +33,7 @@ models:
       service_id: trader
       service_registry_address: '0x9338b5153AE39BB89f50468E608eD9d764B755fD'
       agent_registry_address: '0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA'
+      use_acn_for_delivers: false
       sleep_time: 1
       tendermint_com_url: http://localhost:8080
       tendermint_url: http://localhost:26657

@@ -18,11 +18,14 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the class to connect to the Agent Registry contract."""
+from typing import Any, Dict, cast
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
+from aea_ledger_ethereum import EthereumApi
+from web3 import Web3
 
 
 class AgentRegistryContract(Contract):
@@ -62,3 +65,52 @@ class AgentRegistryContract(Contract):
 
         # return the hash in hex
         return dict(hash=hash_.hex())
+
+    @classmethod
+    def authenticate_sender(cls, ledger_api: LedgerApi, contract_address: str, sender_address: str, mech_address: str) -> Dict[str, Any]:
+        """Check if the sender address is valid."""
+        ledger_api = cast(EthereumApi, ledger_api)
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+
+        # assume the owner is a multisig wallet, so we check whether the sender is an owner
+        try:
+            # running in a try catch block because theres no guarantee
+            # that the agent owner matches the abi
+            minimal_abi = [
+                {
+                    "constant": True,
+                    "inputs": [],
+                    "name": "getOwners",
+                    "outputs": [{"name": "", "type": "address[]"}],
+                    "payable": False,
+                    "stateMutability": "view",
+                    "type": "function",
+                },
+                {
+                    "inputs": [],
+                    "name": "tokenId",
+                    "outputs": [
+                        {
+                            "internalType": "uint256",
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ]
+            contract = ledger_api.api.eth.contract(address=Web3.to_checksum_address(mech_address), abi=minimal_abi)
+            agent_id = contract.functions.tokenId().call()
+
+            agent_owner = contract_instance.functions.ownerOf(agent_id).call()
+            if Web3.to_checksum_address(agent_owner) == Web3.to_checksum_address(sender_address):
+                return dict(is_valid=True)
+
+            safe_contract = ledger_api.api.eth.contract(address=Web3.to_checksum_address(agent_owner), abi=minimal_abi)
+            owners = safe_contract.functions.getOwners().call()
+            if Web3.to_checksum_address(sender_address) in owners:
+                return dict(is_valid=True)
+
+        except Exception as e:
+            return dict(is_valid=False, error=str(e)) # pragma: no cover
