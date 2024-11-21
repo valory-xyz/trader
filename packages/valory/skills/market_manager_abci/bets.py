@@ -95,7 +95,7 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    invested_amount: float = 0.0
+    _invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
@@ -198,9 +198,15 @@ class Bet:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
 
-    def update_invested_amount(self, new_investment) -> None:
-        """Update the invested amount."""
-        self.invested_amount += new_investment
+    @property
+    def invested_amount(self) -> float:
+        """Return the invested amount."""
+        return self._invested_amount
+
+    @invested_amount.setter
+    def invested_amount(self, new_investment: float) -> None:
+        """Set the invested amount."""
+        self._invested_amount += new_investment
 
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
