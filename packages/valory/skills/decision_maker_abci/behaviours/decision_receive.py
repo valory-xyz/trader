@@ -337,7 +337,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             _,
             _,
         ) = self._compute_new_tokens_distribution(
-            token_amounts.copy(), prices.copy(), net_bet_amount, vote
+            token_amounts.copy(), prices, net_bet_amount, vote
         )
 
         new_other = other_tokens_in_pool + other_shares
