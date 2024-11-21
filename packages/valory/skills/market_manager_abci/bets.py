@@ -209,7 +209,7 @@ class Bet:
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
-        self.investedAmount = bet.investedAmount
+        self.investedAmount += bet.investedAmount
 
     def rebet_allowed(
         self,
