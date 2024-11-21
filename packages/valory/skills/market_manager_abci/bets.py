@@ -99,6 +99,7 @@ class Bet:
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
+    _transaction_processed_timestamp: int = 0
     n_bets: int = 0
     _queue_no: int = 0
 
@@ -204,10 +205,19 @@ class Bet:
         """Return the invested amount."""
         return self._invested_amount
 
-    @invested_amount.setter
-    def invested_amount(self, new_investment: float) -> None:
+    def add_investment(self, new_investment: float) -> None:
         """Set the invested amount."""
         self._invested_amount += new_investment
+
+    @property
+    def transaction_processed_timestamp(self) -> int:
+        """Return the transaction processed timestamp."""
+        return self._transaction_processed_timestamp
+
+    @transaction_processed_timestamp.setter
+    def transaction_processed_timestamp(self, new_timestamp: int) -> None:
+        """Set the transaction processed timestamp."""
+        self._transaction_processed_timestamp = new_timestamp
 
     @property
     def queue_no(self) -> int:
