@@ -100,6 +100,7 @@ class Bet:
     potential_net_profit: int = 0
     processed_timestamp: int = 0
     n_bets: int = 0
+    _queue_no: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -207,6 +208,16 @@ class Bet:
     def invested_amount(self, new_investment: float) -> None:
         """Set the invested amount."""
         self._invested_amount += new_investment
+
+    @property
+    def queue_no(self) -> int:
+        """Return the queue number."""
+        return self._queue_no
+
+    @queue_no.setter
+    def queue_no(self, new_queue_no: int) -> None:
+        """Set the queue number."""
+        self._queue_no = new_queue_no
 
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
