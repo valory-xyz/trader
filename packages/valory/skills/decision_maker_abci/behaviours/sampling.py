@@ -115,19 +115,24 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :param bets: the bets' values to compare for the sampling.
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
-        # Filter out all the bets that have a processed_timestamp != 0
-        new_bets = [bet for bet in bets if bet.processed_timestamp == 0]
 
-        if new_bets:
+        # Filter out all the best with the smallest queue number
+        least_queue_number = min([bet.queue_no for bet in bets])
+        priority_bets = [bet for bet in bets if bet.queue_no == least_queue_number]
+
+        # Filter out all the bets that have a processed_timestamp == 0
+        new_in_priority_bets = [bet for bet in bets if bet.processed_timestamp == 0]
+
+        if new_in_priority_bets:
             # Order the list in Decreasing order of liquidity
-            new_bets.sort(
+            new_in_priority_bets.sort(
                 key=lambda bet: (bet.scaledLiquidityMeasure, bet.openingTimestamp),
                 reverse=True,
             )
-            return self.bets.index(new_bets[0])
+            return self.bets.index(new_in_priority_bets[0])
         else:
             # Order first in Decreasing order of invested_amount
-            bets.sort(
+            priority_bets.sort(
                 key=lambda bet: (
                     bet.invested_amount,
                     -bet.processed_timestamp,  # Increasing order of processed_timestamp
@@ -136,7 +141,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                 ),
                 reverse=True,
             )
-            return self.bets.index(bets[0])
+            return self.bets.index(priority_bets[0])
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
