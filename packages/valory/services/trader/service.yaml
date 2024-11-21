@@ -63,6 +63,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
         tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
@@ -289,6 +290,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
         tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
@@ -406,6 +408,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
         tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
@@ -523,6 +526,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
         tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}

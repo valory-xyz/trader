@@ -162,6 +162,7 @@ models:
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:null}
       agent_registry_address: ${str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+      use_acn_for_delivers: ${bool:false}
       share_tm_config_on_startup: ${bool:false}
       sleep_time: ${int:10}
       tendermint_p2p_url: ${str:localhost:26656}

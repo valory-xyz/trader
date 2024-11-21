@@ -40,6 +40,9 @@ handlers:
   abci:
     args: {}
     class_name: TraderHandler
+  acn:
+    args: {}
+    class_name: AcnHandler
   contract_api:
     args: {}
     class_name: ContractApiHandler
@@ -62,6 +65,9 @@ models:
   abci_dialogues:
     args: {}
     class_name: AbciDialogues
+  acn_dialogues:
+    args: {}
+    class_name: AcnDialogues
   benchmark_tool:
     args:
       log_dir: /logs
@@ -125,6 +131,7 @@ models:
       service_id: trader
       service_registry_address: null
       agent_registry_address: '0x0000000000000000000000000000000000000000'
+      use_acn_for_delivers: false
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'
