@@ -251,8 +251,8 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
-      outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:list:[11000000000000000000,9000000000000000000]}
-      outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:list:[0.55,0.45]}
+      outcome_token_amounts: ${list:[11000000000000000000,9000000000000000000]}
+      outcome_token_marginal_prices: ${list:[0.55,0.45]}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}
