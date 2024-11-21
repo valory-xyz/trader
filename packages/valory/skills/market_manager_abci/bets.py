@@ -198,6 +198,10 @@ class Bet:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
 
+    def update_invested_amount(self, new_investment) -> None:
+        """Update the invested amount."""
+        self.invested_amount += new_investment
+
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
         if (
@@ -209,7 +213,6 @@ class Bet:
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
-        self.invested_amount += bet.invested_amount
 
     def rebet_allowed(
         self,
