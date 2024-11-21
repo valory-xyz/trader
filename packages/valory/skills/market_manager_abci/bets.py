@@ -95,7 +95,7 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    investedAmount: float = 0.0
+    invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
@@ -209,7 +209,7 @@ class Bet:
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
-        self.investedAmount += bet.investedAmount
+        self.invested_amount += bet.invested_amount
 
     def rebet_allowed(
         self,
