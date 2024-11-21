@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
   build/AgentRegistry.json: bafybeicoe5elvvsv2neiirsdn4uddrilizmyib3x4mvpklr7olhj2kh4ue
-  contract.py: bafybeihrv6blme3v6diwci6zxxn72qbg5sanzmfq5tobhs4375ebcuyday
+  contract.py: bafybeidci76lr4okeas3u4k5td5beu76hqjbxp43y3uikfl3vdelhhg6am
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: AgentRegistryContract
@@ -16,8 +16,8 @@ contract_interface_paths:
   ethereum: build/AgentRegistry.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.53.0
+    version: <2,>=1.53.0
   open-aea-test-autonomy:
-    version: ==0.14.14.post1
+    version: <1,>=0.14.14.post1
   web3:
     version: <7,>=6.0.0

@@ -68,6 +68,7 @@ from packages.valory.skills.mech_interact_abci.dialogues import (
     AcnDialogues as BaseAcnDialogues,
 )
 
+
 AbciDialogue = BaseAbciDialogue
 AbciDialogues = BaseAbciDialogues
 
