@@ -58,6 +58,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Initialize `BetsManagerBehaviour`."""
         super().__init__(**kwargs)
         self.bets: List[Bet] = []
+        self.current_queue_number: int = 0
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
 
     def store_bets(self) -> None:
@@ -93,6 +94,14 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             with open(self.bets_filepath, READ_MODE) as bets_file:
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
+
+                    # Extract the last queue number from the bets
+                    # This is used to determine the next queue number
+                    if self.bets:
+                        self.current_queue_number = (
+                            max(bet.queue_no for bet in self.bets) + 1
+                        )
+
                     return
                 except (JSONDecodeError, TypeError):
                     err = (
@@ -130,7 +139,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
-                self.bets.append(bet)
+                if self.bets:
+                    bet.queue_no = self.current_queue_number
+                    self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
 
