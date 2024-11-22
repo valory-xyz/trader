@@ -116,7 +116,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
 
-        # Filter out all the best with the smallest queue number
+        # Filter out all the bets with the smallest queue number
         least_queue_number = min([bet.queue_no for bet in bets])
         priority_bets = [bet for bet in bets if bet.queue_no == least_queue_number]
 
