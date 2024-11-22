@@ -52,10 +52,10 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
     FPMM,
     Trade,
 )
-from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
+from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
