@@ -296,7 +296,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return 0, 0
 
         _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
-            token_amounts.copy(), prices.copy(), net_bet_amount, vote
+            token_amounts.copy(), prices, net_bet_amount, vote
         )
 
         return num_shares, available_shares
