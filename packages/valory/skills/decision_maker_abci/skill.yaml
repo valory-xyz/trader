@@ -87,7 +87,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
-- valory/market_maker:0.1.0:bafybeie5swan5s45t3upda67meoes3zntra5hlaf7r3obhd6vq47vipzry
+- valory/market_maker:0.1.0:bafybeibevdc5trbi2qgt2tvwbsr2h5xvonfhcjwfmozftzvef575fdvbjq
 - valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
