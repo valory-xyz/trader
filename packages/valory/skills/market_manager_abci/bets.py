@@ -95,7 +95,7 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    invested_amount: float = 0.0
+    invested_amount: int = 0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0

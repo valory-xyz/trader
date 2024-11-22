@@ -37,7 +37,6 @@ from typing import (
     Union,
 )
 
-from aea.configurations.data_types import PublicId
 from aea.skills.base import Model, SkillContext
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO

@@ -23,8 +23,6 @@ import json
 from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple, cast
 
-from hexbytes import HexBytes
-
 from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
     CollectSameUntilThresholdRound,
@@ -231,11 +229,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
             serialized = "[]"
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
-
-    @property
-    def current_condition_id(self) -> HexBytes:
-        """Get the current condition id."""
-        return HexBytes(self.db.get_strict("current_condition_id"))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

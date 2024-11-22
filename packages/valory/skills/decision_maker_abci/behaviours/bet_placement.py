@@ -99,30 +99,12 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
-            contract_address=self.collateral_token,
-            contract_id=str(ERC20.contract_id),
-            contract_callable="build_approval_tx",
-            spender=self.market_maker_contract_address,
-            amount=self.investment_amount,
+        approval_tx = yield from self.build_approval_tx(
+            self.investment_amount,
+            self.market_maker_contract_address,
+            self.collateral_token,
         )
-
-        if response_msg.performative != ContractApiMessage.Performative.STATE:
-            self.context.logger.info(f"Could not build approval tx: {response_msg}")
-            return False
-
-        approval_data = response_msg.state.body.get("data")
-        if approval_data is None:
-            self.context.logger.info(f"Could not build approval tx: {response_msg}")
-            return False
-
-        batch = MultisendBatch(
-            to=self.collateral_token,
-            data=HexBytes(approval_data),
-        )
-        self.multisend_batches.append(batch)
-        return True
+        return approval_tx
 
     def _calc_buy_amount(self) -> WaitableConditionType:
         """Calculate the buy amount of the conditional token."""

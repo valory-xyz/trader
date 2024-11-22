@@ -29,6 +29,7 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, c
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
+from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
@@ -706,6 +707,35 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
+
+    def build_approval_tx(
+        self, amount: int, market_maker_contract_address: str, to_address: str
+    ) -> WaitableConditionType:
+        """Build an ERC20 approve transaction."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_approval_tx",
+            spender=market_maker_contract_address,
+            amount=amount,
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build approval tx: {response_msg}")
+            return False
+
+        approval_data = response_msg.state.body.get("data")
+        if approval_data is None:
+            self.context.logger.info(f"Could not build approval tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=to_address,
+            data=HexBytes(approval_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
 
 
 class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
