@@ -348,7 +348,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         # Update bet transaction timestamp
         sampled_bet.transaction_processed_timestamp = self.synced_timestamp
         self.store_bets()
-        return
 
     def send_message(
         self, msg: Message, dialogue: Dialogue, callback: Callable
