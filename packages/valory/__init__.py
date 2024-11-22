@@ -17,4 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the skills packages authored by Valory AG."""
+"""Valory packages."""
