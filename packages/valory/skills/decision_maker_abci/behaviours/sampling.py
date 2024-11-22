@@ -85,9 +85,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
-            self.context.logger.info(
-                f"should rebet is False and has_liquidity_changed is: {self.has_liquidity_changed(bet)}"
-            )
             # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
             # e.g.:
             #     1. a market is selected
@@ -100,9 +97,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
-        self.context.logger.info(f"bet.processed_timestamp: {bet.processed_timestamp}")
         can_rebet = now >= bet.processed_timestamp + t_rebetting
-        self.context.logger.info(f"can_rebet: {can_rebet}")
         return within_ranges and can_rebet
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
