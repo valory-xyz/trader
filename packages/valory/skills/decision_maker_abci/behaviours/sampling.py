@@ -85,9 +85,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
-            self.context.logger.info(
-                f"should rebet is False and has_liquidity_changed is: {self.has_liquidity_changed(bet)}"
-            )
             # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
             # e.g.:
             #     1. a market is selected
