@@ -128,7 +128,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         available_bets = list(
             filter(lambda bet: self.processable_bet(bet, now=now), self.bets)
         )
-        self.context.logger.info(f"length of available bets: {len(available_bets)}")
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
