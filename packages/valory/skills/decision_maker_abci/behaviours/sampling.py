@@ -97,9 +97,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
-        self.context.logger.info(f"bet.processed_timestamp: {bet.processed_timestamp}")
         can_rebet = now >= bet.processed_timestamp + t_rebetting
-        self.context.logger.info(f"can_rebet: {can_rebet}")
         return within_ranges and can_rebet
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
