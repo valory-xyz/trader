@@ -46,7 +46,7 @@ class SamplingRound(UpdateBetsRound):
         UpdateBetsRound.selection_key,
         get_name(SynchronizedData.sampled_bet_index),
         get_name(SynchronizedData.benchmarking_finished),
-        get_name(SynchronizedData.simulated_day),
+        get_name(SynchronizedData.day_increased),
     )
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
@@ -63,7 +63,7 @@ class SamplingRound(UpdateBetsRound):
             )
             return synced_data, Event.BENCHMARKING_FINISHED
 
-        if synced_data.simulated_day:
+        if synced_data.day_increased:
             self.context.logger.info(
                 "Entering the sampling Round for a new simulated day"
             )

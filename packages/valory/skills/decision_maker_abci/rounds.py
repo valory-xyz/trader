@@ -258,7 +258,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.MOCK_TX: FinishedWithoutDecisionRound,
             Event.ROUND_TIMEOUT: DecisionReceiveRound,  # loop on the same state until Mech deliver is received
         },
         BlacklistingRound: {

@@ -204,6 +204,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
+    @synced_timestamp.setter
+    def synced_timestamp(self, timestamp: int) -> None:
+        """Set the synced timestamp for simulation"""
+        self.synced_timestamp = timestamp
+
     @property
     def safe_tx_hash(self) -> str:
         """Get the safe_tx_hash."""
@@ -318,23 +323,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.token_balance = self.benchmarking_mode.collateral_balance
         self.wallet_balance = self.benchmarking_mode.native_balance
         self._report_balance()
-
-    def update_sampled_bet_from_shared_data(self):
-        log_message = "Updating sample bet information from shared data"
-        self.context.logger.info(log_message)
-
-        active_sampled_bet = self.get_active_sampled_bet()
-        active_sampled_bet.outcomeTokenAmounts = (
-            self.shared_state.current_liquidity_amounts
-        )
-        active_sampled_bet.outcomeTokenMarginalPrices = (
-            self.shared_state.current_liquidity_prices
-        )
-        active_sampled_bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[
-            self.shared_state.mock_question_id
-        ]
-        log_message = f"self.bets after updating sampled_bet: {self.bets}"
-        self.context.logger.info(log_message)
 
     def check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""

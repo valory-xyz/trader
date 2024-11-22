@@ -66,10 +66,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
-        # self.context.logger.info(
-        #     f"Analyzing bet with id: {bet.id}, processed_timestamp: {bet.processed_timestamp} and n_bets: {bet.n_bets}"
-        # )
-        # Note: `openingTimestamp` is the timestamp when a question stops being available for voting.
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
@@ -79,8 +75,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             - self.params.opening_margin
             - self.params.safe_voting_range
         )
-        # self.context.logger.info(f"within_opening_range ={within_opening_range}")
-        # self.context.logger.info(f"within_safe_range ={within_safe_range}")
+
         within_ranges = within_opening_range and within_safe_range
 
         # rebetting is allowed only if we have already placed at least one bet in this market.
@@ -126,12 +121,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """Sample a bet, mark it as processed, and return its index."""
         # modify time "NOW" in benchmarking mode
         if self.benchmarking_mode.enabled:
-            now = self.shared_state.get_simulated_now_timestamp(
-                self.bets, self.params.safe_voting_range
+            safe_voting_range = (
+                self.params.opening_margin + self.params.safe_voting_range
             )
-            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
-        else:
-            now = self.synced_timestamp
+            self.synced_timestamp = self.shared_state.get_simulated_now_timestamp(
+                self.bets, safe_voting_range
+            )
+            self.context.logger.info(
+                f"Simulating date: {datetime.fromtimestamp(self.synced_timestamp)}"
+            )
+
+        now = self.synced_timestamp
         available_bets = list(
             filter(lambda bet: self.processable_bet(bet, now=now), self.bets)
         )
@@ -159,18 +159,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
             benchmarking_finished = False
-            simulated_day = False
-            if (idx is None) and (self.benchmarking_mode.enabled):
+            day_increased = False
+            if idx is None and self.benchmarking_mode.enabled:
                 self.context.logger.info(
-                    f"No more markets to bet in the simulated day. Increasing simulated day"
+                    f"No more markets to bet in the simulated day. Increasing simulated day."
                 )
                 self.shared_state.increase_one_day_simulation()
                 benchmarking_finished = self.shared_state.check_benchmarking_finished()
                 if benchmarking_finished:
                     self.context.logger.info(
-                        f"No more days to simulate in benchmarking mode"
+                        f"No more days to simulate in benchmarking mode."
                     )
-                simulated_day = True
+                day_increased = True
             self.store_bets()
             if idx is None:
                 bets_hash = None
@@ -181,7 +181,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                 bets_hash,
                 idx,
                 benchmarking_finished,
-                simulated_day,
+                day_increased,
             )
 
         yield from self.finish_behaviour(payload)

@@ -88,7 +88,6 @@ transition_func:
   (ClaimRound, NO_MAJORITY): ClaimRound
   (ClaimRound, ROUND_TIMEOUT): ClaimRound
   (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
-  (DecisionReceiveRound, MOCK_TX): FinishedWithoutDecisionRound
   (DecisionReceiveRound, DONE): BetPlacementRound
   (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
   (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound

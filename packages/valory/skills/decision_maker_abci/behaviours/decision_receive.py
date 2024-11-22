@@ -188,9 +188,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self._get_response()
 
         if self._mech_response is None:
-            # TODO this use-case should never happened.
-            # no more trades for this market
-            self.context.logger.info("The benchmarking has finished!")
+            self.context.logger.info("The mech response is None")
             return None
 
         self.context.logger.info(f"Decision has been received:\n{self.mech_response}")
@@ -304,7 +302,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         return num_shares, available_shares
 
     def _update_shared_data_liquidity(self):
-        """Update the share data information from the sampled_bet"""
+        """Update of the market liquidity information at the shared state from the active sampled_bet"""
         active_sampled_bet = self.get_active_sampled_bet()
         question_id = active_sampled_bet.id
         # check if share state information is empty and we need to initialize
@@ -360,9 +358,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self, token_amounts: List[int], token_prices: List[float]
     ):
         """Function to compute the scaled liquidity measure from token amounts and prices"""
-        return sum(
-            amount * price for amount, price in zip(token_amounts, token_prices)
-        ) / (10**18)
+        precision = 8
+        return round(
+            sum(amount * price for amount, price in zip(token_amounts, token_prices))
+            / (10**18),
+            precision,
+        )
 
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Update the liquidity information at shared state and the prices after placing a bet for a market."""
