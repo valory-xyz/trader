@@ -67,8 +67,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
-        within_safe_range = now < bet.openingTimestamp + self.params.safe_voting_range
+        within_safe_range = (
+            now
+            < bet.openingTimestamp
+            - self.params.opening_margin
+            - self.params.safe_voting_range
+        )
         within_ranges = within_opening_range and within_safe_range
+
+        # rebetting is allowed only if we have already placed at least one bet in this market.
+        # conversely, if we should not rebet, no bets should have been placed in this market.
+        if self.should_rebet ^ bool(bet.n_bets):
+            return False
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
@@ -81,10 +91,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             #     5. the market is never selected again, and therefore a bet is never placed on it
             return within_ranges and self.has_liquidity_changed(bet)
 
-        # if we should rebet, we should have at least one bet processed in the past
-        if not bool(bet.n_bets):
-            return False
-
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
@@ -93,15 +99,49 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
-        Sample a bet and return its id.
+        Sample a bet and return its index.
 
-        The sampling logic is relatively simple at the moment.
-        It simply selects the unprocessed bet with the largest liquidity.
+        The sampling logic follows the specified priority logic:
+        1. Filter out all the bets that have a processed_timestamp != 0 to get a list of new bets.
+        2. If the list of new bets is not empty:
+           2.1 Order the list in decreasing order of liquidity (highest liquidity first).
+           2.2 For bets with the same liquidity, order them in decreasing order of market closing time (openingTimestamp).
+        3. If the list of new bets is empty:
+           3.1 Order the bets in decreasing order of invested_amount.
+           3.2 For bets with the same invested_amount, order them in increasing order of processed_timestamp (least recently processed first).
+           3.3 For bets with the same invested_amount and processed_timestamp, order them in decreasing order of liquidity.
+           3.4 For bets with the same invested_amount, processed_timestamp, and liquidity, order them in decreasing order of market closing time (openingTimestamp).
 
         :param bets: the bets' values to compare for the sampling.
-        :return: the id of the sampled bet, out of all the available bets, not only the given ones.
+        :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
-        return self.bets.index(max(bets))
+
+        # Filter out all the best with the smallest queue number
+        least_queue_number = min([bet.queue_no for bet in bets])
+        priority_bets = [bet for bet in bets if bet.queue_no == least_queue_number]
+
+        # Filter out all the bets that have a processed_timestamp == 0
+        new_in_priority_bets = [bet for bet in bets if bet.processed_timestamp == 0]
+
+        if new_in_priority_bets:
+            # Order the list in Decreasing order of liquidity
+            new_in_priority_bets.sort(
+                key=lambda bet: (bet.scaledLiquidityMeasure, bet.openingTimestamp),
+                reverse=True,
+            )
+            return self.bets.index(new_in_priority_bets[0])
+        else:
+            # Order first in Decreasing order of invested_amount
+            priority_bets.sort(
+                key=lambda bet: (
+                    bet.invested_amount,
+                    -bet.processed_timestamp,  # Increasing order of processed_timestamp
+                    bet.scaledLiquidityMeasure,
+                    bet.openingTimestamp,
+                ),
+                reverse=True,
+            )
+            return self.bets.index(priority_bets[0])
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""

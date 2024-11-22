@@ -75,7 +75,13 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
         """Perform the custom decoding."""
         for cls_ in (AccuracyInfo, EGreedyPolicy):
             cls_attributes = cls_.__annotations__.keys()  # pylint: disable=no-member
-            if sorted(cls_attributes) == sorted(data.keys()):
+            if sorted(cls_attributes) == sorted(data.keys()) or (
+                cls_ == EGreedyPolicy
+                and sorted(cls_attributes - {"updated_ts"}) == sorted(data.keys())
+            ):
+                # If EGreedyPolicy and 'updated_ts' is missing, set it to 0
+                if cls_ == EGreedyPolicy and "updated_ts" not in data:
+                    data["updated_ts"] = 0
                 # if the attributes match the ones of the current class, use it to perform the deserialization
                 return cls_(**data)
 
@@ -89,6 +95,7 @@ class EGreedyPolicy:
     eps: float
     accuracy_store: Dict[str, AccuracyInfo] = field(default_factory=dict)
     weighted_accuracy: Dict[str, float] = field(default_factory=dict)
+    updated_ts: int = 0
 
     def __post_init__(self) -> None:
         """Perform post-initialization checks."""

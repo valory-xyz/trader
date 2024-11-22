@@ -53,6 +53,9 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
     Trade,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
@@ -965,6 +968,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             success = yield from self._setup_policy_and_tools()
             if not success:
                 return None
+
+            if self.synchronized_data.tx_submitter == BetPlacementRound.auto_round_id():
+                self.update_bet_transaction_information()
 
             payload: Optional[RedeemPayload]
             if self.benchmarking_mode.enabled:

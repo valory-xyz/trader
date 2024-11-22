@@ -95,10 +95,13 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
+    invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
+    transaction_processed_timestamp: int = 0
     n_bets: int = 0
+    queue_no: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -110,7 +113,7 @@ class Bet:
         """Implements less than operator."""
         return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
 
-    def _blacklist_forever(self) -> None:
+    def blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
@@ -145,7 +148,7 @@ class Bet:
         )
 
         if nulls_exist or mismatching_outcomes:
-            self._blacklist_forever()
+            self.blacklist_forever()
 
     def _cast(self) -> None:
         """Cast the values of the instance."""
@@ -165,7 +168,7 @@ class Bet:
     def _check_usefulness(self) -> None:
         """If the bet is deemed unhelpful, then blacklist it."""
         if self.scaledLiquidityMeasure == 0:
-            self._blacklist_forever()
+            self.blacklist_forever()
 
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
