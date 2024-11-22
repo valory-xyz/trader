@@ -301,8 +301,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
-    def _update_shared_data_liquidity(self):
-        """Update of the market liquidity information at the shared state from the active sampled_bet"""
+    def _update_market_liquidity(self):
+        """Update the current market's liquidity information."""
         active_sampled_bet = self.get_active_sampled_bet()
         question_id = active_sampled_bet.id
         # check if share state information is empty and we need to initialize
