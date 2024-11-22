@@ -344,9 +344,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get whether the bet's invested amount should be updated."""
         self.read_bets()
         # Update the bet's invested amount, the new bet amount is added to previous invested amount
-        self.bets[self.synchronized_data.sampled_bet_index].add_investment(
-            self.synchronized_data.bet_amount
-        )
+        self.bets[
+            self.synchronized_data.sampled_bet_index
+        ].invested_amount += self.synchronized_data.bet_amount
+
         # Update bet transaction timestamp
         self.bets[
             self.synchronized_data.sampled_bet_index
