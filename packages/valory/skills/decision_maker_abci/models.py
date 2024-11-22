@@ -551,15 +551,6 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.randomness: str = self._ensure("randomness", kwargs, str)
         super().__init__(*args, **kwargs)
 
-    def get_default_outcome_token_amounts(self, market_id: str):
-        return self.outcome_token_amounts.get(market_id, None)
-
-    def get_default_outcome_token_marginal_prices(self, market_id: str):
-        return self.outcome_token_marginal_prices.get(market_id, None)
-
-    def get_default_scaled_liquidity_measure(self, market_id: str):
-        return self.scaled_liquidity_measure.get(market_id, None)
-
 
 class AccuracyInfoFields(Model, TypeCheckMixin):
     """Configuration which holds the accuracy information file's fieldnames."""
