@@ -95,13 +95,13 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    _invested_amount: float = 0.0
+    invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
-    _transaction_processed_timestamp: int = 0
+    transaction_processed_timestamp: int = 0
     n_bets: int = 0
-    _queue_no: int = 0
+    queue_no: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -199,35 +199,6 @@ class Bet:
     def no(self) -> str:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
-
-    @property
-    def invested_amount(self) -> float:
-        """Return the invested amount."""
-        return self._invested_amount
-
-    def add_investment(self, new_investment: float) -> None:
-        """Set the invested amount."""
-        self._invested_amount += new_investment
-
-    @property
-    def transaction_processed_timestamp(self) -> int:
-        """Return the transaction processed timestamp."""
-        return self._transaction_processed_timestamp
-
-    @transaction_processed_timestamp.setter
-    def transaction_processed_timestamp(self, new_timestamp: int) -> None:
-        """Set the transaction processed timestamp."""
-        self._transaction_processed_timestamp = new_timestamp
-
-    @property
-    def queue_no(self) -> int:
-        """Return the queue number."""
-        return self._queue_no
-
-    @queue_no.setter
-    def queue_no(self, new_queue_no: int) -> None:
-        """Set the queue number."""
-        self._queue_no = new_queue_no
 
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
