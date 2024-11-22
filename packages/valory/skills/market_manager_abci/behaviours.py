@@ -94,6 +94,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             with open(self.bets_filepath, READ_MODE) as bets_file:
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
+
                     return
                 except (JSONDecodeError, TypeError):
                     err = (
@@ -144,14 +145,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # Extract the last queue number from the bets
         # This is used to determine the next queue number
         if self.bets:
-            max_queue_no = max(bet.queue_no for bet in self.bets)
-            min_queue_no = min(bet.queue_no for bet in self.bets)
-
-            self.current_queue_number = max_queue_no
-
-            # If the current queue has been exhausted then increase the current queue number by 1
-            if max_queue_no == min_queue_no:
-                self.current_queue_number += 1
+            self.current_queue_number = max(bet.queue_no for bet in self.bets) + 1
 
         while True:
             can_proceed = self._prepare_fetching()
