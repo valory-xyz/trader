@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicrinslmkepmw3mbcos4b7l6jeiyafaonb42k4qmqgzwzyszgk44i
+agent: valory/trader:0.1.0:bafybeido3sqjr45mo7ruj7dnpchs5743chnvcpfrcjivy7xp7qcaiqepre
 number_of_agents: 4
 deployment:
   agent:
@@ -155,9 +155,6 @@ type: skill
         collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
         mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
         pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
-        outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:dict:{"1":[11000000000000000000,9000000000000000000],"2":[12051566363198041123,4065861525654596129],"3":[7873230340650588731,6223620785868051083]}}
-        outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:dict:{"1":[0.39537,0.60462],"2":[0.252264,0.747735],"3":[0.44149,0.5585]}}
-        scaled_liquidity_measure: ${SCALED_LIQUIDITY_MEASURE:dict:{"1":9.79065,"2":6.08036330493113,"3":6.951844672001134}}
         sep: ${BENCHMARKING_MODE_SEP:str:,}
         dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
         question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}

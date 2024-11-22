@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaa46bshtuoow2fzc4ih7kkhh4tlite66fnzsuagnbtsdiwj6xudq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaz6w5nhykzonxmv5rdrroeipc57im4hspqf32qt55n5aeboxw5y4
 - valory/market_manager_abci:0.1.0:bafybeifhedrcyzfeewmcaujk7gr6larcakyv3aosa255i6te5rhxdqvouq
-- valory/decision_maker_abci:0.1.0:bafybeid67hnwigtzqnnxz6nrwwnzucmfa4evrkjapgumrzcrp33ykenp34
-- valory/trader_abci:0.1.0:bafybeigyyhuo63z5vu252zomjkacmwy25nw6lkm56eeskwdykhkwczdyha
+- valory/decision_maker_abci:0.1.0:bafybeihcbsuy6kht2q2ralyy6tvc7akhojr7j4ezs45jinb33npqrry2nm
+- valory/trader_abci:0.1.0:bafybeia4t2yq6xtrqohnuyqbhmp5ees3ffz5rltwntvkgxmqa3fqm25dqa
 - valory/staking_abci:0.1.0:bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne
 - valory/check_stop_trading_abci:0.1.0:bafybeifmi64g4ki6zwbcncb35ovhd4sllw4xrszrkturpeqdhgf5bkiini
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
@@ -252,8 +252,6 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
-      outcome_token_amounts: ${list:[11000000000000000000,9000000000000000000]}
-      outcome_token_marginal_prices: ${list:[0.55,0.45]}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}

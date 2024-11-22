@@ -529,17 +529,6 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
         self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
         self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
-        # the market parameters can be now different per simulated market
-        # these are the default values for each market
-        # self.outcome_token_amounts: Dict[str, List[int]] = self._ensure(
-        #     "outcome_token_amounts", kwargs, Dict[str, List[int]]
-        # )
-        # self.outcome_token_marginal_prices: Dict[str, List[float]] = self._ensure(
-        #     "outcome_token_marginal_prices", kwargs, Dict[str, List[float]]
-        # )
-        # self.scaled_liquidity_measure: Dict[str, List[float]] = self._ensure(
-        #     "scaled_liquidity_measure", kwargs, Dict[str, float]
-        # )
         self.sep: str = self._ensure("sep", kwargs, str)
         self.dataset_filename: Path = Path(
             self._ensure("dataset_filename", kwargs, str)
