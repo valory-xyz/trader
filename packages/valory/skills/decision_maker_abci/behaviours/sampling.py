@@ -124,14 +124,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             safe_voting_range = (
                 self.params.opening_margin + self.params.safe_voting_range
             )
-            self.synced_timestamp = self.shared_state.get_simulated_now_timestamp(
+            now = self.shared_state.get_simulated_now_timestamp(
                 self.bets, safe_voting_range
             )
-            self.context.logger.info(
-                f"Simulating date: {datetime.fromtimestamp(self.synced_timestamp)}"
-            )
-
-        now = self.synced_timestamp
+            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
+        else:
+            now = self.synced_timestamp
         available_bets = list(
             filter(lambda bet: self.processable_bet(bet, now=now), self.bets)
         )

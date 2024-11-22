@@ -204,11 +204,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
-    @synced_timestamp.setter
-    def synced_timestamp(self, timestamp: int) -> None:
-        """Set the synced timestamp for simulation"""
-        self.synced_timestamp = timestamp
-
     @property
     def safe_tx_hash(self) -> str:
         """Get the safe_tx_hash."""
