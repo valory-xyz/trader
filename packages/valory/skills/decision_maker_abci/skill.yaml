@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeidjmsljdaw7y5chzzkub63mzf5ydpauch5ugojds5jwpeyvovkq3y
+  behaviours/base.py: bafybeicn7q6tezi6essqfwnreld3shjjno3eaxbygpjsp6qktghog4pip4
   behaviours/bet_placement.py: bafybeihmia64t2payxfqcnfdqg675ui2yp3hnyfwb2xhj2hn7wl237b4re
   behaviours/blacklisting.py: bafybeicqwj7o4l7qcym5xjqwq45jngqkhyf44mn6qise2ysyfnlnwz7pdy
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -22,9 +22,9 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeicrmdvhci5prfldvuf3bclbbqi6j7lpv6hmphw3qwgmkmwat3od44
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/reedem.py: bafybeiaxwp4lx62owcaqfp6xcqh6567f5yvwnl4rage2f5hmq4nltkzjjy
+  behaviours/reedem.py: bafybeibb2idce6r7gkyp5hpdc35frzcqcmnmbdhzxbdv2usdavrb7kjyba
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
-  behaviours/sampling.py: bafybeie6ab5pdwal5glhg75am2637lijz5kwqx4ctk2lgqjyllmnw335ca
+  behaviours/sampling.py: bafybeif3klrii7qqx4c3voekmrqcwjo7e6npexe6jmtdd2du6ctgfc5rbm
   behaviours/storage_manager.py: bafybeignur4cwwkdmoj33ll3pmylnddbaqd6gpn6m2n7idieyyti7m3jg4
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
@@ -101,7 +101,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa
+- valory/market_manager_abci:0.1.0:bafybeieywounbmfkgzgskuv7hjdu4pybtdmekiroolvsnjnfkke3mnhfqy
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
