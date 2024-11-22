@@ -81,7 +81,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         with open(dataset_filepath, mode="r") as file:
             reader = csv.DictReader(file)
             for row_number, row in enumerate(reader, start=1):
-                question_id = row["question_id"]
+                question_id = row[self.benchmarking_mode.question_id_field]
                 if question_id not in bets_mapping:
                     bets_mapping[question_id] = []
                 bets_mapping[question_id].append(row_number)
