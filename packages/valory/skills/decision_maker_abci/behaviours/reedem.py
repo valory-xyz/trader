@@ -969,6 +969,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not success:
                 return None
 
+            # If a bet has been placed then update the bets.json file with the investment_amount and
+            # transaction_processed_timestamp
             if self.synchronized_data.tx_submitter == BetPlacementRound.auto_round_id():
                 self.update_bet_transaction_information()
 
