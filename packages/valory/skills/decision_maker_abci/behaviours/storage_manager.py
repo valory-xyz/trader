@@ -330,7 +330,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Update the accuracy store file with the latest information available"""
         self.context.logger.info("Updating accuracy information of the policy...")
         sep = self.acc_info_fields.sep
-        self.remote_accuracy_information.seek(0)  # Ensure the file pointer is at the start
+        self.remote_accuracy_information.seek(
+            0
+        )  # Ensure the file pointer is at the start
         reader: csv.DictReader = csv.DictReader(
             self.remote_accuracy_information, delimiter=sep
         )
