@@ -170,8 +170,7 @@ models:
       termination_from_block: ${int:0}
       use_termination: ${bool:false}
       on_chain_service_id: ${int:null}
-      creator_per_subgraph:
-        omen_subgraph: ${list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
+      creator_per_subgraph: ${dict:{"omen_subgraph":["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}}
       slot_count: ${int:2}
       opening_margin: ${int:86400}
       languages: ${list:["en_US"]}

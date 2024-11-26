@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihp2cv2ayijnhj4zyfpvwiormbq4yy2nbsgo2fm7copgp4kovwksa
+agent: valory/trader:0.1.0:bafybeia3y3exqqqlqwxshgo3wh26jmjjb66obqdku6abhhv5zjksjdrjc4
 number_of_agents: 4
 deployment:
   agent:
@@ -77,8 +77,7 @@ type: skill
         termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
-        creator_per_subgraph: &id003
-          omen_subgraph: ${OMEN_CREATORS:list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
+        creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
@@ -146,7 +145,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
-    benchmark_tool: &id004
+    benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
     benchmarking_mode:
@@ -170,13 +169,13 @@ type: skill
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
         randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
-    acc_info_fields: &id005
+    acc_info_fields: &id004
       args:
         tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
         requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
         accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
         sep: ${ACC_INFO_FIELDS_SEP:str:,}
-    network_subgraph: &id006
+    network_subgraph: &id005
       args:
         headers:
           Content-Type: ${NETWORK_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -189,7 +188,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
         url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
-    omen_subgraph: &id007
+    omen_subgraph: &id006
       args:
         headers:
           Content-Type: ${OMEN_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -201,14 +200,14 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
         url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    randomness_api: &id008
+    randomness_api: &id007
       args:
         method: ${RANDOMNESS_API_METHOD:str:GET}
         response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
         response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
         retries: ${RANDOMNESS_API_RETRIES:int:5}
         url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
-    mech_response: &id009
+    mech_response: &id008
       args:
         headers:
           Content-Type: ${MECH_RESPONSE_API_CONTENT_TYPE:str:application/json}
@@ -217,7 +216,7 @@ type: skill
         response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
         retries: ${MECH_RESPONSE_API_RETRIES:int:5}
         url: ${MECH_RESPONSE_API_URL:str:''}
-    agent_tools: &id010
+    agent_tools: &id009
       args:
         headers:
           Content-Type: ${AGENT_TOOLS_API_CONTENT_TYPE:str:application/json}
@@ -226,7 +225,7 @@ type: skill
         response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
         retries: ${AGENT_TOOLS_API_RETRIES:int:5}
         url: ${AGENT_TOOLS_API_URL:str:''}
-    trades_subgraph: &id011
+    trades_subgraph: &id010
       args:
         headers:
           Content-Type: ${TRADES_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -238,7 +237,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
         url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    conditional_tokens_subgraph: &id012
+    conditional_tokens_subgraph: &id011
       args:
         headers:
           Content-Type: ${CONDITIONAL_TOKENS_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -250,7 +249,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
         url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
-    realitio_subgraph: &id013
+    realitio_subgraph: &id012
       args:
         headers:
           Content-Type: ${REALITIO_SUBGRAPH_CONTENT_TYPE:str:application/json}
@@ -304,7 +303,7 @@ type: skill
         termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
-        creator_per_subgraph: *id003
+        creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
@@ -370,16 +369,16 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
-    benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -422,7 +421,7 @@ type: skill
         termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
-        creator_per_subgraph: *id003
+        creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
@@ -488,16 +487,16 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
-    benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -540,7 +539,7 @@ type: skill
         termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
         validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
         history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
-        creator_per_subgraph: *id003
+        creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}}
         slot_count: ${SLOT_COUNT:int:2}
         opening_margin: ${OPENING_MARGIN:int:86400}
         languages: ${LANGUAGES:list:["en_US"]}
@@ -606,16 +605,16 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
-    benchmark_tool: *id004
-    acc_info_fields: *id005
-    network_subgraph: *id006
-    omen_subgraph: *id007
-    randomness_api: *id008
-    mech_response: *id009
-    agent_tools: *id010
-    trades_subgraph: *id011
-    conditional_tokens_subgraph: *id012
-    realitio_subgraph: *id013
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection
