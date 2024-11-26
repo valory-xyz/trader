@@ -51,6 +51,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.next_mock_data_row),
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)
+    required_class_attributes = ()
 
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""

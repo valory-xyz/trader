@@ -36,3 +36,4 @@ class ClaimRound(VotingRound):
     negative_event = Event.SUBSCRIPTION_ERROR
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
+    required_class_attributes = ()

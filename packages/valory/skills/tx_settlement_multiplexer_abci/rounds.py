@@ -70,6 +70,7 @@ class PreTxSettlementRound(VotingRound):
     negative_event = Event.REFILL_REQUIRED
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
+    required_class_attributes = ()
 
 
 class PostTxSettlementRound(CollectSameUntilThresholdRound):
@@ -77,6 +78,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
 
     payload_class: Any = object()
     synchronized_data_class = SynchronizedData
+    required_class_attributes = ()
 
     def _check_required_attributes(self) -> None:
         """Check that required attributes are set."""

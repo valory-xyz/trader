@@ -36,3 +36,4 @@ class HandleFailedTxRound(VotingRound):
     negative_event = Event.NO_OP
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
+    required_class_attributes = ()

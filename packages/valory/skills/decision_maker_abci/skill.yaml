@@ -38,20 +38,20 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeihczrvkid4lqoai7myqqs4f3g5diqsnjotxtqhxhm5c7oowzifbqy
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeicrzw6p4dq52adkdjlduplt3expzajqmd3nkcpsw5yalfc3dwv75q
+  states/base.py: bafybeibkxik2tqvgm2fvlvpe67lxjejhs5zvz3kta3kvbbjk2yhnbbeihm
   states/bet_placement.py: bafybeibalhxhp2c4oljmiwqi6ds3g36fgtabmf42mb5sgq6z22znrcbhda
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
-  states/check_benchmarking.py: bafybeieo3xraqkda6t5yip2doquf5cjl75kfgqj3ovbfo6ofafuqdxbbse
-  states/claim_subscription.py: bafybeiampifhdoztggwj6gthl2hfzecmjcwnm6nic2o47q4je7j4x3ujne
-  states/decision_receive.py: bafybeicr7bxjbgzo4thqlsczsyebabhplfztkd3c3og3wm6cxhv56pad5q
-  states/decision_request.py: bafybeiarv3r5j7cfvxmudki2llbdl2pvf24p5mvsva6bdgrylnwdyag5xy
+  states/check_benchmarking.py: bafybeieaaaex5tbd7ekfwhy3y3rg2scg3ni52u2xn57igiv5wvnjd5sxfi
+  states/claim_subscription.py: bafybeiglt2lnxt33zmbmnchsfwvlgasivhrx5ssozg6txlxldxx5kdahzu
+  states/decision_receive.py: bafybeib3suct57acezkwzfgij4fuwzrz7zz26d7nrbepaewqe3gtmve5pq
+  states/decision_request.py: bafybeibojnfutwq5abu35yjl7v77v6go3ulmn5ssrg5ge3dqio4uhsepmi
   states/final_states.py: bafybeicjrrojo3gmfaxzicwloyorlnqgzl6a2avevo4nvhoh424zwzmbti
-  states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
+  states/handle_failed_tx.py: bafybeif3czu7liygl6n7kzlzjak6cdu2jbbdzeyubsv4dvapmu4gfekzpm
   states/order_subscription.py: bafybeidrcef2op3nhq4tjgri3ct5hfhmc22xw2ep6dk4ro6tg7ob6cmioa
-  states/randomness.py: bafybeiceoo4nx3t4dofpwczw3v5mclramwmzpwjs6hv7l56arodrjx4l5u
+  states/randomness.py: bafybeiaerg7sznbjcxifiyusegfd56dc6xfezyphcbkqtpi2nnvmyiuvwi
   states/redeem.py: bafybeica6cn4xg7shea2wjhbqnddgxe5zao2hkmceltze7qknxdhtsoaxe
   states/sampling.py: bafybeihriyyskmlupjiwytx2pdpftms7plkjku5bip64c3ztx7oi3n43ci
-  states/tool_selection.py: bafybeiak5ihuie4nxh3sguiea6pcdgyxr4k4xyzvq6o2uj5xpf7urocawy
+  states/tool_selection.py: bafybeih2g5gsfxcka6ggd5hgwk3xnqkqzb32xslbfbui3p2k5ecamzlolq
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
   tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
@@ -92,7 +92,7 @@ contracts:
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
 - valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeig75bhpudw4vvemwq5vfj6scho7zecillzqty5ezfpdmjdfcstcdq
+- valory/agent_registry:0.1.0:bafybeibboljpn2zevzxnpgflxj6ykxk4bpxegtzjts25ajliaoadz35mca
 - valory/transfer_nft_condition:0.1.0:bafybeicdtigdwlt47jg2tibxltwyyl4apysvlideo53lgiy3muuho3izpa
 protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
@@ -101,9 +101,9 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
-- valory/market_manager_abci:0.1.0:bafybeiaotaepzfcp3mvd7pp2zv6v6bbgfjblk4pzcvjbzbhkc5p463afba
+- valory/market_manager_abci:0.1.0:bafybeian6mfeebwg7co2hzejqbxnekmtoh3ye4e6g7foyitbejhyxlrp5m
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
-- valory/mech_interact_abci:0.1.0:bafybeicwbixih73ynseclrkzi6pag2lvnw7hen6bcqeis2dsj7vxthmv5m
+- valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
 behaviours:
   main:
     args: {}

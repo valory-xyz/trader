@@ -45,3 +45,4 @@ class ToolSelectionRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.mech_tool),
     )
     collection_key = get_name(SynchronizedData.participant_to_selection)
+    required_class_attributes = ()

@@ -245,6 +245,7 @@ class TxPreparationRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.mocking_mode),
     )
     collection_key = get_name(SynchronizedData.participant_to_tx_prep)
+    required_class_attributes = ()
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""

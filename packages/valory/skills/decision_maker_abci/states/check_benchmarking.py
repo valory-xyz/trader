@@ -31,3 +31,4 @@ class CheckBenchmarkingModeRound(HandleFailedTxRound):
     done_event = Event.BENCHMARKING_ENABLED
     negative_event = Event.BENCHMARKING_DISABLED
     none_event = Event.NONE
+    required_class_attributes = ()
