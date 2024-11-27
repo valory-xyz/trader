@@ -491,8 +491,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 liquidity_info = self._update_liquidity_info(
                     net_bet_amount, prediction_response.vote
                 )
-                # update the sample_bet from the shared state info
-                # self.update_sampled_bet_from_shared_data()
                 bet.outcomeTokenAmounts = self.shared_state.current_liquidity_amounts
                 bet.outcomeTokenMarginalPrices = (
                     self.shared_state.current_liquidity_prices

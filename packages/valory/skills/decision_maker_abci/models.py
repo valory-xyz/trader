@@ -279,6 +279,7 @@ class SharedState(BaseSharedState):
     def _initialize_simulated_now_timestamps(
         self, bets: List[Bet], safe_voting_range: int
     ) -> None:
+        """Creates the list of simulated days for the benchmarking mode"""
         self.simulated_days_idx = 0
         # Find the maximum timestamp from openingTimestamp field
         max_timestamp = max(bet.openingTimestamp for bet in bets)
@@ -305,14 +306,17 @@ class SharedState(BaseSharedState):
         self.simulated_days = timestamps
 
     def increase_one_day_simulation(self) -> None:
+        """Increased the index used for the current simulated day"""
         self.simulated_days_idx += 1
 
     def check_benchmarking_finished(self) -> bool:
+        """Checks if we simulated already all days"""
         return self.simulated_days_idx >= len(self.simulated_days)
 
     def get_simulated_now_timestamp(
         self, bets: List[Bet], safe_voting_range: int
     ) -> int:
+        """Gets the current simulated day timestamp"""
         if len(self.simulated_days) == 0:
             self._initialize_simulated_now_timestamps(bets, safe_voting_range)
 

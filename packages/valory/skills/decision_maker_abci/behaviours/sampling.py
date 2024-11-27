@@ -155,13 +155,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             day_increased = False
             if idx is None and self.benchmarking_mode.enabled:
                 self.context.logger.info(
-                    f"No more markets to bet in the simulated day. Increasing simulated day."
+                    "No more markets to bet in the simulated day. Increasing simulated day."
                 )
                 self.shared_state.increase_one_day_simulation()
                 benchmarking_finished = self.shared_state.check_benchmarking_finished()
                 if benchmarking_finished:
                     self.context.logger.info(
-                        f"No more days to simulate in benchmarking mode."
+                        "No more days to simulate in benchmarking mode."
                     )
                 day_increased = True
             self.store_bets()
