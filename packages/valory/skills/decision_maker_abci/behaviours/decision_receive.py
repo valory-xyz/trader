@@ -301,7 +301,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
         return num_shares, available_shares
 
-    def _update_market_liquidity(self):
+    def _update_market_liquidity(self) -> None:
         """Update the current market's liquidity information."""
         active_sampled_bet = self.get_active_sampled_bet()
         question_id = active_sampled_bet.id
