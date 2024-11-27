@@ -22,7 +22,7 @@
 import csv
 import json
 from dataclasses import asdict
-from typing import Any, Dict, Generator, Optional, List
+from typing import Any, Dict, Generator, List, Optional
 from uuid import uuid4
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (

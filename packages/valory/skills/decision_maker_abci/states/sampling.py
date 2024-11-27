@@ -20,7 +20,7 @@
 """This module contains the sampling state of the decision-making abci app."""
 
 from enum import Enum
-from typing import Any, cast, Optional, Tuple, Type
+from typing import Any, Optional, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,

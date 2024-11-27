@@ -20,8 +20,8 @@
 """This module contains the models for the skill."""
 
 import os
-import time
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -58,11 +58,11 @@ from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
     Subgraph,
 )
-from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
@@ -448,11 +448,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[str, List[str]] = (
-            nested_list_todict_workaround(
-                kwargs,
-                "file_hash_to_strategies_json",
-            )
+        self.file_hash_to_strategies: Dict[
+            str, List[str]
+        ] = nested_list_todict_workaround(
+            kwargs,
+            "file_hash_to_strategies_json",
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -464,11 +464,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[str, Any] = (
-            nested_list_todict_workaround(
-                kwargs,
-                "mech_to_subscription_params",
-            )
+        self.mech_to_subscription_params: Dict[
+            str, Any
+        ] = nested_list_todict_workaround(
+            kwargs,
+            "mech_to_subscription_params",
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)

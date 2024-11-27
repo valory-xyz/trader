@@ -22,8 +22,8 @@
 import csv
 import json
 from copy import deepcopy
-from math import prod
 from datetime import datetime
+from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -315,9 +315,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.shared_state.current_liquidity_prices = (
                 active_sampled_bet.outcomeTokenMarginalPrices
             )
-            self.shared_state.liquidity_cache[question_id] = (
-                active_sampled_bet.scaledLiquidityMeasure
-            )
+            self.shared_state.liquidity_cache[
+                question_id
+            ] = active_sampled_bet.scaledLiquidityMeasure
         return
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
@@ -387,11 +387,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
-        self.shared_state.liquidity_cache[market_id] = (
-            self._compute_scaled_liquidity_measure(
-                self.shared_state.current_liquidity_amounts,
-                self.shared_state.current_liquidity_prices,
-            )
+        self.shared_state.liquidity_cache[
+            market_id
+        ] = self._compute_scaled_liquidity_measure(
+            self.shared_state.current_liquidity_amounts,
+            self.shared_state.current_liquidity_prices,
         )
 
         return liquidity_info

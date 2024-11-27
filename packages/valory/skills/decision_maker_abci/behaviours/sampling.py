@@ -20,8 +20,9 @@
 """This module contains the behaviour for sampling a bet."""
 
 import random
-from typing import Any, Generator, List, Optional
 from datetime import datetime
+from typing import Any, Generator, List, Optional
+
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
