@@ -267,7 +267,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @property
     def sampled_bet(self) -> Bet:
-        """Get the sampled bet and resets the self.bets list of the trader."""
+        """Get the sampled bet and reset the bets list."""
         self.read_bets()
         bet_index = self.synchronized_data.sampled_bet_index
         return self.bets[bet_index]
