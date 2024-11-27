@@ -309,8 +309,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         empty_dict = len(self.shared_state.liquidity_amounts) == 0
         new_market = question_id not in self.shared_state.liquidity_amounts.keys()
         if empty_dict or new_market:
-            log_message = f"Initializing shared state information from the sampled bet with market id: {question_id}"
-            self.context.logger.info(log_message)
             self.shared_state.current_liquidity_amounts = (
                 active_sampled_bet.outcomeTokenAmounts
             )
@@ -367,8 +365,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Update the liquidity information at shared state and the prices after placing a bet for a market."""
-        log_message = f"Updating liquidity info after placing the bet with net_bet_amount: {net_bet_amount}"
-        self.context.logger.info(log_message)
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
         l0_start, l1_start = liquidity_info.validate_start_information()
 
