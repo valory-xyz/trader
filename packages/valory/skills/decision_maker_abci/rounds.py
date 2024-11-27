@@ -175,7 +175,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         20. ImpossibleRound
         21. BenchmarkingDoneRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound,
+    FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound,
+    FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
