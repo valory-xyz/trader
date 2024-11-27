@@ -73,7 +73,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(msg)
 
     def initialize_bet_id_row_manager(self) -> Dict[str, List[int]]:
-        bets_mapping = {}
+        bets_mapping: Dict[str, List[int]] = {}
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
