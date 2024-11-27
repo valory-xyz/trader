@@ -215,7 +215,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: SubscriptionRound,
             Event.NONE: FinishedWithoutDecisionRound,
             Event.NO_MAJORITY: SamplingRound,
-            Event.ROUND_TIMEOUT: SamplingRound,
+            Event.NEW_SIMULATED_RESAMPLE: SamplingRound,
             Event.BENCHMARKING_ENABLED: ToolSelectionRound,
             Event.BENCHMARKING_FINISHED: BenchmarkingDoneRound,
             # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition

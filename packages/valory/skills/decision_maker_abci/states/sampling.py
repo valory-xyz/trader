@@ -68,7 +68,7 @@ class SamplingRound(UpdateBetsRound):
                 "Entering the sampling Round for a new simulated day"
             )
             # re-enter the SamplingRound
-            return synced_data, Event.ROUND_TIMEOUT
+            return synced_data, Event.NEW_SIMULATED_RESAMPLE
         if event == Event.DONE and self.context.benchmarking_mode.enabled:
             return synced_data, Event.BENCHMARKING_ENABLED
         return res
