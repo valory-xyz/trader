@@ -71,7 +71,7 @@ fingerprint:
   tests/states/test_order_subscription.py: bafybeiag37uk5mitjm4yadcpr67icfmmzeucdlgvqoct4y4jeyhnebyyoi
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
   tests/states/test_redeem.py: bafybeiezdnfrxukb2xpwffrr357g2anmdkwy7wo3nphvlggipq5xrdzr7a
-  tests/states/test_sampling.py: bafybeibudt7dvivhuaszwlchjtpihx35lgbluk26uydpdwug7hfhwucwby
+  tests/states/test_sampling.py: bafybeifvbzikke6wtex2p5j7fsnpdbj4qqxl5vh2lm2m2apgvuqdonoyzm
   tests/states/test_tool_selection.py: bafybeib7js3dj7647t33o5ybfqftwytxktwrvhbri5yuyymg6znj6y7xxa
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeihpkgtjjm3uegpup6zkznpoaxqpu6kmp3ujiggrzbe73p5fzlq7im

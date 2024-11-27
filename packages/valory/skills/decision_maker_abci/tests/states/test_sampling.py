@@ -101,9 +101,10 @@ class TestSamplingRound:
         sampling_round = setup_sampling_round
         expected_selection_key = (
             UpdateBetsRound.selection_key,
-            get_name(
-                SynchronizedData.sampled_bet_index
-            ),  # Pass the property, not the value
+            get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.benchmarking_finished),
+            get_name(SynchronizedData.simulated_day),
+            # Pass the property, not the value
         )
         assert sampling_round.selection_key == expected_selection_key
 
