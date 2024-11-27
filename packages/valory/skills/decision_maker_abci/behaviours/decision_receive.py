@@ -108,7 +108,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         # we have now one reader pointer per market
         available_rows_for_market = self.shared_state.bet_id_row_manager[sampled_bet_id]
         if available_rows_for_market:
-            next_mock_data_row = self.shared_state.bet_id_row_manager[sampled_bet_id][0]
+            next_mock_data_row = available_rows_for_market[0]
         else:
             # no more bets available for this market
             msg = f"No more mock responses for the market with id: {sampled_bet_id}"
