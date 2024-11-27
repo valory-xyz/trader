@@ -56,6 +56,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
 SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
+TOKEN_PRECISION = 10**18
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -355,12 +356,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self, token_amounts: List[int], token_prices: List[float]
     ) -> float:
         """Function to compute the scaled liquidity measure from token amounts and prices."""
-        precision = 8
-        token_prices = [round(x, precision) for x in token_prices]
-        return round(
+        return (
             sum(amount * price for amount, price in zip(token_amounts, token_prices))
-            / (10**18),
-            precision,
+            / TOKEN_PRECISION
         )
 
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
