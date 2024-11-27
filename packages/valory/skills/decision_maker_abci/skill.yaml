@@ -12,12 +12,12 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeid4xzajdykjdhmrykuxmfcpr7xolwkc53gddasfvrvih3keacxn3a
+  behaviours/base.py: bafybeiasmuhl5kabt6s6g7dqk6htd4xuoe76sh6hala6dymctpaj6pf3pi
   behaviours/bet_placement.py: bafybeihmia64t2payxfqcnfdqg675ui2yp3hnyfwb2xhj2hn7wl237b4re
   behaviours/blacklisting.py: bafybeifitqx2omj5qdwokizhqjkxvybtsyxo22dxkucbtxaocafzgbseku
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
-  behaviours/decision_receive.py: bafybeifkhoat7xu7okraegqfca3f2ddclvtytsio2rqcjc22kkvyk54coa
+  behaviours/decision_receive.py: bafybeihdqhsknydqszh3dqfqaapbs64x7uqjtvgyfg3cv5j442ibcpbks4
   behaviours/decision_request.py: bafybeibytikxjg7bdblrr73ghimsxad6snzahzwyyrxs2mdo462mct2vm4
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeicrmdvhci5prfldvuf3bclbbqi6j7lpv6hmphw3qwgmkmwat3od44
@@ -32,7 +32,7 @@ fingerprint:
   handlers.py: bafybeigod6gbjrxy4mbmulbzsbokeaoycoqys64vqtxnumishfukzf73za
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeih6hunm55p4opyi24tchenbig5efc56rij6rby653nfqymslif4ai
+  models.py: bafybeicbxbiaefywvfg4dh653d4zfe56mj6nwpqxlh4bknwitd27rdphre
   payloads.py: bafybeihzwxhdc6a6ek2lvsyzkex4ypsl7fnahszal3dxtr7ce6wp7nmgmm
   policy.py: bafybeihlzs4o5e7yfmfzcvvrzkf4bhxfsg5gxnzsrpepwgfugh45gafye4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -101,7 +101,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeihhosfhw3725txnae7ouch3wixpuigv6litz2q7o7r5gznyinpsjy
+- valory/market_manager_abci:0.1.0:bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:

@@ -282,7 +282,10 @@ class SharedState(BaseSharedState):
         self.simulated_days_idx = 0
         # Find the maximum timestamp from openingTimestamp field
         max_timestamp = max(bet.openingTimestamp for bet in bets)
-        # adding range to allow voting (it has to be <)
+        # adding some time range to allow voting
+        # in the sampling round the within_safe condition is designed to check
+        # the openingtimestamp of the market strickly less than the safe voting range
+        # so we need to create a timestamp that passes this condition for the max openingtimestamp
         max_timestamp = max_timestamp - safe_voting_range - 1
 
         # Get current timestamp
@@ -448,11 +451,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "file_hash_to_strategies_json",
+            )
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -464,11 +467,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
+        self.mech_to_subscription_params: Dict[str, Any] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "mech_to_subscription_params",
+            )
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)

@@ -82,6 +82,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
+
         if not os.path.isfile(self.bets_filepath):
             self.context.logger.warning(
                 f"No stored bets file was detected in {self.bets_filepath}. Assuming bets are empty."
