@@ -139,7 +139,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 8.
             - tie: 9.
             - unprofitable: 9.
-            - benchmarking finished: 21.
             - round timeout: 8.
         9. BlacklistingRound
             - done: 16.

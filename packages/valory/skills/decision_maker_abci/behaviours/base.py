@@ -288,7 +288,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return wei / 10**18
 
     def get_active_sampled_bet(self) -> Bet:
-        """Function to get the selected bet that is active without reseting self.bets"""
+        """Function to get the selected bet that is active without reseting self.bets."""
         bet_index = self.synchronized_data.sampled_bet_index
         if len(self.bets) == 0:
             msg = "The length of self.bets is 0"
