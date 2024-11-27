@@ -96,7 +96,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no op: 20.
             - blacklist: 20.
         1. BenchmarkingRandomnessRound
-            - done: 6.
+            - done: 3.
             - round timeout: 1.
             - no majority: 1.
         2. RandomnessRound
@@ -107,7 +107,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 4.
             - none: 16.
             - no majority: 3.
-            - round timeout: 3.
+            - new simulated resample: 3.
+            - benchmarking enabled: 6.
+            - benchmarking finished: 21.
             - fetch error: 20.
         4. SubscriptionRound
             - done: 18.
@@ -142,7 +144,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 8.
         9. BlacklistingRound
             - done: 16.
-            - mock tx: 6.
+            - mock tx: 16.
             - none: 20.
             - no majority: 9.
             - round timeout: 9.
@@ -156,7 +158,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 20.
         11. RedeemRound
             - done: 13.
-            - mock tx: 6.
+            - mock tx: 3.
             - no redeeming: 17.
             - no majority: 11.
             - redeem round timeout: 17.
@@ -175,9 +177,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         20. ImpossibleRound
         21. BenchmarkingDoneRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound,
-    FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound,
-    FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -199,7 +199,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
-            # added because of `autonomy analyse fsm-specs` falsely reporting them as missing from the transition
+            # added because of `autonomy analyse fsm-specs`
+            # falsely reporting them as missing from the transition
             Event.NO_OP: ImpossibleRound,
             Event.BLACKLIST: ImpossibleRound,
         },
@@ -220,7 +221,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NEW_SIMULATED_RESAMPLE: SamplingRound,
             Event.BENCHMARKING_ENABLED: ToolSelectionRound,
             Event.BENCHMARKING_FINISHED: BenchmarkingDoneRound,
-            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         SubscriptionRound: {
@@ -259,25 +261,30 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
             Event.UNPROFITABLE: BlacklistingRound,
-            Event.ROUND_TIMEOUT: DecisionReceiveRound,  # loop on the same state until Mech deliver is received
+            # loop on the same state until Mech deliver is received
+            Event.ROUND_TIMEOUT: DecisionReceiveRound,
         },
         BlacklistingRound: {
             Event.DONE: FinishedWithoutDecisionRound,
             Event.MOCK_TX: FinishedWithoutDecisionRound,
-            Event.NONE: ImpossibleRound,  # degenerate round on purpose, should never have reached here
+            # degenerate round on purpose, should never have reached here
+            Event.NONE: ImpossibleRound,
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
-            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
             # skip the bet placement tx
             Event.MOCK_TX: RedeemRound,
-            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,  # degenerate round on purpose, owner must refill the safe
+            # degenerate round on purpose, owner must refill the safe
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
-            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
         RedeemRound: {
@@ -286,9 +293,11 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.NO_MAJORITY: RedeemRound,
             # in case of a round timeout, there likely is something wrong with redeeming
-            # it could be the RPC, or some other issue. We don't want to be stuck trying to redeem.
+            # it could be the RPC, or some other issue.
+            # We don't want to be stuck trying to redeem.
             Event.REDEEM_ROUND_TIMEOUT: FinishedWithoutRedeemingRound,
-            # this is here because of `autonomy analyse fsm-specs` falsely reporting it as missing from the transition
+            # this is here because of `autonomy analyse fsm-specs` falsely
+            # reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
         HandleFailedTxRound: {
