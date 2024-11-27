@@ -356,6 +356,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     ) -> float:
         """Function to compute the scaled liquidity measure from token amounts and prices"""
         precision = 8
+        token_prices = [round(x, precision) for x in token_prices]
         return round(
             sum(amount * price for amount, price in zip(token_amounts, token_prices))
             / (10**18),
