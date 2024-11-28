@@ -233,7 +233,7 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def wallet_balance(self) -> int:
         """Get the balance of the wallet."""
-        return int(self.db.get_strict("wallet_balance"))
+        return int(self.db.get("wallet_balance", 0))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
