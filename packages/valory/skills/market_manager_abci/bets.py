@@ -117,6 +117,7 @@ class Bet:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
+        self.queue_no = -1
 
     def _validate(self) -> None:
         """Validate the values of the instance."""
