@@ -59,7 +59,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self.bets: List[Bet] = []
         self.current_queue_number: int = 0
-        self.queue_organisation_required: bool = False
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
 
     def store_bets(self) -> None:
@@ -95,7 +94,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             with open(self.bets_filepath, READ_MODE) as bets_file:
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
-                    self.queue_organisation_required = True
                     return
                 except (JSONDecodeError, TypeError):
                     err = (
