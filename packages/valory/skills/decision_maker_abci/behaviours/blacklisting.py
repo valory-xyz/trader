@@ -63,9 +63,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.read_bets()
-            # skip blacklisting when benchmarking as we should be based solely on the input data of the simulation
-            if not self.benchmarking_mode.enabled:
-                self._blacklist()
+            self._blacklist()
             self.store_bets()
             bets_hash = (
                 None if self.benchmarking_mode.enabled else self.hash_stored_bets()

@@ -66,6 +66,7 @@ class Event(Enum):
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
+    NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
 
 
 class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
@@ -78,6 +79,16 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def sampled_bet_index(self) -> int:
         """Get the sampled bet."""
         return int(self.db.get_strict("sampled_bet_index"))
+
+    @property
+    def benchmarking_finished(self) -> int:
+        """Get the flag of benchmarking finished."""
+        return int(self.db.get_strict("benchmarking_finished"))
+
+    @property
+    def simulated_day(self) -> int:
+        """Get the flag of simulated_day."""
+        return int(self.db.get_strict("simulated_day"))
 
     @property
     def is_mech_price_set(self) -> bool:

@@ -42,6 +42,8 @@ class SamplingPayload(UpdateBetsPayload):
     """Represents a transaction payload for the sampling of a bet."""
 
     index: Optional[int]
+    benchmarking_finished: Optional[bool]
+    day_increased: Optional[bool]
 
 
 @dataclass(frozen=True)
