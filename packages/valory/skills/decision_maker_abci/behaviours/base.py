@@ -267,9 +267,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @property
     def sampled_bet(self) -> Bet:
-        """Get the sampled bet."""
+        """Get the sampled bet and reset the bets list."""
         self.read_bets()
-        return self.bets[self.synchronized_data.sampled_bet_index]
+        bet_index = self.synchronized_data.sampled_bet_index
+        return self.bets[bet_index]
 
     @property
     def collateral_token(self) -> str:
@@ -285,6 +286,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def wei_to_native(wei: int) -> float:
         """Convert WEI to native token."""
         return wei / 10**18
+
+    def get_active_sampled_bet(self) -> Bet:
+        """Function to get the selected bet that is active without reseting self.bets."""
+        bet_index = self.synchronized_data.sampled_bet_index
+        if len(self.bets) == 0:
+            msg = "The length of self.bets is 0"
+            self.context.logger.info(msg)
+            self.read_bets()
+
+        return self.bets[bet_index]
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""

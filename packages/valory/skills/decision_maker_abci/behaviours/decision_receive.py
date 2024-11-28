@@ -22,6 +22,7 @@
 import csv
 import json
 from copy import deepcopy
+from datetime import datetime
 from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -55,6 +56,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
 SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
+TOKEN_PRECISION = 10**18
 
 
 class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
@@ -101,7 +103,20 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         dataset_filepath = (
             self.params.store_path / self.benchmarking_mode.dataset_filename
         )
-        next_mock_data_row = self.synchronized_data.next_mock_data_row
+        active_sampled_bet = self.get_active_sampled_bet()
+        sampled_bet_id = active_sampled_bet.id
+
+        # we have now one reader pointer per market
+        available_rows_for_market = self.shared_state.bet_id_row_manager[sampled_bet_id]
+        if available_rows_for_market:
+            next_mock_data_row = available_rows_for_market[0]
+        else:
+            # no more bets available for this market
+            msg = f"No more mock responses for the market with id: {sampled_bet_id}"
+            self.context.logger.info(msg)
+            self.shared_state.last_benchmarking_has_run = True
+            self._rows_exceeded = True
+            return None
 
         row_with_headers: Optional[Dict[str, str]] = None
         with open(dataset_filepath) as read_dataset:
@@ -114,10 +129,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 # if no rows are in the file, then we finished the benchmarking
                 self._rows_exceeded = True
                 return None
-
-            next_row: Optional[Dict[str, str]] = next(reader, {})
-            if not next_row:
-                self.shared_state.last_benchmarking_has_run = True
 
         msg = f"Processing question in row with index {next_mock_data_row}: {row_with_headers}"
         self.context.logger.info(msg)
@@ -178,7 +189,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self._get_response()
 
         if self._mech_response is None:
-            self.context.logger.info("The benchmarking has finished!")
+            self.context.logger.info("The mech response is None")
             return None
 
         self.context.logger.info(f"Decision has been received:\n{self.mech_response}")
@@ -286,37 +297,28 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             return 0, 0
 
         _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
-            token_amounts, prices, net_bet_amount, vote
+            token_amounts.copy(), prices, net_bet_amount, vote
         )
 
         return num_shares, available_shares
 
-    def _get_mocked_bet(self) -> Bet:
-        """Prepare the mocked bet based on the stored liquidity info."""
-        shared_state = self.shared_state
-        question_id = shared_state.mock_question_id
-        benchmarking_mode = self.benchmarking_mode
-        current_liquidity_dictionary = shared_state.liquidity_amounts
-        outcome_token_amounts = current_liquidity_dictionary.setdefault(
-            question_id, benchmarking_mode.outcome_token_amounts.copy()
-        )
-        outcome_token_marginal_prices = shared_state.liquidity_prices.setdefault(
-            question_id, benchmarking_mode.outcome_token_marginal_prices.copy()
-        )
-        return Bet(
-            id="",
-            market="",
-            title="",
-            collateralToken="",
-            creator="",
-            fee=self.benchmarking_mode.pool_fee,
-            openingTimestamp=0,
-            outcomeSlotCount=2,
-            outcomeTokenAmounts=outcome_token_amounts,
-            outcomeTokenMarginalPrices=outcome_token_marginal_prices,
-            outcomes=["Yes", "No"],
-            scaledLiquidityMeasure=10,
-        )
+    def _update_market_liquidity(self) -> None:
+        """Update the current market's liquidity information."""
+        active_sampled_bet = self.get_active_sampled_bet()
+        question_id = active_sampled_bet.id
+        # check if share state information is empty and we need to initialize
+        empty_dict = len(self.shared_state.liquidity_amounts) == 0
+        new_market = question_id not in self.shared_state.liquidity_amounts.keys()
+        if empty_dict or new_market:
+            self.shared_state.current_liquidity_amounts = (
+                active_sampled_bet.outcomeTokenAmounts
+            )
+            self.shared_state.current_liquidity_prices = (
+                active_sampled_bet.outcomeTokenMarginalPrices
+            )
+            self.shared_state.liquidity_cache[
+                question_id
+            ] = active_sampled_bet.scaledLiquidityMeasure
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -331,7 +333,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             _,
             _,
         ) = self._compute_new_tokens_distribution(
-            token_amounts, prices, net_bet_amount, vote
+            token_amounts.copy(), prices, net_bet_amount, vote
         )
 
         new_other = other_tokens_in_pool + other_shares
@@ -350,8 +352,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             new_selected,
         )
 
+    def _compute_scaled_liquidity_measure(
+        self, token_amounts: List[int], token_prices: List[float]
+    ) -> float:
+        """Function to compute the scaled liquidity measure from token amounts and prices."""
+        return (
+            sum(amount * price for amount, price in zip(token_amounts, token_prices))
+            / TOKEN_PRECISION
+        )
+
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
-        """Update the liquidity information and the prices after placing a bet for a market."""
+        """Update the liquidity information at shared state and the prices after placing a bet for a market."""
         liquidity_info = self._calculate_new_liquidity(net_bet_amount, vote)
         l0_start, l1_start = liquidity_info.validate_start_information()
 
@@ -362,17 +373,32 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             l0_start * prices[0],
             l1_start * prices[1],
         ]
-
+        active_sampled_bet = self.get_active_sampled_bet()
+        market_id = active_sampled_bet.id
         self.shared_state.current_liquidity_prices = liquidity_info.get_new_prices(
             liquidity_constants
         )
         self.shared_state.current_liquidity_amounts = liquidity_info.get_end_liquidity()
+        log_message = (
+            f"New liquidity amounts: {self.shared_state.current_liquidity_amounts}"
+        )
+        self.context.logger.info(log_message)
+
+        # update the scaled liquidity Measure
+        self.shared_state.liquidity_cache[
+            market_id
+        ] = self._compute_scaled_liquidity_measure(
+            self.shared_state.current_liquidity_amounts,
+            self.shared_state.current_liquidity_prices,
+        )
+
         return liquidity_info
 
     def rebet_allowed(
         self, prediction_response: PredictionResponse, potential_net_profit: int
     ) -> bool:
         """Whether a rebet is allowed or not."""
+        # WARNING: Every time you call self.sampled_bet a reset in self.bets is done so any changes there will be lost
         bet = self.sampled_bet
         previous_response = deepcopy(bet.prediction_response)
         previous_liquidity = bet.position_liquidity
@@ -397,11 +423,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if prediction_response.vote is None:
             return False, 0
 
-        bet = (
-            self.sampled_bet
-            if not self.benchmarking_mode.enabled
-            else self._get_mocked_bet()
-        )
+        if self.benchmarking_mode.enabled:
+            bet = self.get_active_sampled_bet()  # no reset
+            self.context.logger.info(f"Bet used for benchmarking: {bet}")
+            self._update_shared_data_liquidity()
+        else:
+            # this call is destroying what it was in self.bets
+            bet = self.sampled_bet
+
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, prediction_response.vote
         )
@@ -449,31 +478,56 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
+        if is_profitable:
+            is_profitable = self.rebet_allowed(
+                prediction_response, potential_net_profit
+            )
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
+                # update the information at the shared state
                 liquidity_info = self._update_liquidity_info(
                     net_bet_amount, prediction_response.vote
                 )
+                bet.outcomeTokenAmounts = self.shared_state.current_liquidity_amounts
+                bet.outcomeTokenMarginalPrices = (
+                    self.shared_state.current_liquidity_prices
+                )
+                bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[bet.id]
+                self.store_bets()
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
             else:
                 self._write_benchmark_results(prediction_response)
 
-        if is_profitable:
-            is_profitable = self.rebet_allowed(
-                prediction_response, potential_net_profit
-            )
-
         return is_profitable, bet_amount
 
-    def _update_selected_bet(self) -> None:
+    def _update_selected_bet(
+        self, prediction_response: Optional[PredictionResponse]
+    ) -> None:
         """Update the selected bet."""
-        # update the bet's timestamp of processing and its number of bets for the given
-        sampled_bet = self.sampled_bet
-        sampled_bet.n_bets += 1
-        sampled_bet.processed_timestamp = self.synced_timestamp
+        # update the bet's timestamp of processing and its number of bets for the given id
+        if self.benchmarking_mode.enabled:
+            active_sampled_bet = self.get_active_sampled_bet()
+            active_sampled_bet.processed_timestamp = (
+                self.shared_state.get_simulated_now_timestamp(
+                    self.bets, self.params.safe_voting_range
+                )
+            )
+            self.context.logger.info(f"Updating bet id: {active_sampled_bet.id}")
+            self.context.logger.info(
+                f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
+            )
+            if prediction_response is not None:
+                active_sampled_bet.n_bets += 1
+
+        else:
+            # update the bet's timestamp of processing and its number of bets for the given
+            sampled_bet = self.sampled_bet
+            sampled_bet.n_bets += 1
+            sampled_bet.processed_timestamp = self.synced_timestamp
+
         self.store_bets()
 
     def async_act(self) -> Generator:
@@ -493,9 +547,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     self.store_bets()
                     bets_hash = self.hash_stored_bets()
 
-                if self.benchmarking_mode.enabled:
-                    next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
-
             elif (
                 prediction_response is not None
                 and self.benchmarking_mode.enabled
@@ -505,9 +556,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     prediction_response,
                     bet_amount,
                 )
-                next_mock_data_row = self.synchronized_data.next_mock_data_row + 1
+            # always remove the processed trade from the benchmarking input file
+            # now there is one reader pointer per market
+            if self.benchmarking_mode.enabled:
+                # always remove the processed trade from the benchmarking input file
+                # now there is one reader pointer per market
+                bet = self.get_active_sampled_bet()
+                rows_queue = self.shared_state.bet_id_row_manager[bet.id]
+                if rows_queue:
+                    rows_queue.pop(0)
 
-            self._update_selected_bet()
+            self._update_selected_bet(prediction_response)
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 bets_hash,

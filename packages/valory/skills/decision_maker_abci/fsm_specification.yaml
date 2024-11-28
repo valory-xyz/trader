@@ -9,6 +9,7 @@ alphabet_in:
 - MECH_RESPONSE_ERROR
 - MOCK_MECH_REQUEST
 - MOCK_TX
+- NEW_SIMULATED_RESAMPLE
 - NONE
 - NO_MAJORITY
 - NO_OP
@@ -63,7 +64,7 @@ states:
 - SubscriptionRound
 - ToolSelectionRound
 transition_func:
-    (BenchmarkingRandomnessRound, DONE): ToolSelectionRound
+    (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
     (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
@@ -74,7 +75,7 @@ transition_func:
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): ToolSelectionRound
+    (BlacklistingRound, MOCK_TX): FinishedWithoutDecisionRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -88,7 +89,6 @@ transition_func:
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
-    (DecisionReceiveRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -107,16 +107,18 @@ transition_func:
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
-    (RedeemRound, MOCK_TX): ToolSelectionRound
+    (RedeemRound, MOCK_TX): SamplingRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
+    (SamplingRound, BENCHMARKING_ENABLED): ToolSelectionRound
+    (SamplingRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
     (SamplingRound, DONE): SubscriptionRound
     (SamplingRound, FETCH_ERROR): ImpossibleRound
+    (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
-    (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound

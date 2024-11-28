@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeibhv5pummw2ngrag6sk6a7phnffp2dfsswhvtxayzizqthea52kru
+agent: valory/trader:0.1.0:bafybeieoklf7wjrnupyv4egny5hfn6mbxtrjwwtrqyznjoxodiy72cj3na
 number_of_agents: 4
 deployment:
   agent:
@@ -155,8 +155,6 @@ type: skill
         collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
         mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
         pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
-        outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:list:[11000000000000000000,9000000000000000000]}
-        outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:list:[0.55,0.45]}
         sep: ${BENCHMARKING_MODE_SEP:str:,}
         dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
         question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}

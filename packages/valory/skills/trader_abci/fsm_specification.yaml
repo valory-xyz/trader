@@ -20,6 +20,7 @@ alphabet_in:
 - MOCK_MECH_REQUEST
 - MOCK_TX
 - NEGATIVE
+- NEW_SIMULATED_RESAMPLE
 - NEXT_CHECKPOINT_NOT_REACHED_YET
 - NONE
 - NO_MAJORITY
@@ -93,7 +94,7 @@ states:
 - UpdateBetsRound
 - ValidateTransactionRound
 transition_func:
-    (BenchmarkingRandomnessRound, DONE): ToolSelectionRound
+    (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
     (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
     (BetPlacementRound, DONE): PreTxSettlementRound
@@ -104,7 +105,7 @@ transition_func:
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): ToolSelectionRound
+    (BlacklistingRound, MOCK_TX): RedeemRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -144,7 +145,6 @@ transition_func:
     (CollectSignatureRound, DONE): FinalizationRound
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
-    (DecisionReceiveRound, BENCHMARKING_FINISHED): ResetAndPauseRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -190,7 +190,7 @@ transition_func:
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
     (RedeemRound, DONE): PreTxSettlementRound
-    (RedeemRound, MOCK_TX): ToolSelectionRound
+    (RedeemRound, MOCK_TX): SamplingRound
     (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
@@ -204,11 +204,13 @@ transition_func:
     (ResetRound, DONE): RandomnessTransactionSubmissionRound
     (ResetRound, NO_MAJORITY): HandleFailedTxRound
     (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
+    (SamplingRound, BENCHMARKING_ENABLED): ToolSelectionRound
+    (SamplingRound, BENCHMARKING_FINISHED): ResetAndPauseRound
     (SamplingRound, DONE): SubscriptionRound
     (SamplingRound, FETCH_ERROR): ImpossibleRound
+    (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
-    (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
     (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound
