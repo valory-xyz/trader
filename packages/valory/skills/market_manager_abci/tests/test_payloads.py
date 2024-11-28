@@ -27,8 +27,6 @@ def test_update_bets_payload() -> None:
     payload = UpdateBetsPayload(
         sender="sender",
         bets_hash="dummy bets hash",
-        benchmarking_finished=False,
-        simulated_day=False,
     )
 
     assert payload.bets_hash == "dummy bets hash"

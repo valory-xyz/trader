@@ -62,8 +62,6 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
                 self.context.agent_address,
                 None,
                 policy,
-                benchmarking_finished=False,
-                simulated_day=False,
             )
             yield from self.finish_behaviour(payload)
 
