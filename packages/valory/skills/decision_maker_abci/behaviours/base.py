@@ -269,8 +269,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def sampled_bet(self) -> Bet:
         """Get the sampled bet and reset the bets list."""
         self.read_bets()
-        bet_index = self.synchronized_data.sampled_bet_index
-        return self.bets[bet_index]
+        return self.bets[self.synchronized_data.sampled_bet_index]
 
     @property
     def collateral_token(self) -> str:
