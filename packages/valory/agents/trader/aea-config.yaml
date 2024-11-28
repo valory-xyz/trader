@@ -237,13 +237,7 @@ models:
       mech_interaction_sleep_time: ${int:10}
       use_mech_marketplace: ${bool:false}
       policy_store_update_offset: ${int:259200}
-      mech_marketplace_config:
-        mech_marketplace_address: ${str:0x0000000000000000000000000000000000000000}
-        priority_mech_address: ${str:0x0000000000000000000000000000000000000000}
-        priority_mech_staking_instance_address: ${str:0x0000000000000000000000000000000000000000}
-        priority_mech_service_id: ${int:0}
-        requester_staking_instance_address: ${str:0x0000000000000000000000000000000000000000}
-        response_timeout: ${int:300}
+      mech_marketplace_config: ${dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
