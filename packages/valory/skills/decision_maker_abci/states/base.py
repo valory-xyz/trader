@@ -83,12 +83,12 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def benchmarking_finished(self) -> bool:
         """Get the flag of benchmarking finished."""
-        return int(self.db.get_strict("benchmarking_finished"))
+        return bool(self.db.get_strict("benchmarking_finished"))
 
     @property
     def simulated_day(self) -> bool:
         """Get the flag of simulated_day."""
-        return int(self.db.get_strict("simulated_day"))
+        return bool(self.db.get_strict("simulated_day"))
 
     @property
     def is_mech_price_set(self) -> bool:

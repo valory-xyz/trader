@@ -58,7 +58,13 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         # if the tool selection has not been run for the current period, do not do anything
         if not self.synchronized_data.has_tool_selection_run:
             policy = self.policy.serialize()
-            payload = BlacklistingPayload(self.context.agent_address, None, policy)
+            payload = BlacklistingPayload(
+                self.context.agent_address,
+                None,
+                policy,
+                benchmarking_finished=False,
+                simulated_day=False,
+            )
             yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -69,6 +75,10 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
                 None if self.benchmarking_mode.enabled else self.hash_stored_bets()
             )
             policy = self.policy.serialize()
-            payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)
+            payload = BlacklistingPayload(
+                self.context.agent_address,
+                bets_hash,
+                policy,
+            )
 
         yield from self.finish_behaviour(payload)

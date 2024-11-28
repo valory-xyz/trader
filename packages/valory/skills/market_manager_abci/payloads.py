@@ -30,5 +30,3 @@ class UpdateBetsPayload(BaseTxPayload):
     """A transaction payload for the updated bets."""
 
     bets_hash: Optional[str]
-    benchmarking_finished: Optional[bool]
-    simulated_day: Optional[bool]
