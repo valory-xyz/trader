@@ -24,7 +24,12 @@ from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayloa
 def test_update_bets_payload() -> None:
     """Test `UpdateBetsPayload`."""
 
-    payload = UpdateBetsPayload(sender="sender", bets_hash="dummy bets hash")
+    payload = UpdateBetsPayload(
+        sender="sender",
+        bets_hash="dummy bets hash",
+        benchmarking_finished=False,
+        simulated_day=False,
+    )
 
     assert payload.bets_hash == "dummy bets hash"
     assert UpdateBetsPayload.from_json(payload.json) == payload
