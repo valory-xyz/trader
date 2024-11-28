@@ -230,6 +230,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
 
+    @property
+    def wallet_balance(self) -> int:
+        """Get the balance of the wallet."""
+        return int(self.db.get_strict("wallet_balance"))
+
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
     """A round for preparing a transaction."""

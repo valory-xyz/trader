@@ -35,7 +35,10 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    BetPlacementPayload,
+    MultisigTxPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
@@ -228,8 +231,12 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
 
-            payload = MultisigTxPayload(
-                agent, tx_submitter, betting_tx_hex, mocking_mode
+            payload = BetPlacementPayload(
+                agent,
+                tx_submitter,
+                betting_tx_hex,
+                mocking_mode,
+                wallet_balance=self.wallet_balance,
             )
 
         yield from self.finish_behaviour(payload)

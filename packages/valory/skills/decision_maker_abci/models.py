@@ -416,6 +416,9 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.policy_store_update_offset = self._ensure(
             "policy_store_update_offset", kwargs, int
         )
+        self.agent_balance_threshold: int = self._ensure(
+            "agent_balance_threshold", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

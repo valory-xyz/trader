@@ -266,8 +266,11 @@ class HttpHandler(BaseHttpHandler):
         is_transitioning_fast = None
         current_round = None
         rounds = None
+        has_required_funds = None
 
         round_sequence = cast(SharedState, self.context.state).round_sequence
+
+        has_required_funds = self._check_required_funds()
 
         if round_sequence._last_round_transition_timestamp:
             is_tm_unhealthy = cast(
@@ -299,6 +302,9 @@ class HttpHandler(BaseHttpHandler):
             "reset_pause_duration": self.context.params.reset_pause_duration,
             "rounds": rounds,
             "is_transitioning_fast": is_transitioning_fast,
+            "agent_health": {
+                "has_required_funds": has_required_funds,
+            },
         }
 
         self._send_ok_response(http_msg, http_dialogue, data)
@@ -337,3 +343,10 @@ class HttpHandler(BaseHttpHandler):
         # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _check_required_funds(self) -> bool:
+        """Check the agent has enough funds."""
+        return (
+            self.synchronized_data.wallet_balance
+            > self.context.params.agent_balance_threshold
+        )

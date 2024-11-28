@@ -18,7 +18,14 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the sampling state of the decision-making abci app."""
+from enum import Enum
+from typing import Optional, Tuple, Type
 
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
+from packages.valory.skills.decision_maker_abci.payloads import (
+    BetPlacementPayload,
+    MultisigTxPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     TxPreparationRound,
@@ -28,4 +35,17 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 class BetPlacementRound(TxPreparationRound):
     """A round for placing a bet."""
 
+    payload_class: Type[MultisigTxPayload] = BetPlacementPayload
+
     none_event = Event.INSUFFICIENT_BALANCE
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        update = super().end_block()
+        if update is None:
+            return None
+
+        sync_data, event = update
+        wallet_balance = self.most_voted_payload_values[4]
+        sync_data = sync_data.update(wallet_balance=wallet_balance)
+        return sync_data, event

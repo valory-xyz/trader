@@ -376,5 +376,6 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
                 tx_submitter=SubscriptionRound.auto_round_id(),
                 tx_hash=payload_data,
                 agreement_id=self.agreement_id,
+                wallet_balance=self.wallet_balance,
             )
         yield from self.finish_behaviour(payload)
