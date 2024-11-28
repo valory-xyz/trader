@@ -120,32 +120,55 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
 
-        # Filter out all the bets with the smallest queue number
-        least_queue_number = min([bet.queue_no for bet in bets])
-        priority_bets = [bet for bet in bets if bet.queue_no == least_queue_number]
+        max_queue_number = max([bet.queue_no for bet in bets])
 
-        # Filter out all the bets that have a processed_timestamp == 0
-        new_in_priority_bets = [bet for bet in bets if bet.processed_timestamp == 0]
+        if max_queue_number == 0:
+            # Search if any bet is unprocessed
+            new_in_priority_bets = [bet for bet in bets if bet.processed_timestamp == 0]
 
-        if new_in_priority_bets:
-            # Order the list in Decreasing order of liquidity
-            new_in_priority_bets.sort(
-                key=lambda bet: (bet.scaledLiquidityMeasure, bet.openingTimestamp),
-                reverse=True,
-            )
-            return self.bets.index(new_in_priority_bets[0])
+            if new_in_priority_bets:
+                # Order the list in Decreasing order of liquidity
+                new_in_priority_bets.sort(
+                    key=lambda bet: (bet.scaledLiquidityMeasure, bet.openingTimestamp),
+                    reverse=True,
+                )
+                return self.bets.index(new_in_priority_bets[0])
+            else:
+                # All bets have been processed once, bets can be sampled based on the priority logic
+                bets.sort(
+                    key=lambda bet: (
+                        bet.invested_amount,
+                        -bet.processed_timestamp,  # Increasing order of processed_timestamp
+                        bet.scaledLiquidityMeasure,
+                        bet.openingTimestamp,
+                    ),
+                    reverse=True,
+                )
+                return self.bets.index(bets[0])
         else:
-            # Order first in Decreasing order of invested_amount
-            priority_bets.sort(
-                key=lambda bet: (
-                    bet.invested_amount,
-                    -bet.processed_timestamp,  # Increasing order of processed_timestamp
-                    bet.scaledLiquidityMeasure,
-                    bet.openingTimestamp,
-                ),
-                reverse=True,
-            )
-            return self.bets.index(priority_bets[0])
+            # Check if all bets have processed_timestamp == 0
+            all_bets_not_processed = all(bet.processed_timestamp == 0 for bet in bets)
+
+            if all_bets_not_processed:
+                # Current processable list of bets have not been processed yet
+                # Order the list in Decreasing order of liquidity
+                bets.sort(
+                    key=lambda bet: (bet.scaledLiquidityMeasure, bet.openingTimestamp),
+                    reverse=True,
+                )
+                return self.bets.index(bets[0])
+            else:
+                # Bets available for rebetting and can be prioritized based on the priority logic
+                bets.sort(
+                    key=lambda bet: (
+                        bet.invested_amount,
+                        -bet.processed_timestamp,  # Increasing order of processed_timestamp
+                        bet.scaledLiquidityMeasure,
+                        bet.openingTimestamp,
+                    ),
+                    reverse=True,
+                )
+                return self.bets.index(bets[0])
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
