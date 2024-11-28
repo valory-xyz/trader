@@ -152,7 +152,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 # check if all bets that have queue no not -1
                 # have not been processed
                 all_bets_not_processed = all(
-                    bet.transaction_processed_timestamp == 0
+                    bet.processed_timestamp == 0
                     for bet in self.bets
                     if bet.queue_no != -1
                 )
