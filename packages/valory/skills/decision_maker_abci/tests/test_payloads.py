@@ -52,7 +52,12 @@ from packages.valory.skills.decision_maker_abci.payloads import (
         ),
         (
             SamplingPayload,
-            {"index": 1, "bets_hash": "dummy_bets_hash"},
+            {
+                "index": 1,
+                "bets_hash": "dummy_bets_hash",
+                "benchmarking_finished": False,
+                "day_increased": False,
+            },
         ),
         (
             MultisigTxPayload,
