@@ -99,7 +99,6 @@ class Bet:
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
-    transaction_processed_timestamp: int = 0
     n_bets: int = 0
     queue_no: int = 0
 
