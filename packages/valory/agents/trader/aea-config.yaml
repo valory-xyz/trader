@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezfedmmseox3ce5aucxsiszdmvskrwwbtpb2a3vw3sbmc5jt7nri
 - valory/termination_abci:0.1.0:bafybeiea67epwwgngp7b3wavs6hpkaxv6etyaps6g6325bchfnf354mibq
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeige7xpv7gq4zv5p7g2dfc4sq4t7qadtfdog47v7rb6zngetvuzs6a
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiguca6kdkq3wymxyvf5bjpmm7hk4gajnwsg2obdwbaj2ke6e6j2ve
 - valory/market_manager_abci:0.1.0:bafybeian6mfeebwg7co2hzejqbxnekmtoh3ye4e6g7foyitbejhyxlrp5m
-- valory/decision_maker_abci:0.1.0:bafybeihviabnzaban5abx5z3fsvaagifrv26hxct2hsxuwzb7qtgbvbwwu
-- valory/trader_abci:0.1.0:bafybeicwa4yxcihkglcni7gxcfn3igmnefs43pj3vbvyc4oqbozzyy3mpa
+- valory/decision_maker_abci:0.1.0:bafybeidvkbvqw3zrfe5zoo4kdxgrif5gplpi2up3aannudkubznyd6lrs4
+- valory/trader_abci:0.1.0:bafybeicfiroxps5nw7iup4vnruieaaty6tta7xnmei4psuepfsokm2ul5q
 - valory/staking_abci:0.1.0:bafybeiftuaba6x7xy5tbcxjdv6wc56modvsa3muiipfykjqssjvsbfgrxu
 - valory/check_stop_trading_abci:0.1.0:bafybeia7con5a2yqna5nuoxnl3njvicyo5dwqnlwil2phdpcfzkls66aaq
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
@@ -212,15 +212,14 @@ models:
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
         "stabilityai-stable-diffusion-768-v2-1"]}
       use_nevermined: ${bool:true}
-      mech_to_subscription_params: ${list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
-        ["did", "did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c"],
-        ["escrow_payment_condition_address", "0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446"],
-        ["lock_payment_condition_address", "0x2749DDEd394196835199471027713773736bffF2"],
-        ["transfer_nft_condition_address", "0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8"],
-        ["token_address", "0x1b5DeaD7309b56ca7663b3301A503e077Be18cba"], ["order_address",
-        "0x72201948087aE83f8Eac22cf7A9f2139e4cFA829"], ["nft_amount", "100"], ["payment_token",
-        "0x0000000000000000000000000000000000000000"], ["order_address", "0x72201948087aE83f8Eac22cf7A9f2139e4cFA829"],
-        ["price", "1000000000000000000"]]}
+      mech_to_subscription_params: ${dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
+        "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
+        "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
+        "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
+        "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
+        "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
+        "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
+        "price":"1000000000000000000"}}
       staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
       staking_interaction_sleep_time: ${int:5}
       disable_trading: ${bool:false}
@@ -229,8 +228,8 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies_json: ${list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae",["kelly_criterion_no_conf"]]]}
-      strategies_kwargs: ${list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
+      file_hash_to_strategies: ${dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+      strategies_kwargs: ${dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
       safe_voting_range: ${int:600}
