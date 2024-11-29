@@ -147,9 +147,19 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                 return self.bets.index(bets[0])
         else:
             # Check if all bets have processed_timestamp == 0
-            all_bets_not_processed = all(bet.processed_timestamp == 0 for bet in bets)
+            all_bets_not_processed = all(
+                bet.processed_timestamp == 0 for bet in bets if bet.queue_no != -1
+            )
 
             if all_bets_not_processed:
+                # if none of the bets have been processed, then we should set the current_queue_number to 0
+                # for all none blacklisted bets
+                for bet in self.bets:
+                    if bet.queue_no != -1:
+                        bet.queue_no = 0
+
+                self.store_bets()
+
                 # Current processable list of bets have not been processed yet
                 # Order the list in Decreasing order of liquidity
                 bets.sort(
