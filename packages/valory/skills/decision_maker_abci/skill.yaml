@@ -43,7 +43,7 @@ fingerprint:
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
   states/claim_subscription.py: bafybeiampifhdoztggwj6gthl2hfzecmjcwnm6nic2o47q4je7j4x3ujne
-  states/decision_receive.py: bafybeigfch3mzpu5sex63yioffbbhqc2ejnayumk7cptdxpmzhhooxybca
+  states/decision_receive.py: bafybeihgqcqd73isaf355kb5feq5pvaigq7gvxup5tknhmmc66o3smvs7m
   states/decision_request.py: bafybeiarv3r5j7cfvxmudki2llbdl2pvf24p5mvsva6bdgrylnwdyag5xy
   states/final_states.py: bafybeicjrrojo3gmfaxzicwloyorlnqgzl6a2avevo4nvhoh424zwzmbti
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
@@ -104,6 +104,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
+- valory/staking_abci:0.1.0:bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne
 behaviours:
   main:
     args: {}

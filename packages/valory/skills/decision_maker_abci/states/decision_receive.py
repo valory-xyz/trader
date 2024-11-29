@@ -61,9 +61,10 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
         decision_receive_timestamp = self.most_voted_payload_values[7]
 
-        synced_data = cast(SynchronizedData, synced_data.update(
-            decision_receive_timestamp=decision_receive_timestamp
-            ))
+        synced_data = cast(
+            SynchronizedData,
+            synced_data.update(decision_receive_timestamp=decision_receive_timestamp),
+        )
 
         if event == Event.DONE and synced_data.vote is None:
             return synced_data, Event.TIE
