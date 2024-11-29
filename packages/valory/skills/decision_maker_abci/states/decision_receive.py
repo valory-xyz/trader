@@ -59,7 +59,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        decision_receive_timestamp = self.most_voted_payload_values[7]
+        decision_receive_timestamp = self.most_voted_payload_values[-1]
 
         synced_data = cast(
             SynchronizedData,
