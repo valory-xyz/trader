@@ -162,6 +162,12 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     # then if any new bets are being added they should be added to queue 1
                     # Because 10 new bets are added every new epoch
                     self.current_queue_number = 1
+            elif self.max_queue_number == 1:
+                # If the max queue number is 1 then bets will be added to this queue only
+                self.current_queue_number = 1
+            else:
+                # max queue number is -1, i.e. all bets are blacklisted
+                self.current_queue_number = 0
 
     def _update_bets(
         self,
