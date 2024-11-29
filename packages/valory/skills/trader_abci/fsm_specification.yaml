@@ -211,6 +211,7 @@ transition_func:
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
+    (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
     (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound

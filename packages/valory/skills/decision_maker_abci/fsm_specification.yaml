@@ -119,6 +119,7 @@ transition_func:
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
+    (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound
