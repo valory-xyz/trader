@@ -145,6 +145,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}

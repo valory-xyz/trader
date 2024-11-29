@@ -361,5 +361,5 @@ class HttpHandler(BaseHttpHandler):
         # (an on chain transaction)
         return (
             self.synchronized_data.decision_receive_timestamp
-            < 2 * self.context.params.reset_pause_duration
+            < int(datetime.utcnow().timestamp()) - self.context.params.expected_mech_response_time
         )

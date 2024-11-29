@@ -416,6 +416,9 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.policy_store_update_offset = self._ensure(
             "policy_store_update_offset", kwargs, int
         )
+        self.expected_mech_response_time = self._ensure(
+            "expected_mech_response_time", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

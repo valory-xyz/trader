@@ -256,6 +256,7 @@ models:
         priority_mech_service_id: 0
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
+      expected_mech_response_time: 300
     class_name: TraderParams
   benchmarking_mode:
     args:

@@ -84,12 +84,10 @@ class CheckStopTradingRound(VotingRound):
         if res is None:
             return None
 
-        sync_data, event = res
-
         is_staking_kpi_met = self.positive_vote_threshold_reached
-        sync_data = self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
+        self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
 
-        return sync_data, event
+        return res
 
 
 class FinishedCheckStopTradingRound(DegenerateRound, ABC):

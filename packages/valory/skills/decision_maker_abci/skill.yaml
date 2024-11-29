@@ -316,6 +316,7 @@ models:
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
       agent_balance_threshold: 10000000000000000
+      expected_mech_response_time: 300
     class_name: DecisionMakerParams
   benchmarking_mode:
     args:
