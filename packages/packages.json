@@ -16,14 +16,14 @@
         "contract/valory/staking_token/0.1.0": "bafybeiep4r6qyilbfgzdvx6t7zvpgaioxqktmxm7puwtnbpb2ftlib43gy",
         "contract/valory/relayer/0.1.0": "bafybeicawmds6czx7db2lcktvexwrp245jpekgulndtos5s5zdid3ilvq4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeihdqsjign6jmhtshada3sdbdmu2fp4ipfmbmfz6t3eb6nqtdjbv4i",
-        "skill/valory/trader_abci/0.1.0": "bafybeigon2bq6bjuy5rs4ljrjm3omz4aj2wxjmqbpotkklupwpyvhcxd2m",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeie5yy23nkp3k64imugryuv2znb6swo53funveyzu7trmr4fuwklgu",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeie5mnfvqj3aim33gh55sjh6k3n5wwcxn6e7qszmzie3rg4uuxoq3e",
+        "skill/valory/trader_abci/0.1.0": "bafybeidenttu34mxf73ueng7wvqrtc73ro265i4vwso65ieusp7ei3r4nu",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeic6jixxyxa46rrhq75z6yunv265vruqeaban6tix2xsugwi2ttnh4",
         "skill/valory/staking_abci/0.1.0": "bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeidlfobaw7p7y5qquy5k2nyalwhmqngwebvmejx6c5muhofulasepm",
-        "agent/valory/trader/0.1.0": "bafybeie5esogmznsouimpx4g5tbr66tfws22pensrsm7jy6lpi3hghffyi",
-        "service/valory/trader/0.1.0": "bafybeic6qvmy3vtg6yxjutm4zoygbuo2oz76rd277fyvz5jcoush2phe5y",
-        "service/valory/trader_pearl/0.1.0": "bafybeieaiwhk6lwkc25mlz2ggww24kicrh52rcwg2jfxr7wmh76dnwmjra"
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeib75qrimmvensqmskdp5kzki5ijjwolqk2ojekeommakaf64mzn54",
+        "agent/valory/trader/0.1.0": "bafybeietthlkk27crqqghrqke567ehz4rgtnghmcr56dmcsbqedtppuuxe",
+        "service/valory/trader/0.1.0": "bafybeicpain222b7acyxcwqvpjpiakajdlura6cn277kgvsgygzjipo5re",
+        "service/valory/trader_pearl/0.1.0": "bafybeiahb5thh5sdrdh4qru4fuucyoa23f7b27rcwn2sdiboanozbox6dm"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
