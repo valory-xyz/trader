@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeietthlkk27crqqghrqke567ehz4rgtnghmcr56dmcsbqedtppuuxe
+agent: valory/trader:0.1.0:bafybeihzj2misk5stgbayf6ohc7ajpziha3fviryhj3ldwuhrcs77a52re
 number_of_agents: 4
 deployment:
   agent:
@@ -369,6 +369,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
@@ -486,6 +487,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
@@ -603,6 +605,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006

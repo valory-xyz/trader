@@ -245,6 +245,7 @@ models:
         priority_mech_service_id: ${int:0}
         requester_staking_instance_address: ${str:0x0000000000000000000000000000000000000000}
         response_timeout: ${int:300}
+      expected_mech_response_time: 300
   benchmarking_mode:
     args:
       enabled: ${bool:false}

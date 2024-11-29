@@ -21,9 +21,9 @@
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeic6jixxyxa46rrhq75z6yunv265vruqeaban6tix2xsugwi2ttnh4",
         "skill/valory/staking_abci/0.1.0": "bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeib75qrimmvensqmskdp5kzki5ijjwolqk2ojekeommakaf64mzn54",
-        "agent/valory/trader/0.1.0": "bafybeietthlkk27crqqghrqke567ehz4rgtnghmcr56dmcsbqedtppuuxe",
-        "service/valory/trader/0.1.0": "bafybeicpain222b7acyxcwqvpjpiakajdlura6cn277kgvsgygzjipo5re",
-        "service/valory/trader_pearl/0.1.0": "bafybeiahb5thh5sdrdh4qru4fuucyoa23f7b27rcwn2sdiboanozbox6dm"
+        "agent/valory/trader/0.1.0": "bafybeihzj2misk5stgbayf6ohc7ajpziha3fviryhj3ldwuhrcs77a52re",
+        "service/valory/trader/0.1.0": "bafybeia763ce4ln2hr4d6jqnmiqvpvpmtmna57xtstwsjit4s3kmcwugdy",
+        "service/valory/trader_pearl/0.1.0": "bafybeig7pxsh7ncvlqn53detpd74wat6ytqbrxjj227ufzx3higwdls2ny"
     },
     "third_party": {
         "protocol/open_aea/signing/1.0.0": "bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi",
