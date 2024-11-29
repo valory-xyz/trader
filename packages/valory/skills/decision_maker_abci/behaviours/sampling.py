@@ -218,8 +218,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
-            benchmarking_finished = False
-            day_increased = False
+            benchmarking_finished = None
+            day_increased = None
             if idx is None and self.benchmarking_mode.enabled:
                 self.context.logger.info(
                     "No more markets to bet in the simulated day. Increasing simulated day."

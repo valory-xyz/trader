@@ -426,7 +426,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         if self.benchmarking_mode.enabled:
             bet = self.get_active_sampled_bet()  # no reset
             self.context.logger.info(f"Bet used for benchmarking: {bet}")
-            self._update_shared_data_liquidity()
+            self._update_market_liquidity()
         else:
             # this call is destroying what it was in self.bets
             bet = self.sampled_bet
