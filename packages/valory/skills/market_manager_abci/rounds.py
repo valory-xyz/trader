@@ -69,9 +69,9 @@ class SynchronizedData(BaseSynchronizedData):
         return self._get_deserialized("participant_to_bets_hash")
 
     @property
-    def benchmarking_finished(self) -> int:
+    def benchmarking_finished(self) -> bool:
         """Get the flag of benchmarking finished."""
-        return int(self.db.get_strict("benchmarking_finished"))
+        return bool(self.db.get_strict("benchmarking_finished"))
 
     @property
     def simulated_day(self) -> int:
