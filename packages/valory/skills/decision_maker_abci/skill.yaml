@@ -24,7 +24,7 @@ fingerprint:
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/reedem.py: bafybeiaxwp4lx62owcaqfp6xcqh6567f5yvwnl4rage2f5hmq4nltkzjjy
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
-  behaviours/sampling.py: bafybeidrcyeecrh2wzw3n56iwyon56rommc7nyjnlcdzhldpvoh25sfeoe
+  behaviours/sampling.py: bafybeicimvm5ii26cjbmonznk5qi7jwyq7wbgkhbecfa44yi4rkfjnpdum
   behaviours/storage_manager.py: bafybeiez6daaj2bufxdcsghtmqybyrzdh74z26cc4ajsqsiy5krgjo2tla
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
@@ -101,7 +101,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeidbeblyusl73wucduilaz3ggfdooglf2xpjb6hwzytmhqqm6bidha
+- valory/market_manager_abci:0.1.0:bafybeiaw2ksrzh3z4nxyh4cmugvyiccakzycqh7dow36psedixdft45rbi
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
