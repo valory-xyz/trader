@@ -269,7 +269,7 @@ class HttpHandler(BaseHttpHandler):
         has_required_funds = self._check_required_funds()
         is_receiving_mech_responses = self._check_is_receiving_mech_responses()
         is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
-        is_staked = self.synchronized_data.service_staking_state
+        is_staked = self.synchronized_data.service_staking_state.name.lower()
 
         round_sequence = cast(SharedState, self.context.state).round_sequence
 
