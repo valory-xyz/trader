@@ -81,6 +81,9 @@ class CheckStopTradingRound(VotingRound):
         """Process the end of the block."""
         res = super().end_block()
 
+        if res is None:
+            return None
+
         sync_data, event = res
 
         is_staking_kpi_met = self.positive_vote_threshold_reached

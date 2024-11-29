@@ -234,12 +234,18 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def wallet_balance(self) -> int:
         """Get the balance of the wallet."""
-        return int(self.db.get("wallet_balance", 0))
+        wallet_balance = self.db.get("wallet_balance", 0)
+        if wallet_balance is None:
+            return 0
+        return int(wallet_balance)
 
     @property
     def decision_receive_timestamp(self) -> int:
         """Get the timestamp of the mech decision."""
-        return int(self.db.get("decision_receive_timestamp", 0))
+        decision_receive_timestamp = self.db.get("decision_receive_timestamp", 0)
+        if decision_receive_timestamp is None:
+            return 0
+        return int(decision_receive_timestamp)
 
     @property
     def is_staking_kpi_met(self) -> bool:
