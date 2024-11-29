@@ -35,6 +35,7 @@ class DecisionReceivePayload(UpdateBetsPayload):
     confidence: Optional[float]
     bet_amount: Optional[int]
     next_mock_data_row: Optional[int]
+    decision_received_timestamp: Optional[int]
 
 
 @dataclass(frozen=True)

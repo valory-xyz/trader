@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Type
+from typing import Dict, Optional, Set, Tuple, Type
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -61,6 +61,10 @@ class SynchronizedData(BaseSynchronizedData):
         serialized = self.db.get_strict(key)
         return CollectionRound.deserialize_collection(serialized)
 
+    def is_staking_kpi_met(self) -> bool:
+        """Get the status of the staking kpi."""
+        return bool(self.db.get("is_staking_kpi_met", False))
+
 
 class CheckStopTradingRound(VotingRound):
     """A round for checking stop trading conditions."""
@@ -72,6 +76,17 @@ class CheckStopTradingRound(VotingRound):
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+
+        sync_data, event = res
+
+        is_staking_kpi_met = self.positive_vote_threshold_reached
+        sync_data = self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
+
+        return sync_data, event
 
 
 class FinishedCheckStopTradingRound(DegenerateRound, ABC):

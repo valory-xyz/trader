@@ -516,6 +516,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 prediction_response.confidence if prediction_response else None,
                 bet_amount,
                 next_mock_data_row,
+                self.synced_timestamp,
             )
 
         yield from self.finish_behaviour(payload)

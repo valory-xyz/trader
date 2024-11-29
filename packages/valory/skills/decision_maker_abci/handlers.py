@@ -266,11 +266,12 @@ class HttpHandler(BaseHttpHandler):
         is_transitioning_fast = None
         current_round = None
         rounds = None
-        has_required_funds = None
+        has_required_funds = self._check_required_funds()
+        is_receiving_mech_responses = self._check_is_receiving_mech_responses()
+        is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
+        is_staked = self.synchronized_data.service_staking_state
 
         round_sequence = cast(SharedState, self.context.state).round_sequence
-
-        has_required_funds = self._check_required_funds()
 
         if round_sequence._last_round_transition_timestamp:
             is_tm_unhealthy = cast(
@@ -303,7 +304,10 @@ class HttpHandler(BaseHttpHandler):
             "rounds": rounds,
             "is_transitioning_fast": is_transitioning_fast,
             "agent_health": {
+                "is_making_on_chain_transactions": is_receiving_mech_responses,
+                "is_staking_kpi_met": is_staking_kpi_met,
                 "has_required_funds": has_required_funds,
+                "is_staked": is_staked,
             },
         }
 
@@ -349,4 +353,13 @@ class HttpHandler(BaseHttpHandler):
         return (
             self.synchronized_data.wallet_balance
             > self.context.params.agent_balance_threshold
+        )
+
+    def _check_is_receiving_mech_responses(self) -> bool:
+        """Check the agent is making on chain transactions."""
+        # Checks the most recent decision receive timestamp, which can only be returned after making a mech call
+        # (an on chain transaction)
+        return (
+            self.synchronized_data.decision_receive_timestamp
+            < 2 * self.context.params.reset_pause_duration
         )

@@ -38,6 +38,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
     MechMetadata,
 )
+from packages.valory.skills.staking_abci.rounds import StakingState
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
@@ -234,6 +235,21 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def wallet_balance(self) -> int:
         """Get the balance of the wallet."""
         return int(self.db.get("wallet_balance", 0))
+
+    @property
+    def decision_receive_timestamp(self) -> int:
+        """Get the timestamp of the mech decision."""
+        return int(self.db.get("decision_receive_timestamp", 0))
+
+    @property
+    def is_staking_kpi_met(self) -> bool:
+        """Get the status of the staking kpi."""
+        return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def service_staking_state(self) -> StakingState:
+        """Get the service's staking state."""
+        return StakingState(self.db.get("service_staking_state", 0))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
