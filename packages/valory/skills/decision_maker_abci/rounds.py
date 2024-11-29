@@ -107,6 +107,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 4.
             - none: 16.
             - no majority: 3.
+            - round timeout: 3.
             - new simulated resample: 3.
             - benchmarking enabled: 6.
             - benchmarking finished: 21.
