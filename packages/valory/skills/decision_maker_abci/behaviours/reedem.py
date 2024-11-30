@@ -969,17 +969,20 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if not success:
                 return None
 
-            # Checking if the last round that submitted the transaction was the bet placement round
-            # If so, we need to update the bet transaction information, because the transaction was successful
-            # tx settlement multiplexer assures transitions from Post transaction to Redeem round
-            # only if the transaction was successful
-            if self.synchronized_data.tx_submitter == BetPlacementRound.auto_round_id():
-                self.update_bet_transaction_information()
-
             payload: Optional[RedeemPayload]
             if self.benchmarking_mode.enabled:
                 payload = self._benchmarking_act()
             else:
+                # Checking if the last round that submitted the transaction was the bet placement round
+                # If so, we need to update the bet transaction information, because the transaction was successful
+                # tx settlement multiplexer assures transitions from Post transaction to Redeem round
+                # only if the transaction was successful
+                if (
+                    self.synchronized_data.tx_submitter
+                    == BetPlacementRound.auto_round_id()
+                ):
+                    self.update_bet_transaction_information()
+
                 payload = yield from self._normal_act()
                 if payload is None:
                     return
