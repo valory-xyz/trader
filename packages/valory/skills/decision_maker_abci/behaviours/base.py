@@ -358,6 +358,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         sampled_bet.invested_amount += self.synchronized_data.bet_amount
         # Update bet transaction timestamp
         sampled_bet.processed_timestamp = self.synced_timestamp
+        # update no of bets made
+        sampled_bet.n_bets += 1
         self.store_bets()
 
     def send_message(
