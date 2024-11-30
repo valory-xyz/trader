@@ -21,7 +21,7 @@
 
 import random
 from datetime import datetime
-from typing import Any, Generator, List, Optional
+from typing import Any, Generator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -158,8 +158,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                     if bet.queue_no != -1:
                         bet.queue_no = 0
 
-                self.store_bets()
-
                 # Current processable list of bets have not been processed yet
                 # Order the list in Decreasing order of liquidity
                 bets.sort(
@@ -214,28 +212,38 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(msg)
         return idx
 
+    def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
+        """Increase the simulated day in benchmarking mode."""
+        self.context.logger.info(
+            "No more markets to bet in the simulated day. Increasing simulated day."
+        )
+        self.shared_state.increase_one_day_simulation()
+        benchmarking_finished = self.shared_state.check_benchmarking_finished()
+        if benchmarking_finished:
+            self.context.logger.info("No more days to simulate in benchmarking mode.")
+
+        day_increased = True
+
+        return benchmarking_finished, day_increased
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
             benchmarking_finished = None
             day_increased = None
+
+            # day increase simulation and benchmarking finished check
             if idx is None and self.benchmarking_mode.enabled:
-                self.context.logger.info(
-                    "No more markets to bet in the simulated day. Increasing simulated day."
-                )
-                self.shared_state.increase_one_day_simulation()
-                benchmarking_finished = self.shared_state.check_benchmarking_finished()
-                if benchmarking_finished:
-                    self.context.logger.info(
-                        "No more days to simulate in benchmarking mode."
-                    )
-                day_increased = True
+                benchmarking_finished, day_increased = self._benchmarking_inc_day()
+
             self.store_bets()
+
             if idx is None:
                 bets_hash = None
             else:
                 bets_hash = self.hash_stored_bets()
+
             payload = SamplingPayload(
                 self.context.agent_address,
                 bets_hash,
