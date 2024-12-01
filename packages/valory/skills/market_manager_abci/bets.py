@@ -208,6 +208,11 @@ class Bet:
         ):
             # do not update the bet if it has been blacklisted forever
             return
+
+        # update bet queue number if it was unprofitable or tied during decison
+        if self.queue_no == -2:
+            self.queue_no = 0
+
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
