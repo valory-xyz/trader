@@ -147,9 +147,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
                 return self.bets.index(bets[0])
         else:
             # Check if all bets have processed_timestamp == 0
-            all_bets_not_processed = all(
-                bet.processed_timestamp == 0 for bet in bets if bet.queue_no != -1
-            )
+            all_bets_not_processed = all(bet.processed_timestamp == 0 for bet in bets)
 
             if all_bets_not_processed:
                 # if none of the bets have been processed, then we should set the current_queue_number to 0
@@ -191,16 +189,24 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
         else:
             now = self.synced_timestamp
+
+        # filter out only the bets that are processable and have a queue_no >= 0
         available_bets = list(
-            filter(lambda bet: self.processable_bet(bet, now=now), self.bets)
+            filter(
+                lambda bet: self.processable_bet(bet, now=now) and bet.queue_no >= 0,
+                self.bets,
+            )
         )
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
             return None
 
+        # sample a bet using the priority logic
         idx = self._sampled_bet_idx(available_bets)
         sampled_bet = self.bets[idx]
+
+        # fetch the liquidity of the sampled bet and cache it
         liquidity = sampled_bet.scaledLiquidityMeasure
         if liquidity == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
