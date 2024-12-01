@@ -19,7 +19,6 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import random
 from datetime import datetime
 from typing import Any, Generator, List, Optional, Tuple
 
