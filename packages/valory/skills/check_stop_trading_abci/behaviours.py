@@ -155,14 +155,15 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             yield  # ensures this is a generator
             return True
 
-        stop_trading_conditions = []
         self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
         if self.params.stop_trading_if_staking_kpi_met:
             staking_kpi_met = yield from self.is_staking_kpi_met()
             self.context.logger.debug(f"{staking_kpi_met=}")
-            stop_trading_conditions.append(staking_kpi_met)
 
-        return any(stop_trading_conditions)
+            return staking_kpi_met
+
+        yield
+        return False
 
     def async_act(self) -> Generator:
         """Do the action."""
