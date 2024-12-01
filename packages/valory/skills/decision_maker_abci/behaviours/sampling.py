@@ -48,16 +48,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def setup(self) -> None:
         """Setup the behaviour."""
-        self.read_bets()
-        has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
-        if has_bet_in_the_past:
-            if self.benchmarking_mode.enabled:
-                random.seed(self.benchmarking_mode.randomness)
-            else:
-                random.seed(self.synchronized_data.most_voted_randomness)
-            self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
-        rebetting_status = "enabled" if self.should_rebet else "disabled"
-        self.context.logger.info(f"Rebetting {rebetting_status}.")
+        pass
 
     def has_liquidity_changed(self, bet: Bet) -> bool:
         """Whether the liquidity of a specific market has changed since it was last selected."""
@@ -78,22 +69,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         )
 
         within_ranges = within_opening_range and within_safe_range
-
-        # rebetting is allowed only if we have already placed at least one bet in this market.
-        # conversely, if we should not rebet, no bets should have been placed in this market.
-        if self.should_rebet ^ bool(bet.n_bets):
-            return False
-
-        # if we should not rebet, we have all the information we need
-        if not self.should_rebet:
-            # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
-            # e.g.:
-            #     1. a market is selected
-            #     2. the mech is uncertain
-            #     3. a bet is not placed
-            #     4. the market's liquidity never changes
-            #     5. the market is never selected again, and therefore a bet is never placed on it
-            return within_ranges and self.has_liquidity_changed(bet)
 
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
