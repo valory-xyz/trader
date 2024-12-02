@@ -539,10 +539,12 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             bet_amount = None
             next_mock_data_row = None
             bets_hash = None
+            decision_received_timestamp = None
             if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
                     prediction_response
                 )
+                decision_received_timestamp = self.synced_timestamp
                 if is_profitable:
                     self.store_bets()
                     bets_hash = self.hash_stored_bets()
@@ -575,6 +577,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 prediction_response.confidence if prediction_response else None,
                 bet_amount,
                 next_mock_data_row,
+                decision_received_timestamp,
             )
 
         yield from self.finish_behaviour(payload)
