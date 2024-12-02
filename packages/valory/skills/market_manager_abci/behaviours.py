@@ -32,6 +32,7 @@ from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundB
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
+    QueueStatus,
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -58,7 +59,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Initialize `BetsManagerBehaviour`."""
         super().__init__(**kwargs)
         self.bets: List[Bet] = []
-        self.current_queue_number: int = 0
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
 
     def store_bets(self) -> None:
@@ -117,7 +117,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `UpdateBetsBehaviour`."""
         super().__init__(**kwargs)
-        self.max_queue_number: int = -1
 
     def get_bet_idx(self, bet_id: str) -> Optional[int]:
         """Get the index of the bet with the given id, if it exists, otherwise `None`."""
@@ -132,50 +131,14 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
-                bet.queue_no = self.current_queue_number
                 self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
-
-    def _set_current_queue_number(self) -> None:
-        """Set the current queue number."""
-
-        # Extract the last queue number from the bets
-        # This is used to determine the next queue number
-        if self.bets:
-            # find max queue number in current list of bets
-            self.max_queue_number = max([bet.queue_no for bet in self.bets])
-
-            if self.max_queue_number == 0:
-                # check if all bets that have queue no not -1
-                # have not been processed
-                all_bets_not_processed = all(
-                    bet.processed_timestamp == 0
-                    for bet in self.bets
-                    if bet.queue_no != -1
-                )
-
-                # if none of the bets have been processed
-                # then there is no chance of investment amount priority
-                if not all_bets_not_processed:
-                    # If even one bet has been processed in queue 0
-                    # then if any new bets are being added they should be added to queue 1
-                    # Because 10 new bets are added every new epoch
-                    self.current_queue_number = 1
-            elif self.max_queue_number == 1:
-                # If the max queue number is 1 then bets will be added to this queue only
-                self.current_queue_number = 1
-            else:
-                # max queue number is -1, i.e. all bets are blacklisted
-                self.current_queue_number = 0
 
     def _update_bets(
         self,
     ) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
-
-        # Set the current queue number
-        self._set_current_queue_number()
 
         # Fetching bets from the prediction markets
         while True:
@@ -194,17 +157,41 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Updated bets: {bets_str}")
 
+    def _requeue_all_bets(self) -> None:
+        """Requeue all bets."""
+        for bet in self.bets:
+            if bet.queue_status != QueueStatus.EXPIRED:
+                bet.queue_status = QueueStatus.FRESH
+
     def _blacklist_expired_bets(self) -> None:
         """Blacklist bets that are older than the opening margin."""
         for bet in self.bets:
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
 
+    def _bet_freshness_check_and_update(self) -> None:
+        """Check the freshness of the bets."""
+        fresh_statuses = {QueueStatus.FRESH}
+        all_bets_fresh = all(
+            bet.queue_status in fresh_statuses
+            for bet in self.bets
+            if bet.queue_status is not QueueStatus.EXPIRED
+        )
+
+        if all_bets_fresh:
+            for bet in self.bets:
+                if bet.queue_status is not QueueStatus.EXPIRED:
+                    bet.queue_status = QueueStatus.TO_PROCESS
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Read the bets from the agent's data dir as JSON, if they exist
             self.read_bets()
+
+            # fetch checkpoint status and if reached requeue all bets
+            if self.synchronized_data.is_checkpoint_reached:
+                self._requeue_all_bets()
 
             # blacklist bets that are older than the opening margin
             # if trader ran after a long time
@@ -214,6 +201,11 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
+
+            # if trader is run after a long time, there is a possibility that
+            # all bets are fresh and this should be updated to DAY_0_FRESH
+            if self.bets:
+                self._bet_freshness_check_and_update()
 
             # Store the bets to the agent's data dir as JSON
             self.store_bets()
