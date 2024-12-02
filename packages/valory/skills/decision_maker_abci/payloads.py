@@ -35,6 +35,7 @@ class DecisionReceivePayload(UpdateBetsPayload):
     confidence: Optional[float]
     bet_amount: Optional[int]
     next_mock_data_row: Optional[int]
+    decision_received_timestamp: Optional[int]
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,7 @@ class SubscriptionPayload(MultisigTxPayload):
     """Represents a transaction payload for subscribing."""
 
     agreement_id: str = ""
+    wallet_balance: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -110,3 +112,10 @@ class ToolSelectionPayload(BaseTxPayload):
     policy: Optional[str]
     utilized_tools: Optional[str]
     selected_tool: Optional[str]
+
+
+@dataclass(frozen=True)
+class BetPlacementPayload(MultisigTxPayload):
+    """Represents a transaction payload for placing a bet."""
+
+    wallet_balance: Optional[int] = None

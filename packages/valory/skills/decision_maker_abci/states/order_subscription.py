@@ -68,7 +68,8 @@ class SubscriptionRound(TxPreparationRound):
 
         sync_data, event = update
         agreement_id = self.most_voted_payload_values[3]
+        wallet_balance = self.most_voted_payload_values[4]
         sync_data = sync_data.update(
-            agreement_id=agreement_id,
+            agreement_id=agreement_id, wallet_balance=wallet_balance
         )
         return sync_data, event
