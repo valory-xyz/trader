@@ -71,6 +71,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
+    QueueStatus,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
@@ -360,6 +361,15 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         sampled_bet.processed_timestamp = self.synced_timestamp
         # update no of bets made
         sampled_bet.n_bets += 1
+        # Update Queue number for priority logic
+        if sampled_bet.queue_status == QueueStatus.TO_PROCESS:
+            sampled_bet.queue_status = QueueStatus.PROCESSED
+        elif sampled_bet.queue_status == QueueStatus.PROCESSED:
+            sampled_bet.queue_status = QueueStatus.REPROCESSED
+        else:
+            raise ValueError(
+                f"Invalid queue number {sampled_bet.queue_status} detected. This bet should not have been sampled"
+            )
         self.store_bets()
 
     def send_message(
