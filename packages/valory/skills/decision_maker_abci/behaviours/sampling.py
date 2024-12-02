@@ -59,11 +59,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         rebetting_status = "enabled" if self.should_rebet else "disabled"
         self.context.logger.info(f"Rebetting {rebetting_status}.")
 
-    def has_liquidity_changed(self, bet: Bet) -> bool:
-        """Whether the liquidity of a specific market has changed since it was last selected."""
-        previous_bet_liquidity = self.shared_state.liquidity_cache.get(bet.id, None)
-        return bet.scaledLiquidityMeasure != previous_bet_liquidity
-
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
@@ -86,14 +81,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
-            # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
-            # e.g.:
-            #     1. a market is selected
-            #     2. the mech is uncertain
-            #     3. a bet is not placed
-            #     4. the market's liquidity never changes
-            #     5. the market is never selected again, and therefore a bet is never placed on it
-            return within_ranges and self.has_liquidity_changed(bet)
+            return within_ranges
 
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
