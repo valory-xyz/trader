@@ -103,6 +103,7 @@ models:
         requester_staking_instance_address: ${REQUESTER_STAKING_INSTANCE_ADDRESS:str:0x0000000000000000000000000000000000000000}
         response_timeout: ${RESPONSE_TIMEOUT:int:300}
       policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+      expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
   benchmark_tool:
     args:
       log_dir: /benchmarks
