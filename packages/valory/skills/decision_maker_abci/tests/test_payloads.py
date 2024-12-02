@@ -97,6 +97,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "tx_submitter": "dummy tx submitter",
                 "tx_hash": "dummy tx hash",
                 "mocking_mode": True,
+                "wallet_balance": 10000
             },
         ),
         (

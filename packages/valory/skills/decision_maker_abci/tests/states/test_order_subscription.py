@@ -139,7 +139,7 @@ def test_end_block_updates_sync_data(
     with patch.object(
         SubscriptionRound,
         "most_voted_payload_values",
-        new_callable=MagicMock(return_value=[None, None, None, "new_agreement_id"]),
+        new_callable=MagicMock(return_value=[None, None, None, "new_agreement_id", 10000]),
     ):
         # Call the `end_block` method to trigger the update
         result = round_instance.end_block()
@@ -148,6 +148,7 @@ def test_end_block_updates_sync_data(
             sync_data, event = result
             # Assert that the agreement_id was updated to the new_agreement_id
             assert getattr(sync_data, "agreement_id", None) == "new_agreement_id"
+            assert getattr(sync_data, "wallet_balance", None) == 10000
             assert event is not None
 
 

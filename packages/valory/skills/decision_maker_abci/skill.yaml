@@ -9,6 +9,7 @@ description: This skill is responsible for the decision making and placing the b
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
+  .coverage: bafybeiamyhdetx6urx43npwxxsid2o26dt5akzyvtyvyeb33v4h4rhrqii
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
@@ -68,14 +69,14 @@ fingerprint:
   tests/states/test_decision_request.py: bafybeigqbakm2olkwvcngertjplhnmu6on6tp6hxn7lxygi2gf5a5eurbe
   tests/states/test_final_states.py: bafybeiftfd3ovaqpfe7t5ry7maiziavk74wl66d6zo6ikhgodznormd2nm
   tests/states/test_handle_failed_tx.py: bafybeibuepj6fko7ba3bef6nybzetilni2iwgkxd5xeazqskadbad3l2zq
-  tests/states/test_order_subscription.py: bafybeiag37uk5mitjm4yadcpr67icfmmzeucdlgvqoct4y4jeyhnebyyoi
+  tests/states/test_order_subscription.py: bafybeienk43nsbhekzndztykcwyt7rqisiesu7qzscrhqdqvsonkzbtteq
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
   tests/states/test_redeem.py: bafybeiezdnfrxukb2xpwffrr357g2anmdkwy7wo3nphvlggipq5xrdzr7a
   tests/states/test_sampling.py: bafybeifvbzikke6wtex2p5j7fsnpdbj4qqxl5vh2lm2m2apgvuqdonoyzm
   tests/states/test_tool_selection.py: bafybeib7js3dj7647t33o5ybfqftwytxktwrvhbri5yuyymg6znj6y7xxa
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeihpkgtjjm3uegpup6zkznpoaxqpu6kmp3ujiggrzbe73p5fzlq7im
-  tests/test_payloads.py: bafybeifolgd3qvhxd5psrif4seo5a7ywzz6uumkgfisy7ipoxzeqsspzfu
+  tests/test_payloads.py: bafybeiez44b2dzcwfb5zbtwkv4stdb53twjllq5jkx4jm4iivguyytt6we
   tests/test_rounds.py: bafybeigifftusd4ew42tyvyrr55o2uehhcik2gdq3atkpjwwlqdeskedty
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/nevermined.py: bafybeigallaqxhqopznhjhefr6bukh4ojkz5vdtqyzod5dksshrf24fjgi
@@ -101,7 +102,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeicztk62pslofv6ui3aw3giw2tnvlfwfmatqbyvvzv4ampneu6isqa
+- valory/market_manager_abci:0.1.0:bafybeigmea7hrb42fj5v6pwjzww3vibvoov5qd7raiv5didzvrikxs242i
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 - valory/staking_abci:0.1.0:bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne
