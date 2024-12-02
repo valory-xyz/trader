@@ -64,7 +64,7 @@ fingerprint:
   tests/states/test_blacklising.py: bafybeihm2ex6l7fhorgi3mjj2epztu2r7bqbg56unpgpzfzymghshchqzy
   tests/states/test_check_benchmarking.py: bafybeifwpi5f4fhreqptfxdsnyv3nptkqytkwbukfuqkrjo4eww7cv3sxy
   tests/states/test_claim_subscription.py: bafybeiclkxjhceb3ehgmg6klt4uywew5drk5b3w6no7mwxetpubxqrejfy
-  tests/states/test_decision_receive.py: bafybeifj7rwqyzfcvnqqhbo25pl2jppgjqnqldadwku5wl2tpskfj2zwxq
+  tests/states/test_decision_receive.py: bafybeiddj42tdkghvga574qxvixh7nmf6bpdjitlk3eliimnq2r4n6qlrm
   tests/states/test_decision_request.py: bafybeigqbakm2olkwvcngertjplhnmu6on6tp6hxn7lxygi2gf5a5eurbe
   tests/states/test_final_states.py: bafybeiftfd3ovaqpfe7t5ry7maiziavk74wl66d6zo6ikhgodznormd2nm
   tests/states/test_handle_failed_tx.py: bafybeibuepj6fko7ba3bef6nybzetilni2iwgkxd5xeazqskadbad3l2zq
