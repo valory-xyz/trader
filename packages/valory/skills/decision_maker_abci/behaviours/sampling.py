@@ -27,7 +27,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
-from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 
 
 WEEKDAYS = 7
@@ -73,7 +73,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         lifetime = bet.openingTimestamp - now
         t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
         can_rebet = now >= bet.processed_timestamp + t_rebetting
-        return within_ranges and can_rebet
+
+        # check if bet queue number is processable
+        processable_statuses = {
+            QueueStatus.TO_PROCESS,
+            QueueStatus.PROCESSED,
+            QueueStatus.REPROCESSED,
+        }
+        bet_queue_processable = bet.queue_status in processable_statuses
+
+        return within_ranges and can_rebet and bet_queue_processable
 
     def _sort_by_priority_logic(self, bets: List[Bet]) -> List[Bet]:
         """
@@ -93,7 +102,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             reverse=True,
         )
 
-    def _sampled_bet_idx(self, bets: List[Bet]) -> int:
+    def _sampled_bet_idx(self, bets: List[Bet]) -> Optional[int]:
         """
         Sample a bet and return its index.
 
@@ -112,37 +121,42 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
 
-        max_queue_number = max([bet.queue_no for bet in bets])
+        sorted_bets: List = []
 
-        if max_queue_number == 0:
-            # Search if any bet is unprocessed
-            new_in_priority_bets = [bet for bet in bets if bet.processed_timestamp == 0]
+        bets_by_status = {
+            status: list(filter(lambda bet: bet.queue_status == status, bets))
+            for status in [
+                QueueStatus.TO_PROCESS,
+                QueueStatus.PROCESSED,
+                QueueStatus.REPROCESSED,
+            ]
+        }
 
-            if new_in_priority_bets:
-                # Order the list in Decreasing order of liquidity
-                sorted_bets = self._sort_by_priority_logic(new_in_priority_bets)
-                return self.bets.index(sorted_bets[0])
-            else:
-                # All bets have been processed once, bets can be sampled based on the priority logic
-                sorted_bets = self._sort_by_priority_logic(bets)
-                return self.bets.index(sorted_bets[0])
-        else:
-            # Check if all bets have processed_timestamp == 0
-            all_bets_not_processed = all(
-                bet.processed_timestamp == 0 and bet.invested_amount == 0
-                for bet in bets
-            )
+        to_process_bets = bets_by_status.get(QueueStatus.TO_PROCESS, [])
+        processed_bets = bets_by_status.get(QueueStatus.PROCESSED, [])
 
-            if all_bets_not_processed:
-                # if none of the bets have been processed, then we should set the current_queue_number to 0
-                # for all none blacklisted bets
-                for bet in bets:
-                    if bet.queue_no > 0:
-                        bet.queue_no = 0
+        for bet in bets:
+            if bet.queue_status == QueueStatus.TO_PROCESS:
+                to_process_bets.append(bet)
+            elif bet.queue_status == QueueStatus.PROCESSED:
+                processed_bets.append(bet)
 
+        if to_process_bets:
+            # apply the sorting priority logic to the to process bets
+            sorted_bets = self._sort_by_priority_logic(to_process_bets)
+        elif processed_bets:
             # Bets available for rebetting and can be prioritized based on the priority logic
-            sorted_bets = self._sort_by_priority_logic(bets)
+            sorted_bets = self._sort_by_priority_logic(processed_bets)
+        else:
+            # This case is highly unlikely as we will reach staking kpi before this happens
+            reprocessed_bets = bets_by_status.get(QueueStatus.REPROCESSED, [])
+            if reprocessed_bets:
+                sorted_bets = self._sort_by_priority_logic(reprocessed_bets)
+
+        if sorted_bets:
             return self.bets.index(sorted_bets[0])
+        else:
+            return None
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
@@ -158,10 +172,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         else:
             now = self.synced_timestamp
 
-        # filter out only the bets that are processable and have a queue_no >= 0
+        # filter out only the bets that are processable and have a queue_status that allows them to be sampled
         available_bets = list(
             filter(
-                lambda bet: self.processable_bet(bet, now=now) and bet.queue_no >= 0,
+                lambda bet: self.processable_bet(bet, now=now),
                 self.bets,
             )
         )
@@ -172,7 +186,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # sample a bet using the priority logic
         idx = self._sampled_bet_idx(available_bets)
-        sampled_bet = self.bets[idx]
+        if idx:
+            sampled_bet = self.bets[idx]
+        else:
+            return None
 
         # fetch the liquidity of the sampled bet and cache it
         liquidity = sampled_bet.scaledLiquidityMeasure
