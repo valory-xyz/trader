@@ -19,9 +19,13 @@
 
 """This module contains the sampling state of the decision-making abci app."""
 
-from typing import Any, Type
+from enum import Enum
+from typing import Any, Optional, Tuple, Type, cast
 
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -41,4 +45,29 @@ class SamplingRound(UpdateBetsRound):
     selection_key: Any = (
         UpdateBetsRound.selection_key,
         get_name(SynchronizedData.sampled_bet_index),
+        get_name(SynchronizedData.benchmarking_finished),
+        get_name(SynchronizedData.simulated_day),
     )
+    synchronized_data_class = SynchronizedData
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        if event != Event.DONE:
+            return res
+
+        if synced_data.benchmarking_finished:
+            return synced_data, Event.BENCHMARKING_FINISHED
+
+        if synced_data.simulated_day:
+            return synced_data, Event.NEW_SIMULATED_RESAMPLE
+
+        if self.context.benchmarking_mode.enabled:
+            return synced_data, Event.BENCHMARKING_ENABLED
+
+        return res
