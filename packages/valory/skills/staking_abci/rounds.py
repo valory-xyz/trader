@@ -86,6 +86,11 @@ class SynchronizedData(TxSettlementSyncedData):
         """Get the participants to the checkpoint round."""
         return self._get_deserialized("participant_to_checkpoint")
 
+    @property
+    def is_checkpoint_reached(self) -> bool:
+        """Check if the checkpoint is reached."""
+        return bool(self.db.get("is_checkpoint_reached", False))
+
 
 class CallCheckpointRound(CollectSameUntilThresholdRound):
     """A round for the checkpoint call preparation."""
@@ -120,6 +125,9 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
 
         if synced_data.most_voted_tx_hash is None:
             return synced_data, Event.NEXT_CHECKPOINT_NOT_REACHED_YET
+
+        # service is staked and checkpoint is reached
+        self.synchronized_data.update(is_checkpoint_reached=True)
 
         return res
 
