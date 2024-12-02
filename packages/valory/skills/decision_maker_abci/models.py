@@ -266,16 +266,6 @@ class SharedState(BaseSharedState):
         """Set the current liquidity amounts."""
         self.liquidity_amounts[self.mock_question_id] = value
 
-    @property
-    def bet_id_row_manager(self) -> Dict[str, List[int]]:
-        """Get the next_mock_data_row."""
-        return self._bet_id_row_manager
-
-    @bet_id_row_manager.setter
-    def bet_id_row_manager(self, mapping: Dict[str, List[int]]) -> None:
-        """Set the next_mock_data_row."""
-        self._bet_id_row_manager = mapping
-
     def _initialize_simulated_now_timestamps(
         self, bets: List[Bet], safe_voting_range: int
     ) -> None:
