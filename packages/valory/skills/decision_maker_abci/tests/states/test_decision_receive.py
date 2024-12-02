@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This package contains the tests for Decision Maker"""
-
+import datetime
 import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
@@ -74,6 +74,7 @@ def get_payloads(
             next_mock_data_row=next_mock_data_row,
             is_profitable=is_profitable,
             bets_hash=bets_hash,  # Added bets_hash parameter
+            decision_received_timestamp=int(datetime.datetime.utcnow().timestamp()),
         )
         for participant in get_participants()
     }
