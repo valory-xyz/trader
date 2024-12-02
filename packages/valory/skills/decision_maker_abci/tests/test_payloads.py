@@ -17,6 +17,8 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
+
+from datetime import datetime
 from typing import Dict, Type
 
 import pytest
@@ -48,6 +50,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "confidence": 0.90,
                 "bet_amount": 1,
                 "next_mock_data_row": 1,
+                "decision_received_timestamp": int(datetime.utcnow().timestamp()),
             },
         ),
         (
