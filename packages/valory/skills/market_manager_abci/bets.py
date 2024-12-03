@@ -36,6 +36,8 @@ BINARY_N_SLOTS = 2
 
 
 class QueueStatus(Enum):
+    """The status of a bet in the queue."""
+
     # Common statuses
     EXPIRED = -1  # Bets that have expired, i.e., the market is not live anymore
     FRESH = 0  # Fresh bets that have just been added
