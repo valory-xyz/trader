@@ -22,9 +22,9 @@
 
 import builtins
 import dataclasses
-from enum import Enum
 import json
 import sys
+from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 

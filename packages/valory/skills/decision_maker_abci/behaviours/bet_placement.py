@@ -212,7 +212,9 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         if self.benchmarking_mode.enabled:
             # simulate the bet placement
             with self.context.benchmark_tool.measure(self.behaviour_id).local():
-                payload = BetPlacementPayload(agent, None, None, True, self.wallet_balance)
+                payload = BetPlacementPayload(
+                    agent, None, None, True, self.wallet_balance
+                )
             yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():

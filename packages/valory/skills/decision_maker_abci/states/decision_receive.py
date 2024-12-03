@@ -65,7 +65,9 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
 
             synced_data = cast(
                 SynchronizedData,
-                synced_data.update(decision_receive_timestamp=decision_receive_timestamp),
+                synced_data.update(
+                    decision_receive_timestamp=decision_receive_timestamp
+                ),
             )
 
         if event == Event.DONE and synced_data.vote is None:
