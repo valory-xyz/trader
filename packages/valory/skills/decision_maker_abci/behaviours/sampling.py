@@ -47,12 +47,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def setup(self) -> None:
         """Setup the behaviour."""
-        pass
-
-    def has_liquidity_changed(self, bet: Bet) -> bool:
-        """Whether the liquidity of a specific market has changed since it was last selected."""
-        previous_bet_liquidity = self.shared_state.liquidity_cache.get(bet.id, None)
-        return bet.scaledLiquidityMeasure != previous_bet_liquidity
+        self.read_bets()
+        has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
+        if has_bet_in_the_past:
+            if self.benchmarking_mode.enabled:
+                random.seed(self.benchmarking_mode.randomness)
+            else:
+                random.seed(self.synchronized_data.most_voted_randomness)
+            self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
+        rebetting_status = "enabled" if self.should_rebet else "disabled"
+        self.context.logger.info(f"Rebetting {rebetting_status}.")
 
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""

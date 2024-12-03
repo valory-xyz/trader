@@ -35,10 +35,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import (
-    BetPlacementPayload,
-    MultisigTxPayload,
-)
+from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
