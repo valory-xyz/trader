@@ -51,8 +51,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         # therefore, we decrease the number of bets which was increased on sampling
         if sampled_bet.queue_status == QueueStatus.TO_PROCESS:
             sampled_bet.queue_status = QueueStatus.PROCESSED
-
-        if sampled_bet.queue_status == QueueStatus.PROCESSED:
+        elif sampled_bet.queue_status == QueueStatus.PROCESSED:
             sampled_bet.queue_status = QueueStatus.REPROCESSED
 
     def setup(self) -> None:
