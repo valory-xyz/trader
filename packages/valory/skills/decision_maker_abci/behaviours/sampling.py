@@ -21,6 +21,7 @@
 
 from datetime import datetime
 from typing import Any, Generator, List, Optional, Tuple
+from typing_extensions import Dict
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -47,7 +48,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def setup(self) -> None:
         """Setup the behaviour."""
-        pass
+        self.read_bets()
 
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
@@ -64,11 +65,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         within_ranges = within_opening_range and within_safe_range
 
-        # create a filter based on whether we can rebet or not
-        lifetime = bet.openingTimestamp - now
-        t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
-        can_rebet = now >= bet.processed_timestamp + t_rebetting
-
         # check if bet queue number is processable
         processable_statuses = {
             QueueStatus.TO_PROCESS,
@@ -77,7 +73,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        return within_ranges and can_rebet and bet_queue_processable
+        return within_ranges and bet_queue_processable
 
     def _sort_by_priority_logic(self, bets: List[Bet]) -> List[Bet]:
         """
@@ -96,6 +92,25 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             ),
             reverse=True,
         )
+
+    def _get_bets_queue_wise(
+        self, bets: List[Bet]
+    ) -> Tuple[List[Bet], List[Bet], List[Bet]]:
+        """Return a dictionary of bets with queue status as key."""
+
+        to_process_bets: List[Bet] = []
+        processed_bets: List[Bet] = []
+        reprocessed_bets: List[Bet] = []
+
+        for bet in bets:
+            if bet.queue_status == QueueStatus.TO_PROCESS:
+                to_process_bets.append(bet)
+            elif bet.queue_status == QueueStatus.PROCESSED:
+                processed_bets.append(bet)
+            elif bet.queue_status == QueueStatus.REPROCESSED:
+                reprocessed_bets.append(bet)
+
+        return to_process_bets, processed_bets, reprocessed_bets
 
     def _sampled_bet_idx(self, bets: List[Bet]) -> Optional[int]:
         """
@@ -118,40 +133,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         sorted_bets: List = []
 
-        bets_by_status = {
-            status: list(filter(lambda bet: bet.queue_status == status, bets))
-            for status in [
-                QueueStatus.TO_PROCESS,
-                QueueStatus.PROCESSED,
-                QueueStatus.REPROCESSED,
-            ]
-        }
+        to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
+            bets
+        )
+        # pick the first queue status that has bets in it
+        bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets
 
-        to_process_bets = bets_by_status.get(QueueStatus.TO_PROCESS, [])
-        processed_bets = bets_by_status.get(QueueStatus.PROCESSED, [])
+        sorted_bets = self._sort_by_priority_logic(bets_to_sort)
 
-        for bet in bets:
-            if bet.queue_status == QueueStatus.TO_PROCESS:
-                to_process_bets.append(bet)
-            elif bet.queue_status == QueueStatus.PROCESSED:
-                processed_bets.append(bet)
-
-        if to_process_bets:
-            # apply the sorting priority logic to the to process bets
-            sorted_bets = self._sort_by_priority_logic(to_process_bets)
-        elif processed_bets:
-            # Bets available for rebetting and can be prioritized based on the priority logic
-            sorted_bets = self._sort_by_priority_logic(processed_bets)
-        else:
-            # This case is highly unlikely as we will reach staking kpi before this happens
-            reprocessed_bets = bets_by_status.get(QueueStatus.REPROCESSED, [])
-            if reprocessed_bets:
-                sorted_bets = self._sort_by_priority_logic(reprocessed_bets)
-
-        if sorted_bets:
-            return self.bets.index(sorted_bets[0])
-        else:
-            return None
+        return self.bets.index(sorted_bets[0])
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
