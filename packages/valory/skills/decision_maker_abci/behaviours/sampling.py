@@ -29,6 +29,7 @@ from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 
+
 WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
