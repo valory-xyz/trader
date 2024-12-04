@@ -21,7 +21,6 @@
 
 from datetime import datetime
 from typing import Any, Generator, List, Optional, Tuple
-from typing_extensions import Dict
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -29,7 +28,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
-
 
 WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
