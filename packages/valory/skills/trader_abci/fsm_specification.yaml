@@ -34,6 +34,7 @@ alphabet_in:
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
 - ROUND_TIMEOUT
+- SELL_OUTCOME_TOKEN_DONE
 - SERVICE_EVICTED
 - SERVICE_NOT_STAKED
 - SKIP_REQUEST
@@ -50,6 +51,7 @@ alphabet_in:
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
+- FinishedSellOutcomeTokenTxRound
 - ImpossibleRound
 - ServiceEvictedRound
 label: TraderAbciApp
@@ -71,6 +73,7 @@ states:
 - DecisionRequestRound
 - FailedMultiplexerRound
 - FinalizationRound
+- FinishedSellOutcomeTokenTxRound
 - HandleFailedTxRound
 - ImpossibleRound
 - MechRequestRound
@@ -88,7 +91,6 @@ states:
 - SelectKeeperTransactionSubmissionARound
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
-- SellOutcomeTokenRound
 - ServiceEvictedRound
 - SubscriptionRound
 - SynchronizeLateMessagesRound
@@ -175,11 +177,11 @@ transition_func:
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): MechResponseRound
     (PostTxSettlementRound, BET_PLACEMENT_NO_SELL_DONE): RedeemRound
-    (PostTxSettlementRound, BET_PLACEMENT_SELL_DONE): SellOutcomeTokenRound
+    (PostTxSettlementRound, BET_PLACEMENT_SELL_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, SELL_OUTCOME_TOKEN_DONE): RedeemRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKEN_DONE): FinishedSellOutcomeTokenTxRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
@@ -230,9 +232,6 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
-    (SellOutcomeTokenRound, DONE): PreTxSettlementRound
-    (SellOutcomeTokenRound, NO_MAJORITY): SellOutcomeTokenRound
-    (SellOutcomeTokenRound, ROUND_TIMEOUT): SellOutcomeTokenRound
     (SubscriptionRound, DONE): PreTxSettlementRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound

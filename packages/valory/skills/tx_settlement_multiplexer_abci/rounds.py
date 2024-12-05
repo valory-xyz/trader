@@ -42,7 +42,9 @@ from packages.valory.skills.decision_maker_abci.states.order_subscription import
     SubscriptionRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_token import SellOutcomeTokenRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_token import (
+    SellOutcomeTokenRound,
+)
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 
@@ -98,7 +100,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
             SubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
-            SellOutcomeTokenRound.auto_round_id(): Event.SELL_OUTCOME_TOKEN_DONE
+            SellOutcomeTokenRound.auto_round_id(): Event.SELL_OUTCOME_TOKEN_DONE,
         }
 
         synced_data = SynchronizedData(self.synchronized_data.db)
@@ -115,22 +117,22 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             self.synchronized_data.update(policy=policy_update)
 
         # if a bet was just placed, edit the utilized tools mapping
-        if event == Event.BET_PLACEMENT_NO_SELL_DONE or event == Event.BET_PLACEMENT_SELL_DONE:
+        if (
+            event == Event.BET_PLACEMENT_NO_SELL_DONE
+            or event == Event.BET_PLACEMENT_SELL_DONE
+        ):
             utilized_tools = synced_data.utilized_tools
             utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool
             tools_update = json.dumps(utilized_tools, sort_keys=True)
             vote = synced_data.vote
             self.synchronized_data.update(
-                utilized_tools=tools_update,
-                previous_vote=vote
+                utilized_tools=tools_update, previous_vote=vote
             )
 
         # if all tokens for an outcome have been sold, set the previous vote to None as we no longer have any
         # investment in that outcome
         if event == Event.SELL_OUTCOME_TOKEN_DONE:
-            self.synchronized_data.update(
-                previous_vote=None
-            )
+            self.synchronized_data.update(previous_vote=None)
 
         return synced_data, event
 
@@ -182,21 +184,24 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             - round timeout: 0.
         1. PostTxSettlementRound
             - mech requesting done: 3.
-            - bet placement done: 4.
+            - bet placement done no sell: 4.
+            - bet placement done sell: 4.
             - redeeming done: 6.
+            - sell outcome token done: 8.
             - staking done: 7.
             - subscription done: 5.
             - round timeout: 1.
-            - unrecognized: 8.
+            - unrecognized: 9.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
         5. FinishedSubscriptionTxRound
         6. FinishedRedeemingTxRound
         7. FinishedStakingTxRound
-        8. FailedMultiplexerRound
+        8. FinishedSellOutcomeTokenTxRound
+        9. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokenTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0

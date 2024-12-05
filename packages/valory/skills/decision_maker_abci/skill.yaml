@@ -9,11 +9,12 @@ description: This skill is responsible for the decision making and placing the b
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
+  .coverage: bafybeiamyhdetx6urx43npwxxsid2o26dt5akzyvtyvyeb33v4h4rhrqii
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeic2fxlidmklpfkv4fxs7rusxd3vyddo6bsxqh4z32hz2v4segikue
-  behaviours/bet_placement.py: bafybeia4listbfzsk4n4wkc4ycaftxgywjnl3mmpcqhuo3nwwia4n3oufu
+  behaviours/base.py: bafybeidrgmnhgler4kho325u5xszfhshsqpeegi7imwzyienyaqgiimsby
+  behaviours/bet_placement.py: bafybeihq4z2jhzzk4qrufydnedk5iplkfshexq3ktzfn65te4g6qpp346m
   behaviours/blacklisting.py: bafybeif7gtifpsiqvnpbzyegzsqndhf4yqcqedkfy24q32v4bdyjeihyem
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
@@ -25,6 +26,7 @@ fingerprint:
   behaviours/reedem.py: bafybeiga4dmqeftkkrt6cvbtr2eciiykm2b54bjk2pc5eilm6ftdri4lxu
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
   behaviours/sampling.py: bafybeid5ehttobzqsx4hxdjbu7iwhd472xqgurug6eitcrp75jtthiyxv4
+  behaviours/sell_outcome_token.py: bafybeia33ou7v7clovaeezy4fwvlsbsfquiwaz4twixnjs5gxpyrxyihra
   behaviours/storage_manager.py: bafybeiez6daaj2bufxdcsghtmqybyrzdh74z26cc4ajsqsiy5krgjo2tla
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
@@ -38,12 +40,12 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeiazjcsukgefair52aw37hhvxzlopnzqqmi4ntqrinakljlcm4kt4a
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeifkip6bw3oacpnyhko7fi3i72nv2fc33ld6bkr2myaay4qa2ybcie
+  states/base.py: bafybeiaaxd3zefxuk7kulo52hucbvww46hbvs4lebwai3lilmtybvi5ixu
   states/bet_placement.py: bafybeih5eopyxubczys5u5t3bdxbxpc7mmfdyqrpqsbm2uha5jc2phza4i
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
   states/claim_subscription.py: bafybeiampifhdoztggwj6gthl2hfzecmjcwnm6nic2o47q4je7j4x3ujne
-  states/decision_receive.py: bafybeib3eahaehvmcrdojnlrz34q2crdb3ao6qun2wohokdf3t3ywwfa4y
+  states/decision_receive.py: bafybeigydiheb5a7l65vrtahnwtoj2yjgcxmxkpdtgxl4n56tptxlarhfy
   states/decision_request.py: bafybeiarv3r5j7cfvxmudki2llbdl2pvf24p5mvsva6bdgrylnwdyag5xy
   states/final_states.py: bafybeicjrrojo3gmfaxzicwloyorlnqgzl6a2avevo4nvhoh424zwzmbti
   states/handle_failed_tx.py: bafybeihewm2vernvhktuorljdupjqcg2p5vs6wvsira2d62wkoyo5xlzjm
@@ -51,6 +53,7 @@ fingerprint:
   states/randomness.py: bafybeiceoo4nx3t4dofpwczw3v5mclramwmzpwjs6hv7l56arodrjx4l5u
   states/redeem.py: bafybeica6cn4xg7shea2wjhbqnddgxe5zao2hkmceltze7qknxdhtsoaxe
   states/sampling.py: bafybeif2yuwl5swelp7oh5nfuupdf3vg2ijjzapk2xqht7e6i6ggcsl2zy
+  states/sell_outcome_token.py: bafybeifxzswza6sdk6cx6ccsdseynfmaupn2dnk3vt5dtbyklameaxyn7u
   states/tool_selection.py: bafybeiak5ihuie4nxh3sguiea6pcdgyxr4k4xyzvq6o2uj5xpf7urocawy
   tests/__init__.py: bafybeiakpi3k3kc7wrjj7hrluvjcj36lu2gezpmrctwiz5yg2fe7ggnf3i
   tests/behaviours/__init__.py: bafybeic7icz7lfhfepdkqkase7y7zn3a6pwdw6fx4ah2hajmgejawpolc4
@@ -85,7 +88,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
-- valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
+- valory/market_maker:0.1.0:bafybeibevdc5trbi2qgt2tvwbsr2h5xvonfhcjwfmozftzvef575fdvbjq
 - valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
@@ -101,7 +104,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeie2dby7d5rh7lqapqazlpa37ryehl335bgnkoym7kkxcpt2fyjgw4
+- valory/market_manager_abci:0.1.0:bafybeifwxoohe3nnjearvtsdf3c3gz73nc2eljvpfzea4j2kiwm6oc2f7e
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 - valory/staking_abci:0.1.0:bafybeibjgipzfle3b2gtuh42u2y6umgf47a5qrdtbvni46tox4lgv6wm4i
