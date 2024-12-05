@@ -157,6 +157,15 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             tx_submitter = betting_tx_hex = mocking_mode = None
 
+            # if the vote is the same as the previous vote then there is no change in the supported outcome, so we
+            # should not sell
+            if self.synchronized_data.vote == self.synchronized_data.previous_vote:
+                payload = MultisigTxPayload(
+                    agent, tx_submitter, betting_tx_hex, mocking_mode
+                )
+
+                yield from self.finish_behaviour(payload)
+
             self.return_amount = self.bets[
                 self.synchronized_data.sampled_bet_index
             ].invested_amount
