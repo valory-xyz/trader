@@ -55,11 +55,6 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""
 
-        # update the previous vote before calling the super method
-        SynchronizedData.update(
-            previous_vote=SynchronizedData.vote
-        )
-
         res = super().end_block()
         if res is None:
             return None
