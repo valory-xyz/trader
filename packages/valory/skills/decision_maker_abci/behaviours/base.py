@@ -72,6 +72,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
+    QueueStatus,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
@@ -268,9 +269,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @property
     def sampled_bet(self) -> Bet:
-        """Get the sampled bet."""
+        """Get the sampled bet and reset the bets list."""
         self.read_bets()
-        return self.bets[self.synchronized_data.sampled_bet_index]
+        bet_index = self.synchronized_data.sampled_bet_index
+        return self.bets[bet_index]
 
     @property
     def collateral_token(self) -> str:
@@ -286,6 +288,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def wei_to_native(wei: int) -> float:
         """Convert WEI to native token."""
         return wei / 10**18
+
+    def get_active_sampled_bet(self) -> Bet:
+        """Function to get the selected bet that is active without reseting self.bets."""
+        bet_index = self.synchronized_data.sampled_bet_index
+        if len(self.bets) == 0:
+            msg = "The length of self.bets is 0"
+            self.context.logger.info(msg)
+            self.read_bets()
+
+        return self.bets[bet_index]
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
@@ -343,18 +355,23 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def update_bet_transaction_information(self) -> None:
         """Get whether the bet's invested amount should be updated."""
-        self.read_bets()
-        # Update the bet's invested amount, the new bet amount is added to previous invested amount
-        self.bets[
-            self.synchronized_data.sampled_bet_index
-        ].invested_amount += self.synchronized_data.bet_amount
-
+        sampled_bet = self.sampled_bet
+        # Update the bet's invested amount, the new bet amount is added to previously invested amount
+        sampled_bet.invested_amount += self.synchronized_data.bet_amount
         # Update bet transaction timestamp
-        self.bets[
-            self.synchronized_data.sampled_bet_index
-        ].transaction_processed_timestamp = self.synced_timestamp
+        sampled_bet.processed_timestamp = self.synced_timestamp
+        # update no of bets made
+        sampled_bet.n_bets += 1
+        # Update Queue number for priority logic
+        if sampled_bet.queue_status == QueueStatus.TO_PROCESS:
+            sampled_bet.queue_status = QueueStatus.PROCESSED
+        elif sampled_bet.queue_status == QueueStatus.PROCESSED:
+            sampled_bet.queue_status = QueueStatus.REPROCESSED
+        else:
+            raise ValueError(
+                f"Invalid queue number {sampled_bet.queue_status} detected. This bet should not have been sampled"
+            )
         self.store_bets()
-        return
 
     def send_message(
         self, msg: Message, dialogue: Dialogue, callback: Callable

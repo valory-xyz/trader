@@ -19,7 +19,7 @@ contracts:
 - valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeieg57u3z7cdlmdamad5e6lk7kmsli2zurzkg3sl4y7lhekcu4y3au
 - valory/service_registry:0.1.0:bafybeiaop64kwdoetxtedoehabmsalojmms7ihuoqcdwxtwb2hk5i6bzye
-- valory/market_maker:0.1.0:bafybeibevdc5trbi2qgt2tvwbsr2h5xvonfhcjwfmozftzvef575fdvbjq
+- valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
@@ -45,12 +45,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiemzw7pcbbvctkphd3p5peai5fj7uw7hmkuytrgycyhhjwmdrh6ye
-- valory/market_manager_abci:0.1.0:bafybeieyx6tyvxxpzygm7zhxh3c5g2m7dgpnaid7xp5oivd5yjcteptwue
-- valory/decision_maker_abci:0.1.0:bafybeihqloxrcbycu2rwrjhp72le36nn35kblfpnioiltk4ou3iliqrmra
-- valory/trader_abci:0.1.0:bafybeihncubt5lww7g3n5ibuqlf5iy6pigwwmp5uyyphwfckqi62gnheye
-- valory/staking_abci:0.1.0:bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne
-- valory/check_stop_trading_abci:0.1.0:bafybeifmi64g4ki6zwbcncb35ovhd4sllw4xrszrkturpeqdhgf5bkiini
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeienjc2l65c7o77vkuoxogaduvgohs7c2xhuonmrj5vbvaaag6kjai
+- valory/market_manager_abci:0.1.0:bafybeie2dby7d5rh7lqapqazlpa37ryehl335bgnkoym7kkxcpt2fyjgw4
+- valory/decision_maker_abci:0.1.0:bafybeif2crsr4ga655mngnq2eu7itmshvrlom726aouwxrgrwy4wymvpie
+- valory/trader_abci:0.1.0:bafybeidikyhe4ole3nedmfqmgmxd63zmgnojviyjdv4jf2q7rv7kdqcifi
+- valory/staking_abci:0.1.0:bafybeibjgipzfle3b2gtuh42u2y6umgf47a5qrdtbvni46tox4lgv6wm4i
+- valory/check_stop_trading_abci:0.1.0:bafybeier2qz5xkiha5krgav7hfrxvb5666csxyko4drfgouj5htjmmvwni
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -245,6 +245,7 @@ models:
         priority_mech_service_id: ${int:0}
         requester_staking_instance_address: ${str:0x0000000000000000000000000000000000000000}
         response_timeout: ${int:300}
+      expected_mech_response_time: ${int:300}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -252,8 +253,6 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
-      outcome_token_amounts: ${list:[11000000000000000000,9000000000000000000]}
-      outcome_token_marginal_prices: ${list:[0.4,0.6]}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}

@@ -19,15 +19,15 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import random
-from typing import Any, Generator, List, Optional
+from datetime import datetime
+from typing import Any, Generator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
-from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 
 
 WEEKDAYS = 7
@@ -48,22 +48,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def setup(self) -> None:
         """Setup the behaviour."""
         self.read_bets()
-        has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
-        if has_bet_in_the_past:
-            random.seed(self.synchronized_data.most_voted_randomness)
-            self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
-        rebetting_status = "enabled" if self.should_rebet else "disabled"
-        self.context.logger.info(f"Rebetting {rebetting_status}.")
 
-    def has_liquidity_changed(self, bet: Bet) -> bool:
-        """Whether the liquidity of a specific market has changed since it was last selected."""
-        previous_bet_liquidity = self.shared_state.liquidity_cache.get(bet.id, None)
-        return bet.scaledLiquidityMeasure != previous_bet_liquidity
-
-    def processable_bet(self, bet: Bet) -> bool:
+    def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
-        now = self.synced_timestamp
-        # Note: `openingTimestamp` is the timestamp when a question stops being available for voting.
+
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
@@ -73,31 +61,57 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             - self.params.opening_margin
             - self.params.safe_voting_range
         )
+
         within_ranges = within_opening_range and within_safe_range
 
-        # rebetting is allowed only if we have already placed at least one bet in this market.
-        # conversely, if we should not rebet, no bets should have been placed in this market.
-        if self.should_rebet ^ bool(bet.n_bets):
-            return False
+        # check if bet queue number is processable
+        processable_statuses = {
+            QueueStatus.TO_PROCESS,
+            QueueStatus.PROCESSED,
+            QueueStatus.REPROCESSED,
+        }
+        bet_queue_processable = bet.queue_status in processable_statuses
 
-        # if we should not rebet, we have all the information we need
-        if not self.should_rebet:
-            # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
-            # e.g.:
-            #     1. a market is selected
-            #     2. the mech is uncertain
-            #     3. a bet is not placed
-            #     4. the market's liquidity never changes
-            #     5. the market is never selected again, and therefore a bet is never placed on it
-            return within_ranges and self.has_liquidity_changed(bet)
+        return within_ranges and bet_queue_processable
 
-        # create a filter based on whether we can rebet or not
-        lifetime = bet.openingTimestamp - now
-        t_rebetting = (lifetime // UNIX_WEEK) + UNIX_DAY
-        can_rebet = now >= bet.processed_timestamp + t_rebetting
-        return within_ranges and can_rebet
+    def _sort_by_priority_logic(self, bets: List[Bet]) -> List[Bet]:
+        """
+        Sort bets based on the priority logic.
 
-    def _sampled_bet_idx(self, bets: List[Bet]) -> int:
+        :param bets: the bets to sort.
+        :return: the sorted list of bets.
+        """
+        return sorted(
+            bets,
+            key=lambda bet: (
+                bet.invested_amount,
+                -bet.processed_timestamp,  # Increasing order of processed_timestamp
+                bet.scaledLiquidityMeasure,
+                bet.openingTimestamp,
+            ),
+            reverse=True,
+        )
+
+    def _get_bets_queue_wise(
+        self, bets: List[Bet]
+    ) -> Tuple[List[Bet], List[Bet], List[Bet]]:
+        """Return a dictionary of bets with queue status as key."""
+
+        to_process_bets: List[Bet] = []
+        processed_bets: List[Bet] = []
+        reprocessed_bets: List[Bet] = []
+
+        for bet in bets:
+            if bet.queue_status == QueueStatus.TO_PROCESS:
+                to_process_bets.append(bet)
+            elif bet.queue_status == QueueStatus.PROCESSED:
+                processed_bets.append(bet)
+            elif bet.queue_status == QueueStatus.REPROCESSED:
+                reprocessed_bets.append(bet)
+
+        return to_process_bets, processed_bets, reprocessed_bets
+
+    def _sampled_bet_idx(self, bets: List[Bet]) -> Optional[int]:
         """
         Sample a bet and return its index.
 
@@ -116,44 +130,52 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
 
-        # Filter out all the best with the smallest queue number
-        least_queue_number = min([bet.queue_no for bet in bets])
-        priority_bets = [bet for bet in bets if bet.queue_no == least_queue_number]
+        sorted_bets: List = []
 
-        # Filter out all the bets that have a processed_timestamp == 0
-        new_in_priority_bets = [bet for bet in bets if bet.processed_timestamp == 0]
+        to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
+            bets
+        )
+        # pick the first queue status that has bets in it
+        bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets
 
-        if new_in_priority_bets:
-            # Order the list in Decreasing order of liquidity
-            new_in_priority_bets.sort(
-                key=lambda bet: (bet.scaledLiquidityMeasure, bet.openingTimestamp),
-                reverse=True,
-            )
-            return self.bets.index(new_in_priority_bets[0])
-        else:
-            # Order first in Decreasing order of invested_amount
-            priority_bets.sort(
-                key=lambda bet: (
-                    bet.invested_amount,
-                    -bet.processed_timestamp,  # Increasing order of processed_timestamp
-                    bet.scaledLiquidityMeasure,
-                    bet.openingTimestamp,
-                ),
-                reverse=True,
-            )
-            return self.bets.index(priority_bets[0])
+        sorted_bets = self._sort_by_priority_logic(bets_to_sort)
+
+        return self.bets.index(sorted_bets[0])
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
-        available_bets = list(filter(self.processable_bet, self.bets))
+        # modify time "NOW" in benchmarking mode
+        if self.benchmarking_mode.enabled:
+            safe_voting_range = (
+                self.params.opening_margin + self.params.safe_voting_range
+            )
+            now = self.shared_state.get_simulated_now_timestamp(
+                self.bets, safe_voting_range
+            )
+            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
+        else:
+            now = self.synced_timestamp
 
+        # filter out only the bets that are processable and have a queue_status that allows them to be sampled
+        available_bets = list(
+            filter(
+                lambda bet: self.processable_bet(bet, now=now),
+                self.bets,
+            )
+        )
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
             return None
 
+        # sample a bet using the priority logic
         idx = self._sampled_bet_idx(available_bets)
-        sampled_bet = self.bets[idx]
+        if idx:
+            sampled_bet = self.bets[idx]
+        else:
+            return None
+
+        # fetch the liquidity of the sampled bet and cache it
         liquidity = sampled_bet.scaledLiquidityMeasure
         if liquidity == 0:
             msg = "There were no unprocessed bets with non-zero liquidity!"
@@ -165,15 +187,44 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(msg)
         return idx
 
+    def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
+        """Increase the simulated day in benchmarking mode."""
+        self.context.logger.info(
+            "No more markets to bet in the simulated day. Increasing simulated day."
+        )
+        self.shared_state.increase_one_day_simulation()
+        benchmarking_finished = self.shared_state.check_benchmarking_finished()
+        if benchmarking_finished:
+            self.context.logger.info("No more days to simulate in benchmarking mode.")
+
+        day_increased = True
+
+        return benchmarking_finished, day_increased
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
+            benchmarking_finished = None
+            day_increased = None
+
+            # day increase simulation and benchmarking finished check
+            if idx is None and self.benchmarking_mode.enabled:
+                benchmarking_finished, day_increased = self._benchmarking_inc_day()
+
             self.store_bets()
+
             if idx is None:
                 bets_hash = None
             else:
                 bets_hash = self.hash_stored_bets()
-            payload = SamplingPayload(self.context.agent_address, bets_hash, idx)
+
+            payload = SamplingPayload(
+                self.context.agent_address,
+                bets_hash,
+                idx,
+                benchmarking_finished,
+                day_increased,
+            )
 
         yield from self.finish_behaviour(payload)

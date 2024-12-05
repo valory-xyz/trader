@@ -28,6 +28,7 @@ from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayl
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
+from packages.valory.skills.market_manager_abci.bets import QueueStatus
 
 
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
@@ -45,9 +46,13 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index
         sampled_bet = self.bets[sampled_bet_index]
+
         # the question is blacklisted, i.e., we did not place a bet on it,
         # therefore, we decrease the number of bets which was increased on sampling
-        sampled_bet.n_bets -= 1
+        if sampled_bet.queue_status == QueueStatus.TO_PROCESS:
+            sampled_bet.queue_status = QueueStatus.PROCESSED
+        elif sampled_bet.queue_status == QueueStatus.PROCESSED:
+            sampled_bet.queue_status = QueueStatus.REPROCESSED
 
     def setup(self) -> None:
         """Setup the behaviour"""
@@ -63,9 +68,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.read_bets()
-            # skip blacklisting when benchmarking as we should be based solely on the input data of the simulation
-            if not self.benchmarking_mode.enabled:
-                self._blacklist()
+            self._blacklist()
             self.store_bets()
             bets_hash = (
                 None if self.benchmarking_mode.enabled else self.hash_stored_bets()

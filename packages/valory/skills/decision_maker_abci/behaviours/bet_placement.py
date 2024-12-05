@@ -35,7 +35,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     remove_fraction_wei,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
@@ -191,12 +191,14 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         if self.benchmarking_mode.enabled:
             # simulate the bet placement
             with self.context.benchmark_tool.measure(self.behaviour_id).local():
-                payload = MultisigTxPayload(agent, None, None, True)
+                payload = BetPlacementPayload(
+                    agent, None, None, True, self.wallet_balance
+                )
             yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self.check_balance)
-            tx_submitter = betting_tx_hex = mocking_mode = None
+            tx_submitter = betting_tx_hex = mocking_mode = wallet_balance = None
 
             can_exchange = (
                 self.is_wxdai
@@ -209,9 +211,14 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             if self.token_balance >= self.investment_amount or can_exchange:
                 tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
+                wallet_balance = self.wallet_balance
 
-            payload = MultisigTxPayload(
-                agent, tx_submitter, betting_tx_hex, mocking_mode
+            payload = BetPlacementPayload(
+                agent,
+                tx_submitter,
+                betting_tx_hex,
+                mocking_mode,
+                wallet_balance,
             )
 
         yield from self.finish_behaviour(payload)

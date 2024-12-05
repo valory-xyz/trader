@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeif6stqxcxbtvb3odyvfxmq5qluvvzafag7dse3jtxo7767xgmsbnq
+agent: valory/trader:0.1.0:bafybeibg76o3eq6egkk3vp7yrtbp65vorczlwz657tml7ujnkvw4w3iuci
 number_of_agents: 1
 deployment:
   agent:
@@ -103,6 +103,7 @@ models:
         requester_staking_instance_address: ${REQUESTER_STAKING_INSTANCE_ADDRESS:str:0x0000000000000000000000000000000000000000}
         response_timeout: ${RESPONSE_TIMEOUT:int:300}
       policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+      expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
   benchmark_tool:
     args:
       log_dir: /benchmarks
