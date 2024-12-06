@@ -363,6 +363,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         sampled_bet.n_bets += 1
         # Update Queue number for priority logic
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
+        # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
 
     def send_message(
