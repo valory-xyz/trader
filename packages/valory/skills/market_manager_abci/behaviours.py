@@ -194,15 +194,12 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         if all_bets_fresh:
             for bet in self.bets:
                 bet.queue_status = bet.queue_status.move_to_process()
-        else:
-            return
+
+        return
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            # Setup the behaviour
-            self.setup()
-
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
 
