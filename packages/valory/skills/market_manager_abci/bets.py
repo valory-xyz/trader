@@ -73,10 +73,6 @@ class QueueStatus(Enum):
             return QueueStatus.REPROCESSED
         elif self == QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
-        else:
-            raise ValueError(
-                f"Invalid queue status {self} detected. This bet should not have been sampled"
-            )
 
 
 @dataclasses.dataclass(init=False)
