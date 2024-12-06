@@ -110,7 +110,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             bets_by_status[QueueStatus.REPROCESSED],
         )
 
-    def _sampled_bet_idx(self, bets: List[Bet]) -> Optional[int]:
+    def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
         Sample a bet and return its index.
 
