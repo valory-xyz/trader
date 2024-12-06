@@ -28,7 +28,6 @@ from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayl
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.market_manager_abci.bets import QueueStatus
 
 
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):

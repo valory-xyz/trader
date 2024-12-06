@@ -71,7 +71,6 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
-    QueueStatus,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
