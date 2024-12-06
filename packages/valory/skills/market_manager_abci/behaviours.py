@@ -117,6 +117,33 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Initialize `UpdateBetsBehaviour`."""
         super().__init__(**kwargs)
 
+    def _requeue_all_bets(self) -> None:
+        """Requeue all bets."""
+        for bet in self.bets:
+            bet.queue_status = bet.queue_status.move_to_fresh()
+
+    def _blacklist_expired_bets(self) -> None:
+        """Blacklist bets that are older than the opening margin."""
+        for bet in self.bets:
+            if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
+                bet.blacklist_forever()
+
+    def setup(self) -> None:
+        """Set up the behaviour."""
+
+        # Read the bets from the agent's data dir as JSON, if they exist
+        self.read_bets()
+
+        # fetch checkpoint status and if reached requeue all bets
+        if self.synchronized_data.is_checkpoint_reached:
+            self._requeue_all_bets()
+
+        # blacklist bets that are older than the opening margin
+        # if trader ran after a long time
+        # helps in resetting the queue number to 0
+        if self.bets:
+            self._blacklist_expired_bets()
+
     def get_bet_idx(self, bet_id: str) -> Optional[int]:
         """Get the index of the bet with the given id, if it exists, otherwise `None`."""
         return next((i for i, bet in enumerate(self.bets) if bet.id == bet_id), None)
@@ -156,17 +183,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Updated bets: {bets_str}")
 
-    def _requeue_all_bets(self) -> None:
-        """Requeue all bets."""
-        for bet in self.bets:
-            bet.queue_status = bet.queue_status.move_to_fresh()
-
-    def _blacklist_expired_bets(self) -> None:
-        """Blacklist bets that are older than the opening margin."""
-        for bet in self.bets:
-            if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
-                bet.blacklist_forever()
-
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
         all_bets_fresh = all(
@@ -178,22 +194,14 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         if all_bets_fresh:
             for bet in self.bets:
                 bet.queue_status = bet.queue_status.move_to_process()
+        else:
+            return
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            # Read the bets from the agent's data dir as JSON, if they exist
-            self.read_bets()
-
-            # fetch checkpoint status and if reached requeue all bets
-            if self.synchronized_data.is_checkpoint_reached:
-                self._requeue_all_bets()
-
-            # blacklist bets that are older than the opening margin
-            # if trader ran after a long time
-            # helps in resetting the queue number to 0
-            if self.bets:
-                self._blacklist_expired_bets()
+            # Setup the behaviour
+            self.setup()
 
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
