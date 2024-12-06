@@ -362,14 +362,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         # update no of bets made
         sampled_bet.n_bets += 1
         # Update Queue number for priority logic
-        if sampled_bet.queue_status == QueueStatus.TO_PROCESS:
-            sampled_bet.queue_status = QueueStatus.PROCESSED
-        elif sampled_bet.queue_status == QueueStatus.PROCESSED:
-            sampled_bet.queue_status = QueueStatus.REPROCESSED
-        else:
-            raise ValueError(
-                f"Invalid queue number {sampled_bet.queue_status} detected. This bet should not have been sampled"
-            )
+        sampled_bet.queue_status = sampled_bet.queue_status.next_status()
         self.store_bets()
 
     def send_message(

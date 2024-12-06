@@ -45,6 +45,19 @@ class QueueStatus(Enum):
     PROCESSED = 2  # Bets that have been processed
     REPROCESSED = 3  # Bets that have been reprocessed
 
+    def next_status(self) -> "QueueStatus":
+        """Get the next status in the queue."""
+        if self == QueueStatus.TO_PROCESS:
+            return QueueStatus.PROCESSED
+        elif self == QueueStatus.PROCESSED:
+            return QueueStatus.REPROCESSED
+        elif self == QueueStatus.REPROCESSED:
+            return QueueStatus.FRESH
+        else:
+            raise ValueError(
+                f"Invalid queue status {self} detected. This bet should not have been sampled"
+            )
+
 
 @dataclasses.dataclass(init=False)
 class PredictionResponse:
