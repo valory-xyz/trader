@@ -21,8 +21,7 @@
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Generator, List, Optional, Tuple
-from typing_extensions import Dict
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
