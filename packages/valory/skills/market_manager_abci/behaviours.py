@@ -32,7 +32,6 @@ from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundB
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
-    QueueStatus,
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -160,8 +159,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _requeue_all_bets(self) -> None:
         """Requeue all bets."""
         for bet in self.bets:
-            if bet.queue_status != QueueStatus.EXPIRED:
-                bet.queue_status = QueueStatus.FRESH
+            bet.queue_status = bet.queue_status.move_to_fresh()
 
     def _blacklist_expired_bets(self) -> None:
         """Blacklist bets that are older than the opening margin."""
@@ -171,17 +169,15 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
-        fresh_statuses = {QueueStatus.FRESH}
         all_bets_fresh = all(
-            bet.queue_status in fresh_statuses
+            bet.queue_status.is_fresh()
             for bet in self.bets
-            if bet.queue_status is not QueueStatus.EXPIRED
+            if not bet.queue_status.is_expired()
         )
 
         if all_bets_fresh:
             for bet in self.bets:
-                if bet.queue_status is not QueueStatus.EXPIRED:
-                    bet.queue_status = QueueStatus.TO_PROCESS
+                bet.queue_status = bet.queue_status.move_to_process()
 
     def async_act(self) -> Generator:
         """Do the action."""

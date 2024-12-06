@@ -45,6 +45,26 @@ class QueueStatus(Enum):
     PROCESSED = 2  # Bets that have been processed
     REPROCESSED = 3  # Bets that have been reprocessed
 
+    def is_fresh(self) -> bool:
+        """Check if the bet is fresh."""
+        return self == QueueStatus.FRESH
+
+    def is_expired(self) -> bool:
+        """Check if the bet is expired."""
+        return self == QueueStatus.EXPIRED
+
+    def move_to_process(self) -> "QueueStatus":
+        """Move the bet to the process status."""
+        if self == QueueStatus.FRESH:
+            return QueueStatus.TO_PROCESS
+        return self
+
+    def move_to_fresh(self) -> "QueueStatus":
+        """Move the bet to the fresh status."""
+        if self != QueueStatus.EXPIRED:
+            return QueueStatus.FRESH
+        return self
+
     def next_status(self) -> "QueueStatus":
         """Get the next status in the queue."""
         if self == QueueStatus.TO_PROCESS:
