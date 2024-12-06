@@ -79,6 +79,42 @@ class QueueStatus(Enum):
             )
 
 
+@dataclasses.dataclass
+class QueueCounter:
+    """A counter for the queue status."""
+
+    FRESH: int = 0
+    TO_PROCESS: int = 0
+    PROCESSED: int = 0
+    REPROCESSED: int = 0
+    BLACKLISTED: int = 0
+    EXPIRED: int = 0
+
+    def increment(self, status: QueueStatus) -> None:
+        """Increment the counter for the given status."""
+        if status == QueueStatus.FRESH:
+            self.FRESH += 1
+        elif status == QueueStatus.TO_PROCESS:
+            self.TO_PROCESS += 1
+        elif status == QueueStatus.PROCESSED:
+            self.PROCESSED += 1
+        elif status == QueueStatus.REPROCESSED:
+            self.REPROCESSED += 1
+        elif status == QueueStatus.EXPIRED:
+            self.EXPIRED += 1
+        elif status == QueueStatus.BLACKLISTED:
+            self.BLACKLISTED += 1
+
+    def reset(self) -> None:
+        """Reset all counters to zero."""
+        self.FRESH = 0
+        self.TO_PROCESS = 0
+        self.PROCESSED = 0
+        self.REPROCESSED = 0
+        self.BLACKLISTED = 0
+        self.EXPIRED = 0
+
+
 @dataclasses.dataclass(init=False)
 class PredictionResponse:
     """A response of a prediction."""
@@ -330,3 +366,18 @@ def serialize_bets(bets: List[Bet]) -> Optional[str]:
     if len(bets) == 0:
         return None
     return json.dumps(bets, cls=BetsEncoder)
+
+
+class QueueCounterEncoder(json.JSONEncoder):
+    """JSON encoder for the queue counter."""
+
+    def default(self, o: Any) -> Any:
+        """The default encoder."""
+        if dataclasses.is_dataclass(o) and not isinstance(o, type):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
+
+def serialize_queue_counter(queue_counter: QueueCounter) -> str:
+    """Get the queue counter serialized."""
+    return json.dumps(queue_counter, cls=QueueCounterEncoder)

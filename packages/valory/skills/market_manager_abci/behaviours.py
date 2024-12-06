@@ -32,7 +32,10 @@ from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundB
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
+    QueueCounter,
+    QueueStatus,
     serialize_bets,
+    serialize_queue_counter,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
@@ -59,6 +62,15 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self.bets: List[Bet] = []
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
+        self.bets_period_filepath: str = (
+            self.params.store_path
+            / f"bets_period_{self.synchronized_data.period_count}.json"
+        )
+        self.queue_count_filepath: str = (
+            self.params.store_path
+            / f"queue_count_{self.synchronized_data.period_count}.json"
+        )
+        self.queue_counter: QueueCounter = QueueCounter()
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
@@ -76,6 +88,44 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
                     err = f"Error writing to file {self.bets_filepath!r}!"
         except (FileNotFoundError, PermissionError, OSError):
             err = f"Error opening file {self.bets_filepath!r} in write mode!"
+
+        self.context.logger.error(err)
+
+    def store_bets_period(self) -> None:
+        """Store the bets to the agent's data dir as JSON."""
+        serialized = serialize_bets(self.bets)
+        if serialized is None:
+            self.context.logger.warning("No bets to store.")
+            return
+
+        try:
+            with open(self.bets_period_filepath, WRITE_MODE) as bets_file:
+                try:
+                    bets_file.write(serialized)
+                    return
+                except (IOError, OSError):
+                    err = f"Error writing to file {self.bets_period_filepath!r}!"
+        except (FileNotFoundError, PermissionError, OSError):
+            err = f"Error opening file {self.bets_period_filepath!r} in write mode!"
+
+        self.context.logger.error(err)
+
+    def store_queue_count(self) -> None:
+        """Store queue counts for each period in a json file."""
+        for bet in self.bets:
+            self.queue_counter.increment(bet.queue_status)
+
+        serializer_counter = serialize_queue_counter(self.queue_counter)
+
+        try:
+            with open(self.queue_count_filepath, WRITE_MODE) as queue_count_file:
+                try:
+                    queue_count_file.write(serializer_counter)
+                    return
+                except (IOError, OSError):
+                    err = f"Error writing to file {self.queue_count_filepath!r}!"
+        except (FileNotFoundError, PermissionError, OSError):
+            err = f"Error opening file {self.queue_count_filepath!r} in write mode!"
 
         self.context.logger.error(err)
 
@@ -200,9 +250,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            # Setup the behaviour
-            self.setup()
-
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
 
@@ -210,6 +257,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             # all bets are fresh and this should be updated to DAY_0_FRESH
             if self.bets:
                 self._bet_freshness_check_and_update()
+
+            self.store_bets_period()
+            self.store_queue_count()
 
             # Store the bets to the agent's data dir as JSON
             self.store_bets()
