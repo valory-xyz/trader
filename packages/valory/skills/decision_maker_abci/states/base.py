@@ -153,6 +153,12 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return int(vote) if vote is not None else None
 
     @property
+    def previous_vote(self) -> Optional[int]:
+        """Get the bet's previous vote index."""
+        previous_vote = self.db.get_strict("previous_vote")
+        return int(previous_vote) if previous_vote is not None else None
+
+    @property
     def confidence(self) -> float:
         """Get the vote's confidence."""
         return float(self.db.get_strict("confidence"))
