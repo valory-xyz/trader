@@ -312,6 +312,7 @@ class BetsDecoder(json.JSONDecoder):
         # if this is a `Bet`
         bet_annotations = sorted(Bet.__annotations__.keys())
         if bet_annotations == data_attributes:
+            data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
         else:
             # fetch missing attributes from the data
