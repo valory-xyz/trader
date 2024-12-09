@@ -22,7 +22,7 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeidxpc6u575ymct5tdwutvzov6zqfdoio5irgldn3fw7q3lg36mmxm
   behaviours/order_subscription.py: bafybeib3maqohhx35wzryy4otdcjp5thkr4sbp27ksvwidy3pwm444itra
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/reedem.py: bafybeiga4dmqeftkkrt6cvbtr2eciiykm2b54bjk2pc5eilm6ftdri4lxu
+  behaviours/reedem.py: bafybeidjmhh6c6shbg25d7exmc4nnp4heqbqselwuxj7rp2ss665lrytxe
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
   behaviours/sampling.py: bafybeihe2waj53xrhonw4mgipagsgl3xoorcwzuqzyxwhn3mw7mjyeewfa
   behaviours/storage_manager.py: bafybeiez6daaj2bufxdcsghtmqybyrzdh74z26cc4ajsqsiy5krgjo2tla
@@ -38,7 +38,7 @@ fingerprint:
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeiazjcsukgefair52aw37hhvxzlopnzqqmi4ntqrinakljlcm4kt4a
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeifkip6bw3oacpnyhko7fi3i72nv2fc33ld6bkr2myaay4qa2ybcie
+  states/base.py: bafybeiatr6cqa3juxkhm6p4h7dhol7tfmxh2fo6nr2gtc6wuwyrtu3k3xm
   states/bet_placement.py: bafybeih5eopyxubczys5u5t3bdxbxpc7mmfdyqrpqsbm2uha5jc2phza4i
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
