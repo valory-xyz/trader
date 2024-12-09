@@ -58,7 +58,7 @@ class Event(Enum):
     BET_PLACEMENT_NO_SELL_DONE = "bet_placement_done_no_sell"
     BET_PLACEMENT_SELL_DONE = "bet_placement_done_sell"
     REDEEMING_DONE = "redeeming_done"
-    SELL_OUTCOME_TOKEN_DONE = "sell_outcome_token_done"
+    SELL_OUTCOME_TOKEN_DONE = "sell_outcome_token_done"  # nosec
     STAKING_DONE = "staking_done"
     SUBSCRIPTION_DONE = "subscription_done"
     ROUND_TIMEOUT = "round_timeout"

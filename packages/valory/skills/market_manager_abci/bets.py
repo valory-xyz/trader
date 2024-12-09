@@ -28,6 +28,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 
+YES = "yes"
+NO = "no"
 P_YES_FIELD = "p_yes"
 P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
@@ -44,6 +46,35 @@ class QueueStatus(Enum):
     TO_PROCESS = 1  # Bets that are ready to be processed
     PROCESSED = 2  # Bets that have been processed
     REPROCESSED = 3  # Bets that have been reprocessed
+
+    def is_fresh(self) -> bool:
+        """Check if the bet is fresh."""
+        return self == QueueStatus.FRESH
+
+    def is_expired(self) -> bool:
+        """Check if the bet is expired."""
+        return self == QueueStatus.EXPIRED
+
+    def move_to_process(self) -> "QueueStatus":
+        """Move the bet to the process status."""
+        if self == QueueStatus.FRESH:
+            return QueueStatus.TO_PROCESS
+        return self
+
+    def move_to_fresh(self) -> "QueueStatus":
+        """Move the bet to the fresh status."""
+        if self != QueueStatus.EXPIRED:
+            return QueueStatus.FRESH
+        return self
+
+    def next_status(self) -> "QueueStatus":
+        """Get the next status in the queue."""
+        if self == QueueStatus.TO_PROCESS:
+            return QueueStatus.PROCESSED
+        elif self == QueueStatus.PROCESSED:
+            return QueueStatus.REPROCESSED
+        else:
+            return QueueStatus.FRESH
 
 
 @dataclasses.dataclass(init=False)
@@ -107,18 +138,59 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    invested_amount: int = 0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
-    n_bets: int = 0
     queue_status: QueueStatus = QueueStatus.FRESH
+    # a mapping from vote to investment amounts
+    investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
+
+    @property
+    def yes_investments(self) -> List[int]:
+        """Get the yes investments."""
+        return self.investments[self.yes]
+
+    @property
+    def no_investments(self) -> List[int]:
+        """Get the no investments."""
+        return self.investments[self.no]
+
+    @property
+    def n_yes_bets(self) -> int:
+        """Get the number of yes bets."""
+        return len(self.yes_investments)
+
+    @property
+    def n_no_bets(self) -> int:
+        """Get the number of no bets."""
+        return len(self.no_investments)
+
+    @property
+    def n_bets(self) -> int:
+        """Get the number of bets."""
+        return self.n_yes_bets + self.n_no_bets
+
+    @property
+    def invested_amount_yes(self) -> int:
+        """Get the amount invested in yes bets."""
+        return sum(self.yes_investments)
+
+    @property
+    def invested_amount_no(self) -> int:
+        """Get the amount invested in no bets."""
+        return sum(self.no_investments)
+
+    @property
+    def invested_amount(self) -> int:
+        """Get the amount invested in bets."""
+        return self.invested_amount_yes + self.invested_amount_no
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         self._validate()
         self._cast()
         self._check_usefulness()
+        self.investments = {self.yes: [], self.no: []}
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
@@ -196,7 +268,7 @@ class Bet:
         """Get an outcome only if it is binary."""
         if self.outcomeSlotCount == BINARY_N_SLOTS:
             return self.get_outcome(int(no))
-        requested_outcome = "no" if no else "yes"
+        requested_outcome = NO if no else YES
         error = (
             f"A {requested_outcome!r} outcome is only available for binary questions."
         )
@@ -211,6 +283,17 @@ class Bet:
     def no(self) -> str:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
+
+    def update_investments(self, amount: int) -> bool:
+        """Get the investments for the current vote type."""
+        vote = self.prediction_response.vote
+        if vote is None:
+            return False
+
+        vote_name = self.get_outcome(vote)
+        to_update = self.investments[vote_name]
+        to_update.append(amount)
+        return True
 
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
@@ -281,6 +364,14 @@ class BetsDecoder(json.JSONDecoder):
         if bet_annotations == data_attributes:
             data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
+        else:
+            # fetch missing attributes from the data
+            missing_attributes = set(bet_annotations) - set(data_attributes)
+            new_attributes = {"queue_status", "invested_amount"}
+            if missing_attributes == new_attributes:
+                data["queue_status"] = QueueStatus(0)
+                data["invested_amount"] = 0
+                return Bet(**data)
 
         return data
 

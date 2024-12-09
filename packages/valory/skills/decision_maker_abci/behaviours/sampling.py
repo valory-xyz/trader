@@ -19,8 +19,9 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+from collections import defaultdict
 from datetime import datetime
-from typing import Any, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -97,21 +98,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     ) -> Tuple[List[Bet], List[Bet], List[Bet]]:
         """Return a dictionary of bets with queue status as key."""
 
-        to_process_bets: List[Bet] = []
-        processed_bets: List[Bet] = []
-        reprocessed_bets: List[Bet] = []
+        bets_by_status: Dict[QueueStatus, List[Bet]] = defaultdict(list)
 
         for bet in bets:
-            if bet.queue_status == QueueStatus.TO_PROCESS:
-                to_process_bets.append(bet)
-            elif bet.queue_status == QueueStatus.PROCESSED:
-                processed_bets.append(bet)
-            elif bet.queue_status == QueueStatus.REPROCESSED:
-                reprocessed_bets.append(bet)
+            bets_by_status[bet.queue_status].append(bet)
 
-        return to_process_bets, processed_bets, reprocessed_bets
+        return (
+            bets_by_status[QueueStatus.TO_PROCESS],
+            bets_by_status[QueueStatus.PROCESSED],
+            bets_by_status[QueueStatus.REPROCESSED],
+        )
 
-    def _sampled_bet_idx(self, bets: List[Bet]) -> Optional[int]:
+    def _sampled_bet_idx(self, bets: List[Bet]) -> int:
         """
         Sample a bet and return its index.
 
@@ -170,10 +168,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # sample a bet using the priority logic
         idx = self._sampled_bet_idx(available_bets)
-        if idx:
-            sampled_bet = self.bets[idx]
-        else:
-            return None
+        sampled_bet = self.bets[idx]
 
         # fetch the liquidity of the sampled bet and cache it
         liquidity = sampled_bet.scaledLiquidityMeasure
