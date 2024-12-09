@@ -978,7 +978,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 # tx settlement multiplexer assures transitions from Post transaction to Redeem round
                 # only if the transaction was successful
                 if (
-                    self.synchronized_data.tx_submitter
+                    self.synchronized_data.did_transact
+                    and self.synchronized_data.tx_submitter
                     == BetPlacementRound.auto_round_id()
                 ):
                     self.update_bet_transaction_information()
