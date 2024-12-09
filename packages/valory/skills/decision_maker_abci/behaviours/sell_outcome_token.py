@@ -62,12 +62,12 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
-        approval_tx = yield from self.build_approval_tx(
+        status = yield from self.build_approval_tx(
             self.return_amount,
             self.market_maker_contract_address,
             self.market_maker_contract_address,
         )
-        return approval_tx
+        return status
 
     def _calc_sell_amount(self) -> WaitableConditionType:
         """Calculate the sell amount of the conditional token."""
