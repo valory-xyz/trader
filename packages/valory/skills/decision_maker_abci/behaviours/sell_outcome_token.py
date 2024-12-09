@@ -48,7 +48,6 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
         """Initialize the sell token behaviour."""
         super().__init__(**kwargs)
         self.sell_amount: float = 0.0
-        self.return_amount: int = 0
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -58,7 +57,20 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
     @property
     def outcome_index(self) -> int:
         """Get the index of the outcome for which the service is going to sell token."""
-        return cast(int, self.synchronized_data.vote)
+        return cast(int, self.synchronized_data.previous_vote)
+
+    @property
+    def return_amount(self) -> int:
+        """Get the amount expected to be returned after the sell tx. """
+        previous_vote = self.synchronized_data.previous_vote
+
+        if previous_vote == 0:
+            return self.sampled_bet.invested_amount_yes
+
+        else:
+            return self.sampled_bet.invested_amount_no
+
+        
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
