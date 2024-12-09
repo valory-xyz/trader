@@ -518,8 +518,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(
             f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
         )
-        if prediction_response is not None:
-            active_sampled_bet.n_bets += 1
 
         self.store_bets()
 
