@@ -178,13 +178,8 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
 
                 yield from self.finish_behaviour(payload)
 
-            self.return_amount = self.bets[
-                self.synchronized_data.sampled_bet_index
-            ].invested_amount
-
-            if self.is_wxdai:
-                tx_submitter = self.matching_round.auto_round_id()
-                betting_tx_hex = yield from self._prepare_safe_tx()
+            tx_submitter = self.matching_round.auto_round_id()
+            betting_tx_hex = yield from self._prepare_safe_tx()
 
             payload = MultisigTxPayload(
                 agent, tx_submitter, betting_tx_hex, mocking_mode
