@@ -61,7 +61,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def return_amount(self) -> int:
-        """Get the amount expected to be returned after the sell tx. """
+        """Get the amount expected to be returned after the sell tx."""
         previous_vote = self.synchronized_data.previous_vote
 
         if previous_vote == 0:
@@ -69,8 +69,6 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
 
         else:
             return self.sampled_bet.invested_amount_no
-
-        
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
