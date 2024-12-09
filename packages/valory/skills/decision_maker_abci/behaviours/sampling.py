@@ -168,10 +168,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # sample a bet using the priority logic
         idx = self._sampled_bet_idx(available_bets)
-        if idx:
-            sampled_bet = self.bets[idx]
-        else:
-            return None
+        sampled_bet = self.bets[idx]
 
         # fetch the liquidity of the sampled bet and cache it
         liquidity = sampled_bet.scaledLiquidityMeasure
