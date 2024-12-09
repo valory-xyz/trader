@@ -61,7 +61,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
 
     @property
     def return_amount(self) -> int:
-        """Get the amount expected to be returned after the sell tx."""
+        """Get the amount expected to be returned after the sell tx is completed."""
         previous_vote = self.synchronized_data.previous_vote
 
         if previous_vote == 0:
