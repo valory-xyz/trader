@@ -77,7 +77,7 @@ class SellTokenBehaviour(DecisionMakerBaseBehaviour):
         status = yield from self.build_approval_tx(
             self.return_amount,
             self.market_maker_contract_address,
-            self.market_maker_contract_address,
+            self.sampled_bet.get_outcome(self.outcome_index),
         )
         return status
 
