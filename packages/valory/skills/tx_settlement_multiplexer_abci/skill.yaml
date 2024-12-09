@@ -10,10 +10,10 @@ fingerprint:
   __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
   behaviours.py: bafybeictumcqn2pgo7y2duemvzoaafognfhl6s6il3tv53hq66tf7xgpsu
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeieoyrx3nt3qsvd5n2bkryzq6twvrphmbqn3fs4gts6eoy2tvksxoy
+  fsm_specification.yaml: bafybeicd7us5ffvsrxm7ybaanyzojbhmo7xtsfd3swtdem4dfsxkidxw7a
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
   models.py: bafybeigtmxoecoow663hgqnyinxarlrttyyt5ghpbdamdv4tc4kikcfx3a
-  rounds.py: bafybeihbxi4m7eyvkmenhcdzy3ijzajaxqrcyts3asvqe36l2til7kngzy
+  rounds.py: bafybeig3dhhrf5tkj63b3bk2mqfprcwzk3galz2ukzvdenz4g2femaixku
   tests/__init__.py: bafybeiat74pbtmxvylsz7karp57qp2v7y6wtrsz572jkrghbcssoudgjay
   tests/test_handlers.py: bafybeiayuktfupylm3p3ygufjb66swzxhpbmioqoffwuauakfgbkwrv7ma
 fingerprint_ignore_patterns: []
@@ -23,7 +23,7 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/decision_maker_abci:0.1.0:bafybeiga5dsxat3l6m6sjmek3db5ypr56qgp3b4hnbptihmdzbgamk3nye
+- valory/decision_maker_abci:0.1.0:bafybeiczxtmesnkxtcm55bkjcsuyg7qllywdioonefr2fovripwv27yozm
 - valory/staking_abci:0.1.0:bafybeibjgipzfle3b2gtuh42u2y6umgf47a5qrdtbvni46tox4lgv6wm4i
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
