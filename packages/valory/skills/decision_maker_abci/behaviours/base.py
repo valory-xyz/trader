@@ -723,7 +723,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.set_done()
 
     def build_approval_tx(
-        self, amount: int, market_maker_contract_address: str, to_address: str
+        self, amount: int, spender: str, token: str
     ) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
         response_msg = yield from self.get_contract_api_response(
@@ -731,7 +731,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             contract_address=self.collateral_token,
             contract_id=str(ERC20.contract_id),
             contract_callable="build_approval_tx",
-            spender=market_maker_contract_address,
+            spender=spender,
             amount=amount,
         )
 
@@ -745,7 +745,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             return False
 
         batch = MultisendBatch(
-            to=to_address,
+            to=token,
             data=HexBytes(approval_data),
         )
         self.multisend_batches.append(batch)
