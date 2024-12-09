@@ -99,7 +99,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
-        approval_tx = yield from self.build_approval_tx(
+        status = yield from self.build_approval_tx(
             self.investment_amount,
             self.market_maker_contract_address,
             self.collateral_token,
