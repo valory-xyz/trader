@@ -104,7 +104,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             self.market_maker_contract_address,
             self.collateral_token,
         )
-        return approval_tx
+        return status
 
     def _calc_buy_amount(self) -> WaitableConditionType:
         """Calculate the buy amount of the conditional token."""
