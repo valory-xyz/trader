@@ -19,7 +19,7 @@ contracts:
 - valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeieg57u3z7cdlmdamad5e6lk7kmsli2zurzkg3sl4y7lhekcu4y3au
 - valory/service_registry:0.1.0:bafybeiaop64kwdoetxtedoehabmsalojmms7ihuoqcdwxtwb2hk5i6bzye
-- valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
+- valory/market_maker:0.1.0:bafybeibevdc5trbi2qgt2tvwbsr2h5xvonfhcjwfmozftzvef575fdvbjq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid6nvwb4e2tllkft252vaqtf24xmrfgd4inf44vzzounp4ms4xn4m
-- valory/market_manager_abci:0.1.0:bafybeigmclk3pe3h2b57kcem4xlhkfgca5sosbstyqqoq6pnkt7uuhzvwi
-- valory/decision_maker_abci:0.1.0:bafybeiczxtmesnkxtcm55bkjcsuyg7qllywdioonefr2fovripwv27yozm
-- valory/trader_abci:0.1.0:bafybeiahjgvfeq3b6c5fq3hkvooermantgqv5tbpn5we5fumsnsyipe5jy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidh2heva4vzg5o6mlhwfnsrfudjiemuhjislb7whxp3khn3mcaxgu
+- valory/market_manager_abci:0.1.0:bafybeidjcrfbucn2tcv5hhkubsj3rg23aelcwustirnlikrp5tmtpz3wf4
+- valory/decision_maker_abci:0.1.0:bafybeif6bzsne6sb7j5ghm33r2krxn2q65pqtavxynboimowrd22e6ikye
+- valory/trader_abci:0.1.0:bafybeietnfgxhyb5zan2hdeagwvwjm2sg2cqsyzz627wka66a6m3xfn3di
 - valory/staking_abci:0.1.0:bafybeibjgipzfle3b2gtuh42u2y6umgf47a5qrdtbvni46tox4lgv6wm4i
 - valory/check_stop_trading_abci:0.1.0:bafybeier2qz5xkiha5krgav7hfrxvb5666csxyko4drfgouj5htjmmvwni
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
