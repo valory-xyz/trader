@@ -529,6 +529,7 @@ class BenchmarkingMode(Model, TypeCheckMixin):
             self._ensure("results_filename", kwargs, str)
         )
         self.randomness: str = self._ensure("randomness", kwargs, str)
+        self.nr_mech_calls: int = self._ensure("nr_mech_calls", kwargs, int)
         super().__init__(*args, **kwargs)
 
 

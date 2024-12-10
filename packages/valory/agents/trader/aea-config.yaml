@@ -267,6 +267,7 @@ models:
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
       randomness: ${str:benchmarking_randomness}
+      nr_mech_calls: ${int:60}
   acc_info_fields:
     args:
       tool: ${str:tool}
