@@ -217,6 +217,9 @@ class SharedState(BaseSharedState):
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
 
+        ## mech call counter for benchmarking behaviour
+        self.benchmarking_mech_calls: int = 0
+
     @property
     def mock_question_id(self) -> Any:
         """Get the mock question id."""
