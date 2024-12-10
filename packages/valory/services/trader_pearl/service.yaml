@@ -49,7 +49,7 @@ models:
       abt_error_mult: 5
       mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_request_price: 0
-      mech_chain_id: ethereum
+      mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x155547857680A6D51bebC5603397488988DEb1c8}
       sample_bets_closing_days: 10
@@ -121,7 +121,7 @@ public_id: valory/ledger:0.19.0
 type: connection
 config:
   ledger_apis:
-    ethereum:
+    gnosis:
       address: ${GNOSIS_LEDGER_RPC:str:http://host.docker.internal:8545}
       chain_id: ${GNOSIS_LEDGER_CHAIN_ID:int:100}
       default_gas_price_strategy: ${GNOSIS_LEDGER_PRICING:str:eip1559}

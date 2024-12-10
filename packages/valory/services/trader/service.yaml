@@ -616,33 +616,33 @@ type: connection
 0:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_0:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 1:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_1:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 2:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_2:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 3:
   config:
     ledger_apis:
-      ethereum:
+      gnosis:
         address: ${RPC_3:str:http://host.docker.internal:8545}
-        chain_id: ${CHAIN_ID:int:1337}
+        chain_id: ${CHAIN_ID:int:100}
         default_gas_price_strategy: ${DEFAULT_GAS_PRICE_STRATEGY:str:eip1559}
         poa_chain: ${POA_CHAIN:bool:false}
 ---
