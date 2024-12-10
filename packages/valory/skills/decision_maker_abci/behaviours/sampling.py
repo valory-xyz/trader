@@ -144,8 +144,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             bets
         )
 
-        total_mech_calls = len(processed_bets) + (2 * len(reprocessed_bets))
-        if total_mech_calls == self.benchmarking_mode.nr_mech_calls:
+        if (
+            self.shared_state.benchmarking_mech_calls
+            == self.benchmarking_mode.nr_mech_calls
+        ):
             return None
 
         bets_to_sort: List[Bet] = to_process_bets or processed_bets
