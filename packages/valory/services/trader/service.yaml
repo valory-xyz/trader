@@ -2,12 +2,12 @@ name: trader
 author: valory
 version: 0.1.0
 description: A set of agents placing bets
-aea_version: ">=1.0.0, <2.0.0"
+aea_version: '>=1.0.0, <2.0.0'
 license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigtfcgbgheepqwy2csg6mv6zn6elred2qvsmfdtdn7z66n7d2ashq
+agent: valory/trader:0.1.0:bafybeihwcxycklvr3li3lfimrp4c6yg2qbwif6otdxzggcqm4uycdjjssu
 number_of_agents: 4
 deployment:
   agent:
@@ -84,8 +84,7 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
-        the_graph_payment_required_error:
-          ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
@@ -98,8 +97,7 @@ type: skill
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
         tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
-        prompt_template:
-          ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
@@ -115,8 +113,7 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
         store_path: ${STORE_PATH:str:/data/}
-        irrelevant_tools:
-          ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
@@ -133,8 +130,7 @@ type: skill
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params:
-          ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
           ["did", "did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c"],
           ["escrow_payment_condition_address", "0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446"],
           ["lock_payment_condition_address", "0x2749DDEd394196835199471027713773736bffF2"],
@@ -313,8 +309,7 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
-        the_graph_payment_required_error:
-          ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
@@ -325,8 +320,7 @@ type: skill
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
-        prompt_template:
-          ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
@@ -342,8 +336,7 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
         store_path: ${STORE_PATH:str:/data/}
-        irrelevant_tools:
-          ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
@@ -360,8 +353,7 @@ type: skill
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params:
-          ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
           ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
@@ -435,8 +427,7 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
-        the_graph_payment_required_error:
-          ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
@@ -447,8 +438,7 @@ type: skill
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
-        prompt_template:
-          ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
@@ -464,8 +454,7 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
         store_path: ${STORE_PATH:str:/data/}
-        irrelevant_tools:
-          ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
@@ -482,8 +471,7 @@ type: skill
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params:
-          ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
           ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
@@ -557,8 +545,7 @@ type: skill
         average_block_time: ${ABT:int:5}
         abt_error_mult: ${ABT_ERROR_MULT:int:5}
         the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
-        the_graph_payment_required_error:
-          ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+        the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
         mech_request_price: ${MECH_REQUEST_PRICE:int:null}
@@ -569,8 +556,7 @@ type: skill
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
-        prompt_template:
-          ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
           occurring?}
@@ -586,8 +572,7 @@ type: skill
         slippage: ${SLIPPAGE:float:0.01}
         policy_epsilon: ${POLICY_EPSILON:float:0.1}
         store_path: ${STORE_PATH:str:/data/}
-        irrelevant_tools:
-          ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
+        irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
           "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
           "stabilityai-stable-diffusion-768-v2-1"]}
@@ -604,8 +589,7 @@ type: skill
         strategies_kwargs: ${STRATEGIES_KWARGS:list:[["bet_kelly_fraction",1.0],["floor_balance",500000000000000000],["bet_amount_per_threshold",{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}]]}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params:
-          ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
+        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
           ["did", "did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483"],
           ["escrow_payment_condition_address", "0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a"],
           ["lock_payment_condition_address", "0xDE85A368Ee6f374d236500d176814365370778dA"],
@@ -671,16 +655,16 @@ public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
 config:
   nodes:
-    - uri: ${ACN_URI:str:acn.staging.autonolas.tech:9005}
-      public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
-cert_requests:
-  - identifier: acn
-    ledger_id: ethereum
-    message_format: "{public_key}"
-    not_after: "2023-01-01"
-    not_before: "2022-01-01"
+  - uri: ${ACN_URI:str:acn.staging.autonolas.tech:9005}
     public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
-    save_path: .certs/acn_cosmos_11000.txt
+cert_requests:
+- identifier: acn
+  ledger_id: ethereum
+  message_format: '{public_key}'
+  not_after: '2023-01-01'
+  not_before: '2022-01-01'
+  public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
+  save_path: .certs/acn_cosmos_11000.txt
 is_abstract: true
 ---
 public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
