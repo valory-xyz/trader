@@ -329,9 +329,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.shared_state.current_liquidity_prices = (
                 active_sampled_bet.outcomeTokenMarginalPrices
             )
-            self.shared_state.liquidity_cache[
-                question_id
-            ] = active_sampled_bet.scaledLiquidityMeasure
+            self.shared_state.liquidity_cache[question_id] = (
+                active_sampled_bet.scaledLiquidityMeasure
+            )
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -398,11 +398,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
-        self.shared_state.liquidity_cache[
-            market_id
-        ] = self._compute_scaled_liquidity_measure(
-            self.shared_state.current_liquidity_amounts,
-            self.shared_state.current_liquidity_prices,
+        self.shared_state.liquidity_cache[market_id] = (
+            self._compute_scaled_liquidity_measure(
+                self.shared_state.current_liquidity_amounts,
+                self.shared_state.current_liquidity_prices,
+            )
         )
 
         return liquidity_info
@@ -569,6 +569,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     prediction_response,
                     bet_amount,
                 )
+                self.shared_state.benchmarking_mech_calls += 1
 
             if prediction_response is not None:
                 self.policy.tool_responded(
