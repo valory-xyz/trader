@@ -146,13 +146,21 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             bets
         )
 
+        self.context.logger.info(f"TO_PROCESS_LEN: {len(to_process_bets)}")
+        self.context.logger.info(f"PROCESSED_LEN: {len(processed_bets)}")
+        self.context.logger.info(f"REPROCESSED_LEN: {len(reprocessed_bets)}")
+
+        self.context.logger.info(
+            f"MECH CALLS MADE: {self.shared_state.benchmarking_mech_calls}"
+        )
+
         if (
             self.shared_state.benchmarking_mech_calls
             == self.benchmarking_mode.nr_mech_calls
         ):
             return None
 
-        bets_to_sort: List[Bet] = to_process_bets or processed_bets
+        bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets
         sorted_bets = self._sort_by_priority_logic(bets_to_sort)
 
         return self.bets.index(sorted_bets[0])
