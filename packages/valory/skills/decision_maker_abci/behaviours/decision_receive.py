@@ -113,6 +113,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         else:
             # no more bets available for this market
             msg = f"No more mock responses for the market with id: {sampled_bet_id}"
+            self.sampled_bet.queue_status = (
+                self.sampled_bet.queue_status.mark_benchmarking_done()
+            )
             self.context.logger.info(msg)
             self.shared_state.last_benchmarking_has_run = True
             self._rows_exceeded = True
@@ -501,6 +504,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             else:
                 self._write_benchmark_results(prediction_response)
 
+            self.context.logger.info("Increasing Mech call count by 1")
+            self.shared_state.benchmarking_mech_calls += 1
+
         return is_profitable, bet_amount
 
     def _update_selected_bet(
@@ -549,6 +555,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     prediction_response,
                     bet_amount,
                 )
+                self.context.logger.info("Increasing Mech call count by 1")
                 self.shared_state.benchmarking_mech_calls += 1
 
             # always remove the processed trade from the benchmarking input file
