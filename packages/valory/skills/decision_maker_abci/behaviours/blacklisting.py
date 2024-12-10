@@ -51,6 +51,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
 
         if self.benchmarking_mode.enabled:
             sampled_bet.queue_status = sampled_bet.queue_status.move_to_fresh()
+            return
 
         # the question is blacklisted, i.e., we did not place a bet on it,
         # therefore, we bump the queue's status to the next one
