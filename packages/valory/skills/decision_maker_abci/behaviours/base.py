@@ -331,6 +331,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             contract_id=str(ERC20.contract_id),
             contract_callable="check_balance",
             account=self.synchronized_data.safe_contract_address,
+            chain_id=self.params.mech_chain_id,
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
             self.context.logger.error(
@@ -514,6 +515,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             contract_address,
             contract_id,
             contract_callable,
+            chain_id=self.params.mech_chain_id,
             **kwargs,
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
@@ -555,6 +557,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             contract_id=str(MultiSendContract.contract_id),
             contract_callable="get_tx_data",
             multi_send_txs=self.multi_send_txs,
+            chain_id=self.params.mech_chain_id,
         )
         expected_performative = ContractApiMessage.Performative.RAW_TRANSACTION
         if response_msg.performative != expected_performative:
@@ -589,6 +592,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             data=self.multisend_data,
             safe_tx_gas=SAFE_GAS,
             operation=SafeOperation.DELEGATE_CALL.value,
+            chain_id=self.params.mech_chain_id,
         )
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:

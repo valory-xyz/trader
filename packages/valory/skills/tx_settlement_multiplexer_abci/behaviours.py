@@ -62,6 +62,7 @@ class PreTxSettlementBehaviour(BaseBehaviour):
             performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
             ledger_callable="get_balance",
             account=agent,
+            chain_id=self.params.mech_chain_id,
         )
 
         try:
