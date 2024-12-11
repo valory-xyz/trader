@@ -71,8 +71,9 @@ class QueueStatus(Enum):
             return QueueStatus.PROCESSED
         elif self == QueueStatus.PROCESSED:
             return QueueStatus.REPROCESSED
-        else:
+        elif self != QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
+        return self
 
 
 @dataclasses.dataclass(init=False)
