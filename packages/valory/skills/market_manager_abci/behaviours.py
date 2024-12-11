@@ -33,7 +33,6 @@ from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
     QueueCounter,
-    QueueStatus,
     serialize_bets,
     serialize_queue_counter,
 )

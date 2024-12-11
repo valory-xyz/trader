@@ -99,8 +99,6 @@ class QueueCounter:
             self.REPROCESSED += 1
         elif status == QueueStatus.EXPIRED:
             self.EXPIRED += 1
-        elif status == QueueStatus.BLACKLISTED:
-            self.BLACKLISTED += 1
 
     def reset(self) -> None:
         """Reset all counters to zero."""
