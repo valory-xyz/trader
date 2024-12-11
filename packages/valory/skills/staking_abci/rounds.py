@@ -87,6 +87,14 @@ class SynchronizedData(TxSettlementSyncedData):
         return self._get_deserialized("participant_to_checkpoint")
 
     @property
+    def previous_checkpoint(self) -> Optional[int]:
+        """Get the previous checkpoint."""
+        previous_checkpoint = self.db.get("previous_checkpoint", None)
+        if previous_checkpoint is None:
+            return None
+        return int(previous_checkpoint)
+
+    @property
     def is_checkpoint_reached(self) -> bool:
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
@@ -102,6 +110,8 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.tx_submitter),
         get_name(SynchronizedData.most_voted_tx_hash),
         get_name(SynchronizedData.service_staking_state),
+        get_name(SynchronizedData.previous_checkpoint),
+        get_name(SynchronizedData.is_checkpoint_reached),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
@@ -125,9 +135,6 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
 
         if synced_data.most_voted_tx_hash is None:
             return synced_data, Event.NEXT_CHECKPOINT_NOT_REACHED_YET
-
-        # service is staked and checkpoint is reached
-        self.synchronized_data.update(is_checkpoint_reached=True)
 
         return res
 
@@ -187,7 +194,11 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
         ServiceEvictedRound: {},
     }
     cross_period_persisted_keys = frozenset(
-        {get_name(SynchronizedData.service_staking_state)}
+        {
+            get_name(SynchronizedData.service_staking_state),
+            get_name(SynchronizedData.previous_checkpoint),
+            get_name(SynchronizedData.is_checkpoint_reached),
+        }
     )
     final_states: Set[AppState] = {
         CheckpointCallPreparedRound,
@@ -203,6 +214,8 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
             get_name(SynchronizedData.service_staking_state),
+            get_name(SynchronizedData.previous_checkpoint),
+            get_name(SynchronizedData.is_checkpoint_reached),
         },
         FinishedStakingRound: {
             get_name(SynchronizedData.service_staking_state),

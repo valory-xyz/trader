@@ -137,6 +137,7 @@ models:
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
       staking_interaction_sleep_time: 5
+      store_path: data
     class_name: StakingParams
   requests:
     args: {}
