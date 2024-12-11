@@ -8,8 +8,8 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeihwytwacahhzilavsturrcztm7jugqd4wbddqicsuf2uvtlbftihi
-  bets.py: bafybeifv5ppqwuy3sfzml2v6lmeyphingtov52vro2i4alfpkgy5jsq274
+  behaviours.py: bafybeifrdu7mzqljimw2jhmdf6g6ofluq3adezpoamosudz2syvz75w7em
+  bets.py: bafybeiel55slg3l3wvxj7ha5vlsdjzxfln3lduwy2xpcnjw2pj3f4rjkjy
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
