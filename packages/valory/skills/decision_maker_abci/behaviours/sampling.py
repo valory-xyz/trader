@@ -128,8 +128,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
 
-        sorted_bets: List = []
-
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
             bets
         )
