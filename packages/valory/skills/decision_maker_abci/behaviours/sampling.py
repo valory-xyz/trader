@@ -75,7 +75,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         return within_ranges and bet_queue_processable
 
-    def _sort_by_priority_logic(self, bets: List[Bet]) -> List[Bet]:
+    @staticmethod
+    def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
         """
         Sort bets based on the priority logic.
 
@@ -93,9 +94,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             reverse=True,
         )
 
-    def _get_bets_queue_wise(
-        self, bets: List[Bet]
-    ) -> Tuple[List[Bet], List[Bet], List[Bet]]:
+    @staticmethod
+    def _get_bets_queue_wise(bets: List[Bet]) -> Tuple[List[Bet], List[Bet], List[Bet]]:
         """Return a dictionary of bets with queue status as key."""
 
         bets_by_status: Dict[QueueStatus, List[Bet]] = defaultdict(list)
@@ -127,8 +127,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         :param bets: the bets' values to compare for the sampling.
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
-
-        sorted_bets: List = []
 
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
             bets

@@ -20,6 +20,8 @@
 
 """Models for the Staking ABCI application."""
 
+import os
+from pathlib import Path
 from typing import Any
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
@@ -37,6 +39,25 @@ Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
 
+def get_store_path(kwargs: dict) -> Path:
+    """Get the path of the store."""
+    path = kwargs.get("store_path", "")
+    if not path:
+        msg = "The path to the store must be provided as a keyword argument."
+        raise ValueError(msg)
+
+    # check if the path exists, and we can write to it
+    if (
+        not os.path.isdir(path)
+        or not os.access(path, os.W_OK)
+        or not os.access(path, os.R_OK)
+    ):
+        msg = f"The store path {path!r} is not a directory or is not writable."
+        raise ValueError(msg)
+
+    return Path(path)
+
+
 class StakingParams(BaseParams):
     """Staking parameters."""
 
@@ -51,6 +72,7 @@ class StakingParams(BaseParams):
         self.mech_activity_checker_contract: str = self._ensure(
             "mech_activity_checker_contract", kwargs, str
         )
+        self.store_path = get_store_path(kwargs)
         super().__init__(*args, **kwargs)
 
 

@@ -38,3 +38,5 @@ class CallCheckpointPayload(MultisigTxPayload):
     """A transaction payload for the checkpoint call."""
 
     service_staking_state: int
+    ts_checkpoint: int
+    is_checkpoint_reached: bool
