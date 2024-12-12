@@ -168,7 +168,7 @@ type: skill
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
         randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
-        nr_mech_calls: ${BENCHMARKING_MECH_CALLS:int:nr_mech_calls}
+        nr_mech_calls: ${BENCHMARKING_MECH_CALLS:int:60}
     acc_info_fields: &id005
       args:
         tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
