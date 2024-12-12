@@ -317,11 +317,8 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         self.context.logger.info("Comparing tool accuracy dates...")
 
-        overwrite = (
-            True
-            if remote_policy_store_date
-            > (local_policy_store_date - policy_store_update_offset)
-            else False
+        overwrite = remote_policy_store_date > (
+            local_policy_store_date - policy_store_update_offset
         )
         self.context.logger.info(f"Local policy store overwrite: {overwrite}.")
         return overwrite
