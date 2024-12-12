@@ -27,52 +27,50 @@ models:
         all_participants: []
         safe_contract_address: '0x0000000000000000000000000000000000000000'
         consensus_threshold: null
-      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
-      multisend_address: '0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761'
-      on_chain_service_id: null
-      service_id: trader
-      service_registry_address: '0x9338b5153AE39BB89f50468E608eD9d764B755fD'
-      agent_registry_address: '0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA'
-      sleep_time: 1
-      tendermint_com_url: http://localhost:8080
-      tendermint_url: http://localhost:26657
-      tendermint_p2p_url: node0:26656
+      drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
+      multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+      on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
+      service_id: ${SERVICE_ID:str:trader}
+      service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
+      agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+      sleep_time: ${SLEEP_TIME:int:1}
+      tendermint_com_url: ${TENDERMINT_COM_URL:str:http://localhost:8080}
+      tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
+      tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_0:str:node0:26656}
       creator_per_subgraph:
-        omen_subgraph:
-        - '0xFfc8029154ECD55ABED15BD428bA596E7D23f557'
-      slot_count: 2
-      opening_margin: 300
-      languages:
-      - en_US
-      average_block_time: 5
-      abt_error_mult: 5
+        omen_subgraph: ${OMEN_CREATORS:list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
+      slot_count: ${SLOT_COUNT:int:2}
+      opening_margin: ${OPENING_MARGIN:int:300}
+      languages: ${LANGUAGES:list:["en_US"]}
+      average_block_time: ${ABT:int:5}
+      abt_error_mult: ${ABT_ERROR_MULT:int:5}
       mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_request_price: ${MECH_REQUEST_PRICE:int:0}
-      mech_chain_id: ethereum
-      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
+      mech_chain_id: ${MECH_CHAIN_ID:str:ethereum}
+      mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x155547857680A6D51bebC5603397488988DEb1c8}
-      sample_bets_closing_days: 10
+      sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
       trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_threshold}
-      use_fallback_strategy: true
+      use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
       bet_threshold: ${BET_THRESHOLD:int:10000000000000000}
-      ipfs_address: https://gateway.autonolas.tech/ipfs/
-      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
-      prompt_template: Please take over the role of a Data Scientist to evaluate the
-        given question. With the given question "@{question}" and the `yes` option
-        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
-        the respective probabilities of `p_yes` and `p_no` occurring?
-      dust_threshold: 10000000000000
-      conditional_tokens_address: '0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce'
-      realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
-      realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
-      event_filtering_batch_size: 5000
-      reduce_factor: 0.25
-      max_filtering_retries: 6
-      minimum_batch_size: 500
-      redeeming_batch_size: 1
-      slippage: 0.01
-      store_path: ./data
-      policy_epsilon: 0.1
+      ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+      tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
+      prompt_template: ${PROMPT_TEMPLATE:str:Please take over the role of a Data Scientist
+        to evaluate the given question. With the given question "@{question}" and
+        the `yes` option represented by `@{yes}` and the `no` option represented by
+        `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?}
+      dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
+      conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+      realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+      realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
+      event_filtering_batch_size: ${EVENT_FILTERING_BATCH_SIZE:int:5000}
+      reduce_factor: ${REDUCE_FACTOR:float:0.25}
+      max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
+      minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
+      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
+      slippage: ${SLIPPAGE:float:0.01}
+      store_path: ${STORE_PATH:str:/data/}
+      policy_epsilon: ${POLICY_EPSILON:float:0.1}
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["prediction-offline", "prediction-online",
         "prediction-online-sme", "prediction-request-reasoning","native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","prediction-offline-sme","deepmind-optimization",
         "deepmind-optimization-strong", "openai-gpt-3.5-turbo", "openai-gpt-3.5-turbo-instruct",
@@ -81,13 +79,13 @@ models:
         "stabilityai-stable-diffusion-768-v2-1", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
-      disable_trading: false
-      stop_trading_if_staking_kpi_met: true
-      agent_balance_threshold: 10000000000000000
-      refill_check_interval: 10
-      tool_punishment_multiplier: 1
-      redeem_round_timeout: 3600.0
-      contract_timeout: 300.0
+      disable_trading: ${DISABLE_TRADING:bool:false}
+      stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
+      agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+      refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
+      tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
+      redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+      contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
       file_hash_to_strategies_json: ${FILE_HASH_TO_STRATEGIES_JSON:list:[["bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24",["bet_amount_per_threshold"]],["bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",["kelly_criterion"]]]}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:list:[["base_url", "https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo"],
@@ -99,8 +97,8 @@ models:
         "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"], ["nft_amount", "100"], ["payment_token",
         "0x0000000000000000000000000000000000000000"], ["order_address", "0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4"],
         ["price", "1000000000000000000"]]}
-      use_subgraph_for_redeeming: true
-      use_nevermined: false
+      use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
+      use_nevermined: ${USE_NEVERMINED:bool:false}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       mech_marketplace_config:
         mech_marketplace_address: ${MECH_MARKETPLACE_ADDRESS:str:0x4554fE75c1f5576c1d7F765B2A036c199Adae329}
