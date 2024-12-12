@@ -220,6 +220,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         if benchmarking_finished:
             self.context.logger.info("No more days to simulate in benchmarking mode.")
 
+        self.shared_state.benchmarking_mech_calls = 0
+
         day_increased = True
 
         return benchmarking_finished, day_increased
