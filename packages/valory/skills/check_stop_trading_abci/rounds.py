@@ -76,7 +76,6 @@ class CheckStopTradingRound(VotingRound):
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
-    required_class_attributes = ()
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""

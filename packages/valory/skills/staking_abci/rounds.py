@@ -33,6 +33,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
+    NONE_EVENT_ATTRIBUTE,
     get_name,
 )
 from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
@@ -100,7 +101,12 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
-    required_class_attributes = ()
+    # the none event is not required because the `CallCheckpointPayload` payload does not allow for `None` values
+    required_class_attributes = tuple(
+        attribute
+        for attribute in CollectSameUntilThresholdRound.required_class_attributes
+        if attribute != NONE_EVENT_ATTRIBUTE
+    )
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""

@@ -19,7 +19,11 @@
 
 """This module contains the blacklisting state of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    NONE_EVENT_ATTRIBUTE,
+    VotingRound,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -33,7 +37,13 @@ class HandleFailedTxRound(VotingRound):
     payload_class = VotingPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.BLACKLIST
+    none_event = Event.BLACKLIST
     negative_event = Event.NO_OP
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
-    required_class_attributes = ()
+    # the none event is not required because the `VotingPayload` payload does not allow for `None` values
+    required_class_attributes = tuple(
+        attribute
+        for attribute in VotingRound.required_class_attributes
+        if attribute != NONE_EVENT_ATTRIBUTE
+    )

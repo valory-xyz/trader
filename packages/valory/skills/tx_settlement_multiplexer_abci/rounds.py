@@ -30,6 +30,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
     CollectSameUntilThresholdRound,
     DegenerateRound,
+    NONE_EVENT_ATTRIBUTE,
     VotingRound,
     get_name,
 )
@@ -67,10 +68,16 @@ class PreTxSettlementRound(VotingRound):
     payload_class = VotingPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.CHECKS_PASSED
+    none_event = Event.REFILL_REQUIRED
     negative_event = Event.REFILL_REQUIRED
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
-    required_class_attributes = ()
+    # the none event is not required because the `VotingPayload` payload does not allow for `None` values
+    required_class_attributes = tuple(
+        attribute
+        for attribute in VotingRound.required_class_attributes
+        if attribute != NONE_EVENT_ATTRIBUTE
+    )
 
 
 class PostTxSettlementRound(CollectSameUntilThresholdRound):
@@ -78,12 +85,8 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
 
     payload_class: Any = object()
     synchronized_data_class = SynchronizedData
+    # no class attributes are required because this round is overriding the `end_block` method
     required_class_attributes = ()
-
-    def _check_required_attributes(self) -> None:
-        """Check that required attributes are set."""
-        # skip the checks for this round
-        ...
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """

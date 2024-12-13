@@ -96,7 +96,6 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
     selection_key = get_name(SynchronizedData.bets_hash)
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
-    required_class_attributes = ()
 
 
 class FinishedMarketManagerRound(DegenerateRound, ABC):
