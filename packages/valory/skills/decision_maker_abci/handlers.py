@@ -406,8 +406,8 @@ class HttpHandler(BaseHttpHandler):
         staking_state = self.synchronized_data.service_staking_state.value
         time_since_last_successful_mech_tx = self.synchronized_data.decision_receive_timestamp
         n_total_mech_requests = len(self.synchronized_data.mech_requests)
-        n_successful_mech_requests = len(self.synchronized_data.mech_responses)
-        n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
+        # n_successful_mech_requests = len(self.synchronized_data.mech_responses)
+        # n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
 
         NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
             native_balance)
@@ -417,61 +417,47 @@ class HttpHandler(BaseHttpHandler):
         TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(agent_address, safe_address, service_id).set(
             time_since_last_successful_mech_tx)
         TOTAL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_total_mech_requests)
-        TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_successful_mech_requests)
-        TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_failed_mech_requests)
-
-    def get_available_staking_slots(self,
-            ledger_api: EthereumApi
-    ) -> int:
-        """Get available staking slots"""
-        staking_contract_address = self.context.params.staking_contract_address
-
-        max_num_services = staking_contract_address.max_num_services(
-            ledger_api, staking_contract_address).pop("data")
-
-        service_ids = staking_contract_address.get_service_ids(
-            ledger_api, staking_contract_address).pop("data")
-
-        return max_num_services - len(service_ids)
+        # TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_successful_mech_requests)
+        # TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_failed_mech_requests)
 
 
 NATIVE_BALANCE_GAUGE = Gauge("olas_agent_native_balance",
                              "Native token balance in xDai",
-                             ['agent_address', 'operator_address', 'safe_address', 'service_id']
+                             ['agent_address', 'safe_address', 'service_id']
                              )
 
 OLAS_BALANCE_GAUGE = Gauge("olas_agent_olas_balance",
-                           "OLAS token balance"
+                           "OLAS token balance", ['agent_address', 'safe_address', 'service_id']
                            )
 
 WXDAI_BALANCE_GAUGE = Gauge("olas_agent_wxdai_balance",
-                            "WXDAI token balance"
+                            "WXDAI token balance", ['agent_address', 'safe_address', 'service_id']
                             )
 
 STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge("olas_staking_contract_available_slots",
-                                               "Number of available slots in the staking contract"
+                                               "Number of available slots in the staking contract", ['agent_address', 'safe_address', 'service_id']
                                                )
 
 STAKING_STATE_GAUGE = Gauge("olas_agent_staked",
-                     "Indicates if an agent is staked (1), not staked (0) or eviceted (2)"
+                     "Indicates if an agent is staked (1), not staked (0) or eviceted (2)", ['agent_address', 'safe_address', 'service_id']
                             )
 
 TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge("olas_agent_time_since_last_successful_tx",
-                                                 "Time in seconds since last successful mech transaction"
+                                                 "Time in seconds since last successful mech transaction", ['agent_address', 'safe_address', 'service_id']
                                                  )
 
 TIME_SINCE_LAST_MECH_TX_ATTEMPT = Gauge("olas_agent_time_since_last_tx_attempt",
-                                        "Time in seconds since last transaction attempt (successful or not)"
+                                        "Time in seconds since last transaction attempt (successful or not)", ['agent_address', 'safe_address', 'service_id']
                                         )
 
 TOTAL_MECH_TXS = Gauge("olas_agent_txs",
-                       "Total number of transactions"
+                       "Total number of transactions", ['agent_address', 'safe_address', 'service_id']
                        )
 
 TOTAL_SUCCESSFUL_MECH_TXS = Gauge("olas_successful_agent_txs",
-                                  "Total successful number of transactions"
+                                  "Total successful number of transactions", ['agent_address', 'safe_address', 'service_id']
                                   )
 
 TOTAL_FAILED_MECH_TXS = Gauge("olas_failed_agent_txs",
-                              "Total failed number of transaction"
+                              "Total failed number of transaction", ['agent_address', 'safe_address', 'service_id']
                               )

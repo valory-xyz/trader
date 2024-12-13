@@ -476,9 +476,6 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.expected_mech_response_time = self._ensure(
             "expected_mech_response_time", kwargs, int
         )
-        self.staking_contract_address = self._ensure(
-            "staking_contract_address", kwargs, str
-        )
         super().__init__(*args, **kwargs)
 
     @property
