@@ -77,6 +77,8 @@ jobs:
             run: |
               echo "Building Docker Images"
               cd /work
+              pip install --upgrade poetry
+              poetry install
               source env.sh || exit 1
               echo "Building images for $AUTHOR for service $SERVICE"
               autonomy init --reset --author $AUTHOR --ipfs --remote
