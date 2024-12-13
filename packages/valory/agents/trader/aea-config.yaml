@@ -29,6 +29,10 @@ contracts:
 - valory/service_staking_token:0.1.0:bafybeieg664oohr26gpcfn3uied4minlz6dmgd32xboewscnxqnv5kk4zi
 - valory/transfer_nft_condition:0.1.0:bafybeicdtigdwlt47jg2tibxltwyyl4apysvlideo53lgiy3muuho3izpa
 - valory/erc20:0.1.0:bafybeientdgpccdi7prtu4x53m5g3yugh5tuh5hnroylfz3wwzyjniqure
+- valory/staking_token:0.1.0:bafybeiaynt6clwbthtbndtocnwul7dp76ctmu4jxinp7fnqks4pxt65yuy
+- valory/mech_activity:0.1.0:bafybeieadv7vnbguc7beu6xo3rs3mqbgzc7wayc7kvgb2tmitmjtpdcqkq
+- valory/mech_marketplace:0.1.0:bafybeicfuigpr65k4l2r5dbazzwh43yc6pfuy5mrkjkagmhmcp6ioktfay
+- valory/relayer:0.1.0:bafybeicreijhjycqrutdpbdn3vdcpmo233y3p66l3ovmr2goa2y2e6bshy
 protocols:
 - open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
 - valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
@@ -38,6 +42,7 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 - valory/tendermint:0.1.0:bafybeig4mi3vmlv5zpbjbfuzcgida6j5f2nhrpedxicmrrfjweqc5r7cra
+- valory/acn_data_share:0.1.0:bafybeidbvo3jdbt54pqk3foqfso4uim2vaea5abg6jzktomdeklh6sm2rq
 skills:
 - valory/abstract_abci:0.1.0:bafybeif2naoydlrqkdpnig34uejedwgurjwyvmbpcz53tif7pyukfdophq
 - valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
