@@ -36,6 +36,8 @@ class MockSynchronizedData(SynchronizedData):
     """A mock class for SynchronizedData to provide necessary attributes."""
 
     sampled_bet_index = 0  # Default value for sampled_bet_index
+    benchmarking_finished = False
+    simulated_day = False
 
     def __init__(self, db: AbciAppDB):
         """Initialize MockSynchronizedData with the given db."""
@@ -77,7 +79,11 @@ class TestSamplingRound:
     def test_sampling_payload_initialization(self) -> None:
         """Test the initialization of the SamplingPayload."""
         payload = SamplingPayload(
-            sender="mock_sender", bets_hash="mock_bets_hash", index=0
+            sender="mock_sender",
+            bets_hash="mock_bets_hash",
+            index=0,
+            benchmarking_finished=False,
+            day_increased=False,
         )  # Added index
         assert payload is not None
         assert payload.sender == "mock_sender"
@@ -95,9 +101,10 @@ class TestSamplingRound:
         sampling_round = setup_sampling_round
         expected_selection_key = (
             UpdateBetsRound.selection_key,
-            get_name(
-                SynchronizedData.sampled_bet_index
-            ),  # Pass the property, not the value
+            get_name(SynchronizedData.sampled_bet_index),
+            get_name(SynchronizedData.benchmarking_finished),
+            get_name(SynchronizedData.simulated_day),
+            # Pass the property, not the value
         )
         assert sampling_round.selection_key == expected_selection_key
 

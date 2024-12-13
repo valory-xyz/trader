@@ -266,6 +266,10 @@ class HttpHandler(BaseHttpHandler):
         is_transitioning_fast = None
         current_round = None
         rounds = None
+        has_required_funds = self._check_required_funds()
+        is_receiving_mech_responses = self._check_is_receiving_mech_responses()
+        is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
+        staking_status = self.synchronized_data.service_staking_state.name.lower()
 
         round_sequence = cast(SharedState, self.context.state).round_sequence
 
@@ -299,6 +303,12 @@ class HttpHandler(BaseHttpHandler):
             "reset_pause_duration": self.context.params.reset_pause_duration,
             "rounds": rounds,
             "is_transitioning_fast": is_transitioning_fast,
+            "agent_health": {
+                "is_making_on_chain_transactions": is_receiving_mech_responses,
+                "is_staking_kpi_met": is_staking_kpi_met,
+                "has_required_funds": has_required_funds,
+                "staking_status": staking_status,
+            },
         }
 
         self._send_ok_response(http_msg, http_dialogue, data)
@@ -337,3 +347,20 @@ class HttpHandler(BaseHttpHandler):
         # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _check_required_funds(self) -> bool:
+        """Check the agent has enough funds."""
+        return (
+            self.synchronized_data.wallet_balance
+            > self.context.params.agent_balance_threshold
+        )
+
+    def _check_is_receiving_mech_responses(self) -> bool:
+        """Check the agent is making on chain transactions."""
+        # Checks the most recent decision receive timestamp, which can only be returned after making a mech call
+        # (an on chain transaction)
+        return (
+            self.synchronized_data.decision_receive_timestamp
+            < int(datetime.utcnow().timestamp())
+            - self.context.params.expected_mech_response_time
+        )

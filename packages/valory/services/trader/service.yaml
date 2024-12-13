@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigyyvj7xxpmj7aikjdyb26sax4gpv24dywj3asbfsc2vpbwzysgqy
+agent: valory/trader:0.1.0:bafybeigbv7vw22enlwfmhidknn6ljtkzbd6g6iw55hmn3j77zabcdwrwou
 number_of_agents: 4
 deployment:
   agent:
@@ -145,6 +145,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -155,8 +156,6 @@ type: skill
         collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
         mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
         pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
-        outcome_token_amounts: ${OUTCOME_TOKEN_AMOUNTS:list:[11000000000000000000,9000000000000000000]}
-        outcome_token_marginal_prices: ${OUTCOME_TOKEN_MARGINAL_PRICES:list:[0.55,0.45]}
         sep: ${BENCHMARKING_MODE_SEP:str:,}
         dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
         question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}
@@ -362,6 +361,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -480,6 +480,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -598,6 +599,7 @@ type: skill
         rebet_chance: ${REBET_CHANCE:float:0.6}
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+        expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005

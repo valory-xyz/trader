@@ -19,9 +19,10 @@
 
 """This module contains the behaviour of the skill which is responsible for requesting a decision from the mech."""
 
+import csv
 import json
 from dataclasses import asdict
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional
 from uuid import uuid4
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -71,6 +72,22 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         msg = f"Prepared metadata {self.metadata!r} for the request."
         self.context.logger.info(msg)
 
+    def initialize_bet_id_row_manager(self) -> Dict[str, List[int]]:
+        """Initialization of the dictionary used to traverse mocked tool responses."""
+        bets_mapping: Dict[str, List[int]] = {}
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+
+        with open(dataset_filepath, mode="r") as file:
+            reader = csv.DictReader(file)
+            for row_number, row in enumerate(reader, start=1):
+                question_id = row[self.benchmarking_mode.question_id_field]
+                if question_id not in bets_mapping:
+                    bets_mapping[question_id] = []
+                bets_mapping[question_id].append(row_number)
+        return bets_mapping
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -81,6 +98,12 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
                 payload_content = json.dumps(mech_requests, sort_keys=True)
             if not self.n_slots_supported:
                 mocking_mode = None
+
+            if self.benchmarking_mode.enabled:
+                # check if the bet_id_row_manager has been loaded already
+                if len(self.shared_state.bet_id_row_manager) == 0:
+                    bets_mapping = self.initialize_bet_id_row_manager()
+                    self.shared_state.bet_id_row_manager = bets_mapping
 
             agent = self.context.agent_address
             payload = DecisionRequestPayload(agent, payload_content, mocking_mode)

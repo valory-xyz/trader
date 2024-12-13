@@ -21,7 +21,9 @@
 
 import os
 import re
+import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
@@ -46,6 +48,7 @@ from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
     Subgraph,
@@ -199,12 +202,20 @@ class SharedState(BaseSharedState):
         self.req_to_callback: Dict[str, Callable] = {}
         self.mock_data: Optional[BenchmarkingMockData] = None
         # a mapping from market id to scaled liquidity measure
+        # also used for the benchmarking mode
         self.liquidity_cache: Dict[str, float] = {}
+        # list with the simulated timestamps for the benchmarking mode
+        self.simulated_days: List[int] = []
+        self.simulated_days_idx: int = 0
         # latest liquidity information (only relevant to the benchmarking mode)
         self.liquidity_amounts: Dict[str, List[int]] = {}
         self.liquidity_prices: Dict[str, List[float]] = {}
         # whether this is the last run of the benchmarking mode
         self.last_benchmarking_has_run: bool = False
+
+        # the mapping from bet id to the row number in the dataset
+        # the key is the market id/question_id
+        self.bet_id_row_manager: Dict[str, List[int]] = {}
 
     @property
     def mock_question_id(self) -> Any:
@@ -244,6 +255,52 @@ class SharedState(BaseSharedState):
     def current_liquidity_amounts(self, value: List[int]) -> None:
         """Set the current liquidity amounts."""
         self.liquidity_amounts[self.mock_question_id] = value
+
+    def _initialize_simulated_now_timestamps(
+        self, bets: List[Bet], safe_voting_range: int
+    ) -> None:
+        """Creates the list of simulated days for the benchmarking mode"""
+        self.simulated_days_idx = 0
+        # Find the maximum timestamp from openingTimestamp field
+        max_timestamp = max(bet.openingTimestamp for bet in bets)
+        # adding some time range to allow voting
+        # in the sampling round the within_safe condition is designed to check
+        # the openingtimestamp of the market strickly less than the safe voting range
+        # so we need to create a timestamp that passes this condition for the max openingtimestamp
+        max_timestamp = max_timestamp - safe_voting_range - 1
+
+        # Get current timestamp
+        now_timestamp = int(time.time())
+        # Convert timestamps to datetime objects
+        max_date = datetime.fromtimestamp(max_timestamp)
+        current_date = datetime.fromtimestamp(now_timestamp)
+        self.context.logger.info(
+            f"Simulating timestamps between {current_date} and {max_date}"
+        )
+        # Generate list of timestamps with one day intervals
+        timestamps = []
+        while current_date <= max_date:
+            timestamps.append(int(current_date.timestamp()))
+            current_date += timedelta(days=1)
+        self.context.logger.info(f"Simulated timestamps: {timestamps}")
+        self.simulated_days = timestamps
+
+    def increase_one_day_simulation(self) -> None:
+        """Increased the index used for the current simulated day."""
+        self.simulated_days_idx += 1
+
+    def check_benchmarking_finished(self) -> bool:
+        """Checks if we simulated already all days."""
+        return self.simulated_days_idx >= len(self.simulated_days)
+
+    def get_simulated_now_timestamp(
+        self, bets: List[Bet], safe_voting_range: int
+    ) -> int:
+        """Gets the current simulated day timestamp."""
+        if len(self.simulated_days) == 0:
+            self._initialize_simulated_now_timestamps(bets, safe_voting_range)
+
+        return self.simulated_days[self.simulated_days_idx]
 
     def setup(self) -> None:
         """Set up the model."""
@@ -389,6 +446,9 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.policy_store_update_offset = self._ensure(
             "policy_store_update_offset", kwargs, int
         )
+        self.expected_mech_response_time = self._ensure(
+            "expected_mech_response_time", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property
@@ -440,12 +500,6 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
         self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
         self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
-        self.outcome_token_amounts: List[int] = self._ensure(
-            "outcome_token_amounts", kwargs, List[int]
-        )
-        self.outcome_token_marginal_prices: List[float] = self._ensure(
-            "outcome_token_marginal_prices", kwargs, List[float]
-        )
         self.sep: str = self._ensure("sep", kwargs, str)
         self.dataset_filename: Path = Path(
             self._ensure("dataset_filename", kwargs, str)

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigyyvj7xxpmj7aikjdyb26sax4gpv24dywj3asbfsc2vpbwzysgqy
+agent: valory/trader:0.1.0:bafybeigbv7vw22enlwfmhidknn6ljtkzbd6g6iw55hmn3j77zabcdwrwou
 number_of_agents: 1
 deployment:
   agent:
@@ -96,6 +96,8 @@ models:
       use_nevermined: false
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+      expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
   benchmark_tool:
     args:
       log_dir: /benchmarks

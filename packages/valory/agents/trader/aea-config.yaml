@@ -45,12 +45,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezfedmmseox3ce5aucxsiszdmvskrwwbtpb2a3vw3sbmc5jt7nri
 - valory/termination_abci:0.1.0:bafybeiea67epwwgngp7b3wavs6hpkaxv6etyaps6g6325bchfnf354mibq
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigs236w53v4gxiyofopuzb4obylsg2asaek4erhfzlkb2vvbsoqnm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifcxbv3iy5b3asrpsuxcsf7hmw3tjkbqdebjgxjkfo2l2wutal6gm
 - valory/market_manager_abci:0.1.0:bafybeian6mfeebwg7co2hzejqbxnekmtoh3ye4e6g7foyitbejhyxlrp5m
-- valory/decision_maker_abci:0.1.0:bafybeigksnnl46iv34h7ncrbkyrya6ahsedhftm3ys3ejg2bai4adns4x4
-- valory/trader_abci:0.1.0:bafybeiehru3hsg6p373bnwnchptwozwwuwejwzot6avv3ji45oc5rinbqm
+- valory/decision_maker_abci:0.1.0:bafybeigblapf3o6xxebjbrqwtsg4fkxaj6u4nr5wc6ourblgsgesmoowxu
+- valory/trader_abci:0.1.0:bafybeidwyosh3pcyzzvtgwdrktrjzf5c3zcjz27b6d47njkd5kz3p6s43e
 - valory/staking_abci:0.1.0:bafybeiftuaba6x7xy5tbcxjdv6wc56modvsa3muiipfykjqssjvsbfgrxu
-- valory/check_stop_trading_abci:0.1.0:bafybeia7con5a2yqna5nuoxnl3njvicyo5dwqnlwil2phdpcfzkls66aaq
+- valory/check_stop_trading_abci:0.1.0:bafybeiguc7d2euwyynnkql2pdjh5zhwc6yuoz46x2j6q762k5gnfzzu3n4
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -238,6 +238,7 @@ models:
       use_mech_marketplace: ${bool:false}
       policy_store_update_offset: ${int:259200}
       mech_marketplace_config: ${dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      expected_mech_response_time: ${int:300}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -245,8 +246,6 @@ models:
       collateral_balance: ${int:10000000000000000000}
       mech_cost: ${int:10000000000000000}
       pool_fee: ${int:20000000000000000}
-      outcome_token_amounts: ${list:[11000000000000000000,9000000000000000000]}
-      outcome_token_marginal_prices: ${list:[0.4,0.6]}
       sep: ${str:,}
       dataset_filename: ${str:benchmark_data.csv}
       question_field: ${str:question}

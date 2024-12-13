@@ -17,6 +17,8 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
+
+from datetime import datetime
 from typing import Dict, Type
 
 import pytest
@@ -48,11 +50,17 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "confidence": 0.90,
                 "bet_amount": 1,
                 "next_mock_data_row": 1,
+                "decision_received_timestamp": int(datetime.utcnow().timestamp()),
             },
         ),
         (
             SamplingPayload,
-            {"index": 1, "bets_hash": "dummy_bets_hash"},
+            {
+                "index": 1,
+                "bets_hash": "dummy_bets_hash",
+                "benchmarking_finished": False,
+                "day_increased": False,
+            },
         ),
         (
             MultisigTxPayload,
@@ -89,6 +97,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "tx_submitter": "dummy tx submitter",
                 "tx_hash": "dummy tx hash",
                 "mocking_mode": True,
+                "wallet_balance": 10000,
             },
         ),
         (

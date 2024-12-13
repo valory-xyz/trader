@@ -38,6 +38,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
     MechMetadata,
 )
+from packages.valory.skills.staking_abci.rounds import StakingState
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
@@ -66,6 +67,7 @@ class Event(Enum):
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
+    NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
 
 
 class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
@@ -78,6 +80,16 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def sampled_bet_index(self) -> int:
         """Get the sampled bet."""
         return int(self.db.get_strict("sampled_bet_index"))
+
+    @property
+    def benchmarking_finished(self) -> bool:
+        """Get the flag of benchmarking finished."""
+        return bool(self.db.get_strict("benchmarking_finished"))
+
+    @property
+    def simulated_day(self) -> bool:
+        """Get the flag of simulated_day."""
+        return bool(self.db.get_strict("simulated_day"))
 
     @property
     def is_mech_price_set(self) -> bool:
@@ -229,6 +241,32 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
             serialized = "[]"
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
+
+    @property
+    def wallet_balance(self) -> int:
+        """Get the balance of the wallet."""
+        wallet_balance = self.db.get("wallet_balance", 0)
+        if wallet_balance is None:
+            return 0
+        return int(wallet_balance)
+
+    @property
+    def decision_receive_timestamp(self) -> int:
+        """Get the timestamp of the mech decision."""
+        decision_receive_timestamp = self.db.get("decision_receive_timestamp", 0)
+        if decision_receive_timestamp is None:
+            return 0
+        return int(decision_receive_timestamp)
+
+    @property
+    def is_staking_kpi_met(self) -> bool:
+        """Get the status of the staking kpi."""
+        return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def service_staking_state(self) -> StakingState:
+        """Get the service's staking state."""
+        return StakingState(self.db.get("service_staking_state", 0))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

@@ -11,7 +11,7 @@ fingerprint:
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
   composition.py: bafybeigg7ksnhkoxe4oa2zr25wlcunicbz2qvtqzi3jroqhezp4ev67k74
   dialogues.py: bafybeiaxbusvurskv5nvdzpo4qxvbrxu64hxhncu5ndjkzzxvybsbcfzyy
-  fsm_specification.yaml: bafybeibgm4crhqny63ax36447cglnycvlwnwuwse62bob64zbya4vjfgnm
+  fsm_specification.yaml: bafybeiea2w6rhdxwc2ogvdnoxw2wbklnlspsoxyzhpz6h6x6dnctqurnoi
   handlers.py: bafybeigrqsgqupy6kds2vqieacsymx3eucntwl52rlgi4cu4lrb6bglhti
   models.py: bafybeih2vkf4ln7n7ar27iemho7w7sdr4clmhbnhbcznmsri6mc2skkky4
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
@@ -27,10 +27,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
 - valory/termination_abci:0.1.0:bafybeiea67epwwgngp7b3wavs6hpkaxv6etyaps6g6325bchfnf354mibq
 - valory/market_manager_abci:0.1.0:bafybeian6mfeebwg7co2hzejqbxnekmtoh3ye4e6g7foyitbejhyxlrp5m
-- valory/decision_maker_abci:0.1.0:bafybeigksnnl46iv34h7ncrbkyrya6ahsedhftm3ys3ejg2bai4adns4x4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigs236w53v4gxiyofopuzb4obylsg2asaek4erhfzlkb2vvbsoqnm
+- valory/decision_maker_abci:0.1.0:bafybeigblapf3o6xxebjbrqwtsg4fkxaj6u4nr5wc6ourblgsgesmoowxu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifcxbv3iy5b3asrpsuxcsf7hmw3tjkbqdebjgxjkfo2l2wutal6gm
 - valory/staking_abci:0.1.0:bafybeiftuaba6x7xy5tbcxjdv6wc56modvsa3muiipfykjqssjvsbfgrxu
-- valory/check_stop_trading_abci:0.1.0:bafybeia7con5a2yqna5nuoxnl3njvicyo5dwqnlwil2phdpcfzkls66aaq
+- valory/check_stop_trading_abci:0.1.0:bafybeiguc7d2euwyynnkql2pdjh5zhwc6yuoz46x2j6q762k5gnfzzu3n4
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
 behaviours:
   main:
@@ -247,6 +247,7 @@ models:
         priority_mech_service_id: 0
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
+      expected_mech_response_time: 300
     class_name: TraderParams
   benchmarking_mode:
     args:

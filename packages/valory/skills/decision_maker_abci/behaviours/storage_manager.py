@@ -41,7 +41,7 @@ from packages.valory.skills.decision_maker_abci.policy import (
 )
 
 
-POLICY_STORE = "policy_store.json"
+POLICY_STORE = "policy_store_multi_bet.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
@@ -327,6 +327,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Update the accuracy store file with the latest information available"""
         self.context.logger.info("Updating accuracy information of the policy...")
         sep = self.acc_info_fields.sep
+        self.remote_accuracy_information.seek(
+            0
+        )  # Ensure the file pointer is at the start
         reader: csv.DictReader = csv.DictReader(
             self.remote_accuracy_information, delimiter=sep
         )

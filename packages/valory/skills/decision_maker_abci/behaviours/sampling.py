@@ -20,6 +20,7 @@
 """This module contains the behaviour for sampling a bet."""
 
 import random
+from datetime import datetime
 from typing import Any, Generator, List, Optional
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -50,20 +51,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         self.read_bets()
         has_bet_in_the_past = any(bet.n_bets > 0 for bet in self.bets)
         if has_bet_in_the_past:
-            random.seed(self.synchronized_data.most_voted_randomness)
+            if self.benchmarking_mode.enabled:
+                random.seed(self.benchmarking_mode.randomness)
+            else:
+                random.seed(self.synchronized_data.most_voted_randomness)
             self.should_rebet = random.random() <= self.params.rebet_chance  # nosec
         rebetting_status = "enabled" if self.should_rebet else "disabled"
         self.context.logger.info(f"Rebetting {rebetting_status}.")
 
-    def has_liquidity_changed(self, bet: Bet) -> bool:
-        """Whether the liquidity of a specific market has changed since it was last selected."""
-        previous_bet_liquidity = self.shared_state.liquidity_cache.get(bet.id, None)
-        return bet.scaledLiquidityMeasure != previous_bet_liquidity
-
-    def processable_bet(self, bet: Bet) -> bool:
+    def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
-        now = self.synced_timestamp
-        # Note: `openingTimestamp` is the timestamp when a question stops being available for voting.
+
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
@@ -73,6 +71,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             - self.params.opening_margin
             - self.params.safe_voting_range
         )
+
         within_ranges = within_opening_range and within_safe_range
 
         # rebetting is allowed only if we have already placed at least one bet in this market.
@@ -82,14 +81,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         # if we should not rebet, we have all the information we need
         if not self.should_rebet:
-            # the `has_liquidity_changed` check is dangerous; this can result in a bet never being processed
-            # e.g.:
-            #     1. a market is selected
-            #     2. the mech is uncertain
-            #     3. a bet is not placed
-            #     4. the market's liquidity never changes
-            #     5. the market is never selected again, and therefore a bet is never placed on it
-            return within_ranges and self.has_liquidity_changed(bet)
+            return within_ranges
 
         # create a filter based on whether we can rebet or not
         lifetime = bet.openingTimestamp - now
@@ -111,8 +103,20 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
-        available_bets = list(filter(self.processable_bet, self.bets))
-
+        # modify time "NOW" in benchmarking mode
+        if self.benchmarking_mode.enabled:
+            safe_voting_range = (
+                self.params.opening_margin + self.params.safe_voting_range
+            )
+            now = self.shared_state.get_simulated_now_timestamp(
+                self.bets, safe_voting_range
+            )
+            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
+        else:
+            now = self.synced_timestamp
+        available_bets = list(
+            filter(lambda bet: self.processable_bet(bet, now=now), self.bets)
+        )
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
@@ -135,11 +139,30 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
+            benchmarking_finished = None
+            day_increased = None
+            if idx is None and self.benchmarking_mode.enabled:
+                self.context.logger.info(
+                    "No more markets to bet in the simulated day. Increasing simulated day."
+                )
+                self.shared_state.increase_one_day_simulation()
+                benchmarking_finished = self.shared_state.check_benchmarking_finished()
+                if benchmarking_finished:
+                    self.context.logger.info(
+                        "No more days to simulate in benchmarking mode."
+                    )
+                day_increased = True
             self.store_bets()
             if idx is None:
                 bets_hash = None
             else:
                 bets_hash = self.hash_stored_bets()
-            payload = SamplingPayload(self.context.agent_address, bets_hash, idx)
+            payload = SamplingPayload(
+                self.context.agent_address,
+                bets_hash,
+                idx,
+                benchmarking_finished,
+                day_increased,
+            )
 
         yield from self.finish_behaviour(payload)
