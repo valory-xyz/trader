@@ -61,9 +61,15 @@ class SynchronizedData(BaseSynchronizedData):
         serialized = self.db.get_strict(key)
         return CollectionRound.deserialize_collection(serialized)
 
+    @property
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def n_mech_requests(self) -> int:
+        """Get the number of mech requests."""
+        return int(self.db.get("n_mech_requests", 0))
 
 
 class CheckStopTradingRound(VotingRound):
@@ -77,6 +83,15 @@ class CheckStopTradingRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
+    @property
+    def mech_request_count(self) -> int:
+        """Get the mech request count from the payload."""
+        payload = self.payloads[0]
+
+        if not hasattr(payload, "mech_request_count"):
+            return 0
+        return payload.mech_request_count
+
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -85,7 +100,12 @@ class CheckStopTradingRound(VotingRound):
             return None
 
         is_staking_kpi_met = self.positive_vote_threshold_reached
-        self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
+        n_mech_requests = self.mech_request_count
+
+        self.synchronized_data.update(
+            is_staking_kpi_met=is_staking_kpi_met,
+            n_mech_requests=n_mech_requests
+        )
 
         return res
 

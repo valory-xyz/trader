@@ -20,19 +20,25 @@
 """This module contains the handler for the 'decision_maker_abci' skill."""
 
 import json
+import prometheus_client
 import re
 from datetime import datetime
 from enum import Enum
 from typing import Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
+import requests
+
 from aea.protocols.base import Message
+from aea_ledger_ethereum import EthereumApi
+from prometheus_client import MetricsHandler, Gauge, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
 )
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.ipfs import IpfsMessage
+from packages.valory.skills.abstract_round_abci.base import LEDGER_API_ADDRESS
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
@@ -58,7 +64,6 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-
 
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -133,11 +138,13 @@ class HttpHandler(BaseHttpHandler):
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
         self.handler_url_regex = rf"{hostname_regex}\/.*"
         health_url_regex = rf"{hostname_regex}\/healthcheck"
+        metrics_url_regex = rf"{hostname_regex}\/metrics"
 
         # Routes
         self.routes = {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 (health_url_regex, self._handle_get_health),
+                (metrics_url_regex, self._handle_get_metrics)
             ],
         }
 
@@ -194,8 +201,8 @@ class HttpHandler(BaseHttpHandler):
 
         # Check if this is a request sent from the http_server skill
         if (
-            http_msg.performative != HttpMessage.Performative.REQUEST
-            or message.sender != str(HTTP_SERVER_PUBLIC_ID.without_hash())
+                http_msg.performative != HttpMessage.Performative.REQUEST
+                or message.sender != str(HTTP_SERVER_PUBLIC_ID.without_hash())
         ):
             super().handle(message)
             return
@@ -230,7 +237,7 @@ class HttpHandler(BaseHttpHandler):
         handler(http_msg, http_dialogue, **kwargs)
 
     def _handle_bad_request(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """
         Handle a Http bad request.
@@ -253,7 +260,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.outbox.put_message(message=http_response)
 
     def _handle_get_health(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """
         Handle a Http request of verb GET.
@@ -284,9 +291,9 @@ class HttpHandler(BaseHttpHandler):
             )
 
             is_transitioning_fast = (
-                not is_tm_unhealthy
-                and seconds_since_last_transition
-                < 2 * self.context.params.reset_pause_duration
+                    not is_tm_unhealthy
+                    and seconds_since_last_transition
+                    < 2 * self.context.params.reset_pause_duration
             )
 
         if round_sequence._abci_app:
@@ -314,7 +321,7 @@ class HttpHandler(BaseHttpHandler):
         self._send_ok_response(http_msg, http_dialogue, data)
 
     def _send_ok_response(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, data: Dict
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue, data: Dict
     ) -> None:
         """Send an OK response with the provided data"""
         http_response = http_dialogue.reply(
@@ -332,7 +339,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.outbox.put_message(message=http_response)
 
     def _send_not_found_response(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Send an not found response"""
         http_response = http_dialogue.reply(
@@ -351,8 +358,8 @@ class HttpHandler(BaseHttpHandler):
     def _check_required_funds(self) -> bool:
         """Check the agent has enough funds."""
         return (
-            self.synchronized_data.wallet_balance
-            > self.context.params.agent_balance_threshold
+                self.synchronized_data.wallet_balance
+                > self.context.params.agent_balance_threshold
         )
 
     def _check_is_receiving_mech_responses(self) -> bool:
@@ -360,7 +367,111 @@ class HttpHandler(BaseHttpHandler):
         # Checks the most recent decision receive timestamp, which can only be returned after making a mech call
         # (an on chain transaction)
         return (
-            self.synchronized_data.decision_receive_timestamp
-            < int(datetime.utcnow().timestamp())
-            - self.context.params.expected_mech_response_time
+                self.synchronized_data.decision_receive_timestamp
+                < int(datetime.utcnow().timestamp())
+                - self.context.params.expected_mech_response_time
         )
+
+    def _handle_get_metrics(self, http_msg, http_dialogue):
+        """
+        Handle the /metrics endpoint.
+        """
+        self.set_metrics()
+        # Generate the metrics data
+        metrics_data = generate_latest()
+
+        # Create a response with the metrics data
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=OK_CODE,
+            status_text="Success",
+            headers=f"Content-Type: {prometheus_client.CONTENT_TYPE_LATEST}\n{http_msg.headers}",
+            body=metrics_data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with metrics data")
+        self.context.outbox.put_message(message=http_response)
+
+    def set_metrics(self):
+        agent_address = self.context.agent_address
+        safe_address = self.synchronized_data.safe_contract_address
+        service_id = self.context.params.on_chain_service_id
+
+        native_balance = self.synchronized_data.wallet_balance
+        wxdai_balance = self.synchronized_data.token_balance
+        # staking_contract_available_slots = self.get_available_staking_slots(LEDGER_API_ADDRESS)
+        staking_state = self.synchronized_data.service_staking_state.value
+        time_since_last_successful_mech_tx = self.synchronized_data.decision_receive_timestamp
+        n_total_mech_requests = len(self.synchronized_data.mech_requests)
+        n_successful_mech_requests = len(self.synchronized_data.mech_responses)
+        n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
+
+        NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
+            native_balance)
+        WXDAI_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(wxdai_balance)
+        # STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.set(staking_contract_available_slots)
+        STAKING_STATE_GAUGE.labels(agent_address, safe_address, service_id).set(staking_state)
+        TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(agent_address, safe_address, service_id).set(
+            time_since_last_successful_mech_tx)
+        TOTAL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_total_mech_requests)
+        TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_successful_mech_requests)
+        TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_failed_mech_requests)
+
+    def get_available_staking_slots(self,
+            ledger_api: EthereumApi
+    ) -> int:
+        """Get available staking slots"""
+        staking_contract_address = self.context.params.staking_contract_address
+
+        max_num_services = staking_contract_address.max_num_services(
+            ledger_api, staking_contract_address).pop("data")
+
+        service_ids = staking_contract_address.get_service_ids(
+            ledger_api, staking_contract_address).pop("data")
+
+        return max_num_services - len(service_ids)
+
+
+NATIVE_BALANCE_GAUGE = Gauge("olas_agent_native_balance",
+                             "Native token balance in xDai",
+                             ['agent_address', 'operator_address', 'safe_address', 'service_id']
+                             )
+
+OLAS_BALANCE_GAUGE = Gauge("olas_agent_olas_balance",
+                           "OLAS token balance"
+                           )
+
+WXDAI_BALANCE_GAUGE = Gauge("olas_agent_wxdai_balance",
+                            "WXDAI token balance"
+                            )
+
+STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge("olas_staking_contract_available_slots",
+                                               "Number of available slots in the staking contract"
+                                               )
+
+STAKING_STATE_GAUGE = Gauge("olas_agent_staked",
+                     "Indicates if an agent is staked (1), not staked (0) or eviceted (2)"
+                            )
+
+TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge("olas_agent_time_since_last_successful_tx",
+                                                 "Time in seconds since last successful mech transaction"
+                                                 )
+
+TIME_SINCE_LAST_MECH_TX_ATTEMPT = Gauge("olas_agent_time_since_last_tx_attempt",
+                                        "Time in seconds since last transaction attempt (successful or not)"
+                                        )
+
+TOTAL_MECH_TXS = Gauge("olas_agent_txs",
+                       "Total number of transactions"
+                       )
+
+TOTAL_SUCCESSFUL_MECH_TXS = Gauge("olas_successful_agent_txs",
+                                  "Total successful number of transactions"
+                                  )
+
+TOTAL_FAILED_MECH_TXS = Gauge("olas_failed_agent_txs",
+                              "Total failed number of transaction"
+                              )

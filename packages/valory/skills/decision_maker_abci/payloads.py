@@ -119,3 +119,4 @@ class BetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
     wallet_balance: Optional[int] = None
+    token_balance: Optional[int] = None

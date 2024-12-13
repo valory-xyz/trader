@@ -105,6 +105,7 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 - valory/staking_abci:0.1.0:bafybeictd5pxhscuhqntvctb7l5lfjausxt2m22rg5mkaiuj4cwwcxpvne
+- valory/check_stop_trading_abci:0.1.0:bafybeib75qrimmvensqmskdp5kzki5ijjwolqk2ojekeommakaf64mzn54
 behaviours:
   main:
     args: {}
@@ -317,6 +318,7 @@ models:
         response_timeout: 300
       agent_balance_threshold: 10000000000000000
       expected_mech_response_time: 300
+      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
     class_name: DecisionMakerParams
   benchmarking_mode:
     args:

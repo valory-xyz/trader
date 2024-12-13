@@ -167,7 +167,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             stop_trading = yield from self._compute_stop_trading()
             self.context.logger.info(f"Computed {stop_trading=}")
-            payload = CheckStopTradingPayload(self.context.agent_address, stop_trading)
+            payload = CheckStopTradingPayload(self.context.agent_address, stop_trading, self.mech_request_count)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)
