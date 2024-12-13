@@ -50,7 +50,7 @@ settings.load_profile(profile_name)
 FRACTION_REMOVAL_PRECISION = 2
 CURRENT_FILE_PATH = Path(__file__).resolve()
 PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
-DUMMY_STRATEGY_PATH = "./dummy_strategy/dummy_strategy.py"
+DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strategy.py"
 
 
 DefaultValueType = TypeVar("DefaultValueType")
