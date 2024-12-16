@@ -351,6 +351,22 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._report_balance()
         return True
 
+    def update_bet_transaction_information(self) -> None:
+        """Get whether the bet's invested amount should be updated."""
+        sampled_bet = self.sampled_bet
+        # Update the bet's invested amount, the new bet amount is added to previously invested amount
+        sampled_bet.invested_amount += self.synchronized_data.bet_amount
+        # Update bet transaction timestamp
+        sampled_bet.processed_timestamp = self.synced_timestamp
+        # update no of bets made
+        sampled_bet.n_bets += 1
+        # Update Queue number for priority logic
+        sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
+        # this will need to change if this sovereign agent is ever converted to a multi-agent service
+        self.store_bets()
+
     def send_message(
         self, msg: Message, dialogue: Dialogue, callback: Callable
     ) -> None:

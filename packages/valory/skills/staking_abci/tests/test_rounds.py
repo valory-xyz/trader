@@ -64,6 +64,8 @@ DUMMY_SERVICE_STATE = {
     "service_staking_state": StakingState.UNSTAKED.value,
     "tx_submitter": "dummy_submitter",
     "tx_hash": "dummy_tx_hash",
+    "ts_checkpoint": 0,
+    "is_checkpoint_reached": True,
 }
 
 
@@ -148,12 +150,16 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "service_staking_state": StakingState.STAKED.value,
                         "tx_submitter": "dummy_submitter",
                         "tx_hash": "dummy_tx_hash",
+                        "ts_checkpoint": 0,
+                        "is_checkpoint_reached": True,
                     }
                 ),
                 final_data={
                     "service_staking_state": StakingState.STAKED.value,
                     "tx_submitter": "dummy_submitter",
                     "tx_hash": "dummy_tx_hash",
+                    "ts_checkpoint": 0,
+                    "is_checkpoint_reached": True,
                 },
                 event=Event.DONE,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
@@ -184,6 +190,8 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "service_staking_state": StakingState.EVICTED.value,
                         "tx_submitter": "dummy_submitter",
                         "tx_hash": "dummy_tx_hash",
+                        "ts_checkpoint": 0,
+                        "is_checkpoint_reached": True,
                     }
                 ),
                 final_data={},
@@ -202,6 +210,8 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "service_staking_state": StakingState.STAKED.value,
                         "tx_submitter": "dummy_submitter",
                         "tx_hash": None,
+                        "ts_checkpoint": 0,
+                        "is_checkpoint_reached": True,
                     }
                 ),
                 final_data={},
@@ -279,6 +289,8 @@ def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
             get_name(SynchronizedData.service_staking_state),
+            get_name(SynchronizedData.previous_checkpoint),
+            get_name(SynchronizedData.is_checkpoint_reached),
         },
         FinishedStakingRound: {
             get_name(SynchronizedData.service_staking_state),

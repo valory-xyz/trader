@@ -68,6 +68,11 @@ class SynchronizedData(BaseSynchronizedData):
         """Get the participants to bets' hash."""
         return self._get_deserialized("participant_to_bets_hash")
 
+    @property
+    def is_checkpoint_reached(self) -> bool:
+        """Check if the checkpoint is reached."""
+        return bool(self.db.get("is_checkpoint_reached", False))
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""
