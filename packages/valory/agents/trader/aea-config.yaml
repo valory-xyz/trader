@@ -29,6 +29,7 @@ contracts:
 - valory/service_staking_token:0.1.0:bafybeihhcs3ewwzhy7yto4y36uqmice3pdvyl54fvxxv6jsxonesie4dxu
 - valory/transfer_nft_condition:0.1.0:bafybeid6z2tf7nc4rhwggktxk5f62bowxdczykrxc3y76sbt2ttlw5hmtq
 - valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
+- valory/relayer:0.1.0:bafybeicawmds6czx7db2lcktvexwrp245jpekgulndtos5s5zdid3ilvq4
 protocols:
 - open_aea/signing:1.0.0:bafybeihv62fim3wl2bayavfcg3u5e5cxu3b7brtu4cn5xoxd6lqwachasi
 - valory/abci:0.1.0:bafybeiaqmp7kocbfdboksayeqhkbrynvlfzsx4uy4x6nohywnmaig4an7u
