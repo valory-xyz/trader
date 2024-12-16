@@ -179,6 +179,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return bool(self.db.get_strict("is_profitable"))
 
     @property
+    def did_transact(self) -> bool:
+        """Get whether the service performed any transactions in the current period."""
+        return bool(self.db.get("tx_submitter", None))
+
+    @property
     def tx_submitter(self) -> str:
         """Get the round that submitted a tx to transaction_settlement_abci."""
         return str(self.db.get_strict("tx_submitter"))
