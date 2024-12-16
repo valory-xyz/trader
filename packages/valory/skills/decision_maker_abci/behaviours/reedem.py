@@ -408,6 +408,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
             ledger_callable="get_block",
             block_identifier=DEFAULT_TO_BLOCK,
+            chain_id=self.params.mech_chain_id,
         )
         if ledger_api_response.performative != LedgerApiMessage.Performative.STATE:
             self.context.logger.error(f"Failed to get block: {ledger_api_response}")

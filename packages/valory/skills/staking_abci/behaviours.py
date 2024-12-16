@@ -223,6 +223,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             contract_address,
             contract_id,
             contract_callable,
+            chain_id=self.params.mech_chain_id,
             **kwargs,
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:

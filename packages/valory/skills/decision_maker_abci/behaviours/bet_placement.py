@@ -78,6 +78,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             contract_address=WXDAI,
             contract_id=str(ERC20.contract_id),
             contract_callable="build_deposit_tx",
+            chain_id=self.params.mech_chain_id,
         )
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:
@@ -106,6 +107,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             contract_callable="build_approval_tx",
             spender=self.market_maker_contract_address,
             amount=self.investment_amount,
+            chain_id=self.params.mech_chain_id,
         )
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:
@@ -133,6 +135,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             contract_callable="calc_buy_amount",
             investment_amount=self.investment_amount,
             outcome_index=self.outcome_index,
+            chain_id=self.params.mech_chain_id,
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
             self.context.logger.error(
@@ -160,6 +163,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             investment_amount=self.investment_amount,
             outcome_index=self.outcome_index,
             min_outcome_tokens_to_buy=self.buy_amount,
+            chain_id=self.params.mech_chain_id,
         )
         if response_msg.performative != ContractApiMessage.Performative.STATE:
             self.context.logger.error(
