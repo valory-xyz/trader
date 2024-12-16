@@ -20,7 +20,7 @@
 
 """Models for the Staking ABCI application."""
 
-from typing import Any
+from typing import Any, Optional
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
@@ -39,6 +39,8 @@ BenchmarkTool = BaseBenchmarkTool
 
 class StakingParams(BaseParams):
     """Staking parameters."""
+
+    mech_chain_id: Optional[str]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
