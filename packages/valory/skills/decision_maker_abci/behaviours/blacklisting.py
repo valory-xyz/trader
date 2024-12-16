@@ -45,9 +45,10 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index
         sampled_bet = self.bets[sampled_bet_index]
+
         # the question is blacklisted, i.e., we did not place a bet on it,
-        # therefore, we decrease the number of bets which was increased on sampling
-        sampled_bet.n_bets -= 1
+        # therefore, we bump to the queue status to next status
+        sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
     def setup(self) -> None:
         """Setup the behaviour"""

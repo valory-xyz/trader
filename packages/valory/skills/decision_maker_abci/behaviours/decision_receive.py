@@ -508,25 +508,18 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
     ) -> None:
         """Update the selected bet."""
         # update the bet's timestamp of processing and its number of bets for the given id
-        if self.benchmarking_mode.enabled:
-            active_sampled_bet = self.get_active_sampled_bet()
-            active_sampled_bet.processed_timestamp = (
-                self.shared_state.get_simulated_now_timestamp(
-                    self.bets, self.params.safe_voting_range
-                )
+        active_sampled_bet = self.get_active_sampled_bet()
+        active_sampled_bet.processed_timestamp = (
+            self.shared_state.get_simulated_now_timestamp(
+                self.bets, self.params.safe_voting_range
             )
-            self.context.logger.info(f"Updating bet id: {active_sampled_bet.id}")
-            self.context.logger.info(
-                f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
-            )
-            if prediction_response is not None:
-                active_sampled_bet.n_bets += 1
-
-        else:
-            # update the bet's timestamp of processing and its number of bets for the given
-            sampled_bet = self.sampled_bet
-            sampled_bet.n_bets += 1
-            sampled_bet.processed_timestamp = self.synced_timestamp
+        )
+        self.context.logger.info(f"Updating bet id: {active_sampled_bet.id}")
+        self.context.logger.info(
+            f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
+        )
+        if prediction_response is not None:
+            active_sampled_bet.n_bets += 1
 
         self.store_bets()
 
@@ -558,6 +551,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                     prediction_response,
                     bet_amount,
                 )
+
             # always remove the processed trade from the benchmarking input file
             # now there is one reader pointer per market
             if self.benchmarking_mode.enabled:
@@ -568,7 +562,8 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 if rows_queue:
                     rows_queue.pop(0)
 
-            self._update_selected_bet(prediction_response)
+                self._update_selected_bet(prediction_response)
+
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 bets_hash,

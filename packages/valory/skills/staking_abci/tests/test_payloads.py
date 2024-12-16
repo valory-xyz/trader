@@ -41,6 +41,8 @@ from packages.valory.skills.staking_abci.payloads import (
                 "service_staking_state": 1,
                 "tx_submitter": "dummy tx submitter",
                 "tx_hash": "dummy tx hash",
+                "ts_checkpoint": 1,
+                "is_checkpoint_reached": True,
             },
         ),
     ],
