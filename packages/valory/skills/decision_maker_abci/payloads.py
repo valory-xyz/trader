@@ -39,9 +39,10 @@ class DecisionReceivePayload(UpdateBetsPayload):
 
 
 @dataclass(frozen=True)
-class SamplingPayload(UpdateBetsPayload):
+class SamplingPayload(BaseTxPayload):
     """Represents a transaction payload for the sampling of a bet."""
 
+    bets_hash: Optional[str]
     index: Optional[int]
     benchmarking_finished: Optional[bool]
     day_increased: Optional[bool]

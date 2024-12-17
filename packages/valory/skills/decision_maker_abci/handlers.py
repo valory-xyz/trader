@@ -58,6 +58,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.base import DecisionMakerBaseBehaviour
 from packages.valory.skills.decision_maker_abci.dialogues import (
     HttpDialogue,
     HttpDialogues,
@@ -400,25 +401,26 @@ class HttpHandler(BaseHttpHandler):
         safe_address = self.synchronized_data.safe_contract_address
         service_id = self.context.params.on_chain_service_id
 
-        native_balance = self.synchronized_data.wallet_balance
+        native_balance = DecisionMakerBaseBehaviour.wei_to_native(self.synchronized_data.wallet_balance)
         wxdai_balance = self.synchronized_data.token_balance
         # staking_contract_available_slots = self.get_available_staking_slots(LEDGER_API_ADDRESS)
         staking_state = self.synchronized_data.service_staking_state.value
         time_since_last_successful_mech_tx = self.synchronized_data.decision_receive_timestamp
-        n_total_mech_requests = len(self.synchronized_data.mech_requests)
-        # n_successful_mech_requests = len(self.synchronized_data.mech_responses)
-        # n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
+        n_total_mech_requests = self.synchronized_data.n_mech_requests
+        n_successful_mech_requests = len(self.synchronized_data.mech_responses)
+        n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
 
         NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
             native_balance)
+        # OLAS_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(1)
         WXDAI_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(wxdai_balance)
         # STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.set(staking_contract_available_slots)
         STAKING_STATE_GAUGE.labels(agent_address, safe_address, service_id).set(staking_state)
         TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(agent_address, safe_address, service_id).set(
-            time_since_last_successful_mech_tx)
+             time_since_last_successful_mech_tx)
         TOTAL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_total_mech_requests)
-        # TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_successful_mech_requests)
-        # TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_failed_mech_requests)
+        TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_successful_mech_requests)
+        TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_failed_mech_requests)
 
 
 NATIVE_BALANCE_GAUGE = Gauge("olas_agent_native_balance",

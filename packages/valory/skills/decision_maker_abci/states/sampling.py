@@ -43,7 +43,7 @@ class SamplingRound(UpdateBetsRound):
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     selection_key: Any = (
-        UpdateBetsRound.selection_key,
+        get_name(SynchronizedData.bets_hash),
         get_name(SynchronizedData.sampled_bet_index),
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),

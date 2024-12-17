@@ -30,3 +30,5 @@ class UpdateBetsPayload(BaseTxPayload):
     """A transaction payload for the updated bets."""
 
     bets_hash: Optional[str]
+    wallet_balance: Optional[int]
+    token_balance: Optional[int]

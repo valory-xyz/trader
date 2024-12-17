@@ -73,6 +73,46 @@ class SynchronizedData(BaseSynchronizedData):
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
 
+    @property
+    def wallet_balance(self) -> int:
+        """Get the wallet balance."""
+        wallet_balance = self.db.get("wallet_balance", 0)
+        if wallet_balance is None:
+            return 0
+        return int(wallet_balance)
+
+    @property
+    def token_balance(self) -> int:
+        """Get the wallet balance."""
+        token_balance = self.db.get("token_balance", 0)
+        if token_balance is None:
+            return 0
+        return int(token_balance)
+
+    @property
+    def sampled_bet_index(self) -> int:
+        """Get the sampled bet."""
+        sampled_bet_index = self.db.get("sampled_bet_index", 0)
+        if sampled_bet_index is None:
+            return 0
+        return int(sampled_bet_index)
+
+    # @property
+    # def native_balance(self) -> int:
+    #     """Get the native balance."""
+    #     native_balance = self.db.get("native_balance", 0)
+    #     if native_balance is None:
+    #         return 0
+    #     return int(native_balance)
+    #
+    # @property
+    # def wxdai_balance(self) -> int:
+    #     """Get the xdai balance."""
+    #     wxdai_balance = self.db.get("wxdai_balance", 0)
+    #     if wxdai_balance is None:
+    #         return 0
+    #     return int(wxdai_balance)
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""
@@ -98,7 +138,11 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.bets_hash)
+    selection_key = (
+        get_name(SynchronizedData.bets_hash),
+        get_name(SynchronizedData.wallet_balance),
+        get_name(SynchronizedData.token_balance)
+    )
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
 

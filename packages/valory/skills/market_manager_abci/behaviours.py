@@ -27,6 +27,9 @@ from typing import Any, Dict, Generator, List, Optional, Set, Type
 
 from aea.helpers.ipfs.base import IPFSHashOnly
 
+from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.contracts.staking_token.contract import StakingTokenContract
+from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.market_manager_abci.bets import (
@@ -42,14 +45,17 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
     MarketManagerAbciApp,
-    UpdateBetsRound,
+    UpdateBetsRound, SynchronizedData,
 )
+
+WaitableConditionType = Generator[None, None, bool]
 
 
 BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"
 WRITE_MODE = "w"
+WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
 class BetsManagerBehaviour(BaseBehaviour, ABC):
@@ -61,6 +67,36 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.bets: List[Bet] = []
         self.multi_bets_filepath: str = self.params.store_path / MULTI_BETS_FILENAME
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
+        self.token_balance = 0
+        self.wallet_balance = 0
+        self.native_balance = 0
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(super().synchronized_data.db)
+
+    @property
+    def sampled_bet(self) -> Bet:
+        """Get the sampled bet and reset the bets list."""
+        self.read_bets()
+        bet_index = self.synchronized_data.sampled_bet_index
+        return self.bets[bet_index]
+
+    @property
+    def collateral_token(self) -> str:
+        """Get the contract address of the token that the market maker supports."""
+        return self.sampled_bet.collateralToken
+
+    @property
+    def is_wxdai(self) -> bool:
+        """Get whether the collateral address is wxDAI."""
+        return self.collateral_token.lower() == WXDAI.lower()
+
+    # @staticmethod
+    # def wei_to_native(wei: int) -> float:
+    #     """Convert WEI to native token."""
+    #     return wei / 10**18
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
@@ -113,6 +149,48 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Get the hash of the stored bets' file."""
         return IPFSHashOnly.hash_file(self.multi_bets_filepath)
 
+    def get_balance(self) -> WaitableConditionType:
+        """Get the safe's balance."""
+
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="check_balance",
+            account=self.synchronized_data.safe_contract_address,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Could not calculate the balance of the safe: {response_msg}"
+            )
+            return False
+
+        token = response_msg.raw_transaction.body.get("token", None)
+        wallet = response_msg.raw_transaction.body.get("wallet", None)
+        if token is None or wallet is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to get the balance of the safe: {response_msg}"
+            )
+            return False
+
+        self.token_balance = int(token)
+        self.wallet_balance = int(wallet)
+        return True
+
+    def get_olas_balance(self) -> WaitableConditionType:
+        """Get the safe's olas balance."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address="0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f",
+            contract_id=str(StakingTokenContract.contract_id),
+            contract_callable="check_balance",
+            account=self.synchronized_data.safe_contract_address,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Could not calculate the balance of the safe: {response_msg}"
+            )
+            return False
 
 class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets."""
@@ -217,8 +295,15 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             # Store the bets to the agent's data dir as JSON
             self.store_bets()
 
+            # set the balances
+            self.get_balance()
+            wallet_balance = self.wallet_balance
+            token_balance = self.token_balance
+
+            print(f"WALLET BALANCE: {wallet_balance}")
+
             bets_hash = self.hash_stored_bets() if self.bets else None
-            payload = UpdateBetsPayload(self.context.agent_address, bets_hash)
+            payload = UpdateBetsPayload(self.context.agent_address, bets_hash, wallet_balance, token_balance)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)

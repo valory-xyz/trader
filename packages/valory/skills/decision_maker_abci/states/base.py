@@ -246,14 +246,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
             serialized = "[]"
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
-
-    @property
-    def wallet_balance(self) -> int:
-        """Get the balance of the wallet."""
-        wallet_balance = self.db.get("wallet_balance", 0)
-        if wallet_balance is None:
-            return 0
-        return int(wallet_balance)
+    #
+    # @property
+    # def wallet_balance(self) -> int:
+    #     """Get the balance of the wallet."""
+    #     wallet_balance = self.db.get("wallet_balance", 0)
+    #     if wallet_balance is None:
+    #         return 0
+    #     return int(wallet_balance)
 
     @property
     def decision_receive_timestamp(self) -> int:
