@@ -106,7 +106,6 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 - valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
-- valory/check_stop_trading_abci:0.1.0:bafybeidnt3irw5lrbi2n567acdksm4tfdz4gswfcicyja664qiktdobrwy
 behaviours:
   main:
     args: {}

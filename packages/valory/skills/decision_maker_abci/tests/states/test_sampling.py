@@ -100,7 +100,7 @@ class TestSamplingRound:
         """Test the selection key property of SamplingRound."""
         sampling_round = setup_sampling_round
         expected_selection_key = (
-            UpdateBetsRound.selection_key,
+            get_name(SynchronizedData.bets_hash),
             get_name(SynchronizedData.sampled_bet_index),
             get_name(SynchronizedData.benchmarking_finished),
             get_name(SynchronizedData.simulated_day),

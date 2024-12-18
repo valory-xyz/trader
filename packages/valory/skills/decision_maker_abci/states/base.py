@@ -38,7 +38,10 @@ from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
     MechMetadata,
 )
-from packages.valory.skills.staking_abci.rounds import StakingState
+from packages.valory.skills.staking_abci.rounds import (
+    StakingState,
+    SynchronizedData as StakingSyncedData,
+)
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
@@ -70,7 +73,7 @@ class Event(Enum):
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
 
 
-class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
+class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
     """Class to represent the synchronized data.
 
     This data is replicated by the tendermint application.
@@ -244,16 +247,12 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         serialized = self.db.get("mech_responses", "[]")
         if serialized is None:
             serialized = "[]"
+
+        if isinstance(serialized, list):
+            serialized = json.dumps(serialized)
+
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
-    #
-    # @property
-    # def wallet_balance(self) -> int:
-    #     """Get the balance of the wallet."""
-    #     wallet_balance = self.db.get("wallet_balance", 0)
-    #     if wallet_balance is None:
-    #         return 0
-    #     return int(wallet_balance)
 
     @property
     def decision_receive_timestamp(self) -> int:
@@ -262,6 +261,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         if decision_receive_timestamp is None:
             return 0
         return int(decision_receive_timestamp)
+
+    @property
+    def decision_request_timestamp(self) -> int:
+        """Get the timestamp of the mech request."""
+        decision_request_timestamp = self.db.get("decision_request_timestamp", 0)
+        if decision_request_timestamp is None:
+            return 0
+        return int(decision_request_timestamp)
 
     @property
     def is_staking_kpi_met(self) -> bool:

@@ -45,7 +45,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
     Event,
     FailedMarketManagerRound,
@@ -90,7 +90,7 @@ def get_payloads(
 ) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
     return {
-        participant: UpdateBetsPayload(participant, data)
+        participant: BaseUpdateBetsPayload(participant, data)
         for participant in get_participants()
     }
 

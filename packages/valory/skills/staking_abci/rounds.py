@@ -99,6 +99,14 @@ class SynchronizedData(TxSettlementSyncedData):
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
 
+    @property
+    def available_staking_slots(self) -> int:
+        """Get the number of available staking slots for the contract."""
+        available_staking_slots = self.db.get("available_staking_slots", None)
+        if available_staking_slots is None:
+            return 0
+        return int(available_staking_slots)
+
 
 class CallCheckpointRound(CollectSameUntilThresholdRound):
     """A round for the checkpoint call preparation."""
@@ -112,6 +120,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.service_staking_state),
         get_name(SynchronizedData.previous_checkpoint),
         get_name(SynchronizedData.is_checkpoint_reached),
+        get_name(SynchronizedData.available_staking_slots)
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
@@ -198,6 +207,7 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
             get_name(SynchronizedData.service_staking_state),
             get_name(SynchronizedData.previous_checkpoint),
             get_name(SynchronizedData.is_checkpoint_reached),
+            get_name(SynchronizedData.available_staking_slots)
         }
     )
     final_states: Set[AppState] = {
@@ -216,6 +226,7 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
             get_name(SynchronizedData.service_staking_state),
             get_name(SynchronizedData.previous_checkpoint),
             get_name(SynchronizedData.is_checkpoint_reached),
+            get_name(SynchronizedData.available_staking_slots),
         },
         FinishedStakingRound: {
             get_name(SynchronizedData.service_staking_state),

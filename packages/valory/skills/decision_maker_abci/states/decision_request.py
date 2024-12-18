@@ -45,6 +45,7 @@ class DecisionRequestRound(CollectSameUntilThresholdRound):
     selection_key = (
         get_name(SynchronizedData.mech_requests),
         get_name(SynchronizedData.mocking_mode),
+        get_name(SynchronizedData.decision_request_timestamp),
     )
     none_event = Event.SLOTS_UNSUPPORTED_ERROR
 

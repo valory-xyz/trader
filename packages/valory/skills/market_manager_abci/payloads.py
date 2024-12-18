@@ -26,9 +26,15 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 
 
 @dataclass(frozen=True)
-class UpdateBetsPayload(BaseTxPayload):
+class BaseUpdateBetsPayload(BaseTxPayload):
     """A transaction payload for the updated bets."""
 
     bets_hash: Optional[str]
+
+
+@dataclass(frozen=True)
+class UpdateBetsPayload(BaseUpdateBetsPayload):
+    """A transaction payload for the updated bets."""
+
     wallet_balance: Optional[int]
     token_balance: Optional[int]

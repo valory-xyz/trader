@@ -35,7 +35,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload, UpdateBetsPayload
 
 
 class Event(Enum):
@@ -96,22 +96,6 @@ class SynchronizedData(BaseSynchronizedData):
         if sampled_bet_index is None:
             return 0
         return int(sampled_bet_index)
-
-    # @property
-    # def native_balance(self) -> int:
-    #     """Get the native balance."""
-    #     native_balance = self.db.get("native_balance", 0)
-    #     if native_balance is None:
-    #         return 0
-    #     return int(native_balance)
-    #
-    # @property
-    # def wxdai_balance(self) -> int:
-    #     """Get the xdai balance."""
-    #     wxdai_balance = self.db.get("wxdai_balance", 0)
-    #     if wxdai_balance is None:
-    #         return 0
-    #     return int(wxdai_balance)
 
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):

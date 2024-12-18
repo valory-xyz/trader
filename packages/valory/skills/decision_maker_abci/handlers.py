@@ -24,7 +24,7 @@ import prometheus_client
 import re
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Dict, Optional, Tuple, cast
+from typing import Callable, Dict, Optional, Tuple, cast, Any
 from urllib.parse import urlparse
 
 import requests
@@ -118,10 +118,25 @@ class HttpMethod(Enum):
     POST = "post"
 
 
-class HttpHandler(BaseHttpHandler):
+class HttpHandler(BaseHttpHandler,):
     """This implements the echo handler."""
 
     SUPPORTED_PROTOCOL = HttpMessage.protocol_id
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the behaviour."""
+        super().__init__(**kwargs)
+        self._time_since_last_successful_mech_tx: int = 0
+
+    @property
+    def time_since_last_successful_mech_tx(self) -> int:
+        """Get the time since the last successful mech response in seconds."""
+        return self._time_since_last_successful_mech_tx
+
+    @time_since_last_successful_mech_tx.setter
+    def time_since_last_successful_mech_tx(self, time_since_last_successful_mech_tx: int) -> None:
+        """Set the time since the last successful mech response in seconds."""
+        self._time_since_last_successful_mech_tx = time_since_last_successful_mech_tx
 
     def setup(self) -> None:
         """Implement the setup."""
@@ -136,16 +151,16 @@ class HttpHandler(BaseHttpHandler):
         local_ip_regex = r"192\.168(\.\d{1,3}){2}"
 
         # Route regexes
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
-        self.handler_url_regex = rf"{hostname_regex}\/.*"
-        health_url_regex = rf"{hostname_regex}\/healthcheck"
-        metrics_url_regex = rf"{hostname_regex}\/metrics"
+        self.hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
+        self.handler_url_regex = rf"{self.hostname_regex}\/.*"
+        health_url_regex = rf"{self.hostname_regex}\/healthcheck"
+        metrics_url_regex = rf"{self.hostname_regex}\/metrics"
 
         # Routes
         self.routes = {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 (health_url_regex, self._handle_get_health),
-                (metrics_url_regex, self._handle_get_metrics)
+                (metrics_url_regex, self._handle_get_metrics),
             ],
         }
 
@@ -403,9 +418,10 @@ class HttpHandler(BaseHttpHandler):
 
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(self.synchronized_data.wallet_balance)
         wxdai_balance = self.synchronized_data.token_balance
-        # staking_contract_available_slots = self.get_available_staking_slots(LEDGER_API_ADDRESS)
+        staking_contract_available_slots = self.synchronized_data.available_staking_slots
         staking_state = self.synchronized_data.service_staking_state.value
-        time_since_last_successful_mech_tx = self.synchronized_data.decision_receive_timestamp
+        time_since_last_successful_mech_tx = self.calculate_time_since_last_successful_mech_tx()
+        time_since_last_mech_tx_attempt = self.calculate_time_since_last_mech_tx_attempt()
         n_total_mech_requests = self.synchronized_data.n_mech_requests
         n_successful_mech_requests = len(self.synchronized_data.mech_responses)
         n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
@@ -414,13 +430,43 @@ class HttpHandler(BaseHttpHandler):
             native_balance)
         # OLAS_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(1)
         WXDAI_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(wxdai_balance)
-        # STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.set(staking_contract_available_slots)
+        STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(agent_address, safe_address, service_id).set(staking_contract_available_slots)
         STAKING_STATE_GAUGE.labels(agent_address, safe_address, service_id).set(staking_state)
         TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(agent_address, safe_address, service_id).set(
              time_since_last_successful_mech_tx)
+        TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE.labels(agent_address, safe_address, service_id).set(time_since_last_mech_tx_attempt)
         TOTAL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_total_mech_requests)
         TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_successful_mech_requests)
         TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(n_failed_mech_requests)
+
+    def calculate_time_since_last_successful_mech_tx(self) -> int:
+        """Calculate the time since the last successful mech transaction (mech response)."""
+
+        previous_time_since_last_successful_mech_tx = self.time_since_last_successful_mech_tx
+        mech_tx_ts = self.synchronized_data.decision_receive_timestamp
+        now = int(datetime.now().timestamp())
+        seconds_since_last_successful_mech_tx = 0
+
+        if mech_tx_ts is not 0:
+            seconds_since_last_successful_mech_tx = now - mech_tx_ts
+            self.time_since_last_successful_mech_tx = seconds_since_last_successful_mech_tx
+
+        elif previous_time_since_last_successful_mech_tx is not 0:
+            seconds_since_last_successful_mech_tx = now - previous_time_since_last_successful_mech_tx
+
+        return seconds_since_last_successful_mech_tx
+
+    def calculate_time_since_last_mech_tx_attempt(self) -> int:
+        """Calculate the time since the last attempted mech transaction (mech request)."""
+
+        mech_tx_attempt_ts = self.synchronized_data.decision_request_timestamp
+        now = int(datetime.now().timestamp())
+
+        if mech_tx_attempt_ts is 0:
+            return 0
+
+        seconds_since_last_mech_tx_attempt = now - mech_tx_attempt_ts
+        return seconds_since_last_mech_tx_attempt
 
 
 NATIVE_BALANCE_GAUGE = Gauge("olas_agent_native_balance",
@@ -448,7 +494,7 @@ TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge("olas_agent_time_since_last_suc
                                                  "Time in seconds since last successful mech transaction", ['agent_address', 'safe_address', 'service_id']
                                                  )
 
-TIME_SINCE_LAST_MECH_TX_ATTEMPT = Gauge("olas_agent_time_since_last_tx_attempt",
+TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE = Gauge("olas_agent_time_since_last_mech_tx_attempt",
                                         "Time in seconds since last transaction attempt (successful or not)", ['agent_address', 'safe_address', 'service_id']
                                         )
 

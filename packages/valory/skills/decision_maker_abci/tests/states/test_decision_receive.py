@@ -37,7 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.rounds import BaseUpdateBetsPayload
 
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"
@@ -63,7 +63,7 @@ def get_payloads(
     next_mock_data_row: Optional[int],
     is_profitable: Optional[bool],
     bets_hash: str,
-) -> Mapping[str, UpdateBetsPayload]:
+) -> Mapping[str, BaseUpdateBetsPayload]:
     """Get payloads."""
     return {
         participant: DecisionReceivePayload(
@@ -86,7 +86,7 @@ class RoundTestCase:
 
     name: str
     initial_data: Dict[str, Hashable]
-    payloads: Mapping[str, UpdateBetsPayload]
+    payloads: Mapping[str, BaseUpdateBetsPayload]
     final_data: Dict[str, Hashable]
     event: Event
     most_voted_payload: Any

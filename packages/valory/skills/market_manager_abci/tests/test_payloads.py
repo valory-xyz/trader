@@ -18,13 +18,13 @@
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the market manager abci."""
 
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload
 
 
 def test_update_bets_payload() -> None:
     """Test `UpdateBetsPayload`."""
 
-    payload = UpdateBetsPayload(sender="sender", bets_hash="dummy bets hash")
+    payload = BaseUpdateBetsPayload(sender="sender", bets_hash="dummy bets hash")
 
     assert payload.bets_hash == "dummy bets hash"
-    assert UpdateBetsPayload.from_json(payload.json) == payload
+    assert BaseUpdateBetsPayload.from_json(payload.json) == payload

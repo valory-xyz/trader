@@ -192,6 +192,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             )
             return False
 
+
 class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets."""
 
