@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 import prometheus_client  # type: ignore
 from aea.protocols.base import Message
-from prometheus_client import Gauge, generate_latest
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -398,7 +398,7 @@ class HttpHandler(
 
         self.set_metrics()
         # Generate the metrics data
-        metrics_data = generate_latest()
+        metrics_data = generate_latest(REGISTRY)
 
         # Create a response with the metrics data
         http_response = http_dialogue.reply(
@@ -504,62 +504,74 @@ class HttpHandler(
         return seconds_since_last_mech_tx_attempt
 
 
+REGISTRY = CollectorRegistry()
+
 NATIVE_BALANCE_GAUGE = Gauge(
     "olas_agent_native_balance",
     "Native token balance in xDai",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 OLAS_BALANCE_GAUGE = Gauge(
     "olas_agent_olas_balance",
     "OLAS token balance",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 WXDAI_BALANCE_GAUGE = Gauge(
     "olas_agent_wxdai_balance",
     "WXDAI token balance",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge(
     "olas_staking_contract_available_slots",
     "Number of available slots in the staking contract",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 STAKING_STATE_GAUGE = Gauge(
     "olas_agent_staked",
     "Indicates if an agent is staked (1), not staked (0) or eviceted (2)",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge(
     "olas_agent_time_since_last_successful_tx",
     "Time in seconds since last successful mech transaction",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE = Gauge(
     "olas_agent_time_since_last_mech_tx_attempt",
     "Time in seconds since last transaction attempt (successful or not)",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 TOTAL_MECH_TXS = Gauge(
     "olas_agent_txs",
     "Total number of transactions",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 TOTAL_SUCCESSFUL_MECH_TXS = Gauge(
     "olas_successful_agent_txs",
     "Total successful number of transactions",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
 
 TOTAL_FAILED_MECH_TXS = Gauge(
     "olas_failed_agent_txs",
     "Total failed number of transaction",
     ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
 )
