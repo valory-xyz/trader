@@ -23,10 +23,12 @@ import json
 import re
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
+import prometheus_client
 from aea.protocols.base import Message
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -51,6 +53,9 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.dialogues import (
     HttpDialogue,
@@ -112,10 +117,29 @@ class HttpMethod(Enum):
     POST = "post"
 
 
-class HttpHandler(BaseHttpHandler):
+class HttpHandler(
+    BaseHttpHandler,
+):
     """This implements the echo handler."""
 
     SUPPORTED_PROTOCOL = HttpMessage.protocol_id
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the behaviour."""
+        super().__init__(**kwargs)
+        self._time_since_last_successful_mech_tx: int = 0
+
+    @property
+    def time_since_last_successful_mech_tx(self) -> int:
+        """Get the time since the last successful mech response in seconds."""
+        return self._time_since_last_successful_mech_tx
+
+    @time_since_last_successful_mech_tx.setter
+    def time_since_last_successful_mech_tx(
+        self, time_since_last_successful_mech_tx: int
+    ) -> None:
+        """Set the time since the last successful mech response in seconds."""
+        self._time_since_last_successful_mech_tx = time_since_last_successful_mech_tx
 
     def setup(self) -> None:
         """Implement the setup."""
@@ -130,14 +154,16 @@ class HttpHandler(BaseHttpHandler):
         local_ip_regex = r"192\.168(\.\d{1,3}){2}"
 
         # Route regexes
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
-        self.handler_url_regex = rf"{hostname_regex}\/.*"
-        health_url_regex = rf"{hostname_regex}\/healthcheck"
+        self.hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
+        self.handler_url_regex = rf"{self.hostname_regex}\/.*"
+        health_url_regex = rf"{self.hostname_regex}\/healthcheck"
+        metrics_url_regex = rf"{self.hostname_regex}\/metrics"
 
         # Routes
         self.routes = {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 (health_url_regex, self._handle_get_health),
+                (metrics_url_regex, self._handle_get_metrics),
             ],
         }
 
@@ -364,3 +390,188 @@ class HttpHandler(BaseHttpHandler):
             < int(datetime.utcnow().timestamp())
             - self.context.params.expected_mech_response_time
         )
+
+    def _handle_get_metrics(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle the /metrics endpoint."""
+
+        self.set_metrics()
+        # Generate the metrics data
+        metrics_data = generate_latest(REGISTRY)
+
+        # Create a response with the metrics data
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=OK_CODE,
+            status_text="Success",
+            headers=f"Content-Type: {prometheus_client.CONTENT_TYPE_LATEST}\n{http_msg.headers}",
+            body=metrics_data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with metrics data")
+        self.context.outbox.put_message(message=http_response)
+
+    def set_metrics(self) -> None:
+        """Set the metrics."""
+
+        agent_address = self.context.agent_address
+        safe_address = self.synchronized_data.safe_contract_address
+        service_id = self.context.params.on_chain_service_id
+
+        native_balance = DecisionMakerBaseBehaviour.wei_to_native(
+            self.synchronized_data.wallet_balance
+        )
+        wxdai_balance = self.synchronized_data.token_balance
+        staking_contract_available_slots = (
+            self.synchronized_data.available_staking_slots
+        )
+        staking_state = self.synchronized_data.service_staking_state.value
+        time_since_last_successful_mech_tx = (
+            self.calculate_time_since_last_successful_mech_tx()
+        )
+        time_since_last_mech_tx_attempt = (
+            self.calculate_time_since_last_mech_tx_attempt()
+        )
+        n_total_mech_requests = self.synchronized_data.n_mech_requests
+        n_successful_mech_requests = len(self.synchronized_data.mech_responses)
+        n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
+
+        NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
+            native_balance
+        )
+        WXDAI_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
+            wxdai_balance
+        )
+        STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
+            agent_address, safe_address, service_id
+        ).set(staking_contract_available_slots)
+        STAKING_STATE_GAUGE.labels(agent_address, safe_address, service_id).set(
+            staking_state
+        )
+        TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(
+            agent_address, safe_address, service_id
+        ).set(time_since_last_successful_mech_tx)
+        TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE.labels(
+            agent_address, safe_address, service_id
+        ).set(time_since_last_mech_tx_attempt)
+        TOTAL_MECH_TXS.labels(agent_address, safe_address, service_id).set(
+            n_total_mech_requests
+        )
+        TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(
+            n_successful_mech_requests
+        )
+        TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(
+            n_failed_mech_requests
+        )
+
+    def calculate_time_since_last_successful_mech_tx(self) -> int:
+        """Calculate the time since the last successful mech transaction (mech response)."""
+
+        previous_time_since_last_successful_mech_tx = (
+            self.time_since_last_successful_mech_tx
+        )
+        mech_tx_ts = self.synchronized_data.decision_receive_timestamp
+        now = int(datetime.now().timestamp())
+        seconds_since_last_successful_mech_tx = 0
+
+        if mech_tx_ts != 0:
+            seconds_since_last_successful_mech_tx = now - mech_tx_ts
+            self.time_since_last_successful_mech_tx = (
+                seconds_since_last_successful_mech_tx
+            )
+
+        elif previous_time_since_last_successful_mech_tx != 0:
+            seconds_since_last_successful_mech_tx = (
+                now - previous_time_since_last_successful_mech_tx
+            )
+
+        return seconds_since_last_successful_mech_tx
+
+    def calculate_time_since_last_mech_tx_attempt(self) -> int:
+        """Calculate the time since the last attempted mech transaction (mech request)."""
+
+        mech_tx_attempt_ts = self.synchronized_data.decision_request_timestamp
+        now = int(datetime.now().timestamp())
+
+        if mech_tx_attempt_ts == 0:
+            return 0
+
+        seconds_since_last_mech_tx_attempt = now - mech_tx_attempt_ts
+        return seconds_since_last_mech_tx_attempt
+
+
+REGISTRY = CollectorRegistry()
+
+NATIVE_BALANCE_GAUGE = Gauge(
+    "olas_agent_native_balance",
+    "Native token balance in xDai",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+OLAS_BALANCE_GAUGE = Gauge(
+    "olas_agent_olas_balance",
+    "OLAS token balance",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+WXDAI_BALANCE_GAUGE = Gauge(
+    "olas_agent_wxdai_balance",
+    "WXDAI token balance",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge(
+    "olas_staking_contract_available_slots",
+    "Number of available slots in the staking contract",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+STAKING_STATE_GAUGE = Gauge(
+    "olas_agent_staked",
+    "Indicates if an agent is staked (1), not staked (0) or eviceted (2)",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge(
+    "olas_agent_time_since_last_successful_tx",
+    "Time in seconds since last successful mech transaction",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE = Gauge(
+    "olas_agent_time_since_last_mech_tx_attempt",
+    "Time in seconds since last transaction attempt (successful or not)",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+TOTAL_MECH_TXS = Gauge(
+    "olas_agent_txs",
+    "Total number of transactions",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+TOTAL_SUCCESSFUL_MECH_TXS = Gauge(
+    "olas_successful_agent_txs",
+    "Total successful number of transactions",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
+
+TOTAL_FAILED_MECH_TXS = Gauge(
+    "olas_failed_agent_txs",
+    "Total failed number of transaction",
+    ["agent_address", "safe_address", "service_id"],
+    registry=REGISTRY,
+)
