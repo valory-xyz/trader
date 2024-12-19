@@ -30,7 +30,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.rounds import BaseUpdateBetsRound
 
 
 @pytest.fixture
@@ -76,7 +76,7 @@ def test_blacklisting_round_end_block_done_event_no_benchmarking(
     # Mock the superclass end_block to return DONE event
     synced_data = MagicMock(spec=SynchronizedData)
     with patch.object(
-        UpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)
+        BaseUpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)
     ) as mock_super_end_block:
         result = blacklisting_round.end_block()
 
@@ -95,7 +95,7 @@ def test_blacklisting_round_end_block_done_event_with_benchmarking(
     # Mock the superclass end_block to return DONE event
     synced_data = MagicMock(spec=SynchronizedData)
     with patch.object(
-        UpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)
+        BaseUpdateBetsRound, "end_block", return_value=(synced_data, Event.DONE)
     ) as mock_super_end_block:
         result = blacklisting_round.end_block()
 
@@ -113,7 +113,7 @@ def test_blacklisting_round_end_block_none_event(
     """Test end_block when the superclass returns None."""
     # Mock the superclass end_block to return None
     with patch.object(
-        UpdateBetsRound, "end_block", return_value=None
+        BaseUpdateBetsRound, "end_block", return_value=None
     ) as mock_super_end_block:
         result = blacklisting_round.end_block()
 

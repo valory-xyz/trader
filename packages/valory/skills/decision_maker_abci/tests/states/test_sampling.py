@@ -28,7 +28,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.rounds import BaseUpdateBetsRound
 
 
 # Mock classes to simulate required attributes
@@ -90,9 +90,9 @@ class TestSamplingRound:
         assert payload.bets_hash == "mock_bets_hash"
         assert payload.index == 0  # Check that the index is correctly initialized
 
-    def test_sampling_round_inherits_update_bets_round(self) -> None:
+    def test_sampling_round_inherits_base_update_bets_round(self) -> None:
         """Test that SamplingRound inherits from UpdateBetsRound."""
-        assert issubclass(SamplingRound, UpdateBetsRound)
+        assert issubclass(SamplingRound, BaseUpdateBetsRound)
 
     def test_sampling_round_selection_key(
         self, setup_sampling_round: SamplingRound
