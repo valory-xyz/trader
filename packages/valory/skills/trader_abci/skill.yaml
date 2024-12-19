@@ -257,6 +257,9 @@ models:
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
       expected_mech_response_time: 300
+      mech_invalid_response: Invalid Response
+      mech_consecutive_failures_threshold: 2
+      tool_quarantine_duration: 18000
     class_name: TraderParams
   benchmarking_mode:
     args:

@@ -476,6 +476,15 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.expected_mech_response_time = self._ensure(
             "expected_mech_response_time", kwargs, int
         )
+        self.mech_invalid_response: str = self._ensure(
+            "mech_invalid_response", kwargs, str
+        )
+        self.policy_threshold: int = self._ensure(
+            "mech_consecutive_failures_threshold", kwargs, int
+        )
+        self.tool_quarantine_duration: int = self._ensure(
+            "tool_quarantine_duration", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

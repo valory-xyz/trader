@@ -246,6 +246,9 @@ models:
         requester_staking_instance_address: ${str:0x0000000000000000000000000000000000000000}
         response_timeout: ${int:300}
       expected_mech_response_time: ${int:300}
+      mech_invalid_response: ${str:Invalid Response}
+      mech_consecutive_failures_threshold: ${int:2}
+      tool_quarantine_duration: ${int:18000}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

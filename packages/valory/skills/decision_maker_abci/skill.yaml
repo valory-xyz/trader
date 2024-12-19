@@ -317,6 +317,9 @@ models:
         response_timeout: 300
       agent_balance_threshold: 10000000000000000
       expected_mech_response_time: 300
+      mech_invalid_response: Invalid Response
+      mech_consecutive_failures_threshold: 2
+      tool_quarantine_duration: 18000
     class_name: DecisionMakerParams
   benchmarking_mode:
     args:
