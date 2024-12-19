@@ -243,7 +243,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _get_init_policy(self) -> EGreedyPolicy:
         """Get the initial policy."""
         # try to read the policy from the policy store, and if we cannot recover the policy, we create a new one
-        return self._try_recover_policy() or EGreedyPolicy(self.params.epsilon)
+        return self._try_recover_policy() or EGreedyPolicy(
+            self.params.epsilon,
+            self.params.policy_threshold,
+            self.params.tool_quarantine_duration,
+        )
 
     def _fetch_accuracy_info(self) -> Generator[None, None, bool]:
         """Fetch the latest accuracy information available."""
