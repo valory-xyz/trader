@@ -190,7 +190,10 @@ class Bet:
         self._validate()
         self._cast()
         self._check_usefulness()
-        self.investments = {self.yes: [], self.no: []}
+       if self.outcomes:
+           self.investments = {self.yes: [], self.no: []}
+       else:
+           self.investments = {}
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
