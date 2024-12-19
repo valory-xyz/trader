@@ -30,7 +30,7 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeicqgue6mens3colokwycsmznlk5fobheteqghmzczbkmlpwm45c7q
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeichwngeh3wiqxxp34zdbx77gzw2bhc5dkovsmwogtppenn3kyk4ym
 - valory/staking_abci:0.1.0:bafybeif2cwf2bcjczbj4fykzyogtvfbfwo3u3ot2gfmeh4cygdenzvt2d4
-- valory/check_stop_trading_abci:0.1.0:bafybeiggs243oehh736f3j4lwuahgperjfnkv6clxdmqdqjbt62g46q254
+- valory/check_stop_trading_abci:0.1.0:bafybeia5uldu4na4qtrli7sbahrsdc56egagltvtrrvaiivvsceljd5uje
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
   main:
