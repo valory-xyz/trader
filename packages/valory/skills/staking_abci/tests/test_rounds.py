@@ -66,6 +66,7 @@ DUMMY_SERVICE_STATE = {
     "tx_hash": "dummy_tx_hash",
     "ts_checkpoint": 0,
     "is_checkpoint_reached": True,
+    "available_slot_count": 0,
 }
 
 
@@ -152,6 +153,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": "dummy_tx_hash",
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
+                        "available_slot_count": 0,
                     }
                 ),
                 final_data={
@@ -160,6 +162,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                     "tx_hash": "dummy_tx_hash",
                     "ts_checkpoint": 0,
                     "is_checkpoint_reached": True,
+                    "available_slot_count": 0,
                 },
                 event=Event.DONE,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
@@ -192,6 +195,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": "dummy_tx_hash",
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
+                        "available_slot_count": 0,
                     }
                 ),
                 final_data={},
@@ -212,6 +216,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": None,
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
+                        "available_slot_count": 0,
                     }
                 ),
                 final_data={},
@@ -291,6 +296,7 @@ def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
             get_name(SynchronizedData.service_staking_state),
             get_name(SynchronizedData.previous_checkpoint),
             get_name(SynchronizedData.is_checkpoint_reached),
+            get_name(SynchronizedData.available_staking_slots),
         },
         FinishedStakingRound: {
             get_name(SynchronizedData.service_staking_state),

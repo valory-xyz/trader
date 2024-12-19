@@ -43,6 +43,7 @@ from packages.valory.skills.staking_abci.payloads import (
                 "tx_hash": "dummy tx hash",
                 "ts_checkpoint": 1,
                 "is_checkpoint_reached": True,
+                "available_slot_count": 0,
             },
         ),
     ],

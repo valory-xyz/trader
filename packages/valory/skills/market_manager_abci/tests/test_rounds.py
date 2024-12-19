@@ -45,7 +45,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
-from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
     Event,
     FailedMarketManagerRound,
@@ -86,11 +86,18 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_payloads(
-    data: Optional[str],
+    bets_hash: Optional[str],
+    wallet_balance: Optional[int],
+    token_balance: Optional[int],
 ) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
     return {
-        participant: BaseUpdateBetsPayload(participant, data)
+        participant: UpdateBetsPayload(
+            sender=participant,
+            bets_hash=bets_hash,
+            wallet_balance=wallet_balance,
+            token_balance=token_balance,
+        )
         for participant in get_participants()
     }
 
@@ -131,17 +138,15 @@ class BaseMarketManagerRoundTestClass(BaseCollectSameUntilThresholdRoundTest):
             synchronized_data=self.synchronized_data, context=mock.MagicMock()
         )
 
-        self._complete_run(
-            self._test_round(
-                test_round=test_round,
-                round_payloads=test_case.payloads,
-                synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
-                    **test_case.final_data
-                ),
-                synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
-                most_voted_payload=test_case.most_voted_payload,
-                exit_event=test_case.event,
-            )
+        self._test_round(
+            test_round=test_round,
+            round_payloads=test_case.payloads,
+            synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
+                **test_case.final_data
+            ),
+            synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
+            most_voted_payload=test_case.most_voted_payload,
+            exit_event=test_case.event,
         )
 
 
@@ -160,7 +165,9 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 name="Happy path",
                 initial_data={},
                 payloads=get_payloads(
-                    data=DUMMY_BETS_HASH,
+                    bets_hash=DUMMY_BETS_HASH,
+                    wallet_balance=1,
+                    token_balance=1,
                 ),
                 final_data={
                     "bets_hash": DUMMY_BETS_HASH,
@@ -176,7 +183,9 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                 name="Fetch error",
                 initial_data={},
                 payloads=get_payloads(
-                    data=None,
+                    bets_hash=None,
+                    wallet_balance=None,
+                    token_balance=None,
                 ),
                 final_data={},
                 event=Event.FETCH_ERROR,
@@ -251,16 +260,16 @@ def test_market_manager_abci_app_initialization(abci_app: MarketManagerAbciApp) 
 
 
 # Mock serialized collections for different keys
-DUMMY_PARTICIPANT_TO_BETS_HASH = json.dumps(
+DUMMY_PARTICIPANT_TO_BETS_HASH_S = json.dumps(
     {
         "agent_0": {"sender": "agent_0", "data": "bet_1"},
         "agent_1": {"sender": "agent_1", "data": "bet_2"},
     }
 )
-DUMMY_BETS_HASH = json.dumps({"bets_hash": "dummy_bets_hash"})
+DUMMY_BETS_HASH_S = json.dumps({"bets_hash": "dummy_bets_hash"})
 
-DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH = json.dumps(DUMMY_PARTICIPANT_TO_BETS_HASH)
-DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH)
+DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH = json.dumps(DUMMY_PARTICIPANT_TO_BETS_HASH_S)
+DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH_S)
 
 
 @pytest.mark.parametrize(
@@ -269,13 +278,13 @@ DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH)
         (
             "participant_to_bets_hash",
             DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH,
-            json.loads(DUMMY_PARTICIPANT_TO_BETS_HASH),
+            json.loads(DUMMY_PARTICIPANT_TO_BETS_HASH_S),
             "participant_to_bets_hash",
         ),
         (
             "bets_hash",
             DUMMY_SERIALIZED_BETS_HASH,
-            json.loads(DUMMY_BETS_HASH),
+            json.loads(DUMMY_BETS_HASH_S),
             "bets_hash",
         ),
     ],

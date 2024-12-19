@@ -101,10 +101,10 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeih5r5dstwiouiv2ue3pezu6mf77b5n64rge6vm3y3cvy336lu7kyq
+- valory/market_manager_abci:0.1.0:bafybeih2qtjac3clerbksdolhwmild2qraq52wyqy4e4sfrjr5cwsq7jce
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
-- valory/staking_abci:0.1.0:bafybeif2cwf2bcjczbj4fykzyogtvfbfwo3u3ot2gfmeh4cygdenzvt2d4
+- valory/staking_abci:0.1.0:bafybeihwaf4gimmzhytwyzujxpg4gt4iq3wpoz5zyduxhbxo2uezm2scg4
 behaviours:
   main:
     args: {}

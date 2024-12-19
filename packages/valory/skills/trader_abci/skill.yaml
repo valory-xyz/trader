@@ -26,11 +26,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
-- valory/market_manager_abci:0.1.0:bafybeih5r5dstwiouiv2ue3pezu6mf77b5n64rge6vm3y3cvy336lu7kyq
-- valory/decision_maker_abci:0.1.0:bafybeicqgue6mens3colokwycsmznlk5fobheteqghmzczbkmlpwm45c7q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeichwngeh3wiqxxp34zdbx77gzw2bhc5dkovsmwogtppenn3kyk4ym
-- valory/staking_abci:0.1.0:bafybeif2cwf2bcjczbj4fykzyogtvfbfwo3u3ot2gfmeh4cygdenzvt2d4
-- valory/check_stop_trading_abci:0.1.0:bafybeia5uldu4na4qtrli7sbahrsdc56egagltvtrrvaiivvsceljd5uje
+- valory/market_manager_abci:0.1.0:bafybeih2qtjac3clerbksdolhwmild2qraq52wyqy4e4sfrjr5cwsq7jce
+- valory/decision_maker_abci:0.1.0:bafybeihyah4wq5bcnoe6zwdj7vvfka5lzvccoly533uhisd6hdtiqmckuy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaiiyipkq57rcrsxlvaoytsher37rw3dplda6mpcw67wx5276wbgm
+- valory/staking_abci:0.1.0:bafybeihwaf4gimmzhytwyzujxpg4gt4iq3wpoz5zyduxhbxo2uezm2scg4
+- valory/check_stop_trading_abci:0.1.0:bafybeigx27kht65vungmp4ldck7vgjsg4zr62fyvspzoxjsg66g6pkglla
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
   main:
