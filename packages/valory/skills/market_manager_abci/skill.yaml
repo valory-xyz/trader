@@ -6,7 +6,6 @@ description: This skill implements the MarketManager for an AEA.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  .coverage: bafybeiamyhdetx6urx43npwxxsid2o26dt5akzyvtyvyeb33v4h4rhrqii
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
   behaviours.py: bafybeig5akdvjjl2jviph5x76jvdeydk6ykasfkv5em3x7xflm6w3ylmwm
