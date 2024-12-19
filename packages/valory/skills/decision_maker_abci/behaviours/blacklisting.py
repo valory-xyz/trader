@@ -50,7 +50,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         sampled_bet = self.bets[sampled_bet_index]
 
         # the question is blacklisted, i.e., we did not place a bet on it,
-        # therefore, we bump to the queue status to next status
+        # therefore, we bump the queue's status to the next one
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
     def setup(self) -> None:
