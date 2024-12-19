@@ -28,6 +28,9 @@ from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayl
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
     BlacklistingRound,
 )
+from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
+    HandleFailedTxRound,
+)
 
 
 class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
@@ -69,6 +72,14 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
             bets_hash = (
                 None if self.benchmarking_mode.enabled else self.hash_stored_bets()
             )
+            if (
+                self.synchronized_data.tx_submitter
+                != HandleFailedTxRound.auto_round_id()
+            ):
+                # if we are here, then the tool has responded with an error
+                self.policy.tool_responded(
+                    self.synchronized_data.mech_tool, self.synced_timestamp
+                )
             policy = self.policy.serialize()
             payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)
 
