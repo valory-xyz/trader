@@ -19,20 +19,48 @@
 
 """This module contains the blacklisting state of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
-from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
+from enum import Enum
+from typing import Optional, Tuple, cast
+
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    CollectSameUntilThresholdRound,
+    get_name,
+)
+from packages.valory.skills.decision_maker_abci.payloads import HandleFailedTxPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
 
 
-class HandleFailedTxRound(VotingRound):
+class HandleFailedTxRound(CollectSameUntilThresholdRound):
     """A round for updating the bets after blacklisting the sampled one."""
 
-    payload_class = VotingPayload
+    payload_class = HandleFailedTxPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.BLACKLIST
-    negative_event = Event.NO_OP
+    no_op_event = Event.NO_OP
+    none_event = Event.NO_OP
     no_majority_event = Event.NO_MAJORITY
-    collection_key = get_name(SynchronizedData.participant_to_votes)
+    selection_key = (
+        get_name(SynchronizedData.after_bet_attempt),
+        get_name(SynchronizedData.tx_submitter),
+    )
+    collection_key = get_name(SynchronizedData.participant_to_handle_failed_tx)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        if event != self.done_event:
+            return res
+
+        if synced_data.after_bet_attempt:
+            return synced_data, self.done_event
+
+        return synced_data, self.no_op_event
