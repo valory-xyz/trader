@@ -41,7 +41,7 @@ from packages.valory.skills.decision_maker_abci.policy import (
 )
 
 
-POLICY_STORE = "policy_store_multi_bet.json"
+POLICY_STORE = "policy_store_multi_bet_failure_adjusting.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
