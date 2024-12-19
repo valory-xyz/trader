@@ -234,8 +234,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         try:
             policy_path = self.params.store_path / POLICY_STORE
             with open(policy_path, "r") as f:
-                policy = f.read()
-                return EGreedyPolicy.deserialize(policy)
+                policy_raw = f.read()
+                policy = EGreedyPolicy.deserialize(policy_raw)
+                # overwrite the configurable parameters
+                policy.eps = self.params.epsilon
+                policy.consecutive_failures_threshold = self.params.policy_threshold
+                policy.quarantine_duration = self.params.tool_quarantine_duration
+                return policy
         except Exception as e:
             self.context.logger.warning(f"Could not recover the policy: {e}.")
             return None
