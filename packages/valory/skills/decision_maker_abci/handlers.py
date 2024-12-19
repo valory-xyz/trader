@@ -26,7 +26,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
-import prometheus_client  # type: ignore
+import prometheus_client
 from aea.protocols.base import Message
 from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
