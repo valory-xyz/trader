@@ -69,7 +69,10 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def n_mech_requests(self) -> int:
         """Get the number of mech requests."""
-        return int(self.db.get("n_mech_requests", 0))
+        n_mech_requests = self.db.get("n_mech_requests", 0)
+        if n_mech_requests is None:
+            return 0
+        return n_mech_requests
 
 
 class CheckStopTradingRound(VotingRound):
@@ -103,8 +106,7 @@ class CheckStopTradingRound(VotingRound):
         n_mech_requests = self.mech_request_count
 
         self.synchronized_data.update(
-            is_staking_kpi_met=is_staking_kpi_met,
-            n_mech_requests=n_mech_requests
+            is_staking_kpi_met=is_staking_kpi_met, n_mech_requests=n_mech_requests
         )
 
         return res

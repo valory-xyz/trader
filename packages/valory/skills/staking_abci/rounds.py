@@ -120,7 +120,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.service_staking_state),
         get_name(SynchronizedData.previous_checkpoint),
         get_name(SynchronizedData.is_checkpoint_reached),
-        get_name(SynchronizedData.available_staking_slots)
+        get_name(SynchronizedData.available_staking_slots),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
@@ -207,7 +207,7 @@ class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
             get_name(SynchronizedData.service_staking_state),
             get_name(SynchronizedData.previous_checkpoint),
             get_name(SynchronizedData.is_checkpoint_reached),
-            get_name(SynchronizedData.available_staking_slots)
+            get_name(SynchronizedData.available_staking_slots),
         }
     )
     final_states: Set[AppState] = {

@@ -22,7 +22,18 @@
 from abc import ABC
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, Union, cast, List
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.contracts.base import Contract
@@ -76,8 +87,8 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
-        self._service_ids = None
-        self._max_num_services = None
+        self._service_ids: List[str] = []
+        self._max_num_services: int = 0
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
 
@@ -180,7 +191,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     @max_num_services.setter
     def max_num_services(self, max_num_services: int) -> None:
-        """set the max number of services."""
+        """Set the max number of services."""
         self._max_num_services = max_num_services
 
     @property
@@ -190,7 +201,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
 
     @service_ids.setter
     def service_ids(self, service_ids: List[str]) -> None:
-        """set the service ids staked on the contract."""
+        """Set the service ids staked on the contract."""
         self._service_ids = service_ids
 
     @property
@@ -581,7 +592,7 @@ class CallCheckpointBehaviour(
                 self.service_staking_state.value,
                 self.ts_checkpoint,
                 is_checkpoint_reached,
-                available_slot_count
+                available_slot_count,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

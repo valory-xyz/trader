@@ -108,5 +108,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
                     self.shared_state.bet_id_row_manager = bets_mapping
 
             agent = self.context.agent_address
-            payload = DecisionRequestPayload(agent, payload_content, mocking_mode, decision_request_timestamp)
+            payload = DecisionRequestPayload(
+                agent, payload_content, mocking_mode, decision_request_timestamp
+            )
         yield from self.finish_behaviour(payload)

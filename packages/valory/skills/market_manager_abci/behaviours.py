@@ -45,8 +45,10 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
     MarketManagerAbciApp,
-    UpdateBetsRound, SynchronizedData,
+    SynchronizedData,
+    UpdateBetsRound,
 )
+
 
 WaitableConditionType = Generator[None, None, bool]
 
@@ -92,11 +94,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def is_wxdai(self) -> bool:
         """Get whether the collateral address is wxDAI."""
         return self.collateral_token.lower() == WXDAI.lower()
-
-    # @staticmethod
-    # def wei_to_native(wei: int) -> float:
-    #     """Convert WEI to native token."""
-    #     return wei / 10**18
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
@@ -191,6 +188,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
                 f"Could not calculate the balance of the safe: {response_msg}"
             )
             return False
+        return True
 
 
 class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
@@ -304,7 +302,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             print(f"WALLET BALANCE: {wallet_balance}")
 
             bets_hash = self.hash_stored_bets() if self.bets else None
-            payload = UpdateBetsPayload(self.context.agent_address, bets_hash, wallet_balance, token_balance)
+            payload = UpdateBetsPayload(
+                self.context.agent_address, bets_hash, wallet_balance, token_balance
+            )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)

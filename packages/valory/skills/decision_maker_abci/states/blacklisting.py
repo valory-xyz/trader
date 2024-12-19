@@ -32,10 +32,10 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     SynchronizedData,
 )
 from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.rounds import BaseUpdateBetsRound
 
 
-class BlacklistingRound(UpdateBetsRound):
+class BlacklistingRound(BaseUpdateBetsRound):
     """A round for updating the bets after blacklisting the sampled one."""
 
     payload_class: Type[BaseUpdateBetsPayload] = BlacklistingPayload

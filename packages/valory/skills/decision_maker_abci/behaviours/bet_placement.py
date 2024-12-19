@@ -238,7 +238,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 betting_tx_hex,
                 mocking_mode,
                 wallet_balance,
-                token_balance
+                token_balance,
             )
 
         yield from self.finish_behaviour(payload)

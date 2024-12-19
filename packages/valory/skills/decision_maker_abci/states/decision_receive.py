@@ -31,7 +31,6 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
 class DecisionReceiveRound(CollectSameUntilThresholdRound):

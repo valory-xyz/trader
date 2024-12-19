@@ -48,6 +48,7 @@ class BetPlacementRound(TxPreparationRound):
         sync_data, event = update
         wallet_balance = self.most_voted_payload_values[-2]
         token_balance = self.most_voted_payload_values[-1]
-        sync_data = sync_data.update(wallet_balance=wallet_balance,
-                                     token_balance=token_balance)
+        sync_data = sync_data.update(
+            wallet_balance=wallet_balance, token_balance=token_balance
+        )
         return sync_data, event

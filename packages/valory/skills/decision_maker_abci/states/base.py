@@ -38,12 +38,9 @@ from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
     MechMetadata,
 )
+from packages.valory.skills.staking_abci.rounds import StakingState
 from packages.valory.skills.staking_abci.rounds import (
-    StakingState,
     SynchronizedData as StakingSyncedData,
-)
-from packages.valory.skills.transaction_settlement_abci.rounds import (
-    SynchronizedData as TxSettlementSyncedData,
 )
 
 
@@ -283,7 +280,10 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
     @property
     def n_mech_requests(self) -> int:
         """Get the number of mech requests."""
-        return int(self.db.get("n_mech_requests", 0))
+        n_mech_requests = self.db.get("n_mech_requests", 0)
+        if n_mech_requests is None:
+            return 0
+        return n_mech_requests
 
     @property
     def token_balance(self) -> int:

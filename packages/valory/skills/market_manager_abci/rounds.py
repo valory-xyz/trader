@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Tuple, Type, cast
+from typing import Any, Dict, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -35,7 +35,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload, UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import (
+    BaseUpdateBetsPayload,
+    UpdateBetsPayload,
+)
 
 
 class Event(Enum):
@@ -115,17 +118,29 @@ class MarketManagerAbstractRound(AbstractRound[Event], ABC):
         return self.synchronized_data, Event.NO_MAJORITY
 
 
-class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
+class BaseUpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
     """A round for the bets fetching & updating."""
 
-    payload_class = UpdateBetsPayload
+    payload_class = BaseUpdateBetsPayload
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = (
-        get_name(SynchronizedData.bets_hash),
+    selection_key = (get_name(SynchronizedData.bets_hash),)
+    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
+    synchronized_data_class = SynchronizedData
+
+
+class UpdateBetsRound(BaseUpdateBetsRound):
+    """A round for the bets fetching & updating."""
+
+    payload_class: Type[UpdateBetsPayload] = UpdateBetsPayload
+    done_event: Enum = Event.DONE
+    none_event: Enum = Event.FETCH_ERROR
+    no_majority_event: Enum = Event.NO_MAJORITY
+    selection_key: Any = (
+        BaseUpdateBetsRound.selection_key,
         get_name(SynchronizedData.wallet_balance),
-        get_name(SynchronizedData.token_balance)
+        get_name(SynchronizedData.token_balance),
     )
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData

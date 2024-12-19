@@ -32,10 +32,10 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     SynchronizedData,
 )
 from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.rounds import BaseUpdateBetsRound
 
 
-class SamplingRound(UpdateBetsRound):
+class SamplingRound(BaseUpdateBetsRound):
     """A round for sampling a bet."""
 
     payload_class: Type[BaseUpdateBetsPayload] = SamplingPayload
