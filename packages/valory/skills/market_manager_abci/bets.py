@@ -24,6 +24,7 @@ import builtins
 import dataclasses
 import json
 import sys
+from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 
@@ -32,6 +33,47 @@ P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
 INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
+
+
+class QueueStatus(Enum):
+    """The status of a bet in the queue."""
+
+    # Common statuses
+    EXPIRED = -1  # Bets that have expired, i.e., the market is not live anymore
+    FRESH = 0  # Fresh bets that have just been added
+    TO_PROCESS = 1  # Bets that are ready to be processed
+    PROCESSED = 2  # Bets that have been processed
+    REPROCESSED = 3  # Bets that have been reprocessed
+
+    def is_fresh(self) -> bool:
+        """Check if the bet is fresh."""
+        return self == QueueStatus.FRESH
+
+    def is_expired(self) -> bool:
+        """Check if the bet is expired."""
+        return self == QueueStatus.EXPIRED
+
+    def move_to_process(self) -> "QueueStatus":
+        """Move the bet to the process status."""
+        if self == QueueStatus.FRESH:
+            return QueueStatus.TO_PROCESS
+        return self
+
+    def move_to_fresh(self) -> "QueueStatus":
+        """Move the bet to the fresh status."""
+        if self != QueueStatus.EXPIRED:
+            return QueueStatus.FRESH
+        return self
+
+    def next_status(self) -> "QueueStatus":
+        """Get the next status in the queue."""
+        if self == QueueStatus.TO_PROCESS:
+            return QueueStatus.PROCESSED
+        elif self == QueueStatus.PROCESSED:
+            return QueueStatus.REPROCESSED
+        elif self != QueueStatus.REPROCESSED:
+            return QueueStatus.FRESH
+        return self
 
 
 @dataclasses.dataclass(init=False)
@@ -95,10 +137,12 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
+    invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
     n_bets: int = 0
+    queue_status: QueueStatus = QueueStatus.FRESH
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -114,6 +158,7 @@ class Bet:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
+        self.queue_status = QueueStatus.EXPIRED
 
     def _validate(self) -> None:
         """Validate the values of the instance."""
@@ -205,6 +250,7 @@ class Bet:
         ):
             # do not update the bet if it has been blacklisted forever
             return
+
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
@@ -237,8 +283,10 @@ class BetsEncoder(json.JSONEncoder):
 
     def default(self, o: Any) -> Any:
         """The default encoder."""
-        if dataclasses.is_dataclass(o):
+        if dataclasses.is_dataclass(o) and not isinstance(o, type):
             return dataclasses.asdict(o)
+        if isinstance(o, QueueStatus):
+            return o.value
         return super().default(o)
 
 
@@ -261,7 +309,16 @@ class BetsDecoder(json.JSONDecoder):
         # if this is a `Bet`
         bet_annotations = sorted(Bet.__annotations__.keys())
         if bet_annotations == data_attributes:
+            data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
+        else:
+            # fetch missing attributes from the data
+            missing_attributes = set(bet_annotations) - set(data_attributes)
+            new_attributes = {"queue_status", "invested_amount"}
+            if missing_attributes == new_attributes:
+                data["queue_status"] = QueueStatus(0)
+                data["invested_amount"] = 0
+                return Bet(**data)
 
         return data
 

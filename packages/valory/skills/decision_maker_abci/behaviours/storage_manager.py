@@ -24,7 +24,7 @@ import json
 from abc import ABC
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -41,13 +41,11 @@ from packages.valory.skills.decision_maker_abci.policy import (
 )
 
 
-POLICY_STORE = "policy_store_multi_bet.json"
+POLICY_STORE = "policy_store_multi_bet_failure_adjusting.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
 OK_CODE = 200
-MAX_STR = "max"
-DATETIME_FORMAT_STR = "%Y-%m-%d %H:%M:%S"
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -234,8 +232,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         try:
             policy_path = self.params.store_path / POLICY_STORE
             with open(policy_path, "r") as f:
-                policy = f.read()
-                return EGreedyPolicy.deserialize(policy)
+                policy_raw = f.read()
+                policy = EGreedyPolicy.deserialize(policy_raw)
+                # overwrite the configurable parameters
+                policy.eps = self.params.epsilon
+                policy.consecutive_failures_threshold = self.params.policy_threshold
+                policy.quarantine_duration = self.params.tool_quarantine_duration
+                return policy
         except Exception as e:
             self.context.logger.warning(f"Could not recover the policy: {e}.")
             return None
@@ -243,7 +246,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _get_init_policy(self) -> EGreedyPolicy:
         """Get the initial policy."""
         # try to read the policy from the policy store, and if we cannot recover the policy, we create a new one
-        return self._try_recover_policy() or EGreedyPolicy(self.params.epsilon)
+        return self._try_recover_policy() or EGreedyPolicy(
+            self.params.epsilon,
+            self.params.policy_threshold,
+            self.params.tool_quarantine_duration,
+        )
 
     def _fetch_accuracy_info(self) -> Generator[None, None, bool]:
         """Fetch the latest accuracy information available."""
@@ -270,94 +277,121 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
-    def _fetch_remote_tool_date(self) -> int:
-        """Fetch the max transaction date from the remote accuracy storage."""
-        self.context.logger.info("Checking remote accuracy information date... ")
-        self.context.logger.info("Trying to read max date in file...")
-        accuracy_information = self.remote_accuracy_information
-
-        max_transaction_date = None
-
-        if accuracy_information:
-            sep = self.acc_info_fields.sep
-            accuracy_information.seek(0)  # Ensure we’re at the beginning
-            reader = csv.DictReader(accuracy_information.readlines(), delimiter=sep)
-
-            # try to read the maximum transaction date in the remote accuracy info
-            try:
-                for row in reader:
-                    current_transaction_date = row.get(MAX_STR)
-                    if (
-                        max_transaction_date is None
-                        or current_transaction_date > max_transaction_date
-                    ):
-                        max_transaction_date = current_transaction_date
-
-            except TypeError:
-                self.context.logger.warning(
-                    "Invalid transaction date found. Continuing with local accuracy information..."
-                )
-                return 0
-
-        if max_transaction_date:
-            self.context.logger.info(f"Maximum date found: {max_transaction_date}")
-            max_datetime = datetime.strptime(max_transaction_date, DATETIME_FORMAT_STR)
-            unix_timestamp = int(max_datetime.timestamp())
-            return unix_timestamp
-
-        self.context.logger.info("No maximum date found.")
-        return 0
-
-    def _check_local_policy_store_overwrite(self) -> bool:
-        """Compare the local and remote policy store dates and decide which to use."""
-
-        local_policy_store_date = self.policy.updated_ts
-        remote_policy_store_date = self._fetch_remote_tool_date()
-        policy_store_update_offset = self.params.policy_store_update_offset
-
-        self.context.logger.info("Comparing tool accuracy dates...")
-
-        overwrite = remote_policy_store_date > (
-            local_policy_store_date - policy_store_update_offset
-        )
-        self.context.logger.info(f"Local policy store overwrite: {overwrite}.")
-        return overwrite
-
-    def _update_accuracy_store(self) -> None:
-        """Update the accuracy store file with the latest information available"""
-        self.context.logger.info("Updating accuracy information of the policy...")
-        sep = self.acc_info_fields.sep
-        self.remote_accuracy_information.seek(
-            0
-        )  # Ensure the file pointer is at the start
-        reader: csv.DictReader = csv.DictReader(
-            self.remote_accuracy_information, delimiter=sep
-        )
+    def _remove_irrelevant_tools(self) -> None:
+        """Remove irrelevant tools from the accuracy store."""
         accuracy_store = self.policy.accuracy_store
-
-        # remove tools which are irrelevant
         for tool in accuracy_store.copy():
             if tool not in self.mech_tools:
                 accuracy_store.pop(tool, None)
 
-        # update the accuracy store using the latest accuracy information (only entered during the first period)
-        for row in reader:
-            tool = row[self.acc_info_fields.tool]
-            if tool not in self.mech_tools:
-                continue
+    def _global_info_date_to_unix(self, tool_transaction_date: str) -> Optional[int]:
+        """Convert the global information date to unix."""
+        datetime_format = self.acc_info_fields.datetime_format
+        try:
+            tool_transaction_datetime = datetime.strptime(
+                tool_transaction_date, datetime_format
+            )
+        except (ValueError, TypeError):
+            self.context.logger.warning(
+                f"Could not parse the global info date {tool_transaction_date!r} using format {datetime_format!r}!"
+            )
+            return None
 
-            # overwrite local with global information (naturally, no global information is available for pending)
+        return int(tool_transaction_datetime.timestamp())
+
+    def _parse_global_info_row(
+        self,
+        row: Dict[str, str],
+        max_transaction_date: int,
+        tool_to_global_info: Dict[str, Dict[str, str]],
+    ) -> int:
+        """Parse a row of the global information."""
+        tool = row[self.acc_info_fields.tool]
+        if tool not in self.mech_tools:
+            # skip irrelevant tools
+            return max_transaction_date
+
+        # store the global information
+        tool_to_global_info[tool] = row
+
+        # find the latest transaction date
+        tool_transaction_date = row[self.acc_info_fields.max]
+        tool_transaction_unix = self._global_info_date_to_unix(tool_transaction_date)
+        if (
+            tool_transaction_unix is not None
+            and tool_transaction_unix > max_transaction_date
+        ):
+            return tool_transaction_unix
+
+        return max_transaction_date
+
+    def _parse_global_info(self) -> Tuple[int, Dict[str, Dict[str, str]]]:
+        """Parse the global information of the tools."""
+        sep = self.acc_info_fields.sep
+        reader: csv.DictReader = csv.DictReader(
+            self.remote_accuracy_information, delimiter=sep
+        )
+
+        max_transaction_date = 0
+        tool_to_global_info: Dict[str, Dict[str, str]] = {}
+        for row in reader:
+            max_transaction_date = self._parse_global_info_row(
+                row, max_transaction_date, tool_to_global_info
+            )
+
+        return max_transaction_date, tool_to_global_info
+
+    def _should_use_global_info(self, global_update_timestamp: int) -> bool:
+        """Whether we should use the global information of the tools."""
+        local_update_timestamp = self.policy.updated_ts
+        local_update_offset = self.params.policy_store_update_offset
+        return global_update_timestamp > local_update_timestamp - local_update_offset
+
+    def _overwrite_local_info(
+        self, tool_to_global_info: Dict[str, Dict[str, str]]
+    ) -> None:
+        """Overwrite the local information with the global information."""
+        self.context.logger.info(
+            "The local policy store will be overwritten with global information."
+        )
+
+        accuracy_store = self.policy.accuracy_store
+        for tool, row in tool_to_global_info.items():
             accuracy_store[tool] = AccuracyInfo(
                 int(row[self.acc_info_fields.requests]),
-                # set the pending using the local policy if this information exists
+                # naturally, no global information is available for pending.
+                # set it using the local policy if this information exists
                 accuracy_store.get(tool, AccuracyInfo()).pending,
                 float(row[self.acc_info_fields.accuracy]),
             )
+            self.policy.updated_ts = int(datetime.now().timestamp())
 
-        # update the accuracy store by adding tools which we do not have any global information about yet
+    def _update_accuracy_store(
+        self,
+        global_update_timestamp: int,
+        tool_to_global_info: Dict[str, Dict[str, str]],
+    ) -> None:
+        """
+        Update the accuracy store using the latest accuracy information.
+
+        The current method should only be called at the first period.
+
+        :param global_update_timestamp: the timestamp of the latest global information update
+        :param tool_to_global_info: the global information of the tools
+        """
+        if self._should_use_global_info(global_update_timestamp):
+            self._overwrite_local_info(tool_to_global_info)
+
+        # update the accuracy store by adding tools for which we do not have any global information yet
         for tool in self.mech_tools:
-            accuracy_store.setdefault(tool, AccuracyInfo())
+            self.policy.accuracy_store.setdefault(tool, AccuracyInfo())
 
+    def _update_policy_tools(self) -> None:
+        """Update the policy's tools and their accuracy with the latest information available if `with_global_info`."""
+        self.context.logger.info("Updating information of the policy...")
+        self._remove_irrelevant_tools()
+        global_info = self._parse_global_info()
+        self._update_accuracy_store(*global_info)
         self.policy.update_weighted_accuracy()
 
     def _set_policy(self) -> Generator:
@@ -374,11 +408,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         yield from self.wait_for_condition_with_sleep(
             self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
         )
-        overwrite_local_store = self._check_local_policy_store_overwrite()
 
-        if self.is_first_period and overwrite_local_store:
-            self.policy.updated_ts = int(datetime.now().timestamp())
-            self._update_accuracy_store()
+        if self.is_first_period:
+            self._update_policy_tools()
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""

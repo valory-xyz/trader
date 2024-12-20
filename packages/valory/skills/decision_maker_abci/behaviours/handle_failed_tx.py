@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2024 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -24,11 +24,14 @@ from typing import Generator
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
+from packages.valory.skills.decision_maker_abci.payloads import HandleFailedTxPayload
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 
 
 class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
@@ -40,9 +43,13 @@ class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            after_redeeming = (
-                self.synchronized_data.tx_submitter == RedeemRound.auto_round_id()
+            after_bet_attempt = self.synchronized_data.tx_submitter in (
+                MechRequestRound.auto_round_id(),
+                BetPlacementRound.auto_round_id(),
             )
-            payload = VotingPayload(self.context.agent_address, not after_redeeming)
+            submitter = HandleFailedTxRound.auto_round_id()
+            payload = HandleFailedTxPayload(
+                self.context.agent_address, after_bet_attempt, submitter
+            )
 
         yield from self.finish_behaviour(payload)

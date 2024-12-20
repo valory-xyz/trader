@@ -449,6 +449,15 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.expected_mech_response_time = self._ensure(
             "expected_mech_response_time", kwargs, int
         )
+        self.mech_invalid_response: str = self._ensure(
+            "mech_invalid_response", kwargs, str
+        )
+        self.policy_threshold: int = self._ensure(
+            "mech_consecutive_failures_threshold", kwargs, int
+        )
+        self.tool_quarantine_duration: int = self._ensure(
+            "tool_quarantine_duration", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property
@@ -532,6 +541,8 @@ class AccuracyInfoFields(Model, TypeCheckMixin):
         self.requests: str = self._ensure("requests", kwargs, str)
         self.accuracy: str = self._ensure("accuracy", kwargs, str)
         self.sep: str = self._ensure("sep", kwargs, str)
+        self.max: str = self._ensure("max", kwargs, str)
+        self.datetime_format: str = self._ensure("datetime_format", kwargs, str)
         super().__init__(*args, **kwargs)
 
 

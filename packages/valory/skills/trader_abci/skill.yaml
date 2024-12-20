@@ -11,7 +11,7 @@ fingerprint:
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
   composition.py: bafybeifxerfvssuhodqmtvkz6umlmrmdqjv5ptpszhnwlavzxaavdpdyly
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
-  fsm_specification.yaml: bafybeibq4d3ol4ccz55yot3nzrvua4zn5y5xk7xuen7acewdw5dr7m473e
+  fsm_specification.yaml: bafybeigbedgadqt46yqw5qkm7yb2q4atiodwvruh7yuo6g6qyht76lniea
   handlers.py: bafybeigrqsgqupy6kds2vqieacsymx3eucntwl52rlgi4cu4lrb6bglhti
   models.py: bafybeigbnyvpuh7qq3bsgmcb27e6fz2kirp74eios55acar4352opv4ggm
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
@@ -26,11 +26,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezfedmmseox3ce5aucxsiszdmvskrwwbtpb2a3vw3sbmc5jt7nri
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
 - valory/termination_abci:0.1.0:bafybeiea67epwwgngp7b3wavs6hpkaxv6etyaps6g6325bchfnf354mibq
-- valory/market_manager_abci:0.1.0:bafybeiaotaepzfcp3mvd7pp2zv6v6bbgfjblk4pzcvjbzbhkc5p463afba
-- valory/decision_maker_abci:0.1.0:bafybeifljwg5jxxhazhopxo6rful5zc5tmghcos3njsldsjhxiqazzvkhu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicttcqp2n5q3vqdxaoqwawdrqyvh6eq55groaehdarpreufe5agda
-- valory/staking_abci:0.1.0:bafybeifzayvzmhuu54ut5ke2ohutmoprnw474kk63pmlrmlt5cg46slrji
-- valory/check_stop_trading_abci:0.1.0:bafybeicqcqhmrsswxyob7j2q2yosfu2ruknl2zibl4ewfmmgjsy3x7t6u4
+- valory/market_manager_abci:0.1.0:bafybeiayhzwxlpqsevyvaxn6dtnnu745az5vcz7dckmghnmjywxdtvoyly
+- valory/decision_maker_abci:0.1.0:bafybeigwukhr342jw74wvladtpppfnkklryflid7gsbwn74owcv2xfaze4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig3pwa3v533fhpcmju7232e5ndp5vigkgk3douvodjnabwvu4u5iu
+- valory/staking_abci:0.1.0:bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq
+- valory/check_stop_trading_abci:0.1.0:bafybeic3bismocli2yyxmjhjsevjbzpuf3ladsvlkazfx23vq3q6uxrn7m
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
 behaviours:
   main:
@@ -248,6 +248,9 @@ models:
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
       expected_mech_response_time: 300
+      mech_invalid_response: Invalid Response
+      mech_consecutive_failures_threshold: 2
+      tool_quarantine_duration: 18000
     class_name: TraderParams
   benchmarking_mode:
     args:
@@ -281,6 +284,8 @@ models:
       requests: total_requests
       accuracy: tool_accuracy
       sep: ','
+      max: max
+      datetime_format: '%Y-%m-%d %H:%M:%S'
     class_name: AccuracyInfoFields
   network_subgraph:
     args:

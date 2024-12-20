@@ -118,11 +118,11 @@ transition_func:
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
-    (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
+    (CheckBenchmarkingModeRound, DONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
-    (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, SUBSCRIPTION_ERROR): ImpossibleRound
     (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
     (CheckLateTxHashesRound, DONE): PostTxSettlementRound

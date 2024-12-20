@@ -50,12 +50,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezfedmmseox3ce5aucxsiszdmvskrwwbtpb2a3vw3sbmc5jt7nri
 - valory/termination_abci:0.1.0:bafybeiea67epwwgngp7b3wavs6hpkaxv6etyaps6g6325bchfnf354mibq
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicttcqp2n5q3vqdxaoqwawdrqyvh6eq55groaehdarpreufe5agda
-- valory/market_manager_abci:0.1.0:bafybeiaotaepzfcp3mvd7pp2zv6v6bbgfjblk4pzcvjbzbhkc5p463afba
-- valory/decision_maker_abci:0.1.0:bafybeifljwg5jxxhazhopxo6rful5zc5tmghcos3njsldsjhxiqazzvkhu
-- valory/trader_abci:0.1.0:bafybeia5z6vjanod3hauezhvfemuunwl4cxkil7kowplwmvc2ijp6lw4gi
-- valory/staking_abci:0.1.0:bafybeifzayvzmhuu54ut5ke2ohutmoprnw474kk63pmlrmlt5cg46slrji
-- valory/check_stop_trading_abci:0.1.0:bafybeicqcqhmrsswxyob7j2q2yosfu2ruknl2zibl4ewfmmgjsy3x7t6u4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig3pwa3v533fhpcmju7232e5ndp5vigkgk3douvodjnabwvu4u5iu
+- valory/market_manager_abci:0.1.0:bafybeiayhzwxlpqsevyvaxn6dtnnu745az5vcz7dckmghnmjywxdtvoyly
+- valory/decision_maker_abci:0.1.0:bafybeigwukhr342jw74wvladtpppfnkklryflid7gsbwn74owcv2xfaze4
+- valory/trader_abci:0.1.0:bafybeice6bda6bu6bigaqjtywhseqyfcknix5fqcmfflv3sbfgfd5pobpi
+- valory/staking_abci:0.1.0:bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq
+- valory/check_stop_trading_abci:0.1.0:bafybeic3bismocli2yyxmjhjsevjbzpuf3ladsvlkazfx23vq3q6uxrn7m
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -244,6 +244,9 @@ models:
       policy_store_update_offset: ${int:259200}
       mech_marketplace_config: ${dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
       expected_mech_response_time: ${int:300}
+      mech_invalid_response: ${str:Invalid Response}
+      mech_consecutive_failures_threshold: ${int:2}
+      tool_quarantine_duration: ${int:18000}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -269,6 +272,8 @@ models:
       requests: ${str:total_requests}
       accuracy: ${str:tool_accuracy}
       sep: ${str:,}
+      max: ${str:max}
+      datetime_format: ${str:%Y-%m-%d %H:%M:%S}
   network_subgraph:
     args:
       headers:

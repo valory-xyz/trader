@@ -8,18 +8,18 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeifbfelfwlys6bsdhbqkbm26racle4sjdvkcelfvcw3ypy3qpremgu
+  behaviours.py: bafybeieukrrm34bqjtolm2okiys7llri4led2suclve24mtitbpii3svge
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeif6j6fad3o2zit4wuwcs6mowgnj4nxzrtbqf7tdnxpsfyst33k6oa
-  payloads.py: bafybeibnub5ehb2mvpcoan3x23pp5oz4azpofwrtcl32abswcfl4cmjlwq
-  rounds.py: bafybeiemfytlrp7uhz7x6cc7e434f5xckg7awa5bybh7hiehjkjzr6rrqu
+  models.py: bafybeigv4bltwodffe7n5fs6tevx2ysavkj3ynpwniyky653jiigtfzppu
+  payloads.py: bafybeib7hxsibtabb5vt6gjtco2x2s2yodhs24ojqecgrcexqsiv3pvmuy
+  rounds.py: bafybeifki4k3x6hjjkudrovsblf2ghrcg42b7nfysds5yts5p357dadl4a
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
-  tests/test_payloads.py: bafybeiaq2dxpbein6qhipalibi57x6niiydxi6kvbpeqripzlngcgpb3qq
-  tests/test_rounds.py: bafybeih27bkijv6vcqfdbrfxgbtajtqbquekknc77omkxsfgnboiduj7sm
+  tests/test_payloads.py: bafybeidtkbudsmrx77xs2oooji6cpj7kx7nembf77u32if2sb2kvkavvhq
+  tests/test_rounds.py: bafybeidge7sp3udobhvjpbdj5kirkukd6w5qycqkcuc6sy3qqiedco2q4i
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -137,6 +137,7 @@ models:
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
       staking_interaction_sleep_time: 5
+      store_path: data
     class_name: StakingParams
   requests:
     args: {}

@@ -21,6 +21,7 @@
 
 from abc import ABC
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, Union, cast
 
 from aea.configurations.data_types import PublicId
@@ -64,6 +65,9 @@ SAFE_GAS = 0
 
 
 NULL_ADDRESS = "0x0000000000000000000000000000000000000000"
+CHECKPOINT_FILENAME = "checkpoint.txt"
+READ_MODE = "r"
+WRITE_MODE = "w"
 
 
 class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
@@ -73,6 +77,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         """Initialize the behaviour."""
         super().__init__(**kwargs)
         self._service_staking_state: StakingState = StakingState.UNSTAKED
+        self._checkpoint_ts = 0
 
     @property
     def params(self) -> StakingParams:
@@ -365,6 +370,7 @@ class CallCheckpointBehaviour(
         self._next_checkpoint: int = 0
         self._checkpoint_data: bytes = b""
         self._safe_tx_hash: str = ""
+        self._checkpoint_filepath: Path = self.params.store_path / CHECKPOINT_FILENAME
 
     @property
     def params(self) -> StakingParams:
@@ -375,6 +381,17 @@ class CallCheckpointBehaviour(
     def synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
         return SynchronizedData(super().synchronized_data.db)
+
+    @property
+    def is_first_period(self) -> bool:
+        """Return whether it is the first period of the service."""
+        return self.synchronized_data.period_count == 0
+
+    @property
+    def new_checkpoint_detected(self) -> bool:
+        """Whether a new checkpoint has been detected."""
+        previous_checkpoint = self.synchronized_data.previous_checkpoint
+        return bool(previous_checkpoint) and previous_checkpoint != self.ts_checkpoint
 
     @property
     def checkpoint_data(self) -> bytes:
@@ -401,6 +418,38 @@ class CallCheckpointBehaviour(
                 f"when trying to assign a safe transaction hash: {safe_hash}"
             )
         self._safe_tx_hash = safe_hash[2:]
+
+    def read_stored_timestamp(self) -> Optional[int]:
+        """Read the timestamp from the agent's data dir."""
+        try:
+            with open(self._checkpoint_filepath, READ_MODE) as checkpoint_file:
+                try:
+                    return int(checkpoint_file.readline())
+                except (ValueError, TypeError, StopIteration):
+                    err = f"Stored checkpoint timestamp could not be parsed from {self._checkpoint_filepath!r}!"
+        except (FileNotFoundError, PermissionError, OSError):
+            err = f"Error opening file {self._checkpoint_filepath!r} in {READ_MODE!r} mode!"
+
+        self.context.logger.error(err)
+        return None
+
+    def store_timestamp(self) -> int:
+        """Store the timestamp to the agent's data dir."""
+        if self.ts_checkpoint == 0:
+            self.context.logger.warning("No checkpoint timestamp to store!")
+            return 0
+
+        try:
+            with open(self._checkpoint_filepath, WRITE_MODE) as checkpoint_file:
+                try:
+                    return checkpoint_file.write(str(self.ts_checkpoint))
+                except (IOError, OSError):
+                    err = f"Error writing to file {self._checkpoint_filepath!r}!"
+        except (FileNotFoundError, PermissionError, OSError):
+            err = f"Error opening file {self._checkpoint_filepath!r} in {WRITE_MODE!r} mode!"
+
+        self.context.logger.error(err)
+        return 0
 
     def _build_checkpoint_tx(self) -> WaitableConditionType:
         """Get the request tx data encoded."""
@@ -437,6 +486,33 @@ class CallCheckpointBehaviour(
             self.checkpoint_data,
         )
 
+    def check_new_epoch(self) -> Generator[None, None, bool]:
+        """Check if a new epoch has been reached."""
+        yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
+        stored_timestamp_invalidated = False
+
+        # if it is the first period of the service,
+        #     1. check if the stored timestamp is the same as the current checkpoint
+        #     2. if not, update the corresponding flag
+        # That way, we protect from the case in which the user stops their service
+        # before the next checkpoint is reached and restarts it afterward.
+        if self.is_first_period:
+            stored_timestamp = self.read_stored_timestamp()
+            stored_timestamp_invalidated = stored_timestamp != self.ts_checkpoint
+
+        is_checkpoint_reached = (
+            stored_timestamp_invalidated or self.new_checkpoint_detected
+        )
+        if is_checkpoint_reached:
+            self.context.logger.info("An epoch change has been detected.")
+            status = self.store_timestamp()
+            if status:
+                self.context.logger.info(
+                    "Successfully updated the stored checkpoint timestamp."
+                )
+
+        return is_checkpoint_reached
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -452,11 +528,14 @@ class CallCheckpointBehaviour(
                 self.context.logger.critical("Service has been evicted!")
 
             tx_submitter = self.matching_round.auto_round_id()
+            is_checkpoint_reached = yield from self.check_new_epoch()
             payload = CallCheckpointPayload(
                 self.context.agent_address,
                 tx_submitter,
                 checkpoint_tx_hex,
                 self.service_staking_state.value,
+                self.ts_checkpoint,
+                is_checkpoint_reached,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
