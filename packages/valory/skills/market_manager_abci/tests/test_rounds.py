@@ -138,15 +138,17 @@ class BaseMarketManagerRoundTestClass(BaseCollectSameUntilThresholdRoundTest):
             synchronized_data=self.synchronized_data, context=mock.MagicMock()
         )
 
-        self._test_round(
-            test_round=test_round,
-            round_payloads=test_case.payloads,
-            synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
-                **test_case.final_data
-            ),
-            synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
-            most_voted_payload=test_case.most_voted_payload,
-            exit_event=test_case.event,
+        self._complete_run(
+            self._test_round(
+                test_round=test_round,
+                round_payloads=test_case.payloads,
+                synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
+                    **test_case.final_data
+                ),
+                synchronized_data_attr_checks=test_case.synchronized_data_attr_checks,
+                most_voted_payload=test_case.most_voted_payload,
+                exit_event=test_case.event,
+            )
         )
 
 

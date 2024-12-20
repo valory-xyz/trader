@@ -299,8 +299,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             wallet_balance = self.wallet_balance
             token_balance = self.token_balance
 
-            print(f"WALLET BALANCE: {wallet_balance}")
-
             bets_hash = self.hash_stored_bets() if self.bets else None
             payload = UpdateBetsPayload(
                 self.context.agent_address, bets_hash, wallet_balance, token_balance

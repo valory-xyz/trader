@@ -125,7 +125,7 @@ class BaseUpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractR
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = (get_name(SynchronizedData.bets_hash),)
+    selection_key = get_name(SynchronizedData.bets_hash)
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
 
