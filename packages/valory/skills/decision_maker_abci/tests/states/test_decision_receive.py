@@ -63,6 +63,7 @@ def get_payloads(
     next_mock_data_row: Optional[int],
     is_profitable: Optional[bool],
     bets_hash: str,
+    policy: str,
 ) -> Mapping[str, UpdateBetsPayload]:
     """Get payloads."""
     return {
@@ -73,7 +74,8 @@ def get_payloads(
             bet_amount=bet_amount,
             next_mock_data_row=next_mock_data_row,
             is_profitable=is_profitable,
-            bets_hash=bets_hash,  # Added bets_hash parameter
+            bets_hash=bets_hash,
+            policy=policy,
             decision_received_timestamp=int(datetime.datetime.utcnow().timestamp()),
         )
         for participant in get_participants()
@@ -110,6 +112,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     bet_amount=100,
                     next_mock_data_row=1,
                     is_profitable=True,
+                    policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={
@@ -131,6 +134,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     bet_amount=50,
                     next_mock_data_row=2,
                     is_profitable=False,
+                    policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={
@@ -152,6 +156,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     bet_amount=None,
                     next_mock_data_row=None,
                     is_profitable=True,
+                    policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={},
@@ -168,6 +173,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     bet_amount=None,
                     next_mock_data_row=None,
                     is_profitable=True,
+                    policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={},
@@ -184,6 +190,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     bet_amount=None,
                     next_mock_data_row=None,
                     is_profitable=True,
+                    policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
                 ),
                 final_data={},

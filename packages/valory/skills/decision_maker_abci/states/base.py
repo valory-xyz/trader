@@ -199,6 +199,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return self._get_deserialized("participant_to_tx_prep")
 
     @property
+    def participant_to_handle_failed_tx(self) -> DeserializedCollection:
+        """Get the participants to `HandleFailedTxRound`."""
+        return self._get_deserialized("participant_to_handle_failed_tx")
+
+    @property
     def agreement_id(self) -> str:
         """Get the agreement id."""
         return str(self.db.get_strict("agreement_id"))
@@ -272,6 +277,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def service_staking_state(self) -> StakingState:
         """Get the service's staking state."""
         return StakingState(self.db.get("service_staking_state", 0))
+
+    @property
+    def after_bet_attempt(self) -> bool:
+        """Get the service's staking state."""
+        return bool(self.db.get("after_bet_attempt", False))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
