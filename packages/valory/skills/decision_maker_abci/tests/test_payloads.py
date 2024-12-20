@@ -88,6 +88,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
             {
                 "mech_requests": "dummy mech requests",
                 "mocking_mode": True,
+                "decision_request_timestamp": int(datetime.utcnow().timestamp()),
             },
         ),
         (

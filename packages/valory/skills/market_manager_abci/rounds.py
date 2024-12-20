@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Tuple, Type, cast
+from typing import Any, Dict, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -35,7 +35,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import (
+    BaseUpdateBetsPayload,
+    UpdateBetsPayload,
+)
 
 
 class Event(Enum):
@@ -73,6 +76,30 @@ class SynchronizedData(BaseSynchronizedData):
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
 
+    @property
+    def wallet_balance(self) -> int:
+        """Get the wallet balance."""
+        wallet_balance = self.db.get("wallet_balance", 0)
+        if wallet_balance is None:
+            return 0
+        return int(wallet_balance)
+
+    @property
+    def token_balance(self) -> int:
+        """Get the wallet balance."""
+        token_balance = self.db.get("token_balance", 0)
+        if token_balance is None:
+            return 0
+        return int(token_balance)
+
+    @property
+    def sampled_bet_index(self) -> int:
+        """Get the sampled bet."""
+        sampled_bet_index = self.db.get("sampled_bet_index", 0)
+        if sampled_bet_index is None:
+            return 0
+        return int(sampled_bet_index)
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""
@@ -91,14 +118,30 @@ class MarketManagerAbstractRound(AbstractRound[Event], ABC):
         return self.synchronized_data, Event.NO_MAJORITY
 
 
-class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
+class BaseUpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
     """A round for the bets fetching & updating."""
 
-    payload_class = UpdateBetsPayload
+    payload_class = BaseUpdateBetsPayload
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY
     selection_key = get_name(SynchronizedData.bets_hash)
+    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
+    synchronized_data_class = SynchronizedData
+
+
+class UpdateBetsRound(BaseUpdateBetsRound):
+    """A round for the bets fetching & updating."""
+
+    payload_class: Type[UpdateBetsPayload] = UpdateBetsPayload
+    done_event: Enum = Event.DONE
+    none_event: Enum = Event.FETCH_ERROR
+    no_majority_event: Enum = Event.NO_MAJORITY
+    selection_key: Any = (
+        BaseUpdateBetsRound.selection_key,
+        get_name(SynchronizedData.wallet_balance),
+        get_name(SynchronizedData.token_balance),
+    )
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
 
