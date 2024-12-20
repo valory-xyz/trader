@@ -25,14 +25,14 @@ fingerprint:
   behaviours/reedem.py: bafybeidjmhh6c6shbg25d7exmc4nnp4heqbqselwuxj7rp2ss665lrytxe
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
   behaviours/sampling.py: bafybeicvtxjv5rxlsdrmbtetqwzzau6is47guystvw245grd6s2qs5pxea
-  behaviours/storage_manager.py: bafybeich6xoxty2fbsju5ubhpeikfq2jer2qg7xfrtuavoobpsfz3nnyne
+  behaviours/storage_manager.py: bafybeic6wca37fkwonbsrwme55xnklfbqtheknroudayzfxdge4pxdbm7y
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeidlnqnd7dwg7r2vhsgm2balrqhxm36qdflkmr7csze2kdeu3a7sbu
   handlers.py: bafybeibf42562x3d5i66yf5p3vi6a2oolhwwxr32pjqtuxz5w4gmg3r4oa
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeidys6bdmkrcncx6bqpky3yu3pjbodlzdtbzelugevozc3fgts2mc4
+  models.py: bafybeibifjp45ii5amaghmdk5yjha7if5qpyreg2axpcxcj3ek23ys4fxm
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeidya6626uuvztdf3vhmrazjg2yxafa2iqrxmeh5gddzjjcbano5bi
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -353,6 +353,8 @@ models:
       requests: total_requests
       accuracy: tool_accuracy
       sep: ','
+      max: max
+      datetime_format: '%Y-%m-%d %H:%M:%S'
     class_name: AccuracyInfoFields
   trades_subgraph:
     args:

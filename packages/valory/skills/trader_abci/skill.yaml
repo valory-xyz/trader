@@ -27,8 +27,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/market_manager_abci:0.1.0:bafybeiaru2d32wpmcgqs64eepxud4idgubc3vmsbdwbia7gygipql2mmqi
-- valory/decision_maker_abci:0.1.0:bafybeiajitqnw7nitv534sl7ekfpzvpogrmw6sawiha2u4b3mpd442mh4q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia75xr4li3syofg4teqasxf5cgvy3soubnfdh5lxy52rd37dokxwu
+- valory/decision_maker_abci:0.1.0:bafybeig5oivc24sqhgyxfhjbl2xsoa5yssv72lcu5ezunbcpwu3xo4jglm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifpf3sk5evrvwxyht7mswcml3qy4nhzo5ddvjvgklapwsjwq6mera
 - valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
 - valory/check_stop_trading_abci:0.1.0:bafybeieduekpd4zbvjztyxyooppqnmjvup6jfp74uo6hhupvtvzzscdzkq
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
@@ -293,6 +293,8 @@ models:
       requests: total_requests
       accuracy: tool_accuracy
       sep: ','
+      max: max
+      datetime_format: '%Y-%m-%d %H:%M:%S'
     class_name: AccuracyInfoFields
   network_subgraph:
     args:
