@@ -22,7 +22,7 @@
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
@@ -60,6 +60,8 @@ def get_store_path(kwargs: dict) -> Path:
 
 class StakingParams(BaseParams):
     """Staking parameters."""
+
+    mech_chain_id: Optional[str]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""

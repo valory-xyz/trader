@@ -59,7 +59,6 @@ class TestEstimateConsensusRound(BaseCollectSameUntilThresholdRoundTest):
     @pytest.mark.parametrize(
         "vote, expected_event",
         (
-            (None, HandleFailedTxRound.none_event),
             (True, HandleFailedTxRound.done_event),
             (False, HandleFailedTxRound.no_op_event),
         ),
