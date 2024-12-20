@@ -177,6 +177,8 @@ type: skill
         requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
         accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
         sep: ${ACC_INFO_FIELDS_SEP:str:,}
+        max: ${ACC_INFO_FIELDS_MAX:str:max}
+        datetime_format: ${ACC_INFO_FIELDS_DATETIME_FORMAT:str:%Y-%m-%d %H:%M:%S}
     network_subgraph: &id006
       args:
         headers:

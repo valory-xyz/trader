@@ -274,6 +274,8 @@ models:
       requests: ${str:total_requests}
       accuracy: ${str:tool_accuracy}
       sep: ${str:,}
+      max: ${str:max}
+      datetime_format: ${str:%Y-%m-%d %H:%M:%S}
   network_subgraph:
     args:
       headers:

@@ -568,6 +568,8 @@ class AccuracyInfoFields(Model, TypeCheckMixin):
         self.requests: str = self._ensure("requests", kwargs, str)
         self.accuracy: str = self._ensure("accuracy", kwargs, str)
         self.sep: str = self._ensure("sep", kwargs, str)
+        self.max: str = self._ensure("max", kwargs, str)
+        self.datetime_format: str = self._ensure("datetime_format", kwargs, str)
         super().__init__(*args, **kwargs)
 
 

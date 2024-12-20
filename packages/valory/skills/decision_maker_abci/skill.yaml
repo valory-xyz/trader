@@ -353,6 +353,8 @@ models:
       requests: total_requests
       accuracy: tool_accuracy
       sep: ','
+      max: max
+      datetime_format: '%Y-%m-%d %H:%M:%S'
     class_name: AccuracyInfoFields
   trades_subgraph:
     args:
