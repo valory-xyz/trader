@@ -35,6 +35,7 @@ class DecisionReceivePayload(UpdateBetsPayload):
     confidence: Optional[float]
     bet_amount: Optional[int]
     next_mock_data_row: Optional[int]
+    policy: Optional[str]
     decision_received_timestamp: Optional[int]
 
 
@@ -119,3 +120,10 @@ class BetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
     wallet_balance: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class HandleFailedTxPayload(VotingPayload):
+    """Represents a transaction payload for placing a bet."""
+
+    tx_submitter: str

@@ -81,10 +81,10 @@ transition_func:
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
-    (CheckBenchmarkingModeRound, BLACKLIST): ImpossibleRound
+    (CheckBenchmarkingModeRound, DONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
-    (CheckBenchmarkingModeRound, NO_OP): ImpossibleRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, SUBSCRIPTION_ERROR): ImpossibleRound
     (ClaimRound, DONE): ToolSelectionRound
     (ClaimRound, NO_MAJORITY): ClaimRound
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
