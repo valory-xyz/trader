@@ -1,0 +1,14 @@
+name: market_moving_bet
+author: kongzii
+version: 0.1.0
+type: custom
+description: The market moving bet trading strategy.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeiatntqojmmkgwtqubfzp2zf4viusno2vkf7dfy4b343hmymhtf72y
+  market_moving_bet.py: bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy
+fingerprint_ignore_patterns: []
+entry_point: market_moving_bet.py
+callable: run
+dependencies: {}
