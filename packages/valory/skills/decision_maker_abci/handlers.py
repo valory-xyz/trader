@@ -421,6 +421,7 @@ class HttpHandler(
         agent_address = self.context.agent_address
         safe_address = self.synchronized_data.safe_contract_address
         service_id = self.context.params.on_chain_service_id
+        service_owner_address = self.synchronized_data.service_owner_address
 
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
             self.synchronized_data.wallet_balance
@@ -441,30 +442,30 @@ class HttpHandler(
         )
         n_total_mech_requests = self.synchronized_data.n_mech_requests_this_epoch
 
-        NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
-            native_balance
-        )
-        OLAS_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
-            olas_balance
-        )
-        WXDAI_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
-            wxdai_balance
-        )
+        NATIVE_BALANCE_GAUGE.labels(
+            agent_address, safe_address, service_id, service_owner_address
+        ).set(native_balance)
+        OLAS_BALANCE_GAUGE.labels(
+            agent_address, safe_address, service_id, service_owner_address
+        ).set(olas_balance)
+        WXDAI_BALANCE_GAUGE.labels(
+            agent_address, safe_address, service_id, service_owner_address
+        ).set(wxdai_balance)
         STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
-            agent_address, safe_address, service_id
+            agent_address, safe_address, service_id, service_owner_address
         ).set(staking_contract_available_slots)
-        STAKING_STATE_GAUGE.labels(agent_address, safe_address, service_id).set(
-            staking_state
-        )
+        STAKING_STATE_GAUGE.labels(
+            agent_address, safe_address, service_id, service_owner_address
+        ).set(staking_state)
         TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(
-            agent_address, safe_address, service_id
+            agent_address, safe_address, service_id, service_owner_address
         ).set(time_since_last_successful_mech_tx)
         TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE.labels(
-            agent_address, safe_address, service_id
+            agent_address, safe_address, service_id, service_owner_address
         ).set(time_since_last_mech_tx_attempt)
-        TOTAL_MECH_REQUESTS.labels(agent_address, safe_address, service_id).set(
-            n_total_mech_requests
-        )
+        TOTAL_MECH_REQUESTS.labels(
+            agent_address, safe_address, service_id, service_owner_address
+        ).set(n_total_mech_requests)
 
     def calculate_time_since_last_successful_mech_tx(self) -> int:
         """Calculate the time since the last successful mech transaction (mech response)."""
@@ -496,55 +497,55 @@ REGISTRY = CollectorRegistry()
 NATIVE_BALANCE_GAUGE = Gauge(
     "olas_agent_native_balance",
     "Native token balance in xDai",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 OLAS_BALANCE_GAUGE = Gauge(
     "olas_agent_olas_balance",
     "OLAS token balance",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 WXDAI_BALANCE_GAUGE = Gauge(
     "olas_agent_wxdai_balance",
     "WXDAI token balance",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge(
     "olas_staking_contract_available_slots",
     "Number of available slots in the staking contract",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 STAKING_STATE_GAUGE = Gauge(
     "olas_agent_staked",
     "Indicates if an agent is staked (1), not staked (0) or eviceted (2)",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge(
     "olas_agent_time_since_last_successful_tx",
     "Time in seconds since last successful mech transaction",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE = Gauge(
     "olas_agent_time_since_last_mech_tx_attempt",
     "Time in seconds since last transaction attempt (successful or not)",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )
 
 TOTAL_MECH_REQUESTS = Gauge(
     "olas_agent_mech_requests",
     "Total number of mech requests made by the agent this epoch",
-    ["agent_address", "safe_address", "service_id"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address"],
     registry=REGISTRY,
 )

@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Any, Dict, Set, Tuple, Type, cast
+from typing import Any, Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -108,6 +108,14 @@ class SynchronizedData(BaseSynchronizedData):
             return 0
         return int(sampled_bet_index)
 
+    @property
+    def service_owner_address(self) -> Optional[str]:
+        """Get the service owner address."""
+        service_owner_address = self.db.get("service_owner_address", None)
+        if service_owner_address is None:
+            return None
+        return str(service_owner_address)
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""
@@ -150,6 +158,7 @@ class UpdateBetsRound(BaseUpdateBetsRound):
         get_name(SynchronizedData.wallet_balance),
         get_name(SynchronizedData.token_balance),
         get_name(SynchronizedData.olas_balance),
+        get_name(SynchronizedData.service_owner_address),
     )
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData

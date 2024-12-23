@@ -28,6 +28,7 @@ from typing import Any, Dict, Generator, List, Optional, Set, Type
 from aea.helpers.ipfs.base import IPFSHashOnly
 
 from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.contracts.service_registry.contract import ServiceRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
@@ -70,8 +71,8 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
         self.token_balance = 0
         self.wallet_balance = 0
-        self.native_balance = 0
         self.olas_balance = 0
+        self.service_owner_address = ""
 
     @property
     def synchronized_data(self) -> SynchronizedData:
@@ -204,6 +205,28 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.olas_balance = int(token)
         return True
 
+    def _get_service_owner(self) -> WaitableConditionType:
+        """Method that returns the service owner."""
+        response = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_id=str(ServiceRegistryContract.contract_id),
+            contract_callable="get_service_owner",
+            contract_address=self.params.service_registry_address,
+            service_id=self.params.on_chain_service_id,
+            chain_id=self.params.default_chain_id,
+        )
+
+        if response.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.error(
+                f"Couldn't get the service owner for service with id={self.params.on_chain_service_id}. "
+                f"Expected response performative {ContractApiMessage.Performative.STATE.value}, "  # type: ignore
+                f"received {response.performative.value}."
+            )
+            return False
+
+        self.service_owner_address = response.state.body.get("service_owner", None)
+        return True
+
 
 class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets."""
@@ -315,6 +338,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             wallet_balance = self.wallet_balance
             token_balance = self.token_balance
 
+            yield from self._get_service_owner()
+            service_owner_address = self.service_owner_address
+
             bets_hash = self.hash_stored_bets() if self.bets else None
             payload = UpdateBetsPayload(
                 self.context.agent_address,
@@ -322,6 +348,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 wallet_balance,
                 token_balance,
                 olas_balance,
+                service_owner_address,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
