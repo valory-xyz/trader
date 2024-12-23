@@ -66,14 +66,6 @@ class SynchronizedData(BaseSynchronizedData):
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
 
-    @property
-    def n_mech_requests(self) -> int:
-        """Get the number of mech requests."""
-        n_mech_requests = self.db.get("n_mech_requests", 0)
-        if n_mech_requests is None:
-            return 0
-        return n_mech_requests
-
 
 class CheckStopTradingRound(VotingRound):
     """A round for checking stop trading conditions."""
@@ -87,13 +79,13 @@ class CheckStopTradingRound(VotingRound):
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
     @property
-    def mech_request_count(self) -> int:
+    def n_mech_requests_this_epoch(self) -> int:
         """Get the mech request count from the payload."""
         payload = self.payloads[0]
 
-        if not hasattr(payload, "mech_request_count"):
+        if not hasattr(payload, "n_mech_requests_this_epoch"):
             return 0
-        return payload.mech_request_count
+        return payload.n_mech_requests_this_epoch
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
@@ -103,10 +95,11 @@ class CheckStopTradingRound(VotingRound):
             return None
 
         is_staking_kpi_met = self.positive_vote_threshold_reached
-        n_mech_requests = self.mech_request_count
+        n_mech_requests_this_epoch = self.n_mech_requests_this_epoch
 
         self.synchronized_data.update(
-            is_staking_kpi_met=is_staking_kpi_met, n_mech_requests=n_mech_requests
+            is_staking_kpi_met=is_staking_kpi_met,
+            n_mech_requests_this_epoch=n_mech_requests_this_epoch,
         )
 
         return res

@@ -30,4 +30,4 @@ class CheckStopTradingPayload(BaseTxPayload):
     """A transaction payload for the check stop trading abci."""
 
     vote: bool
-    mech_request_count: Optional[int]
+    n_mech_requests_this_epoch: Optional[int]

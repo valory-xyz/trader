@@ -26,9 +26,11 @@ from packages.valory.skills.check_stop_trading_abci.payloads import (
 def test_check_stop_trading_payload() -> None:
     """Test `CheckStopTradingPayload`."""
 
-    payload = CheckStopTradingPayload(sender="sender", vote=True, mech_request_count=1)
+    payload = CheckStopTradingPayload(
+        sender="sender", vote=True, n_mech_requests_this_epoch=1
+    )
 
     assert payload.vote
-    assert payload.mech_request_count
+    assert payload.n_mech_requests_this_epoch
     assert payload.data == {"vote": True, "mech_request_count": 1}
     assert CheckStopTradingPayload.from_json(payload.json) == payload

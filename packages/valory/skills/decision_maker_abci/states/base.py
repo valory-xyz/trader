@@ -278,20 +278,12 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
         return StakingState(self.db.get("service_staking_state", 0))
 
     @property
-    def n_mech_requests(self) -> int:
+    def n_mech_requests_this_epoch(self) -> int:
         """Get the number of mech requests."""
-        n_mech_requests = self.db.get("n_mech_requests", 0)
-        if n_mech_requests is None:
+        n_mech_requests_this_epoch = self.db.get("n_mech_requests_this_epoch", 0)
+        if n_mech_requests_this_epoch is None:
             return 0
-        return n_mech_requests
-
-    @property
-    def token_balance(self) -> int:
-        """Get the token balance."""
-        token_balance = self.db.get("token_balance", 0)
-        if token_balance is None:
-            return 0
-        return int(token_balance)
+        return n_mech_requests_this_epoch
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

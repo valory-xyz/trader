@@ -172,6 +172,9 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
 
         self.token_balance = int(token)
         self.wallet_balance = int(wallet)
+
+        self.context.logger.info("Balances updated.")
+
         return True
 
     def get_olas_balance(self) -> WaitableConditionType:
@@ -295,7 +298,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.store_bets()
 
             # set the balances
-            self.get_balance()
+            yield from self.get_balance()
             wallet_balance = self.wallet_balance
             token_balance = self.token_balance
 

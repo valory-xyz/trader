@@ -29,16 +29,16 @@ fingerprint:
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigwlvvi6fav72wg4wz22xjekegenzjnub5efwz5xu6qsrjnxluspq
-  handlers.py: bafybeie35jlzzy3kf3kayw5wokywkv35c2vv5q2ikxniuxlnsmvs6uwubu
+  handlers.py: bafybeifwy4x7diuwo73xlseberyq4dyrbyhvajbgvmyfstj3vbyvnrfm3u
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeidhdqgwcgn4rrncufpdmkbcye7xfqd6ytow7zx3hbcpsgpjmxgfmm
   payloads.py: bafybeicgpilyalsnnlygecbooxjpxywcwscyf7saj42m6qr5cuvl4elkji
   policy.py: bafybeihlzs4o5e7yfmfzcvvrzkf4bhxfsg5gxnzsrpepwgfugh45gafye4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
-  rounds.py: bafybeiazjcsukgefair52aw37hhvxzlopnzqqmi4ntqrinakljlcm4kt4a
+  rounds.py: bafybeif3lbithuwljc7hwnoukk5guemym4dh24po52xkg2act73jbd43sa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeifjbh4hy5pv74gworu4qke6lp7b5x3hofnitlbuutrz7ev7wth4ra
+  states/base.py: bafybeiamq2rv5f7lfdbz22fq6pirz5l2tk7a6tdwq2ojghxkgtjebp3sgu
   states/bet_placement.py: bafybeid6ffwooqeb2uj3f5t2iy7ffoeltoyc76jqzn6x4yjezgvofnsasm
   states/blacklisting.py: bafybeidqi356wrxmvj2hqs22hw3kaszh4fg4rs3fo5axk2biosxt6kfbiy
   states/check_benchmarking.py: bafybeiabv6pq7q45jd3nkor5afmlycqgec5ctuwcfbdukkjjm4imesv4ni
@@ -101,7 +101,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeicyfwbse4smcqutejtxkucxmgz3zwd2xbu5ssey2idz6qrgdeyxme
+- valory/market_manager_abci:0.1.0:bafybeidfyf6irz72yll5tx3yhddw76ffdrsdgtf5qcmrjymqmvqdvhl7hm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 - valory/staking_abci:0.1.0:bafybeihwaf4gimmzhytwyzujxpg4gt4iq3wpoz5zyduxhbxo2uezm2scg4

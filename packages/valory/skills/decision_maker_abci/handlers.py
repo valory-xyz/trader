@@ -130,12 +130,12 @@ class HttpHandler(
         self._time_since_last_successful_mech_tx: int = 0
 
     @property
-    def time_since_last_successful_mech_tx(self) -> int:
+    def last_successful_mech_tx_ts(self) -> int:
         """Get the time since the last successful mech response in seconds."""
         return self._time_since_last_successful_mech_tx
 
-    @time_since_last_successful_mech_tx.setter
-    def time_since_last_successful_mech_tx(
+    @last_successful_mech_tx_ts.setter
+    def last_successful_mech_tx_ts(
         self, time_since_last_successful_mech_tx: int
     ) -> None:
         """Set the time since the last successful mech response in seconds."""
@@ -436,9 +436,7 @@ class HttpHandler(
         time_since_last_mech_tx_attempt = (
             self.calculate_time_since_last_mech_tx_attempt()
         )
-        n_total_mech_requests = self.synchronized_data.n_mech_requests
-        n_successful_mech_requests = len(self.synchronized_data.mech_responses)
-        n_failed_mech_requests = n_total_mech_requests - n_successful_mech_requests
+        n_total_mech_requests = self.synchronized_data.n_mech_requests_this_epoch
 
         NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
             native_balance
@@ -458,36 +456,19 @@ class HttpHandler(
         TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE.labels(
             agent_address, safe_address, service_id
         ).set(time_since_last_mech_tx_attempt)
-        TOTAL_MECH_TXS.labels(agent_address, safe_address, service_id).set(
+        TOTAL_MECH_REQUESTS.labels(agent_address, safe_address, service_id).set(
             n_total_mech_requests
-        )
-        TOTAL_SUCCESSFUL_MECH_TXS.labels(agent_address, safe_address, service_id).set(
-            n_successful_mech_requests
-        )
-        TOTAL_FAILED_MECH_TXS.labels(agent_address, safe_address, service_id).set(
-            n_failed_mech_requests
         )
 
     def calculate_time_since_last_successful_mech_tx(self) -> int:
         """Calculate the time since the last successful mech transaction (mech response)."""
 
-        previous_time_since_last_successful_mech_tx = (
-            self.time_since_last_successful_mech_tx
-        )
         mech_tx_ts = self.synchronized_data.decision_receive_timestamp
         now = int(datetime.now().timestamp())
         seconds_since_last_successful_mech_tx = 0
 
         if mech_tx_ts != 0:
             seconds_since_last_successful_mech_tx = now - mech_tx_ts
-            self.time_since_last_successful_mech_tx = (
-                seconds_since_last_successful_mech_tx
-            )
-
-        elif previous_time_since_last_successful_mech_tx != 0:
-            seconds_since_last_successful_mech_tx = (
-                now - previous_time_since_last_successful_mech_tx
-            )
 
         return seconds_since_last_successful_mech_tx
 
@@ -555,23 +536,9 @@ TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE = Gauge(
     registry=REGISTRY,
 )
 
-TOTAL_MECH_TXS = Gauge(
-    "olas_agent_txs",
-    "Total number of transactions",
-    ["agent_address", "safe_address", "service_id"],
-    registry=REGISTRY,
-)
-
-TOTAL_SUCCESSFUL_MECH_TXS = Gauge(
-    "olas_successful_agent_txs",
-    "Total successful number of transactions",
-    ["agent_address", "safe_address", "service_id"],
-    registry=REGISTRY,
-)
-
-TOTAL_FAILED_MECH_TXS = Gauge(
-    "olas_failed_agent_txs",
-    "Total failed number of transaction",
+TOTAL_MECH_REQUESTS = Gauge(
+    "olas_agent_mech_requests",
+    "Total number of mech requests made by the agent this epoch",
     ["agent_address", "safe_address", "service_id"],
     registry=REGISTRY,
 )

@@ -85,7 +85,7 @@ def get_participant_to_votes(
 
     return {
         participant: CheckStopTradingPayload(
-            sender=participant, vote=vote, mech_request_count=1
+            sender=participant, vote=vote, n_mech_requests_this_epoch=1
         )
         for participant in participants
     }
