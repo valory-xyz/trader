@@ -199,6 +199,11 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
         return self._get_deserialized("participant_to_tx_prep")
 
     @property
+    def participant_to_handle_failed_tx(self) -> DeserializedCollection:
+        """Get the participants to `HandleFailedTxRound`."""
+        return self._get_deserialized("participant_to_handle_failed_tx")
+
+    @property
     def agreement_id(self) -> str:
         """Get the agreement id."""
         return str(self.db.get_strict("agreement_id"))
@@ -244,10 +249,6 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
         serialized = self.db.get("mech_responses", "[]")
         if serialized is None:
             serialized = "[]"
-
-        if isinstance(serialized, list):
-            serialized = json.dumps(serialized)
-
         responses = json.loads(serialized)
         return [MechInteractionResponse(**response_item) for response_item in responses]
 
@@ -284,6 +285,11 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
         if n_mech_requests_this_epoch is None:
             return 0
         return n_mech_requests_this_epoch
+
+    @property
+    def after_bet_attempt(self) -> bool:
+        """Get the service's staking state."""
+        return bool(self.db.get("after_bet_attempt", False))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

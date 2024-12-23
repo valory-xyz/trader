@@ -19,14 +19,16 @@
 
 """This module contains a state of the decision-making abci app which checks if the benchmarking mode is enabled."""
 
+from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
-    HandleFailedTxRound,
+from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
+    ClaimRound,
 )
 
 
-class CheckBenchmarkingModeRound(HandleFailedTxRound):
+class CheckBenchmarkingModeRound(ClaimRound):
     """A round for checking whether the benchmarking mode is enabled."""
 
+    payload_class = VotingPayload
     done_event = Event.BENCHMARKING_ENABLED
     negative_event = Event.BENCHMARKING_DISABLED

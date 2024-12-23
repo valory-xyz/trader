@@ -93,8 +93,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - benchmarking disabled: 14.
             - no majority: 0.
             - round timeout: 0.
-            - no op: 20.
-            - blacklist: 20.
+            - done: 20.
+            - subscription error: 20.
         1. BenchmarkingRandomnessRound
             - done: 3.
             - round timeout: 1.
@@ -202,8 +202,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs`
             # falsely reporting them as missing from the transition
-            Event.NO_OP: ImpossibleRound,
-            Event.BLACKLIST: ImpossibleRound,
+            Event.DONE: ImpossibleRound,
+            Event.SUBSCRIPTION_ERROR: ImpossibleRound,
         },
         BenchmarkingRandomnessRound: {
             Event.DONE: SamplingRound,

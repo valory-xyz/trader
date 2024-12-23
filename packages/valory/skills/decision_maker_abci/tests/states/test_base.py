@@ -168,7 +168,9 @@ def test_policy_property(
     mock_policy_serialized = "serialized_policy_string"
     mocked_db.get_strict.return_value = mock_policy_serialized
 
-    expected_policy = EGreedyPolicy(eps=0.1)
+    expected_policy = EGreedyPolicy(
+        eps=0.1, consecutive_failures_threshold=1, quarantine_duration=0
+    )
     mock_deserialize.return_value = expected_policy
 
     result = sync_data.policy
@@ -198,7 +200,10 @@ def test_weighted_accuracy(sync_data: SynchronizedData, mocked_db: MagicMock) ->
     selected_mech_tool = "tool1"
     policy_db_name = "policy"
     policy_mock = EGreedyPolicy(
-        eps=0.1, accuracy_store={selected_mech_tool: AccuracyInfo(requests=1)}
+        eps=0.1,
+        consecutive_failures_threshold=1,
+        quarantine_duration=0,
+        accuracy_store={selected_mech_tool: AccuracyInfo(requests=1)},
     ).serialize()
     mocked_db.get_strict = lambda name: (
         policy_mock if name == policy_db_name else selected_mech_tool

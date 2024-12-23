@@ -19,7 +19,13 @@
 
 """This module contains the decision receiving state of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
+from typing import Type
+
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseTxPayload,
+    VotingRound,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import ClaimPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -30,7 +36,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 class ClaimRound(VotingRound):
     """A round for preparing a transaction."""
 
-    payload_class = ClaimPayload
+    payload_class: Type[BaseTxPayload] = ClaimPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     negative_event = Event.SUBSCRIPTION_ERROR
