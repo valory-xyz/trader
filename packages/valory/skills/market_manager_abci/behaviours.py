@@ -28,7 +28,6 @@ from typing import Any, Dict, Generator, List, Optional, Set, Type
 from aea.helpers.ipfs.base import IPFSHashOnly
 
 from packages.valory.contracts.erc20.contract import ERC20
-from packages.valory.contracts.staking_token.contract import StakingTokenContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
@@ -52,12 +51,12 @@ from packages.valory.skills.market_manager_abci.rounds import (
 
 WaitableConditionType = Generator[None, None, bool]
 
-
 BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"
 WRITE_MODE = "w"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+OLAS_TOKEN_ADDRESS = "0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f"
 
 
 class BetsManagerBehaviour(BaseBehaviour, ABC):
@@ -72,6 +71,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.token_balance = 0
         self.wallet_balance = 0
         self.native_balance = 0
+        self.olas_balance = 0
 
     @property
     def synchronized_data(self) -> SynchronizedData:
@@ -178,11 +178,12 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         return True
 
     def get_olas_balance(self) -> WaitableConditionType:
-        """Get the safe's olas balance."""
+        """Get the safe's olas balance in wei."""
+
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address="0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f",
-            contract_id=str(StakingTokenContract.contract_id),
+            contract_address=OLAS_TOKEN_ADDRESS,
+            contract_id=str(ERC20.contract_id),
             contract_callable="check_balance",
             account=self.synchronized_data.safe_contract_address,
         )
@@ -191,6 +192,16 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
                 f"Could not calculate the balance of the safe: {response_msg}"
             )
             return False
+
+        token = response_msg.raw_transaction.body.get("token", None)
+        wallet = response_msg.raw_transaction.body.get("wallet", None)
+        if token is None or wallet is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to get the balance of the safe: {response_msg}"
+            )
+            return False
+
+        self.olas_balance = int(token)
         return True
 
 
@@ -299,12 +310,18 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
             # set the balances
             yield from self.get_balance()
+            yield from self.get_olas_balance()
+            olas_balance = self.olas_balance
             wallet_balance = self.wallet_balance
             token_balance = self.token_balance
 
             bets_hash = self.hash_stored_bets() if self.bets else None
             payload = UpdateBetsPayload(
-                self.context.agent_address, bets_hash, wallet_balance, token_balance
+                self.context.agent_address,
+                bets_hash,
+                wallet_balance,
+                token_balance,
+                olas_balance,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

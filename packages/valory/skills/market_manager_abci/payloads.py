@@ -38,3 +38,4 @@ class UpdateBetsPayload(BaseUpdateBetsPayload):
 
     wallet_balance: Optional[int]
     token_balance: Optional[int]
+    olas_balance: Optional[int]

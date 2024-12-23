@@ -93,6 +93,14 @@ class SynchronizedData(BaseSynchronizedData):
         return int(token_balance)
 
     @property
+    def olas_balance(self) -> int:
+        """Get the wallet balance."""
+        olas_balance = self.db.get("olas_balance", 0)
+        if olas_balance is None:
+            return 0
+        return int(olas_balance)
+
+    @property
     def sampled_bet_index(self) -> int:
         """Get the sampled bet."""
         sampled_bet_index = self.db.get("sampled_bet_index", 0)
@@ -141,6 +149,7 @@ class UpdateBetsRound(BaseUpdateBetsRound):
         BaseUpdateBetsRound.selection_key,
         get_name(SynchronizedData.wallet_balance),
         get_name(SynchronizedData.token_balance),
+        get_name(SynchronizedData.olas_balance),
     )
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData

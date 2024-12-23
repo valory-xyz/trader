@@ -425,6 +425,9 @@ class HttpHandler(
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
             self.synchronized_data.wallet_balance
         )
+        olas_balance = DecisionMakerBaseBehaviour.wei_to_native(
+            self.synchronized_data.olas_balance
+        )
         wxdai_balance = self.synchronized_data.token_balance
         staking_contract_available_slots = (
             self.synchronized_data.available_staking_slots
@@ -440,6 +443,9 @@ class HttpHandler(
 
         NATIVE_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
             native_balance
+        )
+        OLAS_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
+            olas_balance
         )
         WXDAI_BALANCE_GAUGE.labels(agent_address, safe_address, service_id).set(
             wxdai_balance

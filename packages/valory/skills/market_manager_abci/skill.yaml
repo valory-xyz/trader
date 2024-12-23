@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeiarvnoautczggn3pzn2l6qiw23yhy4raqbhvcjf52p234sc5yz3qm
+  behaviours.py: bafybeif6c7mrjpoo2rqpgv7hqyamgeuitkjhoz24xbnfqnyvtzi4lwdtmy
   bets.py: bafybeibx3x5nasuj6loneeat2lb7fr7kgsmnz7on7f4gxfbpzerzdvawou
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
@@ -23,18 +23,17 @@ fingerprint:
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeibjttnga54y4auz6f33ecfrngyw53b2xzpompm72drjsr4xoytmiy
-  payloads.py: bafybeigaoni6raoz4ebdghe5jhvmjkuldkocwg2qbxj2cr62454ed2voae
-  rounds.py: bafybeic655jrb3oc3sr4fufc2n6psxhvbw4pw24qpbblzhbmbinwl242aq
+  payloads.py: bafybeiedeo677yrjphfr5og37mt4emf6cwpmxwzdnfxyrr73shu33pyqd4
+  rounds.py: bafybeihffhpi5ewa2mrnseocoj3fq7klyw5u3vomvwidvqxiudb2ellzw4
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
   tests/test_payloads.py: bafybeia3qstr7ieu2nenznqtmuvipmnequkcp5vwefl7buinckwttx674m
-  tests/test_rounds.py: bafybeiejxlbcmzb654bmjkbe2bamm25qo6imvnf2jt4fi4fq26j2s4q4ju
+  tests/test_rounds.py: bafybeidzooq3km7al3ix4hhozpj7g6rmgruoatufndjyms5wuzztw4qkye
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
-- valory/staking_token:0.1.0:bafybeiep4r6qyilbfgzdvx6t7zvpgaioxqktmxm7puwtnbpb2ftlib43gy
 protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i

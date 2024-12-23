@@ -89,6 +89,7 @@ def get_payloads(
     bets_hash: Optional[str],
     wallet_balance: Optional[int],
     token_balance: Optional[int],
+    olas_balance: Optional[int],
 ) -> Mapping[str, BaseTxPayload]:
     """Get payloads."""
     return {
@@ -97,6 +98,7 @@ def get_payloads(
             bets_hash=bets_hash,
             wallet_balance=wallet_balance,
             token_balance=token_balance,
+            olas_balance=olas_balance,
         )
         for participant in get_participants()
     }
@@ -170,6 +172,7 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                     bets_hash=DUMMY_BETS_HASH,
                     wallet_balance=1,
                     token_balance=1,
+                    olas_balance=1,
                 ),
                 final_data={
                     "bets_hash": DUMMY_BETS_HASH,
@@ -188,6 +191,7 @@ class TestUpdateBetsRound(BaseMarketManagerRoundTestClass):
                     bets_hash=None,
                     wallet_balance=None,
                     token_balance=None,
+                    olas_balance=None,
                 ),
                 final_data={},
                 event=Event.FETCH_ERROR,
