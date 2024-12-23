@@ -72,7 +72,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.token_balance = 0
         self.wallet_balance = 0
         self.olas_balance = 0
-        self.service_owner_address = ""
+        self.service_owner_address = None
 
     @property
     def synchronized_data(self) -> SynchronizedData:
