@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicls2tptdt77w46xsk7njext4mhmrs22rsvbzre2vwqglur26d2p4
+agent: valory/trader:0.1.0:bafybeifoahwpraff5m5ymcyrjrh4hcgcaaodvwk4knic5olcttfcclvuym
 number_of_agents: 1
 deployment:
   agent:
@@ -107,6 +107,7 @@ models:
       mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
       mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
       tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+      olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
   benchmark_tool:
     args:
       log_dir: /benchmarks

@@ -23,7 +23,7 @@ import json
 import os.path
 from abc import ABC
 from json import JSONDecodeError
-from typing import Any, Dict, Generator, List, Optional, Set, Type
+from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
 from aea.helpers.ipfs.base import IPFSHashOnly
 
@@ -42,6 +42,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QueryingBehaviour,
 )
+from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
     MarketManagerAbciApp,
@@ -57,7 +58,6 @@ MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"
 WRITE_MODE = "w"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-OLAS_TOKEN_ADDRESS = "0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f"
 
 
 class BetsManagerBehaviour(BaseBehaviour, ABC):
@@ -73,6 +73,11 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.wallet_balance = 0
         self.olas_balance = 0
         self.service_owner_address = None
+
+    @property
+    def params(self) -> MarketManagerParams:
+        """Return the params."""
+        return cast(MarketManagerParams, self.context.params)
 
     @property
     def synchronized_data(self) -> SynchronizedData:
@@ -183,7 +188,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
 
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=OLAS_TOKEN_ADDRESS,
+            contract_address=self.params.olas_token_address,
             contract_id=str(ERC20.contract_id),
             contract_callable="check_balance",
             account=self.synchronized_data.safe_contract_address,

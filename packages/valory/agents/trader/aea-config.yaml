@@ -46,10 +46,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaxjpv44g5estpr2pmccgfyv5iywq6htmmns7md4c33rilolyzqxq
-- valory/market_manager_abci:0.1.0:bafybeiejkh7xrqqgw7c45yu2wshrleld6h6dbkr7djcxeqwysvcoghyole
-- valory/decision_maker_abci:0.1.0:bafybeigxhrvngsdlujmoialunj63cuubz2x3guo666bwtazi5ldc5wvoui
-- valory/trader_abci:0.1.0:bafybeihpkbw26e3j673rd5std76y5idjmg5uyl6l6ngtpukyq6frm2m6hq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihonvyfs2lc4olih2jirqmzbngccsxsrxqkkzfaqltjm7vkrnjrya
+- valory/market_manager_abci:0.1.0:bafybeiaempf6otwzyjssxsztskv2zdv7ohsher2wkbzemsjcv2h47zuqsi
+- valory/decision_maker_abci:0.1.0:bafybeid52rs2v2zpognldegvlfbzbtchyfccchl7zqusvnbi77h7wti77y
+- valory/trader_abci:0.1.0:bafybeid4iscyvaga6eklhpvvannkfboazmig7p5yy447ma6i4x7ejnacma
 - valory/staking_abci:0.1.0:bafybeihwaf4gimmzhytwyzujxpg4gt4iq3wpoz5zyduxhbxo2uezm2scg4
 - valory/check_stop_trading_abci:0.1.0:bafybeigcvlllbqzn632nmw3eowwkesthlqk56ls4x22tytilver4sasetq
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
@@ -250,6 +250,7 @@ models:
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
       tool_quarantine_duration: ${int:18000}
+      olas_token_address: ${str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
