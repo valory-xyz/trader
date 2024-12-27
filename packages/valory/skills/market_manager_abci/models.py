@@ -100,6 +100,7 @@ class MarketManagerParams(BaseParams):
         self.the_graph_payment_required_error: str = self._ensure(
             "the_graph_payment_required_error", kwargs, str
         )
+        self.olas_token_address: str = self._ensure("olas_token_address", kwargs, str)
         super().__init__(*args, **kwargs)
 
     @property

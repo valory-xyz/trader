@@ -26,11 +26,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
-- valory/market_manager_abci:0.1.0:bafybeiaru2d32wpmcgqs64eepxud4idgubc3vmsbdwbia7gygipql2mmqi
-- valory/decision_maker_abci:0.1.0:bafybeig5oivc24sqhgyxfhjbl2xsoa5yssv72lcu5ezunbcpwu3xo4jglm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifpf3sk5evrvwxyht7mswcml3qy4nhzo5ddvjvgklapwsjwq6mera
-- valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
-- valory/check_stop_trading_abci:0.1.0:bafybeieduekpd4zbvjztyxyooppqnmjvup6jfp74uo6hhupvtvzzscdzkq
+- valory/market_manager_abci:0.1.0:bafybeiaempf6otwzyjssxsztskv2zdv7ohsher2wkbzemsjcv2h47zuqsi
+- valory/decision_maker_abci:0.1.0:bafybeid52rs2v2zpognldegvlfbzbtchyfccchl7zqusvnbi77h7wti77y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihonvyfs2lc4olih2jirqmzbngccsxsrxqkkzfaqltjm7vkrnjrya
+- valory/staking_abci:0.1.0:bafybeihwaf4gimmzhytwyzujxpg4gt4iq3wpoz5zyduxhbxo2uezm2scg4
+- valory/check_stop_trading_abci:0.1.0:bafybeigcvlllbqzn632nmw3eowwkesthlqk56ls4x22tytilver4sasetq
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 behaviours:
   main:
@@ -260,6 +260,7 @@ models:
       mech_invalid_response: Invalid Response
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
+      olas_token_address: '0x0000000000000000000000000000000000000000'
     class_name: TraderParams
   benchmarking_mode:
     args:

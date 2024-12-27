@@ -93,9 +93,11 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             payload_content = None
             mocking_mode: Optional[bool] = self.benchmarking_mode.enabled
+            decision_request_timestamp = None
             if self._metadata and self.n_slots_supported:
                 mech_requests = [self.metadata]
                 payload_content = json.dumps(mech_requests, sort_keys=True)
+                decision_request_timestamp = self.synced_timestamp
             if not self.n_slots_supported:
                 mocking_mode = None
 
@@ -106,5 +108,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
                     self.shared_state.bet_id_row_manager = bets_mapping
 
             agent = self.context.agent_address
-            payload = DecisionRequestPayload(agent, payload_content, mocking_mode)
+            payload = DecisionRequestPayload(
+                agent, payload_content, mocking_mode, decision_request_timestamp
+            )
         yield from self.finish_behaviour(payload)
