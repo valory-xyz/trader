@@ -27,4 +27,4 @@ ae28aeb8ad56e1873bfb3996c5d5ad8367709cd1:packages/valory/skills/decision_maker_a
 ae28aeb8ad56e1873bfb3996c5d5ad8367709cd1:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:154
 9d8617ddd58c172f8d9dd32a7b74f22aa3d27dfb:packages/valory/skills/mech_interact_abci/skill.yaml:generic-api-key:151
 0b4170ce2e876c28a9585081117e6468db17f0b9:packages/valory/services/trader_omen_gnosis/service.yaml:generic-api-key:48
-0c54647f03886d75fca4522420ea72b58d6c3dcc:packages/valory/skills/market_manager_abci/behaviours.py:generic-api-key:59
+518f4ec1e1b80f45420c3626613833a27b0aab5d:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:263
