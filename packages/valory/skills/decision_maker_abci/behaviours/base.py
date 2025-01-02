@@ -70,6 +70,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     CONFIDENCE_FIELD,
     P_NO_FIELD,
     P_YES_FIELD,
+    INFO_UTILITY_FIELD,
     PredictionResponse,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
@@ -683,6 +684,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     P_YES_FIELD,
                     P_NO_FIELD,
                     CONFIDENCE_FIELD,
+                    INFO_UTILITY_FIELD,
                     self.benchmarking_mode.bet_amount_field,
                     L0_START_FIELD,
                     L1_START_FIELD,
@@ -701,6 +703,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 prediction_response.p_yes,
                 prediction_response.p_no,
                 prediction_response.confidence,
+                prediction_response.info_utility,
                 bet_amount,
                 liquidity_info.l0_start,
                 liquidity_info.l1_start,

@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiczpkr2drsdppith4foyeby6zf5uxugjfjfhl7yocvr3mcdkjzjpa
+agent: valory/trader:0.1.0:bafybeih7e4kaltw3pl2ux7on7ecc7rzpy5zej24xec3axd5tflgty6a5ku
 number_of_agents: 4
 deployment:
   agent:
@@ -167,6 +167,7 @@ type: skill
         p_yes_field_part: ${BENCHMARKING_MODE_P_YES_FIELD_PART:str:p_yes_}
         p_no_field_part: ${BENCHMARKING_MODE_P_NO_FIELD_PART:str:p_no_}
         confidence_field_part: ${BENCHMARKING_MODE_CONFIDENCE_FIELD_PART:str:confidence_}
+        info_utility_field_part: ${BENCHMARKING_MODE_INFO_UTILITY_FIELD_PART:str:info_utility_}
         part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}

@@ -157,6 +157,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             P_YES_FIELD: mode.p_yes_field_part,
             P_NO_FIELD: mode.p_no_field_part,
             CONFIDENCE_FIELD: mode.confidence_field_part,
+            INFO_UTILITY_FIELD: mode.info_utility_field_part,
         }.items():
             if mode.part_prefix_mode:
                 fields[prediction_attribute] = row[field_part + mech_tool]
@@ -171,8 +172,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             float(fields[P_YES_FIELD]),
         )
 
-        # set the info utility to zero as it does not matter for the benchmark
-        fields[INFO_UTILITY_FIELD] = "0"
         return json.dumps(fields)
 
     def _mock_response(self) -> None:
@@ -329,9 +328,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.shared_state.current_liquidity_prices = (
                 active_sampled_bet.outcomeTokenMarginalPrices
             )
-            self.shared_state.liquidity_cache[
-                question_id
-            ] = active_sampled_bet.scaledLiquidityMeasure
+            self.shared_state.liquidity_cache[question_id] = (
+                active_sampled_bet.scaledLiquidityMeasure
+            )
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -398,11 +397,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
-        self.shared_state.liquidity_cache[
-            market_id
-        ] = self._compute_scaled_liquidity_measure(
-            self.shared_state.current_liquidity_amounts,
-            self.shared_state.current_liquidity_prices,
+        self.shared_state.liquidity_cache[market_id] = (
+            self._compute_scaled_liquidity_measure(
+                self.shared_state.current_liquidity_amounts,
+                self.shared_state.current_liquidity_prices,
+            )
         )
 
         return liquidity_info
