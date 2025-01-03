@@ -38,7 +38,7 @@ models:
       tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
       tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_0:str:node0:26656}
       creator_per_subgraph:
-        omen_subgraph: ${OMEN_CREATORS:list:["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}
+        omen_subgraph: ${OMEN_CREATORS:list:["0xFfc8029154ECD55ABED15BD428bA596E7D23f557"]}
       slot_count: ${SLOT_COUNT:int:2}
       opening_margin: ${OPENING_MARGIN:int:300}
       languages: ${LANGUAGES:list:["en_US"]}
