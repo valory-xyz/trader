@@ -126,6 +126,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         else:
             # no more bets available for this market
             msg = f"No more mock responses for the market with id: {sampled_bet_id}"
+            self.sampled_bet.queue_status = (
+                self.sampled_bet.queue_status.mark_benchmarking_done()
+            )
             self.context.logger.info(msg)
             self.shared_state.last_benchmarking_has_run = True
             self._rows_exceeded = True
@@ -328,9 +331,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.shared_state.current_liquidity_prices = (
                 active_sampled_bet.outcomeTokenMarginalPrices
             )
-            self.shared_state.liquidity_cache[
-                question_id
-            ] = active_sampled_bet.scaledLiquidityMeasure
+            self.shared_state.liquidity_cache[question_id] = (
+                active_sampled_bet.scaledLiquidityMeasure
+            )
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -397,11 +400,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
-        self.shared_state.liquidity_cache[
-            market_id
-        ] = self._compute_scaled_liquidity_measure(
-            self.shared_state.current_liquidity_amounts,
-            self.shared_state.current_liquidity_prices,
+        self.shared_state.liquidity_cache[market_id] = (
+            self._compute_scaled_liquidity_measure(
+                self.shared_state.current_liquidity_amounts,
+                self.shared_state.current_liquidity_prices,
+            )
         )
 
         return liquidity_info
@@ -513,6 +516,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             else:
                 self._write_benchmark_results(prediction_response)
 
+            self.context.logger.info("Increasing Mech call count by 1")
+            self.shared_state.benchmarking_mech_calls += 1
+
         return is_profitable, bet_amount
 
     def _update_selected_bet(
@@ -530,8 +536,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self.context.logger.info(
             f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
         )
-        if prediction_response is not None:
-            active_sampled_bet.n_bets += 1
 
         self.store_bets()
 
@@ -568,6 +572,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     prediction_response,
                     bet_amount,
                 )
+                self.context.logger.info("Increasing Mech call count by 1")
+                self.shared_state.benchmarking_mech_calls += 1
 
             if prediction_response is not None:
                 self.policy.tool_responded(

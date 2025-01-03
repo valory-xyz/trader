@@ -55,6 +55,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
 
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""
+
         res = super().end_block()
         if res is None:
             return None

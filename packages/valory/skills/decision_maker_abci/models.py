@@ -227,6 +227,9 @@ class SharedState(BaseSharedState):
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
 
+        ## mech call counter for benchmarking behaviour
+        self.benchmarking_mech_calls: int = 0
+
     @property
     def mock_question_id(self) -> Any:
         """Get the mock question id."""
@@ -445,11 +448,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "file_hash_to_strategies_json",
+            )
         )
         self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
             kwargs, "strategies_kwargs"
@@ -461,11 +464,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "mech_to_subscription_params",
+        self.mech_to_subscription_params: Dict[str, Any] = (
+            nested_list_todict_workaround(
+                kwargs,
+                "mech_to_subscription_params",
+            )
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
@@ -559,6 +562,7 @@ class BenchmarkingMode(Model, TypeCheckMixin):
             self._ensure("results_filename", kwargs, str)
         )
         self.randomness: str = self._ensure("randomness", kwargs, str)
+        self.nr_mech_calls: int = self._ensure("nr_mech_calls", kwargs, int)
         super().__init__(*args, **kwargs)
 
 

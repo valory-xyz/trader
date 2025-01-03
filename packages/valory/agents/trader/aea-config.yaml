@@ -19,7 +19,7 @@ contracts:
 - valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeieg57u3z7cdlmdamad5e6lk7kmsli2zurzkg3sl4y7lhekcu4y3au
 - valory/service_registry:0.1.0:bafybeiaop64kwdoetxtedoehabmsalojmms7ihuoqcdwxtwb2hk5i6bzye
-- valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
+- valory/market_maker:0.1.0:bafybeibevdc5trbi2qgt2tvwbsr2h5xvonfhcjwfmozftzvef575fdvbjq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
@@ -45,12 +45,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigfe3ngilwqf636bbok7ua2r2cm3eqorkdrn562mtoqpq6ad4kpoi
-- valory/market_manager_abci:0.1.0:bafybeiaru2d32wpmcgqs64eepxud4idgubc3vmsbdwbia7gygipql2mmqi
-- valory/decision_maker_abci:0.1.0:bafybeidlajpqzl6yqbhacf4okdc2qqama22beyjp53jnghhvxm55yznhhy
-- valory/trader_abci:0.1.0:bafybeifr4eayfnsrr5nml7j3lrwvitwasuioqwgc2qceuqfho7gnkeeqwa
-- valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
-- valory/check_stop_trading_abci:0.1.0:bafybeieduekpd4zbvjztyxyooppqnmjvup6jfp74uo6hhupvtvzzscdzkq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid3e6tcgqi3ofk77f7k46t7f563mp7endqzo2ddxpumcppolpf66y
+- valory/market_manager_abci:0.1.0:bafybeigbw2nspa4c5hhlgnuie7jc5vuqawaxt6cezxj5dlszcddgwozh3i
+- valory/decision_maker_abci:0.1.0:bafybeia3xlgozca32io6nnukdxxjeqyitvq3wxmvtkpzslvtzuljbiuv34
+- valory/trader_abci:0.1.0:bafybeig4ea36zfphqgrjdvrlwjjkvwg3uv5mkly54segeornxkxs2holl4
+- valory/staking_abci:0.1.0:bafybeibjgipzfle3b2gtuh42u2y6umgf47a5qrdtbvni46tox4lgv6wm4i
+- valory/check_stop_trading_abci:0.1.0:bafybeier2qz5xkiha5krgav7hfrxvb5666csxyko4drfgouj5htjmmvwni
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -269,6 +269,7 @@ models:
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
       randomness: ${str:benchmarking_randomness}
+      nr_mech_calls: ${int:60}
   acc_info_fields:
     args:
       tool: ${str:tool}
