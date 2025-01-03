@@ -26,8 +26,8 @@ contracts:
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
+- valory/abstract_round_abci:0.1.0:bafybeifnixbpctjjngqm7fhfrdj3uuis3jn3cf57zhy3y2rdeojabvkm7e
+- valory/staking_abci:0.1.0:bafybeidpz2tlo6iza7uxvsxzavrv3cqalii6g2r7k6uvybcxif2r3mu22i
 behaviours:
   main:
     args: {}

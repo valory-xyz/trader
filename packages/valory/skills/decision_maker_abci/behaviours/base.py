@@ -68,9 +68,9 @@ from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBeh
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     CONFIDENCE_FIELD,
+    INFO_UTILITY_FIELD,
     P_NO_FIELD,
     P_YES_FIELD,
-    INFO_UTILITY_FIELD,
     PredictionResponse,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (

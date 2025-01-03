@@ -12,12 +12,12 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeib2c2sz4w7liqzirmsmmzvdxlatu3mznjfc2c7mqaxq362ediaw7a
+  behaviours/base.py: bafybeiebj5l2wjaabp6tmteuwv27de4oxtqagkpmnvqizdgjzx74mhsb4a
   behaviours/bet_placement.py: bafybeia4listbfzsk4n4wkc4ycaftxgywjnl3mmpcqhuo3nwwia4n3oufu
   behaviours/blacklisting.py: bafybeieuqoup2vrmrtvjfqnr5mzrvkegc7afb2oeujzq2itsbhcsham2se
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
-  behaviours/decision_receive.py: bafybeia7njqdwklf3tlyikxby3rmwbvkopsvnb2txol2w2un2i3u6tgr4m
+  behaviours/decision_receive.py: bafybeidr7gix4oeoqttrjlhqxkmp3adr6hd6wz5k7n4r56favvlgjewu7q
   behaviours/decision_request.py: bafybeia22omb7tvocyfe3z2ucn5au5mcas7dg37ha42u7znefzrewjpk7y
   behaviours/handle_failed_tx.py: bafybeiashwlfp6ty3g6ukgmliaghwu6yiunbqpjmyrzheokw3pbcr2ckaq
   behaviours/order_subscription.py: bafybeib3maqohhx35wzryy4otdcjp5thkr4sbp27ksvwidy3pwm444itra
@@ -32,7 +32,7 @@ fingerprint:
   handlers.py: bafybeibf42562x3d5i66yf5p3vi6a2oolhwwxr32pjqtuxz5w4gmg3r4oa
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeibhtsyagxk7x46labggf6gidgbeeetdv2nxaz4s7epwypiq7vb5xy
+  models.py: bafybeifhdedqde4jgxqpwfrkvymmjtgj4iv3ageuupy22hxqif2sfyxxii
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeidofgwvk6sudz75tvuduskuphtn3amtib2irzw5hr3qcfn5pdwuc4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -84,9 +84,9 @@ fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
+- valory/gnosis_safe:0.1.0:bafybeihtqcpqthb37msgqabpzcc2xc3l3yzkp5pl2sodeghqyzzzyuevgi
 - valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
-- valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
+- valory/erc20:0.1.0:bafybeib7ctk3deleyxayrqvropewefr2muj4kcqe3t3wscak25bjmxnqwe
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
@@ -100,11 +100,11 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeiaru2d32wpmcgqs64eepxud4idgubc3vmsbdwbia7gygipql2mmqi
-- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
-- valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
+- valory/abstract_round_abci:0.1.0:bafybeifnixbpctjjngqm7fhfrdj3uuis3jn3cf57zhy3y2rdeojabvkm7e
+- valory/market_manager_abci:0.1.0:bafybeihlk3c7y6gyifddsayfl2ndj25gphgguu7rivtiz2jtuiigey7a5i
+- valory/transaction_settlement_abci:0.1.0:bafybeib4uiek6kavfpx7pgcdsbp4ifgslknzm4vluarz57nqmvbudzz2hi
+- valory/mech_interact_abci:0.1.0:bafybeidgqmohiunchqseue447kbjpeagjfupxo2rfjomt7iu6iaa26cmte
+- valory/staking_abci:0.1.0:bafybeidpz2tlo6iza7uxvsxzavrv3cqalii6g2r7k6uvybcxif2r3mu22i
 behaviours:
   main:
     args: {}
@@ -342,6 +342,7 @@ models:
       p_yes_field_part: p_yes_
       p_no_field_part: p_no_
       confidence_field_part: confidence_
+      info_utility_field_part: info_utility_
       part_prefix_mode: true
       bet_amount_field: collateral_amount
       results_filename: benchmarking_results.csv
