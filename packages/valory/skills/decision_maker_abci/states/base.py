@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -205,6 +205,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return self._get_deserialized("participant_to_tx_prep")
 
     @property
+    def participant_to_handle_failed_tx(self) -> DeserializedCollection:
+        """Get the participants to `HandleFailedTxRound`."""
+        return self._get_deserialized("participant_to_handle_failed_tx")
+
+    @property
     def agreement_id(self) -> str:
         """Get the agreement id."""
         return str(self.db.get_strict("agreement_id"))
@@ -278,6 +283,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def service_staking_state(self) -> StakingState:
         """Get the service's staking state."""
         return StakingState(self.db.get("service_staking_state", 0))
+
+    @property
+    def after_bet_attempt(self) -> bool:
+        """Get the service's staking state."""
+        return bool(self.db.get("after_bet_attempt", False))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@ from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBeh
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     CONFIDENCE_FIELD,
+    INFO_UTILITY_FIELD,
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
@@ -686,6 +687,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     P_YES_FIELD,
                     P_NO_FIELD,
                     CONFIDENCE_FIELD,
+                    INFO_UTILITY_FIELD,
                     self.benchmarking_mode.bet_amount_field,
                     L0_START_FIELD,
                     L1_START_FIELD,
@@ -704,6 +706,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 prediction_response.p_yes,
                 prediction_response.p_no,
                 prediction_response.confidence,
+                prediction_response.info_utility,
                 bet_amount,
                 liquidity_info.l0_start,
                 liquidity_info.l1_start,

@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeih5nsopbx3mi5rsglddcf4xs62qtswk7kirvm7thol7jcgppmlrcm
+agent: valory/trader:0.1.0:bafybeihe6dn75yxe2f6dbtaj72j6glxwtviv7i7copg3sde2fin4xblnk4
 number_of_agents: 4
 deployment:
   agent:
@@ -146,6 +146,9 @@ type: skill
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
+        mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
+        mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
     benchmark_tool: &id004
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -164,6 +167,7 @@ type: skill
         p_yes_field_part: ${BENCHMARKING_MODE_P_YES_FIELD_PART:str:p_yes_}
         p_no_field_part: ${BENCHMARKING_MODE_P_NO_FIELD_PART:str:p_no_}
         confidence_field_part: ${BENCHMARKING_MODE_CONFIDENCE_FIELD_PART:str:confidence_}
+        info_utility_field_part: ${BENCHMARKING_MODE_INFO_UTILITY_FIELD_PART:str:info_utility_}
         part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
@@ -175,6 +179,8 @@ type: skill
         requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
         accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
         sep: ${ACC_INFO_FIELDS_SEP:str:,}
+        max: ${ACC_INFO_FIELDS_MAX:str:max}
+        datetime_format: ${ACC_INFO_FIELDS_DATETIME_FORMAT:str:%Y-%m-%d %H:%M:%S}
     network_subgraph: &id006
       args:
         headers:
@@ -369,6 +375,9 @@ type: skill
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
+        mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
+        mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
@@ -487,6 +496,9 @@ type: skill
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
+        mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
+        mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006
@@ -605,6 +617,9 @@ type: skill
         mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
         policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
+        mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
+        mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
     benchmark_tool: *id004
     acc_info_fields: *id005
     network_subgraph: *id006

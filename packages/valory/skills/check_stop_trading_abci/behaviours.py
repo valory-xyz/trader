@@ -159,7 +159,6 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         if self.params.stop_trading_if_staking_kpi_met:
             staking_kpi_met = yield from self.is_staking_kpi_met()
             self.context.logger.debug(f"{staking_kpi_met=}")
-
             return staking_kpi_met
 
         yield

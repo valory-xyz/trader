@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -27,8 +27,10 @@ from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
     remove_fraction_wei,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
@@ -59,7 +61,7 @@ COMMA = ","
 TOKEN_PRECISION = 10**18
 
 
-class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
+class DecisionReceiveBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents receive the mech response."""
 
     matching_round = DecisionReceiveRound
@@ -92,6 +94,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             error = "The mech's response has not been set!"
             return MechInteractionResponse(error=error)
         return self._mech_response
+
+    @property
+    def is_invalid_response(self) -> bool:
+        """Check if the response is invalid."""
+        if self.mech_response.result is None:
+            self.context.logger.warning(
+                "Trying to check whether the mech's response is invalid but no response has been detected! "
+                "Assuming invalid response."
+            )
+            return True
+        return self.mech_response.result == self.params.mech_invalid_response
 
     def _next_dataset_row(self) -> Optional[Dict[str, str]]:
         """Read the next row from the input dataset which is used during the benchmarking mode.
@@ -147,6 +160,7 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             P_YES_FIELD: mode.p_yes_field_part,
             P_NO_FIELD: mode.p_no_field_part,
             CONFIDENCE_FIELD: mode.confidence_field_part,
+            INFO_UTILITY_FIELD: mode.info_utility_field_part,
         }.items():
             if mode.part_prefix_mode:
                 fields[prediction_attribute] = row[field_part + mech_tool]
@@ -161,8 +175,6 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             float(fields[P_YES_FIELD]),
         )
 
-        # set the info utility to zero as it does not matter for the benchmark
-        fields[INFO_UTILITY_FIELD] = "0"
         return json.dumps(fields)
 
     def _mock_response(self) -> None:
@@ -319,9 +331,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
             self.shared_state.current_liquidity_prices = (
                 active_sampled_bet.outcomeTokenMarginalPrices
             )
-            self.shared_state.liquidity_cache[question_id] = (
-                active_sampled_bet.scaledLiquidityMeasure
-            )
+            self.shared_state.liquidity_cache[
+                question_id
+            ] = active_sampled_bet.scaledLiquidityMeasure
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -388,11 +400,11 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
-        self.shared_state.liquidity_cache[market_id] = (
-            self._compute_scaled_liquidity_measure(
-                self.shared_state.current_liquidity_amounts,
-                self.shared_state.current_liquidity_prices,
-            )
+        self.shared_state.liquidity_cache[
+            market_id
+        ] = self._compute_scaled_liquidity_measure(
+            self.shared_state.current_liquidity_amounts,
+            self.shared_state.current_liquidity_prices,
         )
 
         return liquidity_info
@@ -531,12 +543,17 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            success = yield from self._setup_policy_and_tools()
+            if not success:
+                return None
+
             prediction_response = self._get_decision()
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None
             bets_hash = None
             decision_received_timestamp = None
+            policy = None
             if prediction_response is not None and prediction_response.vote is not None:
                 is_profitable, bet_amount = yield from self._is_profitable(
                     prediction_response
@@ -558,6 +575,14 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 self.context.logger.info("Increasing Mech call count by 1")
                 self.shared_state.benchmarking_mech_calls += 1
 
+            if prediction_response is not None:
+                self.policy.tool_responded(
+                    self.synchronized_data.mech_tool,
+                    self.synced_timestamp,
+                    self.is_invalid_response,
+                )
+                policy = self.policy.serialize()
+
             # always remove the processed trade from the benchmarking input file
             # now there is one reader pointer per market
             if self.benchmarking_mode.enabled:
@@ -578,7 +603,9 @@ class DecisionReceiveBehaviour(DecisionMakerBaseBehaviour):
                 prediction_response.confidence if prediction_response else None,
                 bet_amount,
                 next_mock_data_row,
+                policy,
                 decision_received_timestamp,
             )
 
+        self._store_all()
         yield from self.finish_behaviour(payload)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -227,7 +227,7 @@ class SharedState(BaseSharedState):
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
 
-        ## mech call counter for benchmarking behaviour
+        # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
 
     @property
@@ -479,6 +479,15 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.expected_mech_response_time = self._ensure(
             "expected_mech_response_time", kwargs, int
         )
+        self.mech_invalid_response: str = self._ensure(
+            "mech_invalid_response", kwargs, str
+        )
+        self.policy_threshold: int = self._ensure(
+            "mech_consecutive_failures_threshold", kwargs, int
+        )
+        self.tool_quarantine_duration: int = self._ensure(
+            "tool_quarantine_duration", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property
@@ -542,6 +551,9 @@ class BenchmarkingMode(Model, TypeCheckMixin):
         self.confidence_field_part: str = self._ensure(
             "confidence_field_part", kwargs, str
         )
+        self.info_utility_field_part: str = self._ensure(
+            "info_utility_field_part", kwargs, str
+        )
         # this is the mode for the p and confidence parts
         # if the flag is `True`, then the field parts are used as prefixes, otherwise as suffixes
         self.part_prefix_mode: bool = self._ensure("part_prefix_mode", kwargs, bool)
@@ -563,6 +575,8 @@ class AccuracyInfoFields(Model, TypeCheckMixin):
         self.requests: str = self._ensure("requests", kwargs, str)
         self.accuracy: str = self._ensure("accuracy", kwargs, str)
         self.sep: str = self._ensure("sep", kwargs, str)
+        self.max: str = self._ensure("max", kwargs, str)
+        self.datetime_format: str = self._ensure("datetime_format", kwargs, str)
         super().__init__(*args, **kwargs)
 
 

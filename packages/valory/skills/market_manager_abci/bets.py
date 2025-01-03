@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@ class QueueStatus(Enum):
         return self
 
     def mark_benchmarking_done(self) -> "QueueStatus":
+        """Function to establish the benchmarking done status"""
         return QueueStatus.BENCHMARKING_DONE
 
     def next_status(self) -> "QueueStatus":
@@ -79,7 +80,6 @@ class QueueStatus(Enum):
             return QueueStatus.REPROCESSED
         elif self != QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
-
         return self
 
 
