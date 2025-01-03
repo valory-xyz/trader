@@ -84,9 +84,9 @@ fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeihtqcpqthb37msgqabpzcc2xc3l3yzkp5pl2sodeghqyzzzyuevgi
+- valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
 - valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
-- valory/erc20:0.1.0:bafybeib7ctk3deleyxayrqvropewefr2muj4kcqe3t3wscak25bjmxnqwe
+- valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
@@ -100,11 +100,11 @@ protocols:
 - valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifnixbpctjjngqm7fhfrdj3uuis3jn3cf57zhy3y2rdeojabvkm7e
-- valory/market_manager_abci:0.1.0:bafybeihlk3c7y6gyifddsayfl2ndj25gphgguu7rivtiz2jtuiigey7a5i
-- valory/transaction_settlement_abci:0.1.0:bafybeib4uiek6kavfpx7pgcdsbp4ifgslknzm4vluarz57nqmvbudzz2hi
-- valory/mech_interact_abci:0.1.0:bafybeidgqmohiunchqseue447kbjpeagjfupxo2rfjomt7iu6iaa26cmte
-- valory/staking_abci:0.1.0:bafybeidpz2tlo6iza7uxvsxzavrv3cqalii6g2r7k6uvybcxif2r3mu22i
+- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
+- valory/market_manager_abci:0.1.0:bafybeiaru2d32wpmcgqs64eepxud4idgubc3vmsbdwbia7gygipql2mmqi
+- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
+- valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
+- valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
 behaviours:
   main:
     args: {}
