@@ -69,6 +69,7 @@ class QueueStatus(Enum):
         return self
 
     def mark_benchmarking_done(self) -> "QueueStatus":
+        """Function to establish the benchmarking done status"""
         return QueueStatus.BENCHMARKING_DONE
 
     def next_status(self) -> "QueueStatus":
@@ -79,8 +80,6 @@ class QueueStatus(Enum):
             return QueueStatus.REPROCESSED
         elif self != QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
-        return self
-
         return self
 
 

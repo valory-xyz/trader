@@ -33,7 +33,7 @@ fingerprint:
   handlers.py: bafybeibf42562x3d5i66yf5p3vi6a2oolhwwxr32pjqtuxz5w4gmg3r4oa
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeiagqpyms5237gmjbp623x3cu6x4lte2i4ignhr3xyifxogejfux3u
+  models.py: bafybeibflo4n6f63mbe2e2pcg2qq6rmz2ixhtbml23etg4cfj3qubhp3f4
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeidofgwvk6sudz75tvuduskuphtn3amtib2irzw5hr3qcfn5pdwuc4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -103,7 +103,7 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeiczcso44gy5xm5ubcwmbiamgvtpmlj2m76k27cqb5ruco5nbti754
+- valory/market_manager_abci:0.1.0:bafybeiaf37mqv45yptqqd6e7fxv5cjrrxrh4pjpe3bs6zkiou53e5lpoia
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
 - valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
