@@ -45,10 +45,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
 - valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
 - valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiayx7dht46x2hbkovrljf3kfqzv7x46xzbucsyzbng6g4cmixqeem
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaxelp2wozgim2hnxxuvbsvgsejiijpo5kuivqygdmynzmyzqwl5e
 - valory/market_manager_abci:0.1.0:bafybeiczcso44gy5xm5ubcwmbiamgvtpmlj2m76k27cqb5ruco5nbti754
-- valory/decision_maker_abci:0.1.0:bafybeifxp4tkrvecdn7p3mj3mh6l7d6ny3rcrv7pvedoz22pndrcjmonby
-- valory/trader_abci:0.1.0:bafybeihf3lv3yt6f5kttkzdw4at2jkqdgqgntkaslj7czmpocgnyy3kh24
+- valory/decision_maker_abci:0.1.0:bafybeiahopiugermcucntfqtkgu2yok4lct7aluixasoysakdtxwnj3bfq
+- valory/trader_abci:0.1.0:bafybeiede5k4vhcv5lkkkzzxhjrljxmk23dermeakoiifunzmmzuhiapqm
 - valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
 - valory/check_stop_trading_abci:0.1.0:bafybeieduekpd4zbvjztyxyooppqnmjvup6jfp74uo6hhupvtvzzscdzkq
 - valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
