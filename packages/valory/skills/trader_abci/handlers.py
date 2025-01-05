@@ -39,6 +39,9 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
+from packages.valory.skills.mech_interact_abci.handlers import (
+    AcnHandler as BaseAcnHandler,
+)
 
 
 TraderHandler = ABCIRoundHandler
@@ -48,3 +51,4 @@ LedgerApiHandler = BaseLedgerApiHandler
 ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
+AcnHandler = BaseAcnHandler

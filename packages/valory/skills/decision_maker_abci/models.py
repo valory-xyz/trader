@@ -26,19 +26,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+from aea.exceptions import enforce
 from aea.skills.base import Model, SkillContext
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
@@ -366,21 +356,6 @@ def _raise_incorrect_config(key: str, values: Any) -> None:
     )
 
 
-def nested_list_todict_workaround(
-    kwargs: Dict,
-    key: str,
-) -> Dict:
-    """Get a nested list from the kwargs and convert it to a dictionary."""
-    values = list(kwargs.get(key, []))
-    if len(values) == 0:
-        raise ValueError(f"No {key!r} specified in agent's configurations: {kwargs}!")
-    if any(not issubclass(type(nested_values), Iterable) for nested_values in values):
-        _raise_incorrect_config(key, values)
-    if any(len(nested_values) % 2 == 1 for nested_values in values):
-        _raise_incorrect_config(key, values)
-    return {value[0]: value[1] for value in values}
-
-
 class DecisionMakerParams(MarketManagerParams, MechInteractParams):
     """Decision maker's parameters."""
 
@@ -436,8 +411,10 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
-        self.agent_registry_address: str = self._ensure(
-            "agent_registry_address", kwargs, str
+        self.agent_registry_address = kwargs.get("agent_registry_address", None)
+        enforce(
+            self.agent_registry_address is not None,
+            "Agent registry address not specified!",
         )
         self.store_path: Path = self.get_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
@@ -445,14 +422,11 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "tool_punishment_multiplier", kwargs, int
         )
         self.contract_timeout: float = self._ensure("contract_timeout", kwargs, float)
-        self.file_hash_to_strategies: Dict[
-            str, List[str]
-        ] = nested_list_todict_workaround(
-            kwargs,
-            "file_hash_to_strategies_json",
+        self.file_hash_to_strategies: Dict[str, List[str]] = self._ensure(
+            "file_hash_to_strategies", kwargs, Dict[str, List[str]]
         )
-        self.strategies_kwargs: Dict[str, List[Any]] = nested_list_todict_workaround(
-            kwargs, "strategies_kwargs"
+        self.strategies_kwargs: Dict[str, Any] = self._ensure(
+            "strategies_kwargs", kwargs, Dict[str, Any]
         )
         self.use_subgraph_for_redeeming = self._ensure(
             "use_subgraph_for_redeeming",
@@ -461,11 +435,10 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         )
         self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[
-            str, Any
-        ] = nested_list_todict_workaround(
-            kwargs,
+        self.mech_to_subscription_params: Dict[str, str] = self._ensure(
             "mech_to_subscription_params",
+            kwargs,
+            Dict[str, str],
         )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)

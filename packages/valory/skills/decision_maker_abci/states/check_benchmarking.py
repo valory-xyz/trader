@@ -32,3 +32,4 @@ class CheckBenchmarkingModeRound(ClaimRound):
     payload_class = VotingPayload
     done_event = Event.BENCHMARKING_ENABLED
     negative_event = Event.BENCHMARKING_DISABLED
+    none_event = Event.NONE

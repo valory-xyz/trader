@@ -108,10 +108,11 @@ class RandomnessApi(ApiSpecs):
 class TraderParams(
     # also contains the `StakingParams`. Must be before `MechInteractParams` because of the mech's contract address
     CheckStopTradingParams,
+    # must be before `MechInteractParams` because of the mech's chain id
+    TxSettlementMultiplexerParams,
     # also contains the `MechInteractParams`
     DecisionMakerParams,
     TerminationParams,
-    TxSettlementMultiplexerParams,
 ):
     """A model to represent the trader params."""
 
