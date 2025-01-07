@@ -23,8 +23,8 @@ from unittest.mock import MagicMock
 
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound
 from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
-    HandleFailedTxRound,
+from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
+    ClaimRound,
 )
 
 
@@ -36,8 +36,8 @@ def test_check_benchmarking_mode_round_initialization() -> None:
     assert round_instance.done_event == Event.BENCHMARKING_ENABLED
     assert round_instance.negative_event == Event.BENCHMARKING_DISABLED
 
-    # Check that it inherits from HandleFailedTxRound
-    assert isinstance(round_instance, HandleFailedTxRound)
+    # Check that it inherits from ClaimRound
+    assert isinstance(round_instance, ClaimRound)
 
 
 def test_check_benchmarking_mode_round_events() -> None:

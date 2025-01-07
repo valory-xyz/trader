@@ -79,6 +79,7 @@ class QueueStatus(Enum):
             return QueueStatus.REPROCESSED
         elif self != QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
+        return self
 
         return self
 
