@@ -102,7 +102,7 @@ models:
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_nevermined: ${USE_NEVERMINED:bool:false}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
-      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x4554fE75c1f5576c1d7F765B2A036c199Adae329","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x998dEFafD094817EF329f6dc79c703f1CF18bC90","priority_mech_service_id":975,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
       policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
       expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
       mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
@@ -159,3 +159,4 @@ type: connection
 config:
   host: ${HTTP_SERVER_HOST:str:0.0.0.0}
   port: ${HTTP_SERVER_PORT:int:8716}
+  target_skill_id: valory/trader_abci:0.1.0
