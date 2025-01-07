@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicebrhoaprwbl7eljrfr7u72bx37mpv5zjylb4kesier77wa2tz2m
+agent: valory/trader:0.1.0:bafybeihuzkr2gnkwuriaxqmxus7kdzviykzwov6cx6czbuvibgqlrtyqoe
 number_of_agents: 4
 deployment:
   agent:
@@ -149,6 +149,7 @@ type: skill
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -370,6 +371,7 @@ type: skill
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -492,6 +494,7 @@ type: skill
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -614,6 +617,7 @@ type: skill
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
