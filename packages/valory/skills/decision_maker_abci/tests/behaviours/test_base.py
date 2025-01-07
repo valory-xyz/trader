@@ -21,14 +21,15 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
+from aea.configurations.base import PackageConfiguration
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from packages.valory.skills.abstract_round_abci.base import AbciAppDB
 from packages.valory.skills.abstract_round_abci.test_tools.base import (
     FSMBehaviourBaseCase,
 )
@@ -41,14 +42,40 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
+from packages.valory.skills.market_manager_abci.behaviours import READ_MODE
 
 
 settings.load_profile(profile_name)
 FRACTION_REMOVAL_PRECISION = 2
 CURRENT_FILE_PATH = Path(__file__).resolve()
 PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
+DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strategy.py"
+
+
+DefaultValueType = TypeVar("DefaultValueType")
+ExecutablesMockReturnType = Union[Tuple[str, str], DefaultValueType]
+
+
+def strategies_executables_get_mock_wrapper(
+    mock_strategy_name: str,
+    mock_method_name: str,
+) -> Callable[[str, Any], ExecutablesMockReturnType]:
+    """Wrapper to mock the strategies executables dict's `get` method."""
+
+    def strategies_executables_get_mock(
+        strategy_name: str, default: DefaultValueType
+    ) -> ExecutablesMockReturnType:
+        """Mock the strategies executables dict's `get` method."""
+        with open(DUMMY_STRATEGY_PATH, READ_MODE) as strategy_file:
+            dummy_strategy = strategy_file.read()
+        return (
+            (dummy_strategy, mock_method_name)
+            if strategy_name == mock_strategy_name
+            else default
+        )
+
+    return strategies_executables_get_mock
 
 
 @st.composite
@@ -100,26 +127,28 @@ def strategy_executables(
 class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     """Test `DecisionMakerBaseBehaviour`."""
 
+    behaviour: BlacklistingBehaviour
     path_to_skill = PACKAGE_DIR
 
-    def ffw(
-        self,
-        behaviour_cls: Any,
-        db_items: Optional[Dict] = None,
-    ) -> None:
-        """Fast-forward to the given behaviour."""
-        if db_items is None:
-            db_items = {}
+    @classmethod
+    def setup_class(cls, **kwargs: Any) -> None:
+        """Set up the class."""
+        kwargs["config_overrides"] = {
+            "models": {"params": {"args": {"use_acn_for_delivers": True}}}
+        }
+        with mock.patch.object(PackageConfiguration, "check_overrides_valid"):
+            super().setup_class(**kwargs)
 
-        self.fast_forward_to_behaviour(
-            behaviour=self.behaviour,
-            behaviour_id=behaviour_cls.auto_behaviour_id(),
-            synchronized_data=SynchronizedData(
-                AbciAppDB(
-                    setup_data=AbciAppDB.data_to_lists(db_items),
-                )
-            ),
-        )
+    def setup(self, **kwargs: Any) -> None:
+        """Setup."""
+        self.round_sequence_mock = MagicMock()
+        context_mock = MagicMock(params=MagicMock())
+        context_mock.state.round_sequence = self.round_sequence_mock
+        context_mock.state.round_sequence.syncing_up = False
+        context_mock.state.synchronized_data.db.get_strict = lambda _: 0
+        self.round_sequence_mock.block_stall_deadline_expired = False
+        self.behaviour = BlacklistingBehaviour(name="", skill_context=context_mock)
+        self.benchmark_dir = MagicMock()
 
     @given(strategy_executables())
     def test_strategy_exec(
@@ -128,12 +157,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     ) -> None:
         """Test the `strategy_exec` method."""
         strategy_name, strategies_executables, expected_result = strategy
-        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
-        self.ffw(BlacklistingBehaviour)
-        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
-        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
-        behaviour.shared_state.strategies_executables = strategies_executables
-        res = behaviour.strategy_exec(strategy_name)
+        self.behaviour.shared_state.strategies_executables = strategies_executables
+        res = self.behaviour.strategy_exec(strategy_name)
         assert res == expected_result
 
     @pytest.mark.parametrize(
@@ -169,10 +194,13 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         expected_result: int,
     ) -> None:
         """Test the `execute_strategy` method."""
-        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
-        self.ffw(BlacklistingBehaviour)
-        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
-        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+        behaviour = self.behaviour
+        strategy_key = "trading_strategy"
+        if strategy_key in kwargs:
+            behaviour.shared_state.strategies_executables.get = strategies_executables_get_mock_wrapper(  # type: ignore
+                kwargs[strategy_key], method_name  # type: ignore
+            )
+
         current_dir = CURRENT_FILE_PATH.parent
         with open(current_dir / strategy_path) as dummy_strategy:
             behaviour.shared_state.strategies_executables["test"] = (
@@ -195,11 +223,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         self, amount: int, benchmarking_mode_enabled: bool, is_wxdai: bool
     ) -> None:
         """Test the `collateral_amount_info` method."""
-        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
-        self.ffw(BlacklistingBehaviour, {"sampled_bet_index": 0})
-        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
-        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
-
+        behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
         with mock.patch.object(behaviour, "read_bets"):
             collateral_token = WXDAI if is_wxdai else "unknown"
@@ -219,11 +243,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         self, collateral_balance: int, native_balance: int
     ) -> None:
         """Test the `_mock_balance_check` method."""
-        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
-        self.ffw(BlacklistingBehaviour)
-        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
-        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
-
+        behaviour = self.behaviour
         behaviour.benchmarking_mode.collateral_balance = collateral_balance
         behaviour.benchmarking_mode.native_balance = native_balance
         with mock.patch.object(behaviour, "_report_balance") as mock_report_balance:
@@ -249,10 +269,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         expected_result: int,
     ) -> None:
         """Test the `get_bet_amount` method."""
-        # use `BlacklistingBehaviour` because it overrides the `DecisionMakerBaseBehaviour`.
-        self.ffw(BlacklistingBehaviour)
-        behaviour = cast(BlacklistingBehaviour, self.behaviour.current_behaviour)
-        assert behaviour.behaviour_id == BlacklistingBehaviour.auto_behaviour_id()
+        behaviour = self.behaviour
         behaviour.download_strategies = lambda: (yield)  # type: ignore
         behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
         behaviour.execute_strategy = lambda *_, **__: mocked_result  # type: ignore

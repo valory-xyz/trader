@@ -162,6 +162,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
             contract_id=str(ERC20.contract_id),
             contract_callable="build_withdraw_tx",
             amount=amount,
+            chain_id=self.params.mech_chain_id,
         )
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:

@@ -12,41 +12,41 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeieqvxpzjnwjgq4ffhjojle2q7onif44nefrlza6pxriewisqcm324
-  behaviours/bet_placement.py: bafybeia4listbfzsk4n4wkc4ycaftxgywjnl3mmpcqhuo3nwwia4n3oufu
+  behaviours/base.py: bafybeibkwfsd2atjzejhsel5p4cptd2wg2shefyly5jbiywgbjvx6k2q4y
+  behaviours/bet_placement.py: bafybeidyucxomadfzr6eyfywlc4satl4vqb6qhdkyzdp76zkxbfjfyzai4
   behaviours/blacklisting.py: bafybeieuqoup2vrmrtvjfqnr5mzrvkegc7afb2oeujzq2itsbhcsham2se
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
   behaviours/decision_receive.py: bafybeibsthk6fjydkengwzgpgz5v44xpta67nnlyxt6uugx2voitqgojpq
   behaviours/decision_request.py: bafybeia22omb7tvocyfe3z2ucn5au5mcas7dg37ha42u7znefzrewjpk7y
   behaviours/handle_failed_tx.py: bafybeiashwlfp6ty3g6ukgmliaghwu6yiunbqpjmyrzheokw3pbcr2ckaq
-  behaviours/order_subscription.py: bafybeib3maqohhx35wzryy4otdcjp5thkr4sbp27ksvwidy3pwm444itra
+  behaviours/order_subscription.py: bafybeihwuhgykptokmeam5sacnfzedk5puvrxbjo7iypaqhsrqg5nk7psm
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/reedem.py: bafybeidjmhh6c6shbg25d7exmc4nnp4heqbqselwuxj7rp2ss665lrytxe
+  behaviours/reedem.py: bafybeiajxsz34iy24muw4avq4vbevluhsabjcyqaadssnrs2zrfdapbnqq
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
   behaviours/sampling.py: bafybeicvtxjv5rxlsdrmbtetqwzzau6is47guystvw245grd6s2qs5pxea
   behaviours/storage_manager.py: bafybeic6wca37fkwonbsrwme55xnklfbqtheknroudayzfxdge4pxdbm7y
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeidlnqnd7dwg7r2vhsgm2balrqhxm36qdflkmr7csze2kdeu3a7sbu
+  fsm_specification.yaml: bafybeifvu7n6sjmrerogkzsftjrw2l6w5ppuq3f43ouj2rwbomdr5glp2e
   handlers.py: bafybeibf42562x3d5i66yf5p3vi6a2oolhwwxr32pjqtuxz5w4gmg3r4oa
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeibifjp45ii5amaghmdk5yjha7if5qpyreg2axpcxcj3ek23ys4fxm
+  models.py: bafybeihvmxk5nve54v3yz7uaobekdzg37675ooiqxb7ne5hmeegfhk6c6m
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeidofgwvk6sudz75tvuduskuphtn3amtib2irzw5hr3qcfn5pdwuc4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
-  rounds.py: bafybeidjve7efycfkkbignqky4x6awvrobn4w32grxiubxxiiparr7xd2i
+  rounds.py: bafybeiftrpaxyyly3d36kvfg2c2m5fmzchm6n4vv5losu3jr2b7s5ces6a
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeiglqvym3ri6hurx4k7hrnykzbmslxe3vuj23djt6hai4czii4vbqq
   states/bet_placement.py: bafybeih5eopyxubczys5u5t3bdxbxpc7mmfdyqrpqsbm2uha5jc2phza4i
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
-  states/check_benchmarking.py: bafybeifvto757zbfzy7mpehblyjd7zqboarxesjfiobtnbxew4nkltfkim
-  states/claim_subscription.py: bafybeidlubctpk5djsredvvwdhubs34rztud3lw7pwp5kj6ggzah6dvyly
+  states/check_benchmarking.py: bafybeiagrgeopuluwqkvoqbst2hjymte5rju2pecvkoeleklnqca5andeu
+  states/claim_subscription.py: bafybeiefuagbf27cz3ntljmpwr3snkytfh7qht4x5c3a2fivxoijrapd5m
   states/decision_receive.py: bafybeiexc26g7z7by6eziawjld52nglljiwlj6oam5ramtbyo6un2tqs5y
   states/decision_request.py: bafybeiarv3r5j7cfvxmudki2llbdl2pvf24p5mvsva6bdgrylnwdyag5xy
   states/final_states.py: bafybeicjrrojo3gmfaxzicwloyorlnqgzl6a2avevo4nvhoh424zwzmbti
-  states/handle_failed_tx.py: bafybeiha5wkl4u4jlj7txpmhuzfnibnu3ix5zw4vmufjunoyuq6s6ubhnu
+  states/handle_failed_tx.py: bafybeie5gkexscpdpiwz5acflxz2lbfitvs5qd6u3svpmwpgx4viqta3xy
   states/order_subscription.py: bafybeihl3pwrbccaitiukbigygd5u3weyih34pvzql3c6n5k7gjj47f2be
   states/randomness.py: bafybeiceoo4nx3t4dofpwczw3v5mclramwmzpwjs6hv7l56arodrjx4l5u
   states/redeem.py: bafybeica6cn4xg7shea2wjhbqnddgxe5zao2hkmceltze7qknxdhtsoaxe
@@ -57,7 +57,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
-  tests/behaviours/test_base.py: bafybeif6pglmr7pvojylatfzaxtlk65igx6a2omyrbxfihnnft6o7p75p4
+  tests/behaviours/test_base.py: bafybeiboiox2eqfncvkj7iofsfrpsdfncahd2bak5jtexngusmgpmrheeu
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   tests/states/test_base.py: bafybeieqy7wz5677jathwnolsgrt7zdifauammly3aeoq6dk4hdsqo5fte
   tests/states/test_bet_placement.py: bafybeibvc37n2cluep4tasvgmvwxwne2deais6ptirducpogk67v4gj4ga
@@ -67,7 +67,7 @@ fingerprint:
   tests/states/test_decision_receive.py: bafybeibkxalkfxuyokb6y5hkyu4pdlg4yfusbpgtkfr66cprygu7cgyd2y
   tests/states/test_decision_request.py: bafybeigqbakm2olkwvcngertjplhnmu6on6tp6hxn7lxygi2gf5a5eurbe
   tests/states/test_final_states.py: bafybeiftfd3ovaqpfe7t5ry7maiziavk74wl66d6zo6ikhgodznormd2nm
-  tests/states/test_handle_failed_tx.py: bafybeiebqgfhncmdexgq7khgkmcsym35547x3j6tr3mmybuyhocv6h5zpq
+  tests/states/test_handle_failed_tx.py: bafybeigt3kae7werxaleozidsfzpoxrnvmaamp3hidmfci65ulxnbjjleu
   tests/states/test_order_subscription.py: bafybeidx2tzivsxhpr5xx5e5h2xmpjyewfogt2mujv4sq3hbaeksmcbvhy
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
   tests/states/test_redeem.py: bafybeiezdnfrxukb2xpwffrr357g2anmdkwy7wo3nphvlggipq5xrdzr7a
@@ -84,27 +84,27 @@ fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihpgu56ovmq4npazdbh6y6ru5i7zuv6wvdglpxavsckyih56smu7m
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
-- valory/market_maker:0.1.0:bafybeihrz4q5ia7jnflsv2myg6kkung2dfiogqrevuy7xlmqws7tr27rdi
-- valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
+- valory/gnosis_safe:0.1.0:bafybeihtqcpqthb37msgqabpzcc2xc3l3yzkp5pl2sodeghqyzzzyuevgi
+- valory/market_maker:0.1.0:bafybeigfhg57pnhy5xyaegz5keaulkmajshwapb5s4wdzjyqx7pckgs34q
+- valory/erc20:0.1.0:bafybeientdgpccdi7prtu4x53m5g3yugh5tuh5hnroylfz3wwzyjniqure
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
+- valory/mech:0.1.0:bafybeielwbnikog4eqmu6bo537kzp2e7qpmkzt7l5zuuugp2w4r47dbvwu
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
 - valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeiblc4i5xjxbywnfccwtv3unhaghrgqls7panfbuqbpstbc34h42xq
-- valory/transfer_nft_condition:0.1.0:bafybeid6z2tf7nc4rhwggktxk5f62bowxdczykrxc3y76sbt2ttlw5hmtq
+- valory/agent_registry:0.1.0:bafybeibboljpn2zevzxnpgflxj6ykxk4bpxegtzjts25ajliaoadz35mca
+- valory/transfer_nft_condition:0.1.0:bafybeicdtigdwlt47jg2tibxltwyyl4apysvlideo53lgiy3muuho3izpa
 protocols:
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 - valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
 - valory/ipfs:0.1.0:bafybeiftxi2qhreewgsc5wevogi7yc5g6hbcbo4uiuaibauhv3nhfcdtvm
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/market_manager_abci:0.1.0:bafybeiaru2d32wpmcgqs64eepxud4idgubc3vmsbdwbia7gygipql2mmqi
-- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
-- valory/staking_abci:0.1.0:bafybeicupccurmrg7qesivonlyt3nryarsmk5qf5yh6auno64wn45bybvq
+- valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
+- valory/market_manager_abci:0.1.0:bafybeiayhzwxlpqsevyvaxn6dtnnu745az5vcz7dckmghnmjywxdtvoyly
+- valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
+- valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
+- valory/staking_abci:0.1.0:bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq
 behaviours:
   main:
     args: {}
@@ -250,28 +250,16 @@ models:
       use_nevermined: true
       policy_store_update_offset: 259200
       mech_to_subscription_params:
-      - - base_url
-        - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
-      - - did
-        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
-      - - escrow_payment_condition_address
-        - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
-      - - lock_payment_condition_address
-        - '0xDE85A368Ee6f374d236500d176814365370778dA'
-      - - transfer_nft_condition_address
-        - '0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979'
-      - - token_address
-        - '0xa30DE8C6aC39B825192e5F1FADe0770332D279A8'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - nft_amount
-        - '100'
-      - - payment_token
-        - '0x0000000000000000000000000000000000000000'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - price
-        - '1000000000000000000'
+        base_url: url
+        did: did
+        escrow_payment_condition_address: address
+        lock_payment_condition_address: address
+        transfer_nft_condition_address: address
+        token_address: address
+        order_address: address
+        nft_amount: amount
+        payment_token: address
+        price: price
       irrelevant_tools:
       - openai-text-davinci-002
       - openai-text-davinci-003
@@ -283,16 +271,12 @@ models:
       - stabilityai-stable-diffusion-768-v2-1
       tool_punishment_multiplier: 1
       contract_timeout: 300.0
-      file_hash_to_strategies_json:
-      - - hash
-        - - strategy_name
+      file_hash_to_strategies: {}
       strategies_kwargs:
-      - - bet_kelly_fraction
-        - 1.0
-      - - floor_balance
-        - 500000000000000000
-      - - bet_amount_per_threshold
-        - 0.0: 0
+        bet_kelly_fraction: 1.0
+        floor_balance: 500000000000000000
+        bet_amount_per_threshold:
+          0.0: 0
           0.1: 0
           0.2: 0
           0.3: 0

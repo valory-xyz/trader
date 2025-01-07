@@ -25,6 +25,7 @@ from typing import Optional, Tuple, cast
 from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
     CollectSameUntilThresholdRound,
+    NONE_EVENT_ATTRIBUTE,
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import HandleFailedTxPayload
@@ -41,13 +42,18 @@ class HandleFailedTxRound(CollectSameUntilThresholdRound):
     synchronized_data_class = SynchronizedData
     done_event = Event.BLACKLIST
     no_op_event = Event.NO_OP
-    none_event = Event.NO_OP
     no_majority_event = Event.NO_MAJORITY
     selection_key = (
         get_name(SynchronizedData.after_bet_attempt),
         get_name(SynchronizedData.tx_submitter),
     )
     collection_key = get_name(SynchronizedData.participant_to_handle_failed_tx)
+    # the none event is not required because the `HandleFailedTxPayload` payload does not allow for `None` values
+    required_class_attributes = tuple(
+        attribute
+        for attribute in CollectSameUntilThresholdRound.required_class_attributes
+        if attribute != NONE_EVENT_ATTRIBUTE
+    )
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
