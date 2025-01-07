@@ -144,7 +144,8 @@ Once you have configured (exported) the environment variables, you are in positi
 
     ```bash
     autonomy deploy build --n 1 -ltm
-    autonomy deploy run --build-dir abci_build/
+    build_dir=$(ls -d abci_build_????/ 2>/dev/null || echo "abci_build")
+    autonomy deploy run --build-dir $build_dir
     ```
 
 ## Some notes on the service
