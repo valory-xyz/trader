@@ -1,6 +1,0 @@
-# `Multisend` contract
-
-## Description
-
-## Functions
-
