@@ -1,0 +1,1322 @@
+[
+    {
+        "id": "1",
+        "market": "omen_subgraph",
+        "title": "Will the number of migrant arrivals in the Canary Islands exceed 45,000 by December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8260595624276564992,
+            5931775652593000448
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.4179552195242021,
+            0.5820447804757978
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.9051181150903505,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "2",
+        "market": "omen_subgraph",
+        "title": "Will the Constitutional Democratic Party of Japan (CDPJ) announce a formal coalition with any other opposition party by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6816094858560068608,
+            7188867088383137792
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5133085770327435,
+            0.48669142296725654
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.997519905535335,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "3",
+        "market": "omen_subgraph",
+        "title": "Will any U.S. state government announce new measures to support households earning over $150,000 who are living paycheck to paycheckby December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7123594880765731840,
+            6878549499256880128
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.4912497195123031,
+            0.5087502804876969
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.998927974190889,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "4",
+        "market": "omen_subgraph",
+        "title": "Will the US unemployment rate be above 4% in December 19th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6566843813393801216,
+            7461727641528355840
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.531895044731036,
+            0.468104955268964
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.985743367733646,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "5",
+        "market": "omen_subgraph",
+        "title": "Will the FBI release a public statement detailing their findings on the Iranian hackers' activities related to the Trump campaign by December 24th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8672523313665560576,
+            5650028051557866496
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.39448474698975033,
+            0.6055152530102497
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.842356330308139,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "6",
+        "market": "omen_subgraph",
+        "title": "Will at least 100,000 Americans die of H5N1 by the end of 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8330922612584986624,
+            5881701496780064768
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.41383642116479147,
+            0.5861635788352085
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.8952783979860115,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "7",
+        "market": "omen_subgraph",
+        "title": "Will any European country publicly announce a policy change to attract more American immigrants by December 24th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7299440008754813952,
+            6712843716946820096
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.4790684979232883,
+            0.5209315020767117
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.993863521350646,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "8",
+        "market": "omen_subgraph",
+        "title": "Will Joe Rogan publicly announce his endorsement of Trump's 2024 presidential campaign before by December 8th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8282670984015906816,
+            5915966008375963648
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.416657317990871,
+            0.583342682009129
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.9020709560017535,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "9",
+        "market": "omen_subgraph",
+        "title": "Will the COP29 summit in Baku result in any new international agreement specifically addressing the Caspian Sea environmental crisis by December 7th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7599337989828836352,
+            6447930078328264704
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.45901666053805057,
+            0.5409833394619494
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.976445492782348,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "10",
+        "market": "omen_subgraph",
+        "title": "Will Yuki Tsunoda score higher than Daniel Ricciardo in the 2024 Formula 1 Driver World Championship?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1735924988,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8763558214301901824,
+            5591336167543596032
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.3895073010509159,
+            0.6104926989490841
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.826939815310636,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "11",
+        "market": "omen_subgraph",
+        "title": "Will the U.S. Department of Labor release a report detailing a decline in wage growth for households earning over $150,000 by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7282554748260174848,
+            6728408050994227200
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.48022453184675373,
+            0.5197754681532463
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.994522889263192,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "12",
+        "market": "omen_subgraph",
+        "title": "Will any international humanitarian organization announce a new aid package for civilians affected by the fighting in Aleppo before December 8th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6070852985676408832,
+            8071353418639978496
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5707280171060504,
+            0.42927198289394963
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.929611773314885,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "13",
+        "market": "omen_subgraph",
+        "title": "Will Apple release a HomePod powered with Apple Intelligence by December 28th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7128062778178256896,
+            6874237997735914496
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.49093631880558675,
+            0.5090636811944133
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.998849801067914,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "14",
+        "market": "omen_subgraph",
+        "title": "Will Israel conduct another airstrike on Iranian territory by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7033878486275975168,
+            6966284688540677120
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.4975859639315888,
+            0.5024140360684112
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.999918413542592,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "15",
+        "market": "omen_subgraph",
+        "title": "Will a new study confirming the link between visceral fat and tau protein accumulation be published by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6652037415638244352,
+            7366164219823255552
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5254714129085754,
+            0.47452858709142465
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.990910999032273,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "16",
+        "market": "omen_subgraph",
+        "title": "Will the United Nations Security Council hold an emergency session regarding the Iran-Israel conflict before December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6953521145722576896,
+            7046789529092335616
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5033309397746987,
+            0.49666906022530133
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.999844666039569,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "17",
+        "market": "omen_subgraph",
+        "title": "Will any other major airline file a lawsuit against CrowdStrike related to the July 19 incident before December 31, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8890112678807707648,
+            5511741163507008512
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.38271053323098736,
+            0.6172894667690128
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.804679527580118,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "18",
+        "market": "omen_subgraph",
+        "title": "Will Gregg Wallace issue a public apology specifically addressing the new allegations against him by December 9th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6276190571229275136,
+            7807283645053929472
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5543577902125321,
+            0.44564220978746794
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.958510272038781,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "19",
+        "market": "omen_subgraph",
+        "title": "Will Lewis Hamilton finish ahead of George Russell in the WDC by December 8th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6024075346146384896,
+            8134028408417137664
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5745139708977857,
+            0.42548602910221434
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.921830896204025,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "20",
+        "market": "omen_subgraph",
+        "title": "Will Snowflake announce any new security measures or updates in response to the breach before December 8th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736443388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7694554086912568320,
+            6368140303717223424
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.4528392729604095,
+            0.5471607270395905
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.96879255694407,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "21",
+        "market": "omen_subgraph",
+        "title": "Will the Department of Homeland Security announce a restructuring plan by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8985287505114697728,
+            5453359168764239872
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.37769184965443836,
+            0.6223081503455616
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.787339714967367,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "22",
+        "market": "omen_subgraph",
+        "title": "Will Banijay UK announce any findings from their investigation into the allegations against Gregg Wallace before December 8th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8892963273182005248,
+            5509974402769262592
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.3825590672359378,
+            0.6174409327640622
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.80416746950392,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "23",
+        "market": "omen_subgraph",
+        "title": "Will any new pharmaceutical treatment targeting visceral fat reduction be approved by the FDA before December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8326762770344762368,
+            5884639847614056448
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.41407875111339754,
+            0.5859212488866024
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.895871057523787,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "24",
+        "market": "omen_subgraph",
+        "title": "Will any mainstream U.S. news outlet publish a major story based on the leaked Trump campaign emails by December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            9042443445387492352,
+            5418889296453899264
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.3747157605173741,
+            0.6252842394826259
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.776692145147437,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "25",
+        "market": "omen_subgraph",
+        "title": "Will any state in the U.S. introduce legislation targeting obesity reduction specifically to combat Alzheimer's by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6656279358380887040,
+            7361469878559762432
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5251534860646709,
+            0.47484651393532906
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.991136618548067,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "26",
+        "market": "omen_subgraph",
+        "title": "Will Romania's Social Democratic Party (PSD) form a governing coalition with the centrist Save Romania Union (USR) before December 9th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7760395002644244480,
+            6314111586240641024
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.44862045758869507,
+            0.5513795424113049
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.962943914310567,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "27",
+        "market": "omen_subgraph",
+        "title": "Will Red Bull win the World Constructors\u2019 Championship in the 2024 F1 Season?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            9163934168081288192,
+            5347048451163136000
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.3684828651143097,
+            0.6315171348856903
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.753505435947022,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "28",
+        "market": "omen_subgraph",
+        "title": "Will Sydney Nicole Gifford announce any changes to her content creation strategy as a result of the lawsuit with Alyssa Sheil by the end of 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7859762341831588864,
+            6234285194503903232
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.44233462235964915,
+            0.5576653776403508
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.953290014621335,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "29",
+        "market": "omen_subgraph",
+        "title": "Will the Pentagon release any additional reports or information regarding extraterrestrial life by December 29, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8461396449696163840,
+            5791006282628385792
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.40631789540260066,
+            0.5936821045973995
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.876033595215166,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "30",
+        "market": "omen_subgraph",
+        "title": "Will the United States issue new sanctions specifically targeting Russian entities involved in Syrian military operations before December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736011388,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            9078559902328067072,
+            5397331793496748032
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.37284969429920956,
+            0.6271503057007906
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.769876568520163,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "31",
+        "market": "omen_subgraph",
+        "title": "Will any major influencer platform (such as TikTok or Instagram) update their copyright policies in response to the Alyssa Sheil and Sydney Nicole Gifford lawsuit by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            8123448777749497856,
+            6031920843055385600
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.4261224542091757,
+            0.5738775457908243
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.9231678596342885,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "32",
+        "market": "omen_subgraph",
+        "title": "Will the Romanian government announce any new economic measures to address the budget deficit by December 9th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6459840276540017664,
+            7585326866045222912
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5400666855039662,
+            0.4599333144960338
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.9774890540719845,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "33",
+        "market": "omen_subgraph",
+        "title": "Will Pierre Gasly beat Esteban Ocon in the Drivers Championship by December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7487295145879413760,
+            6544419452593216512
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.46640197865096145,
+            0.5335980213490386
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.984178541563796,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "34",
+        "market": "omen_subgraph",
+        "title": "Will the Iranian government issue another public denial regarding the hacking allegations against them before December 7th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            9474100947694919680,
+            5171994711743266816
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.3531312939643644,
+            0.6468687060356357
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.691203053617035,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "35",
+        "market": "omen_subgraph",
+        "title": "Will @firstuserhere coauthor a publication in AIstats, AAAI, ICLR or JMLR by December 24th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            9707409744887453696,
+            5047690505266510848
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.34209801490259883,
+            0.6579019850974012
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.6417712071442825,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "36",
+        "market": "omen_subgraph",
+        "title": "Will the number of Google searches for 'move abroad' in the U.S. show a sustained increase over the next month compared to the previous year by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6545148797759109120,
+            7486460814577100800
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5335425529509606,
+            0.46645744704903935
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.9842307980006115,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "37",
+        "market": "omen_subgraph",
+        "title": "Will Turkey publicly announce any new military support for the rebel forces in northern Syria before December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7572327254363097088,
+            6470930052813908992
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.46078555076441197,
+            0.5392144492355881
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.978437968940135,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "38",
+        "market": "omen_subgraph",
+        "title": "Will the U.S. government issue any public statement or advisory regarding the Hot Topic data breach before December 8th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            7765145118013647872,
+            6310249100989676544
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.44831775244135963,
+            0.5516822475586404
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.962504813377749,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "39",
+        "market": "omen_subgraph",
+        "title": "Will any Democratic senator join the DOGE Caucus before December 10th, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            9797655806143834112,
+            5001196303433468928
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.33794488021113933,
+            0.6620551197888607
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.622135235514504,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    },
+    {
+        "id": "40",
+        "market": "omen_subgraph",
+        "title": "Will any major polling organization release a poll showing a significant shift in support for Trump among young male voters by December 30, 2024?",
+        "collateralToken": "0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+        "creator": "0x89c5cc945dd550bcffb72fe42bff002429f46fec",
+        "fee": 10000000000000000,
+        "openingTimestamp": 1736529788,
+        "outcomeSlotCount": 2,
+        "outcomeTokenAmounts": [
+            6650082179830834176,
+            7368329995772544000
+        ],
+        "outcomeTokenMarginalPrices": [
+            0.5256180160400654,
+            0.4743819839599346
+        ],
+        "outcomes": [
+            "Yes",
+            "No"
+        ],
+        "scaledLiquidityMeasure": 6.990806003732152,
+        "prediction_response": {
+            "p_yes": 0.5,
+            "p_no": 0.5,
+            "confidence": 0.5,
+            "info_utility": 0.5
+        },
+        "position_liquidity": 0,
+        "potential_net_profit": 0,
+        "processed_timestamp": 0,
+        "n_bets": 0
+    }
+]

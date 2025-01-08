@@ -1,0 +1,27 @@
+alphabet_in:
+- DONE
+- NEXT_CHECKPOINT_NOT_REACHED_YET
+- NO_MAJORITY
+- ROUND_TIMEOUT
+- SERVICE_EVICTED
+- SERVICE_NOT_STAKED
+default_start_state: CallCheckpointRound
+final_states:
+- CheckpointCallPreparedRound
+- FinishedStakingRound
+- ServiceEvictedRound
+label: StakingAbciApp
+start_states:
+- CallCheckpointRound
+states:
+- CallCheckpointRound
+- CheckpointCallPreparedRound
+- FinishedStakingRound
+- ServiceEvictedRound
+transition_func:
+    (CallCheckpointRound, DONE): CheckpointCallPreparedRound
+    (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): FinishedStakingRound
+    (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
+    (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
+    (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
+    (CallCheckpointRound, SERVICE_NOT_STAKED): FinishedStakingRound

@@ -1,0 +1,21 @@
+alphabet_in:
+- DONE
+- FETCH_ERROR
+- NO_MAJORITY
+- ROUND_TIMEOUT
+default_start_state: UpdateBetsRound
+final_states:
+- FailedMarketManagerRound
+- FinishedMarketManagerRound
+label: MarketManagerAbciApp
+start_states:
+- UpdateBetsRound
+states:
+- FailedMarketManagerRound
+- FinishedMarketManagerRound
+- UpdateBetsRound
+transition_func:
+    (UpdateBetsRound, DONE): FinishedMarketManagerRound
+    (UpdateBetsRound, FETCH_ERROR): FailedMarketManagerRound
+    (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
+    (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound

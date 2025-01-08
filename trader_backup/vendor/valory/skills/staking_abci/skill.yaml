@@ -1,0 +1,152 @@
+name: staking_abci
+author: valory
+version: 0.1.0
+type: skill
+description: This skill implements the Staking for an AEA.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
+  __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
+  behaviours.py: bafybeiels3us2s5sf2lrloekjky46o2owlo3awsocuxt67h76ap2k5qaqy
+  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
+  fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
+  handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
+  models.py: bafybeibhzoi25wqpgxwn7ibgz3juax2aeqep7qdl6q7u3abdnb6jahc264
+  payloads.py: bafybeib7hxsibtabb5vt6gjtco2x2s2yodhs24ojqecgrcexqsiv3pvmuy
+  rounds.py: bafybeiezsn42e2qqdpwgtkvrlgjzfwtg7fldfqglf5ofc36g7uyaobvuhq
+  tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
+  tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
+  tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
+  tests/test_payloads.py: bafybeidtkbudsmrx77xs2oooji6cpj7kx7nembf77u32if2sb2kvkavvhq
+  tests/test_rounds.py: bafybeidge7sp3udobhvjpbdj5kirkukd6w5qycqkcuc6sy3qqiedco2q4i
+fingerprint_ignore_patterns: []
+connections: []
+contracts:
+- valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
+- valory/service_staking_token:0.1.0:bafybeihhcs3ewwzhy7yto4y36uqmice3pdvyl54fvxxv6jsxonesie4dxu
+- valory/staking_token:0.1.0:bafybeiep4r6qyilbfgzdvx6t7zvpgaioxqktmxm7puwtnbpb2ftlib43gy
+- valory/mech_activity:0.1.0:bafybeibmqmle5fnal3gxlpdmcos2kogzra4q3pr3o5nh7shplxuilji3t4
+protocols:
+- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
+- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
+behaviours:
+  main:
+    args: {}
+    class_name: StakingRoundBehaviour
+handlers:
+  abci:
+    args: {}
+    class_name: ABCIStakingHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  benchmark_tool:
+    args:
+      log_dir: /logs
+    class_name: BenchmarkTool
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  params:
+    args:
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      genesis_config:
+        genesis_time: '2022-05-20T16:00:21.735122717Z'
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_num_blocks: '100000'
+            max_age_duration: '172800000000000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        voting_power: '10'
+      keeper_timeout: 30.0
+      max_attempts: 10
+      max_healthcheck: 120
+      multisend_address: '0x0000000000000000000000000000000000000000'
+      on_chain_service_id: null
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 10
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 350.0
+      service_id: staking
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+      share_tm_config_on_startup: false
+      sleep_time: 5
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      termination_sleep: 900
+      tx_timeout: 10.0
+      use_termination: false
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
+      mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
+      staking_contract_address: '0x2Ef503950Be67a98746F484DA0bBAdA339DF3326'
+      staking_interaction_sleep_time: 5
+      store_path: data
+    class_name: StakingParams
+  requests:
+    args: {}
+    class_name: Requests
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  state:
+    args: {}
+    class_name: SharedState
+dependencies: {}
+is_abstract: true

@@ -1,0 +1,40 @@
+name: gnosis_safe
+author: valory
+version: 0.1.0
+type: contract
+description: Gnosis Safe (GnosisSafeL2) contract
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeig26vrs7tcobu4cgk3fpqhvlzjwmb4nqsc7u66n4yhd2dh2rt7ff4
+  __init__.py: bafybeib4nfvueif2tkc7migc73qopyjvrbzedyehrexjx4y5vav3clmf34
+  build/GnosisSafe_V1_3_0.json: bafybeifxc4pnyus43qfrvxrqunlmkzvwfr5chyjesyobbk5m4smb2hkd4y
+  contract.py: bafybeiasa5rs5axojfmuztc6powf7twkpwjiacw2fef3xymmd5jd6hz354
+  encode.py: bafybeiez2siif4cpntxjvzcxsgpv2xcdgco4xtnr26pjqzwrlu62tmn2na
+  tests/__init__.py: bafybeihbclcqwfoxoljzwnbg3nf22srsyx5dgdbcyj27irwizktg4ygujy
+  tests/test_contract.py: bafybeidb4mrkkj6esxejlqdwx3m7skh2fdskqermxpuiuqpkyvkzb4ndyy
+fingerprint_ignore_patterns: []
+contracts:
+- valory/gnosis_safe_proxy_factory:0.1.0:bafybeieg57u3z7cdlmdamad5e6lk7kmsli2zurzkg3sl4y7lhekcu4y3au
+class_name: GnosisSafeContract
+contract_interface_paths:
+  ethereum: build/GnosisSafe_V1_3_0.json
+dependencies:
+  ecdsa:
+    version: '>=0.15'
+  eth-abi:
+    version: ==4.0.0
+  eth-utils:
+    version: ==2.2.0
+  eth_typing: {}
+  hexbytes: {}
+  open-aea-ledger-ethereum:
+    version: ==1.53.0
+  open-aea-test-autonomy:
+    version: ==0.14.14.post1
+  packaging: {}
+  pycryptodome:
+    version: ==3.18.0
+  requests: {}
+  web3:
+    version: <7,>=6.0.0

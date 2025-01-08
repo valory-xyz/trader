@@ -1,0 +1,200 @@
+name: mech_interact_abci
+author: valory
+version: 0.1.0
+type: skill
+description: The mech interact skill can be used to send requests to a mech and receive
+  the responses.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeidf3nlv5fpvfy4libtscayhirdw64shgmhfmvjiftjmjkmhu7auxq
+  behaviours/__init__.py: bafybeie3zsi6p3yanz5mqwpkdrcgywaqvkit3hdintsb4awnvalgxpxa4i
+  behaviours/base.py: bafybeif4dvt4p5wfh6q3ybqwnzy62lbr3vqy322sr3wm6pkcrha2ggin6q
+  behaviours/request.py: bafybeihaevbnfn66atdutf7rt7v3lw3vbw3tr4bugfdssebtmydgnuvjyq
+  behaviours/response.py: bafybeibigqdtdxxzufx7cclzjrafszg2lb6y5ommp3jzbyoit735wtm7tq
+  behaviours/round_behaviour.py: bafybeib33inrpyzzlx7k7i3okkslsx4p46dgdaww2m5k7rno57o5nndage
+  dialogues.py: bafybeigjmyzd2bx6mgqiet2c223k6wkc5jk7kdkstbhpaxlqxatey26tlm
+  fsm_specification.yaml: bafybeiapzwz6zcneelc2b2wrcb7cae7x6vbthmf6a57cm4mv6hucp67lz4
+  handlers.py: bafybeiduy2nwkqdynainuimkjulcv7u2qq6iglkuut3gfurkckydapitg4
+  models.py: bafybeidfes4ovzsyntxvqtx55qi2tznmllhzznf5qmozi52zrukiyrtbni
+  payloads.py: bafybeihhnbwsnaqxcltqxp4camiw3tz7gcymrdvxhmqlk4nww24tujiy7q
+  rounds.py: bafybeif7taciv6pqupb7xuewurqssziplbjeobbv4d7ea3vbngz3kpjnee
+  states/__init__.py: bafybeie34wx5znr2hxwh3gs2fchmbeuzjcfnraymdvtzjaxaq5zsiw233q
+  states/base.py: bafybeidnyaofckmpq6dts5a7rkfbljmxkazjz4shsv5vyh3cbxamt2dmci
+  states/final_states.py: bafybeihjntrbc666blxj4viz74y4p2hfc5e4vijs3bqng2k4vqbwkud7sq
+  states/request.py: bafybeifdkqn4o2tx57yflnxfhy6eoy42z7bdpadcevre64aw7l2hh2kpjy
+  states/response.py: bafybeibaxnp2oxwjptoq7qzm6o7ww2qrdj2vnxzg2qt523vz2ftqzx5hyi
+  tests/__init__.py: bafybeifojfnffwlsv6aiku25nwyjwm7h4m45yci3fgmaawpeoyoogzonum
+  tests/test_behaviours.py: bafybeidj7git7zaego7k75eejtxlr3usj6wnnqisu7urqwvalpwh5w7nyq
+  tests/test_dialogues.py: bafybeig6uzk7fklieyxapemiobdvv5tyx7hgdkdpl4vnacohgw2ecphdpq
+  tests/test_handlers.py: bafybeidwrmekr5tydmehvkolyksw37sah5js7buy3ca5fxkpgkppmgb3wi
+  tests/test_models.py: bafybeid3cvcttdxlklwvr6tqmiurb2qywvmgr5bnsn62pb5gl5p552eagy
+  tests/test_payloads.py: bafybeiakqhgochfu4ra4hp65hi7jvxtjd7fdub5wqmhlccrc4va26hb7da
+  tests/test_rounds.py: bafybeiauu5adaoxu7yvtrfa6uwdw4sxr5gn2pj7qjh6vowd556iji6vtca
+fingerprint_ignore_patterns: []
+connections: []
+contracts:
+- valory/gnosis_safe:0.1.0:bafybeih3ropivth4wn7zbzudisx3qezbht5jyndd4w7az7fq634lpozoge
+- valory/mech:0.1.0:bafybeiejfjfoxqggghcme43sx53q5gruefrws3k2jam2opkxl5uzffoarm
+- valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
+- valory/erc20:0.1.0:bafybeid2p2jyvjjlcsqugnawksdzsca6ljghpqbp2kfi3cxuxoy2233dbi
+- valory/mech_marketplace:0.1.0:bafybeiba7kh3wygwtpyf7oo3sili6givzo2gyadhbb66rvwsokswsywvuu
+protocols:
+- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+- valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
+- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
+behaviours:
+  main:
+    args: {}
+    class_name: MechInteractRoundBehaviour
+handlers:
+  abci:
+    args: {}
+    class_name: ABCIHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  benchmark_tool:
+    args:
+      log_dir: /logs
+    class_name: BenchmarkTool
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  params:
+    args:
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      finalize_timeout: 60.0
+      genesis_config:
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_duration: '172800000000000'
+            max_age_num_blocks: '100000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        genesis_time: '2022-05-20T16:00:21.735122717Z'
+        voting_power: '10'
+      history_check_timeout: 1205
+      ipfs_domain_name: null
+      keeper_allowed_retries: 3
+      keeper_timeout: 30.0
+      max_attempts: 10
+      max_healthcheck: 120
+      multisend_address: '0x0000000000000000000000000000000000000000'
+      on_chain_service_id: null
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 10
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 30.0
+      service_id: mech_interact
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+      share_tm_config_on_startup: false
+      sleep_time: 1
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      tx_timeout: 10.0
+      validate_timeout: 1205
+      multisend_batch_size: 50
+      mech_contract_address: '0x77af31De935740567Cf4fF1986D04B2c964A786a'
+      mech_request_price: null
+      mech_chain_id: gnosis
+      mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
+      ipfs_address: https://gateway.autonolas.tech/ipfs/
+      use_termination: false
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
+      mech_interaction_sleep_time: 10
+      use_mech_marketplace: false
+      mech_marketplace_config:
+        mech_marketplace_address: '0x0000000000000000000000000000000000000000'
+        priority_mech_address: '0x0000000000000000000000000000000000000000'
+        priority_mech_staking_instance_address: '0x0000000000000000000000000000000000000000'
+        priority_mech_service_id: 0
+        requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
+        response_timeout: 300
+    class_name: Params
+  mech_response:
+    args:
+      api_id: mech_response
+      headers:
+        Content-Type: application/json
+      method: GET
+      parameters: {}
+      response_key: result
+      response_type: str
+      retries: 5
+      url: ''
+    class_name: MechResponseSpecs
+  requests:
+    args: {}
+    class_name: Requests
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  state:
+    args: {}
+    class_name: SharedState
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
+dependencies:
+  web3:
+    version: <7,>=6.0.0
+  hexbytes: {}
+  py-multicodec: {}
+  py-multibase: {}
+is_abstract: true

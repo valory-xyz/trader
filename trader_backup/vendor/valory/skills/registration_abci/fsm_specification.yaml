@@ -1,0 +1,18 @@
+alphabet_in:
+- DONE
+- NO_MAJORITY
+default_start_state: RegistrationStartupRound
+final_states:
+- FinishedRegistrationRound
+label: AgentRegistrationAbciApp
+start_states:
+- RegistrationRound
+- RegistrationStartupRound
+states:
+- FinishedRegistrationRound
+- RegistrationRound
+- RegistrationStartupRound
+transition_func:
+    (RegistrationRound, DONE): FinishedRegistrationRound
+    (RegistrationRound, NO_MAJORITY): RegistrationRound
+    (RegistrationStartupRound, DONE): FinishedRegistrationRound

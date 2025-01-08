@@ -1,0 +1,1148 @@
+{
+  "_format": "",
+  "contractName": "",
+  "sourceName": "",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "_receiver",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "_conditionId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_contract",
+          "type": "address"
+        }
+      ],
+      "name": "Fulfilled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "version",
+          "type": "uint8"
+        }
+      ],
+      "name": "Initialized",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "previousAdminRole",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "newAdminRole",
+          "type": "bytes32"
+        }
+      ],
+      "name": "RoleAdminChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RoleGranted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "RoleRevoked",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DEFAULT_ADMIN_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "abortByTimeOut",
+      "outputs": [
+        {
+          "internalType": "enum ConditionStoreLibrary.ConditionState",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_addr",
+          "type": "address"
+        }
+      ],
+      "name": "addressToBytes32",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_b32",
+          "type": "bytes32"
+        }
+      ],
+      "name": "bytes32ToAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "_amounts",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "calculateTotalAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockPaymentCondition",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_transfer",
+          "type": "bool"
+        }
+      ],
+      "name": "encodeParams",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockPaymentCondition",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_transfer",
+          "type": "bool"
+        }
+      ],
+      "name": "fulfill",
+      "outputs": [
+        {
+          "internalType": "enum ConditionStoreLibrary.ConditionState",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockPaymentCondition",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_transfer",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_expirationBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "fulfill",
+      "outputs": [
+        {
+          "internalType": "enum ConditionStoreLibrary.ConditionState",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockPaymentCondition",
+          "type": "bytes32"
+        }
+      ],
+      "name": "fulfill",
+      "outputs": [
+        {
+          "internalType": "enum ConditionStoreLibrary.ConditionState",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockPaymentCondition",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bool",
+          "name": "_transfer",
+          "type": "bool"
+        }
+      ],
+      "name": "fulfillForDelegate",
+      "outputs": [
+        {
+          "internalType": "enum ConditionStoreLibrary.ConditionState",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockPaymentCondition",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_transfer",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_expirationBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "fulfillForDelegate",
+      "outputs": [
+        {
+          "internalType": "enum ConditionStoreLibrary.ConditionState",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_account",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_params",
+          "type": "bytes"
+        }
+      ],
+      "name": "fulfillProxy",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_agreementId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_valueHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "generateId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCurrentBlockNumber",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getNFTDefaultAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getNvmConfigAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getRoleAdmin",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTrustedForwarder",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        }
+      ],
+      "name": "grantMarketRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_address",
+          "type": "address"
+        }
+      ],
+      "name": "grantProxyRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "grantRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "a",
+          "type": "address"
+        }
+      ],
+      "name": "hasNVMOperatorRole",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "hasRole",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockCondition",
+          "type": "bytes32"
+        }
+      ],
+      "name": "hashValues",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftReceiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nftAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_lockCondition",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_transfer",
+          "type": "bool"
+        }
+      ],
+      "name": "hashValues",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_conditionStoreManagerAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_didRegistryAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_ercAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        }
+      ],
+      "name": "initialize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "addr",
+          "type": "address"
+        }
+      ],
+      "name": "isContract",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "forwarder",
+          "type": "address"
+        }
+      ],
+      "name": "isTrustedForwarder",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "renounceRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_nftContractAddress",
+          "type": "address"
+        }
+      ],
+      "name": "revokeMarketRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_address",
+          "type": "address"
+        }
+      ],
+      "name": "revokeProxyRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "revokeRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "balanceOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "interfaceId",
+          "type": "bytes4"
+        }
+      ],
+      "name": "supportsInterface",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "name": "_did",
+          "type": "bytes32"
+        },
+        {
+          "name": "_conditionIds",
+          "type": "bytes32[]"
+        },
+        {
+          "name": "_timeLocks",
+          "type": "uint256[]"
+        },
+        {
+          "name": "_timeOuts",
+          "type": "uint256[]"
+        },
+        {
+          "name": "_accessConsumer",
+          "type": "address"
+        },
+        {
+          "name": "_idx",
+          "type": "uint256"
+        },
+        {
+          "name": "_rewardAddress",
+          "type": "address"
+        },
+        {
+          "name": "_tokenAddress",
+          "type": "address"
+        },
+        {
+          "name": "_amounts",
+          "type": "uint256[]"
+        },
+        {
+          "name": "_receivers",
+          "type": "address[]"
+        }
+      ],
+      "name": "createAgreementAndPayEscrow",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+            {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "operator",
+              "type": "address"
+            }
+          ],
+          "name": "isApprovedForAll",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "operator",
+              "type": "address"
+            },
+            {
+              "internalType": "bool",
+              "name": "approved",
+              "type": "bool"
+            }
+          ],
+          "name": "setApprovalForAll",
+          "outputs": [
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+  ],
+  "bytecode": "",
+  "deployedBytecode": "",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

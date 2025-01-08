@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package aea.valory.tendermint.v0_1_0;
+
+message TendermintMessage{
+
+  // Custom Types
+  message ErrorCode{
+    enum ErrorCodeEnum {
+      INVALID_REQUEST = 0;
+    }
+    ErrorCodeEnum error_code = 1;
+  }
+
+
+  // Performatives and contents
+  message Get_Genesis_Info_Performative{
+    string query = 1;
+    bool query_is_set = 2;
+  }
+
+  message Get_Recovery_Params_Performative{
+    string query = 1;
+    bool query_is_set = 2;
+  }
+
+  message Genesis_Info_Performative{
+    string info = 1;
+  }
+
+  message Recovery_Params_Performative{
+    string params = 1;
+  }
+
+  message Error_Performative{
+    ErrorCode error_code = 1;
+    string error_msg = 2;
+    map<string, string> error_data = 3;
+  }
+
+
+  oneof performative{
+    Error_Performative error = 5;
+    Genesis_Info_Performative genesis_info = 6;
+    Get_Genesis_Info_Performative get_genesis_info = 7;
+    Get_Recovery_Params_Performative get_recovery_params = 8;
+    Recovery_Params_Performative recovery_params = 9;
+  }
+}

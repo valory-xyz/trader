@@ -1,0 +1,115 @@
+name: ledger
+author: valory
+version: 0.19.0
+type: connection
+description: A connection to interact with any ledger API and contract API.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeihkgodu7o7v6pfazm7u6orlspsfrae3cyz36yc46x67phfmw3l57e
+  __init__.py: bafybeia3purd7y4b7tkdt2fcaxkdazos32criq5hx6fhufaislrdefe674
+  base.py: bafybeifuoq2oqlcjlgeg2fg5l2ijiylb23v65xghv7u422helief2cjjuy
+  connection.py: bafybeicydkymhz2feqmihtkiwdfg7pp4pww2elqv4tijuhjcplyvawdk74
+  contract_dispatcher.py: bafybeidf2wu3rsp5pm45qwjlievbpmueeaj6hjw3kdyn67xhbocylwg3d4
+  ledger_dispatcher.py: bafybeicartiu3mcavtyd3eveonrbak3uaowqzymtaza6gqtoi5msid75ci
+  tests/__init__.py: bafybeifku7ttsmbj4gfx6dkgjvwypx7v5ysfqlzof6vh4p7gujakjtuwhe
+  tests/conftest.py: bafybeid7vo7e2m76ey5beeadtbxywxx5ukefd5slwbc362rwmhht6i45ou
+  tests/test_contract_dispatcher.py: bafybeiag5lnpc7h25w23ash4hk4cowxsy5buxgpr474l3tfewnhf56eqyq
+  tests/test_ledger.py: bafybeigcedfr3yv3jse3xwrerrgwbelgb56uhgrvdus527d3daekh6dx4m
+  tests/test_ledger_api.py: bafybeifw5smawex5m2fm6rt4kmunc22kpabalmshh45qb3xnuap33sfgyi
+fingerprint_ignore_patterns: []
+connections: []
+protocols:
+- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+- valory/ledger_api:1.0.0:bafybeihdk6psr4guxmbcrc26jr2cbgzpd5aljkqvpwo64bvaz7tdti2oni
+class_name: LedgerConnection
+config:
+  ledger_apis:
+    ethereum:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: &id001
+        gas_station:
+          gas_price_api_key: null
+          gas_price_strategy: fast
+        eip1559:
+          max_gas_fast: 1500
+          fee_history_blocks: 10
+          fee_history_percentile: 5
+          priority_fee_estimation_trigger: 100
+          default_priority_fee: 3
+          fallback_estimate:
+            maxFeePerGas: 20000000000
+            maxPriorityFeePerGas: 3000000000
+            baseFee: null
+          priority_fee_increase_boundary: 200
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    ethereum_flashbots:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+      authentication_private_key: null
+      flashbots_builders: []
+    solana:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    arbitrum:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    zksync:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    bnb:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    gnosis:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    consensys:
+      address: http://127.0.0.1:8545
+      chain_id: 1337
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: false
+    celo:
+      address: http://127.0.0.1:8545
+      chain_id: 42220
+      default_gas_price_strategy: eip1559
+      gas_price_strategies: *id001
+      is_gas_estimation_enabled: true
+      poa_chain: true
+  retry_attempts: 240
+  retry_timeout: 3
+excluded_protocols: []
+restricted_to_protocols:
+- valory/contract_api:1.0.0
+- valory/ledger_api:1.0.0
+dependencies:
+  pytest-asyncio: {}
+is_abstract: false

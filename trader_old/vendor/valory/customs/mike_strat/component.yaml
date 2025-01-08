@@ -1,0 +1,15 @@
+name: mike_strat
+author: valory
+version: 0.1.0
+type: custom
+description: A simple strategy that bets a fixed amount when the confidence is of
+  a given threshold.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeibbn67pnrrm4qm3n3kbelvbs3v7fjlrjniywmw2vbizarippidtvi
+  mike_strat.py: bafybeifbxlcl6kvubdudnjilantbqbghuvhmgheyh35jhiiaqpmq7va6ji
+fingerprint_ignore_patterns: []
+entry_point: mike_strat.py
+callable: run
+dependencies: {}

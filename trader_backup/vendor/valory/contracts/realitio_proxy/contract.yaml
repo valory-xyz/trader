@@ -1,0 +1,19 @@
+name: realitio_proxy
+author: valory
+version: 0.1.0
+type: contract
+description: RealitioProxy contract.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeickfnpykdx2ffgrrza6yhn7gfr2plis354oohzljhlnpwnp4kpe2u
+  build/Realitio.json: bafybeiaqw4aid7mitc4vfzhlcxhbncei4hd3ywok2ugzs3zkhcx3pliatm
+  contract.py: bafybeidcouc7xpdcntmzi5dgv5qwnp23dmctdzvof7kwsmzsk27iguaa2e
+fingerprint_ignore_patterns: []
+class_name: RealitioProxyContract
+contract_interface_paths:
+  ethereum: build/Realitio.json
+dependencies:
+  web3:
+    version: <7,>=6.0.0
+contracts: []

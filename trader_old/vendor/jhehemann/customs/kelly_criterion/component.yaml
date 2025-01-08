@@ -1,0 +1,14 @@
+name: kelly_criterion
+author: jhehemann
+version: 0.1.0
+type: custom
+description: The kelly criterion trading strategy.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeiatntqojmmkgwtqubfzp2zf4viusno2vkf7dfy4b343hmymhtf72y
+  kelly_criterion.py: bafybeiaeazylun25iol746juwtgc4qeuj2rlrtyqhudztpacyybbsgglcy
+fingerprint_ignore_patterns: []
+entry_point: kelly_criterion.py
+callable: run
+dependencies: {}

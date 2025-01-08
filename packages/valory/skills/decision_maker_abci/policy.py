@@ -96,7 +96,7 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
 
     @staticmethod
     def hook(
-        data: Dict[str, Any],
+        data: Dict[str, Any]
     ) -> Union[
         "EGreedyPolicy",
         AccuracyInfo,
@@ -187,11 +187,6 @@ class EGreedyPolicy:
     @property
     def valid_weighted_accuracy(self) -> Dict[str, float]:
         """Get the valid weighted accuracy."""
-        if not self.weighted_accuracy:
-            # Log or raise an error if no tools are present
-            raise ValueError(
-                "Weighted accuracy is empty. Ensure tools are initialized."
-            )
         return {
             tool: acc
             for tool, acc in self.weighted_accuracy.items()
@@ -199,23 +194,17 @@ class EGreedyPolicy:
         }
 
     @property
-    def best_tool(self) -> Optional[str]:
-        """Get the best non-quarantined tool, or fallback gracefully."""
-        # Get valid weighted accuracies
-        valid_weighted_accuracy = self.valid_weighted_accuracy
-        if valid_weighted_accuracy:
-            valid_tools, valid_weighted_accuracies = zip(
-                *valid_weighted_accuracy.items()
-            )
-        else:
-            # Fallback to all tools if no valid tools are available
-            valid_tools, valid_weighted_accuracies = zip(
-                *self.weighted_accuracy.items()
-            )
+    def best_tool(self) -> str:
+        """Get the best non-quarantined tool."""
+        valid_tools, valid_weighted_accuracies = zip(
+            *self.valid_weighted_accuracy.items()
+        )
+        if not valid_weighted_accuracies:
+            # if there are no unquarantined tools, then consider them all valid
+            valid_tools, valid_weighted_accuracies = self.weighted_accuracy.items()
 
-        # Determine the best tool based on weighted accuracies
-        best_index = argmax(valid_weighted_accuracies)
-        return valid_tools[best_index]
+        best = argmax(valid_weighted_accuracies)
+        return valid_tools[best]
 
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""

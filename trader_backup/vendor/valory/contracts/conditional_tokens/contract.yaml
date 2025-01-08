@@ -1,0 +1,24 @@
+name: conditional_tokens
+author: valory
+version: 0.1.0
+type: contract
+description: ConditionalTokens contract.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeidhdxio3oq5gqdnxmngumvt3fcd6zyiyrpk5f2k4dwhflbg4e5iky
+  build/ConditionalTokens.json: bafybeia2ahis7zx2yhhf23kpkcxu56hto6fwg6ptjg5ld46lp4dgz7cz3e
+  contract.py: bafybeigdhjd2qvkmawsxd4afufr6uy3hufxwi3chcne5gba5i6whitn2r4
+fingerprint_ignore_patterns: []
+class_name: ConditionalTokensContract
+contract_interface_paths:
+  ethereum: build/ConditionalTokens.json
+dependencies:
+  hexbytes: {}
+  web3:
+    version: <7,>=6.0.0
+  requests:
+    version: ==2.28.1
+  urllib3:
+    version: ==1.26.16
+contracts: []
