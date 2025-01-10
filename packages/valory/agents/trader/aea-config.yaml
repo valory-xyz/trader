@@ -234,7 +234,7 @@ models:
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
       file_hash_to_strategies: ${dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
-      strategies_kwargs: ${dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
+      strategies_kwargs: ${dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":25000000000000000,"0.1":25000000000000000,"0.2":25000000000000000,"0.3":25000000000000000,"0.4":25000000000000000,"0.5":25000000000000000,"0.6":25000000000000000,"0.7":25000000000000000,"0.8":25000000000000000,"0.9":25000000000000000,"1.0":250000000000000000}}}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
       safe_voting_range: ${int:600}
