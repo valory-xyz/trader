@@ -252,6 +252,7 @@ models:
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
       default_chain_id: gnosis
+      mech_interact_round_timeout_seconds: 5400
     class_name: TraderParams
   benchmarking_mode:
     args:

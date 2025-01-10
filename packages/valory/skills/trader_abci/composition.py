@@ -129,7 +129,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechRequestRound: PreTxSettlementRound,
     FinishedMechRequestTxRound: MechResponseRound,
     FinishedMechResponseRound: DecisionReceiveRound,
-    FinishedMechResponseTimeoutRound: MechResponseRound,
+    FinishedMechResponseTimeoutRound: MechRequestRound,
     FinishedMechRequestSkipRound: RedeemRound,
     FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
