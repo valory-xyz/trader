@@ -21,9 +21,9 @@
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibj5frl64wbrq2skp324opcukakvuawbg5cia2svrbnsmiyfrai4u",
         "skill/valory/staking_abci/0.1.0": "bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeic3bismocli2yyxmjhjsevjbzpuf3ladsvlkazfx23vq3q6uxrn7m",
-        "agent/valory/trader/0.1.0": "bafybeihuzkr2gnkwuriaxqmxus7kdzviykzwov6cx6czbuvibgqlrtyqoe",
-        "service/valory/trader/0.1.0": "bafybeihx4hmeemnntm4s5tljmu2ovzlsdlhawno5a6sirk3ckopghqhuxm",
-        "service/valory/trader_pearl/0.1.0": "bafybeictmh4vwvgeeqcbju5gfilm2oiyz7yuoajnxaffn4pfvr5qgmgrc4"
+        "agent/valory/trader/0.1.0": "bafybeibcyqiwymascyzarfpzfu4zmlj6nc57irziykrcflqcvvmefehcy4",
+        "service/valory/trader/0.1.0": "bafybeicd66tt3wsb22hrmxelviivkmonchhoabw72svnjhpc6juv7tcq2m",
+        "service/valory/trader_pearl/0.1.0": "bafybeia5jhvxiie5ogagsnhnzqdnpbrkpknyhrxtwfxzzb3fcamaumuubm"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeidbvo3jdbt54pqk3foqfso4uim2vaea5abg6jzktomdeklh6sm2rq",
