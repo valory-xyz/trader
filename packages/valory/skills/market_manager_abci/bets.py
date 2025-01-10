@@ -66,9 +66,6 @@ class QueueStatus(Enum):
             return QueueStatus.FRESH
         return self
 
-    def mark_benchmarking_done(self) -> "QueueStatus":
-        return QueueStatus.BENCHMARKING_DONE
-
     def next_status(self) -> "QueueStatus":
         """Get the next status in the queue."""
         if self == QueueStatus.TO_PROCESS:
@@ -77,8 +74,6 @@ class QueueStatus(Enum):
             return QueueStatus.REPROCESSED
         elif self != QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
-        return self
-
         return self
 
 

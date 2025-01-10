@@ -49,6 +49,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
+    QueueStatus,
 )
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
@@ -126,9 +127,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         else:
             # no more bets available for this market
             msg = f"No more mock responses for the market with id: {sampled_bet_id}"
-            self.sampled_bet.queue_status = (
-                self.sampled_bet.queue_status.mark_benchmarking_done()
-            )
+            self.sampled_bet.queue_status = QueueStatus.BENCHMARKING_DONE
             self.context.logger.info(msg)
             self.shared_state.last_benchmarking_has_run = True
             self._rows_exceeded = True
