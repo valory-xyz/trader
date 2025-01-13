@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
+    QueueStatus,
 )
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
@@ -126,6 +127,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         else:
             # no more bets available for this market
             msg = f"No more mock responses for the market with id: {sampled_bet_id}"
+            self.sampled_bet.queue_status = QueueStatus.BENCHMARKING_DONE
             self.context.logger.info(msg)
             self.shared_state.last_benchmarking_has_run = True
             self._rows_exceeded = True
@@ -514,6 +516,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             else:
                 self._write_benchmark_results(prediction_response)
 
+            self.context.logger.info("Increasing Mech call count by 1")
+            self.shared_state.benchmarking_mech_calls += 1
+
         return is_profitable, bet_amount
 
     def _update_selected_bet(
@@ -569,6 +574,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     prediction_response,
                     bet_amount,
                 )
+                self.context.logger.info("Increasing Mech call count by 1")
+                self.shared_state.benchmarking_mech_calls += 1
 
             if prediction_response is not None:
                 self.policy.tool_responded(

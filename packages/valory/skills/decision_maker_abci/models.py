@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -216,6 +216,9 @@ class SharedState(BaseSharedState):
         # the mapping from bet id to the row number in the dataset
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
+
+        # mech call counter for benchmarking behaviour
+        self.benchmarking_mech_calls: int = 0
 
     @property
     def mock_question_id(self) -> Any:
@@ -529,6 +532,7 @@ class BenchmarkingMode(Model, TypeCheckMixin):
             self._ensure("results_filename", kwargs, str)
         )
         self.randomness: str = self._ensure("randomness", kwargs, str)
+        self.nr_mech_calls: int = self._ensure("nr_mech_calls", kwargs, int)
         super().__init__(*args, **kwargs)
 
 
