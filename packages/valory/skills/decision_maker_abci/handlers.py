@@ -60,7 +60,7 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-from packages.valory.skills.trader_abci.rounds_info import ROUNDS_INFO
+from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
