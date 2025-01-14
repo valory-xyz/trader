@@ -29,7 +29,7 @@ fingerprint:
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeifvu7n6sjmrerogkzsftjrw2l6w5ppuq3f43ouj2rwbomdr5glp2e
-  handlers.py: bafybeie7wdvbhnbomafspogrdc2oallr4cxy5bo6b5hqv6ocf4yf2jdxqi
+  handlers.py: bafybeigd7houy43nrycryiygg6zldq2yu7nd7qkacp5d23qgejlvjexk3m
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeihvmxk5nve54v3yz7uaobekdzg37675ooiqxb7ne5hmeegfhk6c6m
@@ -37,6 +37,7 @@ fingerprint:
   policy.py: bafybeidofgwvk6sudz75tvuduskuphtn3amtib2irzw5hr3qcfn5pdwuc4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeiftrpaxyyly3d36kvfg2c2m5fmzchm6n4vv5losu3jr2b7s5ces6a
+  rounds_info.py: bafybeierwopf4qsja6qntvzwmgx3mj6s7pxxgbo5nwgwfhdp5rucjbvyta
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeiglqvym3ri6hurx4k7hrnykzbmslxe3vuj23djt6hai4czii4vbqq
   states/bet_placement.py: bafybeih5eopyxubczys5u5t3bdxbxpc7mmfdyqrpqsbm2uha5jc2phza4i
