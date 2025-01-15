@@ -24,127 +24,127 @@ ROUNDS_INFO = {
     "BenchmarkingRandomnessRound": {
         "name": "Gathering randomness in benchmarking mode",
         "description": "Gathers randomness in benchmarking mode",
-        "transitions": {}
+        "transitions": {},
     },
     "BetPlacementRound": {
         "name": "Placing a bet",
         "description": "Attempting to place a bet on a market",
-        "transitions": {}
+        "transitions": {},
     },
     "BlacklistingRound": {
         "name": "Blacklisting the sampled bet",
         "description": "Blacklists the sampled bet and updates the bets",
-        "transitions": {}
+        "transitions": {},
     },
     "CallCheckpointRound": {
         "name": "Preparing to call the checkpoint",
         "description": "Preparing to call the checkpoint",
-        "transitions": {}
+        "transitions": {},
     },
     "CheckBenchmarkingModeRound": {
         "name": "Checking if the benchmarking mode is enabled",
         "description": "Checks if the benchmarking mode is enabled",
-        "transitions": {}
+        "transitions": {},
     },
     "CheckLateTxHashesRound": {
         "name": "Checking the late transaction hashes",
         "description": "Checks the late transaction hashes to see if any of them have been validated",
-        "transitions": {}
+        "transitions": {},
     },
     "CheckStopTradingRound": {
         "name": "Checking if the agents should stop trading",
         "description": "Checking if the conditions are met to stop trading",
-        "transitions": {}
+        "transitions": {},
     },
     "CheckTransactionHistoryRound": {
         "name": "Checking the transaction history",
         "description": "Checks the transaction history to determine if any previous transactions have been validated",
-        "transitions": {}
+        "transitions": {},
     },
     "ClaimRound": {
         "name": "Preparing a claim transaction",
         "description": "Prepares a claim transaction for the subscription the agent has purchased",
-        "transitions": {}
+        "transitions": {},
     },
     "CollectSignatureRound": {
         "name": "Signing a transaction",
         "description": "Signs a transaction",
-        "transitions": {}
+        "transitions": {},
     },
     "DecisionReceiveRound": {
         "name": "Deciding on the bet's answer",
         "description": "Decides on the bet's answer based on mech response.",
-        "transitions": {}
+        "transitions": {},
     },
     "DecisionRequestRound": {
         "name": "Preparing a mech request transaction",
         "description": "Prepares a mech request transaction to determine the answer to a bet",
-        "transitions": {}
+        "transitions": {},
     },
     "FailedMultiplexerRound": {
         "name": "Representing a failure in identifying the transmitter round",
         "description": "Represents a failure in identifying the transmitter round",
-        "transitions": {}
+        "transitions": {},
     },
     "FinalizationRound": {
         "name": "Finalizing the transaction",
         "description": "Represents that the transaction signing has finished",
-        "transitions": {}
+        "transitions": {},
     },
     "HandleFailedTxRound": {
         "name": "Handling a failed transaction",
         "description": "Handles a failed transaction",
-        "transitions": {}
+        "transitions": {},
     },
     "ImpossibleRound": {
         "name": "Impossible to reach a decision",
         "description": "Represents that it is impossible to reach a decision with the given parametrization",
-        "transitions": {}
+        "transitions": {},
     },
     "MechRequestRound": {
         "name": "Performing a request to a Mech",
         "description": "Preforms a mech request to determine the answer of a bet",
-        "transitions": {}
+        "transitions": {},
     },
     "MechResponseRound": {
         "name": "Collecting the responses from a Mech",
         "description": "Collects the responses from a Mech to determine the answer of a bet",
-        "transitions": {}
+        "transitions": {},
     },
     "PostTxSettlementRound": {
         "name": "Finishing transaction settlement",
         "description": "Finished the transaction settlement",
-        "transitions": {}
+        "transitions": {},
     },
     "PreTxSettlementRound": {
         "name": "Ensuring the pre transaction settlement checks have passed",
         "description": "Ensures the pre transaction settlement checks have passed",
-        "transitions": {}
+        "transitions": {},
     },
     "RandomnessRound": {
         "name": "Gathering randomness",
         "description": "Gathers randomness",
-        "transitions": {}
+        "transitions": {},
     },
     "RandomnessTransactionSubmissionRound": {
         "name": "Generating randomness",
         "description": "Generates randomness",
-        "transitions": {}
+        "transitions": {},
     },
     "RedeemRound": {
         "name": "Preparing a redeem transaction",
         "description": "Prepares a transaction to redeem the winnings",
-        "transitions": {}
+        "transitions": {},
     },
     "RegistrationRound": {
         "name": "Registering an agent",
         "description": "Registers the agents. Waits until the threshold is reached",
-        "transitions": {}
+        "transitions": {},
     },
     "RegistrationStartupRound": {
         "name": "Registering the agents",
         "description": "Registers the agents. Waits until all agents have registered",
-        "transitions": {}
+        "transitions": {},
     },
     "ResetAndPauseRound": {
         "name": "Cleaning up and sleeping for some time",
@@ -159,51 +159,51 @@ ROUNDS_INFO = {
     "SamplingRound": {
         "name": "Sampling a bet",
         "description": "Samples a bet",
-        "transitions": {}
+        "transitions": {},
     },
     "SelectKeeperTransactionSubmissionARound": {
         "name": "Selecting a keeper",
         "description": "Selects a keeper for the transaction submission",
-        "transitions": {}
+        "transitions": {},
     },
     "SelectKeeperTransactionSubmissionBAfterTimeoutRound": {
         "name": "Selecting a new keeper",
         "description": "Selects a new keeper for the transaction submission after a round timeout of the previous keeper",
-        "transitions": {}
+        "transitions": {},
     },
     "SelectKeeperTransactionSubmissionBRound": {
         "name": "Selecting a new keeper",
         "description": "Selects a new keeper for the transaction submission",
-        "transitions": {}
+        "transitions": {},
     },
     "ServiceEvictedRound": {
         "name": "Terminating the service",
         "description": "Terminated the service if it has been evicted from the staking contract",
-        "transitions": {}
+        "transitions": {},
     },
     "SubscriptionRound": {
         "name": "Ordering a subscription",
         "description": "Purchases a subscription",
-        "transitions": {}
+        "transitions": {},
     },
     "SynchronizeLateMessagesRound": {
         "name": "Synchronizing the late messages",
         "description": "Synchronizes any late arriving messages",
-        "transitions": {}
+        "transitions": {},
     },
     "ToolSelectionRound": {
         "name": "Selecting a Mech tool",
         "description": "Selects a Mech tool to use to determine the answer of a bet",
-        "transitions": {}
+        "transitions": {},
     },
     "UpdateBetsRound": {
         "name": "Updating the bets",
         "description": "Fetching the bets and updates them with the latest information",
-        "transitions": {}
+        "transitions": {},
     },
     "ValidateTransactionRound": {
         "name": "Validating a transaction",
         "description": "Validates a transaction",
-        "transitions": {}
-    }
+        "transitions": {},
+    },
 }

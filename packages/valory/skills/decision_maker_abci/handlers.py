@@ -62,11 +62,13 @@ from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 
+
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
 ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
+
 
 def camel_to_snake(camel_str: str) -> str:
     """Converts from CamelCase to snake_case"""
@@ -77,9 +79,7 @@ def camel_to_snake(camel_str: str) -> str:
 def load_fsm_spec() -> Dict:
     """Load the chained FSM spec"""
     with open(
-        Path(__file__).parent.parent
-        / "trader_abci"
-        / "fsm_specification.yaml",
+        Path(__file__).parent.parent / "trader_abci" / "fsm_specification.yaml",
         "r",
         encoding="utf-8",
     ) as spec_file:
