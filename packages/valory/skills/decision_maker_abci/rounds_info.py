@@ -24,6 +24,7 @@ from typing import Dict
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case
 
+
 ROUNDS_INFO = {
     "benchmarking_randomness_round": {
         "name": "Gathering randomness in benchmarking mode",
@@ -232,8 +233,8 @@ def load_rounds_info_with_transitions() -> Dict:
     for source_info, target_round in fsm["transition_func"].items():
         # Removes the brackets from the source info tuple and splits it into round and event
         source_round, event = source_info[1:-1].split(", ")
-        rounds_info_with_transitions[_camel_case_to_snake_case(source_round)]["transitions"][
-            event.lower()
-        ] = _camel_case_to_snake_case(target_round)
+        rounds_info_with_transitions[_camel_case_to_snake_case(source_round)][
+            "transitions"
+        ][event.lower()] = _camel_case_to_snake_case(target_round)
 
     return rounds_info_with_transitions

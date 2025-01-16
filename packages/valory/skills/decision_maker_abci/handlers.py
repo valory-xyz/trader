@@ -23,8 +23,7 @@ import json
 import re
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple, cast, Any
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 from aea.protocols.base import Message
@@ -59,7 +58,10 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO, load_rounds_info_with_transitions
+from packages.valory.skills.decision_maker_abci.rounds_info import (
+    load_rounds_info_with_transitions,
+)
+
 
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -153,19 +155,6 @@ class HttpHandler(BaseHttpHandler):
         self.json_content_header = "Content-Type: application/json\n"
 
         self.rounds_info = load_rounds_info_with_transitions()
-
-        # Load round info for the healthcheck
-        # fsm = load_fsm_spec()
-        #
-        # self.rounds_info: Dict = {  # pylint: disable=attribute-defined-outside-init
-        #     _camel_case_to_snake_case(k): v for k, v in ROUNDS_INFO.items()
-        # }
-        # for source_info, target_round in fsm["transition_func"].items():
-        #     # Removes the brackets from the source info tuple and splits it into round and event
-        #     source_round, event = source_info[1:-1].split(", ")
-        #     self.rounds_info[_camel_case_to_snake_case(source_round)]["transitions"][
-        #         event.lower()
-        #     ] = _camel_case_to_snake_case(target_round)
 
     @property
     def synchronized_data(self) -> SynchronizedData:
