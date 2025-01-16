@@ -24,10 +24,9 @@ import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple, cast
+from typing import Callable, Dict, Optional, Tuple, cast, Any
 from urllib.parse import urlparse
 
-import yaml
 from aea.protocols.base import Message
 
 from packages.valory.connections.http_server.connection import (
@@ -60,30 +59,13 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
-
+from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO, load_rounds_info_with_transitions
 
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
 ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
-
-
-def camel_to_snake(camel_str: str) -> str:
-    """Converts from CamelCase to snake_case"""
-    snake_str = re.sub(r"(?<!^)(?=[A-Z])", "_", camel_str).lower()
-    return snake_str
-
-
-def load_fsm_spec() -> Dict:
-    """Load the chained FSM spec"""
-    with open(
-        Path(__file__).parent.parent / "trader_abci" / "fsm_specification.yaml",
-        "r",
-        encoding="utf-8",
-    ) as spec_file:
-        return yaml.safe_load(spec_file)
 
 
 class IpfsHandler(AbstractResponseHandler):
@@ -136,6 +118,14 @@ class HttpHandler(BaseHttpHandler):
 
     SUPPORTED_PROTOCOL = HttpMessage.protocol_id
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the HTTP handler."""
+        super().__init__(**kwargs)
+        self.handler_url_regex: str = ""
+        self.routes: Dict[tuple, list] = {}
+        self.json_content_header: str = ""
+        self.rounds_info: Dict = {}
+
     def setup(self) -> None:
         """Implement the setup."""
         config_uri_base_hostname = urlparse(
@@ -162,17 +152,20 @@ class HttpHandler(BaseHttpHandler):
 
         self.json_content_header = "Content-Type: application/json\n"
 
-        # Load round info for the healthcheck
-        fsm = load_fsm_spec()
+        self.rounds_info = load_rounds_info_with_transitions()
 
-        self.rounds_info: Dict = {  # pylint: disable=attribute-defined-outside-init
-            camel_to_snake(k): v for k, v in ROUNDS_INFO.items()
-        }
-        for source_info, target_round in fsm["transition_func"].items():
-            source_round, event = source_info[1:-1].split(", ")
-            self.rounds_info[camel_to_snake(source_round)]["transitions"][
-                event.lower()
-            ] = camel_to_snake(target_round)
+        # Load round info for the healthcheck
+        # fsm = load_fsm_spec()
+        #
+        # self.rounds_info: Dict = {  # pylint: disable=attribute-defined-outside-init
+        #     _camel_case_to_snake_case(k): v for k, v in ROUNDS_INFO.items()
+        # }
+        # for source_info, target_round in fsm["transition_func"].items():
+        #     # Removes the brackets from the source info tuple and splits it into round and event
+        #     source_round, event = source_info[1:-1].split(", ")
+        #     self.rounds_info[_camel_case_to_snake_case(source_round)]["transitions"][
+        #         event.lower()
+        #     ] = _camel_case_to_snake_case(target_round)
 
     @property
     def synchronized_data(self) -> SynchronizedData:
