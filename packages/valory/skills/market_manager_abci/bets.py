@@ -312,12 +312,6 @@ class BetsDecoder(json.JSONDecoder):
         if bet_annotations == data_attributes:
             data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
-        elif "id" in data_attributes:
-            common_attributes = set(bet_annotations) & set(data_attributes)
-            data = {key: data[key] for key in common_attributes}
-            if "queue_status" in data:
-                data["queue_status"] = QueueStatus(data["queue_status"])
-            return Bet(**data)
 
         return data
 
