@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2024 Valory AG
+#   Copyright 2021-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import json
 import re
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 from aea.protocols.base import Message
@@ -58,6 +58,9 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
+from packages.valory.skills.decision_maker_abci.rounds_info import (
+    load_rounds_info_with_transitions,
+)
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -117,6 +120,14 @@ class HttpHandler(BaseHttpHandler):
 
     SUPPORTED_PROTOCOL = HttpMessage.protocol_id
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the HTTP handler."""
+        super().__init__(**kwargs)
+        self.handler_url_regex: str = ""
+        self.routes: Dict[tuple, list] = {}
+        self.json_content_header: str = ""
+        self.rounds_info: Dict = {}
+
     def setup(self) -> None:
         """Implement the setup."""
         config_uri_base_hostname = urlparse(
@@ -142,6 +153,8 @@ class HttpHandler(BaseHttpHandler):
         }
 
         self.json_content_header = "Content-Type: application/json\n"
+
+        self.rounds_info = load_rounds_info_with_transitions()
 
     @property
     def synchronized_data(self) -> SynchronizedData:
@@ -309,6 +322,7 @@ class HttpHandler(BaseHttpHandler):
                 "has_required_funds": has_required_funds,
                 "staking_status": staking_status,
             },
+            "rounds_info": self.rounds_info,
         }
 
         self._send_ok_response(http_msg, http_dialogue, data)
