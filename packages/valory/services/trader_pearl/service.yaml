@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib3y24ugudzpcgrqxfpuuhfihj2hzo4yx3am2gnel2zm4xlem237a
+agent: valory/trader:0.1.0:bafybeicb7dfdj35rwoj4b2xkjkqm72hgmtddmzjobrliv34h2gd3bb5plu
 number_of_agents: 1
 deployment:
   agent:
@@ -57,7 +57,7 @@ models:
       use_fallback_strategy: true
       bet_threshold: 100000000000000000
       ipfs_address: https://gateway.autonolas.tech/ipfs/
-      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
+      tools_accuracy_hash: QmaWUTH1D8fsrLFrJ46WsbG4LbgxHwGeyVExPek1C1nxUM
       prompt_template: Please take over the role of a Data Scientist to evaluate the
         given question. With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
