@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib3y24ugudzpcgrqxfpuuhfihj2hzo4yx3am2gnel2zm4xlem237a
+agent: valory/trader:0.1.0:bafybeibtsdanxnjmbgdcljfkysdhpdaacqr2nrnpqivdnn73ht6xlrpfca
 number_of_agents: 4
 deployment:
   agent:
@@ -96,7 +96,7 @@ type: skill
         mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
-        tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
+        tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmaWUTH1D8fsrLFrJ46WsbG4LbgxHwGeyVExPek1C1nxUM}
         prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
           and the `yes` option represented by `@{yes}` and the `no` option represented
           by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
