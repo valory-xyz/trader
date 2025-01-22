@@ -27,6 +27,7 @@ packages/valory/contracts/gnosis_safe/
 
 packages/valory/protocols/abci
 packages/valory/protocols/acn
+packages/valory/protocols/acn_data_share
 packages/valory/protocols/contract_api
 packages/valory/protocols/http
 packages/valory/protocols/ipfs

@@ -9,11 +9,11 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeifxerfvssuhodqmtvkz6umlmrmdqjv5ptpszhnwlavzxaavdpdyly
-  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeigfs3ffn5r3uo4d4aif7uwe3u7z5eqdx42zegifz6wswrsdx4d6xm
-  handlers.py: bafybeibbxybbi66em63ad33cllymypr3za3f5xvor3m2krhuxoyxnqjnxu
-  models.py: bafybeih2vkf4ln7n7ar27iemho7w7sdr4clmhbnhbcznmsri6mc2skkky4
+  composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
+  dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
+  fsm_specification.yaml: bafybeid6u6esbfsahu3xqcgkpbsfhffghc3jgizgmzqbc4ww7wtjbkhuay
+  handlers.py: bafybeigrqsgqupy6kds2vqieacsymx3eucntwl52rlgi4cu4lrb6bglhti
+  models.py: bafybeiaf53hymwsqtvhm3bugly37id3hqitq5zyjjinvrhlbbl2aqedqiu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeifxvd63qblqpsmyvj7k4dbqubab2pshao5zd2zs2srs7rt32zvciu
 fingerprint_ignore_patterns: []
@@ -21,17 +21,17 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib733xfbndtpvkf44mtk7oyodnficgloo6xhn7xmqxxeos33es65u
-- valory/registration_abci:0.1.0:bafybeibc7duasoaw5b4ene5oxfba2dmdzstsrws6ipi57ymgdtoxjadn54
-- valory/reset_pause_abci:0.1.0:bafybeigrdlxed3xlsnxtjhnsbl3cojruihxcqx4jxhgivkd5i2fkjncgba
-- valory/transaction_settlement_abci:0.1.0:bafybeic7q7recyka272udwcupblwbkc3jkodgp74fvcdxb7urametg5dae
-- valory/termination_abci:0.1.0:bafybeib5l7jhew5ic6iq24dd23nidcoimzqkrk556gqywhoziatj33zvwm
-- valory/market_manager_abci:0.1.0:bafybeiaempf6otwzyjssxsztskv2zdv7ohsher2wkbzemsjcv2h47zuqsi
-- valory/decision_maker_abci:0.1.0:bafybeid52rs2v2zpognldegvlfbzbtchyfccchl7zqusvnbi77h7wti77y
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihonvyfs2lc4olih2jirqmzbngccsxsrxqkkzfaqltjm7vkrnjrya
-- valory/staking_abci:0.1.0:bafybeihwaf4gimmzhytwyzujxpg4gt4iq3wpoz5zyduxhbxo2uezm2scg4
-- valory/check_stop_trading_abci:0.1.0:bafybeigcvlllbqzn632nmw3eowwkesthlqk56ls4x22tytilver4sasetq
-- valory/mech_interact_abci:0.1.0:bafybeid6m3i5ofq7vuogqapdnoshhq7mswmudhvfcr2craw25fdwtoe3lm
+- valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
+- valory/registration_abci:0.1.0:bafybeiagi6e2h7kochmlemy5c5yk6hwn37tfxiqvk2en74jhowsdwlmrny
+- valory/reset_pause_abci:0.1.0:bafybeiezfedmmseox3ce5aucxsiszdmvskrwwbtpb2a3vw3sbmc5jt7nri
+- valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
+- valory/termination_abci:0.1.0:bafybeiea67epwwgngp7b3wavs6hpkaxv6etyaps6g6325bchfnf354mibq
+- valory/market_manager_abci:0.1.0:bafybeiayhzwxlpqsevyvaxn6dtnnu745az5vcz7dckmghnmjywxdtvoyly
+- valory/decision_maker_abci:0.1.0:bafybeibi3b4tnal6c6cypszogn7iskerpolmueddeagnyt3fv65vhvxebq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiharmlmnezdeuyfzbq27ds7jtnbqrvo62k4qj34cdbjstwqe5occu
+- valory/staking_abci:0.1.0:bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq
+- valory/check_stop_trading_abci:0.1.0:bafybeic3bismocli2yyxmjhjsevjbzpuf3ladsvlkazfx23vq3q6uxrn7m
+- valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
 behaviours:
   main:
     args: {}
@@ -40,6 +40,9 @@ handlers:
   abci:
     args: {}
     class_name: TraderHandler
+  acn:
+    args: {}
+    class_name: AcnHandler
   contract_api:
     args: {}
     class_name: ContractApiHandler
@@ -62,6 +65,9 @@ models:
   abci_dialogues:
     args: {}
     class_name: AbciDialogues
+  acn_dialogues:
+    args: {}
+    class_name: AcnDialogues
   benchmark_tool:
     args:
       log_dir: /logs
@@ -125,6 +131,7 @@ models:
       service_id: trader
       service_registry_address: null
       agent_registry_address: '0x0000000000000000000000000000000000000000'
+      use_acn_for_delivers: false
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'
@@ -200,39 +207,23 @@ models:
       tool_punishment_multiplier: 1
       use_nevermined: true
       mech_to_subscription_params:
-      - - base_url
-        - https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo
-      - - did
-        - did:nv:0ea01d5de3b34e3792db825f2a5f5595c393c68b19fd5efdacd00fcc63a53483
-      - - escrow_payment_condition_address
-        - '0x9dDC4F1Ea5b94C138A23b60EC48c0d01d172629a'
-      - - lock_payment_condition_address
-        - '0xDE85A368Ee6f374d236500d176814365370778dA'
-      - - transfer_nft_condition_address
-        - '0xbBa4A25262745a55f020D0a3E9a82c25bb6F4979'
-      - - token_address
-        - '0xa30DE8C6aC39B825192e5F1FADe0770332D279A8'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - nft_amount
-        - '100'
-      - - payment_token
-        - '0x0000000000000000000000000000000000000000'
-      - - order_address
-        - '0xc7751eff5396a846e7bc83ac31d3cb7d37cb49e4'
-      - - price
-        - '1000000000000000000'
+        base_url: url
+        did: did
+        escrow_payment_condition_address: address
+        lock_payment_condition_address: address
+        transfer_nft_condition_address: address
+        token_address: address
+        order_address: address
+        nft_amount: amount
+        payment_token: address
+        price: price
       contract_timeout: 300.0
-      file_hash_to_strategies_json:
-      - - hash
-        - - strategy_name
+      file_hash_to_strategies: {}
       strategies_kwargs:
-      - - bet_kelly_fraction
-        - 1.0
-      - - floor_balance
-        - 500000000000000000
-      - - bet_amount_per_threshold
-        - 0.0: 0
+        bet_kelly_fraction: 1.0
+        floor_balance: 500000000000000000
+        bet_amount_per_threshold:
+          0.0: 0
           0.1: 0
           0.2: 0
           0.3: 0
@@ -261,6 +252,8 @@ models:
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
       olas_token_address: '0x0000000000000000000000000000000000000000'
+      default_chain_id: gnosis
+      mech_interact_round_timeout_seconds: 5400
     class_name: TraderParams
   benchmarking_mode:
     args:

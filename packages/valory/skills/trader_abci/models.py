@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 """Custom objects for the trader ABCI application."""
 
-from typing import Dict, Type, Union, cast
+from typing import Any, Dict, Type, Union, cast
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
@@ -64,6 +64,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
+from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.termination_abci.models import TerminationParams
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
@@ -78,9 +79,16 @@ EventType = Union[
     Type[DecisionMakerEvent],
     Type[TSEvent],
     Type[ResetPauseEvent],
+    Type[MechInteractEvent],
 ]
 EventToTimeoutMappingType = Dict[
-    Union[MarketManagerEvent, DecisionMakerEvent, TSEvent, ResetPauseEvent],
+    Union[
+        MarketManagerEvent,
+        DecisionMakerEvent,
+        TSEvent,
+        ResetPauseEvent,
+        MechInteractEvent,
+    ],
     float,
 ]
 
@@ -108,12 +116,20 @@ class RandomnessApi(ApiSpecs):
 class TraderParams(
     # also contains the `StakingParams`. Must be before `MechInteractParams` because of the mech's contract address
     CheckStopTradingParams,
+    # must be before `MechInteractParams` because of the mech's chain id
+    TxSettlementMultiplexerParams,
     # also contains the `MechInteractParams`
     DecisionMakerParams,
     TerminationParams,
-    TxSettlementMultiplexerParams,
 ):
     """A model to represent the trader params."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the parameters object."""
+        self.mech_interact_round_timeout_seconds: int = self._ensure(
+            "mech_interact_round_timeout_seconds", kwargs, type_=int
+        )
+        super().__init__(*args, **kwargs)
 
 
 class SharedState(BaseSharedState):
@@ -130,19 +146,28 @@ class SharedState(BaseSharedState):
         """Set up."""
         super().setup()
 
-        events = (MarketManagerEvent, DecisionMakerEvent, TSEvent, ResetPauseEvent)
-        round_timeout = self.params.round_timeout_seconds
+        params = self.params
+        events = (
+            MarketManagerEvent,
+            DecisionMakerEvent,
+            TSEvent,
+            ResetPauseEvent,
+        )
+        round_timeout = params.round_timeout_seconds
         round_timeout_overrides = {
             cast(EventType, event).ROUND_TIMEOUT: round_timeout for event in events
         }
-        reset_pause_timeout = self.params.reset_pause_duration + MARGIN
+        round_timeout_overrides[
+            MechInteractEvent.ROUND_TIMEOUT
+        ] = params.mech_interact_round_timeout_seconds
+        reset_pause_timeout = params.reset_pause_duration + MARGIN
         event_to_timeout_overrides: EventToTimeoutMappingType = {
             **round_timeout_overrides,
             TSEvent.RESET_TIMEOUT: round_timeout,
-            TSEvent.VALIDATE_TIMEOUT: self.params.validate_timeout,
-            TSEvent.FINALIZE_TIMEOUT: self.params.finalize_timeout,
-            TSEvent.CHECK_TIMEOUT: self.params.history_check_timeout,
-            DecisionMakerEvent.REDEEM_ROUND_TIMEOUT: self.params.redeem_round_timeout,
+            TSEvent.VALIDATE_TIMEOUT: params.validate_timeout,
+            TSEvent.FINALIZE_TIMEOUT: params.finalize_timeout,
+            TSEvent.CHECK_TIMEOUT: params.history_check_timeout,
+            DecisionMakerEvent.REDEEM_ROUND_TIMEOUT: params.redeem_round_timeout,
             ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT: reset_pause_timeout,
         }
 

@@ -30,6 +30,7 @@ from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 
+from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
     SafeOperation,
@@ -108,6 +109,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the bet placement behaviour."""
         super().__init__(**kwargs)
+        self.token_balance = 0
+        self.wallet_balance = 0
         self.multisend_batches: List[MultisendBatch] = []
         self.multisend_data = b""
         self._safe_tx_hash = ""
@@ -262,6 +265,23 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             or self.shared_state.mock_data is None
         )
 
+    @property
+    def sampled_bet(self) -> Bet:
+        """Get the sampled bet and reset the bets list."""
+        self.read_bets()
+        bet_index = self.synchronized_data.sampled_bet_index
+        return self.bets[bet_index]
+
+    @property
+    def collateral_token(self) -> str:
+        """Get the contract address of the token that the market maker supports."""
+        return self.sampled_bet.collateralToken
+
+    @property
+    def is_wxdai(self) -> bool:
+        """Get whether the collateral address is wxDAI."""
+        return self.collateral_token.lower() == WXDAI.lower()
+
     @staticmethod
     def wei_to_native(wei: int) -> float:
         """Convert WEI to native token."""
@@ -305,8 +325,30 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             self._mock_balance_check()
             return True
 
-        yield from self.wait_for_condition_with_sleep(self.get_balance)
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="check_balance",
+            account=self.synchronized_data.safe_contract_address,
+            chain_id=self.params.mech_chain_id,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Could not calculate the balance of the safe: {response_msg}"
+            )
+            return False
 
+        token = response_msg.raw_transaction.body.get("token", None)
+        wallet = response_msg.raw_transaction.body.get("wallet", None)
+        if token is None or wallet is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to get the balance of the safe: {response_msg}"
+            )
+            return False
+
+        self.token_balance = int(token)
+        self.wallet_balance = int(wallet)
         self._report_balance()
         return True
 
@@ -489,6 +531,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             contract_address,
             contract_id,
             contract_callable,
+            chain_id=self.params.mech_chain_id,
             **kwargs,
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
@@ -530,6 +573,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             contract_id=str(MultiSendContract.contract_id),
             contract_callable="get_tx_data",
             multi_send_txs=self.multi_send_txs,
+            chain_id=self.params.mech_chain_id,
         )
         expected_performative = ContractApiMessage.Performative.RAW_TRANSACTION
         if response_msg.performative != expected_performative:
@@ -564,6 +608,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             data=self.multisend_data,
             safe_tx_gas=SAFE_GAS,
             operation=SafeOperation.DELEGATE_CALL.value,
+            chain_id=self.params.mech_chain_id,
         )
 
         if response_msg.performative != ContractApiMessage.Performative.STATE:
