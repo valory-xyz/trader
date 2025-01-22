@@ -131,6 +131,7 @@ models:
       strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_nevermined: ${USE_NEVERMINED:bool:false}
+      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
         "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
         "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
