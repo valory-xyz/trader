@@ -179,6 +179,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
 
     def async_act(self) -> Generator:
         """Do the action."""
+        print("HERE")
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             stop_trading = yield from self._compute_stop_trading()
             self.context.logger.info(f"Computed {stop_trading=}")

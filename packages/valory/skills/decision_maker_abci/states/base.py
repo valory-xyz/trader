@@ -291,6 +291,11 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
         """Get the service's staking state."""
         return bool(self.db.get("after_bet_attempt", False))
 
+    @property
+    def staking_contract_name(self) -> str:
+        """Get the staking contract name."""
+        return str(self.db.get("staking_contract_name", default="No staking contract name"))
+
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
     """A round for preparing a transaction."""

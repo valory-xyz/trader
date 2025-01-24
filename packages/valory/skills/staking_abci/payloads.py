@@ -41,3 +41,4 @@ class CallCheckpointPayload(MultisigTxPayload):
     ts_checkpoint: int
     is_checkpoint_reached: bool
     available_slot_count: int
+    staking_contract_name: str

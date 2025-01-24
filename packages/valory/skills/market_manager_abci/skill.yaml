@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeiatebwhyme2norauysea3fe7yz7ajoanu5enmj2kwsuyhbpee3y4m
+  behaviours.py: bafybeicuscfhhi465yjbf6dp7zpdoqvzplka6cxy5fmv5uxbrxhjd5ldbq
   bets.py: bafybeibx3x5nasuj6loneeat2lb7fr7kgsmnz7on7f4gxfbpzerzdvawou
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
@@ -153,7 +153,7 @@ models:
       the_graph_error_message_key: message
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
-      olas_token_address: 1176450834230691801752024514692939426424709160351
+      olas_token_address: '0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f'
     class_name: MarketManagerParams
   network_subgraph:
     args:

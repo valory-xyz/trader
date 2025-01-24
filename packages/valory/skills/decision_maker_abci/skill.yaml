@@ -29,7 +29,7 @@ fingerprint:
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeifvu7n6sjmrerogkzsftjrw2l6w5ppuq3f43ouj2rwbomdr5glp2e
-  handlers.py: bafybeiddiphknmz2x4giejmw5r2uyvcrde5pvv7ygr67bsnhazwdulb33e
+  handlers.py: bafybeicowpuuovnijkoohyf4fwahto5xwee5tq2rjpqzjoyact2hwsmxsm
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeihvmxk5nve54v3yz7uaobekdzg37675ooiqxb7ne5hmeegfhk6c6m
@@ -39,7 +39,7 @@ fingerprint:
   rounds.py: bafybeidhblcwk3secxsxkm3bub6svfvbafjucbxensiumf4hohj6tkya3u
   rounds_info.py: bafybeihg6i3h7a7ahfxzhow7gcuszcilq5krfpchze2szjdu7dtem2tnwa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeiba2tikdy7ffcnpozfwslm3v2ous3ytoi4pt34o4qs7mkl5mfahy4
+  states/base.py: bafybeicekqsu7zipm46zv42j623cmofgw4thl35crhnwznormyauw7vmjy
   states/bet_placement.py: bafybeid6ffwooqeb2uj3f5t2iy7ffoeltoyc76jqzn6x4yjezgvofnsasm
   states/blacklisting.py: bafybeidqi356wrxmvj2hqs22hw3kaszh4fg4rs3fo5axk2biosxt6kfbiy
   states/check_benchmarking.py: bafybeiagrgeopuluwqkvoqbst2hjymte5rju2pecvkoeleklnqca5andeu
@@ -102,10 +102,10 @@ protocols:
 - valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
-- valory/market_manager_abci:0.1.0:bafybeigmiyq6ixwelxv4dqhpqpqfmsutigq4d53ofma2wwkfxftgbn2pga
+- valory/market_manager_abci:0.1.0:bafybeie2to4gd574c5pvhjx6zl2ul6sjs25dko3pzrboo4axm2emjzmr3m
 - valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
-- valory/staking_abci:0.1.0:bafybeiclyswicz33g6nqq6lddrnq3uyciwtmcifmxtj44vbfbwaswghity
+- valory/staking_abci:0.1.0:bafybeidugj2zee34lmf3o5i2z6i5vernrb5xqwmfeizyibzezenlulucje
 behaviours:
   main:
     args: {}

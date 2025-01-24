@@ -190,3 +190,14 @@ class StakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         duration = contract.functions.minStakingDuration().call()
         return dict(data=duration)
+
+    @classmethod
+    def get_metadata_hash(
+            cls,
+            ledger_api: LedgerApi,
+            contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the metadata hash."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        metadata_hash = contract.functions.metadataHash().call()
+        return dict(data=metadata_hash)

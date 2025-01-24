@@ -430,6 +430,7 @@ class HttpHandler(BaseHttpHandler):
         safe_address = self.synchronized_data.safe_contract_address
         service_id = self.context.params.on_chain_service_id
         service_owner_address = self.synchronized_data.service_owner_address
+        staking_contract_name = self.synchronized_data.staking_contract_name
 
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
             self.synchronized_data.wallet_balance
@@ -460,7 +461,7 @@ class HttpHandler(BaseHttpHandler):
             agent_address, safe_address, service_id, service_owner_address
         ).set(wxdai_balance)
         STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+            agent_address, safe_address, service_id, service_owner_address, staking_contract_name
         ).set(staking_contract_available_slots)
         STAKING_STATE_GAUGE.labels(
             agent_address, safe_address, service_id, service_owner_address
@@ -526,7 +527,7 @@ WXDAI_BALANCE_GAUGE = Gauge(
 STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge(
     "olas_staking_contract_available_slots",
     "Number of available slots in the staking contract",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    ["agent_address", "safe_address", "service_id", "service_owner_address", "staking_program_name"],
     registry=REGISTRY,
 )
 

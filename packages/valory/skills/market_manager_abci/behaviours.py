@@ -155,6 +155,8 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def get_balance(self) -> WaitableConditionType:
         """Get the safe's balance."""
 
+        print(self.synchronized_data.safe_contract_address)
+
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.collateral_token,
@@ -186,6 +188,8 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def get_olas_balance(self) -> WaitableConditionType:
         """Get the safe's olas balance in wei."""
 
+        print(self.params.olas_token_address)
+
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.olas_token_address,
@@ -212,6 +216,8 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
 
     def _get_service_owner(self) -> WaitableConditionType:
         """Method that returns the service owner."""
+        print(self.params.service_registry_address)
+
         response = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
             contract_id=str(ServiceRegistryContract.contract_id),
