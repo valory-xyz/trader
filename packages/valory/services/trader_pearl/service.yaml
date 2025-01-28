@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig2paidvpxpepf5ebgn63gzgrb22ggspkxxcfeofyk3n7zpbafkf4
+agent: valory/trader:0.1.0:bafybeib3y24ugudzpcgrqxfpuuhfihj2hzo4yx3am2gnel2zm4xlem237a
 number_of_agents: 1
 deployment:
   agent:
@@ -90,6 +90,7 @@ models:
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       blacklisting_duration: ${BLACKLISTING_DURATION:int:3600}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":25000000000000000,"0.1":25000000000000000,"0.2":25000000000000000,"0.3":25000000000000000,"0.4":25000000000000000,"0.5":25000000000000000,"0.6":25000000000000000,"0.7":25000000000000000,"0.8":25000000000000000,"0.9":25000000000000000,"1.0":250000000000000000}}}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
         "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
         "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
