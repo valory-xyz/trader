@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 import prometheus_client
 from aea.protocols.base import Message
-from prometheus_client import CollectorRegistry, Gauge, generate_latest
+from prometheus_client import CollectorRegistry, Gauge, generate_latest, REGISTRY
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -501,8 +501,6 @@ class HttpHandler(BaseHttpHandler):
         seconds_since_last_mech_tx_attempt = now - mech_tx_attempt_ts
         return seconds_since_last_mech_tx_attempt
 
-
-REGISTRY = CollectorRegistry()
 
 NATIVE_BALANCE_GAUGE = Gauge(
     "olas_agent_native_balance",
