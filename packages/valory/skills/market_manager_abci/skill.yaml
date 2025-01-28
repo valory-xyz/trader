@@ -154,6 +154,7 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       olas_token_address: '0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f'
+      http_handler_hostname_regex: "localhost"
     class_name: MarketManagerParams
   network_subgraph:
     args:

@@ -254,6 +254,7 @@ models:
       olas_token_address: '0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f'
       default_chain_id: gnosis
       mech_interact_round_timeout_seconds: 5400
+      http_handler_hostname_regex: 'localhost'
     class_name: TraderParams
   benchmarking_mode:
     args:

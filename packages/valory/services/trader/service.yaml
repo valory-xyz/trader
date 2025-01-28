@@ -152,6 +152,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: &id012
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -376,6 +377,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -501,6 +503,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: *id012
     acc_info_fields: *id003
     network_subgraph: *id004
@@ -626,6 +629,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: *id012
     acc_info_fields: *id003
     network_subgraph: *id004

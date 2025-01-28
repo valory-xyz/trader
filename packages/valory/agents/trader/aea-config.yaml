@@ -250,6 +250,7 @@ models:
       default_chain_id: ${str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
       olas_token_address: ${str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+      http_handler_hostname_regex: ${str:localhost}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
