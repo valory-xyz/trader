@@ -53,7 +53,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiharmlmnezdeuyfzbq27ds7jtnbqrvo62k4qj34cdbjstwqe5occu
 - valory/market_manager_abci:0.1.0:bafybeiayhzwxlpqsevyvaxn6dtnnu745az5vcz7dckmghnmjywxdtvoyly
 - valory/decision_maker_abci:0.1.0:bafybeibi3b4tnal6c6cypszogn7iskerpolmueddeagnyt3fv65vhvxebq
-- valory/trader_abci:0.1.0:bafybeibxqfzlio67343yyeq25edo3xq3etsdko2x2ajubmiw46zasqzlka
+- valory/trader_abci:0.1.0:bafybeias2rt775gh5357uw5tbw3n7acdyp5yhx6x4noa3aqqqluselnkju
 - valory/staking_abci:0.1.0:bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq
 - valory/check_stop_trading_abci:0.1.0:bafybeic3bismocli2yyxmjhjsevjbzpuf3ladsvlkazfx23vq3q6uxrn7m
 - valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
@@ -234,7 +234,7 @@ models:
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
       file_hash_to_strategies: ${dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
-      strategies_kwargs: ${dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":25000000000000000,"0.1":25000000000000000,"0.2":25000000000000000,"0.3":25000000000000000,"0.4":25000000000000000,"0.5":25000000000000000,"0.6":25000000000000000,"0.7":25000000000000000,"0.8":25000000000000000,"0.9":25000000000000000,"1.0":250000000000000000}}}
+      strategies_kwargs: ${dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
       safe_voting_range: ${int:600}
@@ -248,6 +248,7 @@ models:
       mech_consecutive_failures_threshold: ${int:2}
       tool_quarantine_duration: ${int:18000}
       default_chain_id: ${str:gnosis}
+      mech_interact_round_timeout_seconds: ${int:5400}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

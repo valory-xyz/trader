@@ -173,7 +173,7 @@ transition_func:
     (MechRequestRound, SKIP_REQUEST): RedeemRound
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
-    (MechResponseRound, ROUND_TIMEOUT): MechResponseRound
+    (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
