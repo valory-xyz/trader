@@ -101,8 +101,7 @@ models:
       tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
       prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
         and the `yes` option represented by `@{yes}` and the `no` option represented
-        by `@{no}`, what are the respective probabilities of `p_yes` and `p_no`
-        occurring?}
+        by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?}
       dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
       conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
       realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
