@@ -96,6 +96,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._checkpoint_ts = 0
         self._staking_contract_name: str = ""
         self._staking_contract_metadata_hash: str = ""
+        self._epoch_end_ts: int = 0
 
     @property
     def params(self) -> StakingParams:
@@ -235,6 +236,16 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def staking_contract_metadata_hash(self, metadata_hash: str) -> None:
         """Set the staking contract metadata hash."""
         self._staking_contract_metadata_hash = metadata_hash
+
+    @property
+    def epoch_end_ts(self) -> int:
+        """Get the epoch end timestamp."""
+        return self._epoch_end_ts
+
+    @epoch_end_ts.setter
+    def epoch_end_ts(self, epoch_end_ts: int) -> None:
+        """Set the epoch end timestamp."""
+        self._epoch_end_ts = epoch_end_ts
 
     def wait_for_condition_with_sleep(
         self,
@@ -444,7 +455,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         )
         return status
 
-    def get_staking_contract_name(self) -> Generator[None, None, bool]:
+    def _get_staking_contract_name(self) -> WaitableConditionType:
         """Get the staking contract name."""
         self.context.logger.info("Reading staking contract name from IPFS...")
         staking_contract_metadata_hash = self.staking_contract_metadata_hash
@@ -471,6 +482,14 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             return False
 
         return True
+
+    def _get_epoch_end(self) -> WaitableConditionType:
+        """Get the epoch end."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_epoch_end",
+            placeholder=get_name(CallCheckpointBehaviour.epoch_end_ts),
+        )
+        return status
 
 
 class CallCheckpointBehaviour(
@@ -639,8 +658,8 @@ class CallCheckpointBehaviour(
             if self.service_staking_state == StakingState.STAKED:
                 yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
                 yield from self.wait_for_condition_with_sleep(self._get_staking_contract_metadata_hash)
-                print(f"STAKING CONTRACT METADATA HASH: {self.staking_contract_metadata_hash}")
-                yield from self.get_staking_contract_name()
+                yield from self.wait_for_condition_with_sleep(self._get_staking_contract_name)
+                yield from self.wait_for_condition_with_sleep(self._get_epoch_end)
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
 
@@ -649,8 +668,6 @@ class CallCheckpointBehaviour(
 
             tx_submitter = self.matching_round.auto_round_id()
             is_checkpoint_reached = yield from self.check_new_epoch()
-            available_slot_count = self.available_staking_slots
-            staking_contract_name = self.staking_contract_name
             payload = CallCheckpointPayload(
                 self.context.agent_address,
                 tx_submitter,
@@ -658,8 +675,9 @@ class CallCheckpointBehaviour(
                 self.service_staking_state.value,
                 self.ts_checkpoint,
                 is_checkpoint_reached,
-                available_slot_count,
-                staking_contract_name
+                self.available_staking_slots,
+                self.staking_contract_name,
+                self.epoch_end_ts
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

@@ -67,7 +67,6 @@ from packages.valory.skills.decision_maker_abci.rounds_info import (
     load_rounds_info_with_transitions,
 )
 
-
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
@@ -141,7 +140,7 @@ class HttpHandler(BaseHttpHandler):
 
     @last_successful_mech_tx_ts.setter
     def last_successful_mech_tx_ts(
-        self, time_since_last_successful_mech_tx: int
+            self, time_since_last_successful_mech_tx: int
     ) -> None:
         """Set the time since the last successful mech response in seconds."""
         self._time_since_last_successful_mech_tx = time_since_last_successful_mech_tx
@@ -228,8 +227,8 @@ class HttpHandler(BaseHttpHandler):
 
         # Check if this is a request sent from the http_server skill
         if (
-            http_msg.performative != HttpMessage.Performative.REQUEST
-            or message.sender != str(HTTP_SERVER_PUBLIC_ID.without_hash())
+                http_msg.performative != HttpMessage.Performative.REQUEST
+                or message.sender != str(HTTP_SERVER_PUBLIC_ID.without_hash())
         ):
             super().handle(message)
             return
@@ -264,7 +263,7 @@ class HttpHandler(BaseHttpHandler):
         handler(http_msg, http_dialogue, **kwargs)
 
     def _handle_bad_request(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """
         Handle a Http bad request.
@@ -287,7 +286,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.outbox.put_message(message=http_response)
 
     def _handle_get_health(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """
         Handle a Http request of verb GET.
@@ -318,9 +317,9 @@ class HttpHandler(BaseHttpHandler):
             )
 
             is_transitioning_fast = (
-                not is_tm_unhealthy
-                and seconds_since_last_transition
-                < 2 * self.context.params.reset_pause_duration
+                    not is_tm_unhealthy
+                    and seconds_since_last_transition
+                    < 2 * self.context.params.reset_pause_duration
             )
 
         if round_sequence._abci_app:
@@ -349,7 +348,7 @@ class HttpHandler(BaseHttpHandler):
         self._send_ok_response(http_msg, http_dialogue, data)
 
     def _send_ok_response(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, data: Dict
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue, data: Dict
     ) -> None:
         """Send an OK response with the provided data"""
         http_response = http_dialogue.reply(
@@ -367,7 +366,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.outbox.put_message(message=http_response)
 
     def _send_not_found_response(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Send an not found response"""
         http_response = http_dialogue.reply(
@@ -386,8 +385,8 @@ class HttpHandler(BaseHttpHandler):
     def _check_required_funds(self) -> bool:
         """Check the agent has enough funds."""
         return (
-            self.synchronized_data.wallet_balance
-            > self.context.params.agent_balance_threshold
+                self.synchronized_data.wallet_balance
+                > self.context.params.agent_balance_threshold
         )
 
     def _check_is_receiving_mech_responses(self) -> bool:
@@ -395,13 +394,13 @@ class HttpHandler(BaseHttpHandler):
         # Checks the most recent decision receive timestamp, which can only be returned after making a mech call
         # (an on chain transaction)
         return (
-            self.synchronized_data.decision_receive_timestamp
-            < int(datetime.utcnow().timestamp())
-            - self.context.params.expected_mech_response_time
+                self.synchronized_data.decision_receive_timestamp
+                < int(datetime.utcnow().timestamp())
+                - self.context.params.expected_mech_response_time
         )
 
     def _handle_get_metrics(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+            self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle the /metrics endpoint."""
 
@@ -432,6 +431,8 @@ class HttpHandler(BaseHttpHandler):
         service_id = self.context.params.on_chain_service_id
         service_owner_address = self.synchronized_data.service_owner_address
         staking_contract_name = self.synchronized_data.staking_contract_name
+        staking_contract_address = self.context.params.staking_contract_address
+        metrics_label_values = [agent_address, safe_address, service_id, service_owner_address]
 
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
             self.synchronized_data.wallet_balance
@@ -451,31 +452,39 @@ class HttpHandler(BaseHttpHandler):
             self.calculate_time_since_last_mech_tx_attempt()
         )
         n_total_mech_requests = self.synchronized_data.n_mech_requests_this_epoch
+        n_mech_requests_to_staking_kpi = self.calculate_remaining_mech_calls_to_staking_kpi()
 
         NATIVE_BALANCE_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+            metrics_label_values
         ).set(native_balance)
         OLAS_BALANCE_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+            metrics_label_values
         ).set(olas_balance)
         WXDAI_BALANCE_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+            metrics_label_values
         ).set(wxdai_balance)
         STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address, staking_contract_name
+            metrics_label_values + [
+                staking_contract_name,
+                staking_contract_address,
+            ]
         ).set(staking_contract_available_slots)
         STAKING_STATE_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+            metrics_label_values
         ).set(staking_state)
         TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+            metrics_label_values
         ).set(time_since_last_successful_mech_tx)
-        TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE.labels(
-            agent_address, safe_address, service_id, service_owner_address
+        TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE.labels(
+            metrics_label_values
         ).set(time_since_last_mech_tx_attempt)
-        TOTAL_MECH_REQUESTS.labels(
-            agent_address, safe_address, service_id, service_owner_address
+        TOTAL_MECH_REQUESTS_THIS_EPOCH.labels(
+            metrics_label_values
         ).set(n_total_mech_requests)
+        REMAINING_MECH_CALLS_FOR_STAKING_KPI.labels(
+            metrics_label_values
+        ).set(n_mech_requests_to_staking_kpi)
+
 
     def calculate_time_since_last_successful_mech_tx(self) -> int:
         """Calculate the time since the last successful mech transaction (mech response)."""
@@ -501,59 +510,79 @@ class HttpHandler(BaseHttpHandler):
         seconds_since_last_mech_tx_attempt = now - mech_tx_attempt_ts
         return seconds_since_last_mech_tx_attempt
 
+    def calculate_remaining_mech_calls_to_staking_kpi(self) -> int:
+        """Calculate the remaining mech calls needed to reach the staking KPI."""
+        return (
+                N_MECH_CALLS_FOR_STAKING_KPI
+                - self.synchronized_data.n_mech_requests_this_epoch
+        )
 
+    def calculate_epoch_time_remaining(self) -> int:
+        """Calculate the remaining time in the current epoch."""
+        return self.synchronized_data.epoch_end_timestamp - int(datetime.now().timestamp())
+
+
+N_MECH_CALLS_FOR_STAKING_KPI = 60
+PROMETHEUS_METRICS_LABELS = ["agent_address", "safe_address", "service_id", "service_owner_address"]
 NATIVE_BALANCE_GAUGE = Gauge(
     "olas_agent_native_balance",
     "Native token balance in xDai",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )
-
 OLAS_BALANCE_GAUGE = Gauge(
     "olas_agent_olas_balance",
     "OLAS token balance",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )
-
 WXDAI_BALANCE_GAUGE = Gauge(
     "olas_agent_wxdai_balance",
     "WXDAI token balance",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )
-
 STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge(
     "olas_staking_contract_available_slots",
     "Number of available slots in the staking contract",
-    ["agent_address", "safe_address", "service_id", "service_owner_address", "staking_program_name"],
+    PROMETHEUS_METRICS_LABELS + [
+        "staking_contract_name",
+        "staking_contract_address"],
     registry=REGISTRY,
 )
-
 STAKING_STATE_GAUGE = Gauge(
     "olas_agent_staked",
     "Indicates if an agent is staked (1), not staked (0) or eviceted (2)",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )
-
 TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge(
     "olas_agent_time_since_last_successful_tx",
     "Time in seconds since last successful mech transaction",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )
-
-TIME_SINCE_LAST_MECH_TX_ATTEMPT_GAUGE = Gauge(
-    "olas_agent_time_since_last_mech_tx_attempt",
-    "Time in seconds since last transaction attempt (successful or not)",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE = Gauge(
+    "olas_agent_time_since_last_mech_request_attempt",
+    "Time in seconds since last request transaction attempt (successful or not)",
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )
-
-TOTAL_MECH_REQUESTS = Gauge(
+TOTAL_MECH_REQUESTS_THIS_EPOCH = Gauge(
     "olas_agent_mech_requests",
     "Total number of mech requests made by the agent this epoch",
-    ["agent_address", "safe_address", "service_id", "service_owner_address"],
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+REMAINING_MECH_CALLS_FOR_STAKING_KPI = Gauge(
+    "olas_agent_remaining_mech_calls_for_staking_kpi",
+    "Remaining mech calls needed to reach the staking KPI",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+EPOCH_TIME_REMAINING = Gauge(
+    "olas_agent_staking_contract_epoch_time_remaining",
+    "Time remaining in the current epoch",
+    PROMETHEUS_METRICS_LABELS,
     registry=REGISTRY,
 )

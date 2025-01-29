@@ -20,6 +20,7 @@
 """This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
 
 from enum import Enum
+from typing import Dict
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -190,3 +191,16 @@ class ServiceStakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         duration = contract.functions.minStakingDuration().call()
         return dict(data=duration)
+
+    @classmethod
+    def get_epoch_end(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> Dict:
+        """Get the epoch end."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        liveness = contract_instance.functions.livenessPeriod().call()
+        checkpoint_ts = contract_instance.functions.tsCheckpoint().call()
+        epoch_end = checkpoint_ts + liveness
+        return dict(epoch_end=epoch_end)
