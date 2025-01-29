@@ -431,22 +431,6 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         )
         return status
 
-    # def _get_max_num_services(self) -> WaitableConditionType:
-    #     """Get the max_num_services."""
-    #     status = yield from self._staking_contract_interact(
-    #         contract_callable="max_num_services",
-    #         placeholder=get_name(CallCheckpointBehaviour.max_num_services),
-    #     )
-    #     return status
-    #
-    # def _get_service_ids(self) -> WaitableConditionType:
-    #     """Get the staked service ids."""
-    #     status = yield from self._staking_contract_interact(
-    #         contract_callable="get_service_ids",
-    #         placeholder=get_name(CallCheckpointBehaviour.service_ids),
-    #     )
-    #     return status
-    #
     def _get_staking_contract_metadata_hash(self) -> Generator:
         """Get the staking contract metadata hash."""
         status = yield from self._staking_contract_interact(

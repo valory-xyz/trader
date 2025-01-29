@@ -8,13 +8,13 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeib6zmijsougy6aru6lzwqjbhp7snvogrpy6x7bcmake2zhbpxsfae
+  behaviours.py: bafybeif3u6clwsfo6jihfec5ss3kk77yqyr7nh7d2hxrfk3tb7izjszek4
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeicbocchk24vqbly5l6bh7zakvvluyuxzd6g3me7chhvbusemtz344
-  payloads.py: bafybeif4jeu2dcoyzp2ydawmatnjzl62jf4od7glxe43imluyslasb2xza
-  rounds.py: bafybeiddbtjg4qjada5qscjgxk2fgxwz754hds6vssp4spkwqowsvh7oeq
+  models.py: bafybeifweemtunod7uyqwex7vz4v4g52okk4wjmvgxgeeqg6gw3gcohqvi
+  payloads.py: bafybeidwrsyz7cjrp34s7o7t57xteq6nntdoagpuar4e4od6qz3bnakkwm
+  rounds.py: bafybeifas7lcznslnzz67bvoxlkg2glvwqn62bmnso4slk6ddq7m3h6wky
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
@@ -23,16 +23,16 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeihtqcpqthb37msgqabpzcc2xc3l3yzkp5pl2sodeghqyzzzyuevgi
-- valory/service_staking_token:0.1.0:bafybeieg664oohr26gpcfn3uied4minlz6dmgd32xboewscnxqnv5kk4zi
-- valory/staking_token:0.1.0:bafybeib5wnsdivka3wyb3rvxn4p6hnhycrj6cwt43rbgwdkxup7s7nv4my
+- valory/gnosis_safe:0.1.0:bafybeiajqjq4xqrbsbstxxb63n5f3p4hz2xxnbrltwic5iwggoucu24x7e
+- valory/service_staking_token:0.1.0:bafybeihlrs7m7qcme22cjfgk4l2fqbyqeqvdbum3xcljmgi4lcbegbwmkq
+- valory/staking_token:0.1.0:bafybeif5m72b7dohrpvcyijqm6xm6gyarg3rp3zlwerxdzfkfmc2imwlga
 - valory/mech_activity:0.1.0:bafybeieadv7vnbguc7beu6xo3rs3mqbgzc7wayc7kvgb2tmitmjtpdcqkq
 protocols:
-- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+- valory/contract_api:1.0.0:bafybeiatfbliqjhilmkh5vgnunksamghu34ljmcj3xe26fq4djro666mwu
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
-- valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
-- valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
+- valory/abstract_round_abci:0.1.0:bafybeidjnldpgdbk72trjqke7uf7lrnxno4fpxnrlfvhkskcozy5lhbyyy
+- valory/transaction_settlement_abci:0.1.0:bafybeibfdf5cwhjmveieg4yrgalcbbesyt4i7pjkjcoj3vt7c2hbch7dpq
+- valory/mech_interact_abci:0.1.0:bafybeiehfip7eefefnzhc3s5p4vxoycnfzveog5l3ffwharsg6vei7ss2u
 behaviours:
   main:
     args: {}

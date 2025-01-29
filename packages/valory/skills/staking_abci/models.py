@@ -24,7 +24,6 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )

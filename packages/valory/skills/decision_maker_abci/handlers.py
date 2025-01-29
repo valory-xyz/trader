@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 import prometheus_client
 from aea.protocols.base import Message
-from prometheus_client import CollectorRegistry, Gauge, REGISTRY, generate_latest
+from prometheus_client import Gauge, REGISTRY, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -433,7 +433,12 @@ class HttpHandler(BaseHttpHandler):
         service_owner_address = self.synchronized_data.service_owner_address
         staking_contract_name = self.synchronized_data.staking_contract_name
         staking_contract_address = self.context.params.staking_contract_address
-        metrics_label_values = agent_address, safe_address, service_id, service_owner_address
+        metrics_label_values = (
+            agent_address,
+            safe_address,
+            service_id,
+            service_owner_address,
+        )
 
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
             self.synchronized_data.wallet_balance
