@@ -108,6 +108,22 @@ class SynchronizedData(TxSettlementSyncedData):
             return 0
         return int(available_staking_slots)
 
+    @property
+    def staking_contract_name(self) -> str:
+        """Get the staking contract name."""
+        staking_contract_name = self.db.get("staking_contract_name", None)
+        if staking_contract_name is None:
+            return "No staking contract"
+        return str(staking_contract_name)
+
+    @property
+    def epoch_end_ts(self) -> int:
+        """Get the epoch end timestamp."""
+        epoch_end_ts = self.db.get("epoch_end_ts", None)
+        if epoch_end_ts is None:
+            return 0
+        return int(epoch_end_ts)
+
 
 class CallCheckpointRound(CollectSameUntilThresholdRound):
     """A round for the checkpoint call preparation."""
@@ -122,6 +138,8 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.previous_checkpoint),
         get_name(SynchronizedData.is_checkpoint_reached),
         get_name(SynchronizedData.available_staking_slots),
+        get_name(SynchronizedData.staking_contract_name),
+        get_name(SynchronizedData.epoch_end_ts),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData

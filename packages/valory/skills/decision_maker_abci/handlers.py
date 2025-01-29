@@ -433,12 +433,7 @@ class HttpHandler(BaseHttpHandler):
         service_owner_address = self.synchronized_data.service_owner_address
         staking_contract_name = self.synchronized_data.staking_contract_name
         staking_contract_address = self.context.params.staking_contract_address
-        metrics_label_values = [
-            agent_address,
-            safe_address,
-            service_id,
-            service_owner_address,
-        ]
+        metrics_label_values = agent_address, safe_address, service_id, service_owner_address
 
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
             self.synchronized_data.wallet_balance
@@ -462,28 +457,27 @@ class HttpHandler(BaseHttpHandler):
             self.calculate_remaining_mech_calls_to_staking_kpi()
         )
 
-        NATIVE_BALANCE_GAUGE.labels(metrics_label_values).set(native_balance)
-        OLAS_BALANCE_GAUGE.labels(metrics_label_values).set(olas_balance)
-        WXDAI_BALANCE_GAUGE.labels(metrics_label_values).set(wxdai_balance)
+        NATIVE_BALANCE_GAUGE.labels(*metrics_label_values).set(native_balance)
+        OLAS_BALANCE_GAUGE.labels(*metrics_label_values).set(olas_balance)
+        WXDAI_BALANCE_GAUGE.labels(*metrics_label_values).set(wxdai_balance)
         STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
-            metrics_label_values
-            + [
-                staking_contract_name,
-                staking_contract_address,
-            ]
+            *metrics_label_values, staking_contract_name, staking_contract_address
         ).set(staking_contract_available_slots)
-        STAKING_STATE_GAUGE.labels(metrics_label_values).set(staking_state)
-        TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(metrics_label_values).set(
+        STAKING_STATE_GAUGE.labels(*metrics_label_values).set(staking_state)
+        TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(*metrics_label_values).set(
             time_since_last_successful_mech_tx
         )
-        TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE.labels(metrics_label_values).set(
+        TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE.labels(*metrics_label_values).set(
             time_since_last_mech_tx_attempt
         )
-        TOTAL_MECH_REQUESTS_THIS_EPOCH.labels(metrics_label_values).set(
+        TOTAL_MECH_REQUESTS_THIS_EPOCH.labels(*metrics_label_values).set(
             n_total_mech_requests
         )
-        REMAINING_MECH_CALLS_FOR_STAKING_KPI.labels(metrics_label_values).set(
+        REMAINING_MECH_CALLS_FOR_STAKING_KPI.labels(*metrics_label_values).set(
             n_mech_requests_to_staking_kpi
+        )
+        EPOCH_TIME_REMAINING.labels(*metrics_label_values).set(
+            self.calculate_epoch_time_remaining()
         )
 
     def calculate_time_since_last_successful_mech_tx(self) -> int:
@@ -519,9 +513,11 @@ class HttpHandler(BaseHttpHandler):
 
     def calculate_epoch_time_remaining(self) -> int:
         """Calculate the remaining time in the current epoch."""
-        return self.synchronized_data.epoch_end_timestamp - int(
-            datetime.now().timestamp()
-        )
+
+        epoch_end_ts = self.synchronized_data.epoch_end_ts
+        if epoch_end_ts == 0:
+            return 0
+        return epoch_end_ts - int(datetime.now().timestamp())
 
 
 N_MECH_CALLS_FOR_STAKING_KPI = 60
