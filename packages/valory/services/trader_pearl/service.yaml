@@ -197,7 +197,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
-      url: https://gnosis.subgraph.autonolas.tech
+      url: ${NETWORK_SUBGRAPH_URL:str:https://gnosis.subgraph.autonolas.tech}
   omen_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -208,7 +208,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
-      url: https://omen.subgraph.autonolas.tech
+      url: ${OMEN_SUBGRAPH_URL:str:https://omen.subgraph.autonolas.tech}
   randomness_api:
     args:
       method: ${RANDOMNESS_API_METHOD:str:GET}
@@ -242,7 +242,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
-      url: https://trades.subgraph.autonolas.tech
+      url: ${TRADES_SUBGRAPH_URL:str:https://trades.subgraph.autonolas.tech}
   conditional_tokens_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -253,7 +253,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
-      url: https://conditional-tokens.subgraph.autonolas.tech
+      url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://conditional-tokens.subgraph.autonolas.tech}
   realitio_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -264,7 +264,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
-      url: https://realitio.subgraph.autonolas.tech
+      url: ${REALITIO_SUBGRAPH_URL:str:https://realitio.subgraph.autonolas.tech}
 ---
 public_id: valory/ledger:0.19.0
 type: connection
