@@ -32,10 +32,10 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
-from packages.valory.skills.staking_abci.rounds import StakingAbciApp
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
+from packages.valory.skills.staking_abci.rounds import StakingAbciApp
 
 
 Requests = BaseRequests

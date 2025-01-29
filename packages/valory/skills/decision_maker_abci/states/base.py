@@ -294,7 +294,9 @@ class SynchronizedData(MarketManagerSyncedData, StakingSyncedData):
     @property
     def staking_contract_name(self) -> str:
         """Get the staking contract name."""
-        return str(self.db.get("staking_contract_name", default="No staking contract name"))
+        return str(
+            self.db.get("staking_contract_name", default="No staking contract name")
+        )
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

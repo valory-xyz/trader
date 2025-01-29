@@ -451,7 +451,9 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         """Get the staking contract metadata hash."""
         status = yield from self._staking_contract_interact(
             contract_callable="get_metadata_hash",
-            placeholder=get_name(CallCheckpointBehaviour.staking_contract_metadata_hash),
+            placeholder=get_name(
+                CallCheckpointBehaviour.staking_contract_metadata_hash
+            ),
         )
         return status
 
@@ -459,9 +461,15 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         """Get the staking contract name."""
         self.context.logger.info("Reading staking contract name from IPFS...")
         staking_contract_metadata_hash = self.staking_contract_metadata_hash
-        staking_contract_metadata_hash_formatted = staking_contract_metadata_hash.replace("0x", CID_PREFIX)
-        staking_contract_link = self.params.ipfs_address + staking_contract_metadata_hash_formatted
-        response = yield from self.get_http_response(method=GET, url=staking_contract_link)
+        staking_contract_metadata_hash_formatted = (
+            staking_contract_metadata_hash.replace("0x", CID_PREFIX)
+        )
+        staking_contract_link = (
+            self.params.ipfs_address + staking_contract_metadata_hash_formatted
+        )
+        response = yield from self.get_http_response(
+            method=GET, url=staking_contract_link
+        )
         if response.status_code != OK_CODE:
             self.context.logger.error(
                 f"Could not retrieve data from the url {staking_contract_link}. "
@@ -657,8 +665,12 @@ class CallCheckpointBehaviour(
             checkpoint_tx_hex = None
             if self.service_staking_state == StakingState.STAKED:
                 yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-                yield from self.wait_for_condition_with_sleep(self._get_staking_contract_metadata_hash)
-                yield from self.wait_for_condition_with_sleep(self._get_staking_contract_name)
+                yield from self.wait_for_condition_with_sleep(
+                    self._get_staking_contract_metadata_hash
+                )
+                yield from self.wait_for_condition_with_sleep(
+                    self._get_staking_contract_name
+                )
                 yield from self.wait_for_condition_with_sleep(self._get_epoch_end)
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
@@ -677,7 +689,7 @@ class CallCheckpointBehaviour(
                 is_checkpoint_reached,
                 self.available_staking_slots,
                 self.staking_contract_name,
-                self.epoch_end_ts
+                self.epoch_end_ts,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

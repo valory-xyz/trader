@@ -101,7 +101,9 @@ class MarketManagerParams(BaseParams):
             "the_graph_payment_required_error", kwargs, str
         )
         self.olas_token_address: str = self._ensure("olas_token_address", kwargs, str)
-        self.http_handler_hostname_regex: str = self._ensure("http_handler_hostname_regex", kwargs, str)
+        self.http_handler_hostname_regex: str = self._ensure(
+            "http_handler_hostname_regex", kwargs, str
+        )
         super().__init__(*args, **kwargs)
 
     @property
