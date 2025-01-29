@@ -138,6 +138,7 @@ type: skill
           "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
           "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
           "price":"1000000000000000000"}}
+        use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
@@ -361,6 +362,7 @@ type: skill
           "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
           "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
           "price":"1000000000000000000"}}
+        use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
@@ -485,6 +487,7 @@ type: skill
           "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
           "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
           "price":"1000000000000000000"}}
+        use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
@@ -609,6 +612,7 @@ type: skill
           "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
           "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
           "price":"1000000000000000000"}}
+        use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
         rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
