@@ -45,3 +45,5 @@ ae28aeb8ad56e1873bfb3996c5d5ad8367709cd1:packages/valory/skills/trader_abci/skil
 7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/skills/mech_interact_abci/skill.yaml:generic-api-key:152
 7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/skills/trader_abci/skill.yaml:generic-api-key:159
 7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/skills/trader_abci/skill.yaml:generic-api-key:170
+4fad8e88eee2a3f55bcbb0a16d383c964abe05e2:packages/valory/skills/market_manager_abci/skill.yaml:generic-api-key:156
+4fad8e88eee2a3f55bcbb0a16d383c964abe05e2:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:254
