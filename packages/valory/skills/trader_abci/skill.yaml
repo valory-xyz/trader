@@ -9,11 +9,11 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeifxerfvssuhodqmtvkz6umlmrmdqjv5ptpszhnwlavzxaavdpdyly
+  composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
-  fsm_specification.yaml: bafybeigbedgadqt46yqw5qkm7yb2q4atiodwvruh7yuo6g6qyht76lniea
+  fsm_specification.yaml: bafybeid6u6esbfsahu3xqcgkpbsfhffghc3jgizgmzqbc4ww7wtjbkhuay
   handlers.py: bafybeigrqsgqupy6kds2vqieacsymx3eucntwl52rlgi4cu4lrb6bglhti
-  models.py: bafybeigbnyvpuh7qq3bsgmcb27e6fz2kirp74eios55acar4352opv4ggm
+  models.py: bafybeiaf53hymwsqtvhm3bugly37id3hqitq5zyjjinvrhlbbl2aqedqiu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeifxvd63qblqpsmyvj7k4dbqubab2pshao5zd2zs2srs7rt32zvciu
 fingerprint_ignore_patterns: []
@@ -252,6 +252,7 @@ models:
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
       default_chain_id: gnosis
+      mech_interact_round_timeout_seconds: 5400
     class_name: TraderParams
   benchmarking_mode:
     args:
