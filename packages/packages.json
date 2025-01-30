@@ -22,8 +22,8 @@
         "skill/valory/staking_abci/0.1.0": "bafybeibgssfsxwqghnsapjafgldilgjoqju2bfoma5zd4rzqnnkcs2it6e",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeif5zhfcyulo5rfqdowx7jpbp56juhxa6ofiyvrr5lqnrvnao32ida",
         "agent/valory/trader/0.1.0": "bafybeih7h7kr35yuqfpa3zikdsbnjfn6lgznal42stz5gab33lzaf6fowi",
-        "service/valory/trader/0.1.0": "bafybeiddn4clajl4tczhlts7rnrzqhtta3sb5fhaeuafp5tj7edyuqcry4",
-        "service/valory/trader_pearl/0.1.0": "bafybeiewofotz5u75zatw57gruaqtvcmiwuykya6obo62y52fphn7sxh64"
+        "service/valory/trader/0.1.0": "bafybeig4ua5ivxmy6lvhr4z7d4jp2gyr2yonnrvyi2vkf55fmi22xt66su",
+        "service/valory/trader_pearl/0.1.0": "bafybeifxx4twy2jzwfsh34iz2nbndgglkg4xg6vjyh7f4ikuppcwst6hoq"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeidbvo3jdbt54pqk3foqfso4uim2vaea5abg6jzktomdeklh6sm2rq",
