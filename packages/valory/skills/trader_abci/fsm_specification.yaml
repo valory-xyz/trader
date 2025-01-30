@@ -209,7 +209,7 @@ transition_func:
     (ResetRound, NO_MAJORITY): HandleFailedTxRound
     (ResetRound, RESET_TIMEOUT): HandleFailedTxRound
     (SamplingRound, BENCHMARKING_ENABLED): ToolSelectionRound
-    (SamplingRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
+    (SamplingRound, BENCHMARKING_FINISHED): ResetAndPauseRound
     (SamplingRound, DONE): SubscriptionRound
     (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound

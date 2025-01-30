@@ -34,9 +34,9 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols:
-- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
+- valory/http:1.0.0:bafybeicigcedjmodxoisujvp4m4dtr6j3ybbfcfg2vvfsh2xjzy7ihstju
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
+- valory/abstract_round_abci:0.1.0:bafybeidjnldpgdbk72trjqke7uf7lrnxno4fpxnrlfvhkskcozy5lhbyyy
 behaviours:
   main:
     args: {}
