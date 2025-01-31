@@ -117,7 +117,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
     # the none event is not required because the `CallCheckpointPayload` payload does not allow for `None` values
-    required_class_attributes = tuple(
+    extended_requirements = tuple(
         attribute
         for attribute in CollectSameUntilThresholdRound.required_class_attributes
         if attribute != NONE_EVENT_ATTRIBUTE

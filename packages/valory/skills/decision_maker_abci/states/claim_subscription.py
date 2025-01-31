@@ -44,7 +44,7 @@ class ClaimRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
     # the none event is not required because the `ClaimPayload` payload does not allow for `None` values
-    required_class_attributes = tuple(
+    extended_requirements = tuple(
         attribute
         for attribute in VotingRound.required_class_attributes
         if attribute != NONE_EVENT_ATTRIBUTE
