@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 import prometheus_client
 from aea.protocols.base import Message
-from prometheus_client import Gauge, REGISTRY, generate_latest
+from prometheus_client import Gauge, generate_latest, CollectorRegistry
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -525,6 +525,7 @@ class HttpHandler(BaseHttpHandler):
         return epoch_end_ts - int(datetime.now().timestamp())
 
 
+REGISTRY = CollectorRegistry()
 N_MECH_CALLS_FOR_STAKING_KPI = 60
 PROMETHEUS_METRICS_LABELS = [
     "agent_address",
