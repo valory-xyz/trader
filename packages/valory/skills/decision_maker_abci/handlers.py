@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 import prometheus_client
 from aea.protocols.base import Message
-from prometheus_client import Gauge, generate_latest, CollectorRegistry
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
