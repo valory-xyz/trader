@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -24,13 +24,15 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    Params as MechInteractParams,
 )
 from packages.valory.skills.staking_abci.rounds import StakingAbciApp
 
@@ -58,7 +60,7 @@ def get_store_path(kwargs: dict) -> Path:
     return Path(path)
 
 
-class StakingParams(BaseParams):
+class StakingParams(MechInteractParams):
     """Staking parameters."""
 
     mech_chain_id: Optional[str]

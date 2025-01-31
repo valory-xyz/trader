@@ -159,10 +159,15 @@ class TestHttpHandler:
         local_ip_regex = r"192\.168(\.\d{1,3}){2}"
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
         health_url_regex = rf"{hostname_regex}\/healthcheck"
+        metrics_url_regex = rf"{hostname_regex}\/metrics"
         assert self.handler.handler_url_regex == rf"{hostname_regex}\/.*"
         assert self.handler.routes == {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-                (health_url_regex, self.handler._handle_get_health),
+                (
+                    health_url_regex,
+                    self.handler._handle_get_health,
+                ),
+                (metrics_url_regex, self.handler._handle_get_metrics),
             ],
         }
         assert self.handler.json_content_header == "Content-Type: application/json\n"

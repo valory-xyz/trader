@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -234,6 +234,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 tx_submitter = self.matching_round.auto_round_id()
                 betting_tx_hex = yield from self._prepare_safe_tx()
                 wallet_balance = self.wallet_balance
+                token_balance = self.token_balance
 
             payload = BetPlacementPayload(
                 agent,
@@ -241,6 +242,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 betting_tx_hex,
                 mocking_mode,
                 wallet_balance,
+                token_balance,
             )
 
         yield from self.finish_behaviour(payload)

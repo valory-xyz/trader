@@ -31,19 +31,19 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.payloads import BaseUpdateBetsPayload
+from packages.valory.skills.market_manager_abci.rounds import BaseUpdateBetsRound
 
 
-class SamplingRound(UpdateBetsRound):
+class SamplingRound(BaseUpdateBetsRound):
     """A round for sampling a bet."""
 
-    payload_class: Type[UpdateBetsPayload] = SamplingPayload
+    payload_class: Type[BaseUpdateBetsPayload] = SamplingPayload
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     selection_key: Any = (
-        UpdateBetsRound.selection_key,
+        get_name(SynchronizedData.bets_hash),
         get_name(SynchronizedData.sampled_bet_index),
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),

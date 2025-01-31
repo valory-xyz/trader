@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -99,6 +99,10 @@ class MarketManagerParams(BaseParams):
         )
         self.the_graph_payment_required_error: str = self._ensure(
             "the_graph_payment_required_error", kwargs, str
+        )
+        self.olas_token_address: str = self._ensure("olas_token_address", kwargs, str)
+        self.http_handler_hostname_regex: str = self._ensure(
+            "http_handler_hostname_regex", kwargs, str
         )
         super().__init__(*args, **kwargs)
 
