@@ -313,7 +313,6 @@ class BetsDecoder(json.JSONDecoder):
             data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
         # if the data contains an id key, but does not match the bet attributes exactly, process it as a bet
-        # this is necessary for backwards compatibility of the bets.json file
         elif "id" in data_attributes:
             # Extract only the attributes that exist in both Bet and data to ensure compatibility
             common_attributes = set(bet_annotations) & set(data_attributes)
