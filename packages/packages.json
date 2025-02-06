@@ -15,14 +15,14 @@
         "contract/valory/staking_token/0.1.0": "bafybeicdzsr5xl3al4g7n3ecsgm2lsqiq4vxcr3ktg6ac3yjejfe477r4e",
         "contract/valory/relayer/0.1.0": "bafybeiapnad7igmpuospbzlx6edn4si4o646ill75t7kcwxfrazibb6vja",
         "skill/valory/market_manager_abci/0.1.0": "bafybeiaeiyckx4c7atve4wvzqq47qxprcuzv4jrxqqx5ub422cskfcv3we",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeielesjedsk6mhu23euq7yes3pzt6j6mfhbxuvpaifpklqbw4io5sm",
-        "skill/valory/trader_abci/0.1.0": "bafybeigvaqdibyrbvbpncnj35nhv7mooatvfftc4i6ketxlsl37on3dxzi",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeia35s7sb7smyg5mbccwlwxlihi6dkeaxu2mt4iz2su4yptbor7ueq",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeifadsffryuth66wfbfrczm54dp36wckg7oodrg5lm2w6mvty5jdbq",
+        "skill/valory/trader_abci/0.1.0": "bafybeihcumjyw2npbpj5n2tyhzzoiv6rroavlhxwknxfeqkpc2rtzvksne",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeicf23bvabjmtvu3xgwfsebpf74jnwtzsm2e2xxhfujvjxnxcqqm5i",
         "skill/valory/staking_abci/0.1.0": "bafybeiccwr7bdiaz7oh4w3rjipygornvcqm5ihs5dbxvo5j5oqv34sjh3a",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeieayit6wjahgeamp4qpy4vqmzj6la72etzigdnkss7i5o3sk36k6e",
-        "agent/valory/trader/0.1.0": "bafybeihnxbz6crlkutdz6gaqegfmlgkl4gvzduekdcgyomdlmbzw5rhwmq",
-        "service/valory/trader/0.1.0": "bafybeice52ha3ag6esqk5qoh34sud2j5sve4dzjjmaldew2ttbgmx7e6ve",
-        "service/valory/trader_pearl/0.1.0": "bafybeideipripruchmmrjlt2gwey5slozts5anp4z5h5zpabdlemr2vvse"
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeigzqc6lgn3qfrn3l4qr64wobfehdzbgnnvgzcfktrw43atpctu4zi",
+        "agent/valory/trader/0.1.0": "bafybeidk5riuntd5kkw3lfock5efujcfbe4jbbnd2qc3v3lu5e2cfp334y",
+        "service/valory/trader/0.1.0": "bafybeibed77bdcn4pvprumvuryqn2m65yc5na2ne7x2oliopc2a3ht7bsi",
+        "service/valory/trader_pearl/0.1.0": "bafybeih22hl3bmj7cdemikormbp5jzq3hddgqe4kilwtlvii4rcl5h6bxm"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
