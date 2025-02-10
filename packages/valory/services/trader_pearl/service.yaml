@@ -130,7 +130,7 @@ models:
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
-      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":25000000000000000,"0.1":25000000000000000,"0.2":25000000000000000,"0.3":25000000000000000,"0.4":25000000000000000,"0.5":25000000000000000,"0.6":25000000000000000,"0.7":25000000000000000,"0.8":25000000000000000,"0.9":25000000000000000,"1.0":250000000000000000}}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":25000000000000000,"0.1":25000000000000000,"0.2":25000000000000000,"0.3":25000000000000000,"0.4":25000000000000000,"0.5":25000000000000000,"0.6":25000000000000000,"0.7":25000000000000000,"0.8":25000000000000000,"0.9":25000000000000000,"1.0":25000000000000000}}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_nevermined: ${USE_NEVERMINED:bool:false}
       mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
