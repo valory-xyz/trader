@@ -1,6 +1,6 @@
 {
     "dev": {
-        "custom/valory/bet_amount_per_threshold/0.1.0": "bafybeibvcxpuwevqlqqe3rfgimm2ormbl2hv7jjqffs6mhwfneqs7op77a",
+        "custom/valory/bet_amount_per_threshold/0.1.0": "bafybeibkwgia3tkzfwzif43gpj5rd32usen4lqdkh4vxuda5rdsvwc3evq",
         "custom/valory/mike_strat/0.1.0": "bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m",
         "custom/jhehemann/kelly_criterion/0.1.0": "bafybeif55cu7cf6znyma7kxus4wxa2doarhau2xmndo57iegshxorivwmq",
         "custom/w1kke/always_blue/0.1.0": "bafybeieshu32h3es2fslduuhr7nimuvh2vuibyeqdunzrcggaeohekg3jm",
@@ -21,9 +21,9 @@
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeif5ijphendsbvi43ot6bn2i45ks4fyib2rd3ehaeo6pmi5eto3qzy",
         "skill/valory/staking_abci/0.1.0": "bafybeiaasclr4lf3u2layekmfwyasckxrslbs2g4me7kvozz5goswlznjq",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeic3bismocli2yyxmjhjsevjbzpuf3ladsvlkazfx23vq3q6uxrn7m",
-        "agent/valory/trader/0.1.0": "bafybeigh2p3cxoi5az36pl4f3siurze6ejvc2oprrun7jfiettdp7bwqei",
-        "service/valory/trader/0.1.0": "bafybeidwmanange3pj74qiyhz32r45xkae27qrz223j2m3f5esxwcz722i",
-        "service/valory/trader_pearl/0.1.0": "bafybeig23xluqbmfwn3tjqlmvanfpzeqf3lc3fkctacaklx4sf3boch2f4"
+        "agent/valory/trader/0.1.0": "bafybeid5y2uqhmqy5ypt4i4bgacgg3bh2o2vpv3gkihxhjjsxow6r3owlu",
+        "service/valory/trader/0.1.0": "bafybeigbh53jfmqmf45srutd3pxvwtm7vws3uz4wu2s7yhxq24zq34ww7m",
+        "service/valory/trader_pearl/0.1.0": "bafybeih5k3qdfidbenwwtf2ynzxidqrp53d4jgpsntnnv3tuf3m2xy564u"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeidbvo3jdbt54pqk3foqfso4uim2vaea5abg6jzktomdeklh6sm2rq",
