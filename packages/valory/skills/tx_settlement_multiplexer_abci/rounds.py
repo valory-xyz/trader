@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ class PreTxSettlementRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
     # the none event is not required because the `VotingPayload` payload does not allow for `None` values
-    required_class_attributes = tuple(
+    extended_requirements = tuple(
         attribute
         for attribute in VotingRound.required_class_attributes
         if attribute != NONE_EVENT_ATTRIBUTE
@@ -86,7 +86,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
     payload_class: Any = object()
     synchronized_data_class = SynchronizedData
     # no class attributes are required because this round is overriding the `end_block` method
-    required_class_attributes = ()
+    extended_requirements = ()
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """

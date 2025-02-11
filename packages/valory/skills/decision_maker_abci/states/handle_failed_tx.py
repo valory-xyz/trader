@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ class HandleFailedTxRound(CollectSameUntilThresholdRound):
     )
     collection_key = get_name(SynchronizedData.participant_to_handle_failed_tx)
     # the none event is not required because the `HandleFailedTxPayload` payload does not allow for `None` values
-    required_class_attributes = tuple(
+    extended_requirements = tuple(
         attribute
         for attribute in CollectSameUntilThresholdRound.required_class_attributes
         if attribute != NONE_EVENT_ATTRIBUTE
