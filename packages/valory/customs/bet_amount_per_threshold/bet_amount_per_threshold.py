@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This module contains a simple strategy that returns a bet amount based on a mapping."""
-
+from types import NoneType
 from typing import Union, List, Dict, Tuple, Any
 
 REQUIRED_FIELDS = ("confidence", "bet_amount_per_threshold")
@@ -44,10 +44,23 @@ def amount_per_threshold(
     """Get the bet amount per threshold strategy's result."""
     # get the key type of the dictionary
     key_type = type(next(iter(bet_amount_per_threshold), None))
-    if key_type == NoneType:
+
+    if key_type is None:
         return {
             "error": (
                 "No keys were found in the given `bet_amount_per_threshold` mapping!",
+            )
+        }
+    if any(not isinstance(key, key_type) for key in bet_amount_per_threshold):
+        return {
+            "error": (
+                "All the keys in `bet_amount_per_threshold` should have the same type!",
+            )
+        }
+    if key_type not in (int, float, str):
+        return {
+            "error": (
+                f"Unsupported key type {key_type} in {bet_amount_per_threshold=}.",
             )
         }
     try:
