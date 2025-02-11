@@ -8,7 +8,7 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeibbn67pnrrm4qm3n3kbelvbs3v7fjlrjniywmw2vbizarippidtvi
-  bet_amount_per_threshold.py: bafybeic5bgbqghkzatmara4rlnpptwwtcvurl5zpwpkfkfd2k4c2zgmqoy
+  bet_amount_per_threshold.py: bafybeidg34hyalcjwm77qmvkkjrhooyy65wxwfokoh2wifcrmk4migxjgi
 fingerprint_ignore_patterns: []
 entry_point: bet_amount_per_threshold.py
 callable: run
