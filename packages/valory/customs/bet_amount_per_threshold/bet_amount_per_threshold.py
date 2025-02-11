@@ -43,7 +43,13 @@ def amount_per_threshold(
 ) -> Dict[str, Union[int, Tuple[str]]]:
     """Get the bet amount per threshold strategy's result."""
     # get the key type of the dictionary
-    key_type = type(next(iter(bet_amount_per_threshold)))
+    key_type = type(next(iter(bet_amount_per_threshold), None))
+    if key_type == NoneType:
+        return {
+            "error": (
+                "No keys were found in the given `bet_amount_per_threshold` mapping!",
+            )
+        }
     threshold = key_type(round(confidence, 1))
     bet_amount = bet_amount_per_threshold.get(threshold, None)
 
