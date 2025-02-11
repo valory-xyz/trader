@@ -233,7 +233,7 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies: ${dict:{"bafybeicws32kr2kmo7g5ffi6a3o6btonqjwtbgpho7rf5x4n5h2g4sqrge":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+      file_hash_to_strategies: ${dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
       strategies_kwargs: ${dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
       service_endpoint: ${str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${int:10}
