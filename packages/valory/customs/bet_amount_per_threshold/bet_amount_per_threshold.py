@@ -45,7 +45,7 @@ def amount_per_threshold(
     # get the key type of the dictionary
     key_type = type(next(iter(bet_amount_per_threshold), None))
 
-    if key_type is None:
+    if key_type is NoneType:
         return {
             "error": (
                 "No keys were found in the given `bet_amount_per_threshold` mapping!",
