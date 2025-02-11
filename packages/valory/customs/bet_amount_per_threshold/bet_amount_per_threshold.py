@@ -39,11 +39,12 @@ def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def amount_per_threshold(
-    confidence: float, bet_amount_per_threshold: Dict[str, int]
+    confidence: float, bet_amount_per_threshold: Dict[Any, int]
 ) -> Dict[str, Union[int, Tuple[str]]]:
     """Get the bet amount per threshold strategy's result."""
-    # we need the threshold as a string, because the agent/service overrides cannot be given with `int`s as keys
-    threshold = str(round(confidence, 1))
+    # get the key type of the dictionary
+    key_type = type(next(iter(bet_amount_per_threshold)))
+    threshold = key_type(round(confidence, 1))
     bet_amount = bet_amount_per_threshold.get(threshold, None)
 
     if bet_amount is None:
