@@ -50,7 +50,14 @@ def amount_per_threshold(
                 "No keys were found in the given `bet_amount_per_threshold` mapping!",
             )
         }
-    threshold = key_type(round(confidence, 1))
+    try:
+        threshold = key_type(round(confidence, 1))
+    except (TypeError, ValueError):
+        return {
+            "error": (
+                f"Could not convert {confidence=} to {key_type=}.",
+            )
+        }
     bet_amount = bet_amount_per_threshold.get(threshold, None)
 
     if bet_amount is None:
