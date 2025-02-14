@@ -14,7 +14,7 @@ fingerprint:
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
   models.py: bafybeigv4bltwodffe7n5fs6tevx2ysavkj3ynpwniyky653jiigtfzppu
   payloads.py: bafybeib7hxsibtabb5vt6gjtco2x2s2yodhs24ojqecgrcexqsiv3pvmuy
-  rounds.py: bafybeifki4k3x6hjjkudrovsblf2ghrcg42b7nfysds5yts5p357dadl4a
+  rounds.py: bafybeibdrs56k6zvuw3df43qsyq7q2a6wn6m2qwu7ljio3ag4vxsitmiii
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
@@ -23,15 +23,15 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeihtqcpqthb37msgqabpzcc2xc3l3yzkp5pl2sodeghqyzzzyuevgi
-- valory/service_staking_token:0.1.0:bafybeieg664oohr26gpcfn3uied4minlz6dmgd32xboewscnxqnv5kk4zi
-- valory/staking_token:0.1.0:bafybeiaynt6clwbthtbndtocnwul7dp76ctmu4jxinp7fnqks4pxt65yuy
-- valory/mech_activity:0.1.0:bafybeieadv7vnbguc7beu6xo3rs3mqbgzc7wayc7kvgb2tmitmjtpdcqkq
+- valory/gnosis_safe:0.1.0:bafybeif3uivl3jjb3c2tyctu6jagp2mwizgmdnxb4x7otrxavifdk4t3je
+- valory/service_staking_token:0.1.0:bafybeigvyi2jhx5y6dptnrjqaxzebo365pgainevknzalbh5vheqst7haq
+- valory/staking_token:0.1.0:bafybeibn275r77aejmtmod6x4gl23auytgkplrwotipw523xj5srp4min4
+- valory/mech_activity:0.1.0:bafybeihnin6bkli4wcuyegawariozj3fgoi7slwmrduwkvm7n5gy7rvusy
 protocols:
-- valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
+- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
-- valory/transaction_settlement_abci:0.1.0:bafybeifmgmwdkx4esemxjacjwzqkqymkuklb5nehkwqkx7v335fllgswcq
+- valory/abstract_round_abci:0.1.0:bafybeigyuls35k6rc2x5j5pcnrghfyojzqzjshhfoaco47ctfm3wjiapce
+- valory/transaction_settlement_abci:0.1.0:bafybeibil7cfzuuyxge5rayxwqxvq467hhv73pngj3muqo7x6zkkjzlgs4
 behaviours:
   main:
     args: {}

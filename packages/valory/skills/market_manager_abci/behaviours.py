@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import json
 import os.path
 from abc import ABC
 from json import JSONDecodeError
-from typing import Any, Dict, Generator, List, Optional, Set, Type
+from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
 from aea.helpers.ipfs.base import IPFSHashOnly
 
@@ -39,6 +39,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QueryingBehaviour,
 )
+from packages.valory.skills.market_manager_abci.models import SharedState
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 from packages.valory.skills.market_manager_abci.rounds import (
     MarketManagerAbciApp,
@@ -62,6 +63,11 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.multi_bets_filepath: str = self.params.store_path / MULTI_BETS_FILENAME
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
 
+    @property
+    def shared_state(self) -> SharedState:
+        """Get the shared state."""
+        return cast(SharedState, self.context.state)
+
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
         serialized = serialize_bets(self.bets)
@@ -84,6 +90,18 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
+
+        if self.shared_state.first_read:
+            # this is a temporary hack to overcome a multi-bets issue
+            # if a bet that is in the `TO_PROCESS` queue cannot be selected because of the constraints
+            # (e.g., not in opening margin), then everything is blocked because the `FRESH` status will never be updated:
+            # https://github.com/valory-xyz/trader/blob/v0.23.1/packages/valory/skills/market_manager_abci/behaviours.py#L200-L202
+            self.context.logger.info(
+                "Multi-bets storage temporarily disabled on startup!"
+            )
+            self.shared_state.first_read = False
+            return
+
         _read_path = self.multi_bets_filepath
 
         if not os.path.isfile(_read_path):
