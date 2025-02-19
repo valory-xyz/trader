@@ -99,7 +99,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
 
-        if (not self.benchmarking_mode.enabled) and self.shared_state.first_read:
+        if not self.benchmarking_mode.enabled and self.shared_state.first_read:
             # this is a temporary hack to overcome a multi-bets issue
             # if a bet that is in the `TO_PROCESS` queue cannot be selected because of the constraints
             # (e.g., not in opening margin), then everything is blocked because the `FRESH` status will never be updated:
