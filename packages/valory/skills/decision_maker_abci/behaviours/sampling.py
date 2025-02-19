@@ -138,6 +138,31 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
+    def _sampling_benchmarking_bet(self, bets: List[Bet]) -> Optional[int]:
+        """Sample bet for benchmarking"""
+        to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
+            bets
+        )
+
+        self.context.logger.info(f"TO_PROCESS_LEN: {len(to_process_bets)}")
+        self.context.logger.info(f"PROCESSED_LEN: {len(processed_bets)}")
+        self.context.logger.info(f"REPROCESSED_LEN: {len(reprocessed_bets)}")
+
+        self.context.logger.info(
+            f"MECH CALLS MADE: {self.shared_state.benchmarking_mech_calls}"
+        )
+
+        if (
+            self.shared_state.benchmarking_mech_calls
+            == self.benchmarking_mode.nr_mech_calls
+        ):
+            return None
+
+        bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets
+        sorted_bets = self._sort_by_priority_logic(bets_to_sort)
+
+        return self.bets.index(sorted_bets[0])
+
     def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
         # modify time "NOW" in benchmarking mode
@@ -163,6 +188,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
             return None
+
+        if self.benchmarking_mode.enabled:
+            idx = self._sampling_benchmarking_bet(available_bets)
+            if not idx:
+                return None
 
         # sample a bet using the priority logic
         idx = self._sampled_bet_idx(available_bets)
@@ -190,6 +220,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         if benchmarking_finished:
             self.context.logger.info("No more days to simulate in benchmarking mode.")
 
+        self.shared_state.benchmarking_mech_calls = 0
+
         day_increased = True
 
         return benchmarking_finished, day_increased
@@ -204,6 +236,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             # day increase simulation and benchmarking finished check
             if idx is None and self.benchmarking_mode.enabled:
                 benchmarking_finished, day_increased = self._benchmarking_inc_day()
+                for bet in self.bets:
+                    bet.queue_status = bet.queue_status.move_to_fresh()
+                    bet.queue_status = bet.queue_status.move_to_process()
 
             self.store_bets()
 

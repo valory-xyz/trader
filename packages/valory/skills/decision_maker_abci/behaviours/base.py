@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -48,7 +48,6 @@ from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPacka
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
     BenchmarkingMockData,
-    BenchmarkingMode,
     DecisionMakerParams,
     L0_END_FIELD,
     L0_START_FIELD,
@@ -170,11 +169,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def params(self) -> DecisionMakerParams:
         """Return the params."""
         return cast(DecisionMakerParams, self.context.params)
-
-    @property
-    def benchmarking_mode(self) -> BenchmarkingMode:
-        """Return the benchmarking mode configurations."""
-        return cast(BenchmarkingMode, self.context.benchmarking_mode)
 
     @property
     def mock_data(self) -> BenchmarkingMockData:
