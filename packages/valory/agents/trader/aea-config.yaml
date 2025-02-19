@@ -50,10 +50,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigebq46oqz2mx2iajupr6p5pgm6z5pvfye5w6zypsseuqtvta7b4a
 - valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictbhf3hittfibpo6hr2435y4gtvppgmg4uu4d2xpudw3z2ek5hgm
-- valory/market_manager_abci:0.1.0:bafybeid75ggv2pk22gtf6ae5prtwlahmgkxjla3tgw5mykn7agcndrbs5e
-- valory/decision_maker_abci:0.1.0:bafybeiexu6ttsv6gqlwsxbn5zoq4fgjboiq5v65q3fwlamsxabha2xjihq
-- valory/trader_abci:0.1.0:bafybeifvlcs7ak6kjemueeqwv4uwrjgrcd4g2qumflaxkgcgrrzqfbnuae
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih2s2dwnyxm7xhd3knc3wlaejzyvfulxkipwnidmzxgx7t3ofqbpq
+- valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
+- valory/decision_maker_abci:0.1.0:bafybeigehrtalp3ppnog25yuvfcdt3gmrgvxb2zm2zyngxxfcvps2s3tza
+- valory/trader_abci:0.1.0:bafybeideek7oe3rbcnaymd4bnwsm2kull75wfdvljv5prvcsok5sgti7bq
 - valory/staking_abci:0.1.0:bafybeial5xtgzf37e2khvdrc2q2wa2xhirjwioi2szwvcgtupidjxhg7tq
 - valory/check_stop_trading_abci:0.1.0:bafybeid7l74lmjnkeerkbvwhoo2l4cawb7c545rhcx3mjpsjux4zwy5wpm
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
@@ -268,6 +268,7 @@ models:
       bet_amount_field: ${str:collateral_amount}
       results_filename: ${str:benchmarking_results.csv}
       randomness: ${str:benchmarking_randomness}
+      nr_mech_calls: ${int:60}
   acc_info_fields:
     args:
       tool: ${str:tool}
