@@ -21,17 +21,17 @@ connections: []
 contracts: []
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigyuls35k6rc2x5j5pcnrghfyojzqzjshhfoaco47ctfm3wjiapce
-- valory/registration_abci:0.1.0:bafybeifurpc5kko5tq5bc2bwfgdvwpbhzytk2vhj56cb2d6lhdnm7irnhu
-- valory/reset_pause_abci:0.1.0:bafybeiavtmbqziu3i55t2clj2ih242vuq2nw4xp47heaxyusddggl664ya
-- valory/transaction_settlement_abci:0.1.0:bafybeibil7cfzuuyxge5rayxwqxvq467hhv73pngj3muqo7x6zkkjzlgs4
-- valory/termination_abci:0.1.0:bafybeigpodcqf4vtk4pwj2d3fn2hbvv6fnwgqllowxwx3e76wonxen4zu4
-- valory/market_manager_abci:0.1.0:bafybeievuh4tvdajyzttasex6l6hnimenivon4zysu5ma45qtsvawac3hy
-- valory/decision_maker_abci:0.1.0:bafybeieob42p3e2s2hvtfvj6nr2we3oqvr3efrf3jpgozyqisoviorpllu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicwylbec2lilvm7c2nw6nlnyj5gdum5qgj2wjlygjgiv5s6jchm2u
-- valory/staking_abci:0.1.0:bafybeige4fkcqx5umrdaoz2edfex6kwpgw6g7cd6lcd32wk5x6r3kychsu
-- valory/check_stop_trading_abci:0.1.0:bafybeibx3xxq32dlkosknpffvzkns2mbf4wx77l6pnqkfjeefprjfxpiia
-- valory/mech_interact_abci:0.1.0:bafybeight53ip54jyhor7ylssmvfuxhmq666bamn3pjw3q55pm6x7av54a
+- valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
+- valory/registration_abci:0.1.0:bafybeifaa6ejpihwxxxswqd5qfy63rixml43d3ljnezilflvdtclspjj6y
+- valory/reset_pause_abci:0.1.0:bafybeigebq46oqz2mx2iajupr6p5pgm6z5pvfye5w6zypsseuqtvta7b4a
+- valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
+- valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
+- valory/market_manager_abci:0.1.0:bafybeifumep2j7qu3maxhveuyeqz4gdlakjdiu3zxtfu54ifjru7itxr74
+- valory/decision_maker_abci:0.1.0:bafybeiazapypepvgkfs5pqylvou4gwl5ablmiaisdrbspnyd3sxzjzxq2m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibmhqnyi6juliig7ahw54g7z2hztzspbmckj4snup2nlaqieet3hu
+- valory/staking_abci:0.1.0:bafybeial5xtgzf37e2khvdrc2q2wa2xhirjwioi2szwvcgtupidjxhg7tq
+- valory/check_stop_trading_abci:0.1.0:bafybeid7l74lmjnkeerkbvwhoo2l4cawb7c545rhcx3mjpsjux4zwy5wpm
+- valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
 behaviours:
   main:
     args: {}

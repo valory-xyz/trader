@@ -38,7 +38,7 @@ packages/valory/protocols/tendermint
 .idea
 **/__pycache__/
 *.DS_Store
-
+trader_backup/
 .mypy_cache
 /.tox/
 
