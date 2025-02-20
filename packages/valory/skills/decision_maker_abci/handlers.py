@@ -387,7 +387,7 @@ class HttpHandler(BaseHttpHandler):
     def _send_not_found_response(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Send an not found response"""
+        """Send a not found response"""
         http_response = http_dialogue.reply(
             performative=HttpMessage.Performative.RESPONSE,
             target_message=http_msg,
