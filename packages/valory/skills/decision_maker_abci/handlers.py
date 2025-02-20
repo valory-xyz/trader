@@ -168,9 +168,7 @@ class HttpHandler(BaseHttpHandler):
     @property
     def synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
-        return SynchronizedData(
-            db=self.context.state.round_sequence.latest_synchronized_data.db
-        )
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _get_handler(self, url: str, method: str) -> Tuple[Optional[Callable], Dict]:
         """Check if an url is meant to be handled in this handler
