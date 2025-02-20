@@ -387,6 +387,6 @@ class HttpHandler(BaseHttpHandler):
         # (an on chain transaction)
         return (
             self.synchronized_data.decision_receive_timestamp
-            < int(datetime.utcnow().timestamp())
+            < int(datetime.now(timezone.utc).timestamp())
             - self.context.params.expected_mech_response_time
         )
