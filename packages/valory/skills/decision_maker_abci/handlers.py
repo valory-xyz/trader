@@ -108,6 +108,7 @@ class IpfsHandler(AbstractResponseHandler):
 OK_CODE = 200
 NOT_FOUND_CODE = 404
 BAD_REQUEST_CODE = 400
+TOO_EARLY_CODE = 425
 AVERAGE_PERIOD_SECONDS = 10
 
 
@@ -272,6 +273,36 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
 
+    def _has_transitioned(self) -> bool:
+        """Check if the agent has transitioned."""
+        try:
+            return bool(self.round_sequence.last_round_transition_height)
+        except ValueError:
+            return False
+
+    def _handle_too_early(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """
+        Handle a request when the FSM's loop has not started yet.
+
+        :param http_msg: the http message
+        :param http_dialogue: the http dialogue
+        """
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=TOO_EARLY_CODE,
+            status_text="The state machine has not started yet! Please try again later...",
+            headers=http_msg.headers,
+            body=b"",
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
+
     def _handle_get_health(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -281,45 +312,41 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the http message
         :param http_dialogue: the http dialogue
         """
-        is_transitioning_fast = (
-            seconds_since_last_transition
-        ) = is_tm_unhealthy = rounds = None
+        if not self._has_transitioned():
+            self._handle_too_early(http_msg, http_dialogue)
+            return
+
         has_required_funds = self._check_required_funds()
         is_receiving_mech_responses = self._check_is_receiving_mech_responses()
         is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
         staking_status = self.synchronized_data.service_staking_state.name.lower()
 
         round_sequence = self.round_sequence
+        is_tm_unhealthy = round_sequence.block_stall_deadline_expired
 
-        last_round_transition_timestamp = (
-            round_sequence._last_round_transition_timestamp
+        current_time = datetime.now().timestamp()
+        seconds_since_last_transition = current_time - datetime.timestamp(
+            round_sequence.last_round_transition_timestamp
         )
-        if last_round_transition_timestamp:
-            is_tm_unhealthy = round_sequence.block_stall_deadline_expired
 
-            current_time = datetime.now().timestamp()
-            seconds_since_last_transition = current_time - datetime.timestamp(
-                last_round_transition_timestamp
-            )
+        abci_app = self.round_sequence.abci_app
+        previous_rounds = abci_app._previous_rounds
+        previous_round_cls = type(previous_rounds[-1])
+        previous_round_events = abci_app.transition_function.get(
+            previous_round_cls, {}
+        ).keys()
+        previous_round_timeouts = {
+            abci_app.event_to_timeout.get(event, -1) for event in previous_round_events
+        }
+        last_round_timeout = max(previous_round_timeouts)
+        is_transitioning_fast = (
+            not is_tm_unhealthy
+            and seconds_since_last_transition < 2 * last_round_timeout
+        )
 
-            previous_rounds = round_sequence.abci_app._previous_rounds
-            previous_round_cls = type(previous_rounds[-1])
-            previous_round_events = round_sequence.abci_app.transition_function.get(
-                previous_round_cls, {}
-            ).keys()
-            previous_round_timeouts = {
-                round_sequence.abci_app.event_to_timeout.get(event, -1)
-                for event in previous_round_events
-            }
-            last_round_timeout = max(previous_round_timeouts)
-            is_transitioning_fast = (
-                not is_tm_unhealthy
-                and seconds_since_last_transition < 2 * last_round_timeout
-            )
-
-            rounds = [r.round_id for r in previous_rounds[-FSM_REPR_MAX_DEPTH:]] + [
-                round_sequence.current_round_id
-            ]
+        rounds = [r.round_id for r in previous_rounds[-FSM_REPR_MAX_DEPTH:]] + [
+            round_sequence.current_round_id
+        ]
 
         data = {
             "seconds_since_last_transition": seconds_since_last_transition,
