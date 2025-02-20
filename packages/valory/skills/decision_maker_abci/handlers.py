@@ -21,7 +21,7 @@
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
@@ -33,6 +33,7 @@ from packages.valory.connections.http_server.connection import (
 )
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.ipfs import IpfsMessage
+from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
@@ -68,6 +69,9 @@ SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
 ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
+
+
+FSM_REPR_MAX_DEPTH = 25
 
 
 class IpfsHandler(AbstractResponseHandler):
@@ -155,6 +159,11 @@ class HttpHandler(BaseHttpHandler):
         self.json_content_header = "Content-Type: application/json\n"
 
         self.rounds_info = load_rounds_info_with_transitions()
+
+    @property
+    def round_sequence(self) -> RoundSequence:
+        """Return the round sequence."""
+        return self.context.state.round_sequence
 
     @property
     def synchronized_data(self) -> SynchronizedData:
@@ -274,40 +283,45 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the http message
         :param http_dialogue: the http dialogue
         """
-        seconds_since_last_transition = None
-        is_tm_unhealthy = None
-        is_transitioning_fast = None
-        current_round = None
-        rounds = None
+        is_transitioning_fast = (
+            seconds_since_last_transition
+        ) = is_tm_unhealthy = rounds = None
         has_required_funds = self._check_required_funds()
         is_receiving_mech_responses = self._check_is_receiving_mech_responses()
         is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
         staking_status = self.synchronized_data.service_staking_state.name.lower()
 
-        round_sequence = cast(SharedState, self.context.state).round_sequence
+        round_sequence = self.round_sequence
 
-        if round_sequence._last_round_transition_timestamp:
-            is_tm_unhealthy = cast(
-                SharedState, self.context.state
-            ).round_sequence.block_stall_deadline_expired
+        last_round_transition_timestamp = (
+            round_sequence._last_round_transition_timestamp
+        )
+        if last_round_transition_timestamp:
+            is_tm_unhealthy = round_sequence.block_stall_deadline_expired
 
             current_time = datetime.now().timestamp()
             seconds_since_last_transition = current_time - datetime.timestamp(
-                round_sequence._last_round_transition_timestamp
+                last_round_transition_timestamp
             )
 
+            previous_rounds = round_sequence.abci_app._previous_rounds
+            previous_round_cls = type(previous_rounds[-1])
+            previous_round_events = round_sequence.abci_app.transition_function.get(
+                previous_round_cls, {}
+            ).keys()
+            previous_round_timeouts = {
+                round_sequence.abci_app.event_to_timeout.get(event, -1)
+                for event in previous_round_events
+            }
+            last_round_timeout = max(previous_round_timeouts)
             is_transitioning_fast = (
                 not is_tm_unhealthy
-                and seconds_since_last_transition
-                < 2 * self.context.params.reset_pause_duration
+                and seconds_since_last_transition < 2 * last_round_timeout
             )
 
-        if round_sequence._abci_app:
-            current_round = round_sequence._abci_app.current_round.round_id
-            rounds = [
-                r.round_id for r in round_sequence._abci_app._previous_rounds[-25:]
+            rounds = [r.round_id for r in previous_rounds[-FSM_REPR_MAX_DEPTH:]] + [
+                round_sequence.current_round_id
             ]
-            rounds.append(current_round)
 
         data = {
             "seconds_since_last_transition": seconds_since_last_transition,
