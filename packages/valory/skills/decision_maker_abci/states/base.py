@@ -59,6 +59,7 @@ class Event(Enum):
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
+    CALC_BUY_AMOUNT_FAILED = "calc_buy_amount_failed"
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
