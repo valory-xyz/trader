@@ -50,10 +50,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigebq46oqz2mx2iajupr6p5pgm6z5pvfye5w6zypsseuqtvta7b4a
 - valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicffb2hc2efvr33tvbbd5dp5sbj25fkar4fhgmqfbpy4fzxnzolsy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaonsd6obcnmhhrmkbejna6xeohpmzpalrsiwkvtk7yxu5vetqqqu
 - valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
-- valory/decision_maker_abci:0.1.0:bafybeigddrgyys4rqu3x6gwig7cpylesbpy6ioocmngremad373w54nlky
-- valory/trader_abci:0.1.0:bafybeidvi2fa26sbs3ig56rzfsewzcr2htgwkpxcdxzauyoys27byynoze
+- valory/decision_maker_abci:0.1.0:bafybeidlc7ed2lnrre3yyugqu35vlydbd6bzjgi7z6ormlguwjn5fpriku
+- valory/trader_abci:0.1.0:bafybeienif666scmx4zyn55u27pupgex4xw4ifwhoctskeoxj72devyu54
 - valory/staking_abci:0.1.0:bafybeial5xtgzf37e2khvdrc2q2wa2xhirjwioi2szwvcgtupidjxhg7tq
 - valory/check_stop_trading_abci:0.1.0:bafybeid7l74lmjnkeerkbvwhoo2l4cawb7c545rhcx3mjpsjux4zwy5wpm
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54

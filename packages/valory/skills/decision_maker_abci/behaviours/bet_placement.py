@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -187,9 +187,15 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
     def _prepare_safe_tx(self) -> Generator[None, None, Optional[str]]:
         """Prepare the safe transaction for placing a bet and return the hex for the tx settlement skill."""
+        yield from self.wait_for_condition_with_sleep(self._build_approval_tx)
+
+        # based on past observations, the buy amount calculation usually fails because of the RPC misbehaving
+        # if this happens, we do not want to retry as it won't get resolved soon. Instead, we exit this round.
+        calculation_succeeded = yield from self._calc_buy_amount()
+        if not calculation_succeeded:
+            return None
+
         for step in (
-            self._build_approval_tx,
-            self._calc_buy_amount,
             self._build_buy_tx,
             self._build_multisend_data,
             self._build_multisend_safe_tx_hash,
