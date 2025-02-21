@@ -13,7 +13,7 @@ fingerprint:
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
   behaviours/base.py: bafybeifyuhycdirvw4k5np6spfmvinzvisb5rley5xjl7nodhxjtee34oa
-  behaviours/bet_placement.py: bafybeibiezagww5dsbpptgvtzgch3yjrq3343gw5cyfpckegxkfzo67vru
+  behaviours/bet_placement.py: bafybeibflvlyvmd7que4y6eb7egbixx3hvlwdu764zesi6dnwyusvryhba
   behaviours/blacklisting.py: bafybeieuqoup2vrmrtvjfqnr5mzrvkegc7afb2oeujzq2itsbhcsham2se
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/claim_subscription.py: bafybeigbqkhc6mb73rbwaks32tfiqx6u2xza43uiy6rvbtrnqd6m4fru3e
@@ -28,7 +28,7 @@ fingerprint:
   behaviours/storage_manager.py: bafybeic6wca37fkwonbsrwme55xnklfbqtheknroudayzfxdge4pxdbm7y
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
-  fsm_specification.yaml: bafybeifvu7n6sjmrerogkzsftjrw2l6w5ppuq3f43ouj2rwbomdr5glp2e
+  fsm_specification.yaml: bafybeib3oecxsixxzf3fsai5f7jlqpqqm23jcuvqn5fgp54shdj3temz2y
   handlers.py: bafybeiherm5a2kjmf46ffjoyvhh3tsja5au5i677oasiutdxdojwdtwqla
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
@@ -36,11 +36,11 @@ fingerprint:
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeidofgwvk6sudz75tvuduskuphtn3amtib2irzw5hr3qcfn5pdwuc4
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
-  rounds.py: bafybeiftrpaxyyly3d36kvfg2c2m5fmzchm6n4vv5losu3jr2b7s5ces6a
+  rounds.py: bafybeiedbmmy7jnqvtcdfnd222yyr3r4d7m7bhhwccla4nsqautmavwgrq
   rounds_info.py: bafybeihg6i3h7a7ahfxzhow7gcuszcilq5krfpchze2szjdu7dtem2tnwa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeiglqvym3ri6hurx4k7hrnykzbmslxe3vuj23djt6hai4czii4vbqq
-  states/bet_placement.py: bafybeih5eopyxubczys5u5t3bdxbxpc7mmfdyqrpqsbm2uha5jc2phza4i
+  states/base.py: bafybeictnvwzj2m7uk4n3uwuh5yhfx2uqn5klgs3afog2tet33mp5hnxmi
+  states/bet_placement.py: bafybeidd3k6bbnjkznwbv43l44wexaci7k7axz6mfrgca76mjljp5o2344
   states/blacklisting.py: bafybeiapelgjhbjjn4uq4z5gspyirqzwzgccg5anktrp5kxdwamfnfw5mi
   states/check_benchmarking.py: bafybeiagrgeopuluwqkvoqbst2hjymte5rju2pecvkoeleklnqca5andeu
   states/claim_subscription.py: bafybeicjsjkvv2ftfv2gquvp7fyvuqia6acs44d3smwebgaic7lhkbaym4

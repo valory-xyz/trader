@@ -4,6 +4,7 @@ alphabet_in:
 - BENCHMARKING_FINISHED
 - BET_PLACEMENT_DONE
 - BLACKLIST
+- CALC_BUY_AMOUNT_FAILED
 - CHECKS_PASSED
 - CHECK_HISTORY
 - CHECK_LATE_ARRIVING_MESSAGE
@@ -98,6 +99,7 @@ transition_func:
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
     (BenchmarkingRandomnessRound, NO_MAJORITY): BenchmarkingRandomnessRound
     (BenchmarkingRandomnessRound, ROUND_TIMEOUT): BenchmarkingRandomnessRound
+    (BetPlacementRound, CALC_BUY_AMOUNT_FAILED): HandleFailedTxRound
     (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
     (BetPlacementRound, MOCK_TX): RedeemRound
