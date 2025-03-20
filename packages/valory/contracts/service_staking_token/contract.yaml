@@ -16,7 +16,7 @@ contract_interface_paths:
   ethereum: build/ServiceStakingToken.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.64.0
+    version: ==1.65.0
   open-aea-test-autonomy:
     version: ==0.19.6
   web3:
