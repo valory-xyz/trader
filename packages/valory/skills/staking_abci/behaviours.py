@@ -427,8 +427,12 @@ class CallCheckpointBehaviour(
                     return int(checkpoint_file.readline())
                 except (ValueError, TypeError, StopIteration):
                     err = f"Stored checkpoint timestamp could not be parsed from {self._checkpoint_filepath!r}!"
-        except (FileNotFoundError, PermissionError, OSError):
-            err = f"Error opening file {self._checkpoint_filepath!r} in {READ_MODE!r} mode!"
+        except FileNotFoundError:
+            err = f"Error opening file {self._checkpoint_filepath!r} in {READ_MODE!r} mode! File not found!"
+        except PermissionError:
+            err = f"Error opening file {self._checkpoint_filepath!r} in {READ_MODE!r} mode! Permission denied!"
+        except OSError:
+            err = f"Error opening file {self._checkpoint_filepath!r} in {READ_MODE!r} mode! OS error!"
 
         self.context.logger.error(err)
         return None
