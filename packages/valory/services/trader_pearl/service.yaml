@@ -113,7 +113,7 @@ models:
       redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
       slippage: ${SLIPPAGE:float:0.01}
       policy_epsilon: ${POLICY_EPSILON:float:0.1}
-      store_path: ${STORE_PATH:str:/tmp/}
+      store_path: ${STORE_PATH:str:null}
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization",
         "deepmind-optimization-strong", "openai-gpt-3.5-turbo", "openai-gpt-3.5-turbo-instruct",
         "openai-gpt-4", "openai-text-davinci-002", "openai-text-davinci-003", "prediction-online-sum-url-content",
