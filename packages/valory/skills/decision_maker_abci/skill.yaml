@@ -75,7 +75,7 @@ fingerprint:
   tests/states/test_sampling.py: bafybeigefevj5ncbey2ynoctifqsmw6fa6ybhojoo4ah3derfgcwjqpwoy
   tests/states/test_tool_selection.py: bafybeib7js3dj7647t33o5ybfqftwytxktwrvhbri5yuyymg6znj6y7xxa
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
-  tests/test_handlers.py: bafybeibpmso4geiw6n72lteqiqwjnkaux7rlkh7z3i2teuo2x4ajt3izye
+  tests/test_handlers.py: bafybeifkcy3xo7mqdqtkpxohsuvepf5675j4vkwsmf7xe7yxjsadp5j7gy
   tests/test_payloads.py: bafybeiejpbnrvcwjed3baqyu6h52ex4cglmlsz75j5jwr5yfarzaosogeu
   tests/test_rounds.py: bafybeigifftusd4ew42tyvyrr55o2uehhcik2gdq3atkpjwwlqdeskedty
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
