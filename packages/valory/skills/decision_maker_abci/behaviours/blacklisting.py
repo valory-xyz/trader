@@ -53,7 +53,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         # therefore, we bump the queue's status to the next one
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Setup the behaviour"""
         self._policy = self.synchronized_data.policy
 

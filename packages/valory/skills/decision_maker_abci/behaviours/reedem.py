@@ -93,7 +93,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
         # from all trades associated with it.
         self.claimable_amounts: Dict[HexBytes, int] = {}
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Setup the behaviour"""
         super().setup()
         self.redeemed_condition_ids = self.synchronized_data.redeemed_condition_ids

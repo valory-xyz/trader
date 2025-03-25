@@ -46,7 +46,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         super().__init__(**kwargs)
         self.should_rebet: bool = False
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Setup the behaviour."""
         self.read_bets()
 

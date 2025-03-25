@@ -56,7 +56,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         """Whether the behaviour supports the current number of slots as it currently only supports binary decisions."""
         return self.params.slot_count == BINARY_N_SLOTS
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Setup behaviour."""
         if not self.n_slots_supported or self.benchmarking_mode.enabled:
             return
