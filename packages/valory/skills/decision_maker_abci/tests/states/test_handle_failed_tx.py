@@ -46,7 +46,7 @@ class TestEstimateConsensusRound(BaseCollectSameUntilThresholdRoundTest):
     _event_class = Event
 
     def get_participant_to_handle(
-        self, vote: Optional[bool]
+        self, vote: bool
     ) -> Dict[str, HandleFailedTxPayload]:
         """Map participants to votes."""
         return {

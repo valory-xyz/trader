@@ -68,7 +68,7 @@ fingerprint:
   tests/states/test_decision_receive.py: bafybeieshzx2nyjj6rbwkboku3paqismypof64vb6zwt7bhjvspeyu5kae
   tests/states/test_decision_request.py: bafybeigqbakm2olkwvcngertjplhnmu6on6tp6hxn7lxygi2gf5a5eurbe
   tests/states/test_final_states.py: bafybeiftfd3ovaqpfe7t5ry7maiziavk74wl66d6zo6ikhgodznormd2nm
-  tests/states/test_handle_failed_tx.py: bafybeigt3kae7werxaleozidsfzpoxrnvmaamp3hidmfci65ulxnbjjleu
+  tests/states/test_handle_failed_tx.py: bafybeiaruc3lr5zjwihyu7zg4w5o5qa5ujtykm4xf7ub4o5dle3hrypjli
   tests/states/test_order_subscription.py: bafybeidx2tzivsxhpr5xx5e5h2xmpjyewfogt2mujv4sq3hbaeksmcbvhy
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
   tests/states/test_redeem.py: bafybeiezdnfrxukb2xpwffrr357g2anmdkwy7wo3nphvlggipq5xrdzr7a
@@ -306,6 +306,7 @@ models:
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
       olas_token_address: '0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f'
+      http_handler_hostname_regex: localhost
     class_name: DecisionMakerParams
   acc_info_fields:
     args:
