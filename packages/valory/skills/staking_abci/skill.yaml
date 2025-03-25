@@ -12,9 +12,9 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeigv4bltwodffe7n5fs6tevx2ysavkj3ynpwniyky653jiigtfzppu
-  payloads.py: bafybeib7hxsibtabb5vt6gjtco2x2s2yodhs24ojqecgrcexqsiv3pvmuy
-  rounds.py: bafybeibdrs56k6zvuw3df43qsyq7q2a6wn6m2qwu7ljio3ag4vxsitmiii
+  models.py: bafybeifweemtunod7uyqwex7vz4v4g52okk4wjmvgxgeeqg6gw3gcohqvi
+  payloads.py: bafybeidwrsyz7cjrp34s7o7t57xteq6nntdoagpuar4e4od6qz3bnakkwm
+  rounds.py: bafybeih2ydng6mbqffelwe6wnkv2gmo2obwbvky74ploobd5jd6ohxcbv4
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
@@ -24,15 +24,15 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeidao75ykdhkm7brclsslx3iinmgnvdiot5npanfbmatcaqrcvlsk4
-- valory/service_staking_token:0.1.0:bafybeiarxffrwdq47rmydgffyxhe6ntfb5unp44yt47kxqg7fzc7vburni
-- valory/staking_token:0.1.0:bafybeiabkkhjpybqpzdfc4vcbiz4vefctfpvwetbmo7pqpiuxprmpvnti4
+- valory/service_staking_token:0.1.0:bafybeiem34uvhtgiolu6dj2lzfp366nrqcgz6p6rbdjtrxieyo66shmoie
+- valory/staking_token:0.1.0:bafybeic23ikh5exemr5ug2z3z22smhods7lrva4uegnvcriobeib47jcke
 - valory/mech_activity:0.1.0:bafybeiey6n7fjehm5k4g5h4toygqq3zzyxadqj3zabf67jmn5vzw5kndre
 protocols:
 - valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
-- valory/mech_interact_abci:0.1.0:bafybeib4vn6m2yumwoclh5aatcdt5yxcjc5owxmxy5o7t3nfzormgwkr64
+- valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
 behaviours:
   main:
     args: {}
