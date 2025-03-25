@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig7ax6j675ukhjdlobd5lcrujckvjnrnekjsxlchih6onqsjasfze
+agent: valory/trader:0.1.0:bafybeic625e3kale47ug35txqmkue74edbnype6oc5uijydqfwoetc24fu
 number_of_agents: 4
 deployment:
   agent:
@@ -126,7 +126,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -154,7 +154,7 @@ type: skill
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
         http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
-    benchmark_tool: &id012
+    benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
     benchmarking_mode:
@@ -176,7 +176,8 @@ type: skill
         bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
         results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
         randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
-    acc_info_fields: &id003
+        nr_mech_calls: ${BENCHMARKING_MECH_CALLS:int:60}
+    acc_info_fields: &id004
       args:
         tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
         requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
@@ -184,7 +185,7 @@ type: skill
         sep: ${ACC_INFO_FIELDS_SEP:str:,}
         max: ${ACC_INFO_FIELDS_MAX:str:max}
         datetime_format: ${ACC_INFO_FIELDS_DATETIME_FORMAT:str:%Y-%m-%d %H:%M:%S}
-    network_subgraph: &id004
+    network_subgraph: &id005
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
@@ -196,7 +197,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
         url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
-    omen_subgraph: &id005
+    omen_subgraph: &id006
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${OMEN_SUBGRAPH_METHOD:str:POST}
@@ -207,14 +208,14 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
         url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    randomness_api: &id006
+    randomness_api: &id007
       args:
         method: ${RANDOMNESS_API_METHOD:str:GET}
         response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
         response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
         retries: ${RANDOMNESS_API_RETRIES:int:5}
         url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
-    mech_response: &id007
+    mech_response: &id008
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${MECH_RESPONSE_API_METHOD:str:GET}
@@ -222,7 +223,7 @@ type: skill
         response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
         retries: ${MECH_RESPONSE_API_RETRIES:int:5}
         url: ${MECH_RESPONSE_API_URL:str:''}
-    agent_tools: &id008
+    agent_tools: &id009
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${AGENT_TOOLS_API_METHOD:str:GET}
@@ -230,7 +231,7 @@ type: skill
         response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
         retries: ${AGENT_TOOLS_API_RETRIES:int:5}
         url: ${AGENT_TOOLS_API_URL:str:''}
-    trades_subgraph: &id009
+    trades_subgraph: &id010
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${TRADES_SUBGRAPH_METHOD:str:POST}
@@ -241,7 +242,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
         url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
-    conditional_tokens_subgraph: &id010
+    conditional_tokens_subgraph: &id011
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
@@ -252,7 +253,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
         url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
-    realitio_subgraph: &id011
+    realitio_subgraph: &id012
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
@@ -352,7 +353,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -389,7 +390,7 @@ type: skill
     agent_tools: *id009
     trades_subgraph: *id010
     conditional_tokens_subgraph: *id011
-    realitio_subgraph: *id011
+    realitio_subgraph: *id012
 2:
   models:
     params:
@@ -479,7 +480,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -507,16 +508,16 @@ type: skill
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
         http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
-    benchmark_tool: *id012
-    acc_info_fields: *id003
-    network_subgraph: *id004
-    omen_subgraph: *id005
-    randomness_api: *id006
-    mech_response: *id007
-    agent_tools: *id008
-    trades_subgraph: *id009
-    conditional_tokens_subgraph: *id010
-    realitio_subgraph: *id011
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 3:
   models:
     params:
@@ -606,7 +607,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihufqu2ra7vud4h6g2nwahx7mvdido7ff6prwnib2tdlc4np7dw24":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_nevermined: ${USE_NEVERMINED:bool:false}
@@ -634,16 +635,16 @@ type: skill
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
         olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
         http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
-    benchmark_tool: *id012
-    acc_info_fields: *id003
-    network_subgraph: *id004
-    omen_subgraph: *id005
-    randomness_api: *id006
-    mech_response: *id007
-    agent_tools: *id008
-    trades_subgraph: *id009
-    conditional_tokens_subgraph: *id010
-    realitio_subgraph: *id011
+    benchmark_tool: *id003
+    acc_info_fields: *id004
+    network_subgraph: *id005
+    omen_subgraph: *id006
+    randomness_api: *id007
+    mech_response: *id008
+    agent_tools: *id009
+    trades_subgraph: *id010
+    conditional_tokens_subgraph: *id011
+    realitio_subgraph: *id012
 ---
 public_id: valory/ledger:0.19.0
 type: connection

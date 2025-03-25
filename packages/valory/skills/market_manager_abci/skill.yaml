@@ -8,8 +8,8 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeidr7oeqpraahb3x4wmewzexgx7wcnrphyg3zc47zwc3fwo4hjmqgy
-  bets.py: bafybeibx3x5nasuj6loneeat2lb7fr7kgsmnz7on7f4gxfbpzerzdvawou
+  behaviours.py: bafybeigxe7d66msaddai6zkgjtukve3zkciav4kw6qs32jathzxjjpvea4
+  bets.py: bafybeid3tzd3ikwdcyplltxttycrv3bixhxuxv56p3bfpru6gzigpoeu4i
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -22,9 +22,9 @@ fingerprint:
   graph_tooling/requests.py: bafybeibjyb6av33aswnptttekj6t7k7xysgphh2bigoorcgkc54y2j3xkm
   graph_tooling/utils.py: bafybeig5hxhnqgyfn5ym3poc5nziqwpeozqbd6wa4s6c2hjn6iyedg3t3y
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeif2uk72sqzbkh5cj44uuwwa5utgcv64xrsoykaewerk23mn6qmxge
-  payloads.py: bafybeib2a2e4fableelw246sr2vougv4vdiyyvdggffy6eohi4c4e3b4se
-  rounds.py: bafybeic3nwjaf6j7zwuso7d4sfmvlp4urkr4t2z2e75xbeu32wvsacjdem
+  models.py: bafybeicqsuhtzernjqwdiwy6gbfvtv4ashlxsfutnqldivxc5iufgk7sbu
+  payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
+  rounds.py: bafybeibqqq3vjotaasc67olhlqthka6e6refodguntkmpksgdbqlzme73a
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
@@ -36,10 +36,10 @@ contracts:
 - valory/erc20:0.1.0:bafybeientdgpccdi7prtu4x53m5g3yugh5tuh5hnroylfz3wwzyjniqure
 - valory/service_registry:0.1.0:bafybeidipx4cmchxdu5i2v67rno7muie7ckjhmasaj64tv2vtj4fveklxi
 protocols:
-- valory/http:1.0.0:bafybeifugzl63kfdmwrxwphrnrhj7bn6iruxieme3a4ntzejf6kmtuwmae
+- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 - valory/contract_api:1.0.0:bafybeidgu7o5llh26xp3u3ebq3yluull5lupiyeu6iooi2xyymdrgnzq5i
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigjddhk7epta7xpnfvv426xedff5abh4xlkwi6cqgp4vkutgkvydm
+- valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
 behaviours:
   main:
     args: {}
@@ -156,6 +156,33 @@ models:
       olas_token_address: '0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f'
       http_handler_hostname_regex: localhost
     class_name: MarketManagerParams
+  benchmarking_mode:
+    args:
+      enabled: false
+      native_balance: 10000000000000000000
+      collateral_balance: 10000000000000000000
+      mech_cost: 10000000000000000
+      pool_fee: 20000000000000000
+      outcome_token_amounts:
+      - 11000000000000000000
+      - 9000000000000000000
+      outcome_token_marginal_prices:
+      - 0.4
+      - 0.6
+      sep: ','
+      dataset_filename: benchmark_data.csv
+      question_field: question
+      question_id_field: question_id
+      answer_field: answer
+      p_yes_field_part: p_yes_
+      p_no_field_part: p_no_
+      confidence_field_part: confidence_
+      part_prefix_mode: true
+      bet_amount_field: collateral_amount
+      results_filename: benchmarking_results.csv
+      randomness: benchmarking_randomness
+      nr_mech_calls: 60
+    class_name: BenchmarkingMode
   network_subgraph:
     args:
       api_id: network

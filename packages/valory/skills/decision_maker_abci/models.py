@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -41,18 +41,16 @@ from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
-from packages.valory.skills.abstract_round_abci.models import (
-    SharedState as BaseSharedState,
-)
 from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 from packages.valory.skills.market_manager_abci.models import (
-    MarketManagerParams,
-    Subgraph,
+    SharedState as BaseSharedState,
 )
+from packages.valory.skills.market_manager_abci.models import Subgraph
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
@@ -216,6 +214,9 @@ class SharedState(BaseSharedState):
         # the mapping from bet id to the row number in the dataset
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
+
+        # mech call counter for benchmarking behaviour
+        self.benchmarking_mech_calls: int = 0
 
     @property
     def mock_question_id(self) -> Any:
@@ -497,39 +498,6 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
                 f"Policy store path {path!r} is not a directory or is not writable."
             )
         return Path(path)
-
-
-class BenchmarkingMode(Model, TypeCheckMixin):
-    """Configuration for the benchmarking mode."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the `BenchmarkingMode` object."""
-        self.enabled: bool = self._ensure("enabled", kwargs, bool)
-        self.native_balance: int = self._ensure("native_balance", kwargs, int)
-        self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
-        self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
-        self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
-        self.sep: str = self._ensure("sep", kwargs, str)
-        self.dataset_filename: Path = Path(
-            self._ensure("dataset_filename", kwargs, str)
-        )
-        self.question_field: str = self._ensure("question_field", kwargs, str)
-        self.question_id_field: str = self._ensure("question_id_field", kwargs, str)
-        self.answer_field: str = self._ensure("answer_field", kwargs, str)
-        self.p_yes_field_part: str = self._ensure("p_yes_field_part", kwargs, str)
-        self.p_no_field_part: str = self._ensure("p_no_field_part", kwargs, str)
-        self.confidence_field_part: str = self._ensure(
-            "confidence_field_part", kwargs, str
-        )
-        # this is the mode for the p and confidence parts
-        # if the flag is `True`, then the field parts are used as prefixes, otherwise as suffixes
-        self.part_prefix_mode: bool = self._ensure("part_prefix_mode", kwargs, bool)
-        self.bet_amount_field: str = self._ensure("bet_amount_field", kwargs, str)
-        self.results_filename: Path = Path(
-            self._ensure("results_filename", kwargs, str)
-        )
-        self.randomness: str = self._ensure("randomness", kwargs, str)
-        super().__init__(*args, **kwargs)
 
 
 class AccuracyInfoFields(Model, TypeCheckMixin):

@@ -21,7 +21,7 @@
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
@@ -35,6 +35,7 @@ from packages.valory.connections.http_server.connection import (
 )
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.ipfs import IpfsMessage
+from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
@@ -75,6 +76,9 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 
 
+FSM_REPR_MAX_DEPTH = 25
+
+
 class IpfsHandler(AbstractResponseHandler):
     """IPFS message handler."""
 
@@ -109,6 +113,7 @@ class IpfsHandler(AbstractResponseHandler):
 OK_CODE = 200
 NOT_FOUND_CODE = 404
 BAD_REQUEST_CODE = 400
+TOO_EARLY_CODE = 425
 AVERAGE_PERIOD_SECONDS = 10
 
 
@@ -178,11 +183,14 @@ class HttpHandler(BaseHttpHandler):
         self.rounds_info = load_rounds_info_with_transitions()
 
     @property
+    def round_sequence(self) -> RoundSequence:
+        """Return the round sequence."""
+        return self.context.state.round_sequence
+
+    @property
     def synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
-        return SynchronizedData(
-            db=self.context.state.round_sequence.latest_synchronized_data.db
-        )
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _get_handler(self, url: str, method: str) -> Tuple[Optional[Callable], Dict]:
         """Check if an url is meant to be handled in this handler
@@ -197,7 +205,7 @@ class HttpHandler(BaseHttpHandler):
         # Check base url
         if not re.match(self.handler_url_regex, url):
             self.context.logger.info(
-                f"The url {url} does not match the DynamicNFT HttpHandler's pattern"
+                f"The url {url} does not match the HttpHandler's pattern"
             )
             return None, {}
 
@@ -214,7 +222,7 @@ class HttpHandler(BaseHttpHandler):
 
         # No route found
         self.context.logger.info(
-            f"The message [{method}] {url} is intended for the DynamicNFT HttpHandler but did not match any valid pattern"
+            f"The message [{method}] {url} is intended for the HttpHandler but did not match any valid pattern"
         )
         return self._handle_bad_request, {}
 
@@ -286,6 +294,36 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
 
+    def _has_transitioned(self) -> bool:
+        """Check if the agent has transitioned."""
+        try:
+            return bool(self.round_sequence.last_round_transition_height)
+        except ValueError:
+            return False
+
+    def _handle_too_early(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """
+        Handle a request when the FSM's loop has not started yet.
+
+        :param http_msg: the http message
+        :param http_dialogue: the http dialogue
+        """
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=TOO_EARLY_CODE,
+            status_text="The state machine has not started yet! Please try again later...",
+            headers=http_msg.headers,
+            body=b"",
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
+
     def _handle_get_health(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -295,40 +333,41 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the http message
         :param http_dialogue: the http dialogue
         """
-        seconds_since_last_transition = None
-        is_tm_unhealthy = None
-        is_transitioning_fast = None
-        current_round = None
-        rounds = None
+        if not self._has_transitioned():
+            self._handle_too_early(http_msg, http_dialogue)
+            return
+
         has_required_funds = self._check_required_funds()
         is_receiving_mech_responses = self._check_is_receiving_mech_responses()
         is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
         staking_status = self.synchronized_data.service_staking_state.name.lower()
 
-        round_sequence = cast(SharedState, self.context.state).round_sequence
+        round_sequence = self.round_sequence
+        is_tm_unhealthy = round_sequence.block_stall_deadline_expired
 
-        if round_sequence._last_round_transition_timestamp:
-            is_tm_unhealthy = cast(
-                SharedState, self.context.state
-            ).round_sequence.block_stall_deadline_expired
+        current_time = datetime.now().timestamp()
+        seconds_since_last_transition = current_time - datetime.timestamp(
+            round_sequence.last_round_transition_timestamp
+        )
 
-            current_time = datetime.now().timestamp()
-            seconds_since_last_transition = current_time - datetime.timestamp(
-                round_sequence._last_round_transition_timestamp
-            )
+        abci_app = self.round_sequence.abci_app
+        previous_rounds = abci_app._previous_rounds
+        previous_round_cls = type(previous_rounds[-1])
+        previous_round_events = abci_app.transition_function.get(
+            previous_round_cls, {}
+        ).keys()
+        previous_round_timeouts = {
+            abci_app.event_to_timeout.get(event, -1) for event in previous_round_events
+        }
+        last_round_timeout = max(previous_round_timeouts)
+        is_transitioning_fast = (
+            not is_tm_unhealthy
+            and seconds_since_last_transition < 2 * last_round_timeout
+        )
 
-            is_transitioning_fast = (
-                not is_tm_unhealthy
-                and seconds_since_last_transition
-                < 2 * self.context.params.reset_pause_duration
-            )
-
-        if round_sequence._abci_app:
-            current_round = round_sequence._abci_app.current_round.round_id
-            rounds = [
-                r.round_id for r in round_sequence._abci_app._previous_rounds[-25:]
-            ]
-            rounds.append(current_round)
+        rounds = [r.round_id for r in previous_rounds[-FSM_REPR_MAX_DEPTH:]] + [
+            round_sequence.current_round_id
+        ]
 
         data = {
             "seconds_since_last_transition": seconds_since_last_transition,
@@ -369,7 +408,7 @@ class HttpHandler(BaseHttpHandler):
     def _send_not_found_response(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Send an not found response"""
+        """Send a not found response"""
         http_response = http_dialogue.reply(
             performative=HttpMessage.Performative.RESPONSE,
             target_message=http_msg,
@@ -396,7 +435,7 @@ class HttpHandler(BaseHttpHandler):
         # (an on chain transaction)
         return (
             self.synchronized_data.decision_receive_timestamp
-            < int(datetime.utcnow().timestamp())
+            < int(datetime.now(timezone.utc).timestamp())
             - self.context.params.expected_mech_response_time
         )
 

@@ -24,6 +24,7 @@ packages/valory/contracts/mech_marketplace/
 packages/valory/contracts/multisend/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/
+packages/valory/contracts/agent_registry/
 
 packages/valory/protocols/abci
 packages/valory/protocols/acn
@@ -37,7 +38,7 @@ packages/valory/protocols/tendermint
 .idea
 **/__pycache__/
 *.DS_Store
-
+trader_backup/
 .mypy_cache
 /.tox/
 

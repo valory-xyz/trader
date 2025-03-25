@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ class QueueStatus(Enum):
     TO_PROCESS = 1  # Bets that are ready to be processed
     PROCESSED = 2  # Bets that have been processed
     REPROCESSED = 3  # Bets that have been reprocessed
+    BENCHMARKING_DONE = 4
 
     def is_fresh(self) -> bool:
         """Check if the bet is fresh."""
@@ -61,7 +62,7 @@ class QueueStatus(Enum):
 
     def move_to_fresh(self) -> "QueueStatus":
         """Move the bet to the fresh status."""
-        if self != QueueStatus.EXPIRED:
+        if self not in [QueueStatus.EXPIRED, QueueStatus.BENCHMARKING_DONE]:
             return QueueStatus.FRESH
         return self
 
@@ -311,15 +312,15 @@ class BetsDecoder(json.JSONDecoder):
         if bet_annotations == data_attributes:
             data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
-        else:
-            # fetch missing attributes from the data
-            missing_attributes = set(bet_annotations) - set(data_attributes)
-            new_attributes = {"queue_status", "invested_amount"}
-            if missing_attributes == new_attributes:
-                data["queue_status"] = QueueStatus(0)
-                data["invested_amount"] = 0
-                return Bet(**data)
-
+        # if the data contains an id key, but does not match the bet attributes exactly, process it as a bet
+        elif "id" in data_attributes:
+            # Extract only the attributes that exist in both Bet and data to ensure compatibility
+            common_attributes = set(bet_annotations) & set(data_attributes)
+            data = {key: data[key] for key in common_attributes}
+            # Convert queue_status to a QueueStatus enum if present in data
+            if "queue_status" in data:
+                data["queue_status"] = QueueStatus(data["queue_status"])
+            return Bet(**data)
         return data
 
 

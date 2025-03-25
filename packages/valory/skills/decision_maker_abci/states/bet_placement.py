@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 """This module contains the sampling state of the decision-making abci app."""
 from enum import Enum
-from typing import Optional, Tuple, Type
+from typing import Optional, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
 from packages.valory.skills.decision_maker_abci.payloads import (
@@ -28,6 +28,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
 )
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
+    SynchronizedData,
     TxPreparationRound,
 )
 
@@ -36,19 +37,22 @@ class BetPlacementRound(TxPreparationRound):
     """A round for placing a bet."""
 
     payload_class: Type[MultisigTxPayload] = BetPlacementPayload
-
     none_event = Event.INSUFFICIENT_BALANCE
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
-        update = super().end_block()
-        if update is None:
+        res = super().end_block()
+        if res is None:
             return None
 
-        sync_data, event = update
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
         wallet_balance = self.most_voted_payload_values[-2]
         token_balance = self.most_voted_payload_values[-1]
-        sync_data = sync_data.update(
+        sync_data = synced_data.update(
             wallet_balance=wallet_balance, token_balance=token_balance
         )
-        return sync_data, event
+
+        if event == Event.DONE and not synced_data.most_voted_tx_hash:
+            event = Event.CALC_BUY_AMOUNT_FAILED
+
+        return synced_data, event

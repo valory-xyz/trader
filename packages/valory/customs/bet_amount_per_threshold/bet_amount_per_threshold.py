@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This module contains a simple strategy that returns a bet amount based on a mapping."""
-
+from types import NoneType
 from typing import Union, List, Dict, Tuple, Any
 
 REQUIRED_FIELDS = ("confidence", "bet_amount_per_threshold")
@@ -39,11 +39,38 @@ def remove_irrelevant_fields(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def amount_per_threshold(
-    confidence: float, bet_amount_per_threshold: Dict[str, int]
+    confidence: float, bet_amount_per_threshold: Dict[Any, int]
 ) -> Dict[str, Union[int, Tuple[str]]]:
     """Get the bet amount per threshold strategy's result."""
-    # we need the threshold as a string, because the agent/service overrides cannot be given with `int`s as keys
-    threshold = str(round(confidence, 1))
+    # get the key type of the dictionary
+    key_type = type(next(iter(bet_amount_per_threshold), None))
+
+    if key_type is NoneType:
+        return {
+            "error": (
+                "No keys were found in the given `bet_amount_per_threshold` mapping!",
+            )
+        }
+    if any(not isinstance(key, key_type) for key in bet_amount_per_threshold):
+        return {
+            "error": (
+                "All the keys in `bet_amount_per_threshold` should have the same type!",
+            )
+        }
+    if key_type not in (int, float, str):
+        return {
+            "error": (
+                f"Unsupported key type {key_type} in {bet_amount_per_threshold=}.",
+            )
+        }
+    try:
+        threshold = key_type(round(confidence, 1))
+    except (TypeError, ValueError):
+        return {
+            "error": (
+                f"Could not convert {confidence=} to {key_type=}.",
+            )
+        }
     bet_amount = bet_amount_per_threshold.get(threshold, None)
 
     if bet_amount is None:

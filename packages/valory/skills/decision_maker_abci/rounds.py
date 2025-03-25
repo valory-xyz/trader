@@ -157,6 +157,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 13.
             - mock tx: 11.
             - insufficient balance: 19.
+            - calc buy amount failed: 12.
             - no majority: 10.
             - round timeout: 10.
             - none: 20.
@@ -293,6 +294,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.MOCK_TX: RedeemRound,
             # degenerate round on purpose, owner must refill the safe
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
+            Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
             # this is here because of `autonomy analyse fsm-specs`

@@ -34,9 +34,6 @@ from packages.valory.skills.decision_maker_abci.models import (
     AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
 )
 from packages.valory.skills.decision_maker_abci.models import (
-    BenchmarkingMode as BaseBenchmarkingMode,
-)
-from packages.valory.skills.decision_maker_abci.models import (
     ConditionalTokensSubgraph as DecisionMakerConditionalTokensSubgraph,
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
@@ -51,6 +48,9 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
+)
+from packages.valory.skills.market_manager_abci.models import (
+    BenchmarkingMode as BaseBenchmarkingMode,
 )
 from packages.valory.skills.market_manager_abci.models import (
     NetworkSubgraph as MarketManagerNetworkSubgraph,

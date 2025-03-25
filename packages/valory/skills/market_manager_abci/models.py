@@ -21,9 +21,13 @@
 """Custom objects for the MarketManager ABCI application."""
 
 import builtins
-from typing import Any, Dict, Iterator, List, Tuple
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Tuple, Type
+
+from aea.skills.base import Model, SkillContext
 
 from packages.valory.protocols.http import HttpMessage
+from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
@@ -32,6 +36,7 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciApp
 
@@ -43,7 +48,12 @@ BenchmarkTool = BaseBenchmarkTool
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
-    abci_app_cls = MarketManagerAbciApp
+    abci_app_cls: Type[AbciApp[Any]] = MarketManagerAbciApp
+
+    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
+        """Initialize the state."""
+        super().__init__(*args, skill_context=skill_context, **kwargs)
+        self.first_read: bool = True
 
 
 class Subgraph(ApiSpecs):
@@ -110,3 +120,37 @@ class MarketManagerParams(BaseParams):
     def creators_iterator(self) -> Iterator[Tuple[str, List[str]]]:
         """Return an iterator of market per creators."""
         return iter(self.creator_per_market.items())
+
+
+class BenchmarkingMode(Model, TypeCheckMixin):
+    """Configuration for the benchmarking mode."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the `BenchmarkingMode` object."""
+        self.enabled: bool = self._ensure("enabled", kwargs, bool)
+        self.native_balance: int = self._ensure("native_balance", kwargs, int)
+        self.collateral_balance: int = self._ensure("collateral_balance", kwargs, int)
+        self.mech_cost: int = self._ensure("mech_cost", kwargs, int)
+        self.pool_fee: int = self._ensure("pool_fee", kwargs, int)
+        self.sep: str = self._ensure("sep", kwargs, str)
+        self.dataset_filename: Path = Path(
+            self._ensure("dataset_filename", kwargs, str)
+        )
+        self.question_field: str = self._ensure("question_field", kwargs, str)
+        self.question_id_field: str = self._ensure("question_id_field", kwargs, str)
+        self.answer_field: str = self._ensure("answer_field", kwargs, str)
+        self.p_yes_field_part: str = self._ensure("p_yes_field_part", kwargs, str)
+        self.p_no_field_part: str = self._ensure("p_no_field_part", kwargs, str)
+        self.confidence_field_part: str = self._ensure(
+            "confidence_field_part", kwargs, str
+        )
+        # this is the mode for the p and confidence parts
+        # if the flag is `True`, then the field parts are used as prefixes, otherwise as suffixes
+        self.part_prefix_mode: bool = self._ensure("part_prefix_mode", kwargs, bool)
+        self.bet_amount_field: str = self._ensure("bet_amount_field", kwargs, str)
+        self.results_filename: Path = Path(
+            self._ensure("results_filename", kwargs, str)
+        )
+        self.randomness: str = self._ensure("randomness", kwargs, str)
+        self.nr_mech_calls: int = self._ensure("nr_mech_calls", kwargs, int)
+        super().__init__(*args, **kwargs)
