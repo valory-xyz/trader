@@ -28,6 +28,7 @@ from aea.protocols.generator.common import _camel_case_to_snake_case
 # Adjusted file paths
 ROUNDS_INFO_PATH = Path("../packages/valory/skills/decision_maker_abci/rounds_info.py")
 STATES_DIR_PATH = Path("../packages/valory/skills/decision_maker_abci/states")
+SKILLS_DIR_PATH = Path("../packages/valory/skills")
 
 
 def extract_action_description(docstring: str) -> str:

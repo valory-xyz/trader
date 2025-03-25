@@ -36,7 +36,10 @@ from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
 class BlacklistingRound(UpdateBetsRound):
-    """A round for updating the bets after blacklisting the sampled one."""
+    """
+    A round for updating the bets after blacklisting the sampled one.
+    Action Description: Blacklisting the sampled bet and updates the bets.
+    """
 
     payload_class: Type[UpdateBetsPayload] = BlacklistingPayload
     done_event = Event.DONE

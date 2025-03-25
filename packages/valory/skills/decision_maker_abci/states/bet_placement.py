@@ -34,7 +34,10 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 
 
 class BetPlacementRound(TxPreparationRound):
-    """A round for placing a bet."""
+    """
+    A round for placing a bet.
+    Action Description: Attempting to place a bet on a market.
+    """
 
     payload_class: Type[MultisigTxPayload] = BetPlacementPayload
     none_event = Event.INSUFFICIENT_BALANCE

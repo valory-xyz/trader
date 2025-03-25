@@ -27,7 +27,10 @@ from packages.valory.skills.decision_maker_abci.states.claim_subscription import
 
 
 class CheckBenchmarkingModeRound(ClaimRound):
-    """A round for checking whether the benchmarking mode is enabled."""
+    """
+    A round for checking whether the benchmarking mode is enabled.
+    Action Description: Checking if the benchmarking mode is enabled.
+    """
 
     payload_class = VotingPayload
     done_event = Event.BENCHMARKING_ENABLED
