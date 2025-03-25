@@ -157,7 +157,8 @@ class TestHttpHandler:
             r"https?:\/\/[a-zA-Z0-9]{16}.agent\.propel\.(staging\.)?autonolas\.tech"
         )
         local_ip_regex = r"192\.168(\.\d{1,3}){2}"
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
+        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost\
+        |127.0.0.1|0.0.0.0|{self.context.params.http_handler_hostname_regex})(:\d+)?"
         health_url_regex = rf"{hostname_regex}\/healthcheck"
         metrics_url_regex = rf"{hostname_regex}\/metrics"
         assert self.handler.handler_url_regex == rf"{hostname_regex}\/.*"
