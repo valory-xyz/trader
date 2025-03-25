@@ -35,7 +35,10 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 
 
 class DecisionRequestRound(CollectSameUntilThresholdRound):
-    """A round in which the agents prepare a tx to initiate a request to a mech to determine the answer to a bet."""
+    """
+    A round in which the agents prepare a tx to initiate a request to a mech to determine the answer to a bet.
+    Action Description: Prepares a mech request transaction to determine the answer to a bet
+    """
 
     payload_class = DecisionRequestPayload
     synchronized_data_class = SynchronizedData
