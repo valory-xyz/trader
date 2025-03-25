@@ -21,7 +21,6 @@
 from enum import Enum
 from typing import Optional, Tuple, Type, cast
 
-from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
 from packages.valory.skills.decision_maker_abci.payloads import (
     BetPlacementPayload,
     MultisigTxPayload,
@@ -39,7 +38,7 @@ class BetPlacementRound(TxPreparationRound):
     payload_class: Type[MultisigTxPayload] = BetPlacementPayload
     none_event = Event.INSUFFICIENT_BALANCE
 
-    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+    def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
         if res is None:
@@ -48,8 +47,11 @@ class BetPlacementRound(TxPreparationRound):
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
         wallet_balance = self.most_voted_payload_values[-2]
         token_balance = self.most_voted_payload_values[-1]
-        sync_data = synced_data.update(
-            wallet_balance=wallet_balance, token_balance=token_balance
+        synced_data = cast(
+            SynchronizedData,
+            synced_data.update(
+                wallet_balance=wallet_balance, token_balance=token_balance
+            ),
         )
 
         if event == Event.DONE and not synced_data.most_voted_tx_hash:

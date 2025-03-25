@@ -40,7 +40,7 @@ fingerprint:
   rounds_info.py: bafybeihg6i3h7a7ahfxzhow7gcuszcilq5krfpchze2szjdu7dtem2tnwa
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeicoyr3xoowyfkmunblh7o43xa2cp4fgliklp4sxbmnw2t6ahzkiki
-  states/bet_placement.py: bafybeifxnpsj3snbgvqrgc633u2e4ddhh5dsowvsmo5udw5wcylesj3nwu
+  states/bet_placement.py: bafybeie4eboz3i2xhduwyryrbpavbl7gonsc3ybpddsku3f6vcvae4q66i
   states/blacklisting.py: bafybeidqi356wrxmvj2hqs22hw3kaszh4fg4rs3fo5axk2biosxt6kfbiy
   states/check_benchmarking.py: bafybeiagrgeopuluwqkvoqbst2hjymte5rju2pecvkoeleklnqca5andeu
   states/claim_subscription.py: bafybeicjsjkvv2ftfv2gquvp7fyvuqia6acs44d3smwebgaic7lhkbaym4
