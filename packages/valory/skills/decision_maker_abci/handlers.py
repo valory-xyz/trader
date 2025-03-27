@@ -28,6 +28,8 @@ from urllib.parse import urlparse
 
 from aea.protocols.base import Message
 
+from scripts.update_rounds_info import load_rounds_info_with_transitions
+
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
 )
@@ -59,9 +61,6 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-from scripts.update_rounds_info import (
-    load_rounds_info_with_transitions,
-)
 
 
 ABCIHandler = BaseABCIRoundHandler

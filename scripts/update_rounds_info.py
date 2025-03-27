@@ -1,13 +1,16 @@
-import os
 import re
 from pathlib import Path
-from pprint import pprint
 from typing import Dict, List, Tuple
-from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
+
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case
 
-FSM_SPECIFICATION_FILE = Path("../packages/valory/skills/trader_abci/fsm_specification.yaml")
+from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
+
+
+FSM_SPECIFICATION_FILE = Path(
+    "../packages/valory/skills/trader_abci/fsm_specification.yaml"
+)
 SKILLS_DIR_PATH = Path("../packages/valory/skills")
 ROUNDS_INFO_PATH = Path("../packages/valory/skills/decision_maker_abci/rounds_info.py")
 
@@ -15,9 +18,9 @@ ROUNDS_INFO_PATH = Path("../packages/valory/skills/decision_maker_abci/rounds_in
 def load_fsm_spec() -> Dict:
     """Load the FSM specification."""
     with open(
-            FSM_SPECIFICATION_FILE,
-            "r",
-            encoding="utf-8",
+        FSM_SPECIFICATION_FILE,
+        "r",
+        encoding="utf-8",
     ) as spec_file:
         return yaml.safe_load(spec_file)
 
@@ -43,18 +46,28 @@ def extract_rounds_from_fsm_spec(fsm_spec: Dict) -> List[str]:
     return fsm_spec["states"]
 
 
-def find_rounds_in_file(file_path: Path, rounds: List[str], new_rounds_info: Dict) -> Dict[str, str]:
+def find_rounds_in_file(
+    file_path: Path, rounds: List[str], new_rounds_info: Dict
+) -> Dict[str, str]:
     """Find rounds in a file and check for Action Description in docstring."""
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
         for round_name in rounds:
             if round_name in content:
-                match = re.search(rf"class {round_name}\(.*\):\n\s+\"\"\"(.*?)\"\"\"", content, re.DOTALL)
+                match = re.search(
+                    rf"class {round_name}\(.*\):\n\s+\"\"\"(.*?)\"\"\"",
+                    content,
+                    re.DOTALL,
+                )
                 if match:
                     docstring = match.group(1)
-                    action_description = re.search(r"Action Description: (.*)", docstring)
+                    action_description = re.search(
+                        r"Action Description: (.*)", docstring
+                    )
                     if action_description:
-                        new_rounds_info[_camel_case_to_snake_case(round_name)]["action"] = action_description.group(1)
+                        new_rounds_info[_camel_case_to_snake_case(round_name)][
+                            "description"
+                        ] = action_description.group(1)
     return new_rounds_info
 
 
@@ -79,11 +92,12 @@ def main():
     for fsm_round in rounds:
         new_rounds_info.update(
             {
-                _camel_case_to_snake_case(fsm_round):
-                {
-                    "name": _camel_case_to_snake_case(fsm_round).replace("_", " ").title(),
+                _camel_case_to_snake_case(fsm_round): {
+                    "name": _camel_case_to_snake_case(fsm_round)
+                    .replace("_", " ")
+                    .title(),
                     "description": "",
-                    "transitions": {}
+                    "transitions": {},
                 }
             }
         )
@@ -102,7 +116,9 @@ def main():
     print(2)
     print(new_rounds_info)
 
-    updated_rounds_info, rounds_to_check = update_rounds_info(ROUNDS_INFO, new_rounds_info)
+    updated_rounds_info, rounds_to_check = update_rounds_info(
+        ROUNDS_INFO, new_rounds_info
+    )
     print(updated_rounds_info)
 
     with open(ROUNDS_INFO_PATH, "r", encoding="utf-8") as original_file:
@@ -111,7 +127,10 @@ def main():
         with open(ROUNDS_INFO_PATH, "w", encoding="utf-8") as file:
             for line in lines:
                 file.write(line)
-                if line.strip() == "# ------------------------------------------------------------------------------":
+                if (
+                    line.strip()
+                    == "# ------------------------------------------------------------------------------"
+                ):
                     break
             file.write("\nROUNDS_INFO = {\n")
             for round_name, info in updated_rounds_info.items():
@@ -119,7 +138,9 @@ def main():
             file.write("}\n")
 
     if rounds_to_check:
-        print("Rounds that are missing an action description in their docstring. Please check these rounds manually.")
+        print(
+            "Rounds that are missing an action description in their docstring. Please check these rounds manually."
+        )
         for round_name in rounds_to_check:
             print(f"- {round_name}")
 
