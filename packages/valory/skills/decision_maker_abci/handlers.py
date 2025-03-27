@@ -59,7 +59,7 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
-from packages.valory.skills.decision_maker_abci.rounds_info import (
+from scripts.update_rounds_info import (
     load_rounds_info_with_transitions,
 )
 
