@@ -36,6 +36,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 class BetPlacementRound(TxPreparationRound):
     """
     A round for placing a bet.
+
     Action Description: Attempting to place a bet on a market.
     """
 

@@ -17,7 +17,7 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-
+"""A script to auto update the rounds info for the 'decision_maker_abci' skill."""
 
 import re
 from pathlib import Path
@@ -104,7 +104,8 @@ def update_rounds_info(rounds_info: Dict, new_rounds_info: Dict) -> Tuple[Dict, 
     return new_rounds_info, rounds_to_check
 
 
-def main():
+def main() -> None:
+    """Main function."""
     fsm_spec = load_fsm_spec()
     rounds = extract_rounds_from_fsm_spec(fsm_spec)
     new_rounds_info = {}
@@ -155,7 +156,7 @@ def main():
                     break
             file.write("\nROUNDS_INFO = {\n")
             for round_name, info in updated_rounds_info.items():
-                file.write(f"    '{round_name}': {info},\n")
+                file.write(f"    '{round_name!r}': {info},\n")
             file.write("}\n")
 
     if rounds_to_check:
