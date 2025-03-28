@@ -29,11 +29,26 @@ from aea.protocols.generator.common import _camel_case_to_snake_case
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 
 
+# Find the project root dynamically
+def find_project_root(current_path: Path) -> Path:
+    """Find the root of the project by looking for a pyproject.toml."""
+    while current_path != current_path.parent:
+        if (current_path / "pyproject.toml").exists():
+            return current_path
+        current_path = current_path.parent
+    raise FileNotFoundError(
+        "Project root not found. Ensure you have a pyproject.toml in the root."
+    )
+
+
+ROOT_DIR = find_project_root(Path(__file__).resolve())
 FSM_SPECIFICATION_FILE = Path(
-    "../packages/valory/skills/trader_abci/fsm_specification.yaml"
+    ROOT_DIR / "packages/valory/skills/trader_abci/fsm_specification.yaml"
 )
-SKILLS_DIR_PATH = Path("../packages/valory/skills")
-ROUNDS_INFO_PATH = Path("../packages/valory/skills/decision_maker_abci/rounds_info.py")
+SKILLS_DIR_PATH = Path(ROOT_DIR / "packages/valory/skills")
+ROUNDS_INFO_PATH = Path(
+    ROOT_DIR / "packages/valory/skills/decision_maker_abci/rounds_info.py"
+)
 
 
 def load_fsm_spec() -> Dict:
@@ -143,21 +158,31 @@ def main() -> None:
     )
     print(updated_rounds_info)
 
-    with open(ROUNDS_INFO_PATH, "r", encoding="utf-8") as original_file:
-        lines = original_file.readlines()
+    # Read the current file content
+    with open(ROUNDS_INFO_PATH, "r", encoding="utf-8") as file:
+        content = file.read()
 
-        with open(ROUNDS_INFO_PATH, "w", encoding="utf-8") as file:
-            for line in lines:
-                file.write(line)
-                if (
-                    line.strip()
-                    == """This module contains the rounds info for the 'decision_maker_abci' skill."""
-                ):
-                    break
-            file.write("\nROUNDS_INFO = {\n")
-            for round_name, info in updated_rounds_info.items():
-                file.write(f"    '{round_name!r}': {info},\n")
-            file.write("}\n")
+    # Define a regex pattern to match the entire ROUNDS_INFO dictionary
+    pattern = r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n"  # Match the dictionary block
+
+    # Generate the new ROUNDS_INFO content
+    new_rounds_info_str = "ROUNDS_INFO = {\n"
+    for round_name, info in updated_rounds_info.items():
+        new_rounds_info_str += f"    {round_name!r}: {info},\n"
+    new_rounds_info_str += "}\n"
+
+    # Ensure the regex correctly matches the dictionary
+    match = re.search(pattern, content, flags=re.DOTALL)
+    if match:
+        print("Existing ROUNDS_INFO found, replacing it...")  # Debugging output
+        updated_content = re.sub(pattern, new_rounds_info_str, content, flags=re.DOTALL)
+    else:
+        print("ROUNDS_INFO not found, appending...")  # Debugging output
+        updated_content = content + "\n\n" + new_rounds_info_str
+
+    # Write the updated content back to the file
+    with open(ROUNDS_INFO_PATH, "w", encoding="utf-8") as file:
+        file.write(updated_content)
 
     if rounds_to_check:
         print(
