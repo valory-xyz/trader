@@ -67,6 +67,8 @@ DUMMY_SERVICE_STATE = {
     "ts_checkpoint": 0,
     "is_checkpoint_reached": True,
     "available_slot_count": 0,
+    "staking_contract_name": "dummy_contract",
+    "epoch_end_ts": 0,
 }
 
 
@@ -154,6 +156,8 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
                         "available_slot_count": 0,
+                        "staking_contract_name": "dummy_contract",
+                        "epoch_end_ts": 0,
                     }
                 ),
                 final_data={
@@ -196,6 +200,8 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
                         "available_slot_count": 0,
+                        "staking_contract_name": "dummy_contract",
+                        "epoch_end_ts": 0,
                     }
                 ),
                 final_data={},
@@ -217,6 +223,8 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
                         "available_slot_count": 0,
+                        "staking_contract_name": "dummy_contract",
+                        "epoch_end_ts": 0,
                     }
                 ),
                 final_data={},
