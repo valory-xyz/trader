@@ -32,5 +32,5 @@ def test_check_stop_trading_payload() -> None:
 
     assert payload.vote
     assert payload.n_mech_requests_this_epoch
-    assert payload.data == {"vote": True, "mech_request_count": 1}
+    assert payload.data == {"vote": True, "n_mech_requests_this_epoch": 1}
     assert CheckStopTradingPayload.from_json(payload.json) == payload
