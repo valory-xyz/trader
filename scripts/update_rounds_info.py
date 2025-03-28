@@ -20,6 +20,7 @@
 """A script to auto update the rounds info for the 'decision_maker_abci' skill."""
 
 import re
+from collections.abc import KeysView
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -83,7 +84,7 @@ def extract_rounds_from_fsm_spec(fsm_spec: Dict) -> List[str]:
 
 
 def find_rounds_in_file(
-    file_path: Path, rounds: List[str], new_rounds_info: Dict
+    file_path: Path, rounds: KeysView, new_rounds_info: Dict
 ) -> Dict[str, str]:
     """Find rounds in a file and check for Action Description in docstring."""
     with open(file_path, "r", encoding="utf-8") as file:
@@ -119,75 +120,79 @@ def update_rounds_info(rounds_info: Dict, new_rounds_info: Dict) -> Tuple[Dict, 
     return new_rounds_info, rounds_to_check
 
 
-def main() -> None:
-    """Main function."""
-    fsm_spec = load_fsm_spec()
-    rounds = extract_rounds_from_fsm_spec(fsm_spec)
-    new_rounds_info = {}
+def initialize_rounds_info(fsm_spec: Dict) -> Dict:
+    """Initialize rounds info dictionary from FSM spec."""
+    rounds_info = {}
+    for fsm_round in extract_rounds_from_fsm_spec(fsm_spec):
+        rounds_info[_camel_case_to_snake_case(fsm_round)] = {
+            "name": _camel_case_to_snake_case(fsm_round).replace("_", " ").title(),
+            "description": "",
+            "transitions": {},
+        }
+    return rounds_info
 
-    # Add the rounds from the fsm to the new_rounds_info dictionary
-    for fsm_round in rounds:
-        new_rounds_info.update(
-            {
-                _camel_case_to_snake_case(fsm_round): {
-                    "name": _camel_case_to_snake_case(fsm_round)
-                    .replace("_", " ")
-                    .title(),
-                    "description": "",
-                    "transitions": {},
-                }
-            }
-        )
-    print(1)
-    print(new_rounds_info)
 
-    # Find the rounds files in the skills and check for rounds that match the fsm and their Action Description
+def process_rounds_files(new_rounds_info: Dict) -> None:
+    """Find round descriptions from round files in skills."""
     for skill_dir in SKILLS_DIR_PATH.iterdir():
         if skill_dir.is_dir() and skill_dir.name != "trader_abci":
             rounds_files = list(skill_dir.glob("**/rounds.py"))
             if skill_dir.name == "decision_maker_abci":
                 rounds_files.extend(skill_dir.glob("states/*.py"))
             for rounds_file in rounds_files:
-                find_rounds_in_file(rounds_file, rounds, new_rounds_info)
+                find_rounds_in_file(
+                    rounds_file, new_rounds_info.keys(), new_rounds_info
+                )
 
-    print(2)
-    print(new_rounds_info)
 
-    updated_rounds_info, rounds_to_check = update_rounds_info(
-        ROUNDS_INFO, new_rounds_info
-    )
-    print(updated_rounds_info)
-
-    # Read the current file content
+def write_updated_rounds_info(updated_rounds_info: Dict) -> None:
+    """Write updated rounds info back to the rounds_info.py file."""
     with open(ROUNDS_INFO_PATH, "r", encoding="utf-8") as file:
         content = file.read()
 
-    # Define a regex pattern to match the entire ROUNDS_INFO dictionary
-    pattern = r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n"  # Match the dictionary block
+    new_rounds_info_str = (
+        "ROUNDS_INFO = {\n"
+        + "".join(
+            f"    {round_name!r}: {info},\n"
+            for round_name, info in updated_rounds_info.items()
+        )
+        + "}\n"
+    )
 
-    # Generate the new ROUNDS_INFO content
-    new_rounds_info_str = "ROUNDS_INFO = {\n"
-    for round_name, info in updated_rounds_info.items():
-        new_rounds_info_str += f"    {round_name!r}: {info},\n"
-    new_rounds_info_str += "}\n"
+    updated_content = (
+        re.sub(
+            r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n",
+            new_rounds_info_str,
+            content,
+            flags=re.DOTALL,
+        )
+        if re.search(r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n", content, flags=re.DOTALL)
+        else content + "\n\n" + new_rounds_info_str
+    )
 
-    # Ensure the regex correctly matches the dictionary
-    match = re.search(pattern, content, flags=re.DOTALL)
-    if match:
-        print("Existing ROUNDS_INFO found, replacing it...")  # Debugging output
-        updated_content = re.sub(pattern, new_rounds_info_str, content, flags=re.DOTALL)
-    else:
-        print("ROUNDS_INFO not found, appending...")  # Debugging output
-        updated_content = content + "\n\n" + new_rounds_info_str
-
-    # Write the updated content back to the file
     with open(ROUNDS_INFO_PATH, "w", encoding="utf-8") as file:
         file.write(updated_content)
 
+
+def main() -> None:
+    """Main function to update rounds info."""
+    fsm_spec = load_fsm_spec()
+    new_rounds_info = initialize_rounds_info(fsm_spec)
+
+    # Extract descriptions from round files
+    process_rounds_files(new_rounds_info)
+
+    # Update rounds info and check for missing descriptions
+    updated_rounds_info, rounds_to_check = update_rounds_info(
+        ROUNDS_INFO, new_rounds_info
+    )
+
+    # Write back to file
+    write_updated_rounds_info(updated_rounds_info)
+
+    # Alert for missing descriptions
     if rounds_to_check:
-        print(
-            "Rounds that are missing an action description in their docstring. Please check these rounds manually."
-        )
+        print("Rounds missing action descriptions:")
         for round_name in rounds_to_check:
             print(f"- {round_name}")
 
