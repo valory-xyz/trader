@@ -62,12 +62,12 @@ def load_fsm_spec() -> Dict:
         return yaml.safe_load(spec_file)
 
 
-def load_rounds_info_with_transitions() -> Dict:
+def load_rounds_info_with_transitions(updated_rounds_info: Dict) -> Dict:
     """Load the rounds info with the transitions"""
 
     fsm = load_fsm_spec()
 
-    rounds_info_with_transitions: Dict = ROUNDS_INFO
+    rounds_info_with_transitions: Dict = updated_rounds_info
     for source_info, target_round in fsm["transition_func"].items():
         # Removes the brackets from the source info tuple and splits it into round and event
         source_round, event = source_info[1:-1].split(", ")
@@ -187,8 +187,13 @@ def main() -> None:
         ROUNDS_INFO, new_rounds_info
     )
 
+    # load rounds info with transitions
+    updated_rounds_info_with_transitions = load_rounds_info_with_transitions(
+        updated_rounds_info
+    )
+
     # Write back to file
-    write_updated_rounds_info(updated_rounds_info)
+    write_updated_rounds_info(updated_rounds_info_with_transitions)
 
     # Alert for missing descriptions
     if rounds_to_check:

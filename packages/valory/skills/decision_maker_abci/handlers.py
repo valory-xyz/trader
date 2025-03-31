@@ -28,8 +28,6 @@ from urllib.parse import urlparse
 
 from aea.protocols.base import Message
 
-from scripts.update_rounds_info import load_rounds_info_with_transitions
-
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
 )
@@ -61,6 +59,7 @@ from packages.valory.skills.decision_maker_abci.dialogues import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
+from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -158,7 +157,7 @@ class HttpHandler(BaseHttpHandler):
 
         self.json_content_header = "Content-Type: application/json\n"
 
-        self.rounds_info = load_rounds_info_with_transitions()
+        self.rounds_info = ROUNDS_INFO
 
     @property
     def round_sequence(self) -> RoundSequence:
