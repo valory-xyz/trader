@@ -87,13 +87,13 @@ connections:
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeidao75ykdhkm7brclsslx3iinmgnvdiot5npanfbmatcaqrcvlsk4
 - valory/market_maker:0.1.0:bafybeihogpo436ptujsdyppdrbvhft53zkfkmdnb7r2mu6brgpsg6qku5q
-- valory/erc20:0.1.0:bafybeifcmrlaj5zglllwdzroetnu3kv4pzengbbilstcfcotwgtsmjc77a
+- valory/erc20:0.1.0:bafybeigq5romc4t3tijx2nqwk5cv3utcoys27vmwy5zdv2wwp4abuc25eq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeiffl527ti4rbmizirribicc3elvbxq63e3xg2as26izg67o4nxsay
+- valory/mech:0.1.0:bafybeiezyn4h4jov2m7dz6durnmpz7lvvdm6njz4h6c4oxl6thf44hmi74
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
 - valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeigh4vhzzcnbvlskjcgk23l25zffdrspvfczckfuiazv35corgtnum
+- valory/agent_registry:0.1.0:bafybeibfqhrpvuaibi6pgwsrot3ybt77hf4itjw6pklwnpxi3wcrrg2gr4
 - valory/transfer_nft_condition:0.1.0:bafybeicfl4jldwjf6ngk3x4b36krcqogzbgqzs4zkzxipmtgveeefus264
 protocols:
 - valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
@@ -104,7 +104,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
 - valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
-- valory/mech_interact_abci:0.1.0:bafybeif7spbuuzn4ilipnl4t4mt4qq56fcfydaca7o6nnjniir2lxhyv3m
+- valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
 - valory/staking_abci:0.1.0:bafybeiezi45x4bpejyqfx7iagdpi6wythpkd73i2pd65osgp5kdezszini
 behaviours:
   main:
