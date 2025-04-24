@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the behaviours for the staking skill."""
+
 import json
 from abc import ABC
 from datetime import datetime, timedelta
@@ -95,7 +96,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
         self._staking_contract_name: str = ""
-        self._staking_contract_metadata_hash: str = ""
+        self._staking_contract_metadata_hash: Union[str, bytes] = b""
         self._epoch_end_ts: int = 0
 
     @property
@@ -230,12 +231,18 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     @property
     def staking_contract_metadata_hash(self) -> str:
         """Get the staking contract metadata hash."""
-        return self._staking_contract_metadata_hash
+        return (
+            self._staking_contract_metadata_hash.hex()
+            if isinstance(self._staking_contract_metadata_hash, bytes)
+            else self._staking_contract_metadata_hash
+        )
 
     @staking_contract_metadata_hash.setter
-    def staking_contract_metadata_hash(self, metadata_hash: str) -> None:
+    def staking_contract_metadata_hash(self, metadata_hash: Union[str, bytes]) -> None:
         """Set the staking contract metadata hash."""
-        self._staking_contract_metadata_hash = metadata_hash
+        self._staking_contract_metadata_hash = (
+            metadata_hash.hex() if isinstance(metadata_hash, bytes) else metadata_hash
+        )
 
     @property
     def epoch_end_ts(self) -> int:
@@ -431,7 +438,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         )
         return status
 
-    def _get_staking_contract_metadata_hash(self) -> Generator:
+    def _get_staking_contract_metadata_hash(self) -> WaitableConditionType:
         """Get the staking contract metadata hash."""
         status = yield from self._staking_contract_interact(
             contract_callable="get_metadata_hash",
