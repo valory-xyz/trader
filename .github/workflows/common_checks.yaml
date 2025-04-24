@@ -92,7 +92,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install tomte[tox,cli]==0.2.14
-          pip install 'marshmallow<4.0.0'
 
           # Install `mdspell` for spelling checks
           sudo npm install -g markdown-spellcheck
