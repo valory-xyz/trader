@@ -17,15 +17,17 @@
 #   limitations under the License.
 #
 # ------------------------------------------------------------------------------
-"""A script to auto update the rounds info for the 'decision_maker_abci' skill."""
+"""A script to auto update or check the rounds info for the 'decision_maker_abci' skill."""
 
+import argparse
 import re
 from collections.abc import KeysView
 from pathlib import Path
 from typing import Dict, List, Tuple
+import json
 
 import yaml
-from aea.protocols.generator.common import _camel_case_to_snake_case
+from aea.protocols.generator.common import _camel_case_to_snake_case, _to_camel_case
 
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 
@@ -90,6 +92,7 @@ def find_rounds_in_file(
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
         for round_name in rounds:
+            round_name = _to_camel_case(round_name)
             if round_name in content:
                 match = re.search(
                     rf"class {round_name}\(.*\):\n\s+\"\"\"(.*?)\"\"\"",
@@ -105,7 +108,12 @@ def find_rounds_in_file(
                         new_rounds_info[_camel_case_to_snake_case(round_name)][
                             "description"
                         ] = action_description.group(1)
+
+                        print(f"{round_name} ==> {action_description.group(1)}");
     return new_rounds_info
+
+def check_rounds_info(current_rounds_info: Dict) -> List:
+    """Check rounds info file and see if all def are present"""
 
 
 def update_rounds_info(rounds_info: Dict, new_rounds_info: Dict) -> Tuple[Dict, List]:
@@ -132,7 +140,7 @@ def initialize_rounds_info(fsm_spec: Dict) -> Dict:
     return rounds_info
 
 
-def process_rounds_files(new_rounds_info: Dict) -> None:
+def process_rounds_files(new_rounds_info: Dict) -> Dict:
     """Find round descriptions from round files in skills."""
     for skill_dir in SKILLS_DIR_PATH.iterdir():
         if skill_dir.is_dir() and skill_dir.name != "trader_abci":
@@ -140,9 +148,12 @@ def process_rounds_files(new_rounds_info: Dict) -> None:
             if skill_dir.name == "decision_maker_abci":
                 rounds_files.extend(skill_dir.glob("states/*.py"))
             for rounds_file in rounds_files:
-                find_rounds_in_file(
+                print(rounds_file)
+                new_rounds_info = find_rounds_in_file(
                     rounds_file, new_rounds_info.keys(), new_rounds_info
                 )
+
+    return new_rounds_info
 
 
 def write_updated_rounds_info(updated_rounds_info: Dict) -> None:
@@ -174,33 +185,63 @@ def write_updated_rounds_info(updated_rounds_info: Dict) -> None:
         file.write(updated_content)
 
 
-def main() -> None:
-    """Main function to update rounds info."""
+def main(check: bool) -> None:
+    """Main function to update or check rounds info."""
     fsm_spec = load_fsm_spec()
-    new_rounds_info = initialize_rounds_info(fsm_spec)
+    new_rounds_init = initialize_rounds_info(fsm_spec)
 
     # Extract descriptions from round files
-    process_rounds_files(new_rounds_info)
+    new_rounds_info = process_rounds_files(new_rounds_init)
+    # print(json.dumps(new_rounds_info, indent = 4))
 
-    # Update rounds info and check for missing descriptions
-    updated_rounds_info, rounds_to_check = update_rounds_info(
-        ROUNDS_INFO, new_rounds_info
-    )
 
-    # load rounds info with transitions
-    updated_rounds_info_with_transitions = load_rounds_info_with_transitions(
-        updated_rounds_info
-    )
+    # if check:
+    #     # Report missing descriptions
+    #     if rounds_to_check:
+    #         print("Rounds missing action descriptions:")
+    #         for round_name in rounds_to_check:
+    #             print(f"- {round_name}")
+    #         exit(1)  # Exit with non-zero code to indicate failure
+    #     else:
+    #         print("All rounds have action descriptions.")
+    #         exit(0)  # Exit with zero code to indicate success
+    # else:
+    #     new_rounds_info = initialize_rounds_info(fsm_spec)
 
-    # Write back to file
-    write_updated_rounds_info(updated_rounds_info_with_transitions)
+    #     # Extract descriptions from round files
+    #     process_rounds_files(new_rounds_info)
 
-    # Alert for missing descriptions
-    if rounds_to_check:
-        print("Rounds missing action descriptions:")
-        for round_name in rounds_to_check:
-            print(f"- {round_name}")
+    #     # Update rounds info and check for missing descriptions
+    #     updated_rounds_info, rounds_to_check = update_rounds_info(
+    #         ROUNDS_INFO, new_rounds_info
+    #     )
+
+    #     # Load rounds info with transitions
+    #     updated_rounds_info_with_transitions = load_rounds_info_with_transitions(
+    #         updated_rounds_info
+    #     )
+    #     # Write back to file
+    #     write_updated_rounds_info(updated_rounds_info_with_transitions)
+
+    #     # Alert for missing descriptions
+    #     if rounds_to_check:
+    #         print("Rounds missing action descriptions:")
+    #         for round_name in rounds_to_check:
+    #             print(f"- {round_name}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Update or check the rounds info for the 'decision_maker_abci' skill."
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Run the script in check mode to report missing descriptions without updating files.",
+    )
+    args = parser.parse_args()
+    try:
+        main(check=args.check)
+    except Exception as e:
+        logging.error("An unexpected error occurred: %s", e)
+        exit(13)
