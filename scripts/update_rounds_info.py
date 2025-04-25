@@ -24,14 +24,13 @@ import logging
 import re
 import shutil
 import sys
-from collections.abc import Collection, KeysView
 from pathlib import Path
-from typing import Dict, List, Literal, Tuple, Union, cast, Any
+from typing import Dict, KeysView, List, Literal, Tuple, Union, cast
 
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case, _to_camel_case
 
-from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
+RoundInfo = Dict[str, Union[str, Dict[str, str]]]
 
 # Then update the import of ROUNDS_INFO to include type casting
 try:
@@ -86,7 +85,6 @@ SOURCE_INFO_PATTERN = re.compile(r"\(([^,]+),\s*([^)]+)\)")
 
 
 # Types
-RoundInfo = Dict[str, Union[str, Dict[str, str]]]
 TransitionsDict = Dict[str, str]
 IssueLevel = Literal["error", "warning"]
 IssueDict = Dict[str, Union[IssueLevel, str]]
@@ -450,6 +448,7 @@ def write_updated_rounds_info(updated_rounds_info: Dict[str, RoundInfo]) -> None
 
 
 # Checking and Validation Functions
+# pylint: disable=too-many-locals
 def check_rounds_info(
     current_rounds_info: Dict[str, RoundInfo], fsm_spec: Dict
 ) -> List[IssueDict]:
@@ -732,12 +731,8 @@ def update_mode() -> int:
 
 
 def main(check: bool) -> int:
-    """
-    Main function to update or check rounds info.
-
-    :param check: Whether to run in check mode
-    :return: Exit code indicating success or failure
-    """
+    """Main function to update or check rounds info."""
+    # pylint: disable=broad-except
     try:
         if check:
             return check_mode()
@@ -752,7 +747,7 @@ def main(check: bool) -> int:
         logger.error(f"Missing expected key: {e}", exc_info=True)
         return EXIT_ERROR
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+        logger.critical(f"Unhandled exception: {e}", exc_info=True)
         return EXIT_ERROR
 
 
