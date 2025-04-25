@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         # therefore, we bump the queue's status to the next one
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Setup the behaviour"""
         self._policy = self.synchronized_data.policy
 

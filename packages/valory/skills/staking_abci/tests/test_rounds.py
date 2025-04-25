@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -66,6 +66,9 @@ DUMMY_SERVICE_STATE = {
     "tx_hash": "dummy_tx_hash",
     "ts_checkpoint": 0,
     "is_checkpoint_reached": True,
+    "available_slot_count": 0,
+    "staking_contract_name": "dummy_contract",
+    "epoch_end_ts": 0,
 }
 
 
@@ -152,6 +155,9 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": "dummy_tx_hash",
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
+                        "available_slot_count": 0,
+                        "staking_contract_name": "dummy_contract",
+                        "epoch_end_ts": 0,
                     }
                 ),
                 final_data={
@@ -160,6 +166,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                     "tx_hash": "dummy_tx_hash",
                     "ts_checkpoint": 0,
                     "is_checkpoint_reached": True,
+                    "available_slot_count": 0,
                 },
                 event=Event.DONE,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
@@ -192,6 +199,9 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": "dummy_tx_hash",
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
+                        "available_slot_count": 0,
+                        "staking_contract_name": "dummy_contract",
+                        "epoch_end_ts": 0,
                     }
                 ),
                 final_data={},
@@ -212,6 +222,9 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": None,
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
+                        "available_slot_count": 0,
+                        "staking_contract_name": "dummy_contract",
+                        "epoch_end_ts": 0,
                     }
                 ),
                 final_data={},
@@ -291,6 +304,7 @@ def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
             get_name(SynchronizedData.service_staking_state),
             get_name(SynchronizedData.previous_checkpoint),
             get_name(SynchronizedData.is_checkpoint_reached),
+            get_name(SynchronizedData.available_staking_slots),
         },
         FinishedStakingRound: {
             get_name(SynchronizedData.service_staking_state),

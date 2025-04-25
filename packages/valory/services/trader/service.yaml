@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiagj43vomdgh5jvpr2jdmrgnafmlzf7abgekxlm4vzl5kcxgg3eay
+agent: valory/trader:0.1.0:bafybeie76cutadspshj76reokc5flwxdnmp6cbe3uimnklcqwddbgvu3vm
 number_of_agents: 4
 deployment:
   agent:
@@ -152,6 +152,8 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
+        olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -377,6 +379,8 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
+        olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -502,6 +506,8 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
+        olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -627,6 +633,8 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:5400}
+        olas_token_address: ${OLAS_TOKEN_ADDRESS:str:0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f}
+        http_handler_hostname_regex: ${HTTP_HANDLER_HOSTNAME_REGEX:str:localhost}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005

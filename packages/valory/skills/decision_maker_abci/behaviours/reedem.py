@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
         # from all trades associated with it.
         self.claimable_amounts: Dict[HexBytes, int] = {}
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Setup the behaviour"""
         super().setup()
         self.redeemed_condition_ids = self.synchronized_data.redeemed_condition_ids

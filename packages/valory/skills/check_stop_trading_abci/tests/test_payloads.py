@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -26,8 +26,11 @@ from packages.valory.skills.check_stop_trading_abci.payloads import (
 def test_check_stop_trading_payload() -> None:
     """Test `CheckStopTradingPayload`."""
 
-    payload = CheckStopTradingPayload(sender="sender", vote=True)
+    payload = CheckStopTradingPayload(
+        sender="sender", vote=True, n_mech_requests_this_epoch=1
+    )
 
     assert payload.vote
-    assert payload.data == {"vote": True}
+    assert payload.n_mech_requests_this_epoch
+    assert payload.data == {"vote": True, "n_mech_requests_this_epoch": 1}
     assert CheckStopTradingPayload.from_json(payload.json) == payload
