@@ -22,10 +22,11 @@
 import argparse
 import logging
 import re
+import shutil
 import sys
 from collections.abc import KeysView
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Literal, Tuple, Union
 
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case, _to_camel_case
@@ -46,11 +47,37 @@ EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXIT_ERROR = 13
 
+# Dictionary keys
+NAME_KEY = "name"
+DESCRIPTION_KEY = "description"
+TRANSITIONS_KEY = "transitions"
+FILE_PATH_KEY = "file_path"
+LEVEL_KEY = "level"
+ROUND_NAME_KEY = "round_name"
+MESSAGE_KEY = "message"
+
+# Issue levels
+ERROR_LEVEL = "error"
+WARNING_LEVEL = "warning"
+
+# Compiled regular expressions
+ROUND_CLASS_PATTERN = re.compile(
+    r"class\s+(\w+Round)\s*\(.*?\):\s*(?:\n\s+(?:\"\"\"|\'\'\'))(.*?)(?:\"\"\"|\'\'\')(?=\n\s+|$)",
+    re.DOTALL,
+)
+# Replace the current ACTION_DESC_PATTERN with:
+ACTION_DESC_PATTERN = re.compile(
+    r"Action\s+Description\s*:\s*(.*?)(?:\n\n|\Z)", re.DOTALL
+)
+ROUNDS_INFO_PATTERN = re.compile(r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n", re.DOTALL)
+SOURCE_INFO_PATTERN = re.compile(r"\(([^,]+),\s*([^)]+)\)")
+
 
 # Types
 RoundInfo = Dict[str, Union[str, Dict[str, str]]]
-IssueLevel = str  # "error" or "warning"
-IssueDict = Dict[str, Union[IssueLevel, str]]
+TransitionsDict = Dict[str, str]  # Add this line
+IssueLevel = Literal["error", "warning"]
+IssueDict = Dict[Literal["level", "round_name", "message"], Union[IssueLevel, str]]
 
 
 # Find the project root dynamically
@@ -76,15 +103,67 @@ ROUNDS_INFO_PATH = Path(
 )
 
 
+# File operation helpers
+def read_file_content(file_path: Path) -> str:
+    """Read file content with proper error handling."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+    except (FileNotFoundError, PermissionError) as e:
+        logger.warning(f"Could not read file {file_path}: {e}")
+        return ""
+
+
+def write_file_content(file_path: Path, content: str) -> bool:
+    """Write content to file with proper error handling."""
+    try:
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(content)
+        return True
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Could not write to file {file_path}: {e}")
+        return False
+
+
+def backup_file(file_path: Path) -> None:
+    """Create a backup of a file before overwriting it."""
+    if not file_path.exists():
+        return
+
+    backup_path = file_path.with_suffix(f"{file_path.suffix}.bak")
+    try:
+        shutil.copy2(file_path, backup_path)
+        logger.info(f"Created backup at {backup_path}")
+    except (FileNotFoundError, PermissionError) as e:
+        logger.warning(f"Could not create backup of {file_path}: {e}")
+
+
 # FSM and Round Information Functions
 def load_fsm_spec() -> Dict:
     """Load the FSM specification."""
     try:
-        with open(FSM_SPECIFICATION_FILE, "r", encoding="utf-8") as spec_file:
-            return yaml.safe_load(spec_file)
-    except (FileNotFoundError, yaml.YAMLError) as e:
-        logger.error(f"Failed to load FSM specification: {e}")
+        content = read_file_content(FSM_SPECIFICATION_FILE)
+        if not content:
+            logger.error("Failed to read FSM specification: Empty file")
+            sys.exit(EXIT_ERROR)
+
+        fsm_spec = yaml.safe_load(content)
+        if not validate_fsm_spec(fsm_spec):
+            sys.exit(EXIT_ERROR)
+
+        return fsm_spec
+    except yaml.YAMLError as e:
+        logger.error(f"Failed to parse FSM specification: {e}")
         sys.exit(EXIT_ERROR)
+
+
+def validate_fsm_spec(fsm_spec: Dict) -> bool:
+    """Validate the FSM specification has the expected structure."""
+    required_keys = ["states", "transition_func"]
+    if not all(key in fsm_spec for key in required_keys):
+        logger.error(f"FSM spec missing required keys: {required_keys}")
+        return False
+    return True
 
 
 def extract_rounds_from_fsm_spec(fsm_spec: Dict) -> List[str]:
@@ -98,9 +177,9 @@ def initialize_rounds_info(fsm_spec: Dict) -> Dict[str, RoundInfo]:
     for fsm_round in extract_rounds_from_fsm_spec(fsm_spec):
         snake_case_round = _camel_case_to_snake_case(fsm_round)
         rounds_info[snake_case_round] = {
-            "name": snake_case_round.replace("_", " ").title(),
-            "description": "",
-            "transitions": {},
+            NAME_KEY: snake_case_round.replace("_", " ").title(),
+            DESCRIPTION_KEY: "",
+            TRANSITIONS_KEY: {},
         }
     return rounds_info
 
@@ -120,32 +199,25 @@ def find_rounds_in_file(
     Returns:
         Updated rounds_info dictionary
     """
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            content = file.read()
-            for round_name in rounds:
-                camel_case_round = _to_camel_case(round_name)
-                if camel_case_round in content:
-                    match = re.search(
-                        rf"class {camel_case_round}\(.*\):\n\s+\"\"\"(.*?)\"\"\"",
-                        content,
-                        re.DOTALL,
+    content = read_file_content(file_path)
+    if not content:
+        return new_rounds_info
+
+    for round_name in rounds:
+        camel_case_round = _to_camel_case(round_name)
+        if camel_case_round in content:
+            match = ROUND_CLASS_PATTERN.search(content)
+            if match and match.group(1) == camel_case_round:
+                docstring = match.group(2)
+                action_description = ACTION_DESC_PATTERN.search(docstring)
+                if action_description:
+                    new_rounds_info[round_name][DESCRIPTION_KEY] = (
+                        action_description.group(1).strip()
                     )
-                    if match:
-                        docstring = match.group(1)
-                        action_description = re.search(
-                            r"Action Description: (.*)", docstring
-                        )
-                        if action_description:
-                            new_rounds_info[round_name]["description"] = (
-                                action_description.group(1).strip()
-                            )
-                            logger.debug(
-                                f"Found description for {camel_case_round}: "
-                                f"{action_description.group(1).strip()}"
-                            )
-    except (FileNotFoundError, PermissionError) as e:
-        logger.warning(f"Could not process file {file_path}: {e}")
+                    logger.debug(
+                        f"Found description for {camel_case_round}: "
+                        f"{action_description.group(1).strip()}"
+                    )
 
     return new_rounds_info
 
@@ -158,10 +230,15 @@ def extract_rounds_with_descriptions_from_files() -> Dict[str, Dict[str, str]]:
         Dictionary mapping round_name to {description, file_path}
     """
     found_rounds = {}
+    skill_dirs = list(SKILLS_DIR_PATH.iterdir())
 
-    for skill_dir in SKILLS_DIR_PATH.iterdir():
+    for skill_idx, skill_dir in enumerate(skill_dirs):
         if not skill_dir.is_dir():
             continue
+
+        logger.debug(
+            f"Processing skill {skill_idx + 1}/{len(skill_dirs)}: {skill_dir.name}"
+        )
 
         # Collect all relevant Python files that might contain Round classes
         rounds_files = list(skill_dir.glob("**/rounds.py"))
@@ -169,34 +246,27 @@ def extract_rounds_with_descriptions_from_files() -> Dict[str, Dict[str, str]]:
             rounds_files.extend(skill_dir.glob("states/*.py"))
 
         for file_path in rounds_files:
-            try:
-                with open(file_path, "r", encoding="utf-8") as file:
-                    content = file.read()
-                    # Find all Round classes and their docstrings
-                    class_matches = re.finditer(
-                        r"class (\w+Round)\(.*\):\n\s+\"\"\"(.*?)\"\"\"",
-                        content,
-                        re.DOTALL,
-                    )
+            content = read_file_content(file_path)
+            if not content:
+                continue
 
-                    for match in class_matches:
-                        class_name = match.group(1)
-                        docstring = match.group(2)
+            # Find all Round classes and their docstrings
+            class_matches = ROUND_CLASS_PATTERN.finditer(content)
 
-                        # Check if it has an Action Description
-                        action_desc_match = re.search(
-                            r"Action Description: (.*)", docstring
-                        )
-                        if action_desc_match:
-                            snake_case_name = _camel_case_to_snake_case(class_name)
-                            description = action_desc_match.group(1).strip()
+            for match in class_matches:
+                class_name = match.group(1)
+                docstring = match.group(2)
 
-                            found_rounds[snake_case_name] = {
-                                "description": description,
-                                "file_path": str(file_path),
-                            }
-            except (FileNotFoundError, PermissionError) as e:
-                logger.warning(f"Could not process file {file_path}: {e}")
+                # Check if it has an Action Description
+                action_desc_match = ACTION_DESC_PATTERN.search(docstring)
+                if action_desc_match:
+                    snake_case_name = _camel_case_to_snake_case(class_name)
+                    description = action_desc_match.group(1).strip()
+
+                    found_rounds[snake_case_name] = {
+                        DESCRIPTION_KEY: description,
+                        FILE_PATH_KEY: str(file_path),
+                    }
 
     return found_rounds
 
@@ -211,9 +281,16 @@ def process_rounds_files(new_rounds_info: Dict[str, RoundInfo]) -> Dict[str, Rou
     Returns:
         Updated rounds info dictionary with descriptions
     """
-    for skill_dir in SKILLS_DIR_PATH.iterdir():
-        if not skill_dir.is_dir() or skill_dir.name == "trader_abci":
-            continue
+    skill_dirs = list(
+        path
+        for path in SKILLS_DIR_PATH.iterdir()
+        if path.is_dir() and path.name != "trader_abci"
+    )
+
+    for skill_idx, skill_dir in enumerate(skill_dirs):
+        logger.debug(
+            f"Processing skill {skill_idx + 1}/{len(skill_dirs)}: {skill_dir.name}"
+        )
 
         rounds_files = list(skill_dir.glob("**/rounds.py"))
         if skill_dir.name == "decision_maker_abci":
@@ -245,13 +322,12 @@ def update_rounds_info(
     rounds_to_check = []
 
     for fsm_round, new_round_info in new_rounds_info.items():
-        if new_round_info["description"] == "":
+        if not new_round_info.get(DESCRIPTION_KEY):
             rounds_to_check.append(fsm_round)
             # Preserve existing description if available
             if fsm_round in current_rounds_info:
-                new_round_info["description"] = current_rounds_info[fsm_round][
-                    "description"
-                ]
+                existing_desc = current_rounds_info[fsm_round].get(DESCRIPTION_KEY, "")
+                new_round_info[DESCRIPTION_KEY] = existing_desc
 
     return new_rounds_info, rounds_to_check
 
@@ -272,16 +348,28 @@ def load_rounds_info_with_transitions(
 
     for source_info, target_round in fsm["transition_func"].items():
         # Parse the source_info tuple: "(SourceRound, EVENT)" -> ["SourceRound", "EVENT"]
-        source_round, event = source_info[1:-1].split(", ")
+        match = SOURCE_INFO_PATTERN.match(source_info)
+        if not match:
+            logger.warning(f"Unexpected format for source_info: {source_info}")
+            continue
+
+        source_round, event = match.groups()
         source_round_snake = _camel_case_to_snake_case(source_round)
         target_round_snake = _camel_case_to_snake_case(target_round)
-        event_lower = event.lower()
+        event_lower = event.lower().strip()
 
         # Add transition to the source round
         if source_round_snake in updated_rounds_info:
-            updated_rounds_info[source_round_snake]["transitions"][event_lower] = (
-                target_round_snake
+            # Ensure TRANSITIONS_KEY exists and is a dictionary
+            transitions = updated_rounds_info[source_round_snake].get(
+                TRANSITIONS_KEY, {}
             )
+            if not isinstance(transitions, dict):
+                transitions = {}
+
+            # Update transitions
+            transitions[event_lower] = target_round_snake
+            updated_rounds_info[source_round_snake][TRANSITIONS_KEY] = transitions
 
     return updated_rounds_info
 
@@ -293,39 +381,38 @@ def write_updated_rounds_info(updated_rounds_info: Dict[str, RoundInfo]) -> None
     Args:
         updated_rounds_info: Updated rounds info to write
     """
-    try:
-        with open(ROUNDS_INFO_PATH, "r", encoding="utf-8") as file:
-            content = file.read()
+    # Create backup before modifying
+    backup_file(ROUNDS_INFO_PATH)
 
-        # Create new rounds info string
-        new_rounds_info_str = (
-            "ROUNDS_INFO = {\n"
-            + "".join(
-                f"    {round_name!r}: {info},\n"
-                for round_name, info in updated_rounds_info.items()
-            )
-            + "}\n"
+    # Check if file exists or is empty
+    if not ROUNDS_INFO_PATH.exists() or ROUNDS_INFO_PATH.stat().st_size == 0:
+        content = "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\n\n"
+    else:
+        content = read_file_content(ROUNDS_INFO_PATH)
+        if not content:
+            logger.error(f"Failed to read {ROUNDS_INFO_PATH}")
+            sys.exit(EXIT_ERROR)
+
+    # Create new rounds info string
+    new_rounds_info_str = (
+        "ROUNDS_INFO = {\n"
+        + "".join(
+            f"    {round_name!r}: {info},\n"
+            for round_name, info in updated_rounds_info.items()
         )
+        + "}\n"
+    )
 
-        # Replace existing ROUNDS_INFO or append if not found
-        if re.search(r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n", content, flags=re.DOTALL):
-            updated_content = re.sub(
-                r"ROUNDS_INFO\s*=\s*\{.*?\}\s*\n",
-                new_rounds_info_str,
-                content,
-                flags=re.DOTALL,
-            )
-        else:
-            updated_content = content + "\n\n" + new_rounds_info_str
+    # Replace existing ROUNDS_INFO or append if not found
+    if ROUNDS_INFO_PATTERN.search(content):
+        updated_content = ROUNDS_INFO_PATTERN.sub(new_rounds_info_str, content)
+    else:
+        updated_content = content + "\n\n" + new_rounds_info_str
 
-        # Write updated content
-        with open(ROUNDS_INFO_PATH, "w", encoding="utf-8") as file:
-            file.write(updated_content)
-
+    # Write updated content
+    if write_file_content(ROUNDS_INFO_PATH, updated_content):
         logger.info(f"Successfully updated {ROUNDS_INFO_PATH}")
-
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Failed to write updated rounds_info: {e}")
+    else:
         sys.exit(EXIT_ERROR)
 
 
@@ -360,9 +447,9 @@ def check_rounds_info(
         if fsm_round not in info_rounds:
             issues.append(
                 {
-                    "level": "error",
-                    "round_name": fsm_round,
-                    "message": "Present in FSM but missing from rounds_info.py",
+                    LEVEL_KEY: ERROR_LEVEL,
+                    ROUND_NAME_KEY: fsm_round,
+                    MESSAGE_KEY: "Present in FSM but missing from rounds_info.py",
                 }
             )
 
@@ -370,9 +457,9 @@ def check_rounds_info(
         if info_round not in fsm_rounds:
             issues.append(
                 {
-                    "level": "warning",
-                    "round_name": info_round,
-                    "message": "Present in rounds_info.py but not in FSM specification",
+                    LEVEL_KEY: WARNING_LEVEL,
+                    ROUND_NAME_KEY: info_round,
+                    MESSAGE_KEY: "Present in rounds_info.py but not in FSM specification",
                 }
             )
 
@@ -381,41 +468,35 @@ def check_rounds_info(
         fsm_rounds & info_rounds
     ):  # Intersection - rounds in both FSM and info
         in_code = round_name in code_rounds
-        has_desc_in_info = bool(current_rounds_info[round_name].get("description", ""))
+        has_desc_in_info = bool(
+            current_rounds_info[round_name].get(DESCRIPTION_KEY, "")
+        )
 
         if in_code and not has_desc_in_info:
             issues.append(
                 {
-                    "level": "warning",
-                    "round_name": round_name,
-                    "message": (
-                        f"Has Action Description in code ({code_rounds[round_name]['file_path']}) "
-                        f"but missing or empty in rounds_info.py: '{code_rounds[round_name]['description']}'"
+                    LEVEL_KEY: WARNING_LEVEL,
+                    ROUND_NAME_KEY: round_name,
+                    MESSAGE_KEY: (
+                        f"Has Action Description in code ({code_rounds[round_name][FILE_PATH_KEY]}) "
+                        f"but missing or empty in rounds_info.py: {code_rounds[round_name][DESCRIPTION_KEY]!r}"
                     ),
                 }
             )
-        # Removed the warning for rounds with description in rounds_info.py but no Action Description in code
-        # The following condition has been removed:
-        # elif has_desc_in_info and not in_code:
-        #     issues.append({
-        #         "level": "warning",
-        #         "round_name": round_name,
-        #         "message": "Has description in rounds_info.py but no Action Description found in any code file"
-        #     })
 
         # Check if descriptions are different when both exist
         if in_code and has_desc_in_info:
-            code_desc = code_rounds[round_name]["description"]
-            info_desc = current_rounds_info[round_name]["description"]
+            code_desc = code_rounds[round_name][DESCRIPTION_KEY]
+            info_desc = current_rounds_info[round_name][DESCRIPTION_KEY]
             if code_desc != info_desc:
                 issues.append(
                     {
-                        "level": "warning",
-                        "round_name": round_name,
-                        "message": (
+                        LEVEL_KEY: WARNING_LEVEL,
+                        ROUND_NAME_KEY: round_name,
+                        MESSAGE_KEY: (
                             f"Description mismatch between code and rounds_info.py:\n"
-                            f"Code: '{code_desc}'\n"
-                            f"Info: '{info_desc}'"
+                            f"Code: {code_desc!r}\n"
+                            f"Info: {info_desc!r}"
                         ),
                     }
                 )
@@ -423,38 +504,62 @@ def check_rounds_info(
     # 4. Check transition consistency
     for source_info, target_round in fsm_spec["transition_func"].items():
         # Parse the transition tuple
-        source_round, event = source_info[1:-1].split(", ")
+        match = SOURCE_INFO_PATTERN.match(source_info)
+        if not match:
+            logger.warning(f"Unexpected format for source_info: {source_info}")
+            continue
+
+        source_round, event = match.groups()
         source_round_snake = _camel_case_to_snake_case(source_round)
         target_round_snake = _camel_case_to_snake_case(target_round)
-        event_lower = event.lower()
+        event_lower = event.lower().strip()
 
         # Check if transition is correctly represented in rounds_info
         if source_round_snake in current_rounds_info:
-            transitions = current_rounds_info[source_round_snake].get("transitions", {})
+            transitions = current_rounds_info[source_round_snake].get(
+                TRANSITIONS_KEY, {}
+            )
+
+            # Handle case where transitions might not be a dictionary
+            if not isinstance(transitions, dict):
+                issues.append(
+                    {
+                        LEVEL_KEY: ERROR_LEVEL,
+                        ROUND_NAME_KEY: source_round_snake,
+                        MESSAGE_KEY: f"Transitions key is not a dictionary: {transitions!r}",
+                    }
+                )
+                continue
 
             if event_lower not in transitions:
                 issues.append(
                     {
-                        "level": "error",
-                        "round_name": source_round_snake,
-                        "message": f"Missing transition '{event_lower}' in rounds_info.py that is present in FSM",
+                        LEVEL_KEY: ERROR_LEVEL,
+                        ROUND_NAME_KEY: source_round_snake,
+                        MESSAGE_KEY: f"Missing transition {event_lower!r} in rounds_info.py that is present in FSM",
                     }
                 )
             elif transitions[event_lower] != target_round_snake:
                 issues.append(
                     {
-                        "level": "error",
-                        "round_name": source_round_snake,
-                        "message": (
-                            f"Transition mismatch for '{event_lower}': "
-                            f"rounds_info.py has '{transitions[event_lower]}' but FSM has '{target_round_snake}'"
+                        LEVEL_KEY: ERROR_LEVEL,
+                        ROUND_NAME_KEY: source_round_snake,
+                        MESSAGE_KEY: (
+                            f"Transition mismatch for {event_lower!r}: "
+                            f"rounds_info.py has {transitions[event_lower]!r} but FSM has {target_round_snake!r}"
                         ),
                     }
                 )
 
     # 5. Check for transitions in rounds_info that aren't in the FSM
     for round_name, info in current_rounds_info.items():
-        for event, target in info.get("transitions", {}).items():
+        transitions = info.get(TRANSITIONS_KEY, {})
+
+        # Skip if transitions is not a dictionary
+        if not isinstance(transitions, dict):
+            continue
+
+        for event, target in transitions.items():
             # Convert to camel case for checking in the FSM
             round_camel = _to_camel_case(round_name)
             source_tuple = f"({round_camel}, {event.upper()})"
@@ -462,18 +567,109 @@ def check_rounds_info(
             if source_tuple not in fsm_spec["transition_func"]:
                 issues.append(
                     {
-                        "level": "warning",
-                        "round_name": round_name,
-                        "message": f"Transition '{event}' to '{target}' exists in rounds_info.py but not in FSM specification",
+                        LEVEL_KEY: WARNING_LEVEL,
+                        ROUND_NAME_KEY: round_name,
+                        MESSAGE_KEY: f"Transition {event!r} to {target!r} exists in rounds_info.py but not in FSM specification",
                     }
                 )
 
     return issues
 
 
+def validate_round_info_structure(rounds_info: Dict[str, RoundInfo]) -> List[IssueDict]:
+    """
+    Validate the structure of rounds_info entries.
+
+    Args:
+        rounds_info: The rounds info dictionary to validate
+
+    Returns:
+        List of issues found
+    """
+    issues = []
+
+    for round_name, info in rounds_info.items():
+        # Check required keys
+        for key in [NAME_KEY, DESCRIPTION_KEY, TRANSITIONS_KEY]:
+            if key not in info:
+                issues.append(
+                    {
+                        LEVEL_KEY: ERROR_LEVEL,
+                        ROUND_NAME_KEY: round_name,
+                        MESSAGE_KEY: f"Missing required key: {key}",
+                    }
+                )
+
+        # Check transitions is a dictionary
+        transitions = info.get(TRANSITIONS_KEY, {})
+        if not isinstance(transitions, dict):
+            issues.append(
+                {
+                    LEVEL_KEY: ERROR_LEVEL,
+                    ROUND_NAME_KEY: round_name,
+                    MESSAGE_KEY: f"Transitions is not a dictionary: {transitions!r}",
+                }
+            )
+
+    return issues
+
+
+def check_mode() -> int:
+    """
+    Run in check mode to verify rounds_info.py consistency.
+
+    Returns:
+        Exit code indicating success or failure
+    """
+    logger.info("Running in check mode")
+
+    # Load FSM specification
+    fsm_spec = load_fsm_spec()
+
+    # Validate the structure of rounds_info
+    structure_issues = validate_round_info_structure(ROUNDS_INFO)
+
+    # Check for other issues
+    consistency_issues = check_rounds_info(ROUNDS_INFO, fsm_spec)
+
+    # Combine all issues
+    issues = structure_issues + consistency_issues
+
+    if not issues:
+        logger.info("All rounds are properly defined and described in rounds_info.py")
+        return EXIT_SUCCESS
+
+    # Group issues by level
+    errors = [issue for issue in issues if issue[LEVEL_KEY] == ERROR_LEVEL]
+    warnings = [issue for issue in issues if issue[LEVEL_KEY] == WARNING_LEVEL]
+
+    # Report issues
+    if errors:
+        logger.error("ERRORS:")
+        for issue in sorted(errors, key=lambda x: x[ROUND_NAME_KEY]):
+            logger.error(f"- {issue[ROUND_NAME_KEY]}: {issue[MESSAGE_KEY]}")
+
+    if warnings:
+        logger.warning("WARNINGS:")
+        for issue in sorted(warnings, key=lambda x: x[ROUND_NAME_KEY]):
+            logger.warning(f"- {issue[ROUND_NAME_KEY]}: {issue[MESSAGE_KEY]}")
+
+    # Exit with error if there are errors
+    if errors:
+        return EXIT_FAILURE
+
+    logger.info("No critical errors found, but please review warnings")
+    return EXIT_SUCCESS
+
+
 # Main Functions
 def update_mode() -> int:
-    """Run in update mode to update rounds_info.py file."""
+    """
+    Run in update mode to update rounds_info.py file.
+
+    Returns:
+        Exit code indicating success or failure
+    """
     logger.info("Running in update mode")
 
     # Load FSM specification
@@ -509,43 +705,6 @@ def update_mode() -> int:
     return EXIT_SUCCESS
 
 
-def check_mode() -> int:
-    """Run in check mode to verify rounds_info.py consistency."""
-    logger.info("Running in check mode")
-
-    # Load FSM specification
-    fsm_spec = load_fsm_spec()
-
-    # Check for issues
-    issues = check_rounds_info(ROUNDS_INFO, fsm_spec)
-
-    if not issues:
-        logger.info("All rounds are properly defined and described in rounds_info.py")
-        return EXIT_SUCCESS
-
-    # Group issues by level
-    errors = [issue for issue in issues if issue["level"] == "error"]
-    warnings = [issue for issue in issues if issue["level"] == "warning"]
-
-    # Report issues
-    if errors:
-        logger.error("ERRORS:")
-        for issue in sorted(errors, key=lambda x: x["round_name"]):
-            logger.error(f"- {issue['round_name']}: {issue['message']}")
-
-    if warnings:
-        logger.warning("WARNINGS:")
-        for issue in sorted(warnings, key=lambda x: x["round_name"]):
-            logger.warning(f"- {issue['round_name']}: {issue['message']}")
-
-    # Exit with error if there are errors
-    if errors:
-        return EXIT_FAILURE
-
-    logger.info("No critical errors found, but please review warnings")
-    return EXIT_SUCCESS
-
-
 def main(check: bool) -> int:
     """
     Main function to update or check rounds info.
@@ -559,8 +718,16 @@ def main(check: bool) -> int:
     try:
         if check:
             return check_mode()
-        else:
-            return update_mode()
+        return update_mode()
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"File system error: {e}", exc_info=True)
+        return EXIT_ERROR
+    except yaml.YAMLError as e:
+        logger.error(f"YAML parsing error: {e}", exc_info=True)
+        return EXIT_ERROR
+    except KeyError as e:
+        logger.error(f"Missing expected key: {e}", exc_info=True)
+        return EXIT_ERROR
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}", exc_info=True)
         return EXIT_ERROR
