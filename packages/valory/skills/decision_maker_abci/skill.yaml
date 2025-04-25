@@ -105,7 +105,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeido4p5faa3hpytcud4xh42bf4cutyuhbcb6jtv2ogo4aj57xniovu
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
-- valory/staking_abci:0.1.0:bafybeidly7ee2que63i4ql6zcmxexdxssqydz35vpfpfv4d54wextofooi
+- valory/staking_abci:0.1.0:bafybeigbe62mg2w62lhlw7we3il2c5hhpxmdi4rwtx3iow3k3pdtmbt6ka
 behaviours:
   main:
     args: {}
