@@ -42,6 +42,8 @@ jobs:
         DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
         with:
             fetch-depth: 0
       - name: Set up tag and vars
@@ -72,31 +74,20 @@ jobs:
         name: Build Images
         with:
             image: valory/open-autonomy-user:latest
-            options: -v ${{ github.workspace }}:/work
+            options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
             shell: bash
             run: |
               echo "Building Docker Images"
               cd /work
-              pip install --upgrade poetry
-              poetry install
               source env.sh || exit 1
               echo "Building images for $AUTHOR for service $SERVICE"
               autonomy init --reset --author $AUTHOR --ipfs --remote
               autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
               cd $SERVICE || exit 1
-              autonomy build-image || exit 1
-              autonomy build-image --version $VERSION || exit 1
-
-      - name: Docker login
-        run: |
-            echo  $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin
-      - name: Docker Push
-        run: |
-          source env.sh
-          echo "Pushing $DOCKER_USER/oar-$AGENT:$VERSION"
-          echo "Pushing $DOCKER_USER/oar-$AGENT:$DEFAULT_IMAGE_TAG"
-          docker push $DOCKER_USER/oar-$AGENT:$VERSION
-          docker push $DOCKER_USER/oar-$AGENT:$DEFAULT_IMAGE_TAG
+              echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
+              docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --push --version $VERSION || exit 1
 
   deploy-service-on-propel:
     name: Deploy service on propel
