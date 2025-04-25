@@ -24,14 +24,26 @@ import logging
 import re
 import shutil
 import sys
-from collections.abc import KeysView
+from collections.abc import Collection, KeysView
 from pathlib import Path
-from typing import Dict, List, Literal, Tuple, Union
+from typing import Dict, List, Literal, Tuple, Union, cast, Any
 
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case, _to_camel_case
 
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
+
+# Then update the import of ROUNDS_INFO to include type casting
+try:
+    from packages.valory.skills.decision_maker_abci.rounds_info import (
+        ROUNDS_INFO as _ROUNDS_INFO_IMPORT,
+    )
+
+    # Cast the imported ROUNDS_INFO to the expected type to satisfy mypy
+    ROUNDS_INFO = cast(Dict[str, RoundInfo], _ROUNDS_INFO_IMPORT)
+except ImportError:
+    # Handle case where the module doesn't exist yet
+    ROUNDS_INFO = {}
 
 
 # Configure logging
@@ -75,9 +87,9 @@ SOURCE_INFO_PATTERN = re.compile(r"\(([^,]+),\s*([^)]+)\)")
 
 # Types
 RoundInfo = Dict[str, Union[str, Dict[str, str]]]
-TransitionsDict = Dict[str, str]  # Add this line
+TransitionsDict = Dict[str, str]
 IssueLevel = Literal["error", "warning"]
-IssueDict = Dict[Literal["level", "round_name", "message"], Union[IssueLevel, str]]
+IssueDict = Dict[str, Union[IssueLevel, str]]
 
 
 # Find the project root dynamically
@@ -105,7 +117,12 @@ ROUNDS_INFO_PATH = Path(
 
 # File operation helpers
 def read_file_content(file_path: Path) -> str:
-    """Read file content with proper error handling."""
+    """
+    Read file content with proper error handling.
+
+    :param file_path: Path to the file to read
+    :return: The content of the file as a string, or empty string on error
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             return file.read()
@@ -115,7 +132,13 @@ def read_file_content(file_path: Path) -> str:
 
 
 def write_file_content(file_path: Path, content: str) -> bool:
-    """Write content to file with proper error handling."""
+    """
+    Write content to file with proper error handling.
+
+    :param file_path: Path to the file to write to
+    :param content: Content to write to the file
+    :return: True if successful, False otherwise
+    """
     try:
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(content)
@@ -126,7 +149,11 @@ def write_file_content(file_path: Path, content: str) -> bool:
 
 
 def backup_file(file_path: Path) -> None:
-    """Create a backup of a file before overwriting it."""
+    """
+    Create a backup of a file before overwriting it.
+
+    :param file_path: Path to the file to backup
+    """
     if not file_path.exists():
         return
 
@@ -140,7 +167,12 @@ def backup_file(file_path: Path) -> None:
 
 # FSM and Round Information Functions
 def load_fsm_spec() -> Dict:
-    """Load the FSM specification."""
+    """
+    Load the FSM specification.
+
+    :return: The FSM specification as a dictionary
+    :raises: SystemExit if the FSM specification cannot be loaded or parsed
+    """
     try:
         content = read_file_content(FSM_SPECIFICATION_FILE)
         if not content:
@@ -158,7 +190,12 @@ def load_fsm_spec() -> Dict:
 
 
 def validate_fsm_spec(fsm_spec: Dict) -> bool:
-    """Validate the FSM specification has the expected structure."""
+    """
+    Validate the FSM specification has the expected structure.
+
+    :param fsm_spec: The FSM specification to validate
+    :return: True if valid, False otherwise
+    """
     required_keys = ["states", "transition_func"]
     if not all(key in fsm_spec for key in required_keys):
         logger.error(f"FSM spec missing required keys: {required_keys}")
@@ -167,12 +204,22 @@ def validate_fsm_spec(fsm_spec: Dict) -> bool:
 
 
 def extract_rounds_from_fsm_spec(fsm_spec: Dict) -> List[str]:
-    """Extract rounds from FSM specification."""
+    """
+    Extract rounds from FSM specification.
+
+    :param fsm_spec: The FSM specification to extract rounds from
+    :return: A list of round names
+    """
     return fsm_spec["states"]
 
 
 def initialize_rounds_info(fsm_spec: Dict) -> Dict[str, RoundInfo]:
-    """Initialize rounds info dictionary from FSM spec."""
+    """
+    Initialize rounds info dictionary from FSM spec.
+
+    :param fsm_spec: The FSM specification to initialize from
+    :return: A dictionary mapping round names to their initial info
+    """
     rounds_info = {}
     for fsm_round in extract_rounds_from_fsm_spec(fsm_spec):
         snake_case_round = _camel_case_to_snake_case(fsm_round)
@@ -191,13 +238,10 @@ def find_rounds_in_file(
     """
     Find rounds in a file and check for Action Description in docstring.
 
-    Args:
-        file_path: Path to the file to check
-        rounds: Round names to look for
-        new_rounds_info: Dictionary to update with found descriptions
-
-    Returns:
-        Updated rounds_info dictionary
+    :param file_path: Path to the file to check
+    :param rounds: Round names to look for
+    :param new_rounds_info: Dictionary to update with found descriptions
+    :return: Updated rounds_info dictionary with descriptions
     """
     content = read_file_content(file_path)
     if not content:
@@ -226,8 +270,7 @@ def extract_rounds_with_descriptions_from_files() -> Dict[str, Dict[str, str]]:
     """
     Extract all round classes with action descriptions from files.
 
-    Returns:
-        Dictionary mapping round_name to {description, file_path}
+    :return: Dictionary mapping round_name to {description, file_path}
     """
     found_rounds = {}
     skill_dirs = list(SKILLS_DIR_PATH.iterdir())
@@ -275,11 +318,8 @@ def process_rounds_files(new_rounds_info: Dict[str, RoundInfo]) -> Dict[str, Rou
     """
     Find round descriptions from round files in skills.
 
-    Args:
-        new_rounds_info: Initial rounds info dictionary to update
-
-    Returns:
-        Updated rounds info dictionary with descriptions
+    :param new_rounds_info: Initial rounds info dictionary to update
+    :return: Updated rounds info dictionary with descriptions
     """
     skill_dirs = list(
         path
@@ -312,12 +352,9 @@ def update_rounds_info(
     """
     Update rounds info dictionary with new rounds info.
 
-    Args:
-        current_rounds_info: Existing rounds info from rounds_info.py
-        new_rounds_info: New rounds info extracted from FSM and code
-
-    Returns:
-        Tuple of (updated rounds info, list of rounds still missing descriptions)
+    :param current_rounds_info: Existing rounds info from rounds_info.py
+    :param new_rounds_info: New rounds info extracted from FSM and code
+    :return: Tuple of (updated rounds info, list of rounds still missing descriptions)
     """
     rounds_to_check = []
 
@@ -338,11 +375,8 @@ def load_rounds_info_with_transitions(
     """
     Load the rounds info with the transitions from FSM.
 
-    Args:
-        updated_rounds_info: Rounds info to update with transitions
-
-    Returns:
-        Rounds info with transitions added
+    :param updated_rounds_info: Rounds info to update with transitions
+    :return: Rounds info with transitions added
     """
     fsm = load_fsm_spec()
 
@@ -378,8 +412,7 @@ def write_updated_rounds_info(updated_rounds_info: Dict[str, RoundInfo]) -> None
     """
     Write updated rounds info back to the rounds_info.py file.
 
-    Args:
-        updated_rounds_info: Updated rounds info to write
+    :param updated_rounds_info: Updated rounds info to write
     """
     # Create backup before modifying
     backup_file(ROUNDS_INFO_PATH)
@@ -423,15 +456,9 @@ def check_rounds_info(
     """
     Check rounds info file for consistency with FSM spec and code.
 
-    Args:
-        current_rounds_info: Current rounds_info from rounds_info.py
-        fsm_spec: FSM specification
-
-    Returns:
-        List of issues found, each as a dictionary with keys:
-        - level: 'error' or 'warning'
-        - round_name: Name of the round with the issue
-        - message: Description of the issue
+    :param current_rounds_info: Current rounds_info from rounds_info.py
+    :param fsm_spec: FSM specification
+    :return: List of issues found, each as a dictionary with level, round_name, and message
     """
     issues = []
 
@@ -580,11 +607,8 @@ def validate_round_info_structure(rounds_info: Dict[str, RoundInfo]) -> List[Iss
     """
     Validate the structure of rounds_info entries.
 
-    Args:
-        rounds_info: The rounds info dictionary to validate
-
-    Returns:
-        List of issues found
+    :param rounds_info: The rounds info dictionary to validate
+    :return: List of issues found
     """
     issues = []
 
@@ -618,8 +642,7 @@ def check_mode() -> int:
     """
     Run in check mode to verify rounds_info.py consistency.
 
-    Returns:
-        Exit code indicating success or failure
+    :return: Exit code indicating success or failure
     """
     logger.info("Running in check mode")
 
@@ -627,10 +650,14 @@ def check_mode() -> int:
     fsm_spec = load_fsm_spec()
 
     # Validate the structure of rounds_info
-    structure_issues = validate_round_info_structure(ROUNDS_INFO)
+    structure_issues = validate_round_info_structure(
+        cast(Dict[str, RoundInfo], ROUNDS_INFO)
+    )
 
     # Check for other issues
-    consistency_issues = check_rounds_info(ROUNDS_INFO, fsm_spec)
+    consistency_issues = check_rounds_info(
+        cast(Dict[str, RoundInfo], ROUNDS_INFO), fsm_spec
+    )
 
     # Combine all issues
     issues = structure_issues + consistency_issues
@@ -667,8 +694,7 @@ def update_mode() -> int:
     """
     Run in update mode to update rounds_info.py file.
 
-    Returns:
-        Exit code indicating success or failure
+    :return: Exit code indicating success or failure
     """
     logger.info("Running in update mode")
 
@@ -683,7 +709,7 @@ def update_mode() -> int:
 
     # Update with existing descriptions where new ones are missing
     updated_rounds_info, rounds_to_check = update_rounds_info(
-        ROUNDS_INFO, new_rounds_info
+        cast(Dict[str, RoundInfo], ROUNDS_INFO), new_rounds_info
     )
 
     # Add transitions from FSM
@@ -709,11 +735,8 @@ def main(check: bool) -> int:
     """
     Main function to update or check rounds info.
 
-    Args:
-        check: Whether to run in check mode
-
-    Returns:
-        Exit code
+    :param check: Whether to run in check mode
+    :return: Exit code indicating success or failure
     """
     try:
         if check:
