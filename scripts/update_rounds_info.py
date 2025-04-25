@@ -30,6 +30,7 @@ from typing import Dict, KeysView, List, Literal, Tuple, Union, cast
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case, _to_camel_case
 
+
 RoundInfo = Dict[str, Union[str, Dict[str, str]]]
 
 # Then update the import of ROUNDS_INFO to include type casting
@@ -253,9 +254,9 @@ def find_rounds_in_file(
                 docstring = match.group(2)
                 action_description = ACTION_DESC_PATTERN.search(docstring)
                 if action_description:
-                    new_rounds_info[round_name][DESCRIPTION_KEY] = (
-                        action_description.group(1).strip()
-                    )
+                    new_rounds_info[round_name][
+                        DESCRIPTION_KEY
+                    ] = action_description.group(1).strip()
                     logger.debug(
                         f"Found description for {camel_case_round}: "
                         f"{action_description.group(1).strip()}"
