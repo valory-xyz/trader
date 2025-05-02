@@ -23,7 +23,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/mech:0.1.0:bafybeiffl527ti4rbmizirribicc3elvbxq63e3xg2as26izg67o4nxsay
+- valory/mech:0.1.0:bafybeigwbv5nicn4t6wwkxcf2myg2b7mnm7ik5dwhd6nbifrff23a4ft7m
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifdsu34iupe426ycvecuc3exptialvqeml4y5k43v2ojsoxwnccla
