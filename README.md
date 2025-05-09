@@ -60,7 +60,7 @@ represented on-chain in the [Autonolas Protocol](https://docs.autonolas.network/
 1. Visit https://registry.olas.network/gnosis/services/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
 2. Fill in the following fields:
     - *"Owner address"*: a Gnosis address for which you will be able to sign later using a supported wallet. If you want to use the address you are connected to, click on *"Prefill Address"*.
-    - Click on *"Generate Hash & File"* and enter the value corresponding to the `service/valory/trader/0.1.0` key in [`packages.json`](https://github.com/valory-xyz/trader/blob/main/packages/packages.json)
+    - Click on *"Generate Hash & File"* and enter the value corresponding to the `service/valory/trader/0.1.0` key in [`packages.json`](./packages/packages.json)
     - *"Canonical agent Ids"*: enter the number `12`
     - *"No. of slots to canonical agent Ids"*: enter the number `1`
     - *"Cost of agent instance bond (wei)"*: enter the number `10000000000000000`
@@ -180,7 +180,7 @@ you need, for the case of 4 agents:
 
     where   `RPC_i` is the RPC endpoint for agent `AGENT_ADDRESS_i`.
 
-You can also explore the [`service.yaml`](https://github.com/valory-xyz/trader/blob/main/packages/valory/services/trader/service.yaml) file, which contains all the possible configuration variables for the service.
+You can also explore the [`service.yaml`](./packages/valory/services/trader/service.yaml) file, which contains all the possible configuration variables for the service.
 
 Finally, if you are experienced with the [Open Autonomy](https://docs.autonolas.network/) framework, you can also modify the internal business logic of the service yourself.
 
