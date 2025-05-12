@@ -8,7 +8,7 @@ on:
 jobs:
   publish-packages:
     name: Push Packages
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -192,7 +192,7 @@ jobs:
           echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH 
           echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH 
         shell: bash             
-  
+
       - name: Setup SSM KSP on windows latest
         if: runner.os == 'Windows'
         run: | 
@@ -207,15 +207,16 @@ jobs:
       - name: Install and configure Poetry
         run: pip install poetry
 
-      - name: Build Agent Runner
-        run: |
-            make build-agent-runner
-
-      - name: sign the file mac os
+      #### MAC
+      - name: build an sign sign the file mac os
         if: runner.os != 'Windows'
         env:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}  # Apple ID email
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}  # App-specific password
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}  # Team ID из Apple Dev Account
+          SIGN_ID: "Developer ID Application: Valory AG (${{ secrets.APPLE_TEAM_ID }})"
         run: | 
           echo "$CSC_LINK" | base64 --decode > certificate.p12
 
@@ -224,22 +225,30 @@ jobs:
           security unlock-keychain -p temp build.keychain
           security import certificate.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
-          
-          codesign --force --verbose --sign "Developer ID Application" --timestamp --options runtime dist/agent_runner_bin
+
+          make build-agent-runner-mac
 
           codesign -dv --verbose=4 dist/agent_runner_bin
+    
       - name: rename the file mac os
         if: runner.os != 'Windows'
         run: | 
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}|tr '[:upper:]' '[:lower:]'`
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
           mv dist/agent_runner_bin dist/${FILENAME}
+          dist/${FILENAME} --version
+      
+      ### WINDOWS
+      - name: Build Agent Runner Windonws
+        if: runner.os == 'Windows'
+        run: |
+            make build-agent-runner
 
       - name: sign the file
         if: runner.os == 'Windows'
         run: | 
           "C:\\Program Files\\DigiCert\\DigiCert One Signing Manager Tools\\smctl.exe" sign --keypair-alias=${{ secrets.SM_KEY_PAIR_ALIAS }} --input "dist/agent_runner_bin.exe"
-  
+
       - name: rename the file windows
         if: runner.os == 'Windows'
         run: | 
@@ -252,6 +261,7 @@ jobs:
         with:
           name: ${{env.FILENAME}}
           path: dist/${{env.FILENAME}}
+
 
   upload-assets:
       needs: build-agent-runner
