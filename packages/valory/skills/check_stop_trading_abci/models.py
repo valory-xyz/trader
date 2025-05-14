@@ -57,20 +57,29 @@ class CheckStopTradingParams(StakingParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         mech_address = kwargs.get("mech_contract_address", None)
-        marketplace_config = kwargs.get("mech_marketplace_config", {})
+        marketplace_config = kwargs.get("mech_marketplace_config", None)
+        mech_marketplace_used = kwargs.get("use_mech_marketplace", None)
         enforce(mech_address is not None, "Mech contract address not specified!")
         enforce(marketplace_config is not None, "Market Place config cannot be empty")
+        enforce(mech_marketplace_used is not None, "Flag informing the trader whether to use the mech marketplace cannot be empty")
         self.mech_contract_address: str = str(mech_address)
         self.disable_trading: bool = self._ensure("disable_trading", kwargs, bool)
         self.stop_trading_if_staking_kpi_met: bool = self._ensure(
             "stop_trading_if_staking_kpi_met", kwargs, bool
         )
-        self.mech_marketplace_config: Dict[str, Any] = marketplace_config
+        if mech_marketplace_used:
+            self.use_mech_marketplace: str = mech_marketplace_used
 
-        # Extract mech_marketplace_address from mech_marketplace_config
+        if marketplace_config:
+            self.mech_marketplace_config: Dict[str, Any] = marketplace_config
+
+            # Extract mech_marketplace_address from mech_marketplace_config
 
 
-        self.mech_marketplace_address: str = marketplace_config.get("mech_marketplace_address", "")
+            self.mech_marketplace_address: str = marketplace_config.get("mech_marketplace_address", "")
+
+        if mech_marketplace_used:
+            self.mech_marketplace_address = self.mech_marketplace_config.get("mech_marketplace_address", "")
 
         super().__init__(*args, **kwargs)
 
