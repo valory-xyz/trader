@@ -19,20 +19,20 @@ contracts:
 - valory/gnosis_safe:0.1.0:bafybeidhegkiibxroyvzvsyuh5t3qpq3egj24u2yg2xryf2kir4f36on3u
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeidjgnk2jephgtwlxlxokto5rfde4u5kreh4wx5lv3fengidogynsi
 - valory/service_registry:0.1.0:bafybeigmiyl3c23qbklwhnf5vpmhmign3cn6nakfdxqi2c7efthq57qaea
-- valory/market_maker:0.1.0:bafybeihogpo436ptujsdyppdrbvhft53zkfkmdnb7r2mu6brgpsg6qku5q
+- valory/market_maker:0.1.0:bafybeidrmti52g527ebfxih3exkezxp4r52iv5gzbsqlo5z3vs4uiizy6q
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeigwbv5nicn4t6wwkxcf2myg2b7mnm7ik5dwhd6nbifrff23a4ft7m
 - valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
 - valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeiehqygljgewzrk2he5bktbupzayke5iesgqzd2rkhzqldyy7mbtpa
-- valory/service_staking_token:0.1.0:bafybeiarxffrwdq47rmydgffyxhe6ntfb5unp44yt47kxqg7fzc7vburni
-- valory/transfer_nft_condition:0.1.0:bafybeicfl4jldwjf6ngk3x4b36krcqogzbgqzs4zkzxipmtgveeefus264
+- valory/service_staking_token:0.1.0:bafybeibvs326fcvaojjuk2gothgsj4zv6zd4ebxzeacqcahpfgiyqdb7l4
+- valory/transfer_nft_condition:0.1.0:bafybeihnq7tm4gdvnsezkxm563rnbu5qp7ynuddjcb5awaq4za4sv7aqoy
 - valory/erc20:0.1.0:bafybeibtkjl3z7syunxtzylwju2dj5uk6m7jxk26jgxfpifqyr4e76b3sm
-- valory/staking_token:0.1.0:bafybeiabkkhjpybqpzdfc4vcbiz4vefctfpvwetbmo7pqpiuxprmpvnti4
-- valory/mech_activity:0.1.0:bafybeiey6n7fjehm5k4g5h4toygqq3zzyxadqj3zabf67jmn5vzw5kndre
+- valory/staking_token:0.1.0:bafybeief3b2ok2na7iktbkxsubcvfvp7yrvda2ubwkpaecsmgkg6omrmuq
+- valory/mech_activity:0.1.0:bafybeigcd77exfo4kx2ubt342e2q3exjx7sqeqgtgi444l6lhr4dqtyuvq
 - valory/mech_marketplace:0.1.0:bafybeiccn4ohizw2wrjt7goidiakfik26ugm735lnm3fna3khko7qgkawm
-- valory/relayer:0.1.0:bafybeibvqc3lwxtcnu6dgfkf7mzefdgtfyosyq2dow7ogyxsl25vkxjwea
+- valory/relayer:0.1.0:bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne
 protocols:
 - open_aea/signing:1.0.0:bafybeig2d36zxy65vd7fwhs7scotuktydcarm74aprmrb5nioiymr3yixm
 - valory/abci:0.1.0:bafybeiatodhboj6a3p35x4f4b342lzk6ckxpud23awnqbxwjeon3k5y36u
@@ -50,12 +50,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicskv7u3mtfhi7nnoyw3bppwjof63izs4jgqdddtxicoea26t2n7i
 - valory/termination_abci:0.1.0:bafybeianygjbwmt4xrq77pfl3yzcokbjfzxmuru6j2k7a3boqc2qfb7shi
 - valory/transaction_settlement_abci:0.1.0:bafybeid4alawv3oz4gdyom5uevrgzfsahbwabi37r7gomsetwqiq66g6cm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaj6kkfc2uktn5dbg6xot2lpx5opuq76vxdn4vwgfip4rbstgflxq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifjidrerjm4u7olv3jhxnvbk7g3io232jybzkpkacyoyj5a5toszi
 - valory/market_manager_abci:0.1.0:bafybeihux5ihhvrxed6qgiwrnyleyq3q5ld6js7tgmdpry2rhxdq4xw65a
-- valory/decision_maker_abci:0.1.0:bafybeicsnb42r5ul3sb36dcoxna7zc7vfzsaoqwld3ndf2mdppsuegat54
-- valory/trader_abci:0.1.0:bafybeidvem234ofx5n5hcwr2o5csgsf4b2domrevwt326tjwup6ox3x6c4
-- valory/staking_abci:0.1.0:bafybeic765imdeona3pnla6hnpcz2o4m4rlq4b2ujlblodls5ibisslccq
-- valory/check_stop_trading_abci:0.1.0:bafybeigvedqamxwc4sojhva3kwlprxqu3jm7alv75skljlwp3sirc7r2dy
+- valory/decision_maker_abci:0.1.0:bafybeiamtcmseqfe4z45mcnv3u5vu4igkpn7j7xkd2ki2rq4lykosqbsja
+- valory/trader_abci:0.1.0:bafybeib6hm2udvjmxpd6afv2xmjt6rbnua2s43klxj4nooybmyh67bu4cu
+- valory/staking_abci:0.1.0:bafybeigztasn267ygjvyehn6cil6djbilvmewcrqejfru4ac3lw2jckfjy
+- valory/check_stop_trading_abci:0.1.0:bafybeih6q2dcfwjjihak7ydvuzn4gtz7c3thiorn3ecnf4bspiyojqy3lu
 - valory/mech_interact_abci:0.1.0:bafybeic73sfduvn75x4jfsvvpqhoxuwae75g2p4ahuuyalluvblltriqii
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -94,11 +94,11 @@ logging_config:
       propagate: true
 dependencies:
   open-aea-ledger-cosmos:
-    version: ==1.64.0
+    version: ==1.65.0
   open-aea-ledger-ethereum:
-    version: ==1.64.0
+    version: ==1.65.0
   open-aea-test-autonomy:
-    version: ==0.19.4
+    version: ==0.19.7
 skill_exception_policy: stop_and_exit
 connection_exception_policy: just_log
 default_connection: null
