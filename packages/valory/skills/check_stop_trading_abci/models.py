@@ -20,7 +20,7 @@
 
 """Models for the check stop trading ABCI application."""
 
-from typing import Any
+from typing import Any, Dict
 
 from aea.exceptions import enforce
 
@@ -40,6 +40,16 @@ from packages.valory.skills.staking_abci.models import StakingParams
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
+def get_mech_marketplace_address(kwargs: dict) -> str:
+    """Get the address of the mech marketplace."""
+    market_place_config = kwargs.get("mech_marketplace_config", {})
+    address = market_place_config.get("mech_marketplace_address", '')
+    if not address:
+        msg = "The address of the mech marketplace must be provided as a keyword argument."
+        raise ValueError(msg)
+
+    return address
+
 
 class CheckStopTradingParams(StakingParams):
     """CheckStopTrading parameters."""
@@ -47,13 +57,23 @@ class CheckStopTradingParams(StakingParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         mech_address = kwargs.get("mech_contract_address", None)
+        marketplace_config = kwargs.get("mech_marketplace_config", {})
         enforce(mech_address is not None, "Mech contract address not specified!")
+        enforce(marketplace_config is not None, "Market Place config cannot be empty")
         self.mech_contract_address = mech_address
         self.disable_trading: bool = self._ensure("disable_trading", kwargs, bool)
         self.stop_trading_if_staking_kpi_met: bool = self._ensure(
             "stop_trading_if_staking_kpi_met", kwargs, bool
         )
+        self.mech_marketplace_config: Dict[str, Any] = marketplace_config
+
+        # Extract mech_marketplace_address from mech_marketplace_config
+
+
+        self.mech_marketplace_address: str = marketplace_config.get("mech_marketplace_address", "")
+
         super().__init__(*args, **kwargs)
+
 
 
 class SharedState(BaseSharedState):

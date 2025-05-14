@@ -72,7 +72,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     def _get_mech_request_count(self) -> WaitableConditionType:
         """Get the mech request count."""
         status = yield from self.contract_interact(
-            contract_address=self.params.mech_contract_address,
+            contract_address=self.params.mech_marketplace_address,
             contract_public_id=MechContract.contract_id,
             contract_callable="get_requests_count",
             data_key="requests_count",
