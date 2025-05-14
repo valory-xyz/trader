@@ -60,7 +60,7 @@ class CheckStopTradingParams(StakingParams):
         marketplace_config = kwargs.get("mech_marketplace_config", {})
         enforce(mech_address is not None, "Mech contract address not specified!")
         enforce(marketplace_config is not None, "Market Place config cannot be empty")
-        self.mech_contract_address = mech_address
+        self.mech_contract_address: str = str(mech_address)
         self.disable_trading: bool = self._ensure("disable_trading", kwargs, bool)
         self.stop_trading_if_staking_kpi_met: bool = self._ensure(
             "stop_trading_if_staking_kpi_met", kwargs, bool
