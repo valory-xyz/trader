@@ -20,13 +20,14 @@
 
 """Models for the check stop trading ABCI application."""
 
-from typing import Any, Dict, cast
+from typing import Any, Dict
 
 from aea.exceptions import enforce
 
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
+from packages.valory.skills.mech_interact_abci.models import MechMarketplaceConfig
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
@@ -113,22 +114,14 @@ class CheckStopTradingParams(StakingParams):
         Raises:
             AEAEnforceError: If marketplace configuration is invalid
         """
-        marketplace_config = kwargs.get("mech_marketplace_config")
-        enforce(
-            marketplace_config is not None,
-            "When 'use_mech_marketplace' is True, 'mech_marketplace_config' must be provided"
-        )
+        marketplace_config = kwargs.get("mech_marketplace_config", {})
+        enforce(marketplace_config is not None, "Market place config cannot be empty")
 
-        self.mech_marketplace_config = cast(Dict, marketplace_config)
-
-        marketplace_address = self.mech_marketplace_config.get("mech_marketplace_address")
-        enforce(
-            marketplace_address is not None,
-            "Missing 'mech_marketplace_address' in marketplace configuration"
-        )
+        # Create MechMarketplaceConfig instance from the config dict
+        self.mech_marketplace_config = MechMarketplaceConfig.from_dict(kwargs["mech_marketplace_config"])
 
         # Update the KPI request address to use marketplace address
-        self.staking_kpi_mech_count_request_address = str(marketplace_address)
+        self.staking_kpi_mech_count_request_address = str(self.mech_marketplace_config.mech_marketplace_address)
 
 
 
