@@ -40,16 +40,6 @@ from packages.valory.skills.staking_abci.models import StakingParams
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 
-def get_mech_marketplace_address(kwargs: dict) -> str:
-    """Get the address of the mech marketplace."""
-    market_place_config = kwargs.get("mech_marketplace_config", {})
-    address = market_place_config.get("mech_marketplace_address", '')
-    if not address:
-        msg = "The address of the mech marketplace must be provided as a keyword argument."
-        raise ValueError(msg)
-
-    return address
-
 
 class CheckStopTradingParams(StakingParams):
     """CheckStopTrading parameters."""
