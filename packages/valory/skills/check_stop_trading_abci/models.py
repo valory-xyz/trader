@@ -84,7 +84,6 @@ class CheckStopTradingParams(StakingParams):
         super().__init__(*args, **kwargs)
 
 
-
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
