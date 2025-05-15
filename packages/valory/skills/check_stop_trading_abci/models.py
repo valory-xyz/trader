@@ -20,7 +20,7 @@
 
 """Models for the check stop trading ABCI application."""
 
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from aea.exceptions import enforce
 
@@ -42,36 +42,94 @@ BenchmarkTool = BaseBenchmarkTool
 
 
 class CheckStopTradingParams(StakingParams):
-    """CheckStopTrading parameters."""
+    """
+    Parameters for the CheckStopTrading component.
+
+    Controls trading behavior based on staking KPIs and marketplace configuration.
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the parameters' object."""
-        mech_address = kwargs.get("mech_contract_address", None)
-        marketplace_config = kwargs.get("mech_marketplace_config", None)
-        mech_marketplace_used = kwargs.get("use_mech_marketplace", None)
-        enforce(mech_address is not None, "Mech contract address not specified!")
-        enforce(marketplace_config is not None, "Market Place config cannot be empty")
-        enforce(mech_marketplace_used is not None, "Flag informing the trader whether to use the mech marketplace cannot be empty")
-        self.mech_contract_address: str = str(mech_address)
+        """
+        Initialize the parameters object with trading configuration.
+
+        Args:
+            *args: Positional arguments passed to parent class.
+            **kwargs: Keyword arguments including:
+                - mech_contract_address: Address of the mech contract
+                - use_mech_marketplace: Flag to enable/disable mech marketplace
+                - mech_marketplace_config: Configuration for mech marketplace (required if use_mech_marketplace is True)
+                - disable_trading: Flag to disable trading
+                - stop_trading_if_staking_kpi_met: Flag to stop trading when staking KPI is met
+        """
+        # Validate required parameters
+        self._validate_required_params(kwargs)
+
+        # Initialize basic parameters
+        self.mech_contract_address: str = str(kwargs["mech_contract_address"])
         self.disable_trading: bool = self._ensure("disable_trading", kwargs, bool)
         self.stop_trading_if_staking_kpi_met: bool = self._ensure(
             "stop_trading_if_staking_kpi_met", kwargs, bool
         )
-        if mech_marketplace_used:
-            self.use_mech_marketplace: str = mech_marketplace_used
+        self.use_mech_marketplace: bool = bool(kwargs["use_mech_marketplace"])
 
-        if marketplace_config:
-            self.mech_marketplace_config: Dict[str, Any] = marketplace_config
+        # Default KPI request address is the mech contract
+        self.staking_kpi_mech_count_request_address: str = self.mech_contract_address
 
-            # Extract mech_marketplace_address from mech_marketplace_config
-
-
-            self.mech_marketplace_address: str = marketplace_config.get("mech_marketplace_address", "")
-
-        if mech_marketplace_used:
-            self.mech_marketplace_address = self.mech_marketplace_config.get("mech_marketplace_address", "")
+        # Configure marketplace if enabled
+        if self.use_mech_marketplace:
+            self._configure_marketplace(kwargs)
 
         super().__init__(*args, **kwargs)
+
+    def _validate_required_params(self, kwargs: Dict[str, Any]) -> None:
+        """
+        Validate that required parameters are present.
+
+        Args:
+            kwargs: Parameters dictionary to validate
+
+        Raises:
+            AEAEnforceError: If required parameters are missing
+        """
+        mech_address = kwargs.get("mech_contract_address")
+        use_mech_flag = kwargs.get("use_mech_marketplace")
+
+        enforce(
+            mech_address is not None,
+            "Missing required parameter: 'mech_contract_address'"
+        )
+        enforce(
+            use_mech_flag is not None,
+            "Missing required parameter: 'use_mech_marketplace'"
+        )
+
+    def _configure_marketplace(self, kwargs: Dict[str, Any]) -> None:
+        """
+        Configure marketplace settings when marketplace is enabled.
+
+        Args:
+            kwargs: Parameters dictionary containing marketplace configuration
+
+        Raises:
+            AEAEnforceError: If marketplace configuration is invalid
+        """
+        marketplace_config = kwargs.get("mech_marketplace_config")
+        enforce(
+            marketplace_config is not None,
+            "When 'use_mech_marketplace' is True, 'mech_marketplace_config' must be provided"
+        )
+
+        self.mech_marketplace_config = cast(Dict, marketplace_config)
+
+        marketplace_address = self.mech_marketplace_config.get("mech_marketplace_address")
+        enforce(
+            marketplace_address is not None,
+            "Missing 'mech_marketplace_address' in marketplace configuration"
+        )
+
+        # Update the KPI request address to use marketplace address
+        self.staking_kpi_mech_count_request_address = str(marketplace_address)
+
 
 
 class SharedState(BaseSharedState):
