@@ -57,49 +57,26 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
-        self._mech_request_count: int = 0
-        self._mech_marketplace_request_count: int = 0
+        self._staking_kpi_request_count: int = 0
 
     @property
-    def mech_request_count(self) -> int:
-        """Get the liveness period."""
-        return self._mech_request_count
+    def staking_kpi_request_count(self) -> int:
+        """Get the staking KPI request count."""
+        return self._staking_kpi_request_count
 
-    @mech_request_count.setter
-    def mech_request_count(self, mech_request_count: int) -> None:
-        """Set the liveness period."""
-        self._mech_request_count = mech_request_count
+    @staking_kpi_request_count.setter
+    def staking_kpi_request_count(self, staking_kpi_request_count: int) -> None:
+        """Set the staking KPI request count."""
+        self._staking_kpi_request_count = staking_kpi_request_count
 
-    @property
-    def mech_marketplace_request_count(self) -> int:
-        """Get the mech marketplace request count."""
-        return self._mech_marketplace_request_count
-
-    @mech_marketplace_request_count.setter
-    def mech_marketplace_request_count(self, mech_marketplace_request_count: int) -> None:
-        """Set the mech marketplace request count."""
-        self._mech_marketplace_request_count = mech_marketplace_request_count
-
-    def _get_mech_marketplace_request_count(self) -> WaitableConditionType:
-        """Get the mech marketplace request count."""
+    def _get_staking_kpi_request_count(self) -> WaitableConditionType:
+        """Get the request count from the appropriate contract based on configuration."""
         status = yield from self.contract_interact(
-            contract_address=self.params.mech_marketplace_address,
+            contract_address=self.params.staking_kpi_mech_count_request_address,
             contract_public_id=MechContract.contract_id,
             contract_callable="get_requests_count",
             data_key="requests_count",
-            placeholder=get_name(CheckStopTradingBehaviour.mech_marketplace_request_count),
-            address=self.synchronized_data.safe_contract_address,
-        )
-        return status
-
-    def _get_mech_request_count(self) -> WaitableConditionType:
-        """Get the mech request count."""
-        status = yield from self.contract_interact(
-            contract_address=self.params.mech_contract_address,
-            contract_public_id=MechContract.contract_id,
-            contract_callable="get_requests_count",
-            data_key="requests_count",
-            placeholder=get_name(CheckStopTradingBehaviour.mech_request_count),
+            placeholder=get_name(CheckStopTradingBehaviour.staking_kpi_request_count),
             address=self.synchronized_data.safe_contract_address,
         )
         return status
@@ -121,14 +98,10 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         if self.service_staking_state != StakingState.STAKED:
             return False
 
-        if self.params.use_mech_marketplace:
-            yield from self.wait_for_condition_with_sleep(self._get_mech_marketplace_request_count)
-            mech_request_count = self.mech_marketplace_request_count
-            self.context.logger.debug(f"{mech_request_count=}")
-        else:
-            yield from self.wait_for_condition_with_sleep(self._get_mech_request_count)
-            mech_request_count = self.mech_request_count
-            self.context.logger.debug(f"{mech_request_count=}")
+        # Get request count from the appropriate source using unified method
+        yield from self.wait_for_condition_with_sleep(self._get_staking_kpi_request_count)
+        staking_kpi_request_count = self.staking_kpi_request_count
+        self.context.logger.debug(f"{staking_kpi_request_count=}")
 
         yield from self.wait_for_condition_with_sleep(self._get_service_info)
         mech_request_count_on_last_checkpoint = self.service_info[2][1]
@@ -147,7 +120,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         self.context.logger.debug(f"{liveness_ratio=}")
 
         mech_requests_since_last_cp = (
-            mech_request_count - mech_request_count_on_last_checkpoint
+            staking_kpi_request_count - mech_request_count_on_last_checkpoint
         )
         self.context.logger.debug(f"{mech_requests_since_last_cp=}")
 
