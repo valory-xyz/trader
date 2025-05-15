@@ -27,7 +27,6 @@ from aea.exceptions import enforce
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
-from packages.valory.skills.mech_interact_abci.models import MechMarketplaceConfig
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
@@ -35,6 +34,7 @@ from packages.valory.skills.abstract_round_abci.models import (
 from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
 )
+from packages.valory.skills.mech_interact_abci.models import MechMarketplaceConfig
 from packages.valory.skills.staking_abci.models import StakingParams
 
 
@@ -97,11 +97,11 @@ class CheckStopTradingParams(StakingParams):
 
         enforce(
             mech_address is not None,
-            "Missing required parameter: 'mech_contract_address'"
+            "Missing required parameter: 'mech_contract_address'",
         )
         enforce(
             use_mech_flag is not None,
-            "Missing required parameter: 'use_mech_marketplace'"
+            "Missing required parameter: 'use_mech_marketplace'",
         )
 
     def _configure_marketplace(self, kwargs: Dict[str, Any]) -> None:
@@ -118,11 +118,14 @@ class CheckStopTradingParams(StakingParams):
         enforce(marketplace_config is not None, "Market place config cannot be empty")
 
         # Create MechMarketplaceConfig instance from the config dict
-        self.mech_marketplace_config = MechMarketplaceConfig.from_dict(kwargs["mech_marketplace_config"])
+        self.mech_marketplace_config = MechMarketplaceConfig.from_dict(
+            kwargs["mech_marketplace_config"]
+        )
 
         # Update the KPI request address to use marketplace address
-        self.staking_kpi_mech_count_request_address = str(self.mech_marketplace_config.mech_marketplace_address)
-
+        self.staking_kpi_mech_count_request_address = str(
+            self.mech_marketplace_config.mech_marketplace_address
+        )
 
 
 class SharedState(BaseSharedState):

@@ -99,7 +99,9 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             return False
 
         # Get request count from the appropriate source using unified method
-        yield from self.wait_for_condition_with_sleep(self._get_staking_kpi_request_count)
+        yield from self.wait_for_condition_with_sleep(
+            self._get_staking_kpi_request_count
+        )
         staking_kpi_request_count = self.staking_kpi_request_count
         self.context.logger.debug(f"{staking_kpi_request_count=}")
 
