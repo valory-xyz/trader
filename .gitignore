@@ -34,6 +34,7 @@ packages/valory/protocols/http
 packages/valory/protocols/ipfs
 packages/valory/protocols/ledger_api
 packages/valory/protocols/tendermint
+packages/valory/contracts/mech_mm
 
 .idea
 **/__pycache__/
