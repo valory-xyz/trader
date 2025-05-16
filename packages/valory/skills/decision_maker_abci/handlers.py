@@ -23,10 +23,13 @@ import json
 import re
 from datetime import datetime, timezone
 from enum import Enum
+import requests
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 from aea.protocols.base import Message
+import prometheus_client
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -46,6 +49,9 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
     LedgerApiHandler as BaseLedgerApiHandler,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
     SigningHandler as BaseSigningHandler,
@@ -132,6 +138,19 @@ class HttpHandler(BaseHttpHandler):
         self.routes: Dict[tuple, list] = {}
         self.json_content_header: str = ""
         self.rounds_info: Dict = {}
+        self._time_since_last_successful_mech_tx: int = 0
+
+    @property
+    def last_successful_mech_tx_ts(self) -> int:
+        """Get the time since the last successful mech response in seconds."""
+        return self._time_since_last_successful_mech_tx
+
+    @last_successful_mech_tx_ts.setter
+    def last_successful_mech_tx_ts(
+        self, time_since_last_successful_mech_tx: int
+    ) -> None:
+        """Set the time since the last successful mech response in seconds."""
+        self._time_since_last_successful_mech_tx = time_since_last_successful_mech_tx
 
     def setup(self) -> None:
         """Implement the setup."""
@@ -146,14 +165,16 @@ class HttpHandler(BaseHttpHandler):
         local_ip_regex = r"192\.168(\.\d{1,3}){2}"
 
         # Route regexes
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
-        self.handler_url_regex = rf"{hostname_regex}\/.*"
-        health_url_regex = rf"{hostname_regex}\/healthcheck"
+        self.hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0|{self.context.params.http_handler_hostname_regex})(:\d+)?"
+        self.handler_url_regex = rf"{self.hostname_regex}\/.*"
+        health_url_regex = rf"{self.hostname_regex}\/healthcheck"
+        metrics_url_regex = rf"{self.hostname_regex}\/metrics"
 
         # Routes
         self.routes = {
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 (health_url_regex, self._handle_get_health),
+                (metrics_url_regex, self._handle_get_metrics)
             ],
         }
 
@@ -417,3 +438,197 @@ class HttpHandler(BaseHttpHandler):
             < int(datetime.now(timezone.utc).timestamp())
             - self.context.params.expected_mech_response_time
         )
+
+    def _handle_get_metrics(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle the /metrics endpoint."""
+
+        self.set_metrics()
+        # Generate the metrics data
+        metrics_data = generate_latest(REGISTRY)
+
+        # Create a response with the metrics data
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=OK_CODE,
+            status_text="Success",
+            headers=f"Content-Type: {prometheus_client.CONTENT_TYPE_LATEST}\n{http_msg.headers}",
+            body=metrics_data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with metrics data")
+        self.context.outbox.put_message(message=http_response)
+
+    def set_metrics(self) -> None:
+        """Set the metrics."""
+
+        agent_address = self.context.agent_address
+        safe_address = self.synchronized_data.safe_contract_address
+        service_id = self.context.params.on_chain_service_id
+        service_owner_address = self.synchronized_data.service_owner_address
+        staking_contract_name = self.synchronized_data.staking_contract_name
+        staking_contract_address = self.context.params.staking_contract_address
+        metrics_label_values = (
+            agent_address,
+            safe_address,
+            service_id,
+            service_owner_address,
+        )
+
+        native_balance = DecisionMakerBaseBehaviour.wei_to_native(
+            self.synchronized_data.wallet_balance
+        )
+        olas_balance = DecisionMakerBaseBehaviour.wei_to_native(
+            self.synchronized_data.olas_balance
+        )
+        wxdai_balance = self.synchronized_data.token_balance
+        staking_contract_available_slots = (
+            self.synchronized_data.available_staking_slots
+        )
+        staking_state = self.synchronized_data.service_staking_state.value
+        time_since_last_successful_mech_tx = (
+            self.calculate_time_since_last_successful_mech_tx()
+        )
+        time_since_last_mech_tx_attempt = (
+            self.calculate_time_since_last_mech_tx_attempt()
+        )
+        n_total_mech_requests = self.synchronized_data.n_mech_requests_this_epoch
+        n_mech_requests_to_staking_kpi = (
+            self.calculate_remaining_mech_calls_to_staking_kpi()
+        )
+
+        NATIVE_BALANCE_GAUGE.labels(*metrics_label_values).set(native_balance)
+        OLAS_BALANCE_GAUGE.labels(*metrics_label_values).set(olas_balance)
+        WXDAI_BALANCE_GAUGE.labels(*metrics_label_values).set(wxdai_balance)
+        STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
+            *metrics_label_values, staking_contract_name, staking_contract_address
+        ).set(staking_contract_available_slots)
+        STAKING_STATE_GAUGE.labels(*metrics_label_values).set(staking_state)
+        TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(*metrics_label_values).set(
+            time_since_last_successful_mech_tx
+        )
+        TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE.labels(*metrics_label_values).set(
+            time_since_last_mech_tx_attempt
+        )
+        TOTAL_MECH_REQUESTS_THIS_EPOCH.labels(*metrics_label_values).set(
+            n_total_mech_requests
+        )
+        REMAINING_MECH_CALLS_FOR_STAKING_KPI.labels(*metrics_label_values).set(
+            n_mech_requests_to_staking_kpi
+        )
+        EPOCH_TIME_REMAINING.labels(*metrics_label_values).set(
+            self.calculate_epoch_time_remaining()
+        )
+
+    def calculate_time_since_last_successful_mech_tx(self) -> int:
+        """Calculate the time since the last successful mech transaction (mech response)."""
+
+        mech_tx_ts = self.synchronized_data.decision_receive_timestamp
+        now = int(datetime.now().timestamp())
+        seconds_since_last_successful_mech_tx = 0
+
+        if mech_tx_ts != 0:
+            seconds_since_last_successful_mech_tx = now - mech_tx_ts
+
+        return seconds_since_last_successful_mech_tx
+
+    def calculate_time_since_last_mech_tx_attempt(self) -> int:
+        """Calculate the time since the last attempted mech transaction (mech request)."""
+
+        mech_tx_attempt_ts = self.synchronized_data.decision_request_timestamp
+        now = int(datetime.now().timestamp())
+
+        if mech_tx_attempt_ts == 0:
+            return 0
+
+        seconds_since_last_mech_tx_attempt = now - mech_tx_attempt_ts
+        return seconds_since_last_mech_tx_attempt
+
+    def calculate_remaining_mech_calls_to_staking_kpi(self) -> int:
+        """Calculate the remaining mech calls needed to reach the staking KPI."""
+        return (
+            N_MECH_CALLS_FOR_STAKING_KPI
+            - self.synchronized_data.n_mech_requests_this_epoch
+        )
+
+    def calculate_epoch_time_remaining(self) -> int:
+        """Calculate the remaining time in the current epoch."""
+
+        epoch_end_ts = self.synchronized_data.epoch_end_ts
+        if epoch_end_ts == 0:
+            return 0
+        return epoch_end_ts - int(datetime.now().timestamp())
+
+
+REGISTRY = CollectorRegistry()
+N_MECH_CALLS_FOR_STAKING_KPI = 60
+PROMETHEUS_METRICS_LABELS = [
+    "agent_address",
+    "safe_address",
+    "service_id",
+    "service_owner_address",
+]
+NATIVE_BALANCE_GAUGE = Gauge(
+    "olas_agent_native_balance",
+    "Native token balance in xDai",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+OLAS_BALANCE_GAUGE = Gauge(
+    "olas_agent_olas_balance",
+    "OLAS token balance",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+WXDAI_BALANCE_GAUGE = Gauge(
+    "olas_agent_wxdai_balance",
+    "WXDAI token balance",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE = Gauge(
+    "olas_staking_contract_available_slots",
+    "Number of available slots in the staking contract",
+    PROMETHEUS_METRICS_LABELS + ["staking_contract_name", "staking_contract_address"],
+    registry=REGISTRY,
+)
+STAKING_STATE_GAUGE = Gauge(
+    "olas_agent_staked",
+    "Indicates if an agent is staked (1), not staked (0) or eviceted (2)",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE = Gauge(
+    "olas_agent_time_since_last_successful_tx",
+    "Time in seconds since last successful mech transaction",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE = Gauge(
+    "olas_agent_time_since_last_mech_request_attempt",
+    "Time in seconds since last request transaction attempt (successful or not)",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+TOTAL_MECH_REQUESTS_THIS_EPOCH = Gauge(
+    "olas_agent_mech_requests",
+    "Total number of mech requests made by the agent this epoch",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+REMAINING_MECH_CALLS_FOR_STAKING_KPI = Gauge(
+    "olas_agent_remaining_mech_calls_for_staking_kpi",
+    "Remaining mech calls needed to reach the staking KPI",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)
+EPOCH_TIME_REMAINING = Gauge(
+    "olas_agent_staking_contract_epoch_time_remaining",
+    "Time remaining in the current epoch",
+    PROMETHEUS_METRICS_LABELS,
+    registry=REGISTRY,
+)

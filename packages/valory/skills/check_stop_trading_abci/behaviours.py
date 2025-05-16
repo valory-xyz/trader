@@ -58,6 +58,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         """Initialize the behaviour."""
         super().__init__(**kwargs)
         self._staking_kpi_request_count: int = 0
+        self._mech_requests_since_last_cp: int = 0
 
     @property
     def staking_kpi_request_count(self) -> int:
@@ -68,6 +69,16 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     def staking_kpi_request_count(self, staking_kpi_request_count: int) -> None:
         """Set the staking KPI request count."""
         self._staking_kpi_request_count = staking_kpi_request_count
+
+    @property
+    def mech_requests_since_last_cp(self) -> int:
+        """Get the mech requests since last checkpoint."""
+        return self._mech_requests_since_last_cp
+
+    @mech_requests_since_last_cp.setter
+    def mech_requests_since_last_cp(self, mech_requests_since_last_cp: int) -> None:
+        """Set the mech requests since last checkpoint."""
+        self._mech_requests_since_last_cp = mech_requests_since_last_cp
 
     def _get_staking_kpi_request_count(self) -> WaitableConditionType:
         """Get the request count from the appropriate contract based on configuration."""
@@ -96,6 +107,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         yield from self.wait_for_condition_with_sleep(self._check_service_staked)
         self.context.logger.debug(f"{self.service_staking_state=}")
         if self.service_staking_state != StakingState.STAKED:
+            self.mech_requests_since_last_cp = 0
             return False
 
         # Get request count from the appropriate source using unified method
@@ -139,7 +151,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         )
         self.context.logger.debug(f"{required_mech_requests=}")
 
-        if mech_requests_since_last_cp >= required_mech_requests:
+        if self.mech_requests_since_last_cp >= required_mech_requests:
             return True
         return False
 
@@ -172,7 +184,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             stop_trading = yield from self._compute_stop_trading()
             self.context.logger.info(f"Computed {stop_trading=}")
-            payload = CheckStopTradingPayload(self.context.agent_address, stop_trading)
+            payload = CheckStopTradingPayload(self.context.agent_address, stop_trading, self.mech_requests_since_last_cp)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)

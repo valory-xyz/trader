@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -63,7 +63,8 @@ class SynchronizedData(BaseSynchronizedData):
 
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
-        return bool(self.db.get("is_staking_kpi_met", False))
+        value = self.db.get("is_staking_kpi_met")
+        return bool(value) if value is not None else False
 
 
 class CheckStopTradingRound(VotingRound):
@@ -77,6 +78,15 @@ class CheckStopTradingRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
+    @property
+    def n_mech_requests_this_epoch(self) -> int:
+        """Get the mech request count from the payload."""
+        payload = self.payloads[0]
+
+        if not hasattr(payload, "n_mech_requests_this_epoch"):
+            return 0
+        return payload.n_mech_requests_this_epoch
+
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -84,8 +94,9 @@ class CheckStopTradingRound(VotingRound):
         if res is None:
             return None
 
+        n_mech_requests_this_epoch = self.n_mech_requests_this_epoch
         is_staking_kpi_met = self.positive_vote_threshold_reached
-        self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
+        self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met, n_mech_requests_this_epoch=n_mech_requests_this_epoch)
 
         return res
 

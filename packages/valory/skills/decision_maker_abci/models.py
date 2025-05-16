@@ -459,6 +459,9 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.tool_quarantine_duration: int = self._ensure(
             "tool_quarantine_duration", kwargs, int
         )
+        self.staking_contract_address = self._ensure(
+            "staking_contract_address", kwargs, str
+        )
         super().__init__(*args, **kwargs)
 
     @property

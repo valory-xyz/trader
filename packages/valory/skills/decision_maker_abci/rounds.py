@@ -340,6 +340,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.mocking_mode),
             get_name(SynchronizedData.next_mock_data_row),
             get_name(SynchronizedData.agreement_id),
+            get_name(SynchronizedData.decision_receive_timestamp),
         }
     )
     final_states: Set[AppState] = {

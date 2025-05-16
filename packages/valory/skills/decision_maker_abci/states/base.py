@@ -284,6 +284,19 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the service's staking state."""
         return bool(self.db.get("after_bet_attempt", False))
 
+    @property
+    def n_mech_requests(self) -> int:
+        """Get the number of mech requests."""
+        return int(self.db.get("n_mech_requests", 0))
+
+    @property
+    def token_balance(self) -> int:
+        """Get the token balance."""
+        token_balance = self.db.get("token_balance", 0)
+        if token_balance is None:
+            return 0
+        return int(token_balance)
+
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
     """A round for preparing a transaction."""
