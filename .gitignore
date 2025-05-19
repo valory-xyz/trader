@@ -55,3 +55,4 @@ trader/
 !/packages/valory/services/trader/
 /trader_service/
 /.coverage
+.dmypy.json

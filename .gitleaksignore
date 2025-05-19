@@ -48,3 +48,4 @@ ae28aeb8ad56e1873bfb3996c5d5ad8367709cd1:packages/valory/skills/trader_abci/skil
 4fad8e88eee2a3f55bcbb0a16d383c964abe05e2:packages/valory/skills/market_manager_abci/skill.yaml:generic-api-key:156
 4fad8e88eee2a3f55bcbb0a16d383c964abe05e2:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:254
 1dae6b5a6489aaac393828016c985d72da2de01a:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:308
+7fc47fe5d8aaefabb45dde31ed83a4ed14bc6526:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:217
