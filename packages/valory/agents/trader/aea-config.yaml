@@ -246,7 +246,7 @@ models:
       expected_mech_response_time: ${int:300}
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
-      tool_quarantine_duration: ${int:18000}
+      tool_quarantine_duration: ${int:10800}
       default_chain_id: ${str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
   benchmarking_mode:
