@@ -53,7 +53,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidmq66io3dxjrrwh75uga65er5hv6vyeawk2zwaaplnq5euanwfja
 - valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
 - valory/decision_maker_abci:0.1.0:bafybeihywsuqpi2gvwpy52tkiohv6tweaf6rbn55icrxetgatfy76utna4
-- valory/trader_abci:0.1.0:bafybeiddf6rb4lzkjxlthynerlh4ttd6r3t3aw5jj2yclrhvqwevwpgeti
+- valory/trader_abci:0.1.0:bafybeih4tgqjdyradfoa553aqg2znjlb6uq3fwiwkuz3xrm4jvslyi6d5y
 - valory/staking_abci:0.1.0:bafybeiezi45x4bpejyqfx7iagdpi6wythpkd73i2pd65osgp5kdezszini
 - valory/check_stop_trading_abci:0.1.0:bafybeigc3eusdp7liqlo7f7t7hetgdrl7jy23mo4eqcdj3pg3rpiy2yi5e
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
@@ -210,7 +210,7 @@ models:
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
       redeem_round_timeout: ${float:3600.0}
-      policy_epsilon: ${float:0.1}
+      policy_epsilon: ${float:0.2}
       store_path: ${str:/data/}
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
