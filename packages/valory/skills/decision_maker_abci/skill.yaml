@@ -246,7 +246,7 @@ models:
       redeeming_batch_size: 5
       store_path: data
       slippage: 0.01
-      policy_epsilon: 0.1
+      policy_epsilon: 0.3
       use_subgraph_for_redeeming: true
       use_nevermined: true
       policy_store_update_offset: 259200

@@ -111,7 +111,7 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
-        policy_epsilon: ${POLICY_EPSILON:float:0.25}
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -336,7 +336,7 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
-        policy_epsilon: ${POLICY_EPSILON:float:0.25}
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -461,7 +461,7 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
-        policy_epsilon: ${POLICY_EPSILON:float:0.25}
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -586,7 +586,7 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
-        policy_epsilon: ${POLICY_EPSILON:float:0.25}
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",

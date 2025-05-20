@@ -210,7 +210,7 @@ models:
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
       redeem_round_timeout: ${float:3600.0}
-      policy_epsilon: ${float:0.25}
+      policy_epsilon: ${float:0.30}
       store_path: ${str:/data/}
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
