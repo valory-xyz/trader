@@ -8,7 +8,7 @@ on:
 jobs:
   publish-packages:
     name: Push Packages
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [ubuntu-latest]
