@@ -106,7 +106,7 @@ BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
 
 
-MARGIN = 5
+MARGIN = 10
 
 
 class RandomnessApi(ApiSpecs):
@@ -157,9 +157,9 @@ class SharedState(BaseSharedState):
         round_timeout_overrides = {
             cast(EventType, event).ROUND_TIMEOUT: round_timeout for event in events
         }
-        round_timeout_overrides[
-            MechInteractEvent.ROUND_TIMEOUT
-        ] = params.mech_interact_round_timeout_seconds
+        round_timeout_overrides[MechInteractEvent.ROUND_TIMEOUT] = (
+            params.mech_interact_round_timeout_seconds
+        )
         reset_pause_timeout = params.reset_pause_duration + MARGIN
         event_to_timeout_overrides: EventToTimeoutMappingType = {
             **round_timeout_overrides,
