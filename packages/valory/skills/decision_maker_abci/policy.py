@@ -163,8 +163,23 @@ class EGreedyPolicy:
 
     @property
     def random_tool(self) -> str:
-        """Get the name of a tool randomly."""
-        return random.choice(list(self.accuracy_store.keys()))  # nosec
+        """Get the name of a tool randomly between the top 5."""
+        # From the accuracy store prepare a list of the top 5 tools with accuracy > 50%
+        # and randomly select one of them
+        tools = [
+            tool
+            for tool, acc_info in self.accuracy_store.items()
+            if acc_info.accuracy > 0.5
+        ]
+        if len(tools) > 5:
+            tools = random.sample(tools, 5)
+        if not tools:
+            # If no tools are available, return a random tool from the accuracy store
+            tools = list(self.accuracy_store.keys())
+        # Select a random tool from the filtered list
+        if len(tools) == 1:
+            return tools[0]
+        return random.choice(tools)  # nosec
 
     def is_quarantined(self, tool: str) -> bool:
         """Check if the policy is valid."""
