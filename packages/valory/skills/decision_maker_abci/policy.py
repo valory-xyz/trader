@@ -179,7 +179,7 @@ class EGreedyPolicy:
         # Select a random tool from the filtered list
         if len(tools) == 1:
             return tools[0]
-        return random.choice(tools)  # nosec
+        return random.choice(tools)
 
     def is_quarantined(self, tool: str) -> bool:
         """Check if the policy is valid."""
