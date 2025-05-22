@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeievsh6hlbqesxoyk3uq74kooptne5afq6nghcrw7eu5zn66iuxspi
+agent: valory/trader:0.1.0:bafybeid2tagykgamtpgykzo7rtzjch6ctuieyupsyfzwsji6vgnwvexygu
 number_of_agents: 4
 deployment:
   agent:
@@ -111,7 +111,7 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
-        policy_epsilon: ${POLICY_EPSILON:float:0.2}
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -149,7 +149,7 @@ type: skill
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
-        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
     benchmark_tool: &id003
@@ -336,7 +336,11 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
+<<<<<<< HEAD
         policy_epsilon: ${POLICY_EPSILON:float:0.2}
+=======
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
+>>>>>>> exp/tool-selection-randomness
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -374,7 +378,7 @@ type: skill
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
-        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
     benchmark_tool: *id003
@@ -461,7 +465,11 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
+<<<<<<< HEAD
         policy_epsilon: ${POLICY_EPSILON:float:0.2}
+=======
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
+>>>>>>> exp/tool-selection-randomness
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -499,7 +507,7 @@ type: skill
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
-        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
     benchmark_tool: *id003
@@ -586,7 +594,11 @@ type: skill
         minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
         redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
         slippage: ${SLIPPAGE:float:0.01}
+<<<<<<< HEAD
         policy_epsilon: ${POLICY_EPSILON:float:0.2}
+=======
+        policy_epsilon: ${POLICY_EPSILON:float:0.30}
+>>>>>>> exp/tool-selection-randomness
         store_path: ${STORE_PATH:str:/data/}
         irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
           "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -624,7 +636,7 @@ type: skill
         expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
         mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
         mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
-        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:18000}
+        tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
     benchmark_tool: *id003

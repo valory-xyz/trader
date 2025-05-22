@@ -50,10 +50,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigebq46oqz2mx2iajupr6p5pgm6z5pvfye5w6zypsseuqtvta7b4a
 - valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
+<<<<<<< HEAD
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidxqurfdkp3t6c4pnkgiy6z37vseletf7kfk7hptua6te4vqcynci
+=======
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigesftfnxm357k52ywsbk3rwfaijnxn2zfmuho6alvtotdpvwmgfu
+>>>>>>> exp/tool-selection-randomness
 - valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
-- valory/decision_maker_abci:0.1.0:bafybeihywsuqpi2gvwpy52tkiohv6tweaf6rbn55icrxetgatfy76utna4
-- valory/trader_abci:0.1.0:bafybeifpsrjdrls4t2or3zfy224wpbihmn7vs5m34aei2xxr7g5usmd46u
+- valory/decision_maker_abci:0.1.0:bafybeif6csmabg4wb4end4kvfk2acs5mbeg3c3f35aymte2d4mvs5mzotu
+- valory/trader_abci:0.1.0:bafybeigqjd2sx4zm6xgzypj3lrylmn7wid3amlcjwcvju26sa65b2miyq4
 - valory/staking_abci:0.1.0:bafybeiezi45x4bpejyqfx7iagdpi6wythpkd73i2pd65osgp5kdezszini
 - valory/check_stop_trading_abci:0.1.0:bafybeiextsbpuo6trix7f3a7nfcuzbtgisog5ayug3xbdzbge2i2lh2c44
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
@@ -210,7 +214,7 @@ models:
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
       redeem_round_timeout: ${float:3600.0}
-      policy_epsilon: ${float:0.2}
+      policy_epsilon: ${float:0.30}
       store_path: ${str:/data/}
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
@@ -246,7 +250,7 @@ models:
       expected_mech_response_time: ${int:300}
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
-      tool_quarantine_duration: ${int:18000}
+      tool_quarantine_duration: ${int:10800}
       default_chain_id: ${str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
   benchmarking_mode:

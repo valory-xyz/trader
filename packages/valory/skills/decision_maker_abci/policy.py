@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
-VOLUME_FACTOR_REGULARIZATION = 0.5
-UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.5, 100.5)
+VOLUME_FACTOR_REGULARIZATION = 0.15
+UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.5, 80.5)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
 
 
