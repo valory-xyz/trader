@@ -27,10 +27,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
 
-
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
-VOLUME_FACTOR_REGULARIZATION = 0.15
+VOLUME_FACTOR_REGULARIZATION = 0.25
 UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.5, 80.5)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
 

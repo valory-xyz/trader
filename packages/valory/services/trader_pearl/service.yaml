@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeid2tagykgamtpgykzo7rtzjch6ctuieyupsyfzwsji6vgnwvexygu
+agent: valory/trader:0.1.0:bafybeib5xhrtkojsfmerurkfyxfbr3wvgigivgyqm5c5pc6ahyoqohoni4
 number_of_agents: 1
 deployment:
   agent:
@@ -112,7 +112,7 @@ models:
       minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
       redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
       slippage: ${SLIPPAGE:float:0.01}
-      policy_epsilon: ${POLICY_EPSILON:float:0.30}
+      policy_epsilon: ${POLICY_EPSILON:float:0.25}
       store_path: ${STORE_PATH:str:/data/}
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-request-rag","prediction-request-reasoning-claude","prediction-url-cot-claude","claude-prediction-offline","claude-prediction-online","prediction-offline-sme","deepmind-optimization",
         "deepmind-optimization-strong", "openai-gpt-3.5-turbo", "openai-gpt-3.5-turbo-instruct",
