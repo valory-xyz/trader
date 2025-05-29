@@ -50,13 +50,13 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifyfet6y2fhxakycdcucz27hhtohe4s4riif3sbilychxhw2mbdjq
 - valory/termination_abci:0.1.0:bafybeiawespbj76orse4bufhazsnbp4bifujcnncsxyqekixmbsbrakpny
 - valory/transaction_settlement_abci:0.1.0:bafybeics2c75vunghgyeiarv73hhp66slvzyowsruamp3q4t3m2ggshfvy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiag42zm2nvxzgoj5gphrs6budf2nsiln4ouqvdecucsfryioitrxu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaqnvfiuniqh7mqc6s2z32mn4olo7dzhlmoyqqq76btoctq6bqxzq
 - valory/market_manager_abci:0.1.0:bafybeiezrmee75wa6aczlo2vyglge2bpzo5qtv44rzjttw7srt2o52z4sa
-- valory/decision_maker_abci:0.1.0:bafybeieqbhh6pniloebkxpqzkvfzd4r2zvfyhpym4tr5jrlof7putzkudq
-- valory/trader_abci:0.1.0:bafybeiff27encs5idv6i42pvc45febaadnrzltlnvl52f4ncymldmejrci
+- valory/decision_maker_abci:0.1.0:bafybeidh5b3ppifvz4jo4tcj3uvqrhx2hqfaoxrotcn6rfasg6zpkj47sq
+- valory/trader_abci:0.1.0:bafybeier5r35djwps7n43pjv5rw5zgh25kr7esz7saqayoh6nvol4uuxq4
 - valory/staking_abci:0.1.0:bafybeihr4l6clu24hhkt2eagxekarozw2urivobqermomgtwr5am23h45i
-- valory/check_stop_trading_abci:0.1.0:bafybeigvmpxrxejj72octqprmo5u2x3tsciic3mwcgupagytwchnrxlzvy
-- valory/mech_interact_abci:0.1.0:bafybeicmc6gnf6hxyyopat7mr6gheqkb4ch6mlrdep4447zblzbfx3nwgm
+- valory/check_stop_trading_abci:0.1.0:bafybeie7k6ejawb3mdadwigbvzmy3b32xemtpqx2nfu54k7vru3qmkgoe4
+- valory/mech_interact_abci:0.1.0:bafybeig3xrookh5suosd4vcf6d3c3r53p3kybh7qqpde6l5acyjajladl4
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
