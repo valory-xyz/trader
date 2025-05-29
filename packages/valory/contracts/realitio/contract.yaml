@@ -22,4 +22,8 @@ dependencies:
     version: ==2.28.1
   urllib3:
     version: ==1.26.16
+  eth-utils:
+    version: ==2.2.0
+  eth-abi:
+    version: ==4.0.0
 contracts: []
