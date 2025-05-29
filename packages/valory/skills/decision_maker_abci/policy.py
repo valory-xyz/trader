@@ -167,22 +167,18 @@ class EGreedyPolicy:
 
         # From the accuracy store prepare a list of the top 5 tools
         # and randomly select one of them
-        tools = [
+        tools_with_acc = [
             (tool, acc_info.accuracy) for tool, acc_info in self.accuracy_store.items()
         ]
-        # Sort the tools list of tuples by accuracy in descending order
-        tools.sort(key=lambda x: x[1], reverse=True)
-        # Extract the tool names
-        tools = [tool for tool, _ in tools]
+        tools_with_acc.sort(key=lambda x: x[1], reverse=True)
+        tool_names: List[str] = [tool for tool, _ in tools_with_acc]
 
-        if len(tools) > 5:
-            # take the top 5 tools
-            tools = tools[:5]
+        if len(tool_names) > 5:
+            tool_names = tool_names[:5]
 
-        # Select a random tool from the filtered list
-        if len(tools) == 1:
-            return tools[0]
-        return random.choice(tools)  # nosec
+        if len(tool_names) == 1:
+            return tool_names[0]
+        return random.choice(tool_names)  # nosec
 
     def is_quarantined(self, tool: str) -> bool:
         """Check if the policy is valid."""
