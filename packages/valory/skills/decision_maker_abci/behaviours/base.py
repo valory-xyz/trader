@@ -67,10 +67,10 @@ from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBeh
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     CONFIDENCE_FIELD,
+    MECH_TOOL_FIELD,
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
-    MECH_TOOL_FIELD,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
