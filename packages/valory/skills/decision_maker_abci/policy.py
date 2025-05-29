@@ -164,18 +164,21 @@ class EGreedyPolicy:
     @property
     def random_tool(self) -> str:
         """Get the name of a tool randomly between the top 5."""
-        # From the accuracy store prepare a list of the top 5 tools with accuracy > 50%
+
+        # From the accuracy store prepare a list of the top 5 tools
         # and randomly select one of them
         tools = [
-            tool
-            for tool, acc_info in self.accuracy_store.items()
-            if acc_info.accuracy > 0.5
+            (tool, acc_info.accuracy) for tool, acc_info in self.accuracy_store.items()
         ]
+        # Sort the tools list of tuples by accuracy in descending order
+        tools.sort(key=lambda x: x[1], reverse=True)
+        # Extract the tool names
+        tools = [tool for tool, _ in tools]
+
         if len(tools) > 5:
-            tools = random.sample(tools, 5)
-        if not tools:
-            # If no tools are available, return a random tool from the accuracy store
-            tools = list(self.accuracy_store.keys())
+            # take the top 5 tools
+            tools = tools[:5]
+
         # Select a random tool from the filtered list
         if len(tools) == 1:
             return tools[0]
@@ -257,7 +260,6 @@ class EGreedyPolicy:
 
         if not self.has_updated or random.random() < self.eps:  # nosec
             return self.random_tool
-
         return self.best_tool
 
     def tool_used(self, tool: str) -> None:
