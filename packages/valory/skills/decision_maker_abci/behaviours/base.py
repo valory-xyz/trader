@@ -70,6 +70,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
+    MECH_TOOL_FIELD,
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
@@ -662,6 +663,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _write_benchmark_results(
         self,
+        mech_tool: str,
         prediction_response: PredictionResponse,
         bet_amount: Optional[float] = None,
         liquidity_info: LiquidityInfo = INIT_LIQUIDITY_INFO,
@@ -686,6 +688,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     L1_START_FIELD,
                     L0_END_FIELD,
                     L1_END_FIELD,
+                    MECH_TOOL_FIELD,
                 )
                 row = ",".join(headers) + NEW_LINE
                 results_file.write(row)
@@ -704,6 +707,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 liquidity_info.l1_start,
                 liquidity_info.l0_end,
                 liquidity_info.l1_end,
+                mech_tool,
             )
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE

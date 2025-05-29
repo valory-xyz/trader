@@ -331,9 +331,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.shared_state.current_liquidity_prices = (
                 active_sampled_bet.outcomeTokenMarginalPrices
             )
-            self.shared_state.liquidity_cache[
-                question_id
-            ] = active_sampled_bet.scaledLiquidityMeasure
+            self.shared_state.liquidity_cache[question_id] = (
+                active_sampled_bet.scaledLiquidityMeasure
+            )
 
     def _calculate_new_liquidity(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
         """Calculate and return the new liquidity information."""
@@ -400,11 +400,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self.context.logger.info(log_message)
 
         # update the scaled liquidity Measure
-        self.shared_state.liquidity_cache[
-            market_id
-        ] = self._compute_scaled_liquidity_measure(
-            self.shared_state.current_liquidity_amounts,
-            self.shared_state.current_liquidity_prices,
+        self.shared_state.liquidity_cache[market_id] = (
+            self._compute_scaled_liquidity_measure(
+                self.shared_state.current_liquidity_amounts,
+                self.shared_state.current_liquidity_prices,
+            )
         )
 
         return liquidity_info
@@ -511,10 +511,15 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 bet.scaledLiquidityMeasure = self.shared_state.liquidity_cache[bet.id]
                 self.store_bets()
                 self._write_benchmark_results(
-                    prediction_response, bet_amount, liquidity_info
+                    self.synchronized_data.mech_tool,
+                    prediction_response,
+                    bet_amount,
+                    liquidity_info,
                 )
             else:
-                self._write_benchmark_results(prediction_response)
+                self._write_benchmark_results(
+                    self.synchronized_data.mech_tool, prediction_response
+                )
 
             self.context.logger.info("Increasing Mech call count by 1")
             self.shared_state.benchmarking_mech_calls += 1
