@@ -35,22 +35,21 @@ from web3.types import BlockIdentifier
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.base import AbciApp
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs, TypeCheckMixin
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
+from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.bets import Bet
-from packages.valory.skills.market_manager_abci.models import (
-    MarketManagerParams,
-    Subgraph,
-)
+from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 from packages.valory.skills.market_manager_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.market_manager_abci.models import Subgraph
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
