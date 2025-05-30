@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2024 Valory AG
+#   Copyright 2021-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -204,8 +204,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         strategy_key = "trading_strategy"
         if strategy_key in kwargs:
-            behaviour.shared_state.strategies_executables.get = (
-                strategies_executables_get_mock_wrapper(  # type: ignore
+            behaviour.shared_state.strategies_executables.get = (  # type: ignore
+                strategies_executables_get_mock_wrapper(
                     kwargs[strategy_key],
                     method_name,  # type: ignore
                 )
