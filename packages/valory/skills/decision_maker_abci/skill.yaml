@@ -90,8 +90,8 @@ contracts:
 - valory/erc20:0.1.0:bafybeigq5romc4t3tijx2nqwk5cv3utcoys27vmwy5zdv2wwp4abuc25eq
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiezyn4h4jov2m7dz6durnmpz7lvvdm6njz4h6c4oxl6thf44hmi74
-- valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
-- valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
+- valory/conditional_tokens:0.1.0:bafybeiai7zwtdab2izyitvxph42kwtbvx6n5skm3i6jijd2653xjkoqd24
+- valory/realitio:0.1.0:bafybeieggqkuslxiuapneygnhkhgatk5jvjbw6p7ltxaab6au466ikxm3e
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeibfqhrpvuaibi6pgwsrot3ybt77hf4itjw6pklwnpxi3wcrrg2gr4
 - valory/transfer_nft_condition:0.1.0:bafybeicfl4jldwjf6ngk3x4b36krcqogzbgqzs4zkzxipmtgveeefus264

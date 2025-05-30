@@ -22,8 +22,8 @@ contracts:
 - valory/market_maker:0.1.0:bafybeihogpo436ptujsdyppdrbvhft53zkfkmdnb7r2mu6brgpsg6qku5q
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeiezyn4h4jov2m7dz6durnmpz7lvvdm6njz4h6c4oxl6thf44hmi74
-- valory/conditional_tokens:0.1.0:bafybeibnzmqmeph4cj5vfh3s622mo2o5627vjjwc6bptrhj4dk65mzgvhe
-- valory/realitio:0.1.0:bafybeietgux6kkhdquspy35qera7gjwwqwrremmoeatjzwwokjb2lzsata
+- valory/conditional_tokens:0.1.0:bafybeiai7zwtdab2izyitvxph42kwtbvx6n5skm3i6jijd2653xjkoqd24
+- valory/realitio:0.1.0:bafybeieggqkuslxiuapneygnhkhgatk5jvjbw6p7ltxaab6au466ikxm3e
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeibfqhrpvuaibi6pgwsrot3ybt77hf4itjw6pklwnpxi3wcrrg2gr4
 - valory/service_staking_token:0.1.0:bafybeiarxffrwdq47rmydgffyxhe6ntfb5unp44yt47kxqg7fzc7vburni
@@ -50,10 +50,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeigebq46oqz2mx2iajupr6p5pgm6z5pvfye5w6zypsseuqtvta7b4a
 - valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia2pls7osrdsxs6gtxgo6vbtstfc4ahjnml47viowl4b4zwkwg7ly
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie5ev22b3c77mxrg3jh6fgkgmmfoqm3tcolwwkzboyb6fxwnzo4by
 - valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
-- valory/decision_maker_abci:0.1.0:bafybeihnkp3hl5w64g3hrbbwxyrl57sz2ghxe4d4s3hi723wcab7afpyhy
-- valory/trader_abci:0.1.0:bafybeiajdvpytcvcqxi4wwm7n6zozjcsgmm4tsh5cc4fyt4wxs46dbw2d4
+- valory/decision_maker_abci:0.1.0:bafybeicizg7bkr4m4ygcg7hufx6wmrezer2si32srfv6vj67uheiwlhsii
+- valory/trader_abci:0.1.0:bafybeie227yrratklio5mk65dndrcqktrixu473tx3g6zc5kcpid72c7tu
 - valory/staking_abci:0.1.0:bafybeiezi45x4bpejyqfx7iagdpi6wythpkd73i2pd65osgp5kdezszini
 - valory/check_stop_trading_abci:0.1.0:bafybeiextsbpuo6trix7f3a7nfcuzbtgisog5ayug3xbdzbge2i2lh2c44
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
