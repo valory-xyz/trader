@@ -28,7 +28,6 @@ from pathlib import Path
 from string import Template
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
-
 from aea.skills.base import Model, SkillContext
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
