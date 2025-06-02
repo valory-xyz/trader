@@ -24,7 +24,7 @@ import json
 from abc import ABC
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, Generator, List, Optional, Tuple, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -169,7 +169,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Get the mech's hash."""
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=cast(str, self.params.agent_registry_address),
+            contract_address=self.params.agent_registry_address,
             contract_public_id=AgentRegistryContract.contract_id,
             contract_callable="get_hash",
             data_key="hash",
