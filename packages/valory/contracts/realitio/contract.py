@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,20 +18,24 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the Realitio_v2_1 contract definition."""
+
 import concurrent.futures
 import logging
-from typing import List, Tuple, Union, Dict, Callable, Any
+from typing import List, Tuple, Union, Dict, Callable, Any, Optional, Sequence
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from eth_typing import ChecksumAddress
+from eth_utils import event_abi_to_log_topic
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
+from web3._utils.events import get_event_data
+from web3.eth import Eth
+from web3.contract import Contract as W3Contract
 from web3.exceptions import ContractLogicError
-from web3.types import BlockIdentifier
-
+from web3.types import BlockIdentifier, FilterParams, ABIEvent, _Hash32, LogReceipt, EventData
 
 ClaimParamsType = Tuple[
     List[bytes], List[ChecksumAddress], List[int], List[bytes]
@@ -65,6 +69,29 @@ def build_question(question_data: Dict) -> str:
     )
 
 
+def get_entries(
+    eth: Eth,
+    contract_instance: W3Contract,
+    event_abi: ABIEvent,
+    topics: List[Optional[Union[_Hash32, Sequence[_Hash32]]]],
+    from_block: BlockIdentifier = "earliest",
+    to_block: BlockIdentifier = "latest",
+) -> List[EventData]:
+    """Helper method to extract the events."""
+    event_topic = event_abi_to_log_topic(event_abi)
+    topics.insert(0, event_topic)
+
+    filter_params: FilterParams = {
+        "fromBlock": from_block,
+        "toBlock": to_block,
+        "address": contract_instance.address,
+        "topics": topics,
+    }
+
+    logs = eth.get_logs(filter_params)
+    return [get_event_data(eth.codec, event_abi, log) for log in logs]
+
+
 class RealitioContract(Contract):
     """The Realitio_v2_1 smart contract."""
 
@@ -82,7 +109,7 @@ class RealitioContract(Contract):
             )
 
             try:
-                # Wait for the result with a 5-minute timeout
+                # Wait for the result with a timeout
                 data = future.result(timeout=timeout)
             except TimeoutError:
                 # Handle the case where the execution times out
@@ -119,24 +146,21 @@ class RealitioContract(Contract):
         timeout: float = FIVE_MINUTES,
     ) -> Dict[str, Union[str, list]]:
         """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
+        eth = ledger_api.api.eth
         contract_instance = cls.get_instance(ledger_api, contract_address)
+        event_abi = contract_instance.events.LogNewAnswer().abi
+        topics = [question_id]
 
         def get_claim_params() -> Any:
             """Get claim params."""
             try:
-                answer_filter = contract_instance.events.LogNewAnswer.build_filter()
-                answer_filter.fromBlock = from_block
-                answer_filter.toBlock = to_block
-                answer_filter.args.question_id.match_single(question_id)
-                answered = list(answer_filter.deploy(ledger_api.api).get_all_entries())
-                return answered
+                return get_entries(eth, contract_instance, event_abi, topics, from_block, to_block)
             except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
-                msg = (
+                return (
                     "The RPC timed out! This usually happens if the filtering is too wide. "
                     f"The service tried to filter from block {from_block} to {to_block}. "
                     f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
                 )
-                return msg
 
         answered, err = cls.execute_with_timeout(get_claim_params, timeout=timeout)
         if err is not None:
@@ -351,19 +375,17 @@ class RealitioContract(Contract):
         to_block: BlockIdentifier = "latest",
     ) -> JSONLike:
         """Get questions."""
-        # TODO: consider using multicall2 or constructor trick instead of filters
+        eth = ledger_api.api.eth
         contract = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        entries = contract.events.LogNewQuestion.create_filter(
-            fromBlock=from_block,
-            toBlock=to_block,
-            argument_filters=dict(question_id=question_ids),
-        ).get_all_entries()
+        event_abi = contract.events.LogNewQuestion().abi
+        topics = [question_ids]
+        entries = get_entries(eth, contract, event_abi, topics, from_block, to_block)
         events = list(
             dict(
-                tx_hash=entry.transactionHash.hex(),
-                block_number=entry.blockNumber,
+                tx_hash=entry["transactionHash"].hex(),
+                block_number=entry["blockNumber"],
                 question_id=entry["args"]["question_id"],
                 user=entry["args"]["user"],
                 template_id=entry["args"]["template_id"],
