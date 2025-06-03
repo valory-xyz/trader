@@ -256,6 +256,7 @@ class EGreedyPolicy:
 
         if not self.has_updated or random.random() < self.eps:  # nosec
             return self.random_tool
+
         return self.best_tool
 
     def tool_used(self, tool: str) -> None:

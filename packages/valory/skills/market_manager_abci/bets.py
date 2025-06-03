@@ -33,7 +33,6 @@ P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
 INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
-MECH_TOOL_FIELD = "mech_tool"
 
 
 class QueueStatus(Enum):

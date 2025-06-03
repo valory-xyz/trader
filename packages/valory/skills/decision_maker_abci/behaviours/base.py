@@ -67,7 +67,6 @@ from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBeh
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     CONFIDENCE_FIELD,
-    MECH_TOOL_FIELD,
     P_NO_FIELD,
     P_YES_FIELD,
     PredictionResponse,
@@ -93,6 +92,7 @@ NEW_LINE = "\n"
 QUOTE = '"'
 TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
+MECH_TOOL_FIELD = "mech_tool"
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:

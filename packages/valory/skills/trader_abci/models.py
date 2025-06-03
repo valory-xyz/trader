@@ -106,7 +106,7 @@ BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
 
 
-MARGIN = 10
+MARGIN = 5
 
 
 class RandomnessApi(ApiSpecs):
