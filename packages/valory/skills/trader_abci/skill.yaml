@@ -27,11 +27,11 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
-- valory/decision_maker_abci:0.1.0:bafybeiddaipptxpu3t2f7zbzspwgbdvcy4ycxp6vrzitcdfnocl5vs3fey
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieubispowosdqhgv5tsvlvxqlsw7avhj2dizuzr7obuecuxx2vv2q
+- valory/decision_maker_abci:0.1.0:bafybeics52zaevvoqzili2n6mdkqgzgdglgph46v253k5dl5rhoa6wv7tm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigfhlnjo7yow5qduovaapsmy6y5afohepiafsbpri6yjkvmj3riqy
 - valory/staking_abci:0.1.0:bafybeihxwstadzhvy6gavx3uif5fcsikodw4ud4gows7tidbmw7gip3isu
-- valory/check_stop_trading_abci:0.1.0:bafybeig3dl6776r33huzgecj4r4enolhv4nzbxp4c4cqi3kgu6b2byiiha
-- valory/mech_interact_abci:0.1.0:bafybeifgoxlvprk76kkrz55qqwh6nnu62nkbzonda3hbnbjz3sjh2gnhsy
+- valory/check_stop_trading_abci:0.1.0:bafybeifa6ey3l3w3l7dpvb5pd54csrptqs7h3yetytxcpzrzwjvl5sd7ye
+- valory/mech_interact_abci:0.1.0:bafybeiaklbkbsonxuccq5kkerpjbuwxaa2yxmoxrgv3aab4hffch6bcosm
 behaviours:
   main:
     args: {}
