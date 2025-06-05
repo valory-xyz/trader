@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the conditional tokens contract definition."""
-import concurrent.futures
-from typing import List, Any, Dict, Union, Callable
 
+import concurrent.futures
+from typing import List, Any, Dict, Union, Callable, Literal, Sequence, Optional
+
+from eth_utils import event_abi_to_log_topic
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from aea.common import JSONLike
@@ -28,11 +30,61 @@ from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from hexbytes import HexBytes
-from web3.types import BlockIdentifier
-
+from web3._utils.events import get_event_data
+from web3.contract import Contract as W3Contract
+from web3.eth import Eth
+from web3.types import BlockIdentifier, FilterParams, _Hash32, LogReceipt, ABIEvent
 
 FIVE_MINUTES = 300.0
 DEFAULT_OUTCOME_SLOT = 2
+TOPIC_BYTES = 32
+TOPIC_BYTEORDER: Literal["big"] = "big"
+
+
+def pad_int_for_topic(value: int) -> HexBytes:
+    """Convert an int to a 32-byte big-endian HexBytes object for use in a topic."""
+    return HexBytes(value.to_bytes(TOPIC_BYTES, TOPIC_BYTEORDER))
+
+
+def update_from_event(redeeming: Dict[str, Any], payouts: Dict[str, int]) -> None:
+    """Update payouts dict using a redemption event log."""
+    args = redeeming.get("args", {})
+    condition_id = args.get("conditionId")
+    payout = args.get("payout", 0)
+
+    if not condition_id or payout == 0:
+        return
+
+    if isinstance(condition_id, bytes):
+        condition_id = condition_id.hex()
+
+    if isinstance(payout, bytes):
+        payout = int.from_bytes(payout, byteorder=TOPIC_BYTEORDER)
+
+    payouts[condition_id] = int(payout)
+
+
+def get_logs(
+    eth: Eth,
+    contract_instance: W3Contract,
+    event_abi: ABIEvent,
+    topics: List[Optional[Union[_Hash32, Sequence[_Hash32]]]],
+    from_block: BlockIdentifier = "earliest",
+    to_block: BlockIdentifier = "latest",
+) -> List[LogReceipt]:
+    """Helper method to extract the events."""
+    event_topic = event_abi_to_log_topic(event_abi)
+    topics.insert(0, event_topic)
+
+    filter_params: FilterParams = {
+        "fromBlock": from_block,
+        "toBlock": to_block,
+        "address": contract_instance.address,
+        "topics": topics,
+    }
+
+    return eth.get_logs(filter_params)
+
 
 class ConditionalTokensContract(Contract):
     """The ConditionalTokens smart contract."""
@@ -51,7 +103,7 @@ class ConditionalTokensContract(Contract):
             )
 
             try:
-                # Wait for the result with a 5-minute timeout
+                # Wait for the result with a timeout
                 data = future.result(timeout=timeout)
             except TimeoutError:
                 # Handle the case where the execution times out
@@ -81,33 +133,48 @@ class ConditionalTokensContract(Contract):
     ) -> JSONLike:
         """Filter to find out whether a position has already been redeemed."""
 
+        eth = ledger_api.api.eth
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        event_abi = contract_instance.events.PayoutRedemption().abi
+        to_checksum = ledger_api.api.to_checksum_address
+        redeemer_checksummed = to_checksum(redeemer)
+        collateral_tokens_checksummed = [
+            to_checksum(token) for token in collateral_tokens
+        ]
+        topics = [
+            redeemer_checksummed,
+            collateral_tokens_checksummed,
+            parent_collection_ids,
+        ]
+
         def get_redeem_events() -> Union[List[Dict[str, Any]], str]:
             """Get the redeem events."""
-            contract_instance = cls.get_instance(ledger_api, contract_address)
-            to_checksum = ledger_api.api.to_checksum_address
-            redeemer_checksummed = to_checksum(redeemer)
-            collateral_tokens_checksummed = [
-                to_checksum(token) for token in collateral_tokens
-            ]
             try:
-                payout_filter = contract_instance.events.PayoutRedemption.build_filter()
-                payout_filter.args.redeemer.match_single(redeemer_checksummed)
-                payout_filter.args.collateralToken.match_any(*collateral_tokens_checksummed)
-                payout_filter.args.parentCollectionId.match_any(*parent_collection_ids)
-                payout_filter.args.conditionId.match_any(*condition_ids)
-                payout_filter.args.indexSets.match_any(*index_sets)
-                payout_filter.fromBlock = from_block
-                payout_filter.toBlock = to_block
-                redeemed = list(payout_filter.deploy(ledger_api.api).get_all_entries())
-                return redeemed
-
+                logs = get_logs(
+                    eth, contract_instance, event_abi, topics, from_block, to_block
+                )
             except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
-                msg = (
+                return (
                     "The RPC timed out! This usually happens if the filtering is too wide. "
                     f"The service tried to filter from block {from_block} to {to_block}. "
                     f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
                 )
-                return msg
+
+            # we need to manually filter the unindexed inputs as we cannot add them in the topics of the filter params
+            padded_index_sets = [
+                [pad_int_for_topic(i) for i in indexes] for indexes in index_sets
+            ]
+            entries = [
+                entry
+                for log in logs
+                if (entry := get_event_data(eth.codec, event_abi, log))["args"][
+                    "conditionId"
+                ]
+                in condition_ids
+                and entry["args"]["indexSets"] in padded_index_sets
+            ]
+
+            return entries
 
         redeemed, err = cls.execute_with_timeout(get_redeem_events, timeout)
         if err is not None:
@@ -115,13 +182,7 @@ class ConditionalTokensContract(Contract):
 
         payouts = {}
         for redeeming in redeemed:
-            args = redeeming.get("args", {})
-            condition_id = args.get("conditionId", None)
-            payout = args.get("payout", 0)
-            if condition_id is not None and payout > 0:
-                if isinstance(condition_id, bytes):
-                    condition_id = condition_id.hex()
-                payouts[condition_id] = payout
+            update_from_event(redeeming, payouts)
 
         return dict(payouts=payouts)
 
@@ -301,37 +362,35 @@ class ConditionalTokensContract(Contract):
         cls,
         ledger_api: LedgerApi,
         contract_address: str,
-        condition_ids: List[bytes],
+        condition_ids: List[HexBytes],
         from_block: BlockIdentifier = "earliest",
         to_block: BlockIdentifier = "latest",
     ) -> JSONLike:
         """Get condition preparation events."""
+        eth = ledger_api.api.eth
         contract_instance = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        entries = (
-            contract_instance.events.ConditionPreparation()
-            .create_filter(
-                fromBlock=from_block,
-                toBlock=to_block,
-                argument_filters={
-                    "conditionId": condition_ids,
-                },
-            )
-            .get_all_entries()
+        event_abi = contract_instance.events.ConditionPreparation().abi
+        topics = [condition_ids]
+
+        logs = get_logs(
+            eth, contract_instance, event_abi, topics, from_block, to_block
         )
-        events = list(
-            dict(
-                tx_hash=entry.transactionHash.hex(),
-                block_number=entry.blockNumber,
-                condition_id=entry["args"]["conditionId"],
-                oracle=entry["args"]["oracle"],
-                question_id=entry["args"]["questionId"],
-                outcome_slot_count=entry["args"]["outcomeSlotCount"],
-            )
+        entries = [get_event_data(eth.codec, event_abi, log) for log in logs]
+        events = [
+            {
+                "tx_hash": entry["transactionHash"].hex(),
+                "block_number": entry["blockNumber"],
+                "condition_id": entry["args"]["conditionId"],
+                "oracle": entry["args"]["oracle"],
+                "question_id": entry["args"]["questionId"],
+                "outcome_slot_count": entry["args"]["outcomeSlotCount"],
+            }
             for entry in entries
-        )
-        return dict(data=events)
+        ]
+
+        return {"data": events}
 
     @staticmethod
     def get_partitions(count: int) -> List[int]:
@@ -400,7 +459,7 @@ class ConditionalTokensContract(Contract):
         condition_id: bytes,
         outcome_slot_count: int,
         amount: int,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> JSONLike:
         """Build mergePositions tx."""
         instance = cls.get_instance(ledger_api, contract_address)

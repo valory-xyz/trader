@@ -58,3 +58,11 @@ packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:238
 packages/valory/skills/mech_interact_abci/skill.yaml:generic-api-key:160
 packages/valory/skills/trader_abci/skill.yaml:generic-api-key:166
 packages/valory/skills/trader_abci/skill.yaml:generic-api-key:177
+dcd0816e4f7c17bb8e6e5ef57bf95fd9b947ecc8:packages/valory/skills/trader_abci/skill.yaml:generic-api-key:254
+dcd0816e4f7c17bb8e6e5ef57bf95fd9b947ecc8:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:216
+dcd0816e4f7c17bb8e6e5ef57bf95fd9b947ecc8:packages/valory/skills/decision_maker_abci/skill.yaml:generic-api-key:239
+7cb24a6ba2423f65a946b163268d09308ca00a00:trader_backup/vendor/valory/connections/abci/tests/test_abci.py:generic-api-key:373
+7cb24a6ba2423f65a946b163268d09308ca00a00:trader_backup/vendor/valory/connections/abci/tests/test_abci.py:generic-api-key:523
+7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/connections/abci/tests/test_abci.py:generic-api-key:373
+7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/connections/abci/tests/test_abci.py:generic-api-key:523
+9c3fa1a89cd918ca1a1c74ad5efd48f9ec106c34:packages/valory/skills/market_manager_abci/graph_tooling/requests.py:generic-api-key:160
