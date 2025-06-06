@@ -74,6 +74,7 @@ class DecisionRequestPayload(BaseTxPayload):
 
     mech_requests: Optional[str] = None
     mocking_mode: Optional[bool] = None
+    decision_request_timestamp: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,7 @@ class BetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
     wallet_balance: Optional[int] = None
+    token_balance: Optional[int] = None
 
 
 @dataclass(frozen=True)

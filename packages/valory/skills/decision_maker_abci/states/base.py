@@ -262,6 +262,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         return int(wallet_balance)
 
     @property
+    def token_balance(self) -> int:
+        """Get the balance of the token."""
+        token_balance = self.db.get("token_balance", 0)
+        if token_balance is None:
+            return 0
+        return int(token_balance)
+
+    @property
     def decision_receive_timestamp(self) -> int:
         """Get the timestamp of the mech decision."""
         decision_receive_timestamp = self.db.get("decision_receive_timestamp", 0)
@@ -283,6 +291,24 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def after_bet_attempt(self) -> bool:
         """Get the service's staking state."""
         return bool(self.db.get("after_bet_attempt", False))
+
+    @property
+    def decision_request_timestamp(self) -> int:
+        """Get the timestamp of the mech request."""
+        decision_request_timestamp = self.db.get("decision_request_timestamp", 0)
+
+        if decision_request_timestamp is None:
+            return 0
+        return int(decision_request_timestamp)
+
+    @property
+    def mech_requests_since_last_cp(self) -> int:
+        """Get the skip trading status."""
+        mech_requests_since_last_cp = self.db.get("mech_requests_since_last_cp")
+        if mech_requests_since_last_cp:
+            return int(mech_requests_since_last_cp)
+        else:
+            return 0
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):
