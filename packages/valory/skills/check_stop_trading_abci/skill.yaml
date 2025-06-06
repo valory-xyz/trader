@@ -8,18 +8,18 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeigxqp4t6n653hbazk53vgjycpji2rrf62ex7flzv4mm5tie3mutp4
+  behaviours.py: bafybeihhvdl36wjzcfjbhyjvboyi4qmzowuru7rgzhwnrbhfc2v4k27kcm
   dialogues.py: bafybeifurggab64rdwdsvvvigqwctr67w2gv7zlo7lsejovsjol56dlt3y
   fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
   handlers.py: bafybeihphydx4llyft3cycgc5e4eyjp7ccpgwegn2jbsnqi4tcblsr7xsa
   models.py: bafybeihsszflt76bhgeizw6bbekchzhxir4iqkwutlvbtnocsfwcsoxwdq
-  payloads.py: bafybeidrb4rndjiuf6kqrnfku35ql7uavdzqbnambzdtqh6kj4w4nvkncm
-  rounds.py: bafybeibdakk3g5waukcbjil2ljr6ooztsjfkzg7qtdwswxkh7bbnhncd7y
+  payloads.py: bafybeidftqypbljtwwpwqap2qmobarpmqzbsoymsmtddzbdfbfqcfnplwi
+  rounds.py: bafybeiftksukbodc6ukdwqefe4kufayvwaohojcenilqy64lqbmifs4444
   tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
   tests/test_dialogues.py: bafybeia5ac27w7ijx2nyx5dqyrnv4troo4572gjq7nrcxdncexoxucnqti
   tests/test_handlers.py: bafybeigpmtx2hyunzn6nxk2x4bvvybek7jvuhbk34fqlj7fgfsszcoqhxy
-  tests/test_payloads.py: bafybeih7q7kdfxsf4ejxxqwjumwglfwwcrbqcjnuy42mkhnfwccxuhiviy
-  tests/test_rounds.py: bafybeidgbc7mi7r2fpk7ak6xceohuoq2zkpkberkokcb3sb2uzwkxoluae
+  tests/test_payloads.py: bafybeihu7bgkwsgm3ob5u3taswgeiliojn5z4swbayr6aj3rkypbxz4kgu
+  tests/test_rounds.py: bafybeiciakhqsm6zps2g54otmabtopujfwb5hw5aoveiwdnnvqcbtkmvcu
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -28,7 +28,7 @@ protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
-- valory/staking_abci:0.1.0:bafybeihxwstadzhvy6gavx3uif5fcsikodw4ud4gows7tidbmw7gip3isu
+- valory/staking_abci:0.1.0:bafybeicggaquqqjcjgbwo3onwbwmqxcyl7mb4mxv73szn65djbtzhseb3m
 behaviours:
   main:
     args: {}
