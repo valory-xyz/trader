@@ -40,3 +40,6 @@ class CallCheckpointPayload(MultisigTxPayload):
     service_staking_state: int
     ts_checkpoint: int
     is_checkpoint_reached: bool
+    available_slot_count: int
+    staking_contract_name: str
+    epoch_end_ts: int

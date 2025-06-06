@@ -617,7 +617,7 @@ class HttpHandler(BaseHttpHandler):
         """Calculate the remaining mech calls needed to reach the staking KPI."""
         return (
             N_MECH_CALLS_FOR_STAKING_KPI
-            - self.synchronized_data.n_mech_requests_this_epoch
+            - self.synchronized_data.mech_requests_since_last_cp
         )
 
     def calculate_epoch_time_remaining(self) -> int:

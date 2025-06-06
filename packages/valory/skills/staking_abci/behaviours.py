@@ -21,6 +21,7 @@
 
 from abc import ABC
 from datetime import datetime, timedelta
+import json
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, Union, cast
 
@@ -40,6 +41,9 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     TimeoutException,
 )
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    WaitableConditionType,
+)
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.staking_abci.rounds import (
@@ -54,9 +58,6 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
 
-WaitableConditionType = Generator[None, None, bool]
-
-
 ETH_PRICE = 0
 # setting the safe gas to 0 means that all available gas will be used
 # which is what we want in most cases
@@ -69,6 +70,8 @@ CHECKPOINT_FILENAME = "checkpoint.txt"
 READ_MODE = "r"
 WRITE_MODE = "w"
 
+GET = "GET"
+
 
 class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     """Base behaviour that contains methods to interact with the staking contract."""
@@ -76,8 +79,13 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the behaviour."""
         super().__init__(**kwargs)
+        self._service_ids: List[str] = []
+        self._max_num_services: int = 0
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
+        self._staking_contract_name: str = ""
+        self._staking_contract_metadata_hash: Union[str, bytes] = b""
+        self._epoch_end_ts: int = 0
 
     @property
     def params(self) -> StakingParams:
@@ -98,6 +106,16 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def staking_contract_address(self) -> str:
         """Get the staking contract address."""
         return self.params.staking_contract_address
+
+    @property
+    def staking_contract_name(self) -> str:
+        """Get the staking contract name."""
+        return self._staking_contract_name
+
+    @staking_contract_name.setter
+    def staking_contract_name(self, name: str) -> None:
+        """Set the staking contract name."""
+        self._staking_contract_name = name
 
     @property
     def mech_activity_checker_contract(self) -> str:
@@ -170,6 +188,59 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def service_info(self, service_info: Tuple[Any, Any, Tuple[Any, Any]]) -> None:
         """Set the service info."""
         self._service_info = service_info
+
+    @property
+    def max_num_services(self) -> int:
+        """Get the max number of services."""
+        return self._max_num_services
+
+    @max_num_services.setter
+    def max_num_services(self, max_num_services: int) -> None:
+        """Set the max number of services."""
+        self._max_num_services = max_num_services
+
+    @property
+    def service_ids(self) -> List[str]:
+        """Get the service ids staked on the contract."""
+        return self._service_ids
+
+    @service_ids.setter
+    def service_ids(self, service_ids: List[str]) -> None:
+        """Set the service ids staked on the contract."""
+        self._service_ids = service_ids
+
+    @property
+    def available_staking_slots(self) -> int:
+        """Get the number of available staking slots"""
+        if self._service_ids is None or self._max_num_services is None:
+            return 0
+        return self.max_num_services - len(self._service_ids)
+
+    @property
+    def staking_contract_metadata_hash(self) -> str:
+        """Get the staking contract metadata hash."""
+        return (
+            self._staking_contract_metadata_hash.hex()
+            if isinstance(self._staking_contract_metadata_hash, bytes)
+            else self._staking_contract_metadata_hash
+        )
+
+    @staking_contract_metadata_hash.setter
+    def staking_contract_metadata_hash(self, metadata_hash: Union[str, bytes]) -> None:
+        """Set the staking contract metadata hash."""
+        self._staking_contract_metadata_hash = (
+            metadata_hash.hex() if isinstance(metadata_hash, bytes) else metadata_hash
+        )
+
+    @property
+    def epoch_end_ts(self) -> int:
+        """Get the epoch end timestamp."""
+        return self._epoch_end_ts
+
+    @epoch_end_ts.setter
+    def epoch_end_ts(self, epoch_end_ts: int) -> None:
+        """Set the epoch end timestamp."""
+        self._epoch_end_ts = epoch_end_ts
 
     def wait_for_condition_with_sleep(
         self,
@@ -355,6 +426,58 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         )
         return status
 
+    def _get_staking_contract_metadata_hash(self) -> WaitableConditionType:
+        """Get the staking contract metadata hash."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_metadata_hash",
+            placeholder=get_name(
+                CallCheckpointBehaviour.staking_contract_metadata_hash
+            ),
+        )
+        return status
+
+    def _get_staking_contract_name(self) -> WaitableConditionType:
+        """Get the staking contract name."""
+        self.context.logger.info("Reading staking contract name from IPFS...")
+        staking_contract_metadata_hash = self.staking_contract_metadata_hash
+        staking_contract_metadata_hash_formatted = (
+            staking_contract_metadata_hash.replace("0x", CID_PREFIX)
+        )
+        staking_contract_link = (
+            self.params.ipfs_address + staking_contract_metadata_hash_formatted
+        )
+        response = yield from self.get_http_response(
+            method=GET, url=staking_contract_link
+        )
+        if response.status_code != OK_CODE:
+            self.context.logger.error(
+                f"Could not retrieve data from the url {staking_contract_link}. "
+                f"Received status code {response.status_code}."
+            )
+            return False
+
+        self.context.logger.info("Parsing staking contract name...")
+        try:
+            response_body = response.body.decode()
+            response_json = json.loads(response_body)
+            self.staking_contract_name = response_json["name"]
+        except (ValueError, TypeError, KeyError) as e:
+            self.context.logger.error(
+                f"Could not parse response from ipfs server, "
+                f"the following error was encountered {type(e).__name__}: {e}"
+            )
+            return False
+
+        return True
+
+    def _get_epoch_end(self) -> WaitableConditionType:
+        """Get the epoch end."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_epoch_end",
+            placeholder=get_name(CallCheckpointBehaviour.epoch_end_ts),
+        )
+        return status
+
 
 class CallCheckpointBehaviour(
     StakingInteractBaseBehaviour
@@ -524,7 +647,14 @@ class CallCheckpointBehaviour(
 
             checkpoint_tx_hex = None
             if self.service_staking_state == StakingState.STAKED:
-                yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
+                steps = [
+                    self._get_next_checkpoint,
+                    self._get_staking_contract_metadata_hash,
+                    self._get_staking_contract_name,
+                    self._get_epoch_end,
+                ]
+                for step in steps:
+                    yield from self.wait_for_condition_with_sleep(step)
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
 
@@ -540,6 +670,9 @@ class CallCheckpointBehaviour(
                 self.service_staking_state.value,
                 self.ts_checkpoint,
                 is_checkpoint_reached,
+                self.available_staking_slots,
+                self.staking_contract_name,
+                self.epoch_end_ts,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
