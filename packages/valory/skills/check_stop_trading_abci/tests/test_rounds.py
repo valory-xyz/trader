@@ -84,7 +84,9 @@ def get_participant_to_votes(
     """participant_to_votes"""
 
     return {
-        participant: CheckStopTradingPayload(sender=participant, vote=vote)
+        participant: CheckStopTradingPayload(
+            sender=participant, vote=vote, mech_requests_since_last_cp=0
+        )
         for participant in participants
     }
 
@@ -102,10 +104,13 @@ def get_participant_to_votes_serialized(
 def get_payloads(
     payload_cls: Type[CheckStopTradingPayload],
     data: Optional[str],
+    mech_requests_since_last_cp: int,
 ) -> Mapping[str, CheckStopTradingPayload]:
     """Get payloads."""
     return {
-        participant: payload_cls(participant, data is not None)
+        participant: payload_cls(
+            participant, data is not None, mech_requests_since_last_cp
+        )
         for participant in get_participants()
     }
 
@@ -150,7 +155,8 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
             self._test_round(
                 test_round=test_round,
                 round_payloads=get_participant_to_votes(self.participants, vote=vote),
-                synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
+                synchronized_data_update_fn=lambda _synchronized_data,
+                _: _synchronized_data.update(
                     participant_to_votes=get_participant_to_votes_serialized(
                         self.participants, vote=vote
                     )
@@ -198,6 +204,7 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
                 payloads=get_payloads(
                     payload_cls=CheckStopTradingPayload,
                     data=get_dummy_check_stop_trading_payload_serialized(),
+                    mech_requests_since_last_cp=0,
                 ),
                 final_data={},
                 event=Event.SKIP_TRADING,
@@ -217,6 +224,7 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
                 payloads=get_payloads(
                     payload_cls=CheckStopTradingPayload,
                     data=get_dummy_check_stop_trading_payload_serialized(),
+                    mech_requests_since_last_cp=0,
                 ),
                 final_data={},
                 event=Event.NO_MAJORITY,

@@ -65,6 +65,15 @@ class SynchronizedData(BaseSynchronizedData):
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
 
+    @property
+    def mech_requests_since_last_cp(self) -> int:
+        """Get the skip trading status."""
+        mech_requests_since_last_cp = self.db.get("mech_requests_since_last_cp")
+        if mech_requests_since_last_cp:
+            return int(mech_requests_since_last_cp)
+        else:
+            return 0
+
 
 class CheckStopTradingRound(VotingRound):
     """A round for checking stop trading conditions."""
