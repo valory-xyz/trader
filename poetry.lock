@@ -2538,6 +2538,21 @@ dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
+name = "prometheus-client"
+version = "0.21.0"
+description = "Python client for the Prometheus monitoring system."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "prometheus_client-0.21.0-py3-none-any.whl", hash = "sha256:4fa6b4dd0ac16d58bb587c04b1caae65b8c5043e85f778f42f5f632f6af2e166"},
+    {file = "prometheus_client-0.21.0.tar.gz", hash = "sha256:96c83c606b71ff2b0a433c98889d275f51ffec6c5e267de37c7a2b5c9aa9233e"},
+]
+
+[package.extras]
+twisted = ["twisted"]
+
+[[package]]
 name = "propcache"
 version = "0.2.0"
 description = "Accelerated property cache"
@@ -4020,4 +4035,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "<3.12,>=3.8"
-content-hash = "b6b3a5d1f8a32bca421c74bd137d20a25ccddf510ad3fd05be4f9c241dfaed0b"
+content-hash = "4942ede18040aed3e92a853423c6f7e941aef4592882b952134c491a9488b3ee"

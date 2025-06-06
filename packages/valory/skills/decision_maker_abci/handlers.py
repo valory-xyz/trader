@@ -26,7 +26,9 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
 
+import prometheus_client
 from aea.protocols.base import Message
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -559,7 +561,7 @@ class HttpHandler(BaseHttpHandler):
         time_since_last_mech_tx_attempt = (
             self.calculate_time_since_last_mech_tx_attempt()
         )
-        n_total_mech_requests = self.synchronized_data.n_mech_requests_this_epoch
+        n_total_mech_requests = self.synchronized_data.mech_requests_since_last_cp
         n_mech_requests_to_staking_kpi = (
             self.calculate_remaining_mech_calls_to_staking_kpi()
         )
