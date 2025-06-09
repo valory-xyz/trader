@@ -12,15 +12,16 @@ fingerprint:
   composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
   fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
-  handlers.py: bafybeigrqsgqupy6kds2vqieacsymx3eucntwl52rlgi4cu4lrb6bglhti
+  handlers.py: bafybeifi2zjaoibg6ctbm7fcogyz5vpiwv26im4xgtwfmajwks32erjriq
   models.py: bafybeie342ympii4zkf6cp5n7tfnwql2ftdodfwlwzgiivi43iyqia37vy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/tests_handlers.py: bafybeifxvd63qblqpsmyvj7k4dbqubab2pshao5zd2zs2srs7rt32zvciu
+  tests/tests_handlers.py: bafybeievjerhfb5pljn2t2x6brnqi4tap3d5wgvz2fuqqwiy6qlmzylbxe
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols: []
 skills:
+<<<<<<< HEAD
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/registration_abci:0.1.0:bafybeidqadl26x5prbjgnkqrvjnbqxpo75jttm7vlvpgkoqghs5677rw5i
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
@@ -32,6 +33,19 @@ skills:
 - valory/staking_abci:0.1.0:bafybeihxwstadzhvy6gavx3uif5fcsikodw4ud4gows7tidbmw7gip3isu
 - valory/check_stop_trading_abci:0.1.0:bafybeiharjs3rkmtk7fczhobfvgoikdun6cgdplprz4u6wo2efukul6n7q
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
+=======
+- valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
+- valory/registration_abci:0.1.0:bafybeifaa6ejpihwxxxswqd5qfy63rixml43d3ljnezilflvdtclspjj6y
+- valory/reset_pause_abci:0.1.0:bafybeigebq46oqz2mx2iajupr6p5pgm6z5pvfye5w6zypsseuqtvta7b4a
+- valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
+- valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
+- valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
+- valory/decision_maker_abci:0.1.0:bafybeicxn3pvjfxop7jr4ggnxg7pazjlr7mxj26rfyp4y6nxwhfknsgmj4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifabxrq4id7jdq56om3qcl5gecmslbbnxcoy76gwlcqrkdymdhz7y
+- valory/staking_abci:0.1.0:bafybeiagasopza4chitua476jwrmrss55s7746bwnvm4fmvgwfqxet4iyu
+- valory/check_stop_trading_abci:0.1.0:bafybeibwxotir2rqglqlv4whfqc5hskixhp2myvbdlproph3sybylyscqe
+- valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
+>>>>>>> e2c652ff (chore: autogen packages lock)
 behaviours:
   main:
     args: {}

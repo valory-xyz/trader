@@ -23,10 +23,17 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
+<<<<<<< HEAD
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/service_staking_token:0.1.0:bafybeifyvlxbgniaxfaaa4jlxxicebsrt2bknfanr2fdt7n3ejeevuhnky
 - valory/staking_token:0.1.0:bafybeihu5g6etogultbtrsx7hhpbbpijgmfgrndytnkhq4i2tnbnjyxxaa
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
+=======
+- valory/gnosis_safe:0.1.0:bafybeidao75ykdhkm7brclsslx3iinmgnvdiot5npanfbmatcaqrcvlsk4
+- valory/service_staking_token:0.1.0:bafybeif2ww7amtfzv3qol4yki2nzsdeujep3lunbfuu2fom4cub7qh2joy
+- valory/staking_token:0.1.0:bafybeigmb3lsjgzvhyyg5yje7ngyoybn24l5m57gvixesidlz2s75aq3xe
+- valory/mech_activity:0.1.0:bafybeiey6n7fjehm5k4g5h4toygqq3zzyxadqj3zabf67jmn5vzw5kndre
+>>>>>>> e2c652ff (chore: autogen packages lock)
 protocols:
 - valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
 skills:
