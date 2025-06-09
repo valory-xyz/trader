@@ -115,11 +115,7 @@ models:
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
       store_path: ${STORE_PATH:str:/data/}
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-offline-sme","deepmind-optimization",
-        "deepmind-optimization-strong", "openai-gpt-3.5-turbo", "openai-gpt-3.5-turbo-instruct",
-        "openai-gpt-4", "openai-text-davinci-002", "openai-text-davinci-003", "prediction-online-sum-url-content",
-        "prediction-online-summarized-info", "stabilityai-stable-diffusion-512-v2-1",
-        "stabilityai-stable-diffusion-768-v2-1", "stabilityai-stable-diffusion-v1-5",
-        "stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
+        "deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
       disable_trading: ${DISABLE_TRADING:bool:false}
