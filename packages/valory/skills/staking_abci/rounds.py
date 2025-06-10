@@ -21,6 +21,7 @@
 
 from abc import ABC
 from enum import Enum
+import json
 from typing import Dict, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -157,7 +158,7 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
             synced_data = synced_data.update(
                 synchronized_data_class=SynchronizedData,
                 **{
-                    get_name(SynchronizedData.agent_ids): synced_data.agent_ids,
+                    get_name(SynchronizedData.agent_ids): json.dumps(synced_data.agent_ids, sort_keys=True),
                     get_name(SynchronizedData.service_id): synced_data.service_id,
                 }
             )
