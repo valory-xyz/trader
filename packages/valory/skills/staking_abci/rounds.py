@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type, cast
+from typing import Dict, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -99,6 +99,16 @@ class SynchronizedData(TxSettlementSyncedData):
     def is_checkpoint_reached(self) -> bool:
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
+    
+    @property
+    def agent_ids(self) -> List[str]:
+        """Get the agent ids."""
+        return self.db.get("agent_ids", [])
+
+    @property
+    def service_id(self) -> Optional[int]:
+        """Get the service id."""
+        return self.db.get("service_id", None)
 
 
 class CallCheckpointRound(CollectSameUntilThresholdRound):
@@ -142,6 +152,17 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
 
         if synced_data.most_voted_tx_hash is None:
             return synced_data, Event.NEXT_CHECKPOINT_NOT_REACHED_YET
+
+        if synced_data.service_id is not None and synced_data.agent_ids is not None:
+            synced_data = synced_data.update(
+                synchronized_data_class=SynchronizedData,
+                **{
+                    get_name(SynchronizedData.agent_ids): synced_data.agent_ids,
+                    get_name(SynchronizedData.service_id): synced_data.service_id,
+                }
+            )
+
+            return synced_data, event
 
         return res
 

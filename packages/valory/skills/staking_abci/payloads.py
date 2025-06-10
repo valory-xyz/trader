@@ -20,7 +20,7 @@
 """This module contains the transaction payloads for the staking abci."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 
@@ -40,3 +40,6 @@ class CallCheckpointPayload(MultisigTxPayload):
     service_staking_state: int
     ts_checkpoint: int
     is_checkpoint_reached: bool
+
+    agent_ids: List[str]
+    service_id: Optional[int]

@@ -44,6 +44,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import (
     HttpDialogue,
     HttpDialogues,
@@ -80,6 +81,13 @@ class HttpHandler(BaseHttpHandler):
         self.routes: Dict[tuple, list] = {}
         self.json_content_header: str = ""
 
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(
+            db=self.context.state.round_sequence.latest_synchronized_data.db
+        )
+
     def setup(self) -> None:
         """Setup the handler."""
         config_uri_base_hostname = urlparse(
@@ -113,6 +121,8 @@ class HttpHandler(BaseHttpHandler):
         """Handle a Http request of verb GET."""
         data = {
             "address": self.context.agent_address,
+            "agent_ids": self.synchronized_data.agent_ids,
+            "service_id": self.synchronized_data.service_id,
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_response(http_msg, http_dialogue, data)
