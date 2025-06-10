@@ -66,7 +66,7 @@ DUMMY_SERVICE_STATE = {
     "tx_hash": "dummy_tx_hash",
     "ts_checkpoint": 0,
     "is_checkpoint_reached": True,
-    "agent_ids": '[]',
+    "agent_ids": "[]",
     "service_id": None,
 }
 
@@ -154,7 +154,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": "dummy_tx_hash",
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
-                        "agent_ids": '[]',
+                        "agent_ids": "[]",
                         "service_id": None,
                     }
                 ),
@@ -164,7 +164,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                     "tx_hash": "dummy_tx_hash",
                     "ts_checkpoint": 0,
                     "is_checkpoint_reached": True,
-                    "agent_ids": '[]',
+                    "agent_ids": "[]",
                     "service_id": None,
                 },
                 event=Event.DONE,
@@ -198,7 +198,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": "dummy_tx_hash",
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
-                        "agent_ids": '[]',
+                        "agent_ids": "[]",
                         "service_id": None,
                     }
                 ),
@@ -220,7 +220,7 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "tx_hash": None,
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
-                        "agent_ids": '[]',
+                        "agent_ids": "[]",
                         "service_id": None,
                     }
                 ),

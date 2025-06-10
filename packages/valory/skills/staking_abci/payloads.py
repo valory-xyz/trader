@@ -41,5 +41,5 @@ class CallCheckpointPayload(MultisigTxPayload):
     ts_checkpoint: int
     is_checkpoint_reached: bool
 
-    agent_ids: List[str]
+    agent_ids: List[int]
     service_id: Optional[int]

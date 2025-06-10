@@ -22,18 +22,32 @@
 from abc import ABC
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Generator, List, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.contracts.base import Contract
 
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.mech_activity.contract import MechActivityContract
+from packages.valory.contracts.service_registry.contract import (
+    ServiceInfo,
+    ServiceRegistryContract,
+)
 from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
 )
 from packages.valory.contracts.staking_token.contract import StakingTokenContract
-from packages.valory.contracts.service_registry.contract import ServiceInfo, ServiceRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import (
@@ -109,12 +123,6 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def service_staking_state(self) -> StakingState:
         """Get the service's staking state."""
         return self._service_staking_state
-    
-
-    @property
-    def service_registry_address(self) -> str:
-        """Get the service registry address."""
-        return self.params.service_registry_address
 
     @service_staking_state.setter
     def service_staking_state(self, state: Union[StakingState, int]) -> None:
@@ -122,6 +130,11 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         if isinstance(state, int):
             state = StakingState(state)
         self._service_staking_state = state
+
+    @property
+    def service_registry_address(self) -> Optional[str]:
+        """Get the service registry address."""
+        return self.params.service_registry_address
 
     @property
     def next_checkpoint(self) -> int:
@@ -182,17 +195,17 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def service_information(self) -> ServiceInfo:
         """Get the service information."""
         return self._service_information
-    
+
     @service_information.setter
     def service_information(self, service_information: ServiceInfo) -> None:
         """Set the service information."""
         self._service_information = service_information
 
     @property
-    def agent_ids(self) -> List[str]:
+    def agent_ids(self) -> List[int]:
         """Get the agent ids from service information"""
         try:
-            return self._service_information[7] if self._service_information else None
+            return self._service_information[7] if self._service_information else []
         except (IndexError, TypeError):
             return []
 
@@ -289,7 +302,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             **kwargs,
         )
         return status
-    
+
     def _service_registry_contract_interact(
         self,
         contract_callable: str,
@@ -297,6 +310,13 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         data_key: str = "data",
         **kwargs: Any,
     ) -> WaitableConditionType:
+        if self.service_registry_address is None:
+            self.context.logger.warning(
+                "Cannot perform any staking-related operations without a configured service registry address. "
+                "Assuming service status 'UNSTAKED'."
+            )
+            return True
+
         """Interact with the service registry contract."""
         status = yield from self.contract_interact(
             contract_address=self.service_registry_address,
@@ -397,7 +417,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             service_id=service_id,
         )
         return status
-    
+
     def _get_service_information(self) -> WaitableConditionType:
         """Get the service information to retrieve the agent ids."""
         service_id = self.params.on_chain_service_id
@@ -406,7 +426,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
                 "Cannot perform any staking-related operations without a configured on-chain service id. "
                 "Assuming service status 'UNSTAKED'."
             )
-            return []
+            return True
 
         status = yield from self._service_registry_contract_interact(
             contract_callable="get_service_information",
@@ -585,7 +605,9 @@ class CallCheckpointBehaviour(
             checkpoint_tx_hex = None
             if self.service_staking_state == StakingState.STAKED:
                 yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-                yield from self.wait_for_condition_with_sleep(self._get_service_information)
+                yield from self.wait_for_condition_with_sleep(
+                    self._get_service_information
+                )
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
 

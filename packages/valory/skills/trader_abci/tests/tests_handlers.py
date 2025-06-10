@@ -22,15 +22,14 @@ import json
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
-from packages.valory.connections.http_server.connection import (
-    PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
-)
-from packages.valory.protocols.http.message import HttpMessage
-from packages.valory.skills.decision_maker_abci.tests.test_handlers import GetHandlerTestCase, HandleTestCase
 import pytest
 from aea.configurations.data_types import PublicId
 from aea.skills.base import Handler
 
+from packages.valory.connections.http_server.connection import (
+    PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
+)
+from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
@@ -46,10 +45,14 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
-    HttpMethod,
 )
+from packages.valory.skills.decision_maker_abci.handlers import HttpMethod
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
+)
+from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
+    GetHandlerTestCase,
+    HandleTestCase,
 )
 from packages.valory.skills.trader_abci.handlers import (
     ContractApiHandler,

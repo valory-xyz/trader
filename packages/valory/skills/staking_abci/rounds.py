@@ -19,9 +19,9 @@
 
 """This module contains the rounds for the Staking ABCI application."""
 
+import json
 from abc import ABC
 from enum import Enum
-import json
 from typing import Dict, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -100,11 +100,14 @@ class SynchronizedData(TxSettlementSyncedData):
     def is_checkpoint_reached(self) -> bool:
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
-    
+
     @property
-    def agent_ids(self) -> List[str]:
+    def agent_ids(self) -> List[int]:
         """Get the agent ids."""
-        return self.db.get("agent_ids", [])
+        value = self.db.get("agent_ids", "[]")
+        if value is None:
+            return []
+        return json.loads(str(value))
 
     @property
     def service_id(self) -> Optional[int]:
@@ -155,12 +158,17 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
             return synced_data, Event.NEXT_CHECKPOINT_NOT_REACHED_YET
 
         if synced_data.service_id is not None and synced_data.agent_ids is not None:
-            synced_data = synced_data.update(
-                synchronized_data_class=SynchronizedData,
-                **{
-                    get_name(SynchronizedData.agent_ids): json.dumps(synced_data.agent_ids, sort_keys=True),
-                    get_name(SynchronizedData.service_id): synced_data.service_id,
-                }
+            synced_data = cast(
+                SynchronizedData,
+                synced_data.update(
+                    synchronized_data_class=SynchronizedData,
+                    **{
+                        get_name(SynchronizedData.agent_ids): json.dumps(
+                            synced_data.agent_ids, sort_keys=True
+                        ),
+                        get_name(SynchronizedData.service_id): synced_data.service_id,
+                    }
+                ),
             )
 
             return synced_data, event
