@@ -74,9 +74,6 @@ class StakingParams(BaseParams):
         self.mech_activity_checker_contract: str = self._ensure(
             "mech_activity_checker_contract", kwargs, str
         )
-        self.service_registry_address: str = self._ensure(
-            "service_registry_address", kwargs, str
-        )
         self.store_path = get_store_path(kwargs)
         super().__init__(*args, **kwargs)
 
