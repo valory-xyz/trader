@@ -30,7 +30,7 @@ contracts:
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
 =======
 - valory/gnosis_safe:0.1.0:bafybeidao75ykdhkm7brclsslx3iinmgnvdiot5npanfbmatcaqrcvlsk4
-- valory/service_staking_token:0.1.0:bafybeif2ww7amtfzv3qol4yki2nzsdeujep3lunbfuu2fom4cub7qh2joy
+- valory/service_staking_token:0.1.0:bafybeiarxffrwdq47rmydgffyxhe6ntfb5unp44yt47kxqg7fzc7vburni
 - valory/staking_token:0.1.0:bafybeigmb3lsjgzvhyyg5yje7ngyoybn24l5m57gvixesidlz2s75aq3xe
 - valory/mech_activity:0.1.0:bafybeiey6n7fjehm5k4g5h4toygqq3zzyxadqj3zabf67jmn5vzw5kndre
 >>>>>>> e2c652ff (chore: autogen packages lock)
