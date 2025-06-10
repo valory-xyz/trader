@@ -12,10 +12,10 @@ fingerprint:
   composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
   fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
-  handlers.py: bafybeigk7m5eqchhfzirrwyblyfunfeqz7m7xtsyjrqms4vlugq2g3kh4a
+  handlers.py: bafybeieuwrzqxheadkytglb232enjma6hifn5nbq4gzzie3znbc6umtaza
   models.py: bafybeie342ympii4zkf6cp5n7tfnwql2ftdodfwlwzgiivi43iyqia37vy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/tests_handlers.py: bafybeiesmikiobq6kjsd2nl6t3ml6prk7orpgpthutvmdfzfqqemh35cxi
+  tests/tests_handlers.py: bafybeihqjg7kd4q7dr6mo6sqohrlk3owgw744qc3wsucfffxcdtkopmucy
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
@@ -29,10 +29,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
-- valory/decision_maker_abci:0.1.0:bafybeibbg24hxtvgs5dxil7qvgq2aj53m6ucrxsmbafl5krcra47haignq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicm77smnqhti4wc6fk6h2xos5gfyle5ja3tkn244vqeto7yqzzov4
-- valory/staking_abci:0.1.0:bafybeiflfxmpzulucatyrnewhote6qiaeo4nc2ej6mja2x5jnze2simetm
-- valory/check_stop_trading_abci:0.1.0:bafybeiflinndecbiiy2emzpcu7rinshedqkhevwvulbak7xhlfbm7sef6q
+- valory/decision_maker_abci:0.1.0:bafybeib4smmexeawpnlkdjvauvskt7lirp4kiwn3lbltiq73igq2yzupsm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiachn7ej4fcyo7s4vo3yixndtbtmqh5mp4zwkw7xpvwdm4ur4qbau
+- valory/staking_abci:0.1.0:bafybeiac3cbk4npj7jb6wkvfedo4ob4nxjzgihh2incphe2jtunmo4476u
+- valory/check_stop_trading_abci:0.1.0:bafybeiaymho6lf5zg5hsjhu5piyl7diuasq5io66u52jazs5qt2ue6ocqy
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
 behaviours:
   main:
