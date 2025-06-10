@@ -26,19 +26,9 @@ contracts:
 - valory/mech:0.1.0:bafybeib32m5zriagivlj7insajfs4jm5o5h53eym32wjjjp6qwv4lzl3pu
 protocols: []
 skills:
-<<<<<<< HEAD
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
-- valory/staking_abci:0.1.0:bafybeihxwstadzhvy6gavx3uif5fcsikodw4ud4gows7tidbmw7gip3isu
-=======
-- valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
-- valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
-<<<<<<< HEAD
-- valory/staking_abci:0.1.0:bafybeiagasopza4chitua476jwrmrss55s7746bwnvm4fmvgwfqxet4iyu
->>>>>>> e2c652ff (chore: autogen packages lock)
-=======
-- valory/staking_abci:0.1.0:bafybeibwvm3wwvu7z6l3t2vcwz252y6ybu4ebq66eqxls264kap7f32qju
->>>>>>> f7507aef (chore: lock deps)
+- valory/staking_abci:0.1.0:bafybeiflfxmpzulucatyrnewhote6qiaeo4nc2ej6mja2x5jnze2simetm
 behaviours:
   main:
     args: {}

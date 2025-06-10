@@ -22,17 +22,10 @@ contracts: []
 protocols:
 - valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
 skills:
-<<<<<<< HEAD
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/decision_maker_abci:0.1.0:bafybeiekvtnc4xikqoknsljs7rzwhwdsr3ucixe7ese4r6ztenz2bay2di
-- valory/staking_abci:0.1.0:bafybeihxwstadzhvy6gavx3uif5fcsikodw4ud4gows7tidbmw7gip3isu
+- valory/decision_maker_abci:0.1.0:bafybeibbg24hxtvgs5dxil7qvgq2aj53m6ucrxsmbafl5krcra47haignq
+- valory/staking_abci:0.1.0:bafybeiflfxmpzulucatyrnewhote6qiaeo4nc2ej6mja2x5jnze2simetm
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
-=======
-- valory/abstract_round_abci:0.1.0:bafybeia27qmw6w5ds5fcrpj2475brnz742aampe3sgochloijs2l7jovai
-- valory/decision_maker_abci:0.1.0:bafybeiagbagrvuicyenzmsvdrhov36shpvqykky3x6izfoitpzx34bkwmm
-- valory/staking_abci:0.1.0:bafybeibwvm3wwvu7z6l3t2vcwz252y6ybu4ebq66eqxls264kap7f32qju
-- valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
->>>>>>> e2c652ff (chore: autogen packages lock)
 behaviours:
   main:
     args: {}

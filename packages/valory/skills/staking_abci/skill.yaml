@@ -8,33 +8,26 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeibu636ior2twig322sjywmy4bk3vf3mqsc7yonvnz3cdovd5u2h2q
+  behaviours.py: bafybeiaqfz6fmrzz4hd64ot5hep4zcvsz63xglx33yaqhjya6wcuuh7hgm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
   models.py: bafybeigv4bltwodffe7n5fs6tevx2ysavkj3ynpwniyky653jiigtfzppu
-  payloads.py: bafybeihapv2jso4c2dhm7bhbqk6ryytzpynvc74tknlblqm7rnopxwoa5u
-  rounds.py: bafybeiapgpyz7nv3wvgxup3nhg32g7s7h3gkrc5wbk77qewkciduxhzgwq
+  payloads.py: bafybeicqsykwgnl6iwb42g2hoxbg3kg2g25jqeo6ucy3rnjhevziwxxtrm
+  rounds.py: bafybeiaq5zcrsdklvkhj34z37or44ojjjnnao5lbqe7qbqgwe7rzvu4eeu
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
   tests/test_payloads.py: bafybeibwzr7ykoge2gxyq5anr6oqvzrod2u5ipdisteu4dzqxluqw6urp4
-  tests/test_rounds.py: bafybeigfcmgfvx534zp34b6ifuuz7fyhbc3gdv2pj5hwphik7mwxmxti7e
+  tests/test_rounds.py: bafybeihl6t5qs5jznha6b2sn4wnj3opmw3yvoe5645hvo4bvr2bcw72npe
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-<<<<<<< HEAD
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/service_staking_token:0.1.0:bafybeifyvlxbgniaxfaaa4jlxxicebsrt2bknfanr2fdt7n3ejeevuhnky
 - valory/staking_token:0.1.0:bafybeihu5g6etogultbtrsx7hhpbbpijgmfgrndytnkhq4i2tnbnjyxxaa
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
-=======
-- valory/gnosis_safe:0.1.0:bafybeidao75ykdhkm7brclsslx3iinmgnvdiot5npanfbmatcaqrcvlsk4
-- valory/service_registry:0.1.0:bafybeiabptpha4hnd7avieeqdzekwq6cx7bfshanrchfcqafq2kpa5bqwu
-- valory/service_staking_token:0.1.0:bafybeiarxffrwdq47rmydgffyxhe6ntfb5unp44yt47kxqg7fzc7vburni
-- valory/staking_token:0.1.0:bafybeiabkkhjpybqpzdfc4vcbiz4vefctfpvwetbmo7pqpiuxprmpvnti4
-- valory/mech_activity:0.1.0:bafybeiey6n7fjehm5k4g5h4toygqq3zzyxadqj3zabf67jmn5vzw5kndre
->>>>>>> e2c652ff (chore: autogen packages lock)
+- valory/service_registry:0.1.0:bafybeigaginvk2i6rycppfomk6tldkvunik6atuxtjpuuw6ndckymcojne
 protocols:
 - valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
 skills:
