@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
   fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
-  handlers.py: bafybeifi2zjaoibg6ctbm7fcogyz5vpiwv26im4xgtwfmajwks32erjriq
+  handlers.py: bafybeifx6i2clclsdec2vlwbaaio4iemam2acegufmialrxiem62npz3gi
   models.py: bafybeie342ympii4zkf6cp5n7tfnwql2ftdodfwlwzgiivi43iyqia37vy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeievjerhfb5pljn2t2x6brnqi4tap3d5wgvz2fuqqwiy6qlmzylbxe
@@ -20,7 +20,7 @@ fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
 contracts: []
-protocols: 
+protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 skills:
 <<<<<<< HEAD
@@ -42,10 +42,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifkftgkyzrxwxjdyqixpp7vk6aqmufikalmwx3kydtlg74tonu47u
 - valory/termination_abci:0.1.0:bafybeieurwmfernodqyczj5ertsgfbjtjnrlgvte7sli4sajnbopty7inu
 - valory/market_manager_abci:0.1.0:bafybeihmyqkzl3bm5zvjnc4auj32qjf3pk73scyq7mntmpsudqnisb4gey
-- valory/decision_maker_abci:0.1.0:bafybeicxn3pvjfxop7jr4ggnxg7pazjlr7mxj26rfyp4y6nxwhfknsgmj4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifabxrq4id7jdq56om3qcl5gecmslbbnxcoy76gwlcqrkdymdhz7y
-- valory/staking_abci:0.1.0:bafybeiagasopza4chitua476jwrmrss55s7746bwnvm4fmvgwfqxet4iyu
-- valory/check_stop_trading_abci:0.1.0:bafybeibwxotir2rqglqlv4whfqc5hskixhp2myvbdlproph3sybylyscqe
+- valory/decision_maker_abci:0.1.0:bafybeiagbagrvuicyenzmsvdrhov36shpvqykky3x6izfoitpzx34bkwmm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictf3jylo4zgfycgipcx4fggt26fh33yvvp456f75fi6sqnbeweue
+- valory/staking_abci:0.1.0:bafybeibwvm3wwvu7z6l3t2vcwz252y6ybu4ebq66eqxls264kap7f32qju
+- valory/check_stop_trading_abci:0.1.0:bafybeidns24lm7otms6oqauvjyrtt5aeu3zmdtgczcgle5kulfnhyuwdzq
 - valory/mech_interact_abci:0.1.0:bafybeif2tpz2zet6p4z4vi3b254oxzyyzoe5tehj3me3znzt7h7otkpd54
 >>>>>>> e2c652ff (chore: autogen packages lock)
 behaviours:
@@ -145,7 +145,7 @@ models:
       serious_slash_unit_amount: 8000000000000000
       round_timeout_seconds: 350.0
       service_id: trader
-      service_registry_address: null
+      service_registry_address: '0x9338b5153AE39BB89f50468E608eD9d764B755fD'
       agent_registry_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
       setup:

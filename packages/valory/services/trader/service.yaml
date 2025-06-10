@@ -8,10 +8,14 @@ fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
 <<<<<<< HEAD
+<<<<<<< HEAD
 agent: valory/trader:0.1.0:bafybeigab5vw47o5tulu4qofr3eyl7xahj3clkfwx2k6fz67rydxj6bw6u
 =======
 agent: valory/trader:0.1.0:bafybeigwlxx52fyon37okfeoe3o5u5papzogcr7e4tqa736hp5c46jqdcm
 >>>>>>> e2c652ff (chore: autogen packages lock)
+=======
+agent: valory/trader:0.1.0:bafybeiduu4b2xw6khi4yb5yucwrszphx2znmmiitat4aoba2njpyn7qcse
+>>>>>>> f7507aef (chore: lock deps)
 number_of_agents: 4
 deployment:
   agent:

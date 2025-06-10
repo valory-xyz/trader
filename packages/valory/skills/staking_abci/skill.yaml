@@ -8,18 +8,18 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeicigqpqmpolmz45tp3bn4wdpfpogdf2ahsglemjduabhd2xszet2y
+  behaviours.py: bafybeibu636ior2twig322sjywmy4bk3vf3mqsc7yonvnz3cdovd5u2h2q
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
   models.py: bafybeigv4bltwodffe7n5fs6tevx2ysavkj3ynpwniyky653jiigtfzppu
-  payloads.py: bafybeib7hxsibtabb5vt6gjtco2x2s2yodhs24ojqecgrcexqsiv3pvmuy
-  rounds.py: bafybeibdrs56k6zvuw3df43qsyq7q2a6wn6m2qwu7ljio3ag4vxsitmiii
+  payloads.py: bafybeihapv2jso4c2dhm7bhbqk6ryytzpynvc74tknlblqm7rnopxwoa5u
+  rounds.py: bafybeiapgpyz7nv3wvgxup3nhg32g7s7h3gkrc5wbk77qewkciduxhzgwq
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
-  tests/test_payloads.py: bafybeidtkbudsmrx77xs2oooji6cpj7kx7nembf77u32if2sb2kvkavvhq
-  tests/test_rounds.py: bafybeidge7sp3udobhvjpbdj5kirkukd6w5qycqkcuc6sy3qqiedco2q4i
+  tests/test_payloads.py: bafybeibwzr7ykoge2gxyq5anr6oqvzrod2u5ipdisteu4dzqxluqw6urp4
+  tests/test_rounds.py: bafybeigfcmgfvx534zp34b6ifuuz7fyhbc3gdv2pj5hwphik7mwxmxti7e
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -30,8 +30,9 @@ contracts:
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
 =======
 - valory/gnosis_safe:0.1.0:bafybeidao75ykdhkm7brclsslx3iinmgnvdiot5npanfbmatcaqrcvlsk4
+- valory/service_registry:0.1.0:bafybeiabptpha4hnd7avieeqdzekwq6cx7bfshanrchfcqafq2kpa5bqwu
 - valory/service_staking_token:0.1.0:bafybeiarxffrwdq47rmydgffyxhe6ntfb5unp44yt47kxqg7fzc7vburni
-- valory/staking_token:0.1.0:bafybeigmb3lsjgzvhyyg5yje7ngyoybn24l5m57gvixesidlz2s75aq3xe
+- valory/staking_token:0.1.0:bafybeiabkkhjpybqpzdfc4vcbiz4vefctfpvwetbmo7pqpiuxprmpvnti4
 - valory/mech_activity:0.1.0:bafybeiey6n7fjehm5k4g5h4toygqq3zzyxadqj3zabf67jmn5vzw5kndre
 >>>>>>> e2c652ff (chore: autogen packages lock)
 protocols:
