@@ -1,0 +1,18 @@
+/* @import url('~@fontsource/inter/index.css'); IMPORTED VIA CDN IN public/index.html */
+
+* {
+  font-family: 'Inter', sans-serif !important;
+}
+
+body {
+  min-width: 800px;
+}
+
+.card-border {
+  outline: 1px solid #E4E4E4;
+  border: 4px solid #ffffff;
+}
+
+.card-gradient {
+  background: linear-gradient(#f5f7fa, #ffffff);
+}

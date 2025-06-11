@@ -12,8 +12,54 @@ fingerprint:
   composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
   fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
-  handlers.py: bafybeie42teluwzhn2wunsqumesnuty2rmjhcfd34c3fpfh43jp7epvffm
+  handlers.py: bafybeibzxub5ca2iihtkkghv5adu3ci4y5p6lydzmbn3gfihhfhvvckq6y
   models.py: bafybeie342ympii4zkf6cp5n7tfnwql2ftdodfwlwzgiivi43iyqia37vy
+  predict-ui-build/antd-reset.css: bafybeiej7msoezd7b76anzk7uvqpfspctuifl2zyfvfxgevsr62q6jogt4
+  predict-ui-build/asset-manifest.json: bafybeia7olyccp2qzrzse5susifduksrzhwl2dlnrlahq7knsn73n2cvxa
+  predict-ui-build/favicon.ico: bafybeigoxdaiyjbhlh3hq7b5myaowqlc22poxirhfjqzesxk4erea2e3pu
+  predict-ui-build/globals.css: bafybeidikaeijb6i5kupnzjtvh55dsyi7xjn56t6owo4lhg4gqj3l4ibly
+  predict-ui-build/index.html: bafybeigisdhmd4r2ov2hcutm7vu53mxdoka5s5vqaguij36lhzdmlxzpum
+  predict-ui-build/logos/modius-chat.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
+  predict-ui-build/logos/modius.png: bafybeih4k42vb6nhnbrez2pc6gfllraupihnwx5y6w4iuupw2rwm6hehty
+  predict-ui-build/logos/networks/mode-network.png: bafybeieacbmo2f6r7uc6i7ftvw6vl2epx4k3gc5rubz7z46ug6q6xc244a
+  predict-ui-build/logos/networks/optimism-network.png: bafybeier5eew7564zbiwer7n76xpd5g6xhmuctm7e4cbjg247np75d6ayq
+  predict-ui-build/logos/optimus-chat.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
+  predict-ui-build/logos/optimus.png: bafybeic62cx3jpzabw2cpxi7x53wwd6lbuks6emv24sbrnui7knxhbieou
+  predict-ui-build/logos/protocols/balancer.png: bafybeifffu2b22hfra5ojt2femrtzkj4irlegmd5tfxg7dnmxagrnqmlki
+  predict-ui-build/logos/protocols/sturdy.png: bafybeiaipwep7gx6yxpzm7koklknr6clykkrepscfatb6qxnz4flcufx4u
+  predict-ui-build/logos/protocols/uniswapV3.png: bafybeibxmpyjjbtdgqe6vx723aclwwnijqf35iqganaq7zsb2zldklwyku
+  predict-ui-build/logos/protocols/velodrome.png: bafybeia42nydstgpohanlncbn6zzbrdj5gexu7fq3qiot6evit5j6hmilm
+  predict-ui-build/logos/tokens/alusd.png: bafybeie3oydlxs2d5te5kdq45rc2q57yctkp4inbc3vix7xf25u27kaetu
+  predict-ui-build/logos/tokens/bal.png: bafybeidnd5afsjcevrmyd4ucf74auemv5c7lzyurieemmdv4ht4idzp6qi
+  predict-ui-build/logos/tokens/bold.png: bafybeigirswtyjan7zsgtw3yluwebjmjnt7a2fxdae4pknteyxqmcso3fe
+  predict-ui-build/logos/tokens/dai.png: bafybeifysdjm4t6mnzqvwrh5snqxbsiubvoa2akizyb5oiqaluxpwpqu7i
+  predict-ui-build/logos/tokens/dola.png: bafybeiadrmp3sgm4lqw524lo3rdrbusdhnh7adskklsvsog45iqaevkljm
+  predict-ui-build/logos/tokens/eth.png: bafybeiejj4gaj2ahgr6kavbg5rd5cnrpuxaicobfcd4ffxmlob664ouyrq
+  predict-ui-build/logos/tokens/ezeth.png: bafybeigknvkgjfidvpr2mkj7pfpt5dy2ecbn7z2kosdo2xc53crqh2bqe4
+  predict-ui-build/logos/tokens/frax.png: bafybeihrglrrv4bn6aqrmbbq55ukevqle45e3fmeji64ui75qblyi6b4oq
+  predict-ui-build/logos/tokens/lusd.png: bafybeif3gcoblrzyfoqyt7atyw2ew233logrm4digcge2elnvsgf4jiacu
+  predict-ui-build/logos/tokens/mode.png: bafybeiakyu4lwlzqgjluol6gpfbydezwh7cosj5mncpmorbwbe46c6ck3a
+  predict-ui-build/logos/tokens/olas.png: bafybeiguddvyhbusz6hya4rysexr45sn2nk5yn7mlwf34qdfrknxzxgfmi
+  predict-ui-build/logos/tokens/op.png: bafybeiejhf2onv6i3gjj4busavchwr2246br277bi7t5r2yugsfgkiou3e
+  predict-ui-build/logos/tokens/openusdt.png: bafybeib2telasvygswwc7xh7upgkdr6asxgzaegef6mhdopfam3rnp7l3e
+  predict-ui-build/logos/tokens/pxeth.png: bafybeidzbxp6eu3577tdhyjtxpezwegdi2l6norylg3lp2lzkkpd5rzoiq
+  predict-ui-build/logos/tokens/reth.png: bafybeihgvupiwdhxy75id46lgd6o4kccppgsixveglymjtiefditsa2b2e
+  predict-ui-build/logos/tokens/sdai.png: bafybeieb23rbidvqptyvwfuxnpzzkfv4ir2ilfv4ttnr5f47lnmzxnm7d4
+  predict-ui-build/logos/tokens/steth.png: bafybeifdxeuui5pjngbeku6rjgxewxieqcxtr2ggwmbmrn7pxhu3gt6apu
+  predict-ui-build/logos/tokens/stone.png: bafybeia255ikjhe4azvdc6d6bnndfdp3jtduzr7jwibacvvpp6o5qxx5jq
+  predict-ui-build/logos/tokens/tbtc.png: bafybeigmbnetcoo7yfacmxmzfej4aerqg4clpvabekfjdl7doaorrygley
+  predict-ui-build/logos/tokens/usd+.png: bafybeihrrrzhwlldje35d5s3euwq7zpdz7mxwfyb7aq3zxhhfgxj5jmngu
+  predict-ui-build/logos/tokens/usdc.png: bafybeiddabigc6c5ga27grotfy2bfr247eah2qs3nsjzup7z3l4r2kvggm
+  predict-ui-build/logos/tokens/usdglo.png: bafybeibbuiy4aap7trh3wwwlt6lgv7xr2hbfzs4inzxt2n4k2dwm5nejem
+  predict-ui-build/logos/tokens/usdt.png: bafybeidhg7xhvqpizest3mi3mpsd47cjda7jq2nhjjzikkkmfowesf4szi
+  predict-ui-build/logos/tokens/usdt0.png: bafybeig4muixers6emdrg645t46ggkcgwdrdrghwcsnoizpla56d2aj6gq
+  predict-ui-build/logos/tokens/usx.png: bafybeifiztzjo72yfz3vnjniqjjgq3zobqoiiofeq7assblejcartmxd2y
+  predict-ui-build/logos/tokens/weth.png: bafybeie6swfujvdlkgjtg3vbjejhkiv6brb3zpjxqrvquzdkci375fpjde
+  predict-ui-build/manifest.json: bafybeial7amzp5ze4y773v7i67igygm3evylffeqxwr56aw3332ioavks4
+  predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
+  predict-ui-build/static/js/main.b2df20f8.js: bafybeihvxqlnf5xcazlngpt3pnigp3f5ke3uped4cyzikldwij2pdrto6e
+  predict-ui-build/static/js/main.b2df20f8.js.LICENSE.txt: bafybeidcwgxq34zcydfryuiasf5abexjdxhvmjwbde6rcickpqhh66qiaq
+  predict-ui-build/static/js/main.b2df20f8.js.map: bafybeigpbqrlv23bgmxzxkevlu25uisqzqasz6z2x5tnqp2nky74yq3fge
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeihqjg7kd4q7dr6mo6sqohrlk3owgw744qc3wsucfffxcdtkopmucy
 fingerprint_ignore_patterns: []

@@ -21,7 +21,9 @@
 """This module contains the handlers for the 'trader_abci' skill."""
 
 import json
-from typing import Any, Dict, List
+from http import HTTPStatus
+from pathlib import Path
+from typing import Any, Dict, List, Union
 from urllib.parse import urlparse
 
 from packages.valory.protocols.http.message import HttpMessage
@@ -59,6 +61,9 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
 AcnHandler = BaseAcnHandler
+
+
+PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 
 
 class HttpHandler(BaseHttpHandler):
@@ -103,16 +108,58 @@ class HttpHandler(BaseHttpHandler):
         self.handler_url_regex = rf"{hostname_regex}\/.*"
 
         agent_info_url_regex = rf"{hostname_regex}\/agent-info"
+        static_files_regex = (
+            rf"{hostname_regex}\/(.*)"  # New regex for serving static files
+        )
 
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
                 (agent_info_url_regex, self._handle_get_agent_info),
+                (
+                    static_files_regex,
+                    self._handle_get_static_file,
+                ),
             ],
         }
 
         self.json_content_header = "Content-Type: application/json\n"
+        self.html_content_header = "Content-Type: text/html\n"
+
+        self.agent_profile_path = PREDICT_AGENT_PROFILE_PATH
+
+    def _send_ok_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+    ) -> None:
+        """Send an OK response with the provided data"""
+        headers = (
+            self.json_content_header
+            if isinstance(data, (dict, list))
+            else self.html_content_header
+        )
+        headers += http_msg.headers
+
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=HTTPStatus.OK.value,
+            status_text="Success",
+            headers=headers,
+            body=data.encode("utf-8") if isinstance(data, str) else data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -125,3 +172,44 @@ class HttpHandler(BaseHttpHandler):
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_response(http_msg, http_dialogue, data)
+
+    def _handle_get_static_file(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """
+        Handle a HTTP GET request for a static file.
+
+        Implementation borrowed from:
+        https://github.com/valory-xyz/optimus/blob/262f14843f171942995acfae8bea85d76fa82926/packages/valory/skills/optimus_abci/handlers.py#L349-L385
+
+        :param http_msg: the HTTP message
+        :param http_dialogue: the HTTP dialogue
+        """
+        try:
+            # Extract the requested path from the URL
+            requested_path = urlparse(http_msg.url).path.lstrip("/")
+
+            # Construct the file path
+            file_path = Path(
+                Path(__file__).parent, self.agent_profile_path, requested_path
+            )
+            # If the file exists and is a file, send it as a response
+            if file_path.exists() and file_path.is_file():
+                with open(file_path, "rb") as file:
+                    file_content = file.read()
+
+                # Send the file content as a response
+                self._send_ok_response(http_msg, http_dialogue, file_content)
+            else:
+                # If the file doesn't exist or is not a file, return the index.html file
+                with open(
+                    Path(Path(__file__).parent, self.agent_profile_path, "index.html"),
+                    "r",
+                    encoding="utf-8",
+                ) as file:
+                    index_html = file.read()
+
+                # Send the HTML response
+                self._send_ok_response(http_msg, http_dialogue, index_html)
+        except FileNotFoundError:
+            self._handle_not_found(http_msg, http_dialogue)
