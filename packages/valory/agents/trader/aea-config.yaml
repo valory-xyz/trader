@@ -26,10 +26,10 @@ contracts:
 - valory/realitio:0.1.0:bafybeieggqkuslxiuapneygnhkhgatk5jvjbw6p7ltxaab6au466ikxm3e
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeia2eoorxpsfwnd2dnvgt2v3xxqez6d4zyxvqpnwo5oydcgxkr2uni
-- valory/service_staking_token:0.1.0:bafybeihy6odye3cpytgkwhebmixh2wx2q56fye7gb5twbjdqmi4aez5uhi
+- valory/service_staking_token:0.1.0:bafybeib5wmpbxngsg46u4ggunvkfkfgeyewunjhoj4vdjlqpgztha6summ
 - valory/transfer_nft_condition:0.1.0:bafybeicq5jkvpdfciqybxs2n7zwkuprdcksuf7xcgyfxzbbd4w33rk5g3m
 - valory/erc20:0.1.0:bafybeifyjub3v62r53by76u7cli7oqvg5qukb4e6gaa62z34euqfwnrsvi
-- valory/staking_token:0.1.0:bafybeihqwbxlhzp7rl6b5pln45zf5muliesbyjceqfrg6bxmtbi74s7npe
+- valory/staking_token:0.1.0:bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
 - valory/mech_marketplace:0.1.0:bafybeiccn4ohizw2wrjt7goidiakfik26ugm735lnm3fna3khko7qgkawm
 - valory/relayer:0.1.0:bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne
@@ -52,12 +52,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicv7ulwocs2nqv23wmivqc6iytcba3try2jdc2s7vz22a3buustd4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibll2znbqmn5sockp7eio6s2fug4kdvelzsfrkzewzfl3dl4vwkyy
 - valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
-- valory/decision_maker_abci:0.1.0:bafybeidtp3lfldids5slzycw4repbfkzg6disznis6wrztczjr6vgbmgya
-- valory/trader_abci:0.1.0:bafybeiclbvchlksv3v7nf7ha2gxsyfvyq46qvbrkjafxmcwmirgbg5e5xy
-- valory/staking_abci:0.1.0:bafybeiaficrcpx4dphosgz3fnyyqcgybaurrr46f4kvsayx7bxtluez7wm
-- valory/check_stop_trading_abci:0.1.0:bafybeidarbexykantqotmjls6vid372z7gjf45tfs7xvxle6yzdicjcgly
+- valory/decision_maker_abci:0.1.0:bafybeibgppk5jv5q7wytsbard5i32ca6ukwd5ozdruekcq6kpn3kzdbome
+- valory/trader_abci:0.1.0:bafybeiaw2dkhjchornjjyo62ejefmsuzl6wzuwyrfaxfqw4g4d3ztaxis4
+- valory/staking_abci:0.1.0:bafybeibk2uwgyday3izfkijsvlclxxfgwzh3crs4jblmdn4kh75olrkmvy
+- valory/check_stop_trading_abci:0.1.0:bafybeifo4srmya66zbxczaforotbvrpjxugqmexrnftr74vfpklzicplkm
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
