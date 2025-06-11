@@ -129,11 +129,6 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._service_staking_state = state
 
     @property
-    def service_registry_address(self) -> Optional[str]:
-        """Get the service registry address."""
-        return self.params.service_registry_address
-
-    @property
     def next_checkpoint(self) -> int:
         """Get the next checkpoint."""
         return self._next_checkpoint
