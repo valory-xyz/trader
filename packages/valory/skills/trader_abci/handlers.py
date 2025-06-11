@@ -20,7 +20,8 @@
 
 """This module contains the handlers for the 'trader_abci' skill."""
 
-from typing import Any, Dict
+import json
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 from packages.valory.protocols.http.message import HttpMessage
@@ -79,6 +80,11 @@ class HttpHandler(BaseHttpHandler):
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
 
+    @property
+    def agent_ids(self) -> List[int]:
+        """Get the agent ids."""
+        return json.loads(self.synchronized_data.agent_ids)
+
     def setup(self) -> None:
         """Setup the handler."""
         config_uri_base_hostname = urlparse(
@@ -111,7 +117,7 @@ class HttpHandler(BaseHttpHandler):
         """Handle a Http request of verb GET."""
         data = {
             "address": self.context.agent_address,
-            "agent_ids": self.synchronized_data.agent_ids,
+            "agent_ids": self.agent_ids,
             "service_id": self.synchronized_data.service_id,
         }
         self.context.logger.info(f"Sending agent info: {data=}")

@@ -19,6 +19,7 @@
 
 """This module contains the behaviours for the staking skill."""
 
+import json
 from abc import ABC
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -40,10 +41,6 @@ from aea.contracts.base import Contract
 
 from packages.valory.contracts.gnosis_safe.contract import GnosisSafeContract
 from packages.valory.contracts.mech_activity.contract import MechActivityContract
-from packages.valory.contracts.service_registry.contract import (
-    ServiceInfo,
-    ServiceRegistryContract,
-)
 from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
 )
@@ -192,22 +189,14 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._service_info = service_info
 
     @property
-    def service_information(self) -> ServiceInfo:
-        """Get the service information."""
-        return self._service_information
+    def agent_ids(self) -> str:
+        """Get the agent ids."""
+        return self._agent_ids
 
-    @service_information.setter
-    def service_information(self, service_information: ServiceInfo) -> None:
-        """Set the service information."""
-        self._service_information = service_information
-
-    @property
-    def agent_ids(self) -> List[int]:
-        """Get the agent ids from service information"""
-        try:
-            return self._service_information[7] if self._service_information else []
-        except (IndexError, TypeError):
-            return []
+    @agent_ids.setter
+    def agent_ids(self, agent_ids: List[int]) -> None:
+        """Set the agent ids."""
+        self._agent_ids = json.dumps(agent_ids)
 
     def wait_for_condition_with_sleep(
         self,
@@ -296,31 +285,6 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         status = yield from self.contract_interact(
             contract_address=self.staking_contract_address,
             contract_public_id=contract_public_id.contract_id,
-            contract_callable=contract_callable,
-            data_key=data_key,
-            placeholder=placeholder,
-            **kwargs,
-        )
-        return status
-
-    def _service_registry_contract_interact(
-        self,
-        contract_callable: str,
-        placeholder: str,
-        data_key: str = "data",
-        **kwargs: Any,
-    ) -> WaitableConditionType:
-        if self.service_registry_address is None:
-            self.context.logger.warning(
-                "Cannot perform any staking-related operations without a configured service registry address. "
-                "Assuming service status 'UNSTAKED'."
-            )
-            return True
-
-        """Interact with the service registry contract."""
-        status = yield from self.contract_interact(
-            contract_address=self.service_registry_address,
-            contract_public_id=ServiceRegistryContract.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
             placeholder=placeholder,
@@ -418,7 +382,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         )
         return status
 
-    def _get_service_information(self) -> WaitableConditionType:
+    def _get_agent_ids(self) -> WaitableConditionType:
         """Get the service information to retrieve the agent ids."""
         service_id = self.params.on_chain_service_id
         if service_id is None:
@@ -428,10 +392,9 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             )
             return True
 
-        status = yield from self._service_registry_contract_interact(
-            contract_callable="get_service_information",
-            placeholder=get_name(CallCheckpointBehaviour.service_information),
-            token_id=service_id,  # naming convention is different in the service registry contract
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_agent_ids",
+            placeholder=get_name(CallCheckpointBehaviour.agent_ids),
         )
         return status
 
@@ -601,13 +564,11 @@ class CallCheckpointBehaviour(
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self._check_service_staked)
+            yield from self.wait_for_condition_with_sleep(self._get_agent_ids)
 
             checkpoint_tx_hex = None
             if self.service_staking_state == StakingState.STAKED:
                 yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-                yield from self.wait_for_condition_with_sleep(
-                    self._get_service_information
-                )
                 if self.is_checkpoint_reached:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
 
