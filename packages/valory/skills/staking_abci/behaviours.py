@@ -431,7 +431,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         status = yield from self._service_registry_contract_interact(
             contract_callable="get_service_information",
             placeholder=get_name(CallCheckpointBehaviour.service_information),
-            service_id=service_id,
+            token_id=service_id,  # naming convention is different in the service registry contract
         )
         return status
 
