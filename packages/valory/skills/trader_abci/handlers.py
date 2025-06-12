@@ -74,7 +74,7 @@ class HttpHandler(BaseHttpHandler):
         self.json_content_header: str = ""
 
     @property
-    def synchronized_data(self) -> SynchronizedData:  # type: ignore[override]
+    def staking_synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
         return SynchronizedData(
             db=self.context.state.round_sequence.latest_synchronized_data.db
@@ -83,10 +83,11 @@ class HttpHandler(BaseHttpHandler):
     @property
     def agent_ids(self) -> List[int]:
         """Get the agent ids."""
-        return json.loads(self.synchronized_data.agent_ids)
+        return json.loads(self.staking_synchronized_data.agent_ids)
 
     def setup(self) -> None:
         """Setup the handler."""
+        super().setup()
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -104,7 +105,9 @@ class HttpHandler(BaseHttpHandler):
         agent_info_url_regex = rf"{hostname_regex}\/agent-info"
 
         self.routes = {
+            **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
+                *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
                 (agent_info_url_regex, self._handle_get_agent_info),
             ],
         }
@@ -118,7 +121,7 @@ class HttpHandler(BaseHttpHandler):
         data = {
             "address": self.context.agent_address,
             "agent_ids": self.agent_ids,
-            "service_id": self.synchronized_data.service_id,
+            "service_id": self.staking_synchronized_data.service_id,
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_response(http_msg, http_dialogue, data)
