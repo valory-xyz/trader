@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -190,3 +190,15 @@ class StakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         duration = contract.functions.minStakingDuration().call()
         return dict(data=duration)
+    
+
+    @classmethod
+    def get_agent_ids(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Retrieve the agent IDs."""
+        contract = cls.get_instance(ledger_api, contract_address)
+        agent_ids = contract.functions.getAgentIds().call()
+        return dict(data=agent_ids)

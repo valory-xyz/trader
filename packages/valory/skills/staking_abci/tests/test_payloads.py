@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@ from packages.valory.skills.staking_abci.payloads import (
                 "tx_hash": "dummy tx hash",
                 "ts_checkpoint": 1,
                 "is_checkpoint_reached": True,
+                "agent_ids": [],
+                "service_id": None,
             },
         ),
     ],
