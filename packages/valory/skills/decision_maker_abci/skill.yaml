@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeifyuhycdirvw4k5np6spfmvinzvisb5rley5xjl7nodhxjtee34oa
+  behaviours/base.py: bafybeihqn4x6trzjh6cifellaid7h7n75r2f3il5tgw7y6jq4ptanny3j4
   behaviours/bet_placement.py: bafybeiap6pa6yec4pw55zdbrftixkhlolyrvcrl6qgkhe3r3zioizelqoy
   behaviours/blacklisting.py: bafybeieuqoup2vrmrtvjfqnr5mzrvkegc7afb2oeujzq2itsbhcsham2se
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -29,7 +29,7 @@ fingerprint:
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeib3oecxsixxzf3fsai5f7jlqpqqm23jcuvqn5fgp54shdj3temz2y
-  handlers.py: bafybeibuh4mfovf77sfai35vs6t3kc24fltg64rcyvtyszg2pj7svhd2ly
+  handlers.py: bafybeicirugdwu45ynwwmnqwkuqagcktxvbztyfvkj4cgksyztpsib5evq
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeibzqbq5ur53vrzzto3u3g3qjgtrwleyobxtdzk7yks7nx4oaki7ci
@@ -105,7 +105,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
-- valory/staking_abci:0.1.0:bafybeicggaquqqjcjgbwo3onwbwmqxcyl7mb4mxv73szn65djbtzhseb3m
+- valory/staking_abci:0.1.0:bafybeifw2em72fddkgtboc2eb4zofzznfsqgj4jlegywj6osd2fd4gy2i4
 behaviours:
   main:
     args: {}

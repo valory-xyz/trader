@@ -530,100 +530,59 @@ class HttpHandler(BaseHttpHandler):
 
     def set_metrics(self) -> None:
         """Set the metrics."""
+        # Get all synchronized data in one access to reduce property calls
+        sync_data = self.synchronized_data
 
-        agent_address = self.context.agent_address
-        safe_address = self.synchronized_data.safe_contract_address
-        service_id = self.context.params.on_chain_service_id
-        service_owner_address = self.synchronized_data.service_owner_address
-        staking_contract_name = self.synchronized_data.staking_contract_name
-        staking_contract_address = self.context.params.staking_contract_address
+        # Use synchronized timestamp from consensus instead of local time
+        now = int(self.round_sequence.last_round_transition_timestamp.timestamp())
+
+        # Prepare label values
         metrics_label_values = (
-            agent_address,
-            safe_address,
-            service_id,
-            service_owner_address,
+            self.context.agent_address,
+            sync_data.safe_contract_address,
+            self.context.params.on_chain_service_id,
+            sync_data.service_owner_address,
         )
 
+        # Convert balances once
         native_balance = DecisionMakerBaseBehaviour.wei_to_native(
-            self.synchronized_data.wallet_balance
+            sync_data.wallet_balance
         )
-        olas_balance = DecisionMakerBaseBehaviour.wei_to_native(
-            self.synchronized_data.olas_balance
-        )
-        wxdai_balance = self.synchronized_data.token_balance
-        staking_contract_available_slots = (
-            self.synchronized_data.available_staking_slots
-        )
-        staking_state = self.synchronized_data.service_staking_state.value
-        time_since_last_successful_mech_tx = (
-            self.calculate_time_since_last_successful_mech_tx()
-        )
-        time_since_last_mech_tx_attempt = (
-            self.calculate_time_since_last_mech_tx_attempt()
-        )
-        n_total_mech_requests = self.synchronized_data.mech_requests_since_last_cp
-        n_mech_requests_to_staking_kpi = (
-            self.calculate_remaining_mech_calls_to_staking_kpi()
-        )
+        olas_balance = DecisionMakerBaseBehaviour.wei_to_native(sync_data.olas_balance)
 
+        # Calculate time metrics efficiently
+        mech_tx_ts = sync_data.decision_receive_timestamp
+        mech_attempt_ts = sync_data.decision_request_timestamp
+        epoch_end_ts = sync_data.epoch_end_ts
+
+        time_since_success = (now - mech_tx_ts) if mech_tx_ts != 0 else 0
+        time_since_attempt = (now - mech_attempt_ts) if mech_attempt_ts != 0 else 0
+        epoch_time_remaining = max(0, epoch_end_ts - now) if epoch_end_ts != 0 else 0
+
+        # Calculate remaining mech calls
+        mech_requests = sync_data.mech_requests_since_last_cp
+        remaining_calls = max(0, N_MECH_CALLS_FOR_STAKING_KPI - mech_requests)
+
+        # Update all metrics
         NATIVE_BALANCE_GAUGE.labels(*metrics_label_values).set(native_balance)
         OLAS_BALANCE_GAUGE.labels(*metrics_label_values).set(olas_balance)
-        WXDAI_BALANCE_GAUGE.labels(*metrics_label_values).set(wxdai_balance)
+        WXDAI_BALANCE_GAUGE.labels(*metrics_label_values).set(sync_data.token_balance)
         STAKING_CONTRACT_AVAILABLE_SLOTS_GAUGE.labels(
-            *metrics_label_values, staking_contract_name, staking_contract_address
-        ).set(staking_contract_available_slots)
-        STAKING_STATE_GAUGE.labels(*metrics_label_values).set(staking_state)
+            *metrics_label_values,
+            sync_data.staking_contract_name,
+            self.context.params.staking_contract_address,
+        ).set(sync_data.available_staking_slots)
+        STAKING_STATE_GAUGE.labels(*metrics_label_values).set(
+            sync_data.service_staking_state.value
+        )
         TIME_SINCE_LAST_SUCCESSFUL_MECH_TX_GAUGE.labels(*metrics_label_values).set(
-            time_since_last_successful_mech_tx
+            time_since_success
         )
         TIME_SINCE_LAST_MECH_REQUEST_ATTEMPT_GAUGE.labels(*metrics_label_values).set(
-            time_since_last_mech_tx_attempt
+            time_since_attempt
         )
-        TOTAL_MECH_REQUESTS_THIS_EPOCH.labels(*metrics_label_values).set(
-            n_total_mech_requests
-        )
+        TOTAL_MECH_REQUESTS_THIS_EPOCH.labels(*metrics_label_values).set(mech_requests)
         REMAINING_MECH_CALLS_FOR_STAKING_KPI.labels(*metrics_label_values).set(
-            n_mech_requests_to_staking_kpi
+            remaining_calls
         )
-        EPOCH_TIME_REMAINING.labels(*metrics_label_values).set(
-            self.calculate_epoch_time_remaining()
-        )
-
-    def calculate_time_since_last_successful_mech_tx(self) -> int:
-        """Calculate the time since the last successful mech transaction (mech response)."""
-
-        mech_tx_ts = self.synchronized_data.decision_receive_timestamp
-        now = int(datetime.now().timestamp())
-        seconds_since_last_successful_mech_tx = 0
-
-        if mech_tx_ts != 0:
-            seconds_since_last_successful_mech_tx = now - mech_tx_ts
-
-        return seconds_since_last_successful_mech_tx
-
-    def calculate_time_since_last_mech_tx_attempt(self) -> int:
-        """Calculate the time since the last attempted mech transaction (mech request)."""
-
-        mech_tx_attempt_ts = self.synchronized_data.decision_request_timestamp
-        now = int(datetime.now().timestamp())
-
-        if mech_tx_attempt_ts == 0:
-            return 0
-
-        seconds_since_last_mech_tx_attempt = now - mech_tx_attempt_ts
-        return seconds_since_last_mech_tx_attempt
-
-    def calculate_remaining_mech_calls_to_staking_kpi(self) -> int:
-        """Calculate the remaining mech calls needed to reach the staking KPI."""
-        return (
-            N_MECH_CALLS_FOR_STAKING_KPI
-            - self.synchronized_data.mech_requests_since_last_cp
-        )
-
-    def calculate_epoch_time_remaining(self) -> int:
-        """Calculate the remaining time in the current epoch."""
-
-        epoch_end_ts = self.synchronized_data.epoch_end_ts
-        if epoch_end_ts == 0:
-            return 0
-        return epoch_end_ts - int(datetime.now().timestamp())
+        EPOCH_TIME_REMAINING.labels(*metrics_label_values).set(epoch_time_remaining)

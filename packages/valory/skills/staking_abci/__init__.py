@@ -19,7 +19,11 @@
 
 """This module contains the staking skill for an AEA."""
 
+from typing import Generator
 from aea.configurations.base import PublicId
 
+
+# Shared type definition used by both staking_abci and decision_maker_abci
+WaitableConditionType = Generator[None, None, bool]
 
 PUBLIC_ID = PublicId.from_str("valory/staking_abci:0.1.0")

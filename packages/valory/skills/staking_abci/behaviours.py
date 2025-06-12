@@ -41,9 +41,8 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     TimeoutException,
 )
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    WaitableConditionType,
-)
+
+from packages.valory.skills.staking_abci import WaitableConditionType
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.staking_abci.rounds import (
