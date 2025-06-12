@@ -90,6 +90,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
+        self._agent_ids: str = "[]"
 
     @property
     def params(self) -> StakingParams:
