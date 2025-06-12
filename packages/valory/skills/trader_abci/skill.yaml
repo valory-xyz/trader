@@ -131,7 +131,7 @@ models:
       serious_slash_unit_amount: 8000000000000000
       round_timeout_seconds: 350.0
       service_id: trader
-      service_registry_address: '0x9338b5153AE39BB89f50468E608eD9d764B755fD'
+      service_registry_address: null
       agent_registry_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
       setup:
