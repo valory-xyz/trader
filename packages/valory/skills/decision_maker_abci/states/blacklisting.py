@@ -24,6 +24,8 @@ from typing import Any, Optional, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
+    BaseTxPayload,
+    CollectSameUntilThresholdRound,
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
@@ -31,19 +33,18 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbstractRound
 
 
-class BlacklistingRound(UpdateBetsRound):
+class BlacklistingRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
     """A round for updating the bets after blacklisting the sampled one."""
 
-    payload_class: Type[UpdateBetsPayload] = BlacklistingPayload
+    payload_class: Type[BaseTxPayload] = BlacklistingPayload
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     selection_key: Any = (
-        UpdateBetsRound.selection_key,
+        get_name(SynchronizedData.bets_hash),
         get_name(SynchronizedData.policy),
     )
 

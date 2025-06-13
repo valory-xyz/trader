@@ -27,6 +27,8 @@ from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
 from aea.helpers.ipfs.base import IPFSHashOnly
 
+from packages.valory.contracts.service_registry.contract import ServiceRegistryContract
+from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.market_manager_abci.bets import (
@@ -49,6 +51,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
     UpdateBetsRound,
 )
 
+WaitableConditionType = Generator[None, None, bool]
 
 BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
@@ -65,6 +68,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self.bets: List[Bet] = []
         self.multi_bets_filepath: str = self.params.store_path / MULTI_BETS_FILENAME
         self.bets_filepath: str = self.params.store_path / BETS_FILENAME
+        self.service_owner_address: str = ""
 
     @property
     def shared_state(self) -> SharedState:
@@ -75,6 +79,29 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def benchmarking_mode(self) -> BenchmarkingMode:
         """Return the benchmarking mode configurations."""
         return cast(BenchmarkingMode, self.context.benchmarking_mode)
+
+    def get_service_owner(self) -> WaitableConditionType:
+        """Method that returns the service owner."""
+
+        response = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_id=str(ServiceRegistryContract.contract_id),
+            contract_callable="get_service_owner",
+            contract_address=self.params.service_registry_address,
+            service_id=self.params.on_chain_service_id,
+            chain_id=self.params.default_chain_id,
+        )
+
+        if response.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.error(
+                f"Couldn't get the service owner for service with id={self.params.on_chain_service_id}. "
+                f"Expected response performative {ContractApiMessage.Performative.STATE.value}, "  # type: ignore
+                f"received {response.performative.value}."
+            )
+            return False
+
+        self.service_owner_address = response.state.body.get("service_owner", None)
+        return True
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
@@ -234,6 +261,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
+            yield from self.get_service_owner()
 
             # if trader is run after a long time, there is a possibility that
             # all bets are fresh and this should be updated to DAY_0_FRESH
@@ -244,7 +272,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.store_bets()
 
             bets_hash = self.hash_stored_bets() if self.bets else None
-            payload = UpdateBetsPayload(self.context.agent_address, bets_hash)
+            service_owner_address = self.service_owner_address
+            payload = UpdateBetsPayload(
+                self.context.agent_address, bets_hash, service_owner_address
+            )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)

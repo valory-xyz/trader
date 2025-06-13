@@ -23,13 +23,13 @@ from dataclasses import dataclass
 from typing import Optional
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 @dataclass(frozen=True)
-class DecisionReceivePayload(UpdateBetsPayload):
+class DecisionReceivePayload(BaseTxPayload):
     """Represents a transaction payload for the decision-making."""
 
+    bets_hash: Optional[str]
     is_profitable: Optional[bool]
     vote: Optional[int]
     confidence: Optional[float]
@@ -40,9 +40,10 @@ class DecisionReceivePayload(UpdateBetsPayload):
 
 
 @dataclass(frozen=True)
-class SamplingPayload(UpdateBetsPayload):
+class SamplingPayload(BaseTxPayload):
     """Represents a transaction payload for the sampling of a bet."""
 
+    bets_hash: Optional[str]
     index: Optional[int]
     benchmarking_finished: Optional[bool]
     day_increased: Optional[bool]
@@ -100,9 +101,10 @@ class VotingPayload(BaseTxPayload):
 
 
 @dataclass(frozen=True)
-class BlacklistingPayload(UpdateBetsPayload):
+class BlacklistingPayload(BaseTxPayload):
     """Represents a transaction payload for blacklisting."""
 
+    bets_hash: Optional[str]
     policy: str
 
 

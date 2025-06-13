@@ -23,7 +23,18 @@ from abc import ABC
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.contracts.base import Contract
@@ -41,8 +52,6 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     TimeoutException,
 )
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
-
-from packages.valory.skills.staking_abci import WaitableConditionType
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.payloads import CallCheckpointPayload
 from packages.valory.skills.staking_abci.rounds import (
@@ -55,6 +64,9 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
+
+
+WaitableConditionType = Generator[None, None, bool]
 
 
 ETH_PRICE = 0

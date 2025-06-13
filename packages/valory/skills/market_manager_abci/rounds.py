@@ -73,6 +73,11 @@ class SynchronizedData(BaseSynchronizedData):
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
 
+    @property
+    def service_owner_address(self) -> str:
+        """Get the service owner address."""
+        return str(self.db.get("service_owner_address", ""))
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""
@@ -98,7 +103,10 @@ class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.bets_hash)
+    selection_key = (
+        get_name(SynchronizedData.bets_hash),
+        get_name(SynchronizedData.service_owner_address),
+    )
     collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
 

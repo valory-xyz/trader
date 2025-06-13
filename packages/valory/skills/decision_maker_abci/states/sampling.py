@@ -24,6 +24,8 @@ from typing import Any, Optional, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
+    BaseTxPayload,
+    CollectSameUntilThresholdRound,
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
@@ -31,19 +33,18 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbstractRound
 
 
-class SamplingRound(UpdateBetsRound):
+class SamplingRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
     """A round for sampling a bet."""
 
-    payload_class: Type[UpdateBetsPayload] = SamplingPayload
+    payload_class: Type[BaseTxPayload] = SamplingPayload
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     selection_key: Any = (
-        UpdateBetsRound.selection_key,
+        get_name(SynchronizedData.bets_hash),
         get_name(SynchronizedData.sampled_bet_index),
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),

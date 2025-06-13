@@ -30,3 +30,4 @@ class UpdateBetsPayload(BaseTxPayload):
     """A transaction payload for the updated bets."""
 
     bets_hash: Optional[str]
+    service_owner_address: Optional[str]
