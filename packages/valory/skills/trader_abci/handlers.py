@@ -126,6 +126,10 @@ class HttpHandler(BaseHttpHandler):
 
         self.json_content_header = "Content-Type: application/json\n"
         self.html_content_header = "Content-Type: text/html\n"
+        self.js_content_header = "Content-Type: application/javascript\n"
+        self.css_content_header = "Content-Type: text/css\n"
+        self.png_content_header = "Content-Type: image/png\n"
+        self.jpeg_content_header = "Content-Type: image/jpeg\n"
 
         self.agent_profile_path = PREDICT_AGENT_PROFILE_PATH
 
@@ -134,9 +138,10 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         data: Union[str, Dict, List, bytes],
+        content_type: str = None,
     ) -> None:
         """Send an OK response with the provided data"""
-        headers = (
+        headers = content_type or (
             self.json_content_header
             if isinstance(data, (dict, list))
             else self.html_content_header
@@ -199,8 +204,11 @@ class HttpHandler(BaseHttpHandler):
                 with open(file_path, "rb") as file:
                     file_content = file.read()
 
+                # Get the appropriate content type
+                content_type = self._get_content_type(file_path)
+
                 # Send the file content as a response
-                self._send_ok_response(http_msg, http_dialogue, file_content)
+                self._send_ok_response(http_msg, http_dialogue, file_content, content_type)
             else:
                 # If the file doesn't exist or is not a file, return the index.html file
                 with open(
@@ -214,3 +222,17 @@ class HttpHandler(BaseHttpHandler):
                 self._send_ok_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
             self._handle_not_found(http_msg, http_dialogue)
+
+    def _get_content_type(self, file_path: Path) -> str:
+        """Get the appropriate content type header based on file extension."""
+        if file_path.suffix == ".js":
+            return self.js_content_header
+        elif file_path.suffix == ".html":
+            return self.html_content_header
+        elif file_path.suffix == ".json":
+            return self.json_content_header
+        elif file_path.suffix == '.png':
+            return self.png_content_header
+        elif file_path.suffix == '.jpeg' or file_path.suffix == '.jpg':
+            return self.jpeg_content_header
+        return self.html_content_header
