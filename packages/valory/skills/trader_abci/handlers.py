@@ -167,6 +167,7 @@ class HttpHandler(BaseHttpHandler):
         """Handle a Http request of verb GET."""
         data = {
             "address": self.context.agent_address,
+            "safe_address": self.synchronized_data.safe_contract_address,
             "agent_ids": self.agent_ids,
             "service_id": self.staking_synchronized_data.service_id,
         }
