@@ -47,6 +47,7 @@ class BlacklistingRound(CollectSameUntilThresholdRound, MarketManagerAbstractRou
         get_name(SynchronizedData.bets_hash),
         get_name(SynchronizedData.policy),
     )
+    synchronized_data_class = SynchronizedData
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
