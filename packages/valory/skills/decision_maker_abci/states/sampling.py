@@ -49,6 +49,7 @@ class SamplingRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),
     )
+    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
     synchronized_data_class = SynchronizedData
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
