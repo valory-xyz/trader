@@ -31,7 +31,6 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
 class DecisionReceiveRound(CollectSameUntilThresholdRound):
@@ -43,7 +42,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
     none_event = Event.MECH_RESPONSE_ERROR
     no_majority_event = Event.NO_MAJORITY
     selection_key: Any = (
-        UpdateBetsRound.selection_key,
+        get_name(SynchronizedData.bets_hash),
         get_name(SynchronizedData.is_profitable),
         get_name(SynchronizedData.vote),
         get_name(SynchronizedData.confidence),
