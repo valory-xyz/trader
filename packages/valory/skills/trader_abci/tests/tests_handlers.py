@@ -21,6 +21,7 @@
 import json
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
+from pathlib import Path
 
 import pytest
 from aea.configurations.data_types import PublicId
@@ -62,6 +63,8 @@ from packages.valory.skills.trader_abci.handlers import (
     SigningHandler,
     TendermintHandler,
     TraderHandler,
+    CONTENT_TYPES,
+    DEFAULT_HEADER,
 )
 
 
@@ -99,7 +102,6 @@ class TestHttpHandler:
 
     def test_setup(self) -> None:
         """Test the setup method of HttpHandler."""
-
         config_uri_base_hostname = "localhost"
         propel_uri_base_hostname = (
             r"https?:\/\/[a-zA-Z0-9]{16}.agent\.propel\.(staging\.)?autonolas\.tech"
@@ -113,7 +115,20 @@ class TestHttpHandler:
                 (agent_info_url_regex, self.handler._handle_get_agent_info),
             ],
         }
-        assert self.handler.json_content_header == "Content-Type: application/json\n"
+
+    def test_get_content_type(self) -> None:
+        """Test _get_content_type method."""
+        # Test known extensions
+        assert self.handler._get_content_type(Path("test.js")) == CONTENT_TYPES[".js"]
+        assert self.handler._get_content_type(Path("test.html")) == CONTENT_TYPES[".html"]
+        assert self.handler._get_content_type(Path("test.json")) == CONTENT_TYPES[".json"]
+        assert self.handler._get_content_type(Path("test.css")) == CONTENT_TYPES[".css"]
+        assert self.handler._get_content_type(Path("test.png")) == CONTENT_TYPES[".png"]
+        assert self.handler._get_content_type(Path("test.jpg")) == CONTENT_TYPES[".jpg"]
+        assert self.handler._get_content_type(Path("test.jpeg")) == CONTENT_TYPES[".jpeg"]
+        
+        # Test unknown extension
+        assert self.handler._get_content_type(Path("test.xyz")) == DEFAULT_HEADER
 
     @pytest.mark.parametrize(
         "test_case",
@@ -288,7 +303,7 @@ class TestHttpHandler:
             version=http_msg.version,
             status_code=200,
             status_text="Success",
-            headers=f"{self.handler.json_content_header}{http_msg.headers}",
+            headers=f"{CONTENT_TYPES['.json']}{http_msg.headers}",
             body=json.dumps(data).encode("utf-8"),
         )
 

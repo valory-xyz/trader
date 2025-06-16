@@ -65,6 +65,18 @@ AcnHandler = BaseAcnHandler
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 
+# Content type constants
+DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
+CONTENT_TYPES = {
+    ".js": "Content-Type: application/javascript\n",
+    ".html": HTML_HEADER,
+    ".json": "Content-Type: application/json\n",
+    ".css": "Content-Type: text/css\n",
+    ".png": "Content-Type: image/png\n",
+    ".jpg": "Content-Type: image/jpeg\n",
+    ".jpeg": "Content-Type: image/jpeg\n",
+}
+
 
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
@@ -76,7 +88,6 @@ class HttpHandler(BaseHttpHandler):
         super().__init__(**kwargs)
         self.handler_url_regex: str = ""
         self.routes: Dict[tuple, list] = {}
-        self.json_content_header: str = ""
 
     @property
     def staking_synchronized_data(self) -> SynchronizedData:
@@ -124,14 +135,11 @@ class HttpHandler(BaseHttpHandler):
             ],
         }
 
-        self.json_content_header = "Content-Type: application/json\n"
-        self.html_content_header = "Content-Type: text/html\n"
-        self.js_content_header = "Content-Type: application/javascript\n"
-        self.css_content_header = "Content-Type: text/css\n"
-        self.png_content_header = "Content-Type: image/png\n"
-        self.jpeg_content_header = "Content-Type: image/jpeg\n"
-
         self.agent_profile_path = PREDICT_AGENT_PROFILE_PATH
+
+    def _get_content_type(self, file_path: Path) -> str:
+        """Get the appropriate content type header based on file extension."""
+        return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
     def _send_ok_response(
         self,
@@ -142,9 +150,9 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Send an OK response with the provided data"""
         headers = content_type or (
-            self.json_content_header
+            CONTENT_TYPES[".json"]
             if isinstance(data, (dict, list))
-            else self.html_content_header
+            else DEFAULT_HEADER
         )
         headers += http_msg.headers
 
@@ -222,17 +230,3 @@ class HttpHandler(BaseHttpHandler):
                 self._send_ok_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
             self._handle_not_found(http_msg, http_dialogue)
-
-    def _get_content_type(self, file_path: Path) -> str:
-        """Get the appropriate content type header based on file extension."""
-        if file_path.suffix == ".js":
-            return self.js_content_header
-        elif file_path.suffix == ".html":
-            return self.html_content_header
-        elif file_path.suffix == ".json":
-            return self.json_content_header
-        elif file_path.suffix == '.png':
-            return self.png_content_header
-        elif file_path.suffix == '.jpeg' or file_path.suffix == '.jpg':
-            return self.jpeg_content_header
-        return self.html_content_header
