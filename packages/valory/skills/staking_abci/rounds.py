@@ -100,6 +100,17 @@ class SynchronizedData(TxSettlementSyncedData):
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
 
+    @property
+    def agent_ids(self) -> str:
+        """Get the agent ids."""
+        value = cast(str, self.db.get("agent_ids", "[]"))
+        return value
+
+    @property
+    def service_id(self) -> Optional[int]:
+        """Get the service id."""
+        return self.db.get("service_id", None)
+
 
 class CallCheckpointRound(CollectSameUntilThresholdRound):
     """A round for the checkpoint call preparation."""
@@ -113,6 +124,8 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.service_staking_state),
         get_name(SynchronizedData.previous_checkpoint),
         get_name(SynchronizedData.is_checkpoint_reached),
+        get_name(SynchronizedData.agent_ids),
+        get_name(SynchronizedData.service_id),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
