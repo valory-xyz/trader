@@ -360,34 +360,35 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             placeholder=get_name(CallCheckpointBehaviour.liveness_ratio),
         )
         return status
-
-    def _get_service_info(self) -> WaitableConditionType:
-        """Get the service info."""
+    
+    def ensure_service_id(self) -> WaitableConditionType:
+        """Ensure that the service id is set."""
         service_id = self.params.on_chain_service_id
         if service_id is None:
             self.context.logger.warning(
                 "Cannot perform any staking-related operations without a configured on-chain service id. "
                 "Assuming service status 'UNSTAKED'."
             )
+            return False
+        return True
+
+    def _get_service_info(self) -> WaitableConditionType:
+        """Get the service info."""
+        if not self.ensure_service_id():
             return True
 
         status = yield from self._staking_contract_interact(
             contract_callable="get_service_info",
             placeholder=get_name(CallCheckpointBehaviour.service_info),
-            service_id=service_id,
+            service_id=self.params.on_chain_service_id,
         )
         return status
 
     def _get_agent_ids(self) -> WaitableConditionType:
         """Get the service information to retrieve the agent ids."""
-        service_id = self.params.on_chain_service_id
-        if service_id is None:
-            self.context.logger.warning(
-                "Cannot perform any staking-related operations without a configured on-chain service id. "
-                "Assuming service status 'UNSTAKED'."
-            )
+        if not self.ensure_service_id():
             return True
-
+        
         status = yield from self._staking_contract_interact(
             contract_callable="get_agent_ids",
             placeholder=get_name(CallCheckpointBehaviour.agent_ids),
