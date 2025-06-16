@@ -360,8 +360,8 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             placeholder=get_name(CallCheckpointBehaviour.liveness_ratio),
         )
         return status
-    
-    def ensure_service_id(self) -> WaitableConditionType:
+
+    def ensure_service_id(self) -> bool:
         """Ensure that the service id is set."""
         service_id = self.params.on_chain_service_id
         if service_id is None:
@@ -388,7 +388,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         """Get the service information to retrieve the agent ids."""
         if not self.ensure_service_id():
             return True
-        
+
         status = yield from self._staking_contract_interact(
             contract_callable="get_agent_ids",
             placeholder=get_name(CallCheckpointBehaviour.agent_ids),

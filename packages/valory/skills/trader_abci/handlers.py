@@ -23,7 +23,7 @@
 import json
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from packages.valory.protocols.http.message import HttpMessage
@@ -146,13 +146,11 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         data: Union[str, Dict, List, bytes],
-        content_type: str = None,
+        content_type: Optional[str] = None,
     ) -> None:
         """Send an OK response with the provided data"""
         headers = content_type or (
-            CONTENT_TYPES[".json"]
-            if isinstance(data, (dict, list))
-            else DEFAULT_HEADER
+            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
         )
         headers += http_msg.headers
 
@@ -216,7 +214,9 @@ class HttpHandler(BaseHttpHandler):
                 content_type = self._get_content_type(file_path)
 
                 # Send the file content as a response
-                self._send_ok_response(http_msg, http_dialogue, file_content, content_type)
+                self._send_ok_response(
+                    http_msg, http_dialogue, file_content, content_type
+                )
             else:
                 # If the file doesn't exist or is not a file, return the index.html file
                 with open(

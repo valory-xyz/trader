@@ -19,9 +19,9 @@
 """This module contains the tests for the handlers for the trader abci."""
 
 import json
+from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
-from pathlib import Path
 
 import pytest
 from aea.configurations.data_types import PublicId
@@ -56,15 +56,15 @@ from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     HandleTestCase,
 )
 from packages.valory.skills.trader_abci.handlers import (
+    CONTENT_TYPES,
     ContractApiHandler,
+    DEFAULT_HEADER,
     HttpHandler,
     IpfsHandler,
     LedgerApiHandler,
     SigningHandler,
     TendermintHandler,
     TraderHandler,
-    CONTENT_TYPES,
-    DEFAULT_HEADER,
 )
 
 
@@ -120,13 +120,19 @@ class TestHttpHandler:
         """Test _get_content_type method."""
         # Test known extensions
         assert self.handler._get_content_type(Path("test.js")) == CONTENT_TYPES[".js"]
-        assert self.handler._get_content_type(Path("test.html")) == CONTENT_TYPES[".html"]
-        assert self.handler._get_content_type(Path("test.json")) == CONTENT_TYPES[".json"]
+        assert (
+            self.handler._get_content_type(Path("test.html")) == CONTENT_TYPES[".html"]
+        )
+        assert (
+            self.handler._get_content_type(Path("test.json")) == CONTENT_TYPES[".json"]
+        )
         assert self.handler._get_content_type(Path("test.css")) == CONTENT_TYPES[".css"]
         assert self.handler._get_content_type(Path("test.png")) == CONTENT_TYPES[".png"]
         assert self.handler._get_content_type(Path("test.jpg")) == CONTENT_TYPES[".jpg"]
-        assert self.handler._get_content_type(Path("test.jpeg")) == CONTENT_TYPES[".jpeg"]
-        
+        assert (
+            self.handler._get_content_type(Path("test.jpeg")) == CONTENT_TYPES[".jpeg"]
+        )
+
         # Test unknown extension
         assert self.handler._get_content_type(Path("test.xyz")) == DEFAULT_HEADER
 
