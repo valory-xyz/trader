@@ -26,6 +26,8 @@ from abc import ABC
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
+from hexbytes import HexBytes
+
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
@@ -815,7 +817,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         batch = MultisendBatch(
             to=self.market_maker_contract_address,
-            data=bytes.fromhex(tx_data[2:]),
+            data=HexBytes(tx_data),
         )
         self.multisend_batches.append(batch)
         return True
@@ -852,7 +854,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         batch = MultisendBatch(
             to=token,
-            data=bytes.fromhex(approval_data[2:]),
+            data=HexBytes(approval_data),
         )
         self.multisend_batches.append(batch)
         return True
