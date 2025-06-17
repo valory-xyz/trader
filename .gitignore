@@ -21,6 +21,7 @@ packages/valory/contracts/erc20/
 packages/valory/contracts/mech/
 packages/valory/contracts/gnosis_safe_proxy_factory/
 packages/valory/contracts/mech_marketplace/
+packages/valory/contracts/mech_marketplace_legacy/
 packages/valory/contracts/multisend/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/
@@ -34,6 +35,7 @@ packages/valory/protocols/http
 packages/valory/protocols/ipfs
 packages/valory/protocols/ledger_api
 packages/valory/protocols/tendermint
+packages/valory/contracts/mech_mm
 
 .idea
 **/__pycache__/
@@ -54,3 +56,4 @@ trader/
 !/packages/valory/services/trader/
 /trader_service/
 /.coverage
+.dmypy.json
