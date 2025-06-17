@@ -21,6 +21,8 @@
 
 from typing import Any, Generator, Optional, cast
 
+from hexbytes import HexBytes
+
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -86,7 +88,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
         batch = MultisendBatch(
             to=self.collateral_token,
-            data=bytes.fromhex(approval_data[2:]),
+            data=HexBytes(approval_data),
             value=self.w_xdai_deficit,
         )
         self.multisend_batches.append(batch)
