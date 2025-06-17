@@ -116,7 +116,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         synced_data = SynchronizedData(self.synchronized_data.db)
         event = submitter_to_event.get(synced_data.tx_submitter, Event.UNRECOGNIZED)
 
-        if synced_data.vote != synced_data.previous_vote:
+        if synced_data.vote != synced_data.previous_vote and synced_data.vote is not None and synced_data.previous_vote is not None:
             self.logger.info(f"Vote changed from {synced_data.previous_vote} to {synced_data.vote} with confidence {synced_data.confidence}")
             event = Event.BET_PLACEMENT_SELL_DONE
 
