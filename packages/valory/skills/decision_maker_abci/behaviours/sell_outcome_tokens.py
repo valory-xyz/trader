@@ -55,13 +55,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
     @property
     def return_amount(self) -> int:
         """Get the amount expected to be returned after the sell tx is completed."""
-        previous_vote = self.synchronized_data.previous_vote
-
-        # todo: need to return the amount of the outcome token that is being sold
-        if previous_vote == 0:
-            return self.sampled_bet.invested_amount_yes
-        else:
-            return self.sampled_bet.invested_amount_no
+        return self.sampled_bet.get_vote_amount(self.outcome_index)
 
     @property
     def collateral_token(self) -> str:

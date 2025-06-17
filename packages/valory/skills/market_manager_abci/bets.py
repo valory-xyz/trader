@@ -287,6 +287,11 @@ class Bet:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
 
+    def get_vote_amount(self, vote: int) -> int:
+        """Get the amount invested in a vote."""
+        vote_name = self.get_outcome(vote)
+        return sum(self.investments[vote_name])
+
     def update_investments(self, amount: int) -> bool:
         """Get the investments for the current vote type."""
         vote = self.prediction_response.vote
