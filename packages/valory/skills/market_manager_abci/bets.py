@@ -138,22 +138,66 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
-    n_bets: int = 0
     queue_status: QueueStatus = QueueStatus.FRESH
+    # a mapping from vote to investment amounts
+    investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         self._validate()
         self._cast()
         self._check_usefulness()
+        if self.outcomes:
+            self.investments = {self.yes: [], self.no: []}
+        else:
+            self.investments = {}
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
         return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
+
+    @property
+    def yes_investments(self) -> List[int]:
+        """Get the yes investments."""
+        return self.investments[self.yes]
+
+    @property
+    def no_investments(self) -> List[int]:
+        """Get the no investments."""
+        return self.investments[self.no]
+
+    @property
+    def n_yes_bets(self) -> int:
+        """Get the number of yes bets."""
+        return len(self.yes_investments)
+
+    @property
+    def n_no_bets(self) -> int:
+        """Get the number of no bets."""
+        return len(self.no_investments)
+
+    @property
+    def n_bets(self) -> int:
+        """Get the number of bets."""
+        return self.n_yes_bets + self.n_no_bets
+
+    @property
+    def invested_amount_yes(self) -> int:
+        """Get the amount invested in yes bets."""
+        return sum(self.yes_investments)
+
+    @property
+    def invested_amount_no(self) -> int:
+        """Get the amount invested in no bets."""
+        return sum(self.no_investments)
+
+    @property
+    def invested_amount(self) -> int:
+        """Get the amount invested in bets."""
+        return self.invested_amount_yes + self.invested_amount_no
 
     def blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
@@ -242,6 +286,17 @@ class Bet:
     def no(self) -> str:
         """Return the "no" outcome."""
         return self._get_binary_outcome(True)
+
+    def update_investments(self, amount: int) -> bool:
+        """Get the investments for the current vote type."""
+        vote = self.prediction_response.vote
+        if vote is None:
+            return False
+
+        vote_name = self.get_outcome(vote)
+        to_update = self.investments[vote_name]
+        to_update.append(amount)
+        return True
 
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
