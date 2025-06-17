@@ -117,6 +117,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         event = submitter_to_event.get(synced_data.tx_submitter, Event.UNRECOGNIZED)
 
         if synced_data.vote != synced_data.previous_vote:
+            self.logger.info(f"Vote changed from {synced_data.previous_vote} to {synced_data.vote} with confidence {synced_data.confidence}")
             event = Event.BET_PLACEMENT_SELL_DONE
 
         # if a mech request was just performed, increase the utilized tool's counter
