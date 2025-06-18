@@ -79,6 +79,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
         # if this happens, we do not want to retry as it won't get resolved soon. Instead, we exit this round.
         calculation_succeeded = yield from self._calc_sell_amount()
         if not calculation_succeeded:
+            self.context.logger.error("Could not calculate the sell amount!")
             return None
 
         for step in (
