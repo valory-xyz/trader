@@ -181,5 +181,5 @@ class FixedProductMarketMakerContract(Contract):
             "sell",
             returnAmount=return_amount,
             outcomeIndex=outcome_index,
-            maxOutcomeTokenSellAmount=max_outcome_tokens_to_sell,
+            maxOutcomeTokensToSell=max_outcome_tokens_to_sell,
         )    

@@ -24,13 +24,13 @@ import json
 import os
 from abc import ABC
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
-
-from hexbytes import HexBytes
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
+from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
@@ -97,6 +97,13 @@ NEW_LINE = "\n"
 QUOTE = '"'
 TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
+
+
+class TradingOperation(str, Enum):
+    """Trading operation."""
+
+    BUY = "buy"
+    SELL = "sell"
 
 
 def remove_fraction_wei(amount: int, fraction: float) -> int:
@@ -720,7 +727,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _calc_token_amount(
         self,
-        operation: str,
+        operation: TradingOperation,
         amount_field: str,
         amount_param_name: str,
         amount_param_value: int,
@@ -730,11 +737,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.market_maker_contract_address,
             contract_id=str(FixedProductMarketMakerContract.contract_id),
-            contract_callable=f"calc_{operation}_amount",
+            contract_callable=f"calc_{operation.value}_amount",
             outcome_index=self.outcome_index,
+            chain_id=self.params.mech_chain_id,
             **{
                 amount_param_name: amount_param_value,
-                "chain_id": self.params.mech_chain_id,
             },  # type: ignore
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
@@ -750,7 +757,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             return False
 
-        if operation == "buy":
+        if operation == TradingOperation.BUY:
             self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
         else:
             self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
@@ -759,7 +766,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def _calc_buy_amount(self) -> WaitableConditionType:
         """Calculate the buy amount of the conditional token."""
         return self._calc_token_amount(
-            operation="buy",
+            operation=TradingOperation.BUY,
             amount_field="amount",
             amount_param_name="investment_amount",
             amount_param_value=self.investment_amount,
@@ -768,7 +775,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def _calc_sell_amount(self) -> WaitableConditionType:
         """Calculate the sell amount of the conditional token."""
         return self._calc_token_amount(
-            operation="sell",
+            operation=TradingOperation.SELL,
             amount_field="outcomeTokenSellAmount",
             amount_param_name="return_amount",
             amount_param_value=self.return_amount,
@@ -782,14 +789,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             "contract_id": str(FixedProductMarketMakerContract.contract_id),
             "contract_callable": f"get_{operation}_data",
             "outcome_index": self.outcome_index,
+            "chain_id": self.params.mech_chain_id,
         }
 
-        if operation == "buy":
+        if operation == TradingOperation.BUY:
             params.update(
                 {
                     "investment_amount": self.investment_amount,
                     "min_outcome_tokens_to_buy": self.buy_amount,
-                    "chain_id": self.params.mech_chain_id,
                 }
             )
         else:
