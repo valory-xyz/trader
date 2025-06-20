@@ -28,8 +28,8 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
     FinishedCheckStopTradingRound,
-    FinishedWithSkipTradingRound,
     FinishedWithReviewBetsRound,
+    FinishedWithSkipTradingRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (

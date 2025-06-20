@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -61,22 +61,10 @@ class SynchronizedData(BaseSynchronizedData):
         """Strictly get a collection and return it deserialized."""
         serialized = self.db.get_strict(key)
         return CollectionRound.deserialize_collection(serialized)
-    
+
     def get_last_review_timestamp(self) -> int:
         """Get the last review timestamp."""
-        return self.db.get("last_review_timestamp", 0)
-    
-    def should_review_bets(self) -> bool:
-        """Check if the bets should be reviewed."""
-        if not self.is_staking_kpi_met:
-            return False
-            
-        if not self.params.enable_position_review:
-            return False
-            
-        current_timestamp = self.db.get_strict("current_timestamp")
-        last_review = self.get_last_review_timestamp()
-        return current_timestamp - last_review > self.params.review_period_seconds
+        return cast(int, self.db.get("last_review_timestamp", 0))
 
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
@@ -94,6 +82,27 @@ class CheckStopTradingRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
+    @property
+    def synced_timestamp(self) -> int:
+        """Return the synchronized timestamp across the agents."""
+        return int(
+            self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
+        )
+
+    def should_review_bets(self, is_staking_kpi_met: bool) -> bool:
+        """Check if the bets should be reviewed."""
+        if not is_staking_kpi_met:
+            return False
+
+        if not self.context.params.enable_position_review:
+            return False
+
+        last_review = self.synchronized_data.get_last_review_timestamp()  # type: ignore
+        return (
+            self.synced_timestamp - last_review
+            > self.context.params.review_period_seconds
+        )
+
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -104,7 +113,7 @@ class CheckStopTradingRound(VotingRound):
         is_staking_kpi_met = self.positive_vote_threshold_reached
         self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
 
-        if self.synchronized_data.should_review_bets():
+        if self.should_review_bets(is_staking_kpi_met):
             return self.synchronized_data, Event.REVIEW_BETS
 
         return res

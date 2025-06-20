@@ -157,7 +157,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _requeue_bets_for_selling(self) -> None:
         """Requeue sell bets."""
         for bet in self.bets:
-            if bet.should_be_checked_for_selling(self.synced_time):
+            if bet.should_be_checked_for_selling(
+                self.synced_time, self.params.opening_margin
+            ):
                 self.context.logger.info(f"Requeueing bet {bet.id} for selling")
                 bet.queue_status = bet.queue_status.move_to_fresh()
 

@@ -50,7 +50,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.bet_amount),
         get_name(SynchronizedData.next_mock_data_row),
         get_name(SynchronizedData.policy),
-        get_name(SynchronizedData.should_be_sold)
+        get_name(SynchronizedData.should_be_sold),
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)
 
@@ -74,7 +74,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
 
         if event == Event.DONE and synced_data.vote is None:
             return synced_data, Event.TIE
-        
+
         if event == Event.DONE and synced_data.should_be_sold:
             return synced_data, Event.DONE_SELL
 

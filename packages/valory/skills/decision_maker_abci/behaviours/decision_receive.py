@@ -539,22 +539,30 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         self.store_bets()
 
-
     def get_existing_bet(self) -> Optional[Bet]:
         """Get the existing bet."""
         for bet in self.bets:
             if bet.id == self.sampled_bet.id:
                 return bet
         return None
-    
-    def should_sell_outcome_tokens(self, prediction_response: Optional[PredictionResponse]) -> bool:
+
+    def should_sell_outcome_tokens(
+        self, prediction_response: Optional[PredictionResponse]
+    ) -> bool:
         """Whether the outcome tokens should be sold."""
         existing_bet = self.get_existing_bet()
-        if existing_bet is None:
+        if (
+            existing_bet is None
+            or existing_bet.prediction_response is None
+            or prediction_response is None
+        ):
             return False
-        
+
         if existing_bet.prediction_response.vote == prediction_response.vote:
-            confidence_delta = prediction_response.confidence - existing_bet.prediction_response.confidence
+            confidence_delta = (
+                prediction_response.confidence
+                - existing_bet.prediction_response.confidence
+            )
             return confidence_delta > self.params.min_confidence_increase
         else:
             return existing_bet.prediction_response.vote != prediction_response.vote
@@ -577,7 +585,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
                 if self.should_sell_outcome_tokens(prediction_response):
-                    self.context.logger.info("The bet response has changed, so we need to sell the outcome tokens")
+                    self.context.logger.info(
+                        "The bet response has changed, so we need to sell the outcome tokens"
+                    )
                     should_be_sold = True
 
                 if not should_be_sold:

@@ -338,10 +338,15 @@ class Bet:
         else:
             profit_increases = self.potential_net_profit >= potential_net_profit
             return more_confident and profit_increases
-        
-    def should_be_checked_for_selling(self, current_timestamp: int) -> bool:
+
+    def should_be_checked_for_selling(
+        self, current_timestamp: int, opening_margin: int
+    ) -> bool:
         """If more than 24 hours have passed since the bet was opened, it should be checked for selling."""
-        return current_timestamp > (self.openingTimestamp  - self.params.opening_margin) + DAY_IN_SECONDS
+        return (
+            current_timestamp
+            > (self.openingTimestamp - opening_margin) + DAY_IN_SECONDS
+        )
 
 
 class BetsEncoder(json.JSONEncoder):
