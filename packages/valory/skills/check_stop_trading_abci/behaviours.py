@@ -23,6 +23,7 @@ import math
 from typing import Any, Generator, Set, Type, cast
 
 from packages.valory.contracts.mech.contract import Mech as MechContract
+from packages.valory.contracts.mech_marketplace.contract import MechMarketplace
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
@@ -71,10 +72,17 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
 
     def _get_staking_kpi_request_count(self) -> WaitableConditionType:
         """Get the request count from the appropriate contract based on configuration."""
+        if self.params.use_mech_marketplace:
+            mech_contract_id = MechMarketplace.contract_id
+            request_count_callable = "get_request_count"
+        else:
+            mech_contract_id = MechContract.contract_id
+            request_count_callable = "get_requests_count"
+
         status = yield from self.contract_interact(
             contract_address=self.params.staking_kpi_mech_count_request_address,
-            contract_public_id=MechContract.contract_id,
-            contract_callable="get_requests_count",
+            contract_public_id=mech_contract_id,
+            contract_callable=request_count_callable,
             data_key="requests_count",
             placeholder=get_name(CheckStopTradingBehaviour.staking_kpi_request_count),
             address=self.synchronized_data.safe_contract_address,
