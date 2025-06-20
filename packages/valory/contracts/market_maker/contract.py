@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -133,3 +133,53 @@ class FixedProductMarketMakerContract(Contract):
             outcomeIndex=outcome_index,
             minOutcomeTokensToBuy=min_outcome_tokens_to_buy,
         )
+
+    @classmethod
+    def calc_sell_amount(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+        return_amount: int,
+        outcome_index: int,
+    ) -> JSONLike:
+        """
+        Calculate the sell amount.
+        :param ledger_api: the ledger API object
+        :param contract_address: the contract address
+        :param return_amount: the amount the user will have returned
+        :param outcome_index: the index of the answer's outcome that the user wants to sell for
+        :return: the outcomeTokenSellAmount
+        """
+        outcome_token_sell_amount = cls._method_call(
+            ledger_api,
+            contract_address,
+            "calcSellAmount",
+            returnAmount=return_amount,
+            outcomeIndex=outcome_index,
+        )
+        return dict(amount=outcome_token_sell_amount)
+
+    @classmethod
+    def get_sell_data(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        return_amount: int,
+        outcome_index: int,
+        max_outcome_tokens_to_sell: int,
+    ) -> Dict[str, bytes]:
+        """Gets the encoded arguments for a sell tx, which should only be called via the multisig.
+        :param ledger_api: the ledger API object
+        :param contract_address: the contract address
+        :param return_amount: the amount the user have returned
+        :param outcome_index: the index of the answer's outcome that the user wants to sell tokens for
+        :param max_outcome_tokens_to_sell: the output of the `calcSellAmount` contract method
+        """
+        return cls._encode_abi(
+            ledger_api,
+            contract_address,
+            "sell",
+            returnAmount=return_amount,
+            outcomeIndex=outcome_index,
+            maxOutcomeTokensToSell=max_outcome_tokens_to_sell,
+        )    
