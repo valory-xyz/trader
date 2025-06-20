@@ -19,10 +19,22 @@
 
 """This module contains the behaviours for the staking skill."""
 
+import json
 from abc import ABC
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.contracts.base import Contract
@@ -78,6 +90,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
+        self._agent_ids: str = "[]"
 
     @property
     def params(self) -> StakingParams:
@@ -170,6 +183,16 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def service_info(self, service_info: Tuple[Any, Any, Tuple[Any, Any]]) -> None:
         """Set the service info."""
         self._service_info = service_info
+
+    @property
+    def agent_ids(self) -> str:
+        """Get the agent ids."""
+        return self._agent_ids
+
+    @agent_ids.setter
+    def agent_ids(self, agent_ids: List[int]) -> None:
+        """Set the agent ids."""
+        self._agent_ids = json.dumps(agent_ids)
 
     def wait_for_condition_with_sleep(
         self,
@@ -338,20 +361,37 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         )
         return status
 
-    def _get_service_info(self) -> WaitableConditionType:
-        """Get the service info."""
+    def ensure_service_id(self) -> bool:
+        """Ensure that the service id is set."""
         service_id = self.params.on_chain_service_id
         if service_id is None:
             self.context.logger.warning(
                 "Cannot perform any staking-related operations without a configured on-chain service id. "
                 "Assuming service status 'UNSTAKED'."
             )
+            return False
+        return True
+
+    def _get_service_info(self) -> WaitableConditionType:
+        """Get the service info."""
+        if not self.ensure_service_id():
             return True
 
         status = yield from self._staking_contract_interact(
             contract_callable="get_service_info",
             placeholder=get_name(CallCheckpointBehaviour.service_info),
-            service_id=service_id,
+            service_id=self.params.on_chain_service_id,
+        )
+        return status
+
+    def _get_agent_ids(self) -> WaitableConditionType:
+        """Get the service information to retrieve the agent ids."""
+        if not self.ensure_service_id():
+            return True
+
+        status = yield from self._staking_contract_interact(
+            contract_callable="get_agent_ids",
+            placeholder=get_name(CallCheckpointBehaviour.agent_ids),
         )
         return status
 
@@ -521,6 +561,7 @@ class CallCheckpointBehaviour(
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self._check_service_staked)
+            yield from self.wait_for_condition_with_sleep(self._get_agent_ids)
 
             checkpoint_tx_hex = None
             if self.service_staking_state == StakingState.STAKED:
@@ -540,6 +581,8 @@ class CallCheckpointBehaviour(
                 self.service_staking_state.value,
                 self.ts_checkpoint,
                 is_checkpoint_reached,
+                self.agent_ids,
+                self.params.on_chain_service_id,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

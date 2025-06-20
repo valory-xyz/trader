@@ -146,67 +146,139 @@ jobs:
           source github.vars
           $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
 
-  build-macos-pyinstaller:
+  build-agent-runner:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ macos-14, macos-14-large ]
-
+        os: [windows-latest, macos-14, macos-14-large]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      # Set up Python with setup-python action and add it to PATH
+      - uses: actions/setup-python@v5
+        id: setup-python
         with:
-          python-version: '3.10'
+          python-version: "3.10"
+
+      - name: Add Python to PATH
+        run: |
+          echo "${{ steps.setup-python.outputs.python-path }}" >> $GITHUB_PATH
+
+
+      - name: prepare sign things windows
+        if: runner.os == 'Windows'
+        run: |  
+          echo Setup Certificate 
+          echo "${{secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12 
+          echo "Set Variables!"
+          echo "::set-output name=version::${GITHUB_REF#refs/tags/v}" 
+          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV" 
+          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV" 
+          echo "SM_KEY_PAIR_ALIAS=${{ secrets.SM_KEY_PAIR_ALIAS }}" >> "$GITHUB_ENV" 
+          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV" 
+          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV" 
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH 
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH 
+          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH 
+        shell: bash             
+
+      - name: Setup SSM KSP on windows latest
+        if: runner.os == 'Windows'
+        run: | 
+          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi 
+          msiexec /i smtools-windows-x64.msi /quiet /qn 
+          smksp_registrar.exe list 
+          smctl.exe keypair ls 
+          C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user 
+          smksp_cert_sync.exe 
+        shell: cmd 
 
       - name: Install and configure Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: '1.4.0'
-          virtualenvs-create: true
-          virtualenvs-in-project: false
-          virtualenvs-path: ~/my-custom-path
-          installer-parallel: true
+        run: pip install poetry
 
-      - name: Install dependencies
-        run: poetry install
+      #### MAC
+      - name: build an sign sign the file mac os
+        if: runner.os != 'Windows'
+        env:
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}  # Apple ID email
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}  # App-specific password
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}  # Team ID из Apple Dev Account
+          SIGN_ID: "Developer ID Application: Valory AG (${{ secrets.APPLE_TEAM_ID }})"
+        run: | 
+          echo "$CSC_LINK" | base64 --decode > certificate.p12
 
-      - name: Set arch environment variable for macos-latest-large
-        if: contains(matrix.os, 'large')
-        run: echo "OS_ARCH=x64" >> $GITHUB_ENV
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          security import certificate.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
 
-      - name: Set arch environment variable for other macOS versions
-        if: ${{ !contains(matrix.os, 'large') }}
-        run: echo "OS_ARCH=arm64" >> $GITHUB_ENV
+          make build-agent-runner-mac
 
-      - name: Build with PyInstaller
+          codesign -dv --verbose=4 dist/agent_runner_bin
+    
+      - name: rename the file mac os
+        if: runner.os != 'Windows'
+        run: | 
+          export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}|tr '[:upper:]' '[:lower:]'`
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
+          mv dist/agent_runner_bin dist/${FILENAME}
+          dist/${FILENAME} --version
+      
+      ### WINDOWS
+      - name: Build Agent Runner Windonws
+        if: runner.os == 'Windows'
         run: |
-           poetry run pyinstaller --collect-data eth_account --collect-all aea --collect-all autonomy --collect-all operate --collect-all aea_ledger_ethereum --collect-all aea_ledger_cosmos --collect-all aea_ledger_ethereum_flashbots --hidden-import aea_ledger_ethereum --hidden-import aea_ledger_cosmos --hidden-import aea_ledger_ethereum_flashbots --hidden-import grpc --hidden-import openapi_core --collect-all google.protobuf --collect-all openapi_core --collect-all openapi_spec_validator --collect-all asn1crypto --hidden-import py_ecc --hidden-import pytz --onefile pyinstaller/trader_bin.py --name trader_bin_${{env.OS_ARCH}}
-      - name: Upload Release Assets
-        uses: actions/upload-artifact@v2
+            make build-agent-runner
+
+      - name: sign the file
+        if: runner.os == 'Windows'
+        run: | 
+          "C:\\Program Files\\DigiCert\\DigiCert One Signing Manager Tools\\smctl.exe" sign --keypair-alias=${{ secrets.SM_KEY_PAIR_ALIAS }} --input "dist/agent_runner_bin.exe"
+
+      - name: rename the file windows
+        if: runner.os == 'Windows'
+        run: | 
+          export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}.exe|tr '[:upper:]' '[:lower:]'`
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
+          mv dist/agent_runner_bin.exe dist/${FILENAME}
+
+      - name: Upload Release Assets Windows
+        uses: actions/upload-artifact@v4
         with:
-          name: trader_bin_${{env.OS_ARCH}}
-          path: dist/trader_bin_${{env.OS_ARCH}}
+          name: ${{env.FILENAME}}
+          path: dist/${{env.FILENAME}}
+
 
   upload-assets:
-      needs: build-macos-pyinstaller
+      needs: build-agent-runner
       runs-on: ubuntu-latest
-
       steps:
         - name: Download artifacts
-          uses: actions/download-artifact@v2
+          uses: actions/download-artifact@v4
           with:
-            name: trader_bin_x64
-            path: ./dist/
-        - name: Download artifacts
-          uses: actions/download-artifact@v2
-          with:
-            name: trader_bin_arm64
+            name: agent_runner_macos_x64
             path: ./dist/
 
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: agent_runner_macos_arm64
+            path: ./dist/
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: agent_runner_windows_x64.exe
+            path: ./dist/
+        - name: List files
+          run: ls ./dist/
         - name: Publish Release
           uses: softprops/action-gh-release@v2
           if: startsWith(github.ref, 'refs/tags/')
           with:
             files: |
-              ./dist/trader_bin_x64
-              ./dist/trader_bin_arm64
+              ./dist/agent_runner*

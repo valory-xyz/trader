@@ -105,3 +105,60 @@ fix-abci-app-specs:
 
 protolint_install:
 	GO111MODULE=on GOPATH=~/go go get -u -v github.com/yoheimuta/protolint/cmd/protolint@v0.27.0
+
+
+.PHONY: build-agent-runner
+build-agent-runner:
+	poetry lock
+	poetry install
+	poetry run pyinstaller \
+	--collect-data eth_account \
+	--collect-all aea \
+	--collect-all autonomy \
+	--collect-all operate \
+	--collect-all aea_ledger_ethereum \
+	--collect-all aea_ledger_cosmos \
+	--collect-all aea_ledger_ethereum_flashbots \
+	--hidden-import aea_ledger_ethereum \
+	--hidden-import aea_ledger_cosmos \
+	--hidden-import aea_ledger_ethereum_flashbots \
+	--hidden-import grpc \
+	--hidden-import openapi_core \
+	--collect-all google.protobuf \
+	--collect-all openapi_core \
+	--collect-all openapi_spec_validator \
+	--collect-all asn1crypto \
+	--hidden-import py_ecc \
+	--hidden-import pytz \
+	--onefile pyinstaller/trader_bin.py \
+	--name agent_runner_bin
+	./dist/agent_runner_bin 1>/dev/null
+
+
+.PHONY: build-agent-runner-mac
+build-agent-runner-mac:
+	poetry lock
+	poetry install
+	poetry run pyinstaller \
+	--collect-data eth_account \
+	--collect-all aea \
+	--collect-all autonomy \
+	--collect-all operate \
+	--collect-all aea_ledger_ethereum \
+	--collect-all aea_ledger_cosmos \
+	--collect-all aea_ledger_ethereum_flashbots \
+	--hidden-import aea_ledger_ethereum \
+	--hidden-import aea_ledger_cosmos \
+	--hidden-import aea_ledger_ethereum_flashbots \
+	--hidden-import grpc \
+	--hidden-import openapi_core \
+	--collect-all google.protobuf \
+	--collect-all openapi_core \
+	--collect-all openapi_spec_validator \
+	--collect-all asn1crypto \
+	--hidden-import py_ecc \
+	--hidden-import pytz \
+	--onefile pyinstaller/trader_bin.py \
+	--codesign-identity "${SIGN_ID}" \
+	--name agent_runner_bin
+	./dist/agent_runner_bin 1>/dev/null

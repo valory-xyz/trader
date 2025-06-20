@@ -8,24 +8,24 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeicigqpqmpolmz45tp3bn4wdpfpogdf2ahsglemjduabhd2xszet2y
+  behaviours.py: bafybeic5jzli5k4limadh4cj2xwasbkfxpfiocix2nxauldulknukli7qy
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeigv4bltwodffe7n5fs6tevx2ysavkj3ynpwniyky653jiigtfzppu
-  payloads.py: bafybeib7hxsibtabb5vt6gjtco2x2s2yodhs24ojqecgrcexqsiv3pvmuy
-  rounds.py: bafybeibdrs56k6zvuw3df43qsyq7q2a6wn6m2qwu7ljio3ag4vxsitmiii
+  models.py: bafybeidr5p67pecq56gi3b2lpntq6eqb2hgho5kmzuymxmyhhuqct7tjfm
+  payloads.py: bafybeigncopqpz3a2nd6hgpsbqjqff2hsoa73abjck4ic5tnxpkzmfmkwu
+  rounds.py: bafybeih2we7exxrb67aoyhmvsuntwstmeoq2qibrctyf6jed4mde6qo6wu
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
-  tests/test_payloads.py: bafybeidtkbudsmrx77xs2oooji6cpj7kx7nembf77u32if2sb2kvkavvhq
-  tests/test_rounds.py: bafybeidge7sp3udobhvjpbdj5kirkukd6w5qycqkcuc6sy3qqiedco2q4i
+  tests/test_payloads.py: bafybeihckpp57y4uhsm5jro6eax3bc7uqlly2deym6gzx3z2zc7jxj3b2i
+  tests/test_rounds.py: bafybeie3ow2si7bztvgnqvqnzpjo5qkkmg44ig74z4ehwqdk6jtrcqtmou
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
-- valory/service_staking_token:0.1.0:bafybeifyvlxbgniaxfaaa4jlxxicebsrt2bknfanr2fdt7n3ejeevuhnky
-- valory/staking_token:0.1.0:bafybeihu5g6etogultbtrsx7hhpbbpijgmfgrndytnkhq4i2tnbnjyxxaa
+- valory/service_staking_token:0.1.0:bafybeib5wmpbxngsg46u4ggunvkfkfgeyewunjhoj4vdjlqpgztha6summ
+- valory/staking_token:0.1.0:bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
 protocols:
 - valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4

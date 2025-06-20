@@ -26,10 +26,10 @@ contracts:
 - valory/realitio:0.1.0:bafybeieggqkuslxiuapneygnhkhgatk5jvjbw6p7ltxaab6au466ikxm3e
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeia2eoorxpsfwnd2dnvgt2v3xxqez6d4zyxvqpnwo5oydcgxkr2uni
-- valory/service_staking_token:0.1.0:bafybeifyvlxbgniaxfaaa4jlxxicebsrt2bknfanr2fdt7n3ejeevuhnky
+- valory/service_staking_token:0.1.0:bafybeib5wmpbxngsg46u4ggunvkfkfgeyewunjhoj4vdjlqpgztha6summ
 - valory/transfer_nft_condition:0.1.0:bafybeicq5jkvpdfciqybxs2n7zwkuprdcksuf7xcgyfxzbbd4w33rk5g3m
 - valory/erc20:0.1.0:bafybeifyjub3v62r53by76u7cli7oqvg5qukb4e6gaa62z34euqfwnrsvi
-- valory/staking_token:0.1.0:bafybeihu5g6etogultbtrsx7hhpbbpijgmfgrndytnkhq4i2tnbnjyxxaa
+- valory/staking_token:0.1.0:bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
 - valory/mech_marketplace:0.1.0:bafybeiccn4ohizw2wrjt7goidiakfik26ugm735lnm3fna3khko7qgkawm
 - valory/relayer:0.1.0:bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne
@@ -52,12 +52,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie74f2375s5yoacstdhlg66aonkqbqy4b2ykfahzyv7z6raxqrj7e
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihcissp2uqahoo4zf3jeosvwvkw5tlqucby3zhs3a3z3pmzu44zxm
 - valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
-- valory/decision_maker_abci:0.1.0:bafybeiekvtnc4xikqoknsljs7rzwhwdsr3ucixe7ese4r6ztenz2bay2di
-- valory/trader_abci:0.1.0:bafybeica2xyfi4ewekwkol6rasdoxfy6ws7lgfv7q7s7dixbsrouwi3orm
-- valory/staking_abci:0.1.0:bafybeihxwstadzhvy6gavx3uif5fcsikodw4ud4gows7tidbmw7gip3isu
-- valory/check_stop_trading_abci:0.1.0:bafybeiharjs3rkmtk7fczhobfvgoikdun6cgdplprz4u6wo2efukul6n7q
+- valory/decision_maker_abci:0.1.0:bafybeiequ53nozctyki67yv6o7px55rxhk6shuwdp4idxb4bnlturxs2ge
+- valory/trader_abci:0.1.0:bafybeicwl4j46jlslwisg6uusbvpfq335nuxuolhm7dsrngwzrnfmetxri
+- valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
+- valory/check_stop_trading_abci:0.1.0:bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -80,10 +80,12 @@ logging_config:
       format: '[%(asctime)s] [%(levelname)s] %(message)s'
   handlers:
     logfile:
-      class: logging.FileHandler
+      class: logging.handlers.RotatingFileHandler
       formatter: standard
       filename: ${LOG_FILE:str:log.txt}
       level: ${LOG_LEVEL:str:INFO}
+      maxBytes: ${LOG_MAX_BYTES:int:52428800}
+      backupCount: ${LOG_BACKUP_COUNT:int:1}
     console:
       class: logging.StreamHandler
       formatter: standard
@@ -169,7 +171,7 @@ models:
       multisend_address: ${str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
       multisend_batch_size: ${int:1}
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
-      service_registry_address: ${str:null}
+      service_registry_address: ${str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
       agent_registry_address: ${str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
       use_acn_for_delivers: ${bool:false}
       share_tm_config_on_startup: ${bool:false}
