@@ -133,6 +133,9 @@ models:
       serious_slash_unit_amount: 8000000000000000
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
+      enable_position_review: false
+      review_period_seconds: 86400
+      min_confidence_increase: 0.1
     class_name: CheckStopTradingParams
   requests:
     args: {}

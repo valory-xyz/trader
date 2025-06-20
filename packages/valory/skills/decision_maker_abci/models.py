@@ -463,6 +463,15 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.tool_quarantine_duration: int = self._ensure(
             "tool_quarantine_duration", kwargs, int
         )
+        self.enable_position_review: bool = self._ensure(
+            "enable_position_review", kwargs, bool
+        )
+        self.review_period_seconds: int = self._ensure(
+            "review_period_seconds", kwargs, int
+        )
+        self.min_confidence_increase: float = self._ensure(
+            "min_confidence_increase", kwargs, float
+        )
         super().__init__(*args, **kwargs)
 
     @property

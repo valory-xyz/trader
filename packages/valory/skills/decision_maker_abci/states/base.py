@@ -48,6 +48,7 @@ class Event(Enum):
     """Event enumeration for the price estimation demo."""
 
     DONE = "done"
+    DONE_SELL = "done_sell"
     NONE = "none"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
@@ -289,6 +290,11 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def after_bet_attempt(self) -> bool:
         """Get the service's staking state."""
         return bool(self.db.get("after_bet_attempt", False))
+
+    @property
+    def should_be_sold(self) -> bool:
+        """Get the flag of should_be_sold."""
+        return bool(self.db.get("should_be_sold", False))
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

@@ -64,6 +64,7 @@ def get_payloads(
     is_profitable: Optional[bool],
     bets_hash: str,
     policy: str,
+    should_be_sold: bool,
 ) -> Mapping[str, UpdateBetsPayload]:
     """Get payloads."""
     return {
@@ -77,6 +78,7 @@ def get_payloads(
             bets_hash=bets_hash,
             policy=policy,
             decision_received_timestamp=int(datetime.datetime.utcnow().timestamp()),
+            should_be_sold=should_be_sold,
         )
         for participant in get_participants()
     }
@@ -114,6 +116,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
@@ -136,6 +139,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=False,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
@@ -158,6 +162,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={},
                 event=Event.NO_MAJORITY,
@@ -175,6 +180,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={},
                 event=Event.TIE,
@@ -192,6 +198,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={},
                 event=Event.MECH_RESPONSE_ERROR,
