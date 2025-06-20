@@ -154,6 +154,13 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         for bet in self.bets:
             bet.queue_status = bet.queue_status.move_to_fresh()
 
+    def _requeue_bets_for_selling(self) -> None:
+        """Requeue sell bets."""
+        for bet in self.bets:
+            if bet.should_be_checked_for_selling(self.synced_time):
+                self.context.logger.info(f"Requeueing bet {bet.id} for selling")
+                bet.queue_status = bet.queue_status.move_to_fresh()
+
     def _blacklist_expired_bets(self) -> None:
         """Blacklist bets that are older than the opening margin."""
         for bet in self.bets:
@@ -169,6 +176,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # fetch checkpoint status and if reached requeue all bets
         if self.synchronized_data.is_checkpoint_reached:
             self._requeue_all_bets()
+        else:
+            self.context.logger.info("Checkpoint not reached, checking for sell bets")
+            self._requeue_bets_for_selling()
 
         # blacklist bets that are older than the opening margin
         # if trader ran after a long time

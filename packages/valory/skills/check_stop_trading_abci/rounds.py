@@ -48,6 +48,7 @@ class Event(Enum):
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
     SKIP_TRADING = "skip_trading"
+    REVIEW_BETS = "review_bets"
 
 
 class SynchronizedData(BaseSynchronizedData):

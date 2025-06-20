@@ -37,6 +37,7 @@ class DecisionReceivePayload(UpdateBetsPayload):
     next_mock_data_row: Optional[int]
     policy: Optional[str]
     decision_received_timestamp: Optional[int]
+    should_be_sold: Optional[bool]
 
 
 @dataclass(frozen=True)

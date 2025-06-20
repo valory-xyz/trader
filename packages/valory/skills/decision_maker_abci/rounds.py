@@ -145,6 +145,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 8.
             - tie: 9.
             - unprofitable: 9.
+            - sell bet: 11.
             - round timeout: 8.
         9. BlacklistingRound
             - done: 16.

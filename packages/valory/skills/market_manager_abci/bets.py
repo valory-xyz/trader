@@ -33,6 +33,7 @@ P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
 INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
+DAY_IN_SECONDS = 24 * 60 * 60
 
 
 class QueueStatus(Enum):
@@ -337,6 +338,10 @@ class Bet:
         else:
             profit_increases = self.potential_net_profit >= potential_net_profit
             return more_confident and profit_increases
+        
+    def should_be_checked_for_selling(self, current_timestamp: int) -> bool:
+        """If more than 24 hours have passed since the bet was opened, it should be checked for selling."""
+        return current_timestamp > (self.openingTimestamp  - self.params.opening_margin) + DAY_IN_SECONDS
 
 
 class BetsEncoder(json.JSONEncoder):

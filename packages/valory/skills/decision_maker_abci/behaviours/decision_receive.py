@@ -539,6 +539,26 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         self.store_bets()
 
+
+    def get_existing_bet(self) -> Optional[Bet]:
+        """Get the existing bet."""
+        for bet in self.bets:
+            if bet.id == self.sampled_bet.id:
+                return bet
+        return None
+    
+    def should_sell_outcome_tokens(self, prediction_response: Optional[PredictionResponse]) -> bool:
+        """Whether the outcome tokens should be sold."""
+        existing_bet = self.get_existing_bet()
+        if existing_bet is None:
+            return False
+        
+        if existing_bet.prediction_response.vote == prediction_response.vote:
+            confidence_delta = prediction_response.confidence - existing_bet.prediction_response.confidence
+            return confidence_delta > self.params.min_confidence_increase
+        else:
+            return existing_bet.prediction_response.vote != prediction_response.vote
+
     def async_act(self) -> Generator:
         """Do the action."""
 
@@ -554,14 +574,20 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             bets_hash = None
             decision_received_timestamp = None
             policy = None
+            should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
-                is_profitable, bet_amount = yield from self._is_profitable(
-                    prediction_response
-                )
-                decision_received_timestamp = self.synced_timestamp
-                if is_profitable:
-                    self.store_bets()
-                    bets_hash = self.hash_stored_bets()
+                if self.should_sell_outcome_tokens(prediction_response):
+                    self.context.logger.info("The bet response has changed, so we need to sell the outcome tokens")
+                    should_be_sold = True
+
+                if not should_be_sold:
+                    is_profitable, bet_amount = yield from self._is_profitable(
+                        prediction_response
+                    )
+                    decision_received_timestamp = self.synced_timestamp
+                    if is_profitable:
+                        self.store_bets()
+                        bets_hash = self.hash_stored_bets()
 
             elif (
                 prediction_response is not None
@@ -605,6 +631,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 next_mock_data_row,
                 policy,
                 decision_received_timestamp,
+                should_be_sold,
             )
 
         self._store_all()
