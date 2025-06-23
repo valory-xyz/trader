@@ -178,9 +178,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # fetch checkpoint status and if reached requeue all bets
         if self.synchronized_data.is_checkpoint_reached:
             self._requeue_all_bets()
-        else:
-            self.context.logger.info("Checkpoint not reached, checking for sell bets")
-            self._requeue_bets_for_selling()
 
         # blacklist bets that are older than the opening margin
         # if trader ran after a long time
