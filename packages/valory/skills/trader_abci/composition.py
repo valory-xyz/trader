@@ -120,7 +120,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,
     FinishedWithSkipTradingRound: RedeemRound,
-    FinishedWithReviewBetsRound: SamplingRound,
+    FinishedWithReviewBetsRound: RandomnessRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
     ChecksPassedRound: RandomnessTransactionSubmissionRound,
