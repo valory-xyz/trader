@@ -556,7 +556,15 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             or existing_bet.prediction_response is None
             or prediction_response is None
         ):
+            self.context.logger.info(
+                "Existing bet does not exist or prediction response is None"
+            )
             return False
+
+        self.context.logger.info(
+            f"Existing bet: {existing_bet.prediction_response.vote}, "
+            f"Prediction response: {prediction_response.vote}"
+        )
 
         if existing_bet.prediction_response.vote == prediction_response.vote:
             confidence_delta = (
@@ -584,6 +592,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             policy = None
             should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
+                self.context.logger.info("Checking if we should sell the outcome tokens")
                 if self.should_sell_outcome_tokens(prediction_response):
                     self.context.logger.info(
                         "The bet response has changed, so we need to sell the outcome tokens"
@@ -591,6 +600,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     should_be_sold = True
 
                 if not should_be_sold:
+                    self.context.logger.info("Not selling. Checking if the bet is profitable")
                     is_profitable, bet_amount = yield from self._is_profitable(
                         prediction_response
                     )

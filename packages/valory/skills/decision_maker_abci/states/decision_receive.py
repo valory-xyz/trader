@@ -76,6 +76,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
             return synced_data, Event.TIE
 
         if event == Event.DONE and synced_data.should_be_sold:
+            self.context.logger.info(f"Should be sold. {synced_data.should_be_sold=}")
             return synced_data, Event.DONE_SELL
 
         if event == Event.DONE and not synced_data.is_profitable:
