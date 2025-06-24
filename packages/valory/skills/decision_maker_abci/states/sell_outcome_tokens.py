@@ -21,8 +21,34 @@
 
 """This module contains the sell outcome token state of the decision-making abci app."""
 
-from packages.valory.skills.decision_maker_abci.states.base import TxPreparationRound
+from enum import Enum
+from typing import Optional, Tuple, Type, cast
+
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
+from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+    TxPreparationRound,
+)
 
 
 class SellOutcomeTokensRound(TxPreparationRound):
     """A round for selling a token."""
+
+    payload_class: Type[MultisigTxPayload] = MultisigTxPayload
+    done_event = Event.DONE
+    none_event = Event.NONE
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        if event == Event.DONE and not synced_data.most_voted_tx_hash:
+            event = Event.CALC_SELL_AMOUNT_FAILED
+
+        return synced_data, event
