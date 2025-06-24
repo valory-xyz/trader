@@ -26,6 +26,7 @@ from sys import maxsize
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
 
 from hexbytes import HexBytes
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
 from web3.constants import HASH_ZERO
 
 from packages.valory.contracts.conditional_tokens.contract import (
@@ -982,6 +983,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                     self.synchronized_data.did_transact
                     and self.synchronized_data.tx_submitter
                     == BetPlacementRound.auto_round_id()
+                ) or (
+                    self.synchronized_data.did_transact
+                    and self.synchronized_data.tx_submitter
+                    == SellOutcomeTokensRound.auto_round_id()
                 ):
                     self.update_bet_transaction_information()
 

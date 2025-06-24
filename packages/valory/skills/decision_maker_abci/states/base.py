@@ -61,6 +61,7 @@ class Event(Enum):
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
     CALC_BUY_AMOUNT_FAILED = "calc_buy_amount_failed"
+    CALC_SELL_AMOUNT_FAILED = "calc_sell_amount_failed"
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
@@ -294,7 +295,8 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def should_be_sold(self) -> bool:
         """Get the flag of should_be_sold."""
-        return bool(self.db.get("should_be_sold", False))
+        db_value = self.db.get("should_be_sold", None)
+        return bool(db_value)
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

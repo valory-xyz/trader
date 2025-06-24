@@ -49,6 +49,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx impo
 from packages.valory.skills.decision_maker_abci.behaviours.order_subscription import (
     OrderSubscriptionBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
+    SellOutcomeTokensBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
@@ -74,6 +77,7 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         DecisionReceiveBehaviour,  # type: ignore
         BlacklistingBehaviour,  # type: ignore
         BetPlacementBehaviour,  # type: ignore
+        SellOutcomeTokensBehaviour,  # type: ignore
         RedeemBehaviour,  # type: ignore
         HandleFailedTxBehaviour,  # type: ignore
         ToolSelectionBehaviour,  # type: ignore

@@ -62,6 +62,7 @@ states:
 - RedeemRound
 - RefillRequiredRound
 - SamplingRound
+- SellOutcomeTokensRound
 - SubscriptionRound
 - ToolSelectionRound
 transition_func:
@@ -94,6 +95,7 @@ transition_func:
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
     (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
@@ -125,6 +127,12 @@ transition_func:
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SellOutcomeTokensRound, DONE): FinishedDecisionMakerRound
+    (SellOutcomeTokensRound, CALC_SELL_AMOUNT_FAILED): HandleFailedTxRound
+    (SellOutcomeTokensRound, MOCK_TX): RedeemRound
+    (SellOutcomeTokensRound, NONE): ImpossibleRound
+    (SellOutcomeTokensRound, NO_MAJORITY): SellOutcomeTokensRound
+    (SellOutcomeTokensRound, ROUND_TIMEOUT): SellOutcomeTokensRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound

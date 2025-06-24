@@ -85,6 +85,7 @@ states:
 - ResetAndPauseRound
 - ResetRound
 - SamplingRound
+- SellOutcomeTokensRound
 - SelectKeeperTransactionSubmissionARound
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
@@ -132,6 +133,7 @@ transition_func:
     (CheckLateTxHashesRound, NONE): HandleFailedTxRound
     (CheckLateTxHashesRound, NO_MAJORITY): HandleFailedTxRound
     (CheckStopTradingRound, DONE): RandomnessRound
+    (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
@@ -150,6 +152,7 @@ transition_func:
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
     (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
@@ -177,6 +180,7 @@ transition_func:
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
@@ -218,6 +222,12 @@ transition_func:
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SellOutcomeTokensRound, DONE): PreTxSettlementRound
+    (SellOutcomeTokensRound, CALC_SELL_AMOUNT_FAILED): HandleFailedTxRound
+    (SellOutcomeTokensRound, MOCK_TX): RedeemRound
+    (SellOutcomeTokensRound, NONE): ImpossibleRound 
+    (SellOutcomeTokensRound, NO_MAJORITY): SellOutcomeTokensRound
+    (SellOutcomeTokensRound, ROUND_TIMEOUT): SellOutcomeTokensRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
     (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound

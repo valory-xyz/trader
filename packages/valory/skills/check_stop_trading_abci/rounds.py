@@ -150,7 +150,7 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
         2. FinishedWithSkipTradingRound
         3. FinishedWithReviewBetsRound
 
-    Final states: {FinishedCheckStopTradingRound, FinishedWithSkipTradingRound, FinishedWithReviewBetsRound, FinishedWithReviewBetsRound}
+    Final states: {FinishedCheckStopTradingRound, FinishedWithReviewBetsRound, FinishedWithSkipTradingRound}
 
     Timeouts:
         round timeout: 30.0
