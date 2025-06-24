@@ -776,8 +776,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Calculate the sell amount of the conditional token."""
         return self._calc_token_amount(
             operation=TradingOperation.SELL,
-            amount_field="outcomeTokenSellAmount",
-            amount_param_name="return_amount",
+            amount_field="amount",
+            amount_param_name="returnAmount",
             amount_param_value=self.return_amount,
         )
 
