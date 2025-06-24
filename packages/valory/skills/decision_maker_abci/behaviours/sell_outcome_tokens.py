@@ -55,7 +55,11 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
     @property
     def return_amount(self) -> int:
         """Get the amount expected to be returned after the sell tx is completed."""
-        return self.sampled_bet.get_vote_amount(self.outcome_index)
+        if self.sampled_bet.prediction_response.vote is None:
+            raise ValueError("Trying to sell an outcome token without a vote")
+        return self.sampled_bet.get_vote_amount(
+            self.sampled_bet.prediction_response.vote
+        )
 
     @property
     def collateral_token(self) -> str:
@@ -104,22 +108,24 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
         agent = self.context.agent_address
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            tx_submitter = betting_tx_hex = mocking_mode = None
+            mocking_mode = None
 
-            # if the vote is the same as the previous vote then there is no change in the supported outcome, so we
-            # should not sell
-            if self.synchronized_data.vote == self.synchronized_data.previous_vote:
-                payload = MultisigTxPayload(
-                    agent, tx_submitter, betting_tx_hex, mocking_mode
-                )
-
-                yield from self.finish_behaviour(payload)
+            self.context.logger.info(
+                "Preparing a multisig transaction to sell the outcome token"
+            )
 
             tx_submitter = self.matching_round.auto_round_id()
-            betting_tx_hex = yield from self._prepare_safe_tx()
+            tx_hex = yield from self._prepare_safe_tx()
+            self.context.logger.info("Finished preparing the safe transaction")
 
-            payload = MultisigTxPayload(
-                agent, tx_submitter, betting_tx_hex, mocking_mode
+            self.context.logger.info(f"Outcome: {self.outcome_index=}")
+            self.context.logger.info(f"Return amount: {self.return_amount=}")
+            self.context.logger.info(f"Collateral token: {self.collateral_token=}")
+            self.context.logger.info(
+                f"Confidence: {self.synchronized_data.confidence=}"
             )
+            self.context.logger.info(f"Sell amount: {self.sell_amount=}")
+
+            payload = MultisigTxPayload(agent, tx_submitter, tx_hex, mocking_mode)
 
         yield from self.finish_behaviour(payload)
