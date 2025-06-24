@@ -592,7 +592,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             policy = None
             should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
-                self.context.logger.info("Checking if we should sell the outcome tokens")
+                self.context.logger.info(
+                    "Checking if we should sell the outcome tokens"
+                )
                 if self.should_sell_outcome_tokens(prediction_response):
                     self.context.logger.info(
                         "The bet response has changed, so we need to sell the outcome tokens"
@@ -600,7 +602,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     should_be_sold = True
 
                 if not should_be_sold:
-                    self.context.logger.info("Not selling. Checking if the bet is profitable")
+                    self.context.logger.info(
+                        "Not selling. Checking if the bet is profitable"
+                    )
                     is_profitable, bet_amount = yield from self._is_profitable(
                         prediction_response
                     )
@@ -641,18 +645,54 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
                 self._update_selected_bet(prediction_response)
 
+            self.context.logger.info(f"Bets hash: {bets_hash=}")
+            self.context.logger.info(f"Is profitable: {is_profitable=}")
+            self.context.logger.info(
+                f"Vote: {prediction_response.vote if prediction_response else None=}"
+            )
+            self.context.logger.info(
+                f"Confidence: {prediction_response.confidence if prediction_response else None=}"
+            )
+            self.context.logger.info(f"Bet amount: {bet_amount=}")
+            self.context.logger.info(f"Next mock data row: {next_mock_data_row=}")
+            self.context.logger.info(f"Policy: {policy=}")
+            self.context.logger.info(f"Should be sold: {should_be_sold=}")
+            self.context.logger.info(
+                f"Decision received timestamp: {decision_received_timestamp=}"
+            )
+
+            vote = prediction_response.vote if prediction_response else None
+            confidence = prediction_response.confidence if prediction_response else None
+
+            if should_be_sold:
+                previous_bet = self.get_existing_bet()
+                self.context.logger.info(f"Previous bet: {previous_bet=}")
+                if previous_bet is not None:
+                    self.context.logger.info(
+                        f"Previous bet: {previous_bet.prediction_response.vote=}"
+                    )
+                    self.context.logger.info(
+                        f"Previous bet: {previous_bet.prediction_response.confidence=}"
+                    )
+                    vote = previous_bet.prediction_response.vote
+                    confidence = previous_bet.prediction_response.confidence
+                else:
+                    self.context.logger.info("No previous bet found")
+
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 bets_hash,
                 is_profitable,
-                prediction_response.vote if prediction_response else None,
-                prediction_response.confidence if prediction_response else None,
+                vote,
+                confidence,
                 bet_amount,
                 next_mock_data_row,
                 policy,
                 decision_received_timestamp,
                 should_be_sold,
             )
+
+            self.context.logger.info(f"Payload: {payload=}")
 
         self._store_all()
         yield from self.finish_behaviour(payload)

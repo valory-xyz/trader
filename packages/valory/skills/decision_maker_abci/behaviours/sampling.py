@@ -131,10 +131,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
             bets
         )
+        self.context.logger.info(f"TO_PROCESS_LEN: {len(to_process_bets)}")
+        self.context.logger.info(f"PROCESSED_LEN: {len(processed_bets)}")
+        self.context.logger.info(f"REPROCESSED_LEN: {len(reprocessed_bets)}")
+
         # pick the first queue status that has bets in it
         bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets
 
         sorted_bets = self._sort_by_priority_logic(bets_to_sort)
+
+        self.context.logger.info(f"Sorted bets: {sorted_bets}")
 
         return self.bets.index(sorted_bets[0])
 
