@@ -25,6 +25,7 @@ import os
 from abc import ABC
 from datetime import datetime, timedelta
 from enum import Enum
+import time
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
@@ -76,6 +77,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_YES_FIELD,
     PredictionResponse,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_bet_id_to_balance, get_condition_id_to_balances
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
@@ -128,8 +130,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
 
-        self.sell_amount: float = 0.0
-        self.buy_amount: float = 0.0
+        self.sell_amount: int = 0
+        self.buy_amount: int = 0
 
     @property
     def subscription_params(self) -> Dict[str, Any]:
@@ -212,6 +214,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+
+    @property
+    def outcome_index(self) -> int:
+        """Get the index of the outcome that the service is going to place a bet on."""
+        return cast(int, self.synchronized_data.vote)
 
     @property
     def safe_tx_hash(self) -> str:
@@ -733,6 +740,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         amount_param_value: int,
     ) -> WaitableConditionType:
         """Calculate the token amount for buying/selling."""
+
+        self.context.logger.info(f"Function call _calc_token_amount")
+        self.context.logger.info(f"Function call amount_param_name: {amount_param_name}")
+        self.context.logger.info(f"Function call amount_param_value: {amount_param_value}")
+        self.context.logger.info(f"Function call outcome_index: {self.outcome_index}")
+        self.context.logger.info(f"Function call operation: {operation}")
+        self.context.logger.info(f"Function call amount_field: {amount_field}")
+
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.market_maker_contract_address,
@@ -758,8 +773,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             return False
 
         if operation == TradingOperation.BUY:
+            self.context.logger.info(f"Function call buy amount: {token_amount}")
             self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
         else:
+            self.context.logger.info(f"Function call sell amount: {token_amount}")
             self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
         return True
 
@@ -773,12 +790,35 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         )
 
     def _calc_sell_amount(self) -> WaitableConditionType:
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        from_timestamp, to_timestamp = 0.0, time.time()  # from beginning to now
+        
+        # get the trades
+        trades = yield from self.fetch_trades(
+            safe_address, from_timestamp, to_timestamp
+        )
+        if trades is None:
+            return False
+
+        # get the user's positions
+        user_positions = yield from self.fetch_user_positions(safe_address)
+        if user_positions is None:
+            return False
+
+        # process the positions
+        balances = get_bet_id_to_balance(trades, user_positions)
+
+        self.context.logger.info(f"Balances: {balances}")
+        self.context.logger.info(f"Bet id: {self.sampled_bet.id}")
+        return_amount = balances.get(self.sampled_bet.id, 0)
+        self.context.logger.info(f"Return amount: {self.return_amount}")
+
         """Calculate the sell amount of the conditional token."""
         return self._calc_token_amount(
             operation=TradingOperation.SELL,
             amount_field="amount",
-            amount_param_name="returnAmount",
-            amount_param_value=self.return_amount,
+            amount_param_name="return_amount",
+            amount_param_value=return_amount,
         )
 
     def _build_token_tx(self, operation: str) -> WaitableConditionType:
