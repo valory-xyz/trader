@@ -20,6 +20,7 @@
 """This module contains the test for rounds of decision maker"""
 from unittest.mock import MagicMock
 
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
 import pytest
 
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
@@ -175,6 +176,7 @@ def test_decision_receive_round_transition(setup_app: DecisionMakerAbciApp) -> N
 
     # Test transition on done
     assert transition_function[Event.DONE] == BetPlacementRound
+    assert transition_function[Event.DONE_SELL] == SellOutcomeTokensRound
 
 
 def test_blacklisting_round_transition(setup_app: DecisionMakerAbciApp) -> None:

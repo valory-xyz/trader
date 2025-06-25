@@ -52,6 +52,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "next_mock_data_row": 1,
                 "policy": "dummy policy",
                 "decision_received_timestamp": int(datetime.utcnow().timestamp()),
+                "should_be_sold": False,
             },
         ),
         (
