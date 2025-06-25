@@ -21,6 +21,7 @@
 
 from collections import defaultdict
 from datetime import datetime
+import time
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -29,6 +30,8 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
+from packages.valory.skills.market_manager_abci.graph_tooling.requests import QueryingBehaviour
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_bet_id_to_balance
 
 
 WEEKDAYS = 7
@@ -36,7 +39,7 @@ UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
 
-class SamplingBehaviour(DecisionMakerBaseBehaviour):
+class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = SamplingRound
@@ -50,8 +53,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """Setup the behaviour."""
         self.read_bets()
 
-    def processable_bet(self, bet: Bet, now: int) -> bool:
+    @property
+    def kpi_is_met(self):
+        return self.synchronized_data.is_staking_kpi_met
+
+    def processable_bet(self, bet: Bet, now: int, active_bets: Dict[str, int]) -> bool:
         """Whether we can process the given bet."""
+
+        self.context.logger.info(f"Finding processable bets and {self.kpi_is_met=}")
 
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
@@ -72,8 +81,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             QueueStatus.REPROCESSED,
         }
         bet_queue_processable = bet.queue_status in processable_statuses
+        self.context.logger.info(f"Bet {bet=} queue status: {bet.queue_status}")
 
-        return within_ranges and bet_queue_processable
+        if self.kpi_is_met:
+            bet_was_already_placed = active_bets.get(bet.id, 0) > 0
+            self.context.logger.info(f"Bet {bet=} was already placed: {bet_was_already_placed}")
+            return within_ranges and bet_queue_processable and bet_was_already_placed
+        else:
+            return within_ranges and bet_queue_processable
 
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
@@ -169,7 +184,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
-    def _sample(self) -> Optional[int]:
+    def _sample(self, active_bets: Dict[str, int]) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
         # modify time "NOW" in benchmarking mode
         if self.benchmarking_mode.enabled:
@@ -186,7 +201,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         # filter out only the bets that are processable and have a queue_status that allows them to be sampled
         available_bets = list(
             filter(
-                lambda bet: self.processable_bet(bet, now=now),
+                lambda bet: self.processable_bet(bet, now=now, active_bets=active_bets),
                 self.bets,
             )
         )
@@ -231,11 +246,26 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         day_increased = True
 
         return benchmarking_finished, day_increased
+    
+    def get_active_bets(self) -> Generator:
+        """Get the active bets."""
+        trades = yield from self.fetch_trades(self.synchronized_data.safe_contract_address.lower(), 0.0, time.time())
+        if trades is None:
+            return []
+        
+        user_positions = yield from self.fetch_user_positions(self.synchronized_data.safe_contract_address.lower())
+        if user_positions is None:
+            return []
+        
+        balances = get_bet_id_to_balance(trades, user_positions)
+        return balances
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            idx = self._sample()
+            active_bets = yield from self.get_active_bets()
+
+            idx = self._sample(active_bets)
             benchmarking_finished = None
             day_increased = None
 
