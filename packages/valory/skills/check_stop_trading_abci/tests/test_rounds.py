@@ -34,6 +34,7 @@ from typing import (
 )
 from unittest.mock import MagicMock, Mock
 
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -53,6 +54,7 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingRound,
     Event,
     FinishedCheckStopTradingRound,
+    FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
     SynchronizedData,
 )
@@ -259,10 +261,12 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
     assert abci_app.final_states == {
         FinishedCheckStopTradingRound,
         FinishedWithSkipTradingRound,
+        FinishedWithReviewBetsRound,
     }
     assert abci_app.transition_function == {
         CheckStopTradingRound: {
             Event.DONE: FinishedCheckStopTradingRound,
+            Event.REVIEW_BETS: FinishedWithReviewBetsRound,
             Event.NONE: CheckStopTradingRound,
             Event.ROUND_TIMEOUT: CheckStopTradingRound,
             Event.NO_MAJORITY: CheckStopTradingRound,
@@ -270,12 +274,14 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
         },
         FinishedCheckStopTradingRound: {},
         FinishedWithSkipTradingRound: {},
+        FinishedWithReviewBetsRound: {},
     }
     assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
     assert abci_app.db_pre_conditions == {CheckStopTradingRound: set()}
     assert abci_app.db_post_conditions == {
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
+        FinishedWithReviewBetsRound: set(),
     }
 
 
