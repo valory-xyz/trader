@@ -95,9 +95,19 @@ class CheckStopTradingRound(VotingRound):
             return False
 
         if not self.context.params.enable_position_review:
+            self.context.logger.info("Position review is disabled")
             return False
 
         last_review = self.synchronized_data.get_last_review_timestamp()  # type: ignore
+        self.context.logger.info(f"Check inside should_review_bets: {last_review=}")
+        self.context.logger.info(f"Check inside should_review_bets: {self.synced_timestamp=}")
+        self.context.logger.info(f"Check inside should_review_bets: {self.context.params.review_period_seconds=}")
+        self.context.logger.info(
+            f"""
+            {is_staking_kpi_met=}
+            {self.synced_timestamp=} - {last_review=} > {self.context.params.review_period_seconds=}
+            Answer: {self.synced_timestamp - last_review > self.context.params.review_period_seconds=}
+            """)
         return (
             self.synced_timestamp - last_review
             > self.context.params.review_period_seconds

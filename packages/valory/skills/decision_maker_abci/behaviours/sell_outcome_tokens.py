@@ -20,6 +20,7 @@
 
 
 """This module contains the behaviour for selling a token."""
+import time
 from typing import Any, Generator, Optional, cast
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -30,9 +31,13 @@ from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayloa
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    QueryingBehaviour,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_condition_id_to_balances
 
 
-class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
+class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents sell a token."""
 
     matching_round = SellOutcomeTokensRound
@@ -40,7 +45,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the sell token behaviour."""
         super().__init__(**kwargs)
-        self.sell_amount: float = 0.0
+        self.sell_amount: int = 0
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -50,7 +55,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour):
     @property
     def outcome_index(self) -> int:
         """Get the index of the outcome for which the service is going to sell token."""
-        return cast(int, self.synchronized_data.previous_vote)
+        return cast(int, self.synchronized_data.vote)
 
     @property
     def return_amount(self) -> int:

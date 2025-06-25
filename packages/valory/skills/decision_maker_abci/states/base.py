@@ -296,6 +296,8 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def should_be_sold(self) -> bool:
         """Get the flag of should_be_sold."""
         db_value = self.db.get("should_be_sold", None)
+        if type(db_value) != bool:
+            return False
         return bool(db_value)
 
 
