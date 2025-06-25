@@ -69,6 +69,37 @@ def get_position_lifetime_value(
 
     return 0
 
+def next_status(fpmm: Dict[str, Any], opening_timestamp: str, answer_finalized_timestamp: str, is_pending_arbitration: bool) -> MarketState:
+    market_status = MarketState.CLOSED
+    if (
+        fpmm["currentAnswer"] is None
+        and opening_timestamp is not None
+        and time.time() >= float(opening_timestamp)
+    ):
+        market_status = MarketState.PENDING
+    elif fpmm["currentAnswer"] is None:
+        market_status = MarketState.OPEN
+    elif is_pending_arbitration:
+        market_status = MarketState.ARBITRATING
+    elif time.time() < float(answer_finalized_timestamp):
+        market_status = MarketState.FINALIZING
+    
+    return market_status
+
+
+def get_bet_id_to_balance(
+    creator_trades: List[Dict[str, Any]],
+    user_positions: List[Dict[str, Any]],
+) -> Dict[str, int]:
+    """Get the bet id to balance."""
+    bet_id_to_balance = {}
+    for fpmm_trade in creator_trades:
+        bet_id = fpmm_trade["fpmm"]["id"]
+        condition_id = fpmm_trade["fpmm"]["condition"]["id"]
+        balance = get_position_balance(user_positions, condition_id)
+        bet_id_to_balance[bet_id] = balance
+    return bet_id_to_balance
+
 
 def get_condition_id_to_balances(
     creator_trades: List[Dict[str, Any]],
@@ -83,19 +114,7 @@ def get_condition_id_to_balances(
         answer_finalized_timestamp = fpmm["answerFinalizedTimestamp"]
         is_pending_arbitration = fpmm["isPendingArbitration"]
         opening_timestamp = fpmm["openingTimestamp"]
-        market_status = MarketState.CLOSED
-        if (
-            fpmm["currentAnswer"] is None
-            and opening_timestamp is not None
-            and time.time() >= float(opening_timestamp)
-        ):
-            market_status = MarketState.PENDING
-        elif fpmm["currentAnswer"] is None:
-            market_status = MarketState.OPEN
-        elif is_pending_arbitration:
-            market_status = MarketState.ARBITRATING
-        elif time.time() < float(answer_finalized_timestamp):
-            market_status = MarketState.FINALIZING
+        market_status = next_status(fpmm, opening_timestamp, answer_finalized_timestamp, is_pending_arbitration)
 
         if market_status == MarketState.CLOSED:
             current_answer = int(fpmm["currentAnswer"], 16)  # type: ignore
