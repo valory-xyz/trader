@@ -582,7 +582,6 @@ class CallCheckpointBehaviour(
                 self.ts_checkpoint,
                 is_checkpoint_reached,
                 self.agent_ids,
-                self.params.on_chain_service_id,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

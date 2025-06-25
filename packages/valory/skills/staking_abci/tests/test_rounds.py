@@ -67,7 +67,6 @@ DUMMY_SERVICE_STATE = {
     "ts_checkpoint": 0,
     "is_checkpoint_reached": True,
     "agent_ids": "[]",
-    "service_id": None,
 }
 
 
@@ -155,7 +154,6 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
                         "agent_ids": "[]",
-                        "service_id": None,
                     }
                 ),
                 final_data={
@@ -165,7 +163,6 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                     "ts_checkpoint": 0,
                     "is_checkpoint_reached": True,
                     "agent_ids": "[]",
-                    "service_id": None,
                 },
                 event=Event.DONE,
                 most_voted_payload=DUMMY_SERVICE_STATE["tx_submitter"],
@@ -199,7 +196,6 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
                         "agent_ids": "[]",
-                        "service_id": None,
                     }
                 ),
                 final_data={},
@@ -221,7 +217,6 @@ class TestCallCheckpointRound(BaseStakingRoundTestClass):
                         "ts_checkpoint": 0,
                         "is_checkpoint_reached": True,
                         "agent_ids": "[]",
-                        "service_id": None,
                     }
                 ),
                 final_data={},
