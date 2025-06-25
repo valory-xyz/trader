@@ -125,7 +125,6 @@ class CallCheckpointRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.previous_checkpoint),
         get_name(SynchronizedData.is_checkpoint_reached),
         get_name(SynchronizedData.agent_ids),
-        get_name(SynchronizedData.service_id),
     )
     collection_key = get_name(SynchronizedData.participant_to_checkpoint)
     synchronized_data_class = SynchronizedData
