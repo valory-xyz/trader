@@ -180,7 +180,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         else:
             now = self.synced_timestamp
 
-        # filter out only the bets that are processable and have a queue_status that allows them to be sampled
+        # filter in only the bets that are processable and have a queue_status that allows them to be sampled
         available_bets = list(
             filter(
                 lambda bet: self.processable_bet(bet, now=now),
