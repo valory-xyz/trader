@@ -263,6 +263,7 @@ models:
       tool_quarantine_duration: 18000
       default_chain_id: gnosis
       mech_interact_round_timeout_seconds: 5400
+      use_multi_bets_mode: true
     class_name: TraderParams
   benchmarking_mode:
     args:

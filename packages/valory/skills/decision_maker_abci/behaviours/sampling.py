@@ -53,6 +53,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
+        bets_placed = bool(bet.n_bets)
+        bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
+
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
@@ -73,7 +76,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        return within_ranges and bet_queue_processable
+        return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
