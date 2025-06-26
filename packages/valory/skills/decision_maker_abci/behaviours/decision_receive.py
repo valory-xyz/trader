@@ -78,6 +78,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
     def request_id(self) -> int:
         """Get the request id."""
         return self._request_id
+    
+    @property
+    def review_bets_for_selling_mode(self) -> bool:
+        """Get the review bets for selling mode."""
+        return self.synchronized_data.review_bets_for_selling
 
     @request_id.setter
     def request_id(self, request_id: Union[str, int]) -> None:
@@ -601,7 +606,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     )
                     should_be_sold = True
 
-                if not should_be_sold:
+                if not should_be_sold and not self.review_bets_for_selling_mode:
                     self.context.logger.info(
                         "Not selling. Checking if the bet is profitable"
                     )
@@ -664,7 +669,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             vote = prediction_response.vote if prediction_response else None
             confidence = prediction_response.confidence if prediction_response else None
 
-            if should_be_sold:
+            if should_be_sold and self.review_bets_for_selling_mode:
                 previous_bet = self.get_existing_bet()
                 self.context.logger.info(f"Previous bet: {previous_bet=}")
                 if previous_bet is not None:
