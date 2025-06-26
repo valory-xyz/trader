@@ -69,6 +69,13 @@ class SynchronizedData(BaseSynchronizedData):
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
+    
+    def is_review_bets_for_selling(self) -> bool:
+        """Get the status of the review bets for selling."""
+        db_value = self.db.get("review_bets_for_selling", None)
+        if type(db_value) != bool:
+            return False
+        return bool(db_value)
 
 
 class CheckStopTradingRound(VotingRound):
@@ -80,6 +87,9 @@ class CheckStopTradingRound(VotingRound):
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+    selection_key = (
+        get_name(SynchronizedData.review_bets_for_selling),
+    )
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
     @property
@@ -92,6 +102,7 @@ class CheckStopTradingRound(VotingRound):
     def should_review_bets(self, is_staking_kpi_met: bool) -> bool:
         """Check if the bets should be reviewed."""
         if not is_staking_kpi_met:
+            self.context.logger.info("Staking kpi is not yet met")
             return False
 
         if not self.context.params.enable_position_review:
@@ -124,7 +135,15 @@ class CheckStopTradingRound(VotingRound):
         self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
 
         if self.should_review_bets(is_staking_kpi_met):
+            self.context.logger.info("Updating synchronized data to review bets for selling")
+            self.synchronized_data.update(
+                review_bets_for_selling=True
+            )
             return self.synchronized_data, Event.REVIEW_BETS
+
+        self.synchronized_data.update(
+            review_bets_for_selling=False
+        )
 
         return res
 
