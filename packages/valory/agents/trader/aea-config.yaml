@@ -255,9 +255,9 @@ models:
       tool_quarantine_duration: ${int:10800}
       default_chain_id: ${str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
-      enable_position_review: false
-      review_period_seconds: 86400
-      min_confidence_increase: 0.1
+      enable_position_review: ${bool:true}
+      review_period_seconds: ${int:86400}
+      min_confidence_increase: ${float:0.1}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
