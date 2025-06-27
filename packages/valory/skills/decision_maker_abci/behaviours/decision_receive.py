@@ -544,18 +544,14 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         self.store_bets()
 
-    def get_existing_bet(self) -> Optional[Bet]:
-        """Get the existing bet."""
-        for bet in self.bets:
-            if bet.id == self.sampled_bet.id:
-                return bet
-        return None
-
     def should_sell_outcome_tokens(
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
         """Whether the outcome tokens should be sold."""
-        existing_bet = self.get_existing_bet()
+        existing_bet = self.sampled_bet
+        self.context.logger.info(f"Existing bet: {existing_bet=}")
+        self.context.logger.info(f"Existing bet prediction response: {existing_bet.prediction_response=}")
+        self.context.logger.info(f"Prediction response: {prediction_response=}")
         if (
             existing_bet is None
             or existing_bet.prediction_response is None
@@ -670,7 +666,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             confidence = prediction_response.confidence if prediction_response else None
 
             if should_be_sold and self.review_bets_for_selling_mode:
-                previous_bet = self.get_existing_bet()
+                previous_bet = self.sampled_bet
                 self.context.logger.info(f"Previous bet: {previous_bet=}")
                 if previous_bet is not None:
                     self.context.logger.info(

@@ -106,6 +106,11 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
 
         return self.tx_hex
+    
+    @property
+    def return_amount(self) -> int:
+        """Get the return amount."""
+        return self.sampled_bet.get_vote_amount(self.outcome_index)
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -113,6 +118,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         agent = self.context.agent_address
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            self.update_sell_transaction_information()
             mocking_mode = None
 
             self.context.logger.info(

@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """Utils for graph interactions."""
+from collections import defaultdict
 import time
 from enum import Enum
 from typing import Any, Dict, List, Tuple
@@ -90,14 +91,15 @@ def next_status(fpmm: Dict[str, Any], opening_timestamp: str, answer_finalized_t
 def get_bet_id_to_balance(
     creator_trades: List[Dict[str, Any]],
     user_positions: List[Dict[str, Any]],
-) -> Dict[str, int]:
+) -> Dict[str, Dict[str, int]]:
     """Get the bet id to balance."""
-    bet_id_to_balance = {}
+    bet_id_to_balance = defaultdict(lambda: defaultdict(list))
     for fpmm_trade in creator_trades:
         bet_id = fpmm_trade["fpmm"]["id"]
         condition_id = fpmm_trade["fpmm"]["condition"]["id"]
+        outcome_index = int(fpmm_trade["outcomeIndex"])
         balance = get_position_balance(user_positions, condition_id)
-        bet_id_to_balance[bet_id] = balance
+        bet_id_to_balance[bet_id][outcome_index] = balance
     return bet_id_to_balance
 
 
