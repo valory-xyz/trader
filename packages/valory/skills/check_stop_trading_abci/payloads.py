@@ -30,4 +30,4 @@ class CheckStopTradingPayload(BaseTxPayload):
     """A transaction payload for the check stop trading abci."""
 
     vote: bool
-    review_bets_for_selling: Optional[bool]
+    review_bets_for_selling: Optional[bool] = None
