@@ -152,6 +152,13 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         return False
 
     def _compute_stop_trading(self) -> Generator[None, None, bool]:
+        # temporary. Move it back until fix with re-betting is implemented. todo: @author: Skas
+        self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
+        if self.params.stop_trading_if_staking_kpi_met:
+            staking_kpi_met = yield from self.is_staking_kpi_met()
+            self.context.logger.debug(f"{staking_kpi_met=}")
+            return staking_kpi_met
+
         # This is a "hacky" way of getting required data initialized on
         # the Trader: On first period, the FSM needs to initialize some
         # data on the trading branch so that it is available in the
@@ -165,12 +172,6 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         if self.params.disable_trading:
             yield  # ensures this is a generator
             return True
-
-        self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
-        if self.params.stop_trading_if_staking_kpi_met:
-            staking_kpi_met = yield from self.is_staking_kpi_met()
-            self.context.logger.debug(f"{staking_kpi_met=}")
-            return staking_kpi_met
 
         yield
         return False
