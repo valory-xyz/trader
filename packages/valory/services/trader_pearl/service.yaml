@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigf6o6bebvdtqlzup7cjqcunpum7npzdygtumjr5w2enq6lyadpti
+agent: valory/trader:0.1.0:bafybeiatnuuxlxmrqi37cff37s24b677r6bah7w4zqf7ipdx4wo4se34vy
 number_of_agents: 1
 deployment:
   agent:
@@ -151,6 +151,7 @@ models:
       tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
       default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
       mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+      use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:false}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}

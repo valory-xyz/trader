@@ -24,7 +24,7 @@ fingerprint:
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/reedem.py: bafybeiajxsz34iy24muw4avq4vbevluhsabjcyqaadssnrs2zrfdapbnqq
   behaviours/round_behaviour.py: bafybeih63hpia2bwwzu563hxs5yd3t5ycvxvkfnhvxbzghbyy3mw3xjl3i
-  behaviours/sampling.py: bafybeiet37e4o4s5kdf4u4denls7iaqm6b2a2mqa5eu576waiwmuwozhmi
+  behaviours/sampling.py: bafybeigyepi5uyen5vrh33sg5n4wy6stklusly6f364hnle6qwhan6jmvq
   behaviours/storage_manager.py: bafybeiginbllxqnupheqczdpvuwbug7he7sivs4tebjq3eaehyh3ns4vpi
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
@@ -32,7 +32,7 @@ fingerprint:
   handlers.py: bafybeiherm5a2kjmf46ffjoyvhh3tsja5au5i677oasiutdxdojwdtwqla
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeibzqbq5ur53vrzzto3u3g3qjgtrwleyobxtdzk7yks7nx4oaki7ci
+  models.py: bafybeif52bpj3khkmtl4yqhtz6wfrbqzovjipj5qgpdzsepg4nlkobcsda
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeigmstzp26no6lg2hcsusaybpdidzqgek4wc6hzay4zg4ybjjbij44
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -305,6 +305,7 @@ models:
       mech_invalid_response: Invalid Response
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
+      use_multi_bets_mode: true
     class_name: DecisionMakerParams
   acc_info_fields:
     args:
