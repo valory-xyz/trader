@@ -129,6 +129,29 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                 ],
             ),
             RoundTestCase(
+                name="Should be sold decision",
+                initial_data={"should_be_sold": True},
+                payloads=get_payloads(
+                    vote=1,
+                    confidence=80.0,
+                    bet_amount=100,
+                    next_mock_data_row=1,
+                    is_profitable=True,
+                    policy="",
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=True,
+                ),
+                final_data={
+                    "decision_hash": DUMMY_DECISION_HASH,
+                    "participant_to_decision_hash": DUMMY_PARTICIPANT_TO_DECISION_HASH,
+                },
+                event=Event.DONE,
+                most_voted_payload=DUMMY_DECISION_HASH,
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.decision_hash,
+                ],
+            ),
+            RoundTestCase(
                 name="Unprofitable decision",
                 initial_data={"is_profitable": False},
                 payloads=get_payloads(
