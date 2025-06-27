@@ -56,8 +56,32 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     @property
     def kpi_is_met(self):
         return self.synchronized_data.is_staking_kpi_met
+    
+    @property
+    def review_bets_for_selling(self):
+        return self.synchronized_data.review_bets_for_selling
+    
+    def update_bets_investments(self, bets: List[Bet]) -> Generator:
+        """Update the investments of the bets."""
+        self.context.logger.info(f"Updating bets investments")
+        balances = yield from self.get_active_bets()
 
-    def processable_bet(self, bet: Bet, now: int, active_bets: Dict[str, int]) -> bool:
+        self.context.logger.info(f"Balances {balances=}")
+
+        self.context.logger.info(f"Bets {bets=}")
+        for i, bet in enumerate(bets):
+            if bet.queue_status == QueueStatus.EXPIRED:
+                continue
+            self.context.logger.info(f"Bet {bet=}")
+            self.context.logger.info(f"Balances {balances=}")
+            for outcome_int, value in balances[bet.id].items():
+                bet.append_investment_amount(outcome_int, value)
+                self.context.logger.info(f"Bet {bet.id} updated")
+                self.bets[i] = bet
+
+        return bets
+
+    def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
         self.context.logger.info(f"Finding processable bets and {self.kpi_is_met=}")
@@ -83,8 +107,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         bet_queue_processable = bet.queue_status in processable_statuses
         self.context.logger.info(f"Bet {bet=} queue status: {bet.queue_status}")
 
-        if self.kpi_is_met:
-            bet_was_already_placed = active_bets.get(bet.id, 0) > 0
+        self.context.logger.info(f"KPI is met: {self.kpi_is_met}")
+        self.context.logger.info(f"Review bets for selling: {self.review_bets_for_selling}")
+        if self.kpi_is_met and self.review_bets_for_selling:
+            self.context.logger.info(f"KPI is met and review bets for selling")
+            bet_was_already_placed = bet.invested_amount > 0
             self.context.logger.info(f"Bet {bet=} was already placed: {bet_was_already_placed}")
             return within_ranges and bet_queue_processable and bet_was_already_placed
         else:
@@ -184,7 +211,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
-    def _sample(self, active_bets: Dict[str, int]) -> Optional[int]:
+    def _sample(self) -> Optional[int]:
         """Sample a bet, mark it as processed, and return its index."""
         # modify time "NOW" in benchmarking mode
         if self.benchmarking_mode.enabled:
@@ -201,7 +228,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # filter out only the bets that are processable and have a queue_status that allows them to be sampled
         available_bets = list(
             filter(
-                lambda bet: self.processable_bet(bet, now=now, active_bets=active_bets),
+                lambda bet: self.processable_bet(bet, now=now),
                 self.bets,
             )
         )
@@ -263,9 +290,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            active_bets = yield from self.get_active_bets()
-
-            idx = self._sample(active_bets)
+            yield from self.update_bets_investments(self.bets)
+            idx = self._sample()
             benchmarking_finished = None
             day_increased = None
 
