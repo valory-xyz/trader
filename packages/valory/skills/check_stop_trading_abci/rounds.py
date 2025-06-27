@@ -66,11 +66,13 @@ class SynchronizedData(BaseSynchronizedData):
         """Get the last review timestamp."""
         return cast(int, self.db.get("last_review_timestamp", 0))
 
+    @property
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
     
-    def is_review_bets_for_selling(self) -> bool:
+    @property
+    def review_bets_for_selling(self) -> bool:
         """Get the status of the review bets for selling."""
         db_value = self.db.get("review_bets_for_selling", None)
         if type(db_value) != bool:
