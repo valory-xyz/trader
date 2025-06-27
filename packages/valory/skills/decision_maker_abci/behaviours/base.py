@@ -385,6 +385,22 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
 
+    def update_sell_transaction_information(self) -> None:
+        """Get whether the bet's invested amount should be updated."""
+        sampled_bet = self.sampled_bet
+        # Update bet transaction timestamp
+        sampled_bet.processed_timestamp = self.synced_timestamp
+        # Update Queue number for priority logic
+        sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        updated = sampled_bet.update_investments(0)
+        if not updated:
+            self.context.logger.error("Could not update the investments!")
+
+        # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
+        # this will need to change if this sovereign agent is ever converted to a multi-agent service
+        self.store_bets()
+
     def send_message(
         self, msg: Message, dialogue: Dialogue, callback: Callable
     ) -> None:
@@ -790,35 +806,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         )
 
     def _calc_sell_amount(self) -> WaitableConditionType:
-        safe_address = self.synchronized_data.safe_contract_address.lower()
-        from_timestamp, to_timestamp = 0.0, time.time()  # from beginning to now
-        
-        # get the trades
-        trades = yield from self.fetch_trades(
-            safe_address, from_timestamp, to_timestamp
-        )
-        if trades is None:
-            return False
-
-        # get the user's positions
-        user_positions = yield from self.fetch_user_positions(safe_address)
-        if user_positions is None:
-            return False
-
-        # process the positions
-        balances = get_bet_id_to_balance(trades, user_positions)
-
-        self.context.logger.info(f"Balances: {balances}")
-        self.context.logger.info(f"Bet id: {self.sampled_bet.id}")
-        return_amount = balances.get(self.sampled_bet.id, 0)
-        self.context.logger.info(f"Return amount: {self.return_amount}")
-
         """Calculate the sell amount of the conditional token."""
         return self._calc_token_amount(
             operation=TradingOperation.SELL,
             amount_field="amount",
             amount_param_name="return_amount",
-            amount_param_value=return_amount,
+            amount_param_value=self.return_amount,
         )
 
     def _build_token_tx(self, operation: str) -> WaitableConditionType:
