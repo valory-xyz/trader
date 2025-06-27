@@ -160,6 +160,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
         """Get the bet's previous vote index."""
         previous_vote = self.db.get("previous_vote", None)
         return int(previous_vote) if previous_vote is not None else None
+    
+    @property
+    def review_bets_for_selling(self) -> bool:
+        """Get the status of the review bets for selling."""
+        db_value = self.db.get("review_bets_for_selling", None)
+        if type(db_value) != bool:
+            return False
+        return bool(db_value)
 
     @property
     def confidence(self) -> float:
