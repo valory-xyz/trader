@@ -169,11 +169,20 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
 
+    def review_bets_for_selling(self) -> None:
+        """Review bets for selling."""
+        return self.synchronized_data.review_bets_for_selling
+
     def setup(self) -> None:
         """Set up the behaviour."""
 
         # Read the bets from the agent's data dir as JSON, if they exist
         self.read_bets()
+
+        if self.review_bets_for_selling():
+            self._requeue_bets_for_selling()
+
+        self.context.logger.info(f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}")
 
         # fetch checkpoint status and if reached requeue all bets
         if self.synchronized_data.is_checkpoint_reached:
