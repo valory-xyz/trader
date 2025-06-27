@@ -21,6 +21,7 @@
 """Structures for the bets."""
 
 import builtins
+from collections import defaultdict
 import dataclasses
 import json
 import sys
@@ -151,10 +152,7 @@ class Bet:
         self._validate()
         self._cast()
         self._check_usefulness()
-        if self.outcomes:
-            self.investments = {self.yes: [], self.no: []}
-        else:
-            self.investments = {}
+        self.investments = {'Yes': [], 'No': []}
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
@@ -261,6 +259,12 @@ class Bet:
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
         if self.outcomes is None:
+            # it's a hack for expired bet that is stuck with no outcomes
+            if self.queue_status == QueueStatus.EXPIRED:
+                if index == 0:
+                    return 'Yes'
+                elif index == 1:
+                    return 'No'
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
             return self.outcomes[index]
@@ -292,16 +296,29 @@ class Bet:
         """Get the amount invested in a vote."""
         vote_name = self.get_outcome(vote)
         return sum(self.investments[vote_name])
+    
+    def append_investment_amount(self, vote: int, amount: int) -> None:
+        """Append an investment amount to the vote."""
+        vote_name = self.get_outcome(vote)
+        self.investments[vote_name].append(amount)
+
+    def set_investment_amount(self, vote: int, amount: int) -> None:
+        """Set the investment amount for a vote."""
+        vote_name = self.get_outcome(vote)
+        self.investments[vote_name] = [amount]
 
     def update_investments(self, amount: int) -> bool:
         """Get the investments for the current vote type."""
         vote = self.prediction_response.vote
         if vote is None:
             return False
+        
+        # method to reset the investment amount for a vote
+        if amount == 0:
+            self.set_investment_amount(vote, 0)
+            return True
 
-        vote_name = self.get_outcome(vote)
-        to_update = self.investments[vote_name]
-        to_update.append(amount)
+        self.append_investment_amount(vote, amount)
         return True
 
     def update_market_info(self, bet: "Bet") -> None:
