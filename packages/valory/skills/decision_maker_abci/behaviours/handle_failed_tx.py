@@ -31,7 +31,9 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 
 

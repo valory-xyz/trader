@@ -72,7 +72,7 @@ class SynchronizedData(BaseSynchronizedData):
     def is_checkpoint_reached(self) -> bool:
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
-    
+
     @property
     def review_bets_for_selling(self) -> bool:
         """Get the status of the review bets for selling."""

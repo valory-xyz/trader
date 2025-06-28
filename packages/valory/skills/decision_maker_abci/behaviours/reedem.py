@@ -26,7 +26,6 @@ from sys import maxsize
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
 
 from hexbytes import HexBytes
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
 from web3.constants import HASH_ZERO
 
 from packages.valory.contracts.conditional_tokens.contract import (
@@ -57,6 +56,9 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,

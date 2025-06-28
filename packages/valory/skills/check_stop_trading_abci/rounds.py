@@ -70,7 +70,7 @@ class SynchronizedData(BaseSynchronizedData):
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
-    
+
     @property
     def review_bets_for_selling(self) -> bool:
         """Get the status of the review bets for selling."""
@@ -89,9 +89,7 @@ class CheckStopTradingRound(VotingRound):
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (
-        get_name(SynchronizedData.review_bets_for_selling),
-    )
+    selection_key = (get_name(SynchronizedData.review_bets_for_selling),)
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
     @property
@@ -113,14 +111,19 @@ class CheckStopTradingRound(VotingRound):
 
         last_review = self.synchronized_data.get_last_review_timestamp()  # type: ignore
         self.context.logger.info(f"Check inside should_review_bets: {last_review=}")
-        self.context.logger.info(f"Check inside should_review_bets: {self.synced_timestamp=}")
-        self.context.logger.info(f"Check inside should_review_bets: {self.context.params.review_period_seconds=}")
+        self.context.logger.info(
+            f"Check inside should_review_bets: {self.synced_timestamp=}"
+        )
+        self.context.logger.info(
+            f"Check inside should_review_bets: {self.context.params.review_period_seconds=}"
+        )
         self.context.logger.info(
             f"""
             {is_staking_kpi_met=}
             {self.synced_timestamp=} - {last_review=} > {self.context.params.review_period_seconds=}
             Answer: {self.synced_timestamp - last_review > self.context.params.review_period_seconds=}
-            """)
+            """
+        )
         return (
             self.synced_timestamp - last_review
             > self.context.params.review_period_seconds
@@ -137,15 +140,13 @@ class CheckStopTradingRound(VotingRound):
         self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
 
         if self.should_review_bets(is_staking_kpi_met):
-            self.context.logger.info("Updating synchronized data to review bets for selling")
-            self.synchronized_data.update(
-                review_bets_for_selling=True
+            self.context.logger.info(
+                "Updating synchronized data to review bets for selling"
             )
+            self.synchronized_data.update(review_bets_for_selling=True)
             return self.synchronized_data, Event.REVIEW_BETS
 
-        self.synchronized_data.update(
-            review_bets_for_selling=False
-        )
+        self.synchronized_data.update(review_bets_for_selling=False)
 
         return res
 

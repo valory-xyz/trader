@@ -20,7 +20,6 @@
 """This module contains the test for rounds of decision maker"""
 from unittest.mock import MagicMock
 
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
 import pytest
 
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
@@ -62,6 +61,9 @@ from packages.valory.skills.decision_maker_abci.states.randomness import (
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )

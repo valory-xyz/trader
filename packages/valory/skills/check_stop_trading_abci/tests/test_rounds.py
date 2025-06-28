@@ -34,7 +34,6 @@ from typing import (
 )
 from unittest.mock import MagicMock, Mock
 
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import SellOutcomeTokensRound
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -57,6 +56,9 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
     SynchronizedData,
+)
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
 )
 
 
@@ -140,7 +142,11 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
     test_payload: Type[CheckStopTradingPayload]
 
     def _test_voting_round(
-        self, vote: bool, expected_event: Any, threshold_check: Callable, should_review_bets: bool = False
+        self,
+        vote: bool,
+        expected_event: Any,
+        threshold_check: Callable,
+        should_review_bets: bool = False,
     ) -> None:
         """Helper method to test voting rounds with positive or negative votes."""
 

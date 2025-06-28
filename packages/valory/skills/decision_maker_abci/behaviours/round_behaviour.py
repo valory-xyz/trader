@@ -49,9 +49,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx impo
 from packages.valory.skills.decision_maker_abci.behaviours.order_subscription import (
     OrderSubscriptionBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
-    SellOutcomeTokensBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
@@ -59,6 +56,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
+    SellOutcomeTokensBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,

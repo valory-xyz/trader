@@ -19,9 +19,9 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+import time
 from collections import defaultdict
 from datetime import datetime
-import time
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -30,8 +30,12 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
-from packages.valory.skills.market_manager_abci.graph_tooling.requests import QueryingBehaviour
-from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_bet_id_to_balance
+from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    QueryingBehaviour,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    get_bet_id_to_balance,
+)
 
 
 WEEKDAYS = 7
@@ -55,12 +59,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     @property
     def kpi_is_met(self):
+        """Whether the kpi is met."""
         return self.synchronized_data.is_staking_kpi_met
-    
+
     @property
     def review_bets_for_selling(self):
+        """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
-    
+
     def update_bets_investments(self, bets: List[Bet]) -> Generator:
         """Update the investments of the bets."""
         self.context.logger.info(f"Updating bets investments")
@@ -71,10 +77,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.info(f"Bets {bets=}")
         for i, bet in enumerate(bets):
             if bet.queue_status == QueueStatus.EXPIRED:
+                self.context.logger.info(f"Bet {bet.id} is expired")
                 continue
             self.context.logger.info(f"Bet {bet=}")
             self.context.logger.info(f"Balances {balances=}")
-            for outcome_int, value in balances[bet.id].items():
+            for outcome, value in balances[bet.id].items():
+                outcome_is_no = outcome.lower() == "no"
+                outcome_int = 0 if outcome_is_no else 1
+                self.context.logger.info(f"Outcome {outcome_int} value {value}")
                 bet.append_investment_amount(outcome_int, value)
                 self.context.logger.info(f"Bet {bet.id} updated")
                 self.bets[i] = bet
@@ -108,11 +118,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.info(f"Bet {bet=} queue status: {bet.queue_status}")
 
         self.context.logger.info(f"KPI is met: {self.kpi_is_met}")
-        self.context.logger.info(f"Review bets for selling: {self.review_bets_for_selling}")
+        self.context.logger.info(
+            f"Review bets for selling: {self.review_bets_for_selling}"
+        )
         if self.kpi_is_met and self.review_bets_for_selling:
             self.context.logger.info(f"KPI is met and review bets for selling")
             bet_was_already_placed = bet.invested_amount > 0
-            self.context.logger.info(f"Bet {bet=} was already placed: {bet_was_already_placed}")
+            self.context.logger.info(
+                f"Bet {bet=} was already placed: {bet_was_already_placed}"
+            )
             return within_ranges and bet_queue_processable and bet_was_already_placed
         else:
             return within_ranges and bet_queue_processable
@@ -273,17 +287,21 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         day_increased = True
 
         return benchmarking_finished, day_increased
-    
+
     def get_active_bets(self) -> Generator:
         """Get the active bets."""
-        trades = yield from self.fetch_trades(self.synchronized_data.safe_contract_address.lower(), 0.0, time.time())
+        trades = yield from self.fetch_trades(
+            self.synchronized_data.safe_contract_address.lower(), 0.0, time.time()
+        )
         if trades is None:
             return []
-        
-        user_positions = yield from self.fetch_user_positions(self.synchronized_data.safe_contract_address.lower())
+
+        user_positions = yield from self.fetch_user_positions(
+            self.synchronized_data.safe_contract_address.lower()
+        )
         if user_positions is None:
             return []
-        
+
         balances = get_bet_id_to_balance(trades, user_positions)
         return balances
 

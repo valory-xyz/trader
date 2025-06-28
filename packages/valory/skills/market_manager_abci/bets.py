@@ -21,7 +21,6 @@
 """Structures for the bets."""
 
 import builtins
-from collections import defaultdict
 import dataclasses
 import json
 import sys
@@ -152,7 +151,7 @@ class Bet:
         self._validate()
         self._cast()
         self._check_usefulness()
-        self.investments = {'Yes': [], 'No': []}
+        self.investments = {"Yes": [], "No": []}
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
@@ -197,6 +196,11 @@ class Bet:
     def invested_amount(self) -> int:
         """Get the amount invested in bets."""
         return self.invested_amount_yes + self.invested_amount_no
+
+    @staticmethod
+    def opposite_vote(vote: int) -> int:
+        """Get the opposite vote."""
+        return vote ^ 1
 
     def blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
@@ -262,9 +266,9 @@ class Bet:
             # it's a hack for expired bet that is stuck with no outcomes
             if self.queue_status == QueueStatus.EXPIRED:
                 if index == 0:
-                    return 'Yes'
+                    return "Yes"
                 elif index == 1:
-                    return 'No'
+                    return "No"
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
             return self.outcomes[index]
@@ -296,7 +300,7 @@ class Bet:
         """Get the amount invested in a vote."""
         vote_name = self.get_outcome(vote)
         return sum(self.investments[vote_name])
-    
+
     def append_investment_amount(self, vote: int, amount: int) -> None:
         """Append an investment amount to the vote."""
         vote_name = self.get_outcome(vote)
@@ -312,7 +316,7 @@ class Bet:
         vote = self.prediction_response.vote
         if vote is None:
             return False
-        
+
         # method to reset the investment amount for a vote
         if amount == 0:
             self.set_investment_amount(vote, 0)

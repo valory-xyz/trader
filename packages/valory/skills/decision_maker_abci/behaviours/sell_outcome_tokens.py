@@ -20,7 +20,7 @@
 
 
 """This module contains the behaviour for selling a token."""
-import time
+import logging
 from typing import Any, Generator, Optional, cast
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -34,7 +34,9 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
 )
-from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_condition_id_to_balances
+
+
+logger = logging.getLogger(__name__)
 
 
 class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -53,18 +55,14 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.sampled_bet.id
 
     @property
+    def investment_amount(self) -> int:
+        """Get the investment amount of the bet."""
+        return self.synchronized_data.bet_amount
+
+    @property
     def outcome_index(self) -> int:
         """Get the index of the outcome for which the service is going to sell token."""
         return cast(int, self.synchronized_data.vote)
-
-    @property
-    def return_amount(self) -> int:
-        """Get the amount expected to be returned after the sell tx is completed."""
-        if self.sampled_bet.prediction_response.vote is None:
-            raise ValueError("Trying to sell an outcome token without a vote")
-        return self.sampled_bet.get_vote_amount(
-            self.sampled_bet.prediction_response.vote
-        )
 
     @property
     def collateral_token(self) -> str:
@@ -106,10 +104,14 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
 
         return self.tx_hex
-    
+
     @property
     def return_amount(self) -> int:
         """Get the return amount."""
+        print(f"Return amount: {self.sampled_bet.get_vote_amount(self.outcome_index)=}")
+        logger.info(
+            f"return amount: {self.sampled_bet.get_vote_amount(self.outcome_index)}"
+        )
         return self.sampled_bet.get_vote_amount(self.outcome_index)
 
     def async_act(self) -> Generator:

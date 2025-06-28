@@ -26,7 +26,9 @@ from packages.valory.skills.check_stop_trading_abci.payloads import (
 def test_check_stop_trading_payload() -> None:
     """Test `CheckStopTradingPayload`."""
 
-    payload = CheckStopTradingPayload(sender="sender", vote=True, review_bets_for_selling=True)
+    payload = CheckStopTradingPayload(
+        sender="sender", vote=True, review_bets_for_selling=True
+    )
 
     assert payload.vote
     assert payload.data == {"vote": True, "review_bets_for_selling": True}
