@@ -25,7 +25,6 @@ import os
 from abc import ABC
 from datetime import datetime, timedelta
 from enum import Enum
-import time
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
@@ -77,7 +76,10 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_YES_FIELD,
     PredictionResponse,
 )
-from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_bet_id_to_balance, get_condition_id_to_balances
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    get_bet_id_to_balance,
+    get_condition_id_to_balances,
+)
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
@@ -758,8 +760,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Calculate the token amount for buying/selling."""
 
         self.context.logger.info(f"Function call _calc_token_amount")
-        self.context.logger.info(f"Function call amount_param_name: {amount_param_name}")
-        self.context.logger.info(f"Function call amount_param_value: {amount_param_value}")
+        self.context.logger.info(
+            f"Function call amount_param_name: {amount_param_name}"
+        )
+        self.context.logger.info(
+            f"Function call amount_param_value: {amount_param_value}"
+        )
         self.context.logger.info(f"Function call outcome_index: {self.outcome_index}")
         self.context.logger.info(f"Function call operation: {operation}")
         self.context.logger.info(f"Function call amount_field: {amount_field}")
@@ -811,7 +817,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             operation=TradingOperation.SELL,
             amount_field="amount",
             amount_param_name="return_amount",
-            amount_param_value=self.return_amount,
+            amount_param_value=self.investment_amount,
         )
 
     def _build_token_tx(self, operation: str) -> WaitableConditionType:

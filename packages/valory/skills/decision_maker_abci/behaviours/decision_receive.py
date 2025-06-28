@@ -78,7 +78,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
     def request_id(self) -> int:
         """Get the request id."""
         return self._request_id
-    
+
     @property
     def review_bets_for_selling_mode(self) -> bool:
         """Get the review bets for selling mode."""
@@ -230,7 +230,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         """Get the bet sample information."""
         token_amounts = bet.outcomeTokenAmounts
         selected_type_tokens_in_pool = token_amounts[vote]
-        opposite_vote = vote ^ 1
+        opposite_vote = bet.opposite_vote(vote)
         other_tokens_in_pool = token_amounts[opposite_vote]
 
         return selected_type_tokens_in_pool, other_tokens_in_pool
@@ -548,33 +548,23 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
         """Whether the outcome tokens should be sold."""
-        existing_bet = self.sampled_bet
-        self.context.logger.info(f"Existing bet: {existing_bet=}")
-        self.context.logger.info(f"Existing bet prediction response: {existing_bet.prediction_response=}")
+        self.context.logger.info("Should sell outcome tokens")
+        self.context.logger.info("*" * 100)
         self.context.logger.info(f"Prediction response: {prediction_response=}")
-        if (
-            existing_bet is None
-            or existing_bet.prediction_response is None
-            or prediction_response is None
-        ):
-            self.context.logger.info(
-                "Existing bet does not exist or prediction response is None"
-            )
-            return False
 
-        self.context.logger.info(
-            f"Existing bet: {existing_bet.prediction_response.vote}, "
-            f"Prediction response: {prediction_response.vote}"
-        )
+        tokens_to_be_sold = self.sampled_bet.get_vote_amount(prediction_response.vote)
 
-        if existing_bet.prediction_response.vote == prediction_response.vote:
-            confidence_delta = (
-                prediction_response.confidence
-                - existing_bet.prediction_response.confidence
-            )
-            return confidence_delta > self.params.min_confidence_increase
+        self.context.logger.info(f"Tokens to be sold: {tokens_to_be_sold}")
+
+        # todo: replace with configurable parameters
+        if prediction_response.confidence >= 0.5 and tokens_to_be_sold > 0:
+            # todo: continue now
+            self.sell_amount = tokens_to_be_sold
+            self.context.logger.info(f"*" * 100)
+            return True
         else:
-            return existing_bet.prediction_response.vote != prediction_response.vote
+            self.context.logger.info(f"*" * 100)
+            return False
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -601,6 +591,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                         "The bet response has changed, so we need to sell the outcome tokens"
                     )
                     should_be_sold = True
+                    decision_received_timestamp = self.synced_timestamp
+                    bet_amount = self.sell_amount
+                    self.store_bets()
+                    bets_hash = self.hash_stored_bets()
 
                 if not should_be_sold and not self.review_bets_for_selling_mode:
                     self.context.logger.info(
@@ -666,19 +660,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             confidence = prediction_response.confidence if prediction_response else None
 
             if should_be_sold and self.review_bets_for_selling_mode:
-                previous_bet = self.sampled_bet
-                self.context.logger.info(f"Previous bet: {previous_bet=}")
-                if previous_bet is not None:
-                    self.context.logger.info(
-                        f"Previous bet: {previous_bet.prediction_response.vote=}"
-                    )
-                    self.context.logger.info(
-                        f"Previous bet: {previous_bet.prediction_response.confidence=}"
-                    )
-                    vote = previous_bet.prediction_response.vote
-                    confidence = previous_bet.prediction_response.confidence
-                else:
-                    self.context.logger.info("No previous bet found")
+                # for selling we are returning vote that needs to be sold. i.e. the opposite vote
+                vote = self.sampled_bet.opposite_vote(vote)
 
             payload = DecisionReceivePayload(
                 self.context.agent_address,

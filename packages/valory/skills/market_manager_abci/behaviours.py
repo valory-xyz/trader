@@ -182,7 +182,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         if self.review_bets_for_selling():
             self._requeue_bets_for_selling()
 
-        self.context.logger.info(f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}")
+        self.context.logger.info(
+            f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}"
+        )
 
         # fetch checkpoint status and if reached requeue all bets
         if self.synchronized_data.is_checkpoint_reached:
