@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
+  composition.py: bafybeica2tgvwi3ychofufnpdlao2226hcocnkkwjdsoyyqxcbm6bjmu4a
   dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
-  fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
+  fsm_specification.yaml: bafybeia2ik2rpcizcr4exs67cywosa7xmx5oi26bu2j52f3mwaglyicthi
   handlers.py: bafybeigq25ndmwo4r6jv5vmex2sme4dty2vptdlmmktvh4ivzmp6obtaxq
   models.py: bafybeie342ympii4zkf6cp5n7tfnwql2ftdodfwlwzgiivi43iyqia37vy
   predict-ui-build/assets/index-DiuKs-pF.js: bafybeiamkunvsnkna67nlelpiaxf4j7jnuc53snvfwq5btoy5oln4ojlze
@@ -34,11 +34,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
-- valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
-- valory/decision_maker_abci:0.1.0:bafybeiequ53nozctyki67yv6o7px55rxhk6shuwdp4idxb4bnlturxs2ge
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihcissp2uqahoo4zf3jeosvwvkw5tlqucby3zhs3a3z3pmzu44zxm
+- valory/market_manager_abci:0.1.0:bafybeie4ozay7ierl4nuu274b5dpmjcm2dunulljpoggoy6i4g6ugkv3yi
+- valory/decision_maker_abci:0.1.0:bafybeid5w36qjnclxewxo27ingz5if6nlq27vqut6cjhunw6pdtpypmsmu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic6n5lyav2irrj4azuimoawmvdak4mvduc3sdqtfn4ndoirhuf6fu
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774
+- valory/check_stop_trading_abci:0.1.0:bafybeigbcy6xywicbnygq2ebh3sy25jzr2cmx2sgwx3otojvzxyfo6mdau
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
 behaviours:
   main:
