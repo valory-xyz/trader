@@ -542,6 +542,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
         )
 
+        active_sampled_bet.update_investments(active_sampled_bet.invested_amount)
+
         self.store_bets()
 
     def should_sell_outcome_tokens(
