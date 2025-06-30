@@ -79,6 +79,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         """Get the request id."""
         return self._request_id
 
+    @property
+    def review_bets_for_selling_mode(self) -> bool:
+        """Get the review bets for selling mode."""
+        return self.synchronized_data.review_bets_for_selling
+
     @request_id.setter
     def request_id(self, request_id: Union[str, int]) -> None:
         """Set the request id."""
@@ -225,7 +230,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         """Get the bet sample information."""
         token_amounts = bet.outcomeTokenAmounts
         selected_type_tokens_in_pool = token_amounts[vote]
-        opposite_vote = vote ^ 1
+        opposite_vote = bet.opposite_vote(vote)
         other_tokens_in_pool = token_amounts[opposite_vote]
 
         return selected_type_tokens_in_pool, other_tokens_in_pool
@@ -536,10 +541,23 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self.context.logger.info(
             f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
         )
-        if prediction_response is not None:
-            active_sampled_bet.n_bets += 1
+
+        active_sampled_bet.update_investments(active_sampled_bet.invested_amount)
 
         self.store_bets()
+
+    def should_sell_outcome_tokens(
+        self, prediction_response: Optional[PredictionResponse]
+    ) -> bool:
+        """Whether the outcome tokens should be sold."""
+        tokens_to_be_sold = self.sampled_bet.get_vote_amount(prediction_response.vote)
+
+        # todo: replace with configurable parameters
+        if prediction_response.confidence >= 0.5 and tokens_to_be_sold > 0:
+            self.sell_amount = tokens_to_be_sold
+            return True
+        else:
+            return False
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -556,14 +574,29 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             bets_hash = None
             decision_received_timestamp = None
             policy = None
+            should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
-                is_profitable, bet_amount = yield from self._is_profitable(
-                    prediction_response
-                )
-                decision_received_timestamp = self.synced_timestamp
-                if is_profitable:
+                if self.should_sell_outcome_tokens(prediction_response):
+                    self.context.logger.info(
+                        "The bet response has changed, so we need to sell the outcome tokens"
+                    )
+                    should_be_sold = True
+                    decision_received_timestamp = self.synced_timestamp
+                    bet_amount = self.sell_amount
                     self.store_bets()
                     bets_hash = self.hash_stored_bets()
+
+                if not should_be_sold and not self.review_bets_for_selling_mode:
+                    self.context.logger.info(
+                        "Not selling. Checking if the bet is profitable"
+                    )
+                    is_profitable, bet_amount = yield from self._is_profitable(
+                        prediction_response
+                    )
+                    decision_received_timestamp = self.synced_timestamp
+                    if is_profitable:
+                        self.store_bets()
+                        bets_hash = self.hash_stored_bets()
 
             elif (
                 prediction_response is not None
@@ -597,16 +630,24 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
                 self._update_selected_bet(prediction_response)
 
+            vote = prediction_response.vote if prediction_response else None
+            confidence = prediction_response.confidence if prediction_response else None
+
+            if should_be_sold and self.review_bets_for_selling_mode:
+                # for selling we are returning vote that needs to be sold. i.e. the opposite vote
+                vote = self.sampled_bet.opposite_vote(vote)
+
             payload = DecisionReceivePayload(
                 self.context.agent_address,
                 bets_hash,
                 is_profitable,
-                prediction_response.vote if prediction_response else None,
-                prediction_response.confidence if prediction_response else None,
+                vote,
+                confidence,
                 bet_amount,
                 next_mock_data_row,
                 policy,
                 decision_received_timestamp,
+                should_be_sold,
             )
 
         self._store_all()
