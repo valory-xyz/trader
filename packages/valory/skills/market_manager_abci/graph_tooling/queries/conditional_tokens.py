@@ -39,10 +39,6 @@ user_positions = Template(
                     id
                     conditionIds
                     lifetimeValue
-                    indexSets
-                    conditions {
-                        outcomes
-                    }
                 }
                 totalBalance
                 wrappedBalance
