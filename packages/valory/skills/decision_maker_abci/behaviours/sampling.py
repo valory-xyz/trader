@@ -178,8 +178,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         sorted_bets = self._sort_by_priority_logic(bets_to_sort)
 
-        self.context.logger.info(f"Sorted bets: {sorted_bets}")
-
         return self.bets.index(sorted_bets[0])
 
     def _sampling_benchmarking_bet(self, bets: List[Bet]) -> Optional[int]:
