@@ -53,8 +53,12 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingRound,
     Event,
     FinishedCheckStopTradingRound,
+    FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
     SynchronizedData,
+)
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
 )
 
 
@@ -138,7 +142,11 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
     test_payload: Type[CheckStopTradingPayload]
 
     def _test_voting_round(
-        self, vote: bool, expected_event: Any, threshold_check: Callable
+        self,
+        vote: bool,
+        expected_event: Any,
+        threshold_check: Callable,
+        should_review_bets: bool = False,
     ) -> None:
         """Helper method to test voting rounds with positive or negative votes."""
 
@@ -153,7 +161,8 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
                 synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
                     participant_to_votes=get_participant_to_votes_serialized(
                         self.participants, vote=vote
-                    )
+                    ),
+                    review_bets_for_selling=should_review_bets,
                 ),
                 synchronized_data_attr_checks=[
                     lambda _synchronized_data: _synchronized_data.participant_to_votes.keys()
@@ -171,6 +180,15 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
             vote=True,
             expected_event=self._event_class.SKIP_TRADING,
             threshold_check=lambda x: x.positive_vote_threshold_reached,
+        )
+
+    def test_review_bets(self) -> None:
+        """Test ValidateRound for review bets."""
+        self._test_voting_round(
+            vote=True,
+            expected_event=self._event_class.REVIEW_BETS,
+            threshold_check=lambda x: x.positive_vote_threshold_reached,
+            should_review_bets=True,
         )
 
     def test_negative_votes(self) -> None:
@@ -212,6 +230,25 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
                 ],
             ),
             RoundTestCase(
+                name="Review bets for selling",
+                initial_data={},
+                payloads=get_payloads(
+                    payload_cls=CheckStopTradingPayload,
+                    data=get_dummy_check_stop_trading_payload_serialized(),
+                ),
+                final_data={},
+                event=Event.REVIEW_BETS,
+                most_voted_payload=get_dummy_check_stop_trading_payload_serialized(),
+                synchronized_data_attr_checks=[
+                    lambda sync_data: sync_data.db.get(
+                        get_name(SynchronizedData.participant_to_votes)
+                    )
+                    == CollectionRound.deserialize_collection(
+                        json.loads(get_dummy_check_stop_trading_payload_serialized())
+                    )
+                ],
+            ),
+            RoundTestCase(
                 name="No majority",
                 initial_data={},
                 payloads=get_payloads(
@@ -229,6 +266,8 @@ class TestCheckStopTradingRound(BaseCheckStopTradingRoundTest):
         """Run tests."""
         if test_case.event == Event.SKIP_TRADING:
             self.test_positive_votes()
+        elif test_case.event == Event.REVIEW_BETS:
+            self.test_review_bets()
         elif test_case.event == Event.NO_MAJORITY:
             self.test_negative_votes()
 
@@ -259,10 +298,12 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
     assert abci_app.final_states == {
         FinishedCheckStopTradingRound,
         FinishedWithSkipTradingRound,
+        FinishedWithReviewBetsRound,
     }
     assert abci_app.transition_function == {
         CheckStopTradingRound: {
             Event.DONE: FinishedCheckStopTradingRound,
+            Event.REVIEW_BETS: FinishedWithReviewBetsRound,
             Event.NONE: CheckStopTradingRound,
             Event.ROUND_TIMEOUT: CheckStopTradingRound,
             Event.NO_MAJORITY: CheckStopTradingRound,
@@ -270,12 +311,14 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
         },
         FinishedCheckStopTradingRound: {},
         FinishedWithSkipTradingRound: {},
+        FinishedWithReviewBetsRound: {},
     }
     assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
     assert abci_app.db_pre_conditions == {CheckStopTradingRound: set()}
     assert abci_app.db_post_conditions == {
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
+        FinishedWithReviewBetsRound: set(),
     }
 
 
