@@ -55,9 +55,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Initialize Behaviour."""
         super().__init__(**kwargs)
         self._mech_id: int = 0
-        self._mech_hash: str = (
-            "d26821719fcdb05d3683d8091ca31183ccdb02b792abe9e69bd62e3886abe835"
-        )
+        self._mech_hash: str = ""
         self._utilized_tools: Dict[str, str] = {}
         self._mech_tools: Optional[List[str]] = None
         self._remote_accuracy_information: StringIO = StringIO()
@@ -222,7 +220,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._get_tools_from_benchmark_file()
             return
 
-        yield from self.wait_for_condition_with_sleep(self._get_mech_tools)
+        for step in (
+            self._get_mech_id,
+            self._get_mech_hash,
+            self._get_mech_tools,
+        ):
+            yield from self.wait_for_condition_with_sleep(step)
 
     def _try_recover_policy(self) -> Optional[EGreedyPolicy]:
         """Try to recover the policy from the policy store."""
