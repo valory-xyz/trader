@@ -550,22 +550,13 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
         """Whether the outcome tokens should be sold."""
-        self.context.logger.info("Should sell outcome tokens")
-        self.context.logger.info("*" * 100)
-        self.context.logger.info(f"Prediction response: {prediction_response=}")
-
         tokens_to_be_sold = self.sampled_bet.get_vote_amount(prediction_response.vote)
-
-        self.context.logger.info(f"Tokens to be sold: {tokens_to_be_sold}")
 
         # todo: replace with configurable parameters
         if prediction_response.confidence >= 0.5 and tokens_to_be_sold > 0:
-            # todo: continue now
             self.sell_amount = tokens_to_be_sold
-            self.context.logger.info(f"*" * 100)
             return True
         else:
-            self.context.logger.info(f"*" * 100)
             return False
 
     def async_act(self) -> Generator:
@@ -585,9 +576,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             policy = None
             should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
-                self.context.logger.info(
-                    "Checking if we should sell the outcome tokens"
-                )
                 if self.should_sell_outcome_tokens(prediction_response):
                     self.context.logger.info(
                         "The bet response has changed, so we need to sell the outcome tokens"
@@ -642,22 +630,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
                 self._update_selected_bet(prediction_response)
 
-            self.context.logger.info(f"Bets hash: {bets_hash=}")
-            self.context.logger.info(f"Is profitable: {is_profitable=}")
-            self.context.logger.info(
-                f"Vote: {prediction_response.vote if prediction_response else None=}"
-            )
-            self.context.logger.info(
-                f"Confidence: {prediction_response.confidence if prediction_response else None=}"
-            )
-            self.context.logger.info(f"Bet amount: {bet_amount=}")
-            self.context.logger.info(f"Next mock data row: {next_mock_data_row=}")
-            self.context.logger.info(f"Policy: {policy=}")
-            self.context.logger.info(f"Should be sold: {should_be_sold=}")
-            self.context.logger.info(
-                f"Decision received timestamp: {decision_received_timestamp=}"
-            )
-
             vote = prediction_response.vote if prediction_response else None
             confidence = prediction_response.confidence if prediction_response else None
 
@@ -677,8 +649,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 decision_received_timestamp,
                 should_be_sold,
             )
-
-            self.context.logger.info(f"Payload: {payload=}")
 
         self._store_all()
         yield from self.finish_behaviour(payload)

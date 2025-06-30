@@ -72,15 +72,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.info(f"Updating bets investments")
         balances = yield from self.get_active_bets()
 
-        self.context.logger.info(f"Balances {balances=}")
-
-        self.context.logger.info(f"Bets {bets=}")
         for i, bet in enumerate(bets):
             if bet.queue_status == QueueStatus.EXPIRED:
                 self.context.logger.info(f"Bet {bet.id} is expired")
                 continue
-            self.context.logger.info(f"Bet {bet=}")
-            self.context.logger.info(f"Balances {balances=}")
+
             for outcome, value in balances[bet.id].items():
                 outcome_is_no = outcome.lower() == "no"
                 outcome_int = 0 if outcome_is_no else 1
@@ -93,8 +89,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
-
-        self.context.logger.info(f"Finding processable bets and {self.kpi_is_met=}")
 
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
@@ -115,18 +109,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             QueueStatus.REPROCESSED,
         }
         bet_queue_processable = bet.queue_status in processable_statuses
-        self.context.logger.info(f"Bet {bet=} queue status: {bet.queue_status}")
 
-        self.context.logger.info(f"KPI is met: {self.kpi_is_met}")
-        self.context.logger.info(
-            f"Review bets for selling: {self.review_bets_for_selling}"
-        )
         if self.kpi_is_met and self.review_bets_for_selling:
-            self.context.logger.info(f"KPI is met and review bets for selling")
             bet_was_already_placed = bet.invested_amount > 0
-            self.context.logger.info(
-                f"Bet {bet=} was already placed: {bet_was_already_placed}"
-            )
             return within_ranges and bet_queue_processable and bet_was_already_placed
         else:
             return within_ranges and bet_queue_processable
@@ -187,9 +172,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
             bets
         )
-        self.context.logger.info(f"TO_PROCESS_LEN: {len(to_process_bets)}")
-        self.context.logger.info(f"PROCESSED_LEN: {len(processed_bets)}")
-        self.context.logger.info(f"REPROCESSED_LEN: {len(reprocessed_bets)}")
 
         # pick the first queue status that has bets in it
         bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets

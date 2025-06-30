@@ -108,10 +108,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     @property
     def return_amount(self) -> int:
         """Get the return amount."""
-        print(f"Return amount: {self.sampled_bet.get_vote_amount(self.outcome_index)=}")
-        logger.info(
-            f"return amount: {self.sampled_bet.get_vote_amount(self.outcome_index)}"
-        )
         return self.sampled_bet.get_vote_amount(self.outcome_index)
 
     def async_act(self) -> Generator:
@@ -130,14 +126,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             tx_submitter = self.matching_round.auto_round_id()
             tx_hex = yield from self._prepare_safe_tx()
             self.context.logger.info("Finished preparing the safe transaction")
-
-            self.context.logger.info(f"Outcome: {self.outcome_index=}")
-            self.context.logger.info(f"Return amount: {self.return_amount=}")
-            self.context.logger.info(f"Collateral token: {self.collateral_token=}")
-            self.context.logger.info(
-                f"Confidence: {self.synchronized_data.confidence=}"
-            )
-            self.context.logger.info(f"Sell amount: {self.sell_amount=}")
 
             payload = MultisigTxPayload(agent, tx_submitter, tx_hex, mocking_mode)
 

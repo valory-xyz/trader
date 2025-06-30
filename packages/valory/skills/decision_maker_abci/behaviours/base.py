@@ -759,17 +759,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     ) -> WaitableConditionType:
         """Calculate the token amount for buying/selling."""
 
-        self.context.logger.info(f"Function call _calc_token_amount")
-        self.context.logger.info(
-            f"Function call amount_param_name: {amount_param_name}"
-        )
-        self.context.logger.info(
-            f"Function call amount_param_value: {amount_param_value}"
-        )
-        self.context.logger.info(f"Function call outcome_index: {self.outcome_index}")
-        self.context.logger.info(f"Function call operation: {operation}")
-        self.context.logger.info(f"Function call amount_field: {amount_field}")
-
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.market_maker_contract_address,
