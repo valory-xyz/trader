@@ -25,7 +25,7 @@ import re
 from pathlib import Path
 
 import yaml
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore
 
 
 AGENT_NAME = "trader"
@@ -47,7 +47,7 @@ PATH_TO_VAR = {
 CONFIG_REGEX = r"\${.*?:(.*)}"
 
 
-def find_and_replace(config, path, new_value):
+def find_and_replace(config, path, new_value):  # type: ignore[no-untyped-def]
     """Find and replace a variable"""
 
     # Find the correct section where this variable fits
