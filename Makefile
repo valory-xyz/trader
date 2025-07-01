@@ -172,3 +172,28 @@ run-agent:
 	LATEST_LOG_FILE="./logs/agent_log_latest.log"; \
 	echo "Running agent and logging to $$LOG_FILE"; \
 	bash run_agent.sh 2>&1 | tee $$LOG_FILE $$LATEST_LOG_FILE'
+
+
+.PHONY: all-linters
+all-linters:
+	gitleaks detect --report-format json --report-path leak_report
+	tox -e spell-check
+	tox -e liccheck
+	tox -e check-doc-hashes
+	tox -e bandit
+	tox -e safety
+	tox -e check-packages
+	tox -e check-abciapp-specs
+	tox -e check-hash
+	tox -e black-check
+	tox -e isort-check
+	tox -e flake8
+	tox -e darglint
+	tox -e pylint
+	tox -e mypy
+
+
+.PHONY: push-packages
+push-packages:
+	make clean  && \
+	autonomy push-all
