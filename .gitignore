@@ -58,3 +58,6 @@ trader/
 /trader_service/
 /.coverage
 .dmypy.json
+logs/
+data/
+benchmarks/
