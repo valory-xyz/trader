@@ -363,7 +363,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
 
-        # Handle agent_registry_address separately to avoid type issues
+        # do not pop the registry and metadata addresses, because they are also required for the `MechInteractParams`
         agent_registry_address: Optional[str] = kwargs.get(
             "agent_registry_address", None
         )
