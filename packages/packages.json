@@ -36,6 +36,7 @@
         "protocol/valory/tendermint/0.1.0": "bafybeigydrbfrlmr4f7shbtqx44kvmbg22im27mxdap2e3m5tkti6t445y",
         "protocol/valory/ipfs/0.1.0": "bafybeifi2nri7sprmkez4rqzwb4lnu6peoy3bax5k6asf6k5ms7kmjpmkq",
         "contract/valory/agent_registry/0.1.0": "bafybeia2eoorxpsfwnd2dnvgt2v3xxqez6d4zyxvqpnwo5oydcgxkr2uni",
+        "contract/valory/complementary_service_metadata/0.1.0": "bafybeie3enmvss2qv3aea47f2gvpjreqtyc6m6hwlqvns4a3rqbpkz4nky",
         "contract/valory/gnosis_safe_proxy_factory/0.1.0": "bafybeidfvyc6bw4uigv3jfcxr23vysctki6x5rh5htp2azhncib27ydxdm",
         "contract/valory/gnosis_safe/0.1.0": "bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi",
         "contract/valory/mech/0.1.0": "bafybeib32m5zriagivlj7insajfs4jm5o5h53eym32wjjjp6qwv4lzl3pu",
