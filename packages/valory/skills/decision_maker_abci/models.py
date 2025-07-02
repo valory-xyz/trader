@@ -364,11 +364,14 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         """Initialize the parameters' object."""
 
         # Handle agent_registry_address separately to avoid type issues
-        agent_registry_address = kwargs.get("agent_registry_address", None)
+        agent_registry_address: Optional[str] = kwargs.get(
+            "agent_registry_address", None
+        )
         enforce(
             agent_registry_address is not None,
             "Agent registry address not specified!",
         )
+        agent_registry_address = cast(str, agent_registry_address)
 
         metadata_address: Optional[str] = kwargs.get(
             "complementary_service_metadata_address", None
