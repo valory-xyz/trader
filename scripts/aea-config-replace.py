@@ -90,9 +90,14 @@ def main() -> None:
     load_dotenv()
 
     # Load the aea config
-    with open(Path(AGENT_NAME, "aea-config.yaml"), "r", encoding="utf-8") as file:
-        config = list(yaml.safe_load_all(file))
-
+    try:
+        config_path = Path(AGENT_NAME, "aea-config.yaml")
+        with open(config_path, "r", encoding="utf-8") as file:
+            config = list(yaml.safe_load_all(file))
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"Expected 'aea-config.yaml' at {str(config_path)!r}, but the file was not found. This likely indicates a problem earlier in the setup process (Likely in run_agent.sh if calling through there)."
+        ) from e
     # Search and replace all the secrets
     for path, var in PATH_TO_VAR.items():
         try:
