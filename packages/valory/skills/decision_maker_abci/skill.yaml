@@ -190,6 +190,7 @@ models:
       service_id: decision_maker
       service_registry_address: null
       agent_registry_address: '0x0000000000000000000000000000000000000000'
+      complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       setup:
         all_participants:
         - '0x0000000000000000000000000000000000000000'

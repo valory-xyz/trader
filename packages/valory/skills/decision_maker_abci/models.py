@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 from aea.exceptions import enforce
 from aea.skills.base import Model, SkillContext
@@ -370,6 +370,15 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             "Agent registry address not specified!",
         )
 
+        metadata_address: Optional[str] = kwargs.get(
+            "complementary_service_metadata_address", None
+        )
+        enforce(
+            metadata_address is not None,
+            "Complementary service metadata address not specified!",
+        )
+        metadata_address = cast(str, metadata_address)
+
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
@@ -421,6 +430,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
+        self.metadata_address: str = metadata_address
         self.store_path: Path = self.get_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(

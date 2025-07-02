@@ -139,6 +139,7 @@ models:
       service_id: trader
       service_registry_address: null
       agent_registry_address: '0x0000000000000000000000000000000000000000'
+      complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
       setup:
         all_participants:
