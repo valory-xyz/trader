@@ -96,6 +96,7 @@ contracts:
 - valory/agent_registry:0.1.0:bafybeia2eoorxpsfwnd2dnvgt2v3xxqez6d4zyxvqpnwo5oydcgxkr2uni
 - valory/transfer_nft_condition:0.1.0:bafybeicq5jkvpdfciqybxs2n7zwkuprdcksuf7xcgyfxzbbd4w33rk5g3m
 - valory/mech_mm:0.1.0:bafybeifyvfzoyb3bmcgb6zpcoxpcqupiicimegbhro7xvkjqpose34lnve
+- valory/complementary_service_metadata:0.1.0:bafybeie3enmvss2qv3aea47f2gvpjreqtyc6m6hwlqvns4a3rqbpkz4nky
 protocols:
 - valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
 - valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
