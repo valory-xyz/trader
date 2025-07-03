@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigf6o6bebvdtqlzup7cjqcunpum7npzdygtumjr5w2enq6lyadpti
+agent: valory/trader:0.1.0:bafybeif64qfhgg5d2mz65lm5ehbipbwa6ovrcswrdlkpev6lx4ali76bmm
 number_of_agents: 4
 deployment:
   agent:
@@ -63,6 +63,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -290,6 +291,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -415,6 +417,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -540,6 +543,7 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
