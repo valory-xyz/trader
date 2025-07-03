@@ -36,6 +36,7 @@ from packages.valory.contracts.gnosis_safe.contract import (
     SafeOperation,
 )
 from packages.valory.contracts.mech.contract import Mech
+from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.contracts.transfer_nft_condition.contract import (
     TransferNftCondition,
@@ -550,6 +551,21 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.mech_contract_address,
             contract_public_id=Mech.contract_id,
+            contract_callable=contract_callable,
+            data_key=data_key,
+            placeholder=placeholder,
+            **kwargs,
+        )
+        return status
+
+    def _mech_mm_contract_interact(
+        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
+    ) -> WaitableConditionType:
+        """Interact with the mech mm contract."""
+        status = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.mech_marketplace_config.priority_mech_address,
+            contract_public_id=MechMM.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
             placeholder=placeholder,
