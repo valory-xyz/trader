@@ -19,7 +19,7 @@
 
 """Custom objects for the trader ABCI application."""
 
-from typing import Any, Dict, Type, Union, cast
+from typing import Any, Callable, Dict, Type, Union, cast
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
@@ -173,3 +173,5 @@ class SharedState(BaseSharedState):
 
         for event, override in event_to_timeout_overrides.items():
             TraderAbciApp.event_to_timeout[event] = override
+
+        self.req_to_callback: Dict[str, Callable[..., Any]] = {}
