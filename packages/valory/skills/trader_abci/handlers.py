@@ -21,13 +21,26 @@
 """This module contains the handlers for the 'trader_abci' skill."""
 
 import json
+import os
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
+from aea.configurations.data_types import PublicId
+from aea.protocols.base import Message
+from aea.protocols.dialogue.base import Dialogue
+
+from packages.dvilela.connections.genai.connection import (
+    PUBLIC_ID as GENAI_CONNECTION_PUBLIC_ID,
+)
 from packages.valory.protocols.http.message import HttpMessage
-from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
+from packages.valory.protocols.srr.dialogues import SrrDialogues
+from packages.valory.protocols.srr.message import SrrMessage
+from packages.valory.skills.abstract_round_abci.handlers import (
+    ABCIRoundHandler,
+    AbstractResponseHandler,
+)
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -52,6 +65,10 @@ from packages.valory.skills.mech_interact_abci.handlers import (
 )
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
+from packages.valory.skills.trader_abci.prompts import (
+    CHATUI_PROMPT,
+    build_updated_agent_config_schema,
+)
 
 
 TraderHandler = ABCIRoundHandler
@@ -64,6 +81,7 @@ AcnHandler = BaseAcnHandler
 
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
+CHATUI_PARAM_STORE = "chatui_param_store.json"
 
 # Content type constants
 DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
@@ -119,12 +137,18 @@ class HttpHandler(BaseHttpHandler):
         self.handler_url_regex = rf"{hostname_regex}\/.*"
 
         agent_info_url_regex = rf"{hostname_regex}\/agent-info"
+
+        chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
+
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
 
         self.routes = {
             **self.routes,  # persisting routes from base class
+            (HttpMethod.POST.value,): [
+                (chatui_prompt_url, self._handle_chatui_prompt),
+            ],
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
                 (agent_info_url_regex, self._handle_get_agent_info),
@@ -171,6 +195,155 @@ class HttpHandler(BaseHttpHandler):
         # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _send_message(
+        self,
+        message: Message,
+        dialogue: Dialogue,
+        callback: Callable,
+        callback_kwargs: Optional[Dict] = None,
+    ) -> None:
+        """
+        Send a message and set up a callback for the response.
+
+        :param message: the Message to send
+        :param dialogue: the Dialogue context
+        :param callback: the callback function upon response
+        :param callback_kwargs: optional kwargs for the callback
+        """
+        self.context.outbox.put_message(message=message)
+        nonce = dialogue.dialogue_label.dialogue_reference[0]
+        self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
+
+    def _handle_chatui_prompt(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """
+        Handle POST requests to process user prompts.
+
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        self.context.logger.info("Handling chatui prompt")
+        # Parse incoming data
+        data = json.loads(http_msg.body.decode("utf-8"))
+        user_prompt = data.get("prompt", "")
+
+        if not user_prompt:
+            self._handle_bad_request(http_msg, http_dialogue)
+
+        # Format the prompt
+        prompt_template = CHATUI_PROMPT.format(
+            user_prompt=user_prompt,
+            current_trading_strategy=self._load_chatui_param("trading_strategy"),
+        )
+
+        # Prepare payload data
+        payload_data = {
+            "prompt": prompt_template,
+            "schema": build_updated_agent_config_schema(),
+        }
+
+        self.context.logger.info(f"Payload data: {payload_data}")
+
+        # Create LLM request
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+        request_srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(GENAI_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(payload_data),
+        )
+
+        # Prepare callback args
+        callback_kwargs = {"http_msg": http_msg, "http_dialogue": http_dialogue}
+        self._send_message(
+            request_srr_message,
+            srr_dialogue,
+            self._handle_chatui_llm_response,
+            callback_kwargs,
+        )
+
+    def _handle_chatui_llm_response(
+        self,
+        llm_response_message: SrrMessage,
+        dialogue: Dialogue,  # pylint: disable=unused-argument
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """
+        Handle the response from the LLM.
+
+        :param llm_response_message: the SrrMessage with the LLM output
+        :param dialogue: the Dialogue
+        :param http_msg: the original HttpMessage
+        :param http_dialogue: the original HttpDialogue
+        """
+        self.context.logger.info(
+            f"LLM response payload: {llm_response_message.payload}"
+        )
+
+        llm_response = json.loads(llm_response_message.payload).get("response", "{}")
+        llm_response_json = json.loads(llm_response)
+
+        updated_trading_strategy: str = llm_response_json.get("trading_strategy", None)
+
+        updated_params = {}
+        if updated_trading_strategy:
+            # Update the persona in the database
+            self.store_trading_strategy(updated_trading_strategy)
+            updated_params.update({"trading_strategy": updated_trading_strategy})
+
+        self._send_ok_response(
+            http_msg,
+            http_dialogue,
+            {
+                "updated_params": updated_params,
+                "llm_response": llm_response_json,
+                "message": (
+                    "Params successfully updated"
+                    if updated_params
+                    else "No Params updated"
+                ),
+            },
+        )
+
+    def _store_chatui_param(self, param_name: str, value: Any) -> None:
+        """Store chatui param."""
+        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
+        # If the file exists, load and update it; otherwise, create a new store
+        if os.path.exists(chatui_store_path):
+            with open(chatui_store_path, "r") as f:
+                current_store: dict = json.load(f)
+
+        else:
+            current_store = {}
+
+        current_store.update({param_name: value})
+
+        with open(chatui_store_path, "w") as f:
+            json.dump(current_store, f)
+
+    def _load_chatui_param(self, param_name: str) -> Optional[Any]:
+        """Load chatui param."""
+        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
+        if not os.path.exists(chatui_store_path):
+            return None
+
+        with open(chatui_store_path, "r") as f:
+            current_store: dict = json.load(f)
+
+        return current_store.get(param_name, None)
+
+    def get_trading_strategy(self) -> str:
+        """Get the trading strategy."""
+        trading_strategy = self._load_chatui_param("trading_strategy")
+        if trading_strategy is None:
+            trading_strategy = self.context.params.get("trading_strategy", None)
+        return trading_strategy
+
+    def store_trading_strategy(self, trading_strategy: str) -> None:
+        """Store the trading strategy."""
+        self._store_chatui_param("trading_strategy", trading_strategy)
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -230,3 +403,41 @@ class HttpHandler(BaseHttpHandler):
                 self._send_ok_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
             self._handle_not_found(http_msg, http_dialogue)
+
+
+class SrrHandler(AbstractResponseHandler):
+    """A class for handling SRR messages."""
+
+    SUPPORTED_PROTOCOL: Optional[PublicId] = SrrMessage.protocol_id
+    allowed_response_performatives = frozenset(
+        {
+            SrrMessage.Performative.REQUEST,
+            SrrMessage.Performative.RESPONSE,
+        }
+    )
+
+    def handle(self, message: Message) -> None:
+        """
+        React to an SRR message.
+
+        :param message: the SrrMessage instance
+        """
+        self.context.logger.info(f"Received Srr message: {message}")
+        srr_msg = cast(SrrMessage, message)
+
+        if srr_msg.performative not in self.allowed_response_performatives:
+            self.context.logger.warning(
+                f"SRR performative not recognized: {srr_msg.performative}"
+            )
+            return
+
+        nonce = srr_msg.dialogue_reference[
+            0
+        ]  # Assuming dialogue_reference is accessible
+        callback, kwargs = self.context.state.req_to_callback.pop(nonce, (None, {}))
+
+        if callback is None:
+            super().handle(message)
+        else:
+            dialogue = self.context.srr_dialogues.update(srr_msg)
+            callback(srr_msg, dialogue, **kwargs)

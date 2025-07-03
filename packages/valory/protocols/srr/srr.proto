@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package aea.valory.srr.v0_1_0;
+
+message SrrMessage{
+
+  // Performatives and contents
+  message Request_Performative{
+    string payload = 1;
+  }
+
+  message Response_Performative{
+    string payload = 1;
+    bool error = 2;
+  }
+
+
+  oneof performative{
+    Request_Performative request = 5;
+    Response_Performative response = 6;
+  }
+}

@@ -60,3 +60,4 @@ trader/
 logs/
 data/
 benchmarks/
+.vscode/

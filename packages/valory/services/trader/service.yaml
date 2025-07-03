@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigf6o6bebvdtqlzup7cjqcunpum7npzdygtumjr5w2enq6lyadpti
+agent: valory/trader:0.1.0:bafybeidpod5u2y2cirajputfcf4ffz7zbgzwtfneizn4tpltfbbjt45nu4
 number_of_agents: 4
 deployment:
   agent:
@@ -695,3 +695,8 @@ config:
   host: ${HTTP_SERVER_HOST:str:0.0.0.0}
   port: ${HTTP_SERVER_PORT:int:8716}
   target_skill_id: valory/trader_abci:0.1.0
+---
+public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  genai_api_key: ${GENAI_API_KEY:str:null}

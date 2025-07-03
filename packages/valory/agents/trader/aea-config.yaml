@@ -15,6 +15,7 @@ connections:
 - valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
 - valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
+- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeidfvyc6bw4uigv3jfcxr23vysctki6x5rh5htp2azhncib27ydxdm
@@ -45,6 +46,7 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
 - valory/tendermint:0.1.0:bafybeigydrbfrlmr4f7shbtqx44kvmbg22im27mxdap2e3m5tkti6t445y
 - valory/acn_data_share:0.1.0:bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq
+- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
 skills:
 - valory/abstract_abci:0.1.0:bafybeibfsmbjasqnb3lgmwj7dlxvlfbngdyqc7a4n5q2g7phvmv4ktehq4
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
@@ -52,10 +54,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihcissp2uqahoo4zf3jeosvwvkw5tlqucby3zhs3a3z3pmzu44zxm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig2wqlkrec3pectnye5gkxhh45sjf5uz3yiau3fmkk434773hmkfu
 - valory/market_manager_abci:0.1.0:bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4
-- valory/decision_maker_abci:0.1.0:bafybeiequ53nozctyki67yv6o7px55rxhk6shuwdp4idxb4bnlturxs2ge
-- valory/trader_abci:0.1.0:bafybeicwl4j46jlslwisg6uusbvpfq335nuxuolhm7dsrngwzrnfmetxri
+- valory/decision_maker_abci:0.1.0:bafybeiegp2o2feunhebqakicowyy7zkup5hvc3joggf4l4nlapyldh7uze
+- valory/trader_abci:0.1.0:bafybeieckdv43hp6ndbp4e7sj3eivgqk242izpq6dz4jwdzsiiueqe6vrm
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774
 - valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
@@ -407,3 +409,8 @@ config:
   host: ${str:0.0.0.0}
   port: ${int:8716}
   target_skill_id: valory/trader_abci:0.1.0
+---
+public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  genai_api_key: ${str:null}
