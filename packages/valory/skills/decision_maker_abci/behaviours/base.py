@@ -317,18 +317,22 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def _store_chatui_param(self, param_name: str, value: Any) -> None:
         """Store chatui param to JSON file."""
         chatui_store_path = self.params.store_path / CHATUI_PARAM_STORE
-        # If the file exists, load and update it; otherwise, create a new store
-        if os.path.exists(chatui_store_path):
-            with open(chatui_store_path, "r") as f:
-                current_store: dict = json.load(f)
-
-        else:
+        try:
+            if os.path.exists(chatui_store_path):
+                with open(chatui_store_path, "r") as f:
+                    current_store: dict = json.load(f)
+            else:
+                current_store = {}
+        except (FileNotFoundError, json.JSONDecodeError):
             current_store = {}
 
         current_store.update({param_name: value})
 
-        with open(chatui_store_path, "w") as f:
-            json.dump(current_store, f)
+        try:
+            with open(chatui_store_path, "w") as f:
+                json.dump(current_store, f)
+        except Exception as e:
+            self.context.logger.error(f"Failed to write chatui param store: {e}")
 
     def _load_chatui_param(self, param_name: str) -> Optional[Any]:
         """Load chatui param from JSON file."""
