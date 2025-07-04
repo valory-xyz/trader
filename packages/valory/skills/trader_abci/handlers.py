@@ -298,7 +298,6 @@ class HttpHandler(BaseHttpHandler):
 
         updated_params = {}
         if updated_agent_config:
-
             updated_trading_strategy: str = updated_agent_config.get(
                 "trading_strategy", None
             )
