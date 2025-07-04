@@ -67,7 +67,7 @@ from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.prompts import (
     CHATUI_PROMPT,
-    build_updated_agent_config_schema,
+    build_chatui_llm_response_schema,
 )
 
 
@@ -82,6 +82,14 @@ AcnHandler = BaseAcnHandler
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 CHATUI_PARAM_STORE = "chatui_param_store.json"
+
+AVAILABLE_TRADING_STRATEGIES = frozenset(
+    {
+        "kelly_criterion_no_conf",
+        "bet_amount_per_threshold",
+        "mike_strat",
+    }
+)
 
 # Content type constants
 DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
@@ -241,7 +249,7 @@ class HttpHandler(BaseHttpHandler):
         # Prepare payload data
         payload_data = {
             "prompt": prompt_template,
-            "schema": build_updated_agent_config_schema(),
+            "schema": build_chatui_llm_response_schema(),
         }
 
         self.context.logger.info(f"Payload data: {payload_data}")
@@ -285,13 +293,28 @@ class HttpHandler(BaseHttpHandler):
         llm_response = json.loads(llm_response_message.payload).get("response", "{}")
         llm_response_json = json.loads(llm_response)
 
-        updated_trading_strategy: str = llm_response_json.get("trading_strategy", None)
+        llm_message = llm_response_json.get("message", "")
+        updated_agent_config = llm_response_json.get("updated_agent_config", {})
 
         updated_params = {}
-        if updated_trading_strategy:
-            # Update the persona in the database
-            self.store_trading_strategy(updated_trading_strategy)
-            updated_params.update({"trading_strategy": updated_trading_strategy})
+        if updated_agent_config:
+
+            updated_trading_strategy: str = updated_agent_config.get(
+                "trading_strategy", None
+            )
+            if updated_trading_strategy:
+                if updated_trading_strategy not in AVAILABLE_TRADING_STRATEGIES:
+                    self.context.logger.error(
+                        f"Unsupported trading strategy: {updated_trading_strategy}"
+                    )
+                else:
+                    # Store the trading strategy in the chatui param store
+                    self._store_chatui_param(
+                        "trading_strategy", updated_trading_strategy
+                    )
+                    updated_params.update(
+                        {"trading_strategy": updated_trading_strategy}
+                    )
 
         self._send_ok_response(
             http_msg,
@@ -299,6 +322,7 @@ class HttpHandler(BaseHttpHandler):
             {
                 "updated_params": updated_params,
                 "llm_response": llm_response_json,
+                "llm_message": llm_message,
                 "message": (
                     "Params successfully updated"
                     if updated_params

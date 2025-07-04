@@ -28,12 +28,15 @@ from dataclasses import dataclass
 
 
 CHATUI_PROMPT = """
-You are an expert assistant responsible for updating the configuration of an agent based on user input.
+You are an expert assistant tasked with helping users update an agent's trading configuration.
 
-The agent's current configuration is:
-- current_trading_strategy: "{current_trading_strategy}"
+Configuration details:
+- Trading strategy: "{current_trading_strategy}"
+    -- Available strategies: "kelly_criterion_no_conf", "bet_amount_per_threshold", "mike_strat"
 
-Carefully analyze the following user prompt and determine the most appropriate updates for the agent. If the prompt lacks sufficient information to make a meaningful change (e.g., it is a greeting, off-topic or if the user has asked for a value that is not supported), return null for all fields. Null values signify no change to that field. If only one field has changed, keep the other field null.
+Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If the prompt is unclear, irrelevant, or does not specify a supported value, set all fields to null and explain why—null means no change. If only one field should be updated, set the others to null.
+
+Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed.
 
 User prompt: "{user_prompt}"
 """
@@ -73,6 +76,15 @@ class UpdatedAgentConfig:
     trading_strategy: typing.Optional[TradingStrategy]
 
 
-def build_updated_agent_config_schema() -> dict:
-    """Build a schema for updated agent config"""
-    return {"class": pickle.dumps(UpdatedAgentConfig).hex(), "is_list": False}
+@dataclass(frozen=True)
+class ChatUILLMResponse:
+    """ChatUILLMResponse"""
+
+    updated_agent_config: typing.Optional[UpdatedAgentConfig]
+
+    message: str
+
+
+def build_chatui_llm_response_schema() -> dict:
+    """Build a schema for the ChatUILLMResponse."""
+    return {"class": pickle.dumps(ChatUILLMResponse).hex(), "is_list": False}

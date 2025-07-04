@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
-  handlers.py: bafybeicfg4janxabx6o7okxauqbigr5tbp5ylsqj2yfueqikecjzng7g6q
+  handlers.py: bafybeihrtgereu2sp5vw2pcwtbmal3n2ss2xb7qdrld34u7hkgly5jtv5u
   models.py: bafybeianrjqqbpci45d6dcoqcqs7gfyxqu26toncc2qv6zilpsz75hcd3e
   predict-ui-build/assets/index-DiuKs-pF.js: bafybeiamkunvsnkna67nlelpiaxf4j7jnuc53snvfwq5btoy5oln4ojlze
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
@@ -20,7 +20,7 @@ fingerprint:
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
   predict-ui-build/index.html: bafybeiaocredxsfk7kbowxrumllwnjxw4xkerwz2jyaypy7wooyxu3ow3q
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
-  prompts.py: bafybeif45atllghpuez4qzv5vdgox4i2i3jevvbyexwf5hwnloxi2dbxmy
+  prompts.py: bafybeiemwyijaovd3prpynbwbda3sqlucvpl2djpjok4e3gqvmv4zglqce
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeidl66z57qnyl7ystvaj4xnpb6ot6aybg2l6bikkuanae7iqdempya
 fingerprint_ignore_patterns: []
