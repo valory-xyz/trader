@@ -343,9 +343,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 current_store: dict = json.load(f)
 
             return current_store.get(param_name, None)
-        except FileNotFoundError:
+        except Exception:
             self.context.logger.info(
-                "ChatUI param store file not found, returning None."
+                "ChatUI param store file not found or is invalid, returning None."
             )
             return None
 
