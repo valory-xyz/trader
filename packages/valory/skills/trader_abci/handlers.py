@@ -315,7 +315,6 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             {
                 "updated_params": updated_params,
-                "llm_response": llm_response_json,
                 "llm_message": llm_message,
                 "message": (
                     "Params successfully updated"
