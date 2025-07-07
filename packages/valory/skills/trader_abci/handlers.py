@@ -67,6 +67,7 @@ from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.prompts import (
     CHATUI_PROMPT,
+    TradingStrategy,
     build_chatui_llm_response_schema,
 )
 
@@ -83,13 +84,7 @@ AcnHandler = BaseAcnHandler
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 CHATUI_PARAM_STORE = "chatui_param_store.json"
 
-AVAILABLE_TRADING_STRATEGIES = frozenset(
-    {
-        "kelly_criterion_no_conf",
-        "bet_amount_per_threshold",
-        "mike_strat",
-    }
-)
+AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
 # Content type constants
 DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
