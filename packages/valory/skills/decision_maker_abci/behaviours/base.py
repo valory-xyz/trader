@@ -368,7 +368,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         # If the initial value is not in the db, store it
         if initial_json is None:
-            self._store_chatui_param(param_name, config_value)
+            self._store_chatui_param(f"initial_{param_name}", config_value)
             initial_json = config_value
 
         # If the param is not in the db, store it
@@ -381,7 +381,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if config_value != initial_json:
             self._store_chatui_param(param_name, config_value)
             self._store_chatui_param(f"initial_{param_name}", config_value)
-            initial_json = config_value
             param_json = config_value
 
         # At this point, the param in the db is the correct one
