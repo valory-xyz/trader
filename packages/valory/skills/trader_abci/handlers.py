@@ -175,10 +175,7 @@ class HttpHandler(BaseHttpHandler):
         data: Union[str, Dict, List, bytes],
         content_type: Optional[str] = None,
     ) -> None:
-        """Handle a Http bad request.
-
-        :param http_msg: the http message
-        :param http_dialogue: the http dialogue"""
+        """Handle a Http bad request."""
         headers = content_type or (
             CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
         )
