@@ -493,6 +493,7 @@ class SrrHandler(AbstractResponseHandler):
 
         if callback is None:
             super().handle(message)
-        else:
-            dialogue = self.context.srr_dialogues.update(srr_msg)
-            callback(srr_msg, dialogue, **kwargs)
+            return
+
+        dialogue = self.context.srr_dialogues.update(srr_msg)
+        callback(srr_msg, dialogue, **kwargs)
