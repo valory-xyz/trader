@@ -168,6 +168,40 @@ class HttpHandler(BaseHttpHandler):
         """Get the appropriate content type header based on file extension."""
         return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
+    def _send_bad_request_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a Http bad request.
+
+        :param http_msg: the http message
+        :param http_dialogue: the http dialogue"""
+        headers = content_type or (
+            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        )
+        headers += http_msg.headers
+
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=HTTPStatus.BAD_REQUEST.value,
+            status_text=HTTPStatus.BAD_REQUEST.phrase,
+            headers=headers,
+            body=data.encode("utf-8") if isinstance(data, str) else data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
+
     def _send_ok_response(
         self,
         http_msg: HttpMessage,
@@ -233,7 +267,13 @@ class HttpHandler(BaseHttpHandler):
         user_prompt = data.get("prompt", "")
 
         if not user_prompt:
-            self._handle_bad_request(http_msg, http_dialogue)
+            self._send_bad_request_response(
+                http_msg,
+                http_dialogue,
+                {"error": "User prompt is required."},
+                content_type=CONTENT_TYPES[".json"],
+            )
+            return
 
         # Format the prompt
         prompt_template = CHATUI_PROMPT.format(
@@ -291,37 +331,36 @@ class HttpHandler(BaseHttpHandler):
         llm_message = llm_response_json.get("message", "")
         updated_agent_config = llm_response_json.get("updated_agent_config", {})
 
-        updated_params = {}
-        if updated_agent_config:
-            updated_trading_strategy: str = updated_agent_config.get(
-                "trading_strategy", None
+        if not updated_agent_config:
+            self.context.logger.warning(
+                "No agent configuration update provided by the LLM."
             )
-            if updated_trading_strategy:
-                if updated_trading_strategy not in AVAILABLE_TRADING_STRATEGIES:
-                    self.context.logger.error(
-                        f"Unsupported trading strategy: {updated_trading_strategy}"
-                    )
-                else:
-                    # Store the trading strategy in the chatui param store
-                    self._store_chatui_param(
-                        "trading_strategy", updated_trading_strategy
-                    )
-                    updated_params.update(
-                        {"trading_strategy": updated_trading_strategy}
-                    )
+            self._send_ok_response(
+                http_msg,
+                http_dialogue,
+                {"updated_params": {}, "llm_message": llm_message},
+            )
+            return
+
+        updated_params = {}
+        issues: List[str] = []
+        updated_trading_strategy: str = updated_agent_config.get(
+            "trading_strategy", None
+        )
+        if updated_trading_strategy:
+            if updated_trading_strategy not in AVAILABLE_TRADING_STRATEGIES:
+                self.context.logger.error(
+                    f"Unsupported trading strategy: {updated_trading_strategy}"
+                )
+                issues.append(
+                    f"Unsupported trading strategy: {updated_trading_strategy}."
+                )
+            updated_params.update({"trading_strategy": updated_trading_strategy})
 
         self._send_ok_response(
             http_msg,
             http_dialogue,
-            {
-                "updated_params": updated_params,
-                "llm_message": llm_message,
-                "message": (
-                    "Params successfully updated"
-                    if updated_params
-                    else "No Params updated"
-                ),
-            },
+            {"updated_params": updated_params, "llm_message": llm_message},
         )
 
     def _store_chatui_param(self, param_name: str, value: Any) -> None:
