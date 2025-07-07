@@ -278,7 +278,7 @@ class HttpHandler(BaseHttpHandler):
         # Format the prompt
         prompt_template = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
-            current_trading_strategy=self._load_chatui_param("trading_strategy"),
+            current_trading_strategy=self._get_trading_strategy(),
         )
 
         # Prepare payload data
@@ -390,14 +390,13 @@ class HttpHandler(BaseHttpHandler):
 
         return current_store.get(param_name, None)
 
-    def get_trading_strategy(self) -> str:
+    def _get_trading_strategy(self) -> str:
         """Get the trading strategy."""
-        trading_strategy = self._load_chatui_param("trading_strategy")
-        if trading_strategy is None:
-            trading_strategy = self.context.params.get("trading_strategy", None)
-        return trading_strategy
+        return self._load_chatui_param("trading_strategy") or self.context.params.get(
+            "trading_strategy"
+        )
 
-    def store_trading_strategy(self, trading_strategy: str) -> None:
+    def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""
         self._store_chatui_param("trading_strategy", trading_strategy)
 
