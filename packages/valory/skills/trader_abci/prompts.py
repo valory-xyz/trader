@@ -42,24 +42,6 @@ User prompt: "{user_prompt}"
 """
 
 
-@dataclass(frozen=True)
-class BetAmountPerThreshold:
-    """BetAmountPerThreshold"""
-
-    zero_point_zero: typing.Optional[int]
-    zero_point_one: typing.Optional[int]
-    zero_point_two: typing.Optional[int]
-    zero_point_three: typing.Optional[int]
-    zero_point_four: typing.Optional[int]
-    zero_point_five: typing.Optional[int]
-    zero_point_six: typing.Optional[int]
-    zero_point_seven: typing.Optional[int]
-    zero_point_eight: typing.Optional[int]
-    zero_point_nine: typing.Optional[int]
-    one_point_zero: typing.Optional[int]
-    one_point_one: typing.Optional[int]
-
-
 class TradingStrategy(enum.Enum):
     """TradingStrategy"""
 
@@ -72,7 +54,6 @@ class TradingStrategy(enum.Enum):
 class UpdatedAgentConfig:
     """UpdatedAgentConfig"""
 
-    # bet_amount_per_threshold: typing.Optional[BetAmountPerThreshold] # noqa: E800
     trading_strategy: typing.Optional[TradingStrategy]
 
 
