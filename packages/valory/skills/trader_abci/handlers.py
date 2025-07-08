@@ -84,8 +84,6 @@ AcnHandler = BaseAcnHandler
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 CHATUI_PARAM_STORE = "chatui_param_store.json"
 
-AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
-
 # Content type constants
 DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
 CONTENT_TYPES = {
@@ -97,6 +95,18 @@ CONTENT_TYPES = {
     ".jpg": "Content-Type: image/jpeg\n",
     ".jpeg": "Content-Type: image/jpeg\n",
 }
+
+
+# ChatUI constants
+CHATUI_PROMPT_FIELD = "prompt"
+CHATUI_RESPONSE_FIELD = "response"
+CHATUI_MESSAGE_FIELD = "message"
+CHATUI_UPDATED_CONFIG_FIELD = "updated_agent_config"
+CHATUI_UPDATED_PARAMS_FIELD = "updated_params"
+CHATUI_LLM_MESSAGE_FIELD = "llm_message"
+CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
+
+AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
 
 class HttpHandler(BaseHttpHandler):
@@ -261,7 +271,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Handling chatui prompt")
         # Parse incoming data
         data = json.loads(http_msg.body.decode("utf-8"))
-        user_prompt = data.get("prompt", "")
+        user_prompt = data.get(CHATUI_PROMPT_FIELD, "")
 
         if not user_prompt:
             self._send_bad_request_response(
@@ -322,11 +332,13 @@ class HttpHandler(BaseHttpHandler):
             f"LLM response payload: {llm_response_message.payload}"
         )
 
-        llm_response = json.loads(llm_response_message.payload).get("response", "{}")
+        llm_response = json.loads(llm_response_message.payload).get(
+            CHATUI_RESPONSE_FIELD, "{}"
+        )
         llm_response_json = json.loads(llm_response)
 
-        llm_message = llm_response_json.get("message", "")
-        updated_agent_config = llm_response_json.get("updated_agent_config", {})
+        llm_message = llm_response_json.get(CHATUI_MESSAGE_FIELD, "")
+        updated_agent_config = llm_response_json.get(CHATUI_UPDATED_CONFIG_FIELD, {})
 
         if not updated_agent_config:
             self.context.logger.warning(
@@ -335,14 +347,17 @@ class HttpHandler(BaseHttpHandler):
             self._send_ok_response(
                 http_msg,
                 http_dialogue,
-                {"updated_params": {}, "llm_message": llm_message},
+                {
+                    CHATUI_UPDATED_PARAMS_FIELD: {},
+                    CHATUI_LLM_MESSAGE_FIELD: llm_message,
+                },
             )
             return
 
         updated_params = {}
         issues: List[str] = []
         updated_trading_strategy: str = updated_agent_config.get(
-            "trading_strategy", None
+            CHATUI_TRADING_STRATEGY_FIELD, None
         )
         if updated_trading_strategy:
             if updated_trading_strategy not in AVAILABLE_TRADING_STRATEGIES:
@@ -357,7 +372,10 @@ class HttpHandler(BaseHttpHandler):
         self._send_ok_response(
             http_msg,
             http_dialogue,
-            {"updated_params": updated_params, "llm_message": llm_message},
+            {
+                CHATUI_UPDATED_PARAMS_FIELD: updated_params,
+                CHATUI_LLM_MESSAGE_FIELD: llm_message,
+            },
         )
 
     def _store_chatui_param(self, param_name: str, value: Any) -> None:
@@ -389,13 +407,13 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_trading_strategy(self) -> str:
         """Get the trading strategy."""
-        return self._load_chatui_param("trading_strategy") or self.context.params.get(
-            "trading_strategy"
-        )
+        return self._load_chatui_param(
+            CHATUI_TRADING_STRATEGY_FIELD
+        ) or self.context.params.get(CHATUI_TRADING_STRATEGY_FIELD)
 
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""
-        self._store_chatui_param("trading_strategy", trading_strategy)
+        self._store_chatui_param(CHATUI_TRADING_STRATEGY_FIELD, trading_strategy)
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
