@@ -402,14 +402,17 @@ class HttpHandler(BaseHttpHandler):
             CHATUI_TRADING_STRATEGY_FIELD, None
         )
         if updated_trading_strategy:
-            if updated_trading_strategy not in AVAILABLE_TRADING_STRATEGIES:
+            if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
+                updated_params.update({"trading_strategy": updated_trading_strategy})
+                self._store_trading_strategy(updated_trading_strategy)
+
+            else:
                 self.context.logger.error(
                     f"Unsupported trading strategy: {updated_trading_strategy}"
                 )
                 issues.append(
                     f"Unsupported trading strategy: {updated_trading_strategy}."
                 )
-            updated_params.update({"trading_strategy": updated_trading_strategy})
 
         self._send_ok_response(
             http_msg,
