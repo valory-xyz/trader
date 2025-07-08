@@ -178,6 +178,37 @@ class HttpHandler(BaseHttpHandler):
         """Get the appropriate content type header based on file extension."""
         return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
+    def _send_too_many_requests_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a Http too many requests response."""
+        headers = content_type or (
+            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        )
+        headers += http_msg.headers
+
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=HTTPStatus.TOO_MANY_REQUESTS.value,
+            status_text=HTTPStatus.TOO_MANY_REQUESTS.phrase,
+            headers=headers,
+            body=data.encode("utf-8") if isinstance(data, str) else data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
+
     def _send_bad_request_response(
         self,
         http_msg: HttpMessage,
@@ -332,9 +363,20 @@ class HttpHandler(BaseHttpHandler):
             f"LLM response payload: {llm_response_message.payload}"
         )
 
-        llm_response = json.loads(llm_response_message.payload).get(
-            CHATUI_RESPONSE_FIELD, "{}"
-        )
+        genai_response: dict = json.loads(llm_response_message.payload)
+
+        if "error" in genai_response:
+            self.context.logger.error(f"LLM error response: {genai_response['error']}")
+            if "429" in genai_response["error"]:
+                self._send_too_many_requests_response(
+                    http_msg,
+                    http_dialogue,
+                    {"error": "Too many requests to the LLM."},
+                    content_type=CONTENT_TYPES[".json"],
+                )
+                return
+
+        llm_response = genai_response.get(CHATUI_RESPONSE_FIELD, "{}")
         llm_response_json = json.loads(llm_response)
 
         llm_message = llm_response_json.get(CHATUI_MESSAGE_FIELD, "")
