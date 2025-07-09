@@ -35,8 +35,9 @@ Configuration details:
     -- Available strategies: "kelly_criterion_no_conf", "bet_amount_per_threshold", "mike_strat"
 - Mech tool:
     -- Available tools: {available_tools}
+    -- Can be set to "automatic_selection" to let the agent choose the best tool based on its policy if the user says to remove the tool.
 
-Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If the prompt is unclear, irrelevant, or does not specify a supported value, set all fields to null and explain why—null means no change. If only one field should be updated, set the others to null.
+Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null.
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations.
 
