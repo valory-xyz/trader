@@ -442,6 +442,9 @@ class HttpHandler(BaseHttpHandler):
 
         updated_mech_tool: str = updated_agent_config.get(CHATUI_MECH_TOOL_FIELD, None)
         if updated_mech_tool:
+            if updated_mech_tool == "automatic_selection":
+                updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
+                self._store_selected_tool(None)
             if updated_mech_tool in self.synchronized_data.available_mech_tools:
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
@@ -503,7 +506,7 @@ class HttpHandler(BaseHttpHandler):
             CHATUI_TRADING_STRATEGY_FIELD, trading_strategy
         )
 
-    def _store_selected_tool(self, selected_tool: str) -> None:
+    def _store_selected_tool(self, selected_tool: Optional[str] = None) -> None:
         """Store the selected tool."""
         self.context.state.chat_ui_params.mech_tool = selected_tool
         self._store_chatui_param_to_json(CHATUI_MECH_TOOL_FIELD, selected_tool)
