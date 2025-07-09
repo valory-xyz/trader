@@ -315,82 +315,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.wallet_balance = self.benchmarking_mode.native_balance
         self._report_balance()
 
-    def _store_chatui_param(self, param_name: str, value: Any) -> None:
-        """Store chatui param to JSON file."""
-        chatui_store_path = self.params.store_path / CHATUI_PARAM_STORE
-        try:
-            if os.path.exists(chatui_store_path):
-                with open(chatui_store_path, "r") as f:
-                    current_store: dict = json.load(f)
-            else:
-                current_store = {}
-        except (FileNotFoundError, json.JSONDecodeError):
-            current_store = {}
-
-        current_store.update({param_name: value})
-
-        try:
-            with open(chatui_store_path, "w") as f:
-                json.dump(current_store, f)
-        except Exception as e:
-            self.context.logger.error(f"Failed to write chatui param store: {e}")
-
-    def _load_chatui_param(self, param_name: str) -> Optional[Any]:
-        """Load chatui param from JSON file."""
-        param_path = self.params.store_path / CHATUI_PARAM_STORE
-        try:
-            with open(param_path, "r") as f:
-                current_store: dict = json.load(f)
-
-            return current_store.get(param_name, None)
-        except Exception:
-            self.context.logger.info(
-                "ChatUI param store file not found or is invalid, returning None."
-            )
-            return None
-
-    def _get_chatui_param(self, param_name: str) -> Any:
-        """
-        Retrieve a ChatUI parameter.
-
-        Attempts to load the parameter from the JSON store first; if not found,
-        falls back to the value from the YAML configuration. Ensures consistency
-        if the parameter value in the YAML configuration has changed since it
-        was last stored.
-
-        :param param_name: The name of the parameter to fetch.
-        :return: The value of the parameter.
-        """
-        config_value = getattr(self.params, param_name)
-
-        param_json = self._load_chatui_param(param_name)
-        initial_json = self._load_chatui_param(f"initial_{param_name}")
-
-        # If the initial value is not in the db, store it
-        if initial_json is None:
-            self._store_chatui_param(f"initial_{param_name}", config_value)
-            initial_json = config_value
-
-        # If the param is not in the db, store it
-        if param_json is None:
-            self._store_chatui_param(param_name, config_value)
-            param_json = config_value
-
-        # If the configured value does not match the initial value in the db,
-        # the user has reconfigured it and we need to update it:
-        if config_value != initial_json:
-            self._store_chatui_param(param_name, config_value)
-            self._store_chatui_param(f"initial_{param_name}", config_value)
-            param_json = config_value
-
-        # At this point, the param in the db is the correct one
-        return param_json
-
-    @property
-    def trading_strategy(self) -> str:
-        """Get the trading strategy."""
-        return self._get_chatui_param("trading_strategy")
-
     def check_balance(self) -> WaitableConditionType:
         """Check the safe's balance."""
         if self.benchmarking_mode.enabled:
@@ -512,7 +436,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         yield from self.download_strategies()
         yield from self.wait_for_condition_with_sleep(self.check_balance)
 
-        next_strategy = self.trading_strategy
+        next_strategy: str = self.shared_state.chat_ui_params.trading_strategy
 
         tried_strategies: Set[str] = set()
         while True:
