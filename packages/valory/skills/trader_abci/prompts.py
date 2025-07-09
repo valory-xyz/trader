@@ -33,6 +33,8 @@ You are an expert assistant tasked with helping users update an agent's trading 
 Configuration details:
 - Trading strategy: "{current_trading_strategy}"
     -- Available strategies: "kelly_criterion_no_conf", "bet_amount_per_threshold", "mike_strat"
+- Mech tool:
+    -- Available tools: {available_tools}
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If the prompt is unclear, irrelevant, or does not specify a supported value, set all fields to null and explain why—null means no change. If only one field should be updated, set the others to null.
 
@@ -55,6 +57,7 @@ class UpdatedAgentConfig:
     """UpdatedAgentConfig"""
 
     trading_strategy: typing.Optional[TradingStrategy]
+    mech_tool: typing.Optional[str]
 
 
 @dataclass(frozen=True)
