@@ -317,6 +317,7 @@ class HttpHandler(BaseHttpHandler):
         prompt_template = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=self.context.state.chat_ui_params.trading_strategy,
+            available_tools=self.synchronized_data.available_mech_tools or None,
         )
 
         # Prepare payload data
@@ -413,6 +414,16 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error(issue_message)
                 issues.append(issue_message)
 
+        updated_mech_tool: str = updated_agent_config.get(CHATUI_MECH_TOOL_FIELD, None)
+        if updated_mech_tool:
+            if updated_mech_tool in self.synchronized_data.available_mech_tools:
+                updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
+                self._store_selected_tool(updated_mech_tool)
+
+            else:
+                self.context.logger.error(f"Unsupported mech tool: {updated_mech_tool}")
+                issues.append(f"Unsupported mech tool: {updated_mech_tool}")
+
         self._send_ok_response(
             http_msg,
             http_dialogue,
@@ -438,6 +449,11 @@ class HttpHandler(BaseHttpHandler):
         self._store_chatui_param_to_json(
             CHATUI_TRADING_STRATEGY_FIELD, trading_strategy
         )
+
+    def _store_selected_tool(self, selected_tool: str) -> None:
+        """Store the selected tool."""
+        self.context.state.chat_ui_params.mech_tool = selected_tool
+        self._store_chatui_param_to_json(CHATUI_MECH_TOOL_FIELD, selected_tool)
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

@@ -47,7 +47,14 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             if self.benchmarking_mode.enabled
             else self.synchronized_data.most_voted_randomness
         )
-        selected_tool = self.policy.select_tool(randomness)
+
+        # Override the mech tool with the one from the chat UI if it exists,
+        # otherwise use the policy to select a tool.
+        selected_tool = (
+            self.shared_state.chat_ui_params.mech_tool
+            or self.policy.select_tool(randomness)
+        )
+
         self.context.logger.info(f"Selected the mech tool {selected_tool!r}.")
         return selected_tool
 
