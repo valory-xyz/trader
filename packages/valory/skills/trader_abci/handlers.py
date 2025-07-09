@@ -316,7 +316,7 @@ class HttpHandler(BaseHttpHandler):
         # Format the prompt
         prompt_template = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
-            current_trading_strategy=self._get_trading_strategy(),
+            current_trading_strategy=self.context.state.chat_ui_params.trading_strategy,
         )
 
         # Prepare payload data
@@ -423,8 +423,8 @@ class HttpHandler(BaseHttpHandler):
             },
         )
 
-    def _store_chatui_param(self, param_name: str, value: Any) -> None:
-        """Store chatui param."""
+    def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
+        """Store chatui param to json."""
         chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
         # If the file exists, load and update it; otherwise, create a new store
         if os.path.exists(chatui_store_path):
@@ -439,26 +439,12 @@ class HttpHandler(BaseHttpHandler):
         with open(chatui_store_path, "w") as f:
             json.dump(current_store, f)
 
-    def _load_chatui_param(self, param_name: str) -> Optional[Any]:
-        """Load chatui param."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-        if not os.path.exists(chatui_store_path):
-            return None
-
-        with open(chatui_store_path, "r") as f:
-            current_store: dict = json.load(f)
-
-        return current_store.get(param_name, None)
-
-    def _get_trading_strategy(self) -> str:
-        """Get the trading strategy."""
-        return self._load_chatui_param(
-            CHATUI_TRADING_STRATEGY_FIELD
-        ) or self.context.params.get(CHATUI_TRADING_STRATEGY_FIELD)
-
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""
-        self._store_chatui_param(CHATUI_TRADING_STRATEGY_FIELD, trading_strategy)
+        self.context.state.chat_ui_params.trading_strategy = trading_strategy
+        self._store_chatui_param_to_json(
+            CHATUI_TRADING_STRATEGY_FIELD, trading_strategy
+        )
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
