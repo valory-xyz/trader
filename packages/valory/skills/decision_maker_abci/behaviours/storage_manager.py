@@ -50,6 +50,7 @@ AVAILABLE_TOOLS_STORE = "available_tools_store.json"
 UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
 OK_CODE = 200
+NO_METADATA_HASH = "0" * 64
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -270,8 +271,17 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         )
         return result
 
+    def _check_hash(self) -> None:
+        """Check the validity of the obtained mech hash."""
+        if self.mech_hash.endswith(NO_METADATA_HASH):
+            self.context.logger.error(
+                f"No metadata hash was found for the mech with address {self.params.mech_contract_address} "
+                f"and id {self.mech_id}!"
+            )
+
     def _get_mech_tools(self) -> WaitableConditionType:
         """Get the mech agent's tools from IPFS."""
+        self._check_hash()
         yield from self.set_mech_agent_specs()
         specs = self.mech_tools_api.get_spec()
         res_raw = yield from self.get_http_response(**specs)
