@@ -105,6 +105,7 @@ CHATUI_UPDATED_PARAMS_FIELD = "updated_params"
 CHATUI_LLM_MESSAGE_FIELD = "llm_message"
 CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
 CHATUI_RESPONSE_ISSUES_FIELD = "issues"
+CHATUI_MECH_TOOL_FIELD = "mech_tool"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -177,6 +178,37 @@ class HttpHandler(BaseHttpHandler):
     def _get_content_type(self, file_path: Path) -> str:
         """Get the appropriate content type header based on file extension."""
         return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
+
+    def _send_too_early_request_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a Http too many requests response."""
+        headers = content_type or (
+            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        )
+        headers += http_msg.headers
+
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=HTTPStatus.TOO_EARLY.value,
+            status_text=HTTPStatus.TOO_EARLY.phrase,
+            headers=headers,
+            body=data.encode("utf-8") if isinstance(data, str) else data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
 
     def _send_too_many_requests_response(
         self,
@@ -344,11 +376,30 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        # Format the prompt
+        # Getting variables for formatting the prompt
+        try:
+            available_tools = self.synchronized_data.available_mech_tools
+            current_trading_strategy = (
+                self.context.state.chat_ui_params.trading_strategy
+            )
+        except Exception as e:
+
+            self.context.logger.error(
+                f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
+            )
+            self._send_too_early_request_response(
+                http_msg,
+                http_dialogue,
+                {
+                    "error": "Skill not started yet or data not available. Please try again later."
+                },
+                content_type=CONTENT_TYPES[".json"],
+            )
+            return
         prompt_template = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
-            current_trading_strategy=self.context.state.chat_ui_params.trading_strategy,
-            available_tools=self.synchronized_data.available_mech_tools or None,
+            current_trading_strategy=current_trading_strategy,
+            available_tools=available_tools,
         )
 
         # Prepare payload data
