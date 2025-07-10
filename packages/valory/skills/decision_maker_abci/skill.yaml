@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeif4exh7znuufuh6izcwuop2jq2vcbmnfg77bn2ami5qvadpjl4g5e
+  behaviours/base.py: bafybeih6lcbc26qw4tjsjmgoj224mxaho7spvkmvza6bcqn4vv2rb77pey
   behaviours/bet_placement.py: bafybeibflvlyvmd7que4y6eb7egbixx3hvlwdu764zesi6dnwyusvryhba
   behaviours/blacklisting.py: bafybeieuqoup2vrmrtvjfqnr5mzrvkegc7afb2oeujzq2itsbhcsham2se
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -32,7 +32,7 @@ fingerprint:
   handlers.py: bafybeiherm5a2kjmf46ffjoyvhh3tsja5au5i677oasiutdxdojwdtwqla
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeigzrk553h3vwdvxdaso6q5puep3lj5nyn3knmys3vgiwp27vgjpfq
+  models.py: bafybeias725g6sbtnhbqriknxtv3h3q4lccbomqkbfyggovjxw27vuqtpq
   payloads.py: bafybeieygushjlrzwzpnhagjgpbs3goot3pnfheh6yawuwctrk3uoeesfm
   policy.py: bafybeigmstzp26no6lg2hcsusaybpdidzqgek4wc6hzay4zg4ybjjbij44
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm

@@ -193,7 +193,6 @@ class ChatUIParams:
     """Parameters for the chat UI."""
 
     trading_strategy: str
-
     initial_trading_strategy: str
 
 
@@ -235,8 +234,9 @@ class SharedState(BaseSharedState):
     @property
     def chat_ui_params(self) -> "ChatUIParams":
         """Get the chat UI parameters."""
-
         self._ensure_chatui_store()
+
+        # To deal with typing issues
         if self._chat_ui_params is None:
             raise ValueError("The chat UI parameters have not been set!")
         return self._chat_ui_params
@@ -346,12 +346,8 @@ class SharedState(BaseSharedState):
                 f"is not in the strategies' executables {strategy_exec}."
             )
 
-    def _ensure_chatui_store(self) -> Any:
-        """Ensure that the chat UI store is set up correctly."""
-
-        if self._chat_ui_params is not None:
-            return self._chat_ui_params
-
+    def _get_current_json_store(self) -> Dict[str, Any]:
+        """Get the current store."""
         chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
         try:
             if os.path.exists(chatui_store_path):
@@ -361,6 +357,23 @@ class SharedState(BaseSharedState):
                 current_store = {}
         except (FileNotFoundError, json.JSONDecodeError):
             current_store = {}
+        return current_store
+
+    def _set_json_store(self, store: Dict[str, Any]) -> None:
+        """Set the store with the chat UI parameters."""
+        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
+
+        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
+        with open(chatui_store_path, "w") as f:
+            json.dump(store, f, indent=4)
+
+    def _ensure_chatui_store(self) -> None:
+        """Ensure that the chat UI store is set up correctly."""
+
+        if self._chat_ui_params is not None:
+            return
+
+        current_store = self._get_current_json_store()
 
         # Trading strategy
         trading_strategy_yaml = self.context.params.trading_strategy
@@ -387,10 +400,12 @@ class SharedState(BaseSharedState):
             current_store["trading_strategy"] = trading_strategy_yaml
             current_store["initial_trading_strategy"] = trading_strategy_yaml
 
-        with open(chatui_store_path, "w") as f:
-            json.dump(current_store, f, indent=4)
+        self._set_json_store(current_store)
 
         self._chat_ui_params = ChatUIParams(**current_store)
+
+        if self._chat_ui_params is None:
+            raise ValueError("The chat UI parameters have not been set!")
 
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
