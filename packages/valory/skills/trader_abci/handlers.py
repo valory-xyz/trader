@@ -179,14 +179,16 @@ class HttpHandler(BaseHttpHandler):
         """Get the appropriate content type header based on file extension."""
         return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
-    def _send_too_early_request_response(
+    def _send_http_response(
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         data: Union[str, Dict, List, bytes],
+        status_code: int,
+        status_text: str,
         content_type: Optional[str] = None,
     ) -> None:
-        """Handle a Http too many requests response."""
+        """Generic method to send HTTP responses."""
         headers = content_type or (
             CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
         )
@@ -200,15 +202,31 @@ class HttpHandler(BaseHttpHandler):
             performative=HttpMessage.Performative.RESPONSE,
             target_message=http_msg,
             version=http_msg.version,
-            status_code=HTTPStatus.TOO_EARLY.value,
-            status_text=HTTPStatus.TOO_EARLY.phrase,
+            status_code=status_code,
+            status_text=status_text,
             headers=headers,
             body=data.encode("utf-8") if isinstance(data, str) else data,
         )
 
-        # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _send_too_early_request_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP too early request response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.TOO_EARLY.value,
+            HTTPStatus.TOO_EARLY.phrase,
+            content_type,
+        )
 
     def _send_too_many_requests_response(
         self,
@@ -217,29 +235,15 @@ class HttpHandler(BaseHttpHandler):
         data: Union[str, Dict, List, bytes],
         content_type: Optional[str] = None,
     ) -> None:
-        """Handle a Http too many requests response."""
-        headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        """Handle a HTTP too many requests response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.TOO_MANY_REQUESTS.value,
+            HTTPStatus.TOO_MANY_REQUESTS.phrase,
+            content_type,
         )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.TOO_MANY_REQUESTS.value,
-            status_text=HTTPStatus.TOO_MANY_REQUESTS.phrase,
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_internal_server_error_response(
         self,
@@ -279,29 +283,15 @@ class HttpHandler(BaseHttpHandler):
         data: Union[str, Dict, List, bytes],
         content_type: Optional[str] = None,
     ) -> None:
-        """Handle a Http bad request."""
-        headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        """Handle a HTTP bad request."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.BAD_REQUEST.value,
+            HTTPStatus.BAD_REQUEST.phrase,
+            content_type,
         )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.BAD_REQUEST.value,
-            status_text=HTTPStatus.BAD_REQUEST.phrase,
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_ok_response(
         self,
@@ -310,29 +300,15 @@ class HttpHandler(BaseHttpHandler):
         data: Union[str, Dict, List, bytes],
         content_type: Optional[str] = None,
     ) -> None:
-        """Send an OK response with the provided data"""
-        headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        """Send an OK response with the provided data."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.OK.value,
+            "Success",
+            content_type,
         )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.OK.value,
-            status_text="Success",
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_message(
         self,
@@ -383,7 +359,6 @@ class HttpHandler(BaseHttpHandler):
                 self.context.state.chat_ui_params.trading_strategy
             )
         except Exception as e:
-
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
             )
