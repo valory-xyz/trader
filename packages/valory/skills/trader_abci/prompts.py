@@ -32,7 +32,10 @@ You are an expert assistant tasked with helping users update an agent's trading 
 
 Configuration details:
 - Trading strategy: "{current_trading_strategy}"
-    -- Available strategies: "kelly_criterion_no_conf", "bet_amount_per_threshold", "mike_strat"
+    -- Available strategies:
+        --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while minimizing bankruptcy risk. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount).
+        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts.
+        --- "mike_strat": Similar to "bet_amount_per_threshold", but the fixed amount from the mapping is multiplied by the AI's confidence (e.g., for confidence 0.6 and mapping value 60000000000000000, the bet is 0.6 * 60000000000000000).
 - Mech tool:
     -- Available tools: {available_tools}
     -- Can be set to "###automatic_selection###" to let the agent choose the best tool based on its policy if the user says to remove the tool.
