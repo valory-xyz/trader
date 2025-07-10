@@ -105,6 +105,7 @@ CHATUI_UPDATED_CONFIG_FIELD = "updated_agent_config"
 CHATUI_UPDATED_PARAMS_FIELD = "updated_params"
 CHATUI_LLM_MESSAGE_FIELD = "llm_message"
 CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
+CHATUI_RESPONSE_ISSUES_FIELD = "issues"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -407,12 +408,11 @@ class HttpHandler(BaseHttpHandler):
                 self._store_trading_strategy(updated_trading_strategy)
 
             else:
-                self.context.logger.error(
-                    f"Unsupported trading strategy: {updated_trading_strategy}"
+                issue_message = (
+                    f"Unsupported trading strategy: {updated_trading_strategy}. "
                 )
-                issues.append(
-                    f"Unsupported trading strategy: {updated_trading_strategy}."
-                )
+                self.context.logger.error(issue_message)
+                issues.append(issue_message)
 
         self._send_ok_response(
             http_msg,
@@ -420,6 +420,7 @@ class HttpHandler(BaseHttpHandler):
             {
                 CHATUI_UPDATED_PARAMS_FIELD: updated_params,
                 CHATUI_LLM_MESSAGE_FIELD: llm_message,
+                CHATUI_RESPONSE_ISSUES_FIELD: issues,
             },
         )
 
