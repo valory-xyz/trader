@@ -236,7 +236,6 @@ class SharedState(BaseSharedState):
         """Get the chat UI parameters."""
         self._ensure_chatui_store()
 
-        # To deal with typing issues
         if self._chat_ui_params is None:
             raise ValueError("The chat UI parameters have not been set!")
         return self._chat_ui_params
@@ -403,9 +402,6 @@ class SharedState(BaseSharedState):
         self._set_json_store(current_store)
 
         self._chat_ui_params = ChatUIParams(**current_store)
-
-        if self._chat_ui_params is None:
-            raise ValueError("The chat UI parameters have not been set!")
 
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
