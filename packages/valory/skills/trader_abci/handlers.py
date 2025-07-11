@@ -21,7 +21,6 @@
 """This module contains the handlers for the 'trader_abci' skill."""
 
 import json
-import os
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -426,19 +425,12 @@ class HttpHandler(BaseHttpHandler):
 
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-        # If the file exists, load and update it; otherwise, create a new store
-        if os.path.exists(chatui_store_path):
-            with open(chatui_store_path, "r") as f:
-                current_store: dict = json.load(f)
 
-        else:
-            current_store = {}
+        current_store: dict = self.context.state._get_current_json_store()
 
         current_store.update({param_name: value})
 
-        with open(chatui_store_path, "w") as f:
-            json.dump(current_store, f)
+        self.context.state._set_json_store(current_store)
 
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""
