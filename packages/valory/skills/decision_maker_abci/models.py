@@ -362,7 +362,6 @@ class SharedState(BaseSharedState):
         """Set the store with the chat UI parameters."""
         chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
 
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
         with open(chatui_store_path, "w") as f:
             json.dump(store, f, indent=4)
 
