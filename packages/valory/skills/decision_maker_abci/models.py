@@ -210,13 +210,13 @@ class SharedState(BaseSharedState):
         self.liquidity_prices: Dict[str, List[float]] = {}
         # whether this is the last run of the benchmarking mode
         self.last_benchmarking_has_run: bool = False
-
         # the mapping from bet id to the row number in the dataset
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
-
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
+        # whether the code has detected the new mech marketplace being used
+        self.new_mm_detected: Optional[bool] = None
 
     @property
     def mock_question_id(self) -> Any:
