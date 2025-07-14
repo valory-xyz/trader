@@ -406,7 +406,7 @@ class HttpHandler(BaseHttpHandler):
                     content_type=CONTENT_TYPES[".json"],
                 )
                 return
-            elif "429" in genai_response["error"]:
+            if "429" in genai_response["error"]:
                 self._send_too_many_requests_response(
                     http_msg,
                     http_dialogue,
@@ -414,13 +414,13 @@ class HttpHandler(BaseHttpHandler):
                     content_type=CONTENT_TYPES[".json"],
                 )
                 return
-            else:
-                self._send_internal_server_error_response(
-                    http_msg,
-                    http_dialogue,
-                    {"error": "An error occurred while processing the request."},
-                    content_type=CONTENT_TYPES[".json"],
-                )
+            self._send_internal_server_error_response(
+                http_msg,
+                http_dialogue,
+                {"error": "An error occurred while processing the request."},
+                content_type=CONTENT_TYPES[".json"],
+            )
+            return
 
         llm_response = genai_response.get(CHATUI_RESPONSE_FIELD, "{}")
         llm_response_json = json.loads(llm_response)
