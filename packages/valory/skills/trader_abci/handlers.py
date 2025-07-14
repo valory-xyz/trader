@@ -397,28 +397,8 @@ class HttpHandler(BaseHttpHandler):
         genai_response: dict = json.loads(llm_response_message.payload)
 
         if "error" in genai_response:
-            self.context.logger.error(f"LLM error response: {genai_response['error']}")
-            if "No API_KEY or ADC found." in genai_response["error"]:
-                self._send_internal_server_error_response(
-                    http_msg,
-                    http_dialogue,
-                    {"error": "No GENAI_API_KEY set."},
-                    content_type=CONTENT_TYPES[".json"],
-                )
-                return
-            if "429" in genai_response["error"]:
-                self._send_too_many_requests_response(
-                    http_msg,
-                    http_dialogue,
-                    {"error": "Too many requests to the LLM."},
-                    content_type=CONTENT_TYPES[".json"],
-                )
-                return
-            self._send_internal_server_error_response(
-                http_msg,
-                http_dialogue,
-                {"error": "An error occurred while processing the request."},
-                content_type=CONTENT_TYPES[".json"],
+            self._handle_chatui_llm_error(
+                genai_response["error"], http_msg, http_dialogue
             )
             return
 
@@ -468,6 +448,34 @@ class HttpHandler(BaseHttpHandler):
                 CHATUI_RESPONSE_ISSUES_FIELD: issues,
             },
         )
+
+    def _handle_chatui_llm_error(
+        self, error_message: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        self.context.logger.error(f"LLM error response: {error_message}")
+        if "No API_KEY or ADC found." in error_message:
+            self._send_internal_server_error_response(
+                http_msg,
+                http_dialogue,
+                {"error": "No GENAI_API_KEY set."},
+                content_type=CONTENT_TYPES[".json"],
+            )
+            return
+        if "429" in error_message:
+            self._send_too_many_requests_response(
+                http_msg,
+                http_dialogue,
+                {"error": "Too many requests to the LLM."},
+                content_type=CONTENT_TYPES[".json"],
+            )
+            return
+        self._send_internal_server_error_response(
+            http_msg,
+            http_dialogue,
+            {"error": "An error occurred while processing the request."},
+            content_type=CONTENT_TYPES[".json"],
+        )
+        return
 
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""
