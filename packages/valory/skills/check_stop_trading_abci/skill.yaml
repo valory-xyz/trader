@@ -8,18 +8,18 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeicsmm5ay4kve7wcu7q4zb6zwspkebtodcmhdr24xmc4cwrmrdpdvq
+  behaviours.py: bafybeihh3txfb3g5bxmi32m76g3vb2sm7pqblpb2xgf6yrxh3l47qppqky
   dialogues.py: bafybeifurggab64rdwdsvvvigqwctr67w2gv7zlo7lsejovsjol56dlt3y
-  fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
+  fsm_specification.yaml: bafybeiegu65yhpob736fjlt75r23ag7u6y5p36kwurqi7hk5ycwlmcpuby
   handlers.py: bafybeihphydx4llyft3cycgc5e4eyjp7ccpgwegn2jbsnqi4tcblsr7xsa
-  models.py: bafybeihsszflt76bhgeizw6bbekchzhxir4iqkwutlvbtnocsfwcsoxwdq
-  payloads.py: bafybeidrb4rndjiuf6kqrnfku35ql7uavdzqbnambzdtqh6kj4w4nvkncm
-  rounds.py: bafybeibdakk3g5waukcbjil2ljr6ooztsjfkzg7qtdwswxkh7bbnhncd7y
+  models.py: bafybeihicatztffwowuk6p3yw3rtzx7sq36zvxck2wr6hert4nek2beeee
+  payloads.py: bafybeicoiu2eadu2dithddz2u22ygdo3gj3dodxvbjenol23esn4nj3zz4
+  rounds.py: bafybeieojqipg4qgk5r5g6xef2yoake5s75yal6qjeuiny44dablgjct7a
   tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
   tests/test_dialogues.py: bafybeia5ac27w7ijx2nyx5dqyrnv4troo4572gjq7nrcxdncexoxucnqti
   tests/test_handlers.py: bafybeigpmtx2hyunzn6nxk2x4bvvybek7jvuhbk34fqlj7fgfsszcoqhxy
-  tests/test_payloads.py: bafybeih7q7kdfxsf4ejxxqwjumwglfwwcrbqcjnuy42mkhnfwccxuhiviy
-  tests/test_rounds.py: bafybeidgbc7mi7r2fpk7ak6xceohuoq2zkpkberkokcb3sb2uzwkxoluae
+  tests/test_payloads.py: bafybeidxrwgzjpuxrndhio4ygbrwd4utudsozlspke6wkarddzqt4qwcpu
+  tests/test_rounds.py: bafybeihwtygbrwgtg7cm3qywxelaaaclcvkbgii5mqm7dqyscqjby763qi
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -28,9 +28,9 @@ contracts:
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/mech_interact_abci:0.1.0:bafybeiedcaz6tmjg2irpntcco7ny2vwyqvffxl3mpji7qi6esdjr6qv3za
+- valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/decision_maker_abci:0.1.0:bafybeid5w36qjnclxewxo27ingz5if6nlq27vqut6cjhunw6pdtpypmsmu
+- valory/decision_maker_abci:0.1.0:bafybeidqnrm2pqk5eskb2lvvkkogxpxqfbpdkpnzdpoiinb4uwqehrg46a
 behaviours:
   main:
     args: {}
@@ -135,7 +135,7 @@ models:
       serious_slash_unit_amount: 8000000000000000
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
-      enable_position_review: false
+      enable_position_review: true
       review_period_seconds: 86400
       min_confidence_increase: 0.1
     class_name: CheckStopTradingParams
