@@ -209,6 +209,37 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
 
+    def _send_internal_server_error_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a Http internal server error response."""
+        headers = content_type or (
+            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        )
+        headers += http_msg.headers
+
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+
+        http_response = http_dialogue.reply(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
+            status_text=HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
+            headers=headers,
+            body=data.encode("utf-8") if isinstance(data, str) else data,
+        )
+
+        # Send response
+        self.context.logger.info("Responding with: {}".format(http_response))
+        self.context.outbox.put_message(message=http_response)
+
     def _send_bad_request_response(
         self,
         http_msg: HttpMessage,
@@ -367,7 +398,15 @@ class HttpHandler(BaseHttpHandler):
 
         if "error" in genai_response:
             self.context.logger.error(f"LLM error response: {genai_response['error']}")
-            if "429" in genai_response["error"]:
+            if "No API_KEY or ADC found." in genai_response["error"]:
+                self._send_internal_server_error_response(
+                    http_msg,
+                    http_dialogue,
+                    {"error": "No GENAI_API_KEY set."},
+                    content_type=CONTENT_TYPES[".json"],
+                )
+                return
+            elif "429" in genai_response["error"]:
                 self._send_too_many_requests_response(
                     http_msg,
                     http_dialogue,
@@ -375,6 +414,13 @@ class HttpHandler(BaseHttpHandler):
                     content_type=CONTENT_TYPES[".json"],
                 )
                 return
+            else:
+                self._send_internal_server_error_response(
+                    http_msg,
+                    http_dialogue,
+                    {"error": "An error occurred while processing the request."},
+                    content_type=CONTENT_TYPES[".json"],
+                )
 
         llm_response = genai_response.get(CHATUI_RESPONSE_FIELD, "{}")
         llm_response_json = json.loads(llm_response)
