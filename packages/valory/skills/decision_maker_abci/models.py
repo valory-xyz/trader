@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from string import Template
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 from aea.exceptions import enforce
 from aea.skills.base import Model, SkillContext
@@ -210,13 +210,13 @@ class SharedState(BaseSharedState):
         self.liquidity_prices: Dict[str, List[float]] = {}
         # whether this is the last run of the benchmarking mode
         self.last_benchmarking_has_run: bool = False
-
         # the mapping from bet id to the row number in the dataset
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
-
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
+        # whether the code has detected the new mech marketplace being used
+        self.new_mm_detected: Optional[bool] = None
 
     @property
     def mock_question_id(self) -> Any:
@@ -363,12 +363,24 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
 
-        # Handle agent_registry_address separately to avoid type issues
-        agent_registry_address = kwargs.get("agent_registry_address", None)
+        # do not pop the registry and metadata addresses, because they are also required for the `MechInteractParams`
+        agent_registry_address: Optional[str] = kwargs.get(
+            "agent_registry_address", None
+        )
         enforce(
             agent_registry_address is not None,
             "Agent registry address not specified!",
         )
+        agent_registry_address = cast(str, agent_registry_address)
+
+        metadata_address: Optional[str] = kwargs.get(
+            "complementary_service_metadata_address", None
+        )
+        enforce(
+            metadata_address is not None,
+            "Complementary service metadata address not specified!",
+        )
+        metadata_address = cast(str, metadata_address)
 
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
@@ -421,6 +433,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
+        self.metadata_address: str = metadata_address
         self.store_path: Path = self.get_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(

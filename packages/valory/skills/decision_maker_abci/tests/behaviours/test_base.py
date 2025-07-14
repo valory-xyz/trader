@@ -138,7 +138,6 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 "params": {
                     "args": {
                         "use_acn_for_delivers": True,
-                        "agent_registry_address": "0x0000000000000000000000000000000000000000",
                     }
                 }
             }
