@@ -152,16 +152,6 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         return False
 
     def _compute_stop_trading(self) -> Generator[None, None, bool]:
-        # This is a "hacky" way of getting required data initialized on
-        # the Trader: On first period, the FSM needs to initialize some
-        # data on the trading branch so that it is available in the
-        # cross-period persistent keys.
-        if self.is_first_period:
-            self.context.logger.debug(f"{self.is_first_period=}")
-            yield  # ensures this is a generator
-            return False
-
-        self.context.logger.debug(f"{self.params.disable_trading=}")
         if self.params.disable_trading:
             yield  # ensures this is a generator
             return True
