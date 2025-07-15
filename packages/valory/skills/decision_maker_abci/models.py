@@ -194,7 +194,6 @@ class ChatUIParams:
 
     trading_strategy: str
     initial_trading_strategy: str
-
     mech_tool: Optional[str] = None
 
 
