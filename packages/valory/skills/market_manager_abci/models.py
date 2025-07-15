@@ -24,7 +24,7 @@ import builtins
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Tuple, Type
 
-from aea.skills.base import Model, SkillContext
+from aea.skills.base import Model
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
@@ -49,11 +49,6 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls: Type[AbciApp[Any]] = MarketManagerAbciApp
-
-    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
-        """Initialize the state."""
-        super().__init__(*args, skill_context=skill_context, **kwargs)
-        self.first_read: bool = True
 
 
 class Subgraph(ApiSpecs):

@@ -98,18 +98,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
-
-        if not self.benchmarking_mode.enabled and self.shared_state.first_read:
-            # this is a temporary hack to overcome a multi-bets issue
-            # if a bet that is in the `TO_PROCESS` queue cannot be selected because of the constraints
-            # (e.g., not in opening margin), then everything is blocked because the `FRESH` status will never be updated:
-            # https://github.com/valory-xyz/trader/blob/v0.23.1/packages/valory/skills/market_manager_abci/behaviours.py#L200-L202
-            self.context.logger.info(
-                "Multi-bets storage temporarily disabled on startup!"
-            )
-            self.shared_state.first_read = False
-            return
-
         _read_path = self.multi_bets_filepath
 
         if not os.path.isfile(_read_path):
