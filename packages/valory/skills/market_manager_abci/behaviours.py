@@ -98,29 +98,30 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
-        _read_path = self.multi_bets_filepath
+        read_path = self.multi_bets_filepath
 
-        if not os.path.isfile(_read_path):
+        if not os.path.isfile(read_path):
             self.context.logger.warning(
-                f"No stored bets file was detected in {_read_path}. Assuming trader is being run for the first time in multi-bets mode."
+                f"No stored bets file was detected in {read_path}. "
+                "Assuming trader is being run for the first time in multi-bets mode."
             )
-            _read_path = self.bets_filepath
+            read_path = self.bets_filepath
 
-        if not os.path.isfile(_read_path):
+        if not os.path.isfile(read_path):
             self.context.logger.warning(
-                f"No stored bets file was detected in {_read_path}. Assuming bets are empty"
+                f"No stored bets file was detected in {read_path}. Assuming bets are empty"
             )
             return
 
         try:
-            with open(_read_path, READ_MODE) as bets_file:
+            with open(read_path, READ_MODE) as bets_file:
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
                     return
                 except (JSONDecodeError, TypeError):
-                    err = f"Error decoding file {_read_path!r} to a list of bets!"
+                    err = f"Error decoding file {read_path!r} to a list of bets!"
         except (FileNotFoundError, PermissionError, OSError):
-            err = f"Error opening file {_read_path!r} in read mode!"
+            err = f"Error opening file {read_path!r} in read mode!"
 
         self.context.logger.error(err)
 
