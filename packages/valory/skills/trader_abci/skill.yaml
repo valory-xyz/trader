@@ -20,7 +20,7 @@ fingerprint:
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
   predict-ui-build/index.html: bafybeiaocredxsfk7kbowxrumllwnjxw4xkerwz2jyaypy7wooyxu3ow3q
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
-  prompts.py: bafybeigrewulhjar4bjwry26ywvq45zwloe5flppradk4nnrxue75hcklu
+  prompts.py: bafybeie7wh7dfampdl7soke3s24dli5b26xhf4ih54tza2d2i4g325w3xy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeidl66z57qnyl7ystvaj4xnpb6ot6aybg2l6bikkuanae7iqdempya
 fingerprint_ignore_patterns: []
