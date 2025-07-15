@@ -435,8 +435,30 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
+        updated_params, issues = self._process_updated_agent_config(
+            updated_agent_config
+        )
+
+        self._send_ok_response(
+            http_msg,
+            http_dialogue,
+            {
+                CHATUI_UPDATED_PARAMS_FIELD: updated_params,
+                CHATUI_LLM_MESSAGE_FIELD: llm_message,
+                CHATUI_RESPONSE_ISSUES_FIELD: issues,
+            },
+        )
+
+    def _process_updated_agent_config(self, updated_agent_config: dict) -> tuple:
+        """
+        Process the updated agent config from the LLM response.
+
+        :param updated_agent_config: dict containing updated config
+        :return: tuple of (updated_params, issues)
+        """
         updated_params = {}
         issues: List[str] = []
+
         updated_trading_strategy: str = updated_agent_config.get(
             CHATUI_TRADING_STRATEGY_FIELD, None
         )
@@ -444,7 +466,6 @@ class HttpHandler(BaseHttpHandler):
             if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
                 updated_params.update({"trading_strategy": updated_trading_strategy})
                 self._store_trading_strategy(updated_trading_strategy)
-
             else:
                 issue_message = (
                     f"Unsupported trading strategy: {updated_trading_strategy}. "
@@ -460,20 +481,11 @@ class HttpHandler(BaseHttpHandler):
             elif updated_mech_tool in self.synchronized_data.available_mech_tools:
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
-
             else:
                 self.context.logger.error(f"Unsupported mech tool: {updated_mech_tool}")
                 issues.append(f"Unsupported mech tool: {updated_mech_tool}")
 
-        self._send_ok_response(
-            http_msg,
-            http_dialogue,
-            {
-                CHATUI_UPDATED_PARAMS_FIELD: updated_params,
-                CHATUI_LLM_MESSAGE_FIELD: llm_message,
-                CHATUI_RESPONSE_ISSUES_FIELD: issues,
-            },
-        )
+        return updated_params, issues
 
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""
