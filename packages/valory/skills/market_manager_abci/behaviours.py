@@ -105,7 +105,8 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
                 f"No stored bets file was detected in {_read_path}. Assuming trader is being run for the first time in multi-bets mode."
             )
             _read_path = self.bets_filepath
-        elif not os.path.isfile(_read_path):
+
+        if not os.path.isfile(_read_path):
             self.context.logger.warning(
                 f"No stored bets file was detected in {_read_path}. Assuming bets are empty"
             )
