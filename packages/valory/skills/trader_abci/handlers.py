@@ -459,7 +459,7 @@ class HttpHandler(BaseHttpHandler):
         updated_params = {}
         issues: List[str] = []
 
-        updated_trading_strategy: str = updated_agent_config.get(
+        updated_trading_strategy: Optional[str] = updated_agent_config.get(
             CHATUI_TRADING_STRATEGY_FIELD, None
         )
         if updated_trading_strategy:
@@ -473,7 +473,9 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error(issue_message)
                 issues.append(issue_message)
 
-        updated_mech_tool: str = updated_agent_config.get(CHATUI_MECH_TOOL_FIELD, None)
+        updated_mech_tool: Optional[str] = updated_agent_config.get(
+            CHATUI_MECH_TOOL_FIELD, None
+        )
         if updated_mech_tool:
             if updated_mech_tool == "###automatic_selection###":
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
