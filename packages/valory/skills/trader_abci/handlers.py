@@ -352,9 +352,54 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        # Getting variables for formatting the prompt
+        available_tools = self._get_available_tools(http_msg, http_dialogue)
+        if available_tools is None:
+            return
+        current_trading_strategy = self.context.state.chat_ui_params.trading_strategy
+
+        prompt = CHATUI_PROMPT.format(
+            user_prompt=user_prompt,
+            current_trading_strategy=current_trading_strategy,
+            available_tools=available_tools,
+        )
+        self._send_chatui_llm_request(
+            prompt=prompt,
+            http_msg=http_msg,
+            http_dialogue=http_dialogue,
+        )
+
+    def _send_chatui_llm_request(
+        self, prompt: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        # Prepare payload data
+        payload_data = {
+            "prompt": prompt,
+            "schema": build_chatui_llm_response_schema(),
+        }
+
+        self.context.logger.info(f"Payload data: {payload_data}")
+
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+        request_srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(GENAI_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(payload_data),
+        )
+
+        callback_kwargs = {"http_msg": http_msg, "http_dialogue": http_dialogue}
+        self._send_message(
+            request_srr_message,
+            srr_dialogue,
+            self._handle_chatui_llm_response,
+            callback_kwargs,
+        )
+
+    def _get_available_tools(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> Optional[List[str]]:
+        """Get available mech tools, handle errors if not available."""
         try:
-            available_tools = self.synchronized_data.available_mech_tools
+            return self.synchronized_data.available_mech_tools
         except TypeError as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
@@ -367,39 +412,7 @@ class HttpHandler(BaseHttpHandler):
                 },
                 content_type=CONTENT_TYPES[".json"],
             )
-            return
-        current_trading_strategy = self.context.state.chat_ui_params.trading_strategy
-
-        prompt_template = CHATUI_PROMPT.format(
-            user_prompt=user_prompt,
-            current_trading_strategy=current_trading_strategy,
-            available_tools=available_tools,
-        )
-
-        # Prepare payload data
-        payload_data = {
-            "prompt": prompt_template,
-            "schema": build_chatui_llm_response_schema(),
-        }
-
-        self.context.logger.info(f"Payload data: {payload_data}")
-
-        # Create LLM request
-        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
-        request_srr_message, srr_dialogue = srr_dialogues.create(
-            counterparty=str(GENAI_CONNECTION_PUBLIC_ID),
-            performative=SrrMessage.Performative.REQUEST,
-            payload=json.dumps(payload_data),
-        )
-
-        # Prepare callback args
-        callback_kwargs = {"http_msg": http_msg, "http_dialogue": http_dialogue}
-        self._send_message(
-            request_srr_message,
-            srr_dialogue,
-            self._handle_chatui_llm_response,
-            callback_kwargs,
-        )
+            return None
 
     def _handle_chatui_llm_response(
         self,
