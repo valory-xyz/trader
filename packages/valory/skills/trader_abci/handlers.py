@@ -467,10 +467,10 @@ class HttpHandler(BaseHttpHandler):
 
         updated_mech_tool: str = updated_agent_config.get(CHATUI_MECH_TOOL_FIELD, None)
         if updated_mech_tool:
-            if updated_mech_tool == "automatic_selection":
+            if updated_mech_tool == "###automatic_selection###":
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(None)
-            if updated_mech_tool in self.synchronized_data.available_mech_tools:
+            elif updated_mech_tool in self.synchronized_data.available_mech_tools:
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
 

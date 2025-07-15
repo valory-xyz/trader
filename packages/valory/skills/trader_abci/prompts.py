@@ -35,7 +35,7 @@ Configuration details:
     -- Available strategies: "kelly_criterion_no_conf", "bet_amount_per_threshold", "mike_strat"
 - Mech tool:
     -- Available tools: {available_tools}
-    -- Can be set to "automatic_selection" to let the agent choose the best tool based on its policy if the user says to remove the tool.
+    -- Can be set to "###automatic_selection###" to let the agent choose the best tool based on its policy if the user says to remove the tool.
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null.
 
