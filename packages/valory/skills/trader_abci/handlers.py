@@ -355,10 +355,7 @@ class HttpHandler(BaseHttpHandler):
         # Getting variables for formatting the prompt
         try:
             available_tools = self.synchronized_data.available_mech_tools
-            current_trading_strategy = (
-                self.context.state.chat_ui_params.trading_strategy
-            )
-        except Exception as e:
+        except TypeError as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
             )
@@ -371,6 +368,8 @@ class HttpHandler(BaseHttpHandler):
                 content_type=CONTENT_TYPES[".json"],
             )
             return
+        current_trading_strategy = self.context.state.chat_ui_params.trading_strategy
+
         prompt_template = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
