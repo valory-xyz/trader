@@ -475,7 +475,6 @@ class HttpHandler(BaseHttpHandler):
             {"error": "An error occurred while processing the request."},
             content_type=CONTENT_TYPES[".json"],
         )
-        return
 
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""
