@@ -109,7 +109,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
 
         if not os.path.isfile(read_path):
             self.context.logger.warning(
-                f"No stored bets file was detected in {read_path}. Assuming bets are empty"
+                f"No stored bets file was detected in {read_path}. Assuming bets are empty."
             )
             return
 
