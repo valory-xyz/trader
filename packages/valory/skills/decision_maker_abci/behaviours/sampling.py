@@ -65,6 +65,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
             - self.params.opening_margin
             - self.params.safe_voting_range
         )
+        if not within_safe_range:
+            bet.blacklist_forever()
 
         within_ranges = within_opening_range and within_safe_range
 
