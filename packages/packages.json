@@ -15,16 +15,16 @@
         "contract/valory/staking_token/0.1.0": "bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm",
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeiepwclhyg7oo7wcffmben42wmwrxgb4ovoomw2zbjqljcy7b2neke",
-        "connection/dvilela/genai/0.1.0": "bafybeifahzm6hhjxx7vfoyft7oeaukkvvdv27mddd46h2om73xsfjdeqsy",
+        "connection/dvilela/genai/0.1.0": "bafybeiewsdlmeogthjackpw3aphyipdmflhvc2kv7xtk3x3wzj66mdixui",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeihyahdk6rph7jcbwukcsn4ns3czapdmlxe6pxpfi7r5loxyz55vui",
-        "skill/valory/trader_abci/0.1.0": "bafybeiflda4eyri6oga7jcsjv72qxnny7fygxuk4c66zwfovspmqugxwpe",
+        "skill/valory/trader_abci/0.1.0": "bafybeid3ushc5ykseqrssyzlqlfg3vd5x4ibvdewsof7ufqksx6rvolbbm",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifgjdiiisbyi5btjb7lfhoy4xotizpwwke5t6gnivy7tdik3r6atq",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774",
-        "agent/valory/trader/0.1.0": "bafybeidyqszsffef2nrr7wtbwpnpnrwojdciv3ippwlzfmurlgsqd4lbhu",
-        "service/valory/trader/0.1.0": "bafybeibjw6hvrkfsuprycevpolv5mdqs56nqbvwlcuo6ta27jwixb5x62m",
-        "service/valory/trader_pearl/0.1.0": "bafybeidty62oadg3obpzqnjpcte4kig7s2kc4pd4k3ih2frvhblpsckjty"
+        "agent/valory/trader/0.1.0": "bafybeihfciaae7jgnlinigelmmuvm2ddtnkzfufdi2lerk4tbynbhoxxty",
+        "service/valory/trader/0.1.0": "bafybeig5f7l6jndhxeqqdj745uwumehumhc6b7kl5tsnrkiu2ls3nj4t2i",
+        "service/valory/trader_pearl/0.1.0": "bafybeidwjonxjglam37kio4k66q26d5d6oqfo5yvqcyhdl4mmvmlbqx2iy"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
