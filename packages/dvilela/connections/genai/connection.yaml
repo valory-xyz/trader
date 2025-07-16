@@ -6,9 +6,9 @@ description: A connection that provides a wrapper around the genai library.
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeibql5vfopyoqyoxec6wevmmfbabws2mbpvyw4j5llvbdgxiqzhk7e
-  connection.py: bafybeifytttpp3uktlusoryqgqzh6xpq42b7lp5uiir4y7zf3i2zwvnifu
-  readme.md: bafybeigjb4v6qsvg6k3iyrmeijfvsxaxs6cycuaxup3ozs5wupfqtvoowq
+  __init__.py: bafybeibykfwzs46l5mrkoxqwo4toraj5us62666dqdolde5afkiajyfeua
+  connection.py: bafybeigjujthjgd5cewgahx5venewgvzlsu7u7myswed5btezppa7dr4ey
+  readme.md: bafybeidfgj6cwh6z3jtr5wsss4f6gj37abwtknb5rm2aofyec4vympfzce
 fingerprint_ignore_patterns: []
 connections: []
 protocols:
