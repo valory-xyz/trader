@@ -65,6 +65,7 @@ from packages.valory.skills.mech_interact_abci.handlers import (
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.prompts import (
+    AUTOMATIC_SELECTION_VALUE,
     CHATUI_PROMPT,
     TradingStrategy,
     build_chatui_llm_response_schema,
@@ -503,7 +504,7 @@ class HttpHandler(BaseHttpHandler):
             CHATUI_MECH_TOOL_FIELD, None
         )
         if updated_mech_tool:
-            if updated_mech_tool == "###automatic_selection###":
+            if updated_mech_tool == AUTOMATIC_SELECTION_VALUE:
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(None)
             elif updated_mech_tool in self.synchronized_data.available_mech_tools:

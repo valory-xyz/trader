@@ -27,7 +27,10 @@ import typing
 from dataclasses import dataclass
 
 
-CHATUI_PROMPT = """
+AUTOMATIC_SELECTION_VALUE = "###automatic_selection###"
+
+CHATUI_PROMPT = (  # nosec
+    """
 You are an expert assistant tasked with helping users update an agent's trading configuration.
 
 Configuration details:
@@ -38,7 +41,9 @@ Configuration details:
         --- "mike_strat": Similar to "bet_amount_per_threshold", but the fixed amount from the mapping is multiplied by the AI's confidence (e.g., for confidence 0.6 and mapping value 60000000000000000, the bet is 0.6 * 60000000000000000).
 - Mech tool:
     -- Available tools: {available_tools}
-    -- Can be set to "###automatic_selection###" to let the agent choose the best tool based on its policy if the user says to remove the tool.
+    -- Can be set to \""""
+    + AUTOMATIC_SELECTION_VALUE
+    + """\" to let the agent choose the best tool based on its policy if the user says to remove the tool.
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null.
 
@@ -46,6 +51,7 @@ Always include a clear message to the user explaining your reasoning for the upd
 
 User prompt: "{user_prompt}"
 """
+)
 
 
 class TradingStrategy(enum.Enum):
