@@ -1,3 +1,3 @@
-# Llama connection
+# Genai connection
 
-The Llama connection provides a wrapper around Llama-cpp-python library.
+The Genai connection provides a wrapper around google generativeai library.
