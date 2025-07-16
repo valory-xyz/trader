@@ -2,7 +2,6 @@
 *private_key.txt
 packages/fetchai/
 packages/open_aea/
-packages/dvilela/
 packages/valory/connections/abci/
 packages/valory/connections/http_client/
 packages/valory/connections/ipfs/
