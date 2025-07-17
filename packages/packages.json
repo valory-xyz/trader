@@ -18,13 +18,13 @@
         "connection/dvilela/genai/0.1.0": "bafybeiecspw4j26pfmxhkaniet6zesixa3eogn7qst4ez56yb2z6y3tuw4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeia3cvvwcydsl42hawzbr4fnbv36kqqsac7bdftoswa5zlpzd2rkiu",
-        "skill/valory/trader_abci/0.1.0": "bafybeifwalme6arbg6rhrh74ekwdoy72oomxyhoha4lg4mbz7div56hc64",
+        "skill/valory/trader_abci/0.1.0": "bafybeiarwhbn2xufu3hqgfzu263bz3kkzdqie7zbn4hslb4zn7m6rn3l7i",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeic3u5ttfijke5ujoq5z4byjev36ptwoodqnepldzzmiy2ch6mbkri",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774",
-        "agent/valory/trader/0.1.0": "bafybeieru5667cwl3dr65bslzfdg7yjesebfmfhiv72vpndd3qivyskmhy",
-        "service/valory/trader/0.1.0": "bafybeigbvbzfaxchvv7w5spmn5pw73nnogy2kcsh5esf6n7mznldp6kfia",
-        "service/valory/trader_pearl/0.1.0": "bafybeibzyxiz4wlf33cw5wrwujtzgjc5bxr6kmdcr3ydxg5mq6oozcstea"
+        "agent/valory/trader/0.1.0": "bafybeig2oopvtly6cssu77gpyxdiofqwndusvtjj7lg2z7tmgvx6iwcr7m",
+        "service/valory/trader/0.1.0": "bafybeidhg3kfu23jffvy2glgo6vwpw75te2mpziy7ricddmibjnfrxqffa",
+        "service/valory/trader_pearl/0.1.0": "bafybeib2btod6rhh6sxrqbvkbypvyl75jco2hmgz2basvmsxpv6xo27h2a"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
