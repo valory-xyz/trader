@@ -42,11 +42,13 @@ PUBLIC_ID = PublicId.from_str("dvilela/genai:0.1.0")
 
 DEFAULT_TEMPERATURE = 2.0
 AVAILABLE_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-2.0-flash-exp",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
 ]
 REQUIRED_PROPERTIES_IN_PAYLOAD = ["prompt"]
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -183,7 +185,7 @@ class GenaiConnection(BaseSyncConnection):
 
         self.logger.info(f"Calling genai: {payload}")
 
-        model_name = payload.get("model", "gemini-1.5-flash")
+        model_name = payload.get("model", DEFAULT_MODEL)
 
         if model_name not in AVAILABLE_MODELS:
             return {
