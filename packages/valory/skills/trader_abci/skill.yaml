@@ -26,7 +26,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
-- dvilela/genai:0.1.0:bafybeiewsdlmeogthjackpw3aphyipdmflhvc2kv7xtk3x3wzj66mdixui
+- dvilela/genai:0.1.0:bafybeiecspw4j26pfmxhkaniet6zesixa3eogn7qst4ez56yb2z6y3tuw4
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
