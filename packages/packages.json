@@ -15,16 +15,15 @@
         "contract/valory/staking_token/0.1.0": "bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm",
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeiepwclhyg7oo7wcffmben42wmwrxgb4ovoomw2zbjqljcy7b2neke",
-        "connection/dvilela/genai/0.1.0": "bafybeiecspw4j26pfmxhkaniet6zesixa3eogn7qst4ez56yb2z6y3tuw4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeia3cvvwcydsl42hawzbr4fnbv36kqqsac7bdftoswa5zlpzd2rkiu",
-        "skill/valory/trader_abci/0.1.0": "bafybeiarwhbn2xufu3hqgfzu263bz3kkzdqie7zbn4hslb4zn7m6rn3l7i",
+        "skill/valory/trader_abci/0.1.0": "bafybeibgjcqgg3bb4zpjdq6v75qq4gyjr6gphm6bmzbj5jz65236pvhqli",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeic3u5ttfijke5ujoq5z4byjev36ptwoodqnepldzzmiy2ch6mbkri",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774",
-        "agent/valory/trader/0.1.0": "bafybeig2oopvtly6cssu77gpyxdiofqwndusvtjj7lg2z7tmgvx6iwcr7m",
-        "service/valory/trader/0.1.0": "bafybeidhg3kfu23jffvy2glgo6vwpw75te2mpziy7ricddmibjnfrxqffa",
-        "service/valory/trader_pearl/0.1.0": "bafybeib2btod6rhh6sxrqbvkbypvyl75jco2hmgz2basvmsxpv6xo27h2a"
+        "agent/valory/trader/0.1.0": "bafybeigvjlrms35smzl6ntcofsgfhvaghiznig2c2wz2jrmm5ahn7iuqye",
+        "service/valory/trader/0.1.0": "bafybeighdroymtno5dg6tl2ho7qiqd67mmbflkzjr7b6hiakw3ixw5w2gu",
+        "service/valory/trader_pearl/0.1.0": "bafybeig4h2wjbaozyo7zkp5weojgue6ezi3kh7mcp7vsaa6fo7yhu67xe4"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
@@ -47,6 +46,7 @@
         "contract/valory/erc20/0.1.0": "bafybeifyjub3v62r53by76u7cli7oqvg5qukb4e6gaa62z34euqfwnrsvi",
         "contract/valory/mech_marketplace/0.1.0": "bafybeiccn4ohizw2wrjt7goidiakfik26ugm735lnm3fna3khko7qgkawm",
         "contract/valory/mech_marketplace_legacy/0.1.0": "bafybeiafwem7v7po7xb7rag4zfdqe2uoaqki3xybviciypxr5w6zkoxgse",
+        "connection/dvilela/genai/0.1.0": "bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu",
         "connection/valory/abci/0.1.0": "bafybeidn5gc6y3a6tkhgv753kkiub3mfas3tkemm4fs7i4kc4klkjlxpui",
         "connection/valory/http_client/0.23.0": "bafybeid5ffvg76ejjoese7brj5ji3lx66cu7p2ixfwflpo6rgofkypfd7y",
         "connection/valory/ledger/0.19.0": "bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y",
