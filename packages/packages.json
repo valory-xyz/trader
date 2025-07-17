@@ -15,15 +15,16 @@
         "contract/valory/staking_token/0.1.0": "bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm",
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeiepwclhyg7oo7wcffmben42wmwrxgb4ovoomw2zbjqljcy7b2neke",
+        "connection/dvilela/genai/0.1.0": "bafybeig36pnpk624jjnznzjhiklk7uxneedrebf4qbliusixyg4dwwvltq",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidblnaypi5fbci6zyk4ekngxq5zf2jiptssfhfiodzg7rilq24cz4",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeihyahdk6rph7jcbwukcsn4ns3czapdmlxe6pxpfi7r5loxyz55vui",
-        "skill/valory/trader_abci/0.1.0": "bafybeiawltrmfselr7d6cr2rgrjp5qizo67c6bslhuvtl7kvwfoipejxcm",
+        "skill/valory/trader_abci/0.1.0": "bafybeiekcjkaf3xnl2brda4mjst4atppiesbnqlbaf544wxl6whgm5n7ba",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifgjdiiisbyi5btjb7lfhoy4xotizpwwke5t6gnivy7tdik3r6atq",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeibtp73af35klgofghueuyrsasslndb7iuidm2p2pk4qmkq6qwt774",
-        "agent/valory/trader/0.1.0": "bafybeibj4lfsrpp6qbnijppwteenk4squoakc7thy3oictyatitx6nny2i",
-        "service/valory/trader/0.1.0": "bafybeibxxbkrv4yghmmdkevcr3n2e4egccysjm3hzob2durr3gzojqzk74",
-        "service/valory/trader_pearl/0.1.0": "bafybeigkgwmelig2notqgdn6n3ue7k74xeyhj3fkozcbvlkotcxoxepu6m"
+        "agent/valory/trader/0.1.0": "bafybeidtnnhl4sm32wjvjzv22sie2mmwiubtc625a6ekfqyi6vx2bqgkdy",
+        "service/valory/trader/0.1.0": "bafybeiakm5fnpcjsnmjigbpkps56bm5qrxqnppdbotxan3ivuliz27eici",
+        "service/valory/trader_pearl/0.1.0": "bafybeieranqffdykrea2cs2vkz2kflhnjm44ck7q6dtcwgwbaj6nxasc7q"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
@@ -52,7 +53,6 @@
         "connection/valory/p2p_libp2p_client/0.1.0": "bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q",
         "connection/valory/ipfs/0.1.0": "bafybeiamz23olgtow4wqf7zpsfnfzf7pxiognrxl2mhn5kvqutlwhgukxa",
         "connection/valory/http_server/0.22.0": "bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy",
-        "connection/dvilela/genai/0.1.0": "bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty",
         "skill/valory/abstract_abci/0.1.0": "bafybeibfsmbjasqnb3lgmwj7dlxvlfbngdyqc7a4n5q2g7phvmv4ktehq4",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe",
         "skill/valory/registration_abci/0.1.0": "bafybeidqadl26x5prbjgnkqrvjnbqxpo75jttm7vlvpgkoqghs5677rw5i",
