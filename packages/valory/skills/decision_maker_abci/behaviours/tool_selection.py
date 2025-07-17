@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -42,12 +42,18 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         if not success:
             return None
 
-        randomness = (
-            (self.benchmarking_mode.randomness if self.is_first_period else None)
-            if self.benchmarking_mode.enabled
-            else self.synchronized_data.most_voted_randomness
-        )
-        selected_tool = self.policy.select_tool(randomness)
+        # If chat UI mech tool is provided, use it directly and skip randomness/policy.
+        chatui_mech_tool = self.shared_state.chat_ui_params.mech_tool
+        if chatui_mech_tool is not None:
+            selected_tool = self.shared_state.chat_ui_params.mech_tool
+        else:
+            randomness = (
+                (self.benchmarking_mode.randomness if self.is_first_period else None)
+                if self.benchmarking_mode.enabled
+                else self.synchronized_data.most_voted_randomness
+            )
+            selected_tool = self.policy.select_tool(randomness)
+
         self.context.logger.info(f"Selected the mech tool {selected_tool!r}.")
         return selected_tool
 

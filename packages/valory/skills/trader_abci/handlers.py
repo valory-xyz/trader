@@ -65,6 +65,7 @@ from packages.valory.skills.mech_interact_abci.handlers import (
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.prompts import (
+    AUTOMATIC_SELECTION_VALUE,
     CHATUI_PROMPT,
     TradingStrategy,
     build_chatui_llm_response_schema,
@@ -105,6 +106,7 @@ CHATUI_UPDATED_PARAMS_FIELD = "updated_params"
 CHATUI_LLM_MESSAGE_FIELD = "llm_message"
 CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
 CHATUI_RESPONSE_ISSUES_FIELD = "issues"
+CHATUI_MECH_TOOL_FIELD = "mech_tool"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -178,14 +180,16 @@ class HttpHandler(BaseHttpHandler):
         """Get the appropriate content type header based on file extension."""
         return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
-    def _send_too_many_requests_response(
+    def _send_http_response(
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         data: Union[str, Dict, List, bytes],
+        status_code: int,
+        status_text: str,
         content_type: Optional[str] = None,
     ) -> None:
-        """Handle a Http too many requests response."""
+        """Generic method to send HTTP responses."""
         headers = content_type or (
             CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
         )
@@ -199,15 +203,48 @@ class HttpHandler(BaseHttpHandler):
             performative=HttpMessage.Performative.RESPONSE,
             target_message=http_msg,
             version=http_msg.version,
-            status_code=HTTPStatus.TOO_MANY_REQUESTS.value,
-            status_text=HTTPStatus.TOO_MANY_REQUESTS.phrase,
+            status_code=status_code,
+            status_text=status_text,
             headers=headers,
             body=data.encode("utf-8") if isinstance(data, str) else data,
         )
 
-        # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _send_too_early_request_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP too early request response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.TOO_EARLY.value,
+            HTTPStatus.TOO_EARLY.phrase,
+            content_type,
+        )
+
+    def _send_too_many_requests_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP too many requests response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.TOO_MANY_REQUESTS.value,
+            HTTPStatus.TOO_MANY_REQUESTS.phrase,
+            content_type,
+        )
 
     def _send_internal_server_error_response(
         self,
@@ -247,29 +284,15 @@ class HttpHandler(BaseHttpHandler):
         data: Union[str, Dict, List, bytes],
         content_type: Optional[str] = None,
     ) -> None:
-        """Handle a Http bad request."""
-        headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        """Handle a HTTP bad request."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.BAD_REQUEST.value,
+            HTTPStatus.BAD_REQUEST.phrase,
+            content_type,
         )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.BAD_REQUEST.value,
-            status_text=HTTPStatus.BAD_REQUEST.phrase,
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_ok_response(
         self,
@@ -278,29 +301,15 @@ class HttpHandler(BaseHttpHandler):
         data: Union[str, Dict, List, bytes],
         content_type: Optional[str] = None,
     ) -> None:
-        """Send an OK response with the provided data"""
-        headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+        """Send an OK response with the provided data."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.OK.value,
+            "Success",
+            content_type,
         )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.OK.value,
-            status_text="Success",
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_message(
         self,
@@ -344,21 +353,33 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        # Format the prompt
-        prompt_template = CHATUI_PROMPT.format(
+        available_tools = self._get_available_tools(http_msg, http_dialogue)
+        if available_tools is None:
+            return
+        current_trading_strategy = self.context.state.chat_ui_params.trading_strategy
+
+        prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
-            current_trading_strategy=self.context.state.chat_ui_params.trading_strategy,
+            current_trading_strategy=current_trading_strategy,
+            available_tools=available_tools,
+        )
+        self._send_chatui_llm_request(
+            prompt=prompt,
+            http_msg=http_msg,
+            http_dialogue=http_dialogue,
         )
 
+    def _send_chatui_llm_request(
+        self, prompt: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
         # Prepare payload data
         payload_data = {
-            "prompt": prompt_template,
+            "prompt": prompt,
             "schema": build_chatui_llm_response_schema(),
         }
 
         self.context.logger.info(f"Payload data: {payload_data}")
 
-        # Create LLM request
         srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
         request_srr_message, srr_dialogue = srr_dialogues.create(
             counterparty=str(GENAI_CONNECTION_PUBLIC_ID),
@@ -366,7 +387,6 @@ class HttpHandler(BaseHttpHandler):
             payload=json.dumps(payload_data),
         )
 
-        # Prepare callback args
         callback_kwargs = {"http_msg": http_msg, "http_dialogue": http_dialogue}
         self._send_message(
             request_srr_message,
@@ -374,6 +394,26 @@ class HttpHandler(BaseHttpHandler):
             self._handle_chatui_llm_response,
             callback_kwargs,
         )
+
+    def _get_available_tools(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> Optional[List[str]]:
+        """Get available mech tools, handle errors if not available."""
+        try:
+            return self.synchronized_data.available_mech_tools
+        except TypeError as e:
+            self.context.logger.error(
+                f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
+            )
+            self._send_too_early_request_response(
+                http_msg,
+                http_dialogue,
+                {
+                    "error": "Skill not started yet or data not available. Please try again later."
+                },
+                content_type=CONTENT_TYPES[".json"],
+            )
+            return None
 
     def _handle_chatui_llm_response(
         self,
@@ -422,22 +462,9 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        updated_params = {}
-        issues: List[str] = []
-        updated_trading_strategy: str = updated_agent_config.get(
-            CHATUI_TRADING_STRATEGY_FIELD, None
+        updated_params, issues = self._process_updated_agent_config(
+            updated_agent_config
         )
-        if updated_trading_strategy:
-            if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
-                updated_params.update({"trading_strategy": updated_trading_strategy})
-                self._store_trading_strategy(updated_trading_strategy)
-
-            else:
-                issue_message = (
-                    f"Unsupported trading strategy: {updated_trading_strategy}. "
-                )
-                self.context.logger.error(issue_message)
-                issues.append(issue_message)
 
         self._send_ok_response(
             http_msg,
@@ -448,6 +475,46 @@ class HttpHandler(BaseHttpHandler):
                 CHATUI_RESPONSE_ISSUES_FIELD: issues,
             },
         )
+
+    def _process_updated_agent_config(self, updated_agent_config: dict) -> tuple:
+        """
+        Process the updated agent config from the LLM response.
+
+        :param updated_agent_config: dict containing updated config
+        :return: tuple of (updated_params, issues)
+        """
+        updated_params = {}
+        issues: List[str] = []
+
+        updated_trading_strategy: Optional[str] = updated_agent_config.get(
+            CHATUI_TRADING_STRATEGY_FIELD, None
+        )
+        if updated_trading_strategy:
+            if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
+                updated_params.update({"trading_strategy": updated_trading_strategy})
+                self._store_trading_strategy(updated_trading_strategy)
+            else:
+                issue_message = (
+                    f"Unsupported trading strategy: {updated_trading_strategy}. "
+                )
+                self.context.logger.error(issue_message)
+                issues.append(issue_message)
+
+        updated_mech_tool: Optional[str] = updated_agent_config.get(
+            CHATUI_MECH_TOOL_FIELD, None
+        )
+        if updated_mech_tool:
+            if updated_mech_tool == AUTOMATIC_SELECTION_VALUE:
+                updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
+                self._store_selected_tool(None)
+            elif updated_mech_tool in self.synchronized_data.available_mech_tools:
+                updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
+                self._store_selected_tool(updated_mech_tool)
+            else:
+                self.context.logger.error(f"Unsupported mech tool: {updated_mech_tool}")
+                issues.append(f"Unsupported mech tool: {updated_mech_tool}")
+
+        return updated_params, issues
 
     def _handle_chatui_llm_error(
         self, error_message: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -491,6 +558,11 @@ class HttpHandler(BaseHttpHandler):
         self._store_chatui_param_to_json(
             CHATUI_TRADING_STRATEGY_FIELD, trading_strategy
         )
+
+    def _store_selected_tool(self, selected_tool: Optional[str] = None) -> None:
+        """Store the selected tool."""
+        self.context.state.chat_ui_params.mech_tool = selected_tool
+        self._store_chatui_param_to_json(CHATUI_MECH_TOOL_FIELD, selected_tool)
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
