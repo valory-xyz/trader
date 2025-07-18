@@ -8,18 +8,18 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeigwgmezdlp4xwcutgapjvbk4f47ns3x4ouyypqmutsh7jsglrwmgq
+  behaviours.py: bafybeiaea4o2r64whzbfkqjp57qf4g4j5hbwlengapqvuttji3t76fpwcy
   dialogues.py: bafybeifurggab64rdwdsvvvigqwctr67w2gv7zlo7lsejovsjol56dlt3y
   fsm_specification.yaml: bafybeiegu65yhpob736fjlt75r23ag7u6y5p36kwurqi7hk5ycwlmcpuby
   handlers.py: bafybeihphydx4llyft3cycgc5e4eyjp7ccpgwegn2jbsnqi4tcblsr7xsa
   models.py: bafybeihicatztffwowuk6p3yw3rtzx7sq36zvxck2wr6hert4nek2beeee
   payloads.py: bafybeicoiu2eadu2dithddz2u22ygdo3gj3dodxvbjenol23esn4nj3zz4
-  rounds.py: bafybeieojqipg4qgk5r5g6xef2yoake5s75yal6qjeuiny44dablgjct7a
+  rounds.py: bafybeib3x5ucfz7qzhh2cyil2pikt3iirbsqmydullufb7pvm336aofple
   tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
   tests/test_dialogues.py: bafybeia5ac27w7ijx2nyx5dqyrnv4troo4572gjq7nrcxdncexoxucnqti
   tests/test_handlers.py: bafybeigpmtx2hyunzn6nxk2x4bvvybek7jvuhbk34fqlj7fgfsszcoqhxy
-  tests/test_payloads.py: bafybeidxrwgzjpuxrndhio4ygbrwd4utudsozlspke6wkarddzqt4qwcpu
-  tests/test_rounds.py: bafybeihwtygbrwgtg7cm3qywxelaaaclcvkbgii5mqm7dqyscqjby763qi
+  tests/test_payloads.py: bafybeid34tim55u7bn45idojx5vznk7j63bx7pg2blpk2zaudryc6katyu
+  tests/test_rounds.py: bafybeibqvvzwxo6ckvejoykkoxym7red7s6up5amncxncjmjpehioqwlxa
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
@@ -28,9 +28,9 @@ contracts:
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
+- valory/mech_interact_abci:0.1.0:bafybeicgyqpfxd267vapkv7ywijggaqcljr3pdtazdbxkkfrdlwt2kgsiu
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/decision_maker_abci:0.1.0:bafybeiaakph5bdb4zuakjukzholpgtcgs5znhigssbpcepim3aehq4gybu
+- valory/decision_maker_abci:0.1.0:bafybeidxcwyrdpmhq3iu3icbroinrbbi52rskaphzoxvggnejqu6zjzaji
 behaviours:
   main:
     args: {}
