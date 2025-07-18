@@ -110,7 +110,7 @@ class CheckStopTradingRound(VotingRound):
             return False
 
         last_review = self.synchronized_data.get_last_review_timestamp()  # type: ignore
-        
+
         return (
             self.synced_timestamp - last_review
             > self.context.params.review_period_seconds

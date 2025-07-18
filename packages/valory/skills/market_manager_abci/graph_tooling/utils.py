@@ -48,7 +48,7 @@ def get_position_balance(
     condition_id: str,
 ) -> Dict[str, int]:
     """Get the balance of a position."""
-    positions = defaultdict(int)
+    positions: Dict[str, int] = defaultdict(int)
 
     for position in user_positions:
         position_condition_ids = position["position"]["conditionIds"]
@@ -86,6 +86,7 @@ def next_status(
     answer_finalized_timestamp: str,
     is_pending_arbitration: bool,
 ) -> MarketState:
+    """Get the next market status."""
     market_status = MarketState.CLOSED
     if (
         fpmm["currentAnswer"] is None
@@ -108,7 +109,7 @@ def get_bet_id_to_balance(
     user_positions: List[Dict[str, Any]],
 ) -> Dict[str, Dict[str, int]]:
     """Get the bet id to balance."""
-    bet_id_to_balance = defaultdict(lambda: defaultdict(list))
+    bet_id_to_balance: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for fpmm_trade in creator_trades:
         fpmm = fpmm_trade["fpmm"]
         bet_id = fpmm["id"]
@@ -144,10 +145,10 @@ def get_condition_id_to_balances(
             ):
                 condition_id = fpmm_trade["fpmm"]["condition"]["id"]
                 balance = get_position_balance(user_positions, condition_id)
-                condition_id_to_balance[condition_id] = balance[outcome_index]
+                condition_id_to_balance[condition_id] = balance[str(outcome_index)]
                 # get the payout for this condition
                 payout = get_position_lifetime_value(user_positions, condition_id)
-                if payout > 0 and balance[outcome_index] == 0:
+                if payout > 0 and balance[str(outcome_index)] == 0:
                     condition_id_to_payout[condition_id] = payout
 
     return condition_id_to_payout, condition_id_to_balance

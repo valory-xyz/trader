@@ -159,7 +159,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
 
-    def review_bets_for_selling(self) -> None:
+    def review_bets_for_selling(self) -> bool:
         """Review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 

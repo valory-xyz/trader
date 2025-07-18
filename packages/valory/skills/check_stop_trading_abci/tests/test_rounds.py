@@ -57,9 +57,6 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     FinishedWithSkipTradingRound,
     SynchronizedData,
 )
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
-    SellOutcomeTokensRound,
-)
 
 
 DUMMY_PAYLOAD_DATA = {"example_key": "example_value"}

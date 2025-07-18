@@ -58,18 +58,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.read_bets()
 
     @property
-    def kpi_is_met(self):
+    def kpi_is_met(self) -> bool:
         """Whether the kpi is met."""
         return self.synchronized_data.is_staking_kpi_met
 
     @property
-    def review_bets_for_selling(self):
+    def review_bets_for_selling(self) -> bool:
         """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
     def update_bets_investments(self, bets: List[Bet]) -> Generator:
         """Update the investments of the bets."""
-        self.context.logger.info(f"Updating bets investments")
+        self.context.logger.info("Updating bets investments")
         balances = yield from self.get_active_bets()
 
         for i, bet in enumerate(bets):

@@ -79,11 +79,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         """Get the request id."""
         return self._request_id
 
-    @property
-    def review_bets_for_selling_mode(self) -> bool:
-        """Get the review bets for selling mode."""
-        return self.synchronized_data.review_bets_for_selling
-
     @request_id.setter
     def request_id(self, request_id: Union[str, int]) -> None:
         """Set the request id."""
@@ -92,6 +87,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         except ValueError:
             msg = f"Request id {request_id} is not a valid integer!"
             self.context.logger.error(msg)
+
+    @property
+    def review_bets_for_selling_mode(self) -> bool:
+        """Get the review bets for selling mode."""
+        return self.synchronized_data.review_bets_for_selling
 
     @property
     def mech_response(self) -> MechInteractionResponse:
@@ -550,6 +550,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
         """Whether the outcome tokens should be sold."""
+
+        if prediction_response is None or prediction_response.vote is None:
+            return False
+
         tokens_to_be_sold = self.sampled_bet.get_vote_amount(prediction_response.vote)
 
         # todo: replace with configurable parameters
@@ -633,7 +637,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             vote = prediction_response.vote if prediction_response else None
             confidence = prediction_response.confidence if prediction_response else None
 
-            if should_be_sold and self.review_bets_for_selling_mode:
+            if should_be_sold and self.review_bets_for_selling_mode and vote:
                 # for selling we are returning vote that needs to be sold. i.e. the opposite vote
                 vote = self.sampled_bet.opposite_vote(vote)
 

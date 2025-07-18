@@ -77,10 +77,6 @@ from packages.valory.skills.market_manager_abci.bets import (
     P_YES_FIELD,
     PredictionResponse,
 )
-from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
-    get_bet_id_to_balance,
-    get_condition_id_to_balances,
-)
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
