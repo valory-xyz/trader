@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
-  behaviours.py: bafybeihh3txfb3g5bxmi32m76g3vb2sm7pqblpb2xgf6yrxh3l47qppqky
+  behaviours.py: bafybeigwgmezdlp4xwcutgapjvbk4f47ns3x4ouyypqmutsh7jsglrwmgq
   dialogues.py: bafybeifurggab64rdwdsvvvigqwctr67w2gv7zlo7lsejovsjol56dlt3y
   fsm_specification.yaml: bafybeiegu65yhpob736fjlt75r23ag7u6y5p36kwurqi7hk5ycwlmcpuby
   handlers.py: bafybeihphydx4llyft3cycgc5e4eyjp7ccpgwegn2jbsnqi4tcblsr7xsa
@@ -30,7 +30,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/decision_maker_abci:0.1.0:bafybeiar77mg6ngrwgel3enzyrl32o2wvmhz4lcml3hbigoawqcubhqweq
+- valory/decision_maker_abci:0.1.0:bafybeiaakph5bdb4zuakjukzholpgtcgs5znhigssbpcepim3aehq4gybu
 behaviours:
   main:
     args: {}

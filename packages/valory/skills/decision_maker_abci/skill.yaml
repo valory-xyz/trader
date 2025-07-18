@@ -22,9 +22,9 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeicsyvf3lcczopyzhnakvsc2lviyjzbaza7vv7dwia4d3qqs5fpzai
   behaviours/order_subscription.py: bafybeihwuhgykptokmeam5sacnfzedk5puvrxbjo7iypaqhsrqg5nk7psm
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/reedem.py: bafybeieicoomqxlhcrxxxll2n7aarsda5mxdtbkqzzjnvtkyqhaehxuxfa
+  behaviours/reedem.py: bafybeihgpcbynhpjzcrumf35kowgcfwk645o2owvtqofzg4dj2cch3vhwu
   behaviours/round_behaviour.py: bafybeieqvdcyuui6smn7dnnfjlsj2xoy5i7wrdfq2pqonkcrksuoqxp6km
-  behaviours/sampling.py: bafybeiablxey7sjppvoxwxdaoxz57wlux3oxuw7dtrs63l7t76nh3hau2e
+  behaviours/sampling.py: bafybeifiitmsqoelthw4vyuanixhimdnxhunop3dgnwqz2v25tw2sh7tau
   behaviours/sell_outcome_tokens.py: bafybeicrp63d2qi76633ommu3kwkiur4a534yvnwo2qxm5vcagh6c5v4ru
   behaviours/storage_manager.py: bafybeidmcwsyfz6s3cf2wvnjrls2pbizbixrvn2tkfxdcqknec27syjvau
   behaviours/tool_selection.py: bafybeienlxcgjs3ogyofli3d7q3p5rst3mcxxcnwqf7qolqjeefjtixeke
@@ -33,7 +33,7 @@ fingerprint:
   handlers.py: bafybeiherm5a2kjmf46ffjoyvhh3tsja5au5i677oasiutdxdojwdtwqla
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeihhjn6nnr7yjhy3bn3hbu2plerpcbetux7tsua43bqoifmb67up54
+  models.py: bafybeifldvxrrkjbowyzffdhjx5kzlpcc6sdhc444z56crjfy45awuucvu
   payloads.py: bafybeiakm5n2gkwasxi2lrcjkuw5u7vlk633yjyrnemkqkiguzxak3d66a
   policy.py: bafybeigmstzp26no6lg2hcsusaybpdidzqgek4wc6hzay4zg4ybjjbij44
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -107,7 +107,7 @@ protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/market_manager_abci:0.1.0:bafybeibuu7jf5ccwf4ps2hkpsnk6l44bqzbacy5a5wq2bngqrhqellczsm
+- valory/market_manager_abci:0.1.0:bafybeiayv424iqvtke25e2ub335dbmmixgm6yo2uc7bbajhpp33tqrzbfe
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
