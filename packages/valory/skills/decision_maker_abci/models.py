@@ -476,6 +476,9 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.tool_quarantine_duration: int = self._ensure(
             "tool_quarantine_duration", kwargs, int
         )
+        self.use_multi_bets_mode: bool = self._ensure(
+            "use_multi_bets_mode", kwargs, bool
+        )
         self.enable_position_review: bool = self._ensure(
             "enable_position_review", kwargs, bool
         )

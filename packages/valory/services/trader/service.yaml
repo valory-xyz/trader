@@ -156,6 +156,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -382,6 +383,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}
@@ -511,6 +513,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}
@@ -640,6 +643,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}

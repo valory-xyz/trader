@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -90,6 +90,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
+        bets_placed = bool(bet.n_bets)
+        bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
+
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
@@ -99,6 +102,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             - self.params.opening_margin
             - self.params.safe_voting_range
         )
+        if not within_safe_range:
+            bet.blacklist_forever()
 
         within_ranges = within_opening_range and within_safe_range
 
@@ -114,7 +119,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             bet_was_already_placed = bet.invested_amount > 0
             return within_ranges and bet_queue_processable and bet_was_already_placed
         else:
-            return within_ranges and bet_queue_processable
+            return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
@@ -219,7 +224,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
-        # filter out only the bets that are processable and have a queue_status that allows them to be sampled
+        # filter in only the bets that are processable and have a queue_status that allows them to be sampled
         available_bets = list(
             filter(
                 lambda bet: self.processable_bet(bet, now=now),

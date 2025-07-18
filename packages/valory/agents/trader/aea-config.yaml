@@ -260,6 +260,7 @@ models:
       enable_position_review: ${bool:true}
       review_period_seconds: ${int:86400}
       min_confidence_increase: ${float:0.1}
+      use_multi_bets_mode: ${bool:true}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

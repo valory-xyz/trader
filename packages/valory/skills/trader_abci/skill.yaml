@@ -263,6 +263,7 @@ models:
       tool_quarantine_duration: 18000
       default_chain_id: gnosis
       mech_interact_round_timeout_seconds: 5400
+      use_multi_bets_mode: true
       enable_position_review: false
       review_period_seconds: 86400
       min_confidence_increase: 0.1
