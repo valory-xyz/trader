@@ -51,7 +51,6 @@ def get_position_balance(
     positions = defaultdict(int)
 
     for position in user_positions:
-        print(f"Processing position: {position}")
         position_condition_ids = position["position"]["conditionIds"]
         outcomes = position["position"]["conditions"][0]["outcomes"]
         indexSets = position["position"]["indexSets"]
