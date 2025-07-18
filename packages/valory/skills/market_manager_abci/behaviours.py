@@ -98,40 +98,30 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def read_bets(self) -> None:
         """Read the bets from the agent's data dir as JSON."""
         self.bets = []
+        read_path = self.multi_bets_filepath
 
-        if not self.benchmarking_mode.enabled and self.shared_state.first_read:
-            # this is a temporary hack to overcome a multi-bets issue
-            # if a bet that is in the `TO_PROCESS` queue cannot be selected because of the constraints
-            # (e.g., not in opening margin), then everything is blocked because the `FRESH` status will never be updated:
-            # https://github.com/valory-xyz/trader/blob/v0.23.1/packages/valory/skills/market_manager_abci/behaviours.py#L200-L202
-            self.context.logger.info(
-                "Multi-bets storage temporarily disabled on startup!"
-            )
-            self.shared_state.first_read = False
-            return
-
-        _read_path = self.multi_bets_filepath
-
-        if not os.path.isfile(_read_path):
+        if not os.path.isfile(read_path):
             self.context.logger.warning(
-                f"No stored bets file was detected in {_read_path}. Assuming trader is being run for the first time in multi-bets mode."
+                f"No stored bets file was detected in {read_path}. "
+                "Assuming trader is being run for the first time in multi-bets mode."
             )
-            _read_path = self.bets_filepath
-        elif not os.path.isfile(_read_path):
+            read_path = self.bets_filepath
+
+        if not os.path.isfile(read_path):
             self.context.logger.warning(
-                f"No stored bets file was detected in {_read_path}. Assuming bets are empty"
+                f"No stored bets file was detected in {read_path}. Assuming bets are empty."
             )
             return
 
         try:
-            with open(_read_path, READ_MODE) as bets_file:
+            with open(read_path, READ_MODE) as bets_file:
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
                     return
                 except (JSONDecodeError, TypeError):
-                    err = f"Error decoding file {_read_path!r} to a list of bets!"
+                    err = f"Error decoding file {read_path!r} to a list of bets!"
         except (FileNotFoundError, PermissionError, OSError):
-            err = f"Error opening file {_read_path!r} in read mode!"
+            err = f"Error opening file {read_path!r} in read mode!"
 
         self.context.logger.error(err)
 
