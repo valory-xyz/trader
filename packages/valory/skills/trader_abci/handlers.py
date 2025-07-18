@@ -65,8 +65,8 @@ from packages.valory.skills.mech_interact_abci.handlers import (
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.prompts import (
-    AUTOMATIC_SELECTION_VALUE,
     CHATUI_PROMPT,
+    FieldsThatCanBeRemoved,
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
@@ -107,6 +107,7 @@ CHATUI_LLM_MESSAGE_FIELD = "llm_message"
 CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
 CHATUI_RESPONSE_ISSUES_FIELD = "issues"
 CHATUI_MECH_TOOL_FIELD = "mech_tool"
+CHATUI_REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -483,7 +484,7 @@ class HttpHandler(BaseHttpHandler):
         :param updated_agent_config: dict containing updated config
         :return: tuple of (updated_params, issues)
         """
-        updated_params = {}
+        updated_params: Dict = {}
         issues: List[str] = []
 
         updated_trading_strategy: Optional[str] = updated_agent_config.get(
@@ -503,11 +504,17 @@ class HttpHandler(BaseHttpHandler):
         updated_mech_tool: Optional[str] = updated_agent_config.get(
             CHATUI_MECH_TOOL_FIELD, None
         )
-        if updated_mech_tool:
-            if updated_mech_tool == AUTOMATIC_SELECTION_VALUE:
-                updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
-                self._store_selected_tool(None)
-            elif updated_mech_tool in self.synchronized_data.available_mech_tools:
+        mech_tool_is_removed: bool = (
+            FieldsThatCanBeRemoved.MECH_TOOL.value
+            in updated_agent_config.get(CHATUI_REMOVED_CONFIG_FIELDS_FIELD, [])
+        )
+
+        if mech_tool_is_removed:
+            updated_params.update({CHATUI_MECH_TOOL_FIELD: None})
+            self._store_selected_tool(None)
+
+        elif updated_mech_tool:
+            if updated_mech_tool in self.synchronized_data.available_mech_tools:
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
             else:
