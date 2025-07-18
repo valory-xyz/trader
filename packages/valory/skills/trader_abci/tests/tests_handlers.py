@@ -56,9 +56,9 @@ from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     HandleTestCase,
 )
 from packages.valory.skills.trader_abci.handlers import (
-    CONTENT_TYPES,
     ContractApiHandler,
     DEFAULT_HEADER,
+    HttpContentType,
     HttpHandler,
     IpfsHandler,
     LedgerApiHandler,
@@ -119,18 +119,32 @@ class TestHttpHandler:
     def test_get_content_type(self) -> None:
         """Test _get_content_type method."""
         # Test known extensions
-        assert self.handler._get_content_type(Path("test.js")) == CONTENT_TYPES[".js"]
         assert (
-            self.handler._get_content_type(Path("test.html")) == CONTENT_TYPES[".html"]
+            self.handler._get_content_type(Path("test.js")) == HttpContentType.JS.value
         )
         assert (
-            self.handler._get_content_type(Path("test.json")) == CONTENT_TYPES[".json"]
+            self.handler._get_content_type(Path("test.html"))
+            == HttpContentType.HTML.value
         )
-        assert self.handler._get_content_type(Path("test.css")) == CONTENT_TYPES[".css"]
-        assert self.handler._get_content_type(Path("test.png")) == CONTENT_TYPES[".png"]
-        assert self.handler._get_content_type(Path("test.jpg")) == CONTENT_TYPES[".jpg"]
         assert (
-            self.handler._get_content_type(Path("test.jpeg")) == CONTENT_TYPES[".jpeg"]
+            self.handler._get_content_type(Path("test.json"))
+            == HttpContentType.JSON.value
+        )
+        assert (
+            self.handler._get_content_type(Path("test.css"))
+            == HttpContentType.CSS.value
+        )
+        assert (
+            self.handler._get_content_type(Path("test.png"))
+            == HttpContentType.PNG.value
+        )
+        assert (
+            self.handler._get_content_type(Path("test.jpg"))
+            == HttpContentType.JPG.value
+        )
+        assert (
+            self.handler._get_content_type(Path("test.jpeg"))
+            == HttpContentType.JPEG.value
         )
 
         # Test unknown extension
@@ -309,7 +323,7 @@ class TestHttpHandler:
             version=http_msg.version,
             status_code=200,
             status_text="Success",
-            headers=f"{CONTENT_TYPES['.json']}{http_msg.headers}",
+            headers=f"{HttpContentType.JSON.value}{http_msg.headers}",
             body=json.dumps(data).encode("utf-8"),
         )
 
