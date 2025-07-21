@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicp7ve2jiy2n65nz3ounkehxl4w2zvhz4kztvzm3rl26r6746ctiu
+agent: valory/trader:0.1.0:bafybeictgxhla4ka5hzqdntz7zouiz67zfuycuamalkhkwejml6waopxfa
 number_of_agents: 4
 deployment:
   agent:
@@ -153,6 +153,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -379,6 +380,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -505,6 +507,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -631,6 +634,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005

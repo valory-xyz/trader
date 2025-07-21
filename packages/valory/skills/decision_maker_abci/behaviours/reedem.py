@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -968,7 +968,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             success = yield from self._setup_policy_and_tools()
             if not success:
-                return None
+                return
 
             payload: Optional[RedeemPayload]
             if self.benchmarking_mode.enabled:
