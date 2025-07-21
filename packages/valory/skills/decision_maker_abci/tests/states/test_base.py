@@ -127,9 +127,9 @@ def test_payout_so_far(sync_data: SynchronizedData, mocked_db: MagicMock) -> Non
 
 def test_vote(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
     """Test the vote property."""
-    mocked_db.get_strict.return_value = "1"
+    mocked_db.get.return_value = "1"
     assert sync_data.vote == 1
-    mocked_db.get_strict.assert_called_once_with("vote")
+    mocked_db.get.assert_called_once_with("vote", None)
 
 
 def test_confidence(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:

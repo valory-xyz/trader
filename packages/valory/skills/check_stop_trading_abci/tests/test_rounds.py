@@ -19,6 +19,7 @@
 
 """This package contains the tests for the CheckStopTradingAbciApp."""
 
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass, field
 from typing import (
@@ -80,23 +81,23 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_participant_to_votes(
-    participants: FrozenSet[str], vote: bool
+    participants: FrozenSet[str], vote: bool, review_bets_for_selling: bool
 ) -> Dict[str, CheckStopTradingPayload]:
     """participant_to_votes"""
 
     return {
-        participant: CheckStopTradingPayload(sender=participant, vote=vote)
+        participant: CheckStopTradingPayload(sender=participant, vote=vote, review_bets_for_selling=review_bets_for_selling)
         for participant in participants
     }
 
 
 def get_participant_to_votes_serialized(
-    participants: FrozenSet[str], vote: bool
+    participants: FrozenSet[str], vote: bool, review_bets_for_selling: bool
 ) -> Dict[str, Dict[str, Any]]:
     """participant_to_votes"""
 
     return CollectionRound.serialize_collection(
-        get_participant_to_votes(participants, vote)
+        get_participant_to_votes(participants, vote, review_bets_for_selling)
     )
 
 
@@ -150,14 +151,20 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
         test_round = self.test_class(
             synchronized_data=self.synchronized_data, context=MagicMock()
         )
+        test_round.context.params.review_period_seconds = 1 * 60 * 60 * 24  # 1 day
+
+        if should_review_bets:
+            test_round.context.params.enable_position_review = True
+            test_round.context.state.round_sequence.last_round_transition_timestamp = datetime.now() - timedelta(seconds=10)
+            test_round.context.params.review_period_seconds = 10
 
         self._complete_run(
             self._test_round(
                 test_round=test_round,
-                round_payloads=get_participant_to_votes(self.participants, vote=vote),
+                round_payloads=get_participant_to_votes(self.participants, vote=vote, review_bets_for_selling=should_review_bets),
                 synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
                     participant_to_votes=get_participant_to_votes_serialized(
-                        self.participants, vote=vote
+                        self.participants, vote=vote, review_bets_for_selling=should_review_bets
                     ),
                     review_bets_for_selling=should_review_bets,
                 ),
