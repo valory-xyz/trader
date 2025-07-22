@@ -37,8 +37,8 @@ Configuration details:
 - Trading strategy: "{current_trading_strategy}"
     -- Available strategies:
         --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while maximizing the long-term return on an investment. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount).
-        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts.
-        --- "mike_strat": Similar to "bet_amount_per_threshold", but the fixed amount from the mapping is multiplied by the AI's confidence (e.g., for confidence 0.6 and mapping value 60000000000000000, the bet is 0.6 * 60000000000000000).
+        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts. Here, 0.6 means 60 percent confidence, and 60000000000000000 means the amount in wei.
+        --- "mike_strat": Similar to "bet_amount_per_threshold", but the fixed amount from the mapping is multiplied by the AI's confidence (e.g., for confidence 0.6 and mapping value 60000000000000000, the bet is 0.6 * 60000000000000000). Again, 0.6 means 60 percent confidence, and 60000000000000000 means wei.
 - Mech tool:
     -- Available tools: {available_tools}
     -- Can be set to \""""
