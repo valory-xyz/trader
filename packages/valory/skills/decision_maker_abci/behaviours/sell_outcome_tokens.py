@@ -36,8 +36,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 )
 
 
-logger = logging.getLogger(__name__)
-
 
 class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents sell a token."""
