@@ -20,7 +20,6 @@
 
 
 """This module contains the behaviour for selling a token."""
-import logging
 from typing import Any, Generator, Optional, cast
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -34,7 +33,6 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
 )
-
 
 
 class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
