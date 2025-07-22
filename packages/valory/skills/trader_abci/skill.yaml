@@ -10,10 +10,10 @@ fingerprint:
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
   composition.py: bafybeigl47wrvg6tpmslslqiwx63ugqhfqydjapycmfs35nvx77bqmc2ny
-  dialogues.py: bafybeihouxm2nl2r6h3vlymmtrge43tcnwphtzhc2q3vludpgytigggguy
+  dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeigoi5xhvgeekg7d37icw5xljqmay6fil453xavhhbszwamubqmeja
-  handlers.py: bafybeigq25ndmwo4r6jv5vmex2sme4dty2vptdlmmktvh4ivzmp6obtaxq
-  models.py: bafybeie342ympii4zkf6cp5n7tfnwql2ftdodfwlwzgiivi43iyqia37vy
+  handlers.py: bafybeift5oul7t5h24o5e2aig5qrqodixeb3hv7aq33jxixgbwaaehhinu
+  models.py: bafybeianrjqqbpci45d6dcoqcqs7gfyxqu26toncc2qv6zilpsz75hcd3e
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
@@ -38,11 +38,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
-- valory/market_manager_abci:0.1.0:bafybeihzokumzh2wcequza2nahprnezriftgrtwdi6ropjxv6ahhu5b4ji
-- valory/decision_maker_abci:0.1.0:bafybeigabb7ivbl732tcgmxedljqmarfat7n7633z7prdfw3oyg65srchi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeich6iz4gvhsdhrvgz53bk7hog3zxwcxbrvyftq7zpcbmullhqn5qy
+- valory/market_manager_abci:0.1.0:bafybeiajhysziezvyambpq7l74qgjp3ool5fe5hkgjktun673fcpnqjbwq
+- valory/decision_maker_abci:0.1.0:bafybeifg5rl7ftivafzqdq2b7ntshcd6s2omlirpudinbenft6poee3nbq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidgbsgliy5lqwf3v76uc7dz6ubirgdhkvohyu5ldzk7xfwbqnskiu
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeiemqlcfucewjujbaslexoh2nnubrxamzwuzufb2q6v65qs6bzrz7y
+- valory/check_stop_trading_abci:0.1.0:bafybeig5r775tbsxiys4b62s7zkfpiu7xuvc4a2waxaj4hffwao7im6fyy
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 behaviours:
   main:
