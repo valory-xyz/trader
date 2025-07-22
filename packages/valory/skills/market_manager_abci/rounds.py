@@ -77,7 +77,7 @@ class SynchronizedData(BaseSynchronizedData):
     def review_bets_for_selling(self) -> bool:
         """Get the status of the review bets for selling."""
         db_value = self.db.get("review_bets_for_selling", None)
-        if type(db_value) != bool:
+        if not isinstance(db_value, bool):
             return False
         return bool(db_value)
 
