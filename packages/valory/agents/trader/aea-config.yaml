@@ -19,7 +19,7 @@ contracts:
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeidfvyc6bw4uigv3jfcxr23vysctki6x5rh5htp2azhncib27ydxdm
 - valory/service_registry:0.1.0:bafybeigaginvk2i6rycppfomk6tldkvunik6atuxtjpuuw6ndckymcojne
-- valory/market_maker:0.1.0:bafybeiepwclhyg7oo7wcffmben42wmwrxgb4ovoomw2zbjqljcy7b2neke
+- valory/market_maker:0.1.0:bafybeigzfyzbixum5cqvcbyc24dqwce25dr6nyqvgjm2eqpt6tgo2perd4
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeib32m5zriagivlj7insajfs4jm5o5h53eym32wjjjp6qwv4lzl3pu
 - valory/conditional_tokens:0.1.0:bafybeiai7zwtdab2izyitvxph42kwtbvx6n5skm3i6jijd2653xjkoqd24
@@ -53,12 +53,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic73ar6oehsct6sudy6di5fipvim5p2k52ligrjoqsdv3eoasdg64
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidey2g2sj5nr2ngm5bkwxss7l5g3qtjo6wu5eg5kg3opv3d3mz5we
 - valory/market_manager_abci:0.1.0:bafybeihzokumzh2wcequza2nahprnezriftgrtwdi6ropjxv6ahhu5b4ji
-- valory/decision_maker_abci:0.1.0:bafybeidp2otjhemrfoncfw5ndkyfcpq2u4er4bahb57iizoff2qp3c7lne
-- valory/trader_abci:0.1.0:bafybeidm3a6ebmuhuyekmovmbsw3grqzmgoctrk67c2kdavlva73g5vkju
+- valory/decision_maker_abci:0.1.0:bafybeid2cdislo5nh23mecj2mdalga4vtvu4yfhmreatmc62jdeiox233q
+- valory/trader_abci:0.1.0:bafybeiawrjfp23rmnabllcbnjfddc3teumlltqajb67q2ywodrdqhebefa
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeif4gzawr2u5qesdidjml2ceel3b43yljeiufc4tcvl7i5nlnptfzq
+- valory/check_stop_trading_abci:0.1.0:bafybeiemqlcfucewjujbaslexoh2nnubrxamzwuzufb2q6v65qs6bzrz7y
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
