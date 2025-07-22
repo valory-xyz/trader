@@ -66,3 +66,10 @@ dcd0816e4f7c17bb8e6e5ef57bf95fd9b947ecc8:packages/valory/skills/decision_maker_a
 7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/connections/abci/tests/test_abci.py:generic-api-key:373
 7cb24a6ba2423f65a946b163268d09308ca00a00:trader_old/vendor/valory/connections/abci/tests/test_abci.py:generic-api-key:523
 9c3fa1a89cd918ca1a1c74ad5efd48f9ec106c34:packages/valory/skills/market_manager_abci/graph_tooling/requests.py:generic-api-key:160
+a10bdf40845fdfc6a457dc36a84cea08da47e13d:packages/valory/skills/trader_abci/predict-ui-build/assets/index-De6o9RXY.js:generic-api-key:122
+355ecb04d717451486aed176aa367ff520795d65:packages/valory/skills/trader_abci/predict-ui-build/assets/index-hBFwRxON.js:generic-api-key:122
+741ce08fdd648303810da88f8fcf803c815e08fd:packages/valory/skills/trader_abci/predict-ui-build/assets/index-De6o9RXY.js:generic-api-key:122
+9a058cab3f0f3cb2d14619ec98902f02b7c63a03:packages/valory/skills/trader_abci/predict-ui-build/assets/index-wQNaC-Uw.js:generic-api-key:122
+ef4b31dd87eafed37776689be95b0002ae235bd4:packages/valory/skills/trader_abci/predict-ui-build/assets/index-b1cOGivk.js:generic-api-key:122
+813e0227406c06c838170445151247591996a946:packages/valory/skills/trader_abci/predict-ui-build/static/js/main.b2df20f8.js:generic-api-key:2
+49ec1ac5b48a98d8411e9da6e8553714ce5d1af3:packages/valory/skills/trader_abci/predict-ui-build/assets/index-BrVYRq-p.js:generic-api-key:122

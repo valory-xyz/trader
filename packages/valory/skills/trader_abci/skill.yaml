@@ -21,14 +21,17 @@ fingerprint:
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
   predict-ui-build/index.html: bafybeid3tx3zsbvepfphgc73czpo6eajv3jy5z6rxc5adns42kqqbrqb2q
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
+  prompts.py: bafybeiggczobeuezzmqh4rns6py5upedhzgs6yuq66wv7ovz4cgo5vqzhe
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeidl66z57qnyl7ystvaj4xnpb6ot6aybg2l6bikkuanae7iqdempya
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
+- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/registration_abci:0.1.0:bafybeidqadl26x5prbjgnkqrvjnbqxpo75jttm7vlvpgkoqghs5677rw5i
@@ -70,6 +73,9 @@ handlers:
   tendermint:
     args: {}
     class_name: TendermintHandler
+  srr:
+    args: {}
+    class_name: SrrHandler
 models:
   abci_dialogues:
     args: {}
@@ -427,5 +433,8 @@ models:
   tendermint_dialogues:
     args: {}
     class_name: TendermintDialogues
+  srr_dialogues:
+    args: {}
+    class_name: SrrDialogues
 dependencies: {}
 is_abstract: false
