@@ -43,7 +43,7 @@ classifiers = [
 include = "packages"
 
 [tool.poetry.dependencies]
-python = "<3.12,>=3.8"
+python = "<3.12,>=3.9"
 open-autonomy = "==0.19.9"
 requests = "<2.31.2,>=2.28.1"
 py-multibase = "==1.0.3"
@@ -81,6 +81,7 @@ jsonschema = "<4.4.0,>=4.3.0"
 openapi-core = "==0.15.0"
 openapi-spec-validator = "<0.5.0,>=0.4.0"
 pyinstaller = "==6.8.0"
+google-generativeai = "==0.8.2"
 
 [tool.poetry.dependencies.tomte]
 version = "==0.2.17"
