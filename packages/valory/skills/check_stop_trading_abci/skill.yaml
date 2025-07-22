@@ -10,7 +10,7 @@ fingerprint:
   __init__.py: bafybeifc23rlw2hzhplp3wfceixnmwq5ztnixhh7jp4dd5av3crwp3x22a
   behaviours.py: bafybeiaea4o2r64whzbfkqjp57qf4g4j5hbwlengapqvuttji3t76fpwcy
   dialogues.py: bafybeifurggab64rdwdsvvvigqwctr67w2gv7zlo7lsejovsjol56dlt3y
-  fsm_specification.yaml: bafybeiegu65yhpob736fjlt75r23ag7u6y5p36kwurqi7hk5ycwlmcpuby
+  fsm_specification.yaml: bafybeihhau35a5xclncjpxh5lg7qiw34xs4d5qlez7dnjpkf45d3gc57ai
   handlers.py: bafybeihphydx4llyft3cycgc5e4eyjp7ccpgwegn2jbsnqi4tcblsr7xsa
   models.py: bafybeihicatztffwowuk6p3yw3rtzx7sq36zvxck2wr6hert4nek2beeee
   payloads.py: bafybeicoiu2eadu2dithddz2u22ygdo3gj3dodxvbjenol23esn4nj3zz4
@@ -134,7 +134,7 @@ models:
       serious_slash_unit_amount: 8000000000000000
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
-      enable_position_review: true
+      enable_position_review: false
       review_period_seconds: 86400
       min_confidence_increase: 0.1
     class_name: CheckStopTradingParams
