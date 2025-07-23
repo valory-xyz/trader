@@ -55,12 +55,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeial4tgw5mjclpy3kbt3cvuvyqjnlotxqzf6f2t25icsugpihyhfhm
-- valory/market_manager_abci:0.1.0:bafybeih3zpdgbhov4rfyqxjbdsvweag2qsoqrptuhs3puugtizqviucsmq
-- valory/decision_maker_abci:0.1.0:bafybeie6uj5njnrzommx2bk56uvmrocc3hniniqydhqeafk25voljgonr4
-- valory/trader_abci:0.1.0:bafybeieneyfbd2xjy52tdkymtpufntcd226mk4iasexhejki4zj6na6e3u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif4z2sq7b7jiwvlvt4tpbhko2hiertljsokryvkqj25egftcdljuy
+- valory/market_manager_abci:0.1.0:bafybeifjhcyp3mv7apw7oghs6vbhv2onwn73hcnaq5ud5lrjvpcu6oopxy
+- valory/decision_maker_abci:0.1.0:bafybeihamymybcihr5xjvxztn3va675axfsd2b2b7psnocv4nvumdgztya
+- valory/trader_abci:0.1.0:bafybeigyf5rfi667fg4vap3ilsrstkzv4avtzxstskuaurxgw7fnejpr2u
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeic36iukbpf5uqmiqva4uhginkbef5f7o2oelt5lejgcs3aib23oym
+- valory/check_stop_trading_abci:0.1.0:bafybeiakzlfyb6rq6uxku4ue23e4n5o5tofwffxgdkxjbko7mysov6nhpe
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
