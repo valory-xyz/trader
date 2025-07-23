@@ -8,8 +8,8 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeif6thj7o74rikhdpcyjzsblekkh4iaxd3c4tigxstjqs4fhc4spni
-  bets.py: bafybeiekveigatcm5nifcug3aaps33y2u3vcavc776ymmuzjkfuez3eq5m
+  behaviours.py: bafybeid7nclhmb77p54ia7ccbjrcegdegf52wef5qo6xks6rsyoyuxgapq
+  bets.py: bafybeiacvodhbglclmhcrcoymydqtdgzatllnk6w2otdy2wfcy7kyr5xli
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
   graph_tooling/requests.py: bafybeibjyb6av33aswnptttekj6t7k7xysgphh2bigoorcgkc54y2j3xkm
-  graph_tooling/utils.py: bafybeig5bo5khokf3z77ypo3xzvn2ybyfzqlrba4cog6njlpxqdxak5ewm
+  graph_tooling/utils.py: bafybeid7bnoupcv4mymjmvhyodkj2cajo3cvomgm5dk2gv3lngld3gldvq
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeifytda5kxew5bgsz52amrrsrs4bkumet3icyayw4yht3vkoj5gury
   payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
