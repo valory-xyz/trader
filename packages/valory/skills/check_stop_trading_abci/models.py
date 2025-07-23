@@ -75,9 +75,7 @@ class CheckStopTradingParams(StakingParams):
         )
         self.use_mech_marketplace: bool = bool(kwargs["use_mech_marketplace"])
         self.enable_position_review: bool = bool(kwargs["enable_position_review"])
-        self.review_period_seconds: int = self._ensure(
-            "review_period_seconds", kwargs, int
-        )
+        self.review_period_seconds: int = int(kwargs["review_period_seconds"])
 
         # Default KPI request address is the mech contract
         self.staking_kpi_mech_count_request_address: str = self.mech_contract_address
