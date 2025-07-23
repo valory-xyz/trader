@@ -152,7 +152,9 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def vote(self) -> Optional[int]:
         """Get the bet's vote index."""
-        vote = self.db.get_strict("vote")  # vote might be set to None, but must always present
+        vote = self.db.get_strict(
+            "vote"
+        )  # vote might be set to None, but must always present
         return int(vote) if vote is not None else None
 
     @property
