@@ -87,21 +87,18 @@ def next_status(
     is_pending_arbitration: bool,
 ) -> MarketState:
     """Get the next market status."""
-    market_status = MarketState.CLOSED
-    if (
-        fpmm["currentAnswer"] is None
-        and opening_timestamp is not None
-        and time.time() >= float(opening_timestamp)
-    ):
-        market_status = MarketState.PENDING
-    elif fpmm["currentAnswer"] is None:
-        market_status = MarketState.OPEN
-    elif is_pending_arbitration:
-        market_status = MarketState.ARBITRATING
-    elif time.time() < float(answer_finalized_timestamp):
-        market_status = MarketState.FINALIZING
+    if fpmm["currentAnswer"] is None:
+        if opening_timestamp is not None and time.time() >= float(opening_timestamp):
+            return MarketState.PENDING
+        return MarketState.OPEN
 
-    return market_status
+    if is_pending_arbitration:
+        return MarketState.ARBITRATING
+
+    if time.time() < float(answer_finalized_timestamp):
+        return MarketState.FINALIZING
+
+    return MarketState.CLOSED
 
 
 def get_bet_id_to_balance(

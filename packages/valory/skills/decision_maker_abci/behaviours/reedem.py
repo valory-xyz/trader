@@ -984,11 +984,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 if (
                     self.synchronized_data.did_transact
                     and self.synchronized_data.tx_submitter
-                    == BetPlacementRound.auto_round_id()
-                ) or (
-                    self.synchronized_data.did_transact
-                    and self.synchronized_data.tx_submitter
-                    == SellOutcomeTokensRound.auto_round_id()
+                    in (
+                        BetPlacementRound.auto_round_id(),
+                        SellOutcomeTokensRound.auto_round_id(),
+                    )
                 ):
                     self.update_bet_transaction_information()
 

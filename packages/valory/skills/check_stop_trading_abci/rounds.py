@@ -90,8 +90,13 @@ class CheckStopTradingRound(VotingRound):
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (get_name(SynchronizedData.review_bets_for_selling),)
+    selection_key = get_name(SynchronizedData.review_bets_for_selling)
     collection_key = get_name(SynchronizedData.participant_to_votes)
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(super().synchronized_data.db)
 
     @property
     def synced_timestamp(self) -> int:
@@ -110,7 +115,7 @@ class CheckStopTradingRound(VotingRound):
             self.context.logger.info("Position review is disabled")
             return False
 
-        last_review = self.synchronized_data.get_last_review_timestamp()  # type: ignore
+        last_review = self.synchronized_data.last_review_timestamp
 
         if not self.context.params.review_period_seconds:
             self.context.logger.info("Review period is not set")

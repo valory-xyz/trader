@@ -55,12 +55,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidgbsgliy5lqwf3v76uc7dz6ubirgdhkvohyu5ldzk7xfwbqnskiu
-- valory/market_manager_abci:0.1.0:bafybeiajhysziezvyambpq7l74qgjp3ool5fe5hkgjktun673fcpnqjbwq
-- valory/decision_maker_abci:0.1.0:bafybeifg5rl7ftivafzqdq2b7ntshcd6s2omlirpudinbenft6poee3nbq
-- valory/trader_abci:0.1.0:bafybeiciboga3sthfb2c5v6fzg23lk6lbo2m77qfsgqsa4bg5btd7liyou
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib4efknd6ptfliyd7tkclmtzpgb7z52cllgpox36jyygwxgmdklpe
+- valory/market_manager_abci:0.1.0:bafybeih3zpdgbhov4rfyqxjbdsvweag2qsoqrptuhs3puugtizqviucsmq
+- valory/decision_maker_abci:0.1.0:bafybeibuj6xira7gbfhf33ird5hlgurgozfr3bbrk3galfsr2gk2ha4tb4
+- valory/trader_abci:0.1.0:bafybeigusvlz7p3uwqx3lkp2mtwzpklkkwjvg7w4jzsunq5qah3c3vym7q
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeig5r775tbsxiys4b62s7zkfpiu7xuvc4a2waxaj4hffwao7im6fyy
+- valory/check_stop_trading_abci:0.1.0:bafybeifuubbxv2zwgos726g62ov7y3l4wqwgq3k6fwv3tsxusjrkoloxle
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m

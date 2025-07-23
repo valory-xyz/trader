@@ -215,11 +215,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
     @property
-    def outcome_index(self) -> int:
-        """Get the index of the outcome that the service is going to place a bet on."""
-        return cast(int, self.synchronized_data.vote)
-
-    @property
     def safe_tx_hash(self) -> str:
         """Get the safe_tx_hash."""
         return self._safe_tx_hash
@@ -768,7 +763,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         operation: TradingOperation,
         amount_field: str,
         amount_param_name: str,
-        amount_param_value: int,
     ) -> WaitableConditionType:
         """Calculate the token amount for buying/selling."""
 
@@ -780,7 +774,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             outcome_index=self.outcome_index,
             chain_id=self.params.mech_chain_id,
             **{
-                amount_param_name: amount_param_value,
+                amount_param_name: self.investment_amount,
             },  # type: ignore
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
@@ -797,11 +791,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             return False
 
         if operation == TradingOperation.BUY:
-            self.context.logger.info(f"Function call buy amount: {token_amount}")
             self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
         else:
-            self.context.logger.info(f"Function call sell amount: {token_amount}")
             self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
+
         return True
 
     def _calc_buy_amount(self) -> WaitableConditionType:
@@ -810,7 +803,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             operation=TradingOperation.BUY,
             amount_field="amount",
             amount_param_name="investment_amount",
-            amount_param_value=self.investment_amount,
         )
 
     def _calc_sell_amount(self) -> WaitableConditionType:
@@ -819,10 +811,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             operation=TradingOperation.SELL,
             amount_field="amount",
             amount_param_name="return_amount",
-            amount_param_value=self.investment_amount,
         )
 
-    def _build_token_tx(self, operation: str) -> WaitableConditionType:
+    def _build_token_tx(self, operation: TradingOperation) -> WaitableConditionType:
         """Get the tx data encoded for buying or selling tokens."""
         params = {
             "performative": ContractApiMessage.Performative.GET_STATE,  # type: ignore
@@ -872,11 +863,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _build_buy_tx(self) -> WaitableConditionType:
         """Get the buy tx data encoded."""
-        return self._build_token_tx("buy")
+        return self._build_token_tx(TradingOperation.BUY)
 
     def _build_sell_tx(self) -> WaitableConditionType:
         """Get the sell tx data encoded."""
-        return self._build_token_tx("sell")
+        return self._build_token_tx(TradingOperation.SELL)
 
     def build_approval_tx(
         self, amount: int, spender: str, token: str

@@ -267,8 +267,9 @@ class Bet:
             if self.queue_status == QueueStatus.EXPIRED:
                 if index == 0:
                     return "Yes"
-                elif index == 1:
+                if index == 1:
                     return "No"
+                raise ValueError("Non-binary outcomes are not supported.")
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
             return self.outcomes[index]
@@ -360,9 +361,7 @@ class Bet:
             profit_increases = self.potential_net_profit >= potential_net_profit
             return more_confident and profit_increases
 
-    def should_be_checked_for_selling(
-        self, current_timestamp: int, opening_margin: int
-    ) -> bool:
+    def is_ready_to_sell(self, current_timestamp: int, opening_margin: int) -> bool:
         """If more than 24 hours have passed since the bet was opened, it should be checked for selling."""
         return (
             current_timestamp

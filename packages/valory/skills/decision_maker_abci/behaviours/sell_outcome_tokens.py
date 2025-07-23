@@ -78,7 +78,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Prepare the safe transaction for selling an outcome token and return the hex for the tx settlement skill."""
         yield from self.wait_for_condition_with_sleep(self._build_approval_tx)
 
-        # based on past observations, the buy amount calculation usually fails because of the RPC misbehaving
+        # based on past observations, the sell amount calculation usually fails because of the RPC misbehaving
         # if this happens, we do not want to retry as it won't get resolved soon. Instead, we exit this round.
         calculation_succeeded = yield from self._calc_sell_amount()
         if not calculation_succeeded:

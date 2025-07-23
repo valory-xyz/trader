@@ -568,6 +568,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.min_confidence_increase: float = self._ensure(
             "min_confidence_increase", kwargs, float
         )
+        self.min_confidence_for_selling: float = 0.5
         super().__init__(*args, **kwargs)
 
     @property

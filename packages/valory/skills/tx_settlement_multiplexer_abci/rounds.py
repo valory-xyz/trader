@@ -123,7 +123,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             self.synchronized_data.update(policy=policy_update)
 
         # if a bet was just placed, edit the utilized tools mapping
-        if event == Event.BET_PLACEMENT_DONE or event == Event.SELL_OUTCOME_TOKENS_DONE:
+        if event in (Event.BET_PLACEMENT_DONE, Event.SELL_OUTCOME_TOKENS_DONE):
             utilized_tools = synced_data.utilized_tools
             utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool
             tools_update = json.dumps(utilized_tools, sort_keys=True)
