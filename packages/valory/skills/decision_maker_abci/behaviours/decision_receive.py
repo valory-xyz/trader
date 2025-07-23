@@ -556,8 +556,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         tokens_to_be_sold = self.sampled_bet.get_vote_amount(prediction_response.vote)
 
-        # todo: replace with configurable parameters
-        if prediction_response.confidence >= 0.5 and tokens_to_be_sold > 0:
+        if prediction_response.confidence >= self.params.min_confidence_for_selling and tokens_to_be_sold > 0:
             self.sell_amount = tokens_to_be_sold
             return True
         return False
