@@ -560,8 +560,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         if prediction_response.confidence >= 0.5 and tokens_to_be_sold > 0:
             self.sell_amount = tokens_to_be_sold
             return True
-        else:
-            return False
+        return False
 
     def async_act(self) -> Generator:
         """Do the action."""

@@ -118,8 +118,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if self.kpi_is_met and self.review_bets_for_selling:
             bet_was_already_placed = bet.invested_amount > 0
             return within_ranges and bet_queue_processable and bet_was_already_placed
-        else:
-            return bet_mode_allowable and within_ranges and bet_queue_processable
+        return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:

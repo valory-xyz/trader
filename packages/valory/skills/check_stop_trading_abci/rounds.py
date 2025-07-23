@@ -90,7 +90,7 @@ class CheckStopTradingRound(VotingRound):
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (get_name(SynchronizedData.review_bets_for_selling),)
+    selection_key = get_name(SynchronizedData.review_bets_for_selling)
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
     @property
