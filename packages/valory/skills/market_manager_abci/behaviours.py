@@ -147,7 +147,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _requeue_bets_for_selling(self) -> None:
         """Requeue sell bets."""
         for bet in self.bets:
-            if bet.is_ready_to_sell(self.synced_time, self.params.opening_margin) and not bet.queue_status.is_expired():
+            if (
+                bet.is_ready_to_sell(self.synced_time, self.params.opening_margin)
+                and not bet.queue_status.is_expired()
+            ):
                 self.context.logger.info(f"Requeueing bet {bet.id} for selling")
                 bet.queue_status = bet.queue_status.move_to_fresh()
 
