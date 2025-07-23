@@ -215,11 +215,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return int(self.round_sequence.last_round_transition_timestamp.timestamp())
 
     @property
-    def outcome_index(self) -> int:
-        """Get the index of the outcome that the service is going to place a bet on."""
-        return cast(int, self.synchronized_data.vote)
-
-    @property
     def safe_tx_hash(self) -> str:
         """Get the safe_tx_hash."""
         return self._safe_tx_hash
