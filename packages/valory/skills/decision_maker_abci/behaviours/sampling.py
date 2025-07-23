@@ -73,7 +73,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         balances = yield from self.get_active_bets()
 
         for i, bet in enumerate(bets):
-            if bet.queue_status == QueueStatus.EXPIRED:
+            if bet.is_expired():
                 self.context.logger.info(f"Bet {bet.id} is expired")
                 continue
 
@@ -89,6 +89,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
+
+        if bet.is_expired():
+            return False
 
         bets_placed = bool(bet.n_bets)
         bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
