@@ -117,10 +117,6 @@ class CheckStopTradingRound(VotingRound):
 
         last_review = self.synchronized_data.last_review_timestamp
 
-        if not self.context.params.review_period_seconds:
-            self.context.logger.info("Review period is not set")
-            return False
-
         return (
             self.synced_timestamp - last_review
             > self.context.params.review_period_seconds
