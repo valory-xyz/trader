@@ -768,7 +768,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         operation: TradingOperation,
         amount_field: str,
         amount_param_name: str,
-        amount_param_value: int,
     ) -> WaitableConditionType:
         """Calculate the token amount for buying/selling."""
 
@@ -780,7 +779,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             outcome_index=self.outcome_index,
             chain_id=self.params.mech_chain_id,
             **{
-                amount_param_name: amount_param_value,
+                amount_param_name: self.investment_amount,
             },  # type: ignore
         )
         if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
@@ -809,7 +808,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             operation=TradingOperation.BUY,
             amount_field="amount",
             amount_param_name="investment_amount",
-            amount_param_value=self.investment_amount,
         )
 
     def _calc_sell_amount(self) -> WaitableConditionType:
@@ -818,7 +816,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             operation=TradingOperation.SELL,
             amount_field="amount",
             amount_param_name="return_amount",
-            amount_param_value=self.investment_amount,
         )
 
     def _build_token_tx(self, operation: TradingOperation) -> WaitableConditionType:
