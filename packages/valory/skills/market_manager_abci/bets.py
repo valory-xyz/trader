@@ -267,8 +267,9 @@ class Bet:
             if self.queue_status == QueueStatus.EXPIRED:
                 if index == 0:
                     return "Yes"
-                elif index == 1:
+                if index == 1:
                     return "No"
+                raise ValueError("Non-binary outcomes are not supported.")
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
             return self.outcomes[index]
