@@ -314,7 +314,6 @@ models:
       use_multi_bets_mode: true
       enable_position_review: false
       review_period_seconds: 86400
-      min_confidence_increase: 0.1
     class_name: DecisionMakerParams
   acc_info_fields:
     args:

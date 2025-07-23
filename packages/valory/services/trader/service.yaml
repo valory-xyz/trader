@@ -124,7 +124,6 @@ type: skill
         stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
-        min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
@@ -386,7 +385,6 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
-        min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -516,7 +514,6 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
-        min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -646,7 +643,6 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
-        min_confidence_increase: ${MIN_CONFIDENCE_INCREASE:float:0.1}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
