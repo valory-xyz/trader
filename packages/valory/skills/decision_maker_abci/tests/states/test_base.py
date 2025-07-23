@@ -65,9 +65,9 @@ def test_sampled_bet_index(sync_data: SynchronizedData, mocked_db: MagicMock) ->
 
 def test_is_mech_price_set(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
     """Test the is_mech_price_set property."""
-    mocked_db.get_strict.return_value = True
+    mocked_db.get.return_value = True
     assert sync_data.is_mech_price_set is True
-    mocked_db.get_strict.assert_called_once_with("mech_price", False)
+    mocked_db.get.assert_called_once_with("mech_price", False)
 
 
 def test_available_mech_tools(
@@ -127,9 +127,9 @@ def test_payout_so_far(sync_data: SynchronizedData, mocked_db: MagicMock) -> Non
 
 def test_vote(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
     """Test the vote property."""
-    mocked_db.get.return_value = "1"
+    mocked_db.get_strict.return_value = "1"
     assert sync_data.vote == 1
-    mocked_db.get.assert_called_once_with("vote", None)
+    mocked_db.get_strict.assert_called_once_with("vote")
 
 
 def test_confidence(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
