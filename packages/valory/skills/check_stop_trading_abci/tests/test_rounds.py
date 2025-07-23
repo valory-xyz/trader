@@ -155,7 +155,7 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
         test_round = self.test_class(
             synchronized_data=self.synchronized_data, context=MagicMock()
         )
-        test_round.context.params.review_period_seconds = 1 * 60 * 60 * 24  # 1 day
+        test_round.context.params.review_period_seconds = 60 * 60 * 24  # 1 day
 
         if should_review_bets:
             test_round.context.params.enable_position_review = True
