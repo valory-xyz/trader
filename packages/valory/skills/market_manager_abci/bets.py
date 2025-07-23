@@ -263,13 +263,6 @@ class Bet:
     def get_outcome(self, index: int) -> str:
         """Get an outcome given its index."""
         if self.outcomes is None:
-            # it's a hack for expired bet that is stuck with no outcomes
-            if self.queue_status == QueueStatus.EXPIRED:
-                if index == 0:
-                    return "Yes"
-                if index == 1:
-                    return "No"
-                raise ValueError("Non-binary outcomes are not supported.")
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
             return self.outcomes[index]
