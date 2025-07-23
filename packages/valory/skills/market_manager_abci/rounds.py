@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -72,6 +72,14 @@ class SynchronizedData(BaseSynchronizedData):
     def is_checkpoint_reached(self) -> bool:
         """Check if the checkpoint is reached."""
         return bool(self.db.get("is_checkpoint_reached", False))
+
+    @property
+    def review_bets_for_selling(self) -> bool:
+        """Get the status of the review bets for selling."""
+        db_value = self.db.get("review_bets_for_selling", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
 
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):

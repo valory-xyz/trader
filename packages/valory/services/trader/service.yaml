@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeid4ssq4juy2eetsl7vearbknftkkofg2f2c5ighoj2as2ic5qtlzq
+agent: valory/trader:0.1.0:bafybeiehwaqkx4p7ucgget2snql4nkwydcefcvexmwsnb2h4gz5hehvpdi
 number_of_agents: 4
 deployment:
   agent:
@@ -122,6 +122,8 @@ type: skill
         staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
         disable_trading: ${DISABLE_TRADING:bool:false}
         stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
+        enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
+        review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
         refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
@@ -381,6 +383,8 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
+        review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -508,6 +512,8 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
+        review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -635,6 +641,8 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
+        review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005

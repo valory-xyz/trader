@@ -61,6 +61,8 @@ class CheckStopTradingParams(StakingParams):
                 - mech_marketplace_config: Configuration for mech marketplace (required if use_mech_marketplace is True)
                 - disable_trading: Flag to disable trading
                 - stop_trading_if_staking_kpi_met: Flag to stop trading when staking KPI is met
+                - enable_position_review: Flag to enable position review
+                - review_period_seconds: Time interval in seconds between reviews
         """
         # Validate required parameters
         self._validate_required_params(kwargs)
@@ -72,6 +74,8 @@ class CheckStopTradingParams(StakingParams):
             "stop_trading_if_staking_kpi_met", kwargs, bool
         )
         self.use_mech_marketplace: bool = bool(kwargs["use_mech_marketplace"])
+        self.enable_position_review: bool = bool(kwargs["enable_position_review"])
+        self.review_period_seconds: int = int(kwargs["review_period_seconds"])
 
         # Default KPI request address is the mech contract
         self.staking_kpi_mech_count_request_address: str = self.mech_contract_address

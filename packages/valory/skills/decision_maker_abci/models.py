@@ -559,6 +559,13 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.use_multi_bets_mode: bool = self._ensure(
             "use_multi_bets_mode", kwargs, bool
         )
+        self.enable_position_review: bool = self._ensure(
+            "enable_position_review", kwargs, bool
+        )
+        self.review_period_seconds: int = self._ensure(
+            "review_period_seconds", kwargs, int
+        )
+        self.min_confidence_for_selling: float = 0.5
         super().__init__(*args, **kwargs)
 
     @property

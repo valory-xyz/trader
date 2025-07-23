@@ -24,16 +24,21 @@ import json
 import os
 from abc import ABC
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
+from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
     SafeOperation,
+)
+from packages.valory.contracts.market_maker.contract import (
+    FixedProductMarketMakerContract,
 )
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.contracts.mech_mm.contract import MechMM
@@ -95,6 +100,13 @@ TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
 
 
+class TradingOperation(str, Enum):
+    """Trading operation."""
+
+    BUY = "buy"
+    SELL = "sell"
+
+
 def remove_fraction_wei(amount: int, fraction: float) -> int:
     """Removes the given fraction from the given integer amount and returns the value as an integer."""
     if 0 <= fraction <= 1:
@@ -116,6 +128,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._safe_tx_hash = ""
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
+
+        self.sell_amount: int = 0
+        self.buy_amount: int = 0
 
     @property
     def subscription_params(self) -> Dict[str, Any]:
@@ -350,14 +365,31 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def update_bet_transaction_information(self) -> None:
         """Get whether the bet's invested amount should be updated."""
         sampled_bet = self.sampled_bet
-        # Update the bet's invested amount, the new bet amount is added to previously invested amount
-        sampled_bet.invested_amount += self.synchronized_data.bet_amount
         # Update bet transaction timestamp
         sampled_bet.processed_timestamp = self.synced_timestamp
-        # update no of bets made
-        sampled_bet.n_bets += 1
         # Update Queue number for priority logic
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        # Update the bet's invested amount
+        updated = sampled_bet.update_investments(self.synchronized_data.bet_amount)
+        if not updated:
+            self.context.logger.error("Could not update the investments!")
+
+        # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
+        # this will need to change if this sovereign agent is ever converted to a multi-agent service
+        self.store_bets()
+
+    def update_sell_transaction_information(self) -> None:
+        """Get whether the bet's invested amount should be updated."""
+        sampled_bet = self.sampled_bet
+        # Update bet transaction timestamp
+        sampled_bet.processed_timestamp = self.synced_timestamp
+        # Update Queue number for priority logic
+        sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        updated = sampled_bet.update_investments(0)
+        if not updated:
+            self.context.logger.error("Could not update the investments!")
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
@@ -725,6 +757,146 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             results_text = tuple(str(res) for res in results)
             row = ",".join(results_text) + NEW_LINE
             results_file.write(row)
+
+    def _calc_token_amount(
+        self,
+        operation: TradingOperation,
+        amount_field: str,
+        amount_param_name: str,
+    ) -> WaitableConditionType:
+        """Calculate the token amount for buying/selling."""
+
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.market_maker_contract_address,
+            contract_id=str(FixedProductMarketMakerContract.contract_id),
+            contract_callable=f"calc_{operation.value}_amount",
+            outcome_index=self.outcome_index,
+            chain_id=self.params.mech_chain_id,
+            **{
+                amount_param_name: self.investment_amount,
+            },  # type: ignore
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Could not calculate the {operation} amount: {response_msg}"
+            )
+            return False
+
+        token_amount = response_msg.raw_transaction.body.get(amount_field, None)
+        if token_amount is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to get the {amount_field} for the conditional token: {response_msg}"
+            )
+            return False
+
+        if operation == TradingOperation.BUY:
+            self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
+        else:
+            self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
+
+        return True
+
+    def _calc_buy_amount(self) -> WaitableConditionType:
+        """Calculate the buy amount of the conditional token."""
+        return self._calc_token_amount(
+            operation=TradingOperation.BUY,
+            amount_field="amount",
+            amount_param_name="investment_amount",
+        )
+
+    def _calc_sell_amount(self) -> WaitableConditionType:
+        """Calculate the sell amount of the conditional token."""
+        return self._calc_token_amount(
+            operation=TradingOperation.SELL,
+            amount_field="amount",
+            amount_param_name="return_amount",
+        )
+
+    def _build_token_tx(self, operation: TradingOperation) -> WaitableConditionType:
+        """Get the tx data encoded for buying or selling tokens."""
+        params = {
+            "performative": ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            "contract_address": self.market_maker_contract_address,
+            "contract_id": str(FixedProductMarketMakerContract.contract_id),
+            "contract_callable": f"get_{operation}_data",
+            "outcome_index": self.outcome_index,
+            "chain_id": self.params.mech_chain_id,
+        }
+
+        if operation == TradingOperation.BUY:
+            params.update(
+                {
+                    "investment_amount": self.investment_amount,
+                    "min_outcome_tokens_to_buy": self.buy_amount,
+                }
+            )
+        else:
+            params.update(
+                {
+                    "return_amount": self.return_amount,
+                    "max_outcome_tokens_to_sell": self.sell_amount,
+                }
+            )
+
+        response_msg = yield from self.get_contract_api_response(**params)
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.error(
+                f"Could not get the data for the {operation} transaction: {response_msg}"
+            )
+            return False
+
+        tx_data = response_msg.state.body.get("data", None)
+        if tx_data is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to encode the {operation} data: {response_msg}"
+            )
+            return False
+
+        batch = MultisendBatch(
+            to=self.market_maker_contract_address,
+            data=HexBytes(tx_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
+
+    def _build_buy_tx(self) -> WaitableConditionType:
+        """Get the buy tx data encoded."""
+        return self._build_token_tx(TradingOperation.BUY)
+
+    def _build_sell_tx(self) -> WaitableConditionType:
+        """Get the sell tx data encoded."""
+        return self._build_token_tx(TradingOperation.SELL)
+
+    def build_approval_tx(
+        self, amount: int, spender: str, token: str
+    ) -> WaitableConditionType:
+        """Build an ERC20 approve transaction."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_approval_tx",
+            spender=spender,
+            amount=amount,
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build approval tx: {response_msg}")
+            return False
+
+        approval_data = response_msg.state.body.get("data")
+        if approval_data is None:
+            self.context.logger.info(f"Could not build approval tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=token,
+            data=HexBytes(approval_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

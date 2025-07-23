@@ -6,6 +6,7 @@ alphabet_in:
 - REDEEMING_DONE
 - REFILL_REQUIRED
 - ROUND_TIMEOUT
+- SELL_OUTCOME_TOKENS_DONE
 - STAKING_DONE
 - SUBSCRIPTION_DONE
 - UNRECOGNIZED
@@ -16,6 +17,7 @@ final_states:
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
 - FinishedRedeemingTxRound
+- FinishedSellOutcomeTokensTxRound
 - FinishedStakingTxRound
 - FinishedSubscriptionTxRound
 label: TxSettlementMultiplexerAbciApp
@@ -28,6 +30,7 @@ states:
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
 - FinishedRedeemingTxRound
+- FinishedSellOutcomeTokensTxRound
 - FinishedStakingTxRound
 - FinishedSubscriptionTxRound
 - PostTxSettlementRound
@@ -37,6 +40,7 @@ transition_func:
     (PostTxSettlementRound, MECH_REQUESTING_DONE): FinishedMechRequestTxRound
     (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): FinishedSellOutcomeTokensTxRound
     (PostTxSettlementRound, STAKING_DONE): FinishedStakingTxRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): FinishedSubscriptionTxRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound

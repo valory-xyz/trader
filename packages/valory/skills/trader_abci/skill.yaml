@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeievziz7cajszkw3ugfd3xn6ycktms463kefxjk2qlcyyh73couqg4
+  composition.py: bafybeigl47wrvg6tpmslslqiwx63ugqhfqydjapycmfs35nvx77bqmc2ny
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeia4bg3ws7xea2etcodkcgk6q5hgw4mtytrbovchfncul6h27jxnvm
+  fsm_specification.yaml: bafybeigoi5xhvgeekg7d37icw5xljqmay6fil453xavhhbszwamubqmeja
   handlers.py: bafybeift5oul7t5h24o5e2aig5qrqodixeb3hv7aq33jxixgbwaaehhinu
   models.py: bafybeianrjqqbpci45d6dcoqcqs7gfyxqu26toncc2qv6zilpsz75hcd3e
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
@@ -38,11 +38,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
-- valory/market_manager_abci:0.1.0:bafybeihievdcieyf5lad7iamrgkuahxlcjyuqc4kzomi4chcy2pap47ehu
-- valory/decision_maker_abci:0.1.0:bafybeifblbnvspgaz4au3gkss5uyqtlnscfglu3mqlmilc2jlum3z6eroq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibnuuoxhq67a7wocx3fjs3skcvmqfzzczwhrbt4nlmf3rqfcyz7ji
+- valory/market_manager_abci:0.1.0:bafybeigzldcghoxbg73e53ha2v3cayshswrrgeg4bqpcwd6al237v2ssle
+- valory/decision_maker_abci:0.1.0:bafybeicvwjlj7bgigywd2q2r4sjler6yaqbzuevf6a6xmbk7ap4pxgjsru
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeids6glz3hkpzc5kdbsggwxye5eqehut2rte3we3vdzpfzzgttv56q
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeie7jbl24emwbujs34yojjaooyn5niuh3aqagv3nlqg4dg5rkuxyci
+- valory/check_stop_trading_abci:0.1.0:bafybeignl5w4o4ghcpan7nsor5elvuid4si7t4rnfqga47bwvlgp22xwsa
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 behaviours:
   main:
@@ -270,6 +270,8 @@ models:
       default_chain_id: gnosis
       mech_interact_round_timeout_seconds: 5400
       use_multi_bets_mode: true
+      enable_position_review: false
+      review_period_seconds: 86400
     class_name: TraderParams
   benchmarking_mode:
     args:

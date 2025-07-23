@@ -43,6 +43,9 @@ from packages.valory.skills.decision_maker_abci.states.order_subscription import
     SubscriptionRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 
@@ -54,6 +57,7 @@ class Event(Enum):
     REFILL_REQUIRED = "refill_required"
     MECH_REQUESTING_DONE = "mech_requesting_done"
     BET_PLACEMENT_DONE = "bet_placement_done"
+    SELL_OUTCOME_TOKENS_DONE = "sell_outcome_tokens_done"
     REDEEMING_DONE = "redeeming_done"
     STAKING_DONE = "staking_done"
     SUBSCRIPTION_DONE = "subscription_done"
@@ -102,6 +106,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         submitter_to_event: Dict[str, Event] = {
             MechRequestRound.auto_round_id(): Event.MECH_REQUESTING_DONE,
             BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
+            SellOutcomeTokensRound.auto_round_id(): Event.SELL_OUTCOME_TOKENS_DONE,
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
             SubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
@@ -118,7 +123,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             self.synchronized_data.update(policy=policy_update)
 
         # if a bet was just placed, edit the utilized tools mapping
-        if event == Event.BET_PLACEMENT_DONE:
+        if event in (Event.BET_PLACEMENT_DONE, Event.SELL_OUTCOME_TOKENS_DONE):
             utilized_tools = synced_data.utilized_tools
             utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool
             tools_update = json.dumps(utilized_tools, sort_keys=True)
@@ -137,6 +142,10 @@ class FinishedMechRequestTxRound(DegenerateRound):
 
 class FinishedBetPlacementTxRound(DegenerateRound):
     """Finished bet placement round."""
+
+
+class FinishedSellOutcomeTokensTxRound(DegenerateRound):
+    """Finished sell outcome tokens round."""
 
 
 class FinishedRedeemingTxRound(DegenerateRound):
@@ -171,20 +180,22 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         1. PostTxSettlementRound
             - mech requesting done: 3.
             - bet placement done: 4.
-            - redeeming done: 6.
-            - staking done: 7.
-            - subscription done: 5.
+            - sell outcome tokens done: 5.
+            - redeeming done: 7.
+            - staking done: 8.
+            - subscription done: 6.
             - round timeout: 1.
-            - unrecognized: 8.
+            - unrecognized: 9.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
-        5. FinishedSubscriptionTxRound
-        6. FinishedRedeemingTxRound
-        7. FinishedStakingTxRound
-        8. FailedMultiplexerRound
+        5. FinishedSellOutcomeTokensTxRound
+        6. FinishedSubscriptionTxRound
+        7. FinishedRedeemingTxRound
+        8. FinishedStakingTxRound
+        9. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedRedeemingTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0
@@ -202,6 +213,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         PostTxSettlementRound: {
             Event.MECH_REQUESTING_DONE: FinishedMechRequestTxRound,
             Event.BET_PLACEMENT_DONE: FinishedBetPlacementTxRound,
+            Event.SELL_OUTCOME_TOKENS_DONE: FinishedSellOutcomeTokensTxRound,
             Event.REDEEMING_DONE: FinishedRedeemingTxRound,
             Event.STAKING_DONE: FinishedStakingTxRound,
             Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
@@ -211,6 +223,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         ChecksPassedRound: {},
         FinishedMechRequestTxRound: {},
         FinishedBetPlacementTxRound: {},
+        FinishedSellOutcomeTokensTxRound: {},
         FinishedSubscriptionTxRound: {},
         FinishedRedeemingTxRound: {},
         FinishedStakingTxRound: {},
@@ -223,6 +236,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         ChecksPassedRound,
         FinishedMechRequestTxRound,
         FinishedBetPlacementTxRound,
+        FinishedSellOutcomeTokensTxRound,
         FinishedRedeemingTxRound,
         FinishedStakingTxRound,
         FinishedSubscriptionTxRound,
@@ -236,6 +250,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         ChecksPassedRound: set(),
         FinishedMechRequestTxRound: set(),
         FinishedBetPlacementTxRound: set(),
+        FinishedSellOutcomeTokensTxRound: set(),
         FinishedRedeemingTxRound: set(),
         FinishedStakingTxRound: set(),
         FailedMultiplexerRound: set(),
