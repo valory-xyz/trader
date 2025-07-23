@@ -797,11 +797,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             return False
 
         if operation == TradingOperation.BUY:
-            self.context.logger.info(f"Function call buy amount: {token_amount}")
             self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
         else:
-            self.context.logger.info(f"Function call sell amount: {token_amount}")
             self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
+
         return True
 
     def _calc_buy_amount(self) -> WaitableConditionType:
