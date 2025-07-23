@@ -110,7 +110,7 @@ class CheckStopTradingRound(VotingRound):
             self.context.logger.info("Position review is disabled")
             return False
 
-        last_review = self.synchronized_data.get_last_review_timestamp()  # type: ignore
+        last_review = self.synchronized_data.last_review_timestamp
 
         if not self.context.params.review_period_seconds:
             self.context.logger.info("Review period is not set")
