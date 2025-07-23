@@ -312,6 +312,8 @@ models:
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
       use_multi_bets_mode: true
+      enable_position_review: false
+      review_period_seconds: 86400
     class_name: DecisionMakerParams
   acc_info_fields:
     args:
