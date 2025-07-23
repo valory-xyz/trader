@@ -94,6 +94,11 @@ class CheckStopTradingRound(VotingRound):
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
     @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(super().synchronized_data.db)
+
+    @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
         return int(
