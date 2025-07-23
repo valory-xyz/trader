@@ -158,7 +158,9 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def previous_vote(self) -> Optional[int]:
         """Get the bet's previous vote index."""
-        previous_vote = self.db.get_strict("previous_vote")  # previous_vote might be set to None, but must always present
+        previous_vote = self.db.get_strict(
+            "previous_vote"
+        )  # previous_vote might be set to None, but must always present
         return int(previous_vote) if previous_vote is not None else None
 
     @property
