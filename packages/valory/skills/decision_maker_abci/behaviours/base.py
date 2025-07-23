@@ -822,7 +822,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             amount_param_value=self.investment_amount,
         )
 
-    def _build_token_tx(self, operation: str) -> WaitableConditionType:
+    def _build_token_tx(self, operation: TradingOperation) -> WaitableConditionType:
         """Get the tx data encoded for buying or selling tokens."""
         params = {
             "performative": ContractApiMessage.Performative.GET_STATE,  # type: ignore
@@ -872,11 +872,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _build_buy_tx(self) -> WaitableConditionType:
         """Get the buy tx data encoded."""
-        return self._build_token_tx("buy")
+        return self._build_token_tx(TradingOperation.BUY)
 
     def _build_sell_tx(self) -> WaitableConditionType:
         """Get the sell tx data encoded."""
-        return self._build_token_tx("sell")
+        return self._build_token_tx(TradingOperation.SELL)
 
     def build_approval_tx(
         self, amount: int, spender: str, token: str
