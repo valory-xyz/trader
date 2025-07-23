@@ -16,14 +16,14 @@
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeigzfyzbixum5cqvcbyc24dqwce25dr6nyqvgjm2eqpt6tgo2perd4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeih3zpdgbhov4rfyqxjbdsvweag2qsoqrptuhs3puugtizqviucsmq",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeibuj6xira7gbfhf33ird5hlgurgozfr3bbrk3galfsr2gk2ha4tb4",
-        "skill/valory/trader_abci/0.1.0": "bafybeigusvlz7p3uwqx3lkp2mtwzpklkkwjvg7w4jzsunq5qah3c3vym7q",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeib4efknd6ptfliyd7tkclmtzpgb7z52cllgpox36jyygwxgmdklpe",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeigucqpjojvgawrhjmw2wrs5cjym4n6ohmmqbhwziihyo75jk4zyxi",
+        "skill/valory/trader_abci/0.1.0": "bafybeialdabt46c45q7lzrpydr6lvi6ylw5gbkd2szz54grf736yv2k6ku",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeie5riixbujuae7uetnjcglxbumc5wzq4wjsmljfdfm2hiqxbk5emi",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeifuubbxv2zwgos726g62ov7y3l4wqwgq3k6fwv3tsxusjrkoloxle",
-        "agent/valory/trader/0.1.0": "bafybeigupqxx6ofkf2krvtzy5u2yhgu67t7qexwzjgt7lcyo54v52linve",
-        "service/valory/trader/0.1.0": "bafybeiaigeoxtywvscfund4vqhlvqlibaac344wnnw5bevl7odltskmree",
-        "service/valory/trader_pearl/0.1.0": "bafybeic7tdt3v443ns5k5nzt2snx47qely7x5ppw7md356fgwkawomlr5i"
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeic36iukbpf5uqmiqva4uhginkbef5f7o2oelt5lejgcs3aib23oym",
+        "agent/valory/trader/0.1.0": "bafybeibeu7qy7vjnmwezpyc3s4s2qt77ogo4sf544upioet6looy4lv6jm",
+        "service/valory/trader/0.1.0": "bafybeifz34aqs2xogtzyyp75flmhzd5pu2xytal5jcximl5r6ystgrd2fi",
+        "service/valory/trader_pearl/0.1.0": "bafybeigmmzz4oacfey26si4pp2xu5x76bm5jmzwypq2mlfletri4oyrfya"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
