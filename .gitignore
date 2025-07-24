@@ -64,3 +64,4 @@ logs/
 data/
 benchmarks/
 .vscode/
+coverage.xml
