@@ -89,9 +89,6 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
 
-
-CHATUI_PARAM_STORE = "chatui_param_store.json"
-
 # Content type constants
 DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
 CONTENT_TYPES = {
