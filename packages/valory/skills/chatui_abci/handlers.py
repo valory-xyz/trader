@@ -80,7 +80,7 @@ class HttpMethod(Enum):
 # from packages.valory.skills.trader_abci.handlers import HttpHandler as BaseHttpHandler
 
 
-ABCIHandler = BaseABCIRoundHandler
+ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
 ContractApiHandler = BaseContractApiHandler
