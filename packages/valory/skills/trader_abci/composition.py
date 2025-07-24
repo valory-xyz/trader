@@ -24,11 +24,15 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
     chain,
 )
 from packages.valory.skills.abstract_round_abci.base import BackgroundAppConfig
+from packages.valory.skills.chatui_abci.rounds import (
+    ChatuiAbciApp,
+    ChatuiLoadRound,
+    FinishedChatuiLoadRound,
+)
 from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
     FinishedCheckStopTradingRound,
-    FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
@@ -105,7 +109,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedRedeemingTxRound,
-    FinishedSellOutcomeTokensTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
     PostTxSettlementRound,
@@ -115,12 +118,12 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    FinishedRegistrationRound: CheckBenchmarkingModeRound,
+    FinishedRegistrationRound: ChatuiLoadRound,
+    FinishedChatuiLoadRound: CheckBenchmarkingModeRound,
     BenchmarkingModeDisabledRound: UpdateBetsRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,
     FinishedWithSkipTradingRound: RedeemRound,
-    FinishedWithReviewBetsRound: RandomnessRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
     ChecksPassedRound: RandomnessTransactionSubmissionRound,
@@ -136,7 +139,6 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechRequestSkipRound: RedeemRound,
     FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
-    FinishedSellOutcomeTokensTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
     FinishedWithoutDecisionRound: RedeemRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,
@@ -159,6 +161,7 @@ termination_config = BackgroundAppConfig(
 TraderAbciApp = chain(
     (
         AgentRegistrationAbciApp,
+        ChatuiAbciApp,
         DecisionMakerAbciApp,
         MarketManagerAbciApp,
         MechInteractAbciApp,

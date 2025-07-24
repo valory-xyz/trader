@@ -18,9 +18,110 @@
 #
 # ------------------------------------------------------------------------------
 
-from typing import Any
+import json
+import os
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Type
 
+from aea.skills.base import SkillContext
+
+from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import BaseParams
+from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
+from packages.valory.skills.market_manager_abci.models import (
+    SharedState as BaseSharedState,
+)
+
+
+CHATUI_PARAM_STORE = "chatui_param_store.json"
+
+
+class SharedState(BaseSharedState):
+    """Keep the current shared state of the skill."""
+
+    abci_app_cls: Type[AbciApp] = ChatuiAbciApp
+
+    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
+        """Initialize the state."""
+        super().__init__(*args, skill_context=skill_context, **kwargs)
+
+        self._chatui_config: Optional["ChatuiConfig"] = None
+
+    @property
+    def chatui_config(self) -> "ChatuiConfig":
+        """Get the chat UI parameters."""
+        self._ensure_chatui_store()
+
+        if self._chatui_config is None:
+            raise ValueError("The chat UI config has not been set!")
+        return self._chatui_config
+
+    def _get_current_json_store(self) -> Dict[str, Any]:
+        """Get the current store."""
+        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
+        try:
+            if os.path.exists(chatui_store_path):
+                with open(chatui_store_path, "r") as f:
+                    current_store: dict = json.load(f)
+            else:
+                current_store = {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            current_store = {}
+        return current_store
+
+    def _set_json_store(self, store: Dict[str, Any]) -> None:
+        """Set the store with the chat UI parameters."""
+        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
+
+        with open(chatui_store_path, "w") as f:
+            json.dump(store, f, indent=4)
+
+    def _ensure_chatui_store(self) -> None:
+        """Ensure that the chat UI store is set up correctly."""
+
+        print(f"!!!! {self._chatui_config=}")
+        if self._chatui_config is not None:
+            return
+
+        current_store = self._get_current_json_store()
+
+        # Trading strategy
+        trading_strategy_yaml = self.context.params.trading_strategy
+
+        trading_strategy_store = current_store.get("trading_strategy", None)
+        initial_trading_strategy_store = current_store.get(
+            "initial_trading_strategy", None
+        )
+
+        if trading_strategy_store is None or not isinstance(
+            trading_strategy_store, str
+        ):
+            current_store["trading_strategy"] = trading_strategy_yaml
+
+        if initial_trading_strategy_store is None or not isinstance(
+            initial_trading_strategy_store, str
+        ):
+            current_store["initial_trading_strategy"] = trading_strategy_yaml
+
+        # This is to ensure that changes made in the YAML file
+        # are reflected in the store.
+        if initial_trading_strategy_store != trading_strategy_yaml:
+            # update the store with the YAML value
+            current_store["trading_strategy"] = trading_strategy_yaml
+            current_store["initial_trading_strategy"] = trading_strategy_yaml
+
+        self._set_json_store(current_store)
+
+        self._chatui_config = ChatuiConfig(**current_store)
+
+
+@dataclass
+class ChatuiConfig:
+    """Parameters for the chat UI."""
+
+    trading_strategy: str
+    initial_trading_strategy: str
+    mech_tool: Optional[str] = None
 
 
 class ChatuiParams(BaseParams):

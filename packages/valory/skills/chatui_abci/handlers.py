@@ -62,6 +62,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
+from packages.valory.skills.chatui_abci.models import SharedState
 from packages.valory.skills.chatui_abci.prompts import (
     AUTOMATIC_SELECTION_VALUE,
     CHATUI_PROMPT,
@@ -156,6 +157,11 @@ class HttpHandler(BaseHttpHandler):
                 (chatui_prompt_url, self._handle_chatui_prompt),
             ],
         }
+
+    @property
+    def shared_state(self) -> SharedState:
+        """Return the shared state."""
+        return cast(SharedState, self.context.state)
 
     def _send_http_response(
         self,
@@ -333,7 +339,7 @@ class HttpHandler(BaseHttpHandler):
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
-        current_trading_strategy = self.context.state.chat_ui_params.trading_strategy
+        current_trading_strategy = self.shared_state.chatui_config.trading_strategy
 
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
@@ -523,22 +529,20 @@ class HttpHandler(BaseHttpHandler):
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""
 
-        current_store: dict = self.context.state._get_current_json_store()
-
+        current_store: dict = self.shared_state._get_current_json_store()
         current_store.update({param_name: value})
-
-        self.context.state._set_json_store(current_store)
+        self.shared_state._set_json_store(current_store)
 
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""
-        self.context.state.chat_ui_params.trading_strategy = trading_strategy
+        self.shared_state.chatui_config.trading_strategy = trading_strategy
         self._store_chatui_param_to_json(
             CHATUI_TRADING_STRATEGY_FIELD, trading_strategy
         )
 
     def _store_selected_tool(self, selected_tool: Optional[str] = None) -> None:
         """Store the selected tool."""
-        self.context.state.chat_ui_params.mech_tool = selected_tool
+        self.shared_state.chatui_config.mech_tool = selected_tool
         self._store_chatui_param_to_json(CHATUI_MECH_TOOL_FIELD, selected_tool)
 
 
