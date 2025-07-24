@@ -54,6 +54,8 @@ alphabet_in:
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
+- FinishedSellOutcomeTokensTxRound
+- FinishedWithReviewBetsRound
 - ImpossibleRound
 - ServiceEvictedRound
 label: TraderAbciApp
@@ -65,6 +67,7 @@ states:
 - BetPlacementRound
 - BlacklistingRound
 - CallCheckpointRound
+- ChatuiLoadRound
 - CheckBenchmarkingModeRound
 - CheckLateTxHashesRound
 - CheckStopTradingRound
@@ -75,6 +78,8 @@ states:
 - DecisionRequestRound
 - FailedMultiplexerRound
 - FinalizationRound
+- FinishedSellOutcomeTokensTxRound
+- FinishedWithReviewBetsRound
 - HandleFailedTxRound
 - ImpossibleRound
 - MechRequestRound
@@ -123,6 +128,10 @@ transition_func:
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
+    (ChatuiLoadRound, DONE): CheckBenchmarkingModeRound
+    (ChatuiLoadRound, NONE): ChatuiLoadRound
+    (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
+    (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, DONE): ImpossibleRound
@@ -139,7 +148,7 @@ transition_func:
     (CheckStopTradingRound, DONE): RandomnessRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
-    (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
+    (CheckStopTradingRound, REVIEW_BETS): FinishedWithReviewBetsRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
     (CheckStopTradingRound, SKIP_TRADING): RedeemRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
@@ -187,7 +196,7 @@ transition_func:
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): FinishedSellOutcomeTokensTxRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
@@ -209,9 +218,9 @@ transition_func:
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
-    (RegistrationRound, DONE): CheckBenchmarkingModeRound
+    (RegistrationRound, DONE): ChatuiLoadRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
-    (RegistrationStartupRound, DONE): CheckBenchmarkingModeRound
+    (RegistrationStartupRound, DONE): ChatuiLoadRound
     (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
     (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
     (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
