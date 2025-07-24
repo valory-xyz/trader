@@ -26,7 +26,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
@@ -123,6 +123,11 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             tx_hex = yield from self._prepare_safe_tx()
             self.context.logger.info("Finished preparing the safe transaction")
 
-            payload = MultisigTxPayload(agent, tx_submitter, tx_hex, mocking_mode)
+            if not self.synchronized_data.vote:
+                raise ValueError("Vote is not set")
+
+            opposite_vote = self.sampled_bet.opposite_vote(self.synchronized_data.vote)
+
+            payload = SellOutcomeTokensPayload(agent, tx_submitter, tx_hex, mocking_mode, opposite_vote)
 
         yield from self.finish_behaviour(payload)

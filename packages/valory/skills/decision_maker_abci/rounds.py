@@ -341,10 +341,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         ImpossibleRound: {},
         BenchmarkingDoneRound: {},
         SellOutcomeTokensRound: {
-            Event.DONE: FinishedDecisionMakerRound,
+            Event.DONE: BetPlacementRound,
             # skip the bet placement tx
             Event.CALC_SELL_AMOUNT_FAILED: HandleFailedTxRound,
-            Event.MOCK_TX: RedeemRound,
+            Event.MOCK_TX: BetPlacementRound,
             Event.NO_MAJORITY: SellOutcomeTokensRound,
             Event.ROUND_TIMEOUT: SellOutcomeTokensRound,
             # this is here because of `autonomy analyse fsm-specs` falsely
