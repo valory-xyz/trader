@@ -8,7 +8,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeieurzzbegcyxvw3hnecicsjlyubdezythemvrqnw2stp3illaaqpy
   dialogues.py: bafybeibx2cn2rayw5svbqqd5sai4czbxxbf4eul6kz6iyyzao4jyf5tdky
-  handlers.py: bafybeiaynpsyfm5yakuh2m2gmgqgktl4jq6nmhbtgslpzyypkbv43tj4y4
+  handlers.py: bafybeibt4gasvnnkovtdp2rgank5ff7aqrbhfvbld633um3zumttpokfia
   models.py: bafybeidaytofkywjta67mc35yct6gppujg54wntywgaliq3xx6zrhbbhgi
   prompts.py: bafybeicohzwtnsijfw5j6fnxty3uyq33qmenqpcp34rga7q4vnuvwv6jjm
 fingerprint_ignore_patterns: []
@@ -21,6 +21,24 @@ contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 handlers:
+  abci:
+    args: {}
+    class_name: ChatuiABCIHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
   http:
     args: {}
     class_name: HttpHandler
