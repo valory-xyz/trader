@@ -65,3 +65,4 @@ data/
 benchmarks/
 .vscode/
 coverage.xml
+.hypothesis/
