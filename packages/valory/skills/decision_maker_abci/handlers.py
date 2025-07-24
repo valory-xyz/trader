@@ -42,9 +42,6 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
-    HttpHandler as BaseHttpHandler,
-)
-from packages.valory.skills.abstract_round_abci.handlers import (
     LedgerApiHandler as BaseLedgerApiHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -53,6 +50,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.chatui_abci.handlers import HttpHandler as BaseHttpHandler
 from packages.valory.skills.decision_maker_abci.dialogues import (
     HttpDialogue,
     HttpDialogues,
@@ -135,6 +133,7 @@ class HttpHandler(BaseHttpHandler):
 
     def setup(self) -> None:
         """Implement the setup."""
+        super().setup()
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -152,6 +151,7 @@ class HttpHandler(BaseHttpHandler):
 
         # Routes
         self.routes = {
+            **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 (health_url_regex, self._handle_get_health),
             ],

@@ -15,7 +15,7 @@ connections:
 - valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
 - valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
-- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
+- dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeidfvyc6bw4uigv3jfcxr23vysctki6x5rh5htp2azhncib27ydxdm
@@ -55,13 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeids6glz3hkpzc5kdbsggwxye5eqehut2rte3we3vdzpfzzgttv56q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiab7qomfkdvmitwexmbgjsz3dbkspgzi2faq2labvdfhy5y2n22fy
 - valory/market_manager_abci:0.1.0:bafybeigzldcghoxbg73e53ha2v3cayshswrrgeg4bqpcwd6al237v2ssle
-- valory/decision_maker_abci:0.1.0:bafybeicvwjlj7bgigywd2q2r4sjler6yaqbzuevf6a6xmbk7ap4pxgjsru
-- valory/trader_abci:0.1.0:bafybeigpletjkl7xwpxztqgk627uxfsabq77bki2dwwrko6z52kwepqdlm
+- valory/decision_maker_abci:0.1.0:bafybeifayhkdculliqmrfb7eswdquzpo5tnw52sjqy26zh4ms7pzjopzcy
+- valory/trader_abci:0.1.0:bafybeidwxtiwqavlmte64ksft7lercy7voyyj3i5eoxagz4a24e4y6wise
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeignl5w4o4ghcpan7nsor5elvuid4si7t4rnfqga47bwvlgp22xwsa
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
+- valory/chatui_abci:0.1.0:bafybeicrnwloljuvqkj6esgkdim5c2holdoyjk3fenvhzmdyas4r6z36yy
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
