@@ -62,7 +62,7 @@ skills:
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeignl5w4o4ghcpan7nsor5elvuid4si7t4rnfqga47bwvlgp22xwsa
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
-- valory/chatui_abci:0.1.0:bafybeielfqzdrsbogofja7vmttxnahsao33ihhdx32jnw47xzc5uuzm3im
+- valory/chatui_abci:0.1.0:bafybeigstoa636yeqekwbg5ggvcjsuwhpec2u5epqvai6k33cwnvj3yqoa
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
