@@ -1,0 +1,40 @@
+name: chatui_abci
+version: 0.1.0
+description: Chat UI skill for Valory agents
+author: valory
+type: skill
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeieurzzbegcyxvw3hnecicsjlyubdezythemvrqnw2stp3illaaqpy
+  dialogues.py: bafybeibx2cn2rayw5svbqqd5sai4czbxxbf4eul6kz6iyyzao4jyf5tdky
+  handlers.py: bafybeiaynpsyfm5yakuh2m2gmgqgktl4jq6nmhbtgslpzyypkbv43tj4y4
+  models.py: bafybeidaytofkywjta67mc35yct6gppujg54wntywgaliq3xx6zrhbbhgi
+  prompts.py: bafybeicohzwtnsijfw5j6fnxty3uyq33qmenqpcp34rga7q4vnuvwv6jjm
+fingerprint_ignore_patterns: []
+connections:
+- dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
+protocols:
+- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
+contracts: []
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
+handlers:
+  http:
+    args: {}
+    class_name: HttpHandler
+  srr:
+    args: {}
+    class_name: SrrHandler
+behaviours: {}
+models:
+  params:
+    args:
+      service_endpoint: trader.staging.autonolas.tech/
+    class_name: ChatUIParams
+  srr_dialogues:
+    args: {}
+    class_name: SrrDialogues
+dependencies: {}
+is_abstract: true
