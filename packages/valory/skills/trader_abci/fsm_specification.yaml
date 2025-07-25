@@ -54,8 +54,6 @@ alphabet_in:
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
-- FinishedSellOutcomeTokensTxRound
-- FinishedWithReviewBetsRound
 - ImpossibleRound
 - ServiceEvictedRound
 label: TraderAbciApp
@@ -78,8 +76,6 @@ states:
 - DecisionRequestRound
 - FailedMultiplexerRound
 - FinalizationRound
-- FinishedSellOutcomeTokensTxRound
-- FinishedWithReviewBetsRound
 - HandleFailedTxRound
 - ImpossibleRound
 - MechRequestRound
@@ -148,7 +144,7 @@ transition_func:
     (CheckStopTradingRound, DONE): RandomnessRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
-    (CheckStopTradingRound, REVIEW_BETS): FinishedWithReviewBetsRound
+    (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
     (CheckStopTradingRound, SKIP_TRADING): RedeemRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
@@ -196,7 +192,7 @@ transition_func:
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): FinishedSellOutcomeTokensTxRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
