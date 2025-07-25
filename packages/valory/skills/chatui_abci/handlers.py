@@ -35,10 +35,6 @@ from packages.dvilela.connections.genai.connection import (
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.srr.dialogues import SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
-
-# from packages.valory.skills.decision_maker_abci.handlers import (
-#     HttpHandler as BaseHttpHandler,
-# )
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
@@ -76,9 +72,6 @@ class HttpMethod(Enum):
     GET = "get"
     HEAD = "head"
     POST = "post"
-
-
-# from packages.valory.skills.trader_abci.handlers import HttpHandler as BaseHttpHandler
 
 
 ChatuiABCIHandler = BaseABCIRoundHandler
