@@ -65,7 +65,13 @@ class SharedState(BaseSharedState):
                     current_store: dict = json.load(f)
             else:
                 current_store = {}
-        except (FileNotFoundError, json.JSONDecodeError):
+        except FileNotFoundError:
+            self.context.logger.error(f"JSON store {chatui_store_path} does not exist.")
+            current_store = {}
+        except json.JSONDecodeError:
+            self.context.logger.error(
+                f"{f.read()} is not a valid JSON file. Resetting the store."
+            )
             current_store = {}
         return current_store
 
@@ -79,7 +85,6 @@ class SharedState(BaseSharedState):
     def _ensure_chatui_store(self) -> None:
         """Ensure that the chat UI store is set up correctly."""
 
-        print(f"!!!! {self._chatui_config=}")
         if self._chatui_config is not None:
             return
 

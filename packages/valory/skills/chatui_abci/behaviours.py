@@ -19,25 +19,6 @@
 # ------------------------------------------------------------------------------
 
 
-# -*- coding: utf-8 -*-
-# ------------------------------------------------------------------------------
-#
-#   Copyright 2024 David Vilela Freire
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-#
-# ------------------------------------------------------------------------------
-
 """This package contains round behaviours of ChatUIAbciApp."""
 
 from typing import Any, Generator, Set, Type, cast
@@ -52,7 +33,7 @@ from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp, ChatuiLoadR
 
 
 class ChatuiLoadBehaviour(BaseBehaviour):
-    """todo: docstring"""
+    """This behaviour loads the chat UI parameters into shared state and a JSON file."""
 
     matching_round = ChatuiLoadRound
 
@@ -77,7 +58,9 @@ class ChatuiLoadBehaviour(BaseBehaviour):
             self.shared_state._ensure_chatui_store()
             if self.shared_state._chatui_config is None:
                 raise ValueError("The chat UI config has not been set!")
-            self.context.logger.info("ChatUI parameters loaded")
+            self.context.logger.info(
+                f"Loaded chat UI parameters: {self.shared_state._chatui_config}"
+            )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)
@@ -86,7 +69,7 @@ class ChatuiLoadBehaviour(BaseBehaviour):
 
 
 class ChatuiRoundBehaviour(AbstractRoundBehaviour):
-    """todo: docstring"""
+    """This behaviour manages the consensus stages for the ChatUI behaviour."""
 
     initial_behaviour_cls = ChatuiLoadBehaviour
     abci_app_cls = ChatuiAbciApp
