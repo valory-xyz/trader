@@ -84,15 +84,28 @@ IpfsHandler = BaseIpfsHandler
 
 
 # Content type constants
-DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
-CONTENT_TYPES = {
-    ".js": "Content-Type: application/javascript\n",
-    ".html": HTML_HEADER,
-    ".json": "Content-Type: application/json\n",
-    ".css": "Content-Type: text/css\n",
-    ".png": "Content-Type: image/png\n",
-    ".jpg": "Content-Type: image/jpeg\n",
-    ".jpeg": "Content-Type: image/jpeg\n",
+class HttpContentType(Enum):
+    """Enum for HTTP content types."""
+
+    HTML = "Content-Type: text/html\n"
+    JS = "Content-Type: application/javascript\n"
+    JSON = "Content-Type: application/json\n"
+    CSS = "Content-Type: text/css\n"
+    PNG = "Content-Type: image/png\n"
+    JPG = "Content-Type: image/jpeg\n"
+    JPEG = "Content-Type: image/jpeg\n"
+
+
+DEFAULT_HEADER = HttpContentType.HTML.value
+
+HTTP_CONTENT_TYPE_MAP = {
+    ".js": HttpContentType.JS.value,
+    ".html": HttpContentType.HTML.value,
+    ".json": HttpContentType.JSON.value,
+    ".css": HttpContentType.CSS.value,
+    ".png": HttpContentType.PNG.value,
+    ".jpg": HttpContentType.JPG.value,
+    ".jpeg": HttpContentType.JPEG.value,
 }
 
 
@@ -165,7 +178,9 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Generic method to send HTTP responses."""
         headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+            HttpContentType.JSON.value
+            if isinstance(data, (dict, list))
+            else DEFAULT_HEADER
         )
         headers += http_msg.headers
 
@@ -229,7 +244,9 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Handle a Http internal server error response."""
         headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
+            HttpContentType.JSON.value
+            if isinstance(data, (dict, list))
+            else DEFAULT_HEADER
         )
         headers += http_msg.headers
 
@@ -323,7 +340,7 @@ class HttpHandler(BaseHttpHandler):
                 http_msg,
                 http_dialogue,
                 {"error": "User prompt is required."},
-                content_type=CONTENT_TYPES[".json"],
+                content_type=HttpContentType.JSON.value,
             )
             return
 
@@ -385,7 +402,7 @@ class HttpHandler(BaseHttpHandler):
                 {
                     "error": "Skill not started yet or data not available. Please try again later."
                 },
-                content_type=CONTENT_TYPES[".json"],
+                content_type=HttpContentType.JSON.value,
             )
             return None
 
@@ -499,7 +516,7 @@ class HttpHandler(BaseHttpHandler):
                 http_msg,
                 http_dialogue,
                 {"error": "No GENAI_API_KEY set."},
-                content_type=CONTENT_TYPES[".json"],
+                content_type=HttpContentType.JSON.value,
             )
             return
         if "429" in error_message:
@@ -507,14 +524,14 @@ class HttpHandler(BaseHttpHandler):
                 http_msg,
                 http_dialogue,
                 {"error": "Too many requests to the LLM."},
-                content_type=CONTENT_TYPES[".json"],
+                content_type=HttpContentType.JSON.value,
             )
             return
         self._send_internal_server_error_response(
             http_msg,
             http_dialogue,
             {"error": "An error occurred while processing the request."},
-            content_type=CONTENT_TYPES[".json"],
+            content_type=HttpContentType.JSON.value,
         )
 
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
