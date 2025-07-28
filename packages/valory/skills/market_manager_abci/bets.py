@@ -317,12 +317,12 @@ class Bet:
 
         return self.add_investment_amount(vote, amount)
 
-    def reset_investment_amount(self, vote) -> bool:
+    def reset_investment_amount(self, vote: int) -> bool:
         """Reset the investment amount for the current vote type."""
         self.set_investment_amount(vote, 0)
         return True
 
-    def add_investment_amount(self, vote, amount: int) -> bool:
+    def add_investment_amount(self, vote: int, amount: int) -> bool:
         """Add an investment amount for the current vote type."""
         self.append_investment_amount(vote, amount)
         return True
