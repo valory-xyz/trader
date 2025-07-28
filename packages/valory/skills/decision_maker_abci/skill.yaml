@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeieegujcbs2dd7l7mwpcqe2p7kjvps3ak5emad66u7pddczdsnmwcy
+  behaviours/base.py: bafybeicyls2t4rr4ci4zsoqc3ytqzw5n4hnsmygz2lbz43vsjwl2xkyogi
   behaviours/bet_placement.py: bafybeif5ukiina5btu5vio2pb3hq22izwopjecpzhear4ouijacynf4dta
   behaviours/blacklisting.py: bafybeieuqoup2vrmrtvjfqnr5mzrvkegc7afb2oeujzq2itsbhcsham2se
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -107,7 +107,7 @@ protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/market_manager_abci:0.1.0:bafybeigzldcghoxbg73e53ha2v3cayshswrrgeg4bqpcwd6al237v2ssle
+- valory/market_manager_abci:0.1.0:bafybeih2djcwcbtmkm36weyoofe4vylx4jn6rsqcecwdb755hd3rqjhhoy
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m

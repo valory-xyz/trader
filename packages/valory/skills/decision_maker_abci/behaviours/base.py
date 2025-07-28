@@ -387,6 +387,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         # Update Queue number for priority logic
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
+        # Resetting invested amount for the sampled bet
         updated = sampled_bet.update_investments(0)
         if not updated:
             self.context.logger.error("Could not update the investments!")
