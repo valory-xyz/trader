@@ -371,7 +371,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
         # Update the bet's invested amount
-        updated = sampled_bet.update_investments(self.synchronized_data.bet_amount)
+        updated = sampled_bet.add_investment_amount(self.synchronized_data.bet_amount)
         if not updated:
             self.context.logger.error("Could not update the investments!")
 
@@ -388,7 +388,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
         # Resetting invested amount for the sampled bet
-        updated = sampled_bet.update_investments(0)
+        updated = sampled_bet.reset_investment_amount()
         if not updated:
             self.context.logger.error("Could not update the investments!")
 
