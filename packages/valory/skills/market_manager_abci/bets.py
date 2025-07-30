@@ -305,17 +305,19 @@ class Bet:
         vote_name = self.get_outcome(vote)
         self.investments[vote_name] = [amount]
 
-    def update_investments(self, amount: int) -> bool:
-        """Get the investments for the current vote type."""
+    def reset_investment_amount(self) -> bool:
+        """Reset the investment amount for the current vote type."""
         vote = self.prediction_response.vote
         if vote is None:
             return False
+        self.set_investment_amount(vote, 0)
+        return True
 
-        # method to reset the investment amount for a vote
-        if amount == 0:
-            self.set_investment_amount(vote, 0)
-            return True
-
+    def add_investment_amount(self, amount: int) -> bool:
+        """Add an investment amount for the current vote type."""
+        vote = self.prediction_response.vote
+        if vote is None:
+            return False
         self.append_investment_amount(vote, amount)
         return True
 

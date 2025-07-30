@@ -542,7 +542,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             f"with the timestamp:{datetime.fromtimestamp(active_sampled_bet.processed_timestamp)}"
         )
 
-        active_sampled_bet.update_investments(active_sampled_bet.invested_amount)
+        active_sampled_bet.add_investment_amount(active_sampled_bet.invested_amount)
 
         self.store_bets()
 
