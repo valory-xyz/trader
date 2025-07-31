@@ -120,6 +120,8 @@ CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
 CHATUI_RESPONSE_ISSUES_FIELD = "issues"
 CHATUI_MECH_TOOL_FIELD = "mech_tool"
 CHATUI_REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
+CHATUI_GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
+CHATUI_GENAI_RATE_LIMIT_ERROR = "429"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -155,9 +157,6 @@ class HttpHandler(BaseHttpHandler):
 
         self.routes = {
             **self.routes,  # persisting routes from base class
-            # (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-            #     *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or [])
-            # ],
             (HttpMethod.POST.value,): [
                 (chatui_prompt_url, self._handle_chatui_prompt),
             ],
@@ -518,7 +517,7 @@ class HttpHandler(BaseHttpHandler):
         self, error_message: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         self.context.logger.error(f"LLM error response: {error_message}")
-        if "No API_KEY or ADC found." in error_message:
+        if CHATUI_GENAI_API_KEY_NOT_SET_ERROR in error_message:
             self._send_internal_server_error_response(
                 http_msg,
                 http_dialogue,
@@ -526,7 +525,7 @@ class HttpHandler(BaseHttpHandler):
                 content_type=HttpContentType.JSON.value,
             )
             return
-        if "429" in error_message:
+        if CHATUI_GENAI_RATE_LIMIT_ERROR in error_message:
             self._send_too_many_requests_response(
                 http_msg,
                 http_dialogue,
