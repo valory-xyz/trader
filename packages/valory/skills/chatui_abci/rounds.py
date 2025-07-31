@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type
+from typing import Dict, Set, Type
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -29,10 +29,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     AppState,
     BaseSynchronizedData,
-    CollectSameUntilThresholdRound,
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
+    VotingRound,
     get_name,
 )
 from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
@@ -59,7 +59,7 @@ class SynchronizedData(BaseSynchronizedData):
         return CollectionRound.deserialize_collection(serialized)
 
 
-class ChatuiLoadRound(CollectSameUntilThresholdRound):
+class ChatuiLoadRound(VotingRound):
     """A round for loading ChatUI config."""
 
     payload_class = ChatuiPayload
@@ -69,20 +69,6 @@ class ChatuiLoadRound(CollectSameUntilThresholdRound):
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
-    selection_key = get_name(SynchronizedData.most_voted_keeper_address)
-
-    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
-        """Process the end of the block."""
-        if self.threshold_reached:
-            synchronized_data = self.synchronized_data
-            return synchronized_data, Event.DONE
-
-        if not self.is_majority_possible(
-            self.collection, self.synchronized_data.nb_participants
-        ):
-            return self.synchronized_data, Event.NO_MAJORITY
-
-        return None
 
 
 class FinishedChatuiLoadRound(DegenerateRound, ABC):

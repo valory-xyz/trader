@@ -27,3 +27,5 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 @dataclass(frozen=True)
 class ChatuiPayload(BaseTxPayload):
     """A transaction payload for the chat ui abci."""
+
+    vote: bool

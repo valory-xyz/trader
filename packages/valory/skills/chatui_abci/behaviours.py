@@ -50,7 +50,7 @@ class ChatuiLoadBehaviour(BaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            payload = ChatuiPayload(sender=self.context.agent_address)
+            payload = ChatuiPayload(sender=self.context.agent_address, vote=True)
             self.shared_state._ensure_chatui_store()
             if self.shared_state._chatui_config is None:
                 raise ValueError("The chat UI config has not been set!")
