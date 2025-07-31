@@ -120,31 +120,31 @@ class TestHttpHandler:
         """Test _get_content_type method."""
         # Test known extensions
         assert (
-            self.handler._get_content_type(Path("test.js")) == HttpContentType.JS.value
+            self.handler._get_content_type(Path("test.js")) == HttpContentType.JS.header
         )
         assert (
             self.handler._get_content_type(Path("test.html"))
-            == HttpContentType.HTML.value
+            == HttpContentType.HTML.header
         )
         assert (
             self.handler._get_content_type(Path("test.json"))
-            == HttpContentType.JSON.value
+            == HttpContentType.JSON.header
         )
         assert (
             self.handler._get_content_type(Path("test.css"))
-            == HttpContentType.CSS.value
+            == HttpContentType.CSS.header
         )
         assert (
             self.handler._get_content_type(Path("test.png"))
-            == HttpContentType.PNG.value
+            == HttpContentType.PNG.header
         )
         assert (
             self.handler._get_content_type(Path("test.jpg"))
-            == HttpContentType.JPG.value
+            == HttpContentType.JPG.header
         )
         assert (
             self.handler._get_content_type(Path("test.jpeg"))
-            == HttpContentType.JPEG.value
+            == HttpContentType.JPEG.header
         )
 
         # Test unknown extension
@@ -323,7 +323,7 @@ class TestHttpHandler:
             version=http_msg.version,
             status_code=200,
             status_text="Success",
-            headers=f"{HttpContentType.JSON.value}{http_msg.headers}",
+            headers=f"{HttpContentType.JSON.header}{http_msg.headers}",
             body=json.dumps(data).encode("utf-8"),
         )
 
