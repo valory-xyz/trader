@@ -21,7 +21,7 @@
 
 """This package contains round behaviours of ChatUIAbciApp."""
 
-from typing import Any, Generator, Set, Type, cast
+from typing import Generator, Set, Type, cast
 
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
@@ -36,10 +36,6 @@ class ChatuiLoadBehaviour(BaseBehaviour):
     """This behaviour loads the chat UI parameters into shared state and a JSON file."""
 
     matching_round = ChatuiLoadRound
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the behaviour."""
-        super().__init__(**kwargs)
 
     @property
     def params(self) -> ChatuiParams:
