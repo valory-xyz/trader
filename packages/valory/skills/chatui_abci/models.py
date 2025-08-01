@@ -36,6 +36,15 @@ from packages.valory.skills.market_manager_abci.models import (
 CHATUI_PARAM_STORE = "chatui_param_store.json"
 
 
+@dataclass
+class ChatuiConfig:
+    """Parameters for the chat UI."""
+
+    trading_strategy: str
+    initial_trading_strategy: str
+    mech_tool: Optional[str] = None
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -45,10 +54,10 @@ class SharedState(BaseSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
 
-        self._chatui_config: Optional["ChatuiConfig"] = None
+        self._chatui_config: Optional[ChatuiConfig] = None
 
     @property
-    def chatui_config(self) -> "ChatuiConfig":
+    def chatui_config(self) -> ChatuiConfig:
         """Get the chat UI parameters."""
         self._ensure_chatui_store()
 
@@ -116,15 +125,6 @@ class SharedState(BaseSharedState):
         self._set_json_store(current_store)
 
         self._chatui_config = ChatuiConfig(**current_store)
-
-
-@dataclass
-class ChatuiConfig:
-    """Parameters for the chat UI."""
-
-    trading_strategy: str
-    initial_trading_strategy: str
-    mech_tool: Optional[str] = None
 
 
 class ChatuiParams(BaseParams):
