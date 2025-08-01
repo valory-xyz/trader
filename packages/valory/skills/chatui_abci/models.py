@@ -27,10 +27,10 @@ from aea.skills.base import SkillContext
 
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import BaseParams
-from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
-from packages.valory.skills.market_manager_abci.models import (
+from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
 
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
