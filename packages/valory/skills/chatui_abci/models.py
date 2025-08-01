@@ -58,22 +58,20 @@ class SharedState(BaseSharedState):
 
     def _get_current_json_store(self) -> Dict[str, Any]:
         """Get the current store."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-        try:
-            if os.path.exists(chatui_store_path):
-                with open(chatui_store_path, "r") as f:
-                    current_store: dict = json.load(f)
-            else:
-                current_store = {}
-        except FileNotFoundError:
-            self.context.logger.error(f"JSON store {chatui_store_path} does not exist.")
-            current_store = {}
-        except json.JSONDecodeError:
+        chatui_store_path: os.path = self.context.params.store_path / CHATUI_PARAM_STORE
+        if not chatui_store_path.exists():
             self.context.logger.error(
-                f"{f.read()} is not a valid JSON file. Resetting the store."
+                f"ChatUI JSON store {chatui_store_path!r} does not exist."
             )
-            current_store = {}
-        return current_store
+            return {}
+        with open(chatui_store_path, "r") as store_file:
+            try:
+                return json.load(store_file)
+            except json.JSONDecodeError:
+                self.context.logger.error(
+                    f"{store_file.read()} is not a valid JSON file. Resetting the store."
+                )
+            return {}
 
     def _set_json_store(self, store: Dict[str, Any]) -> None:
         """Set the store with the chat UI parameters."""
