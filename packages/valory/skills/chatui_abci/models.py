@@ -35,6 +35,10 @@ from packages.valory.skills.market_manager_abci.models import (
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
 
+FILE_WRITE_MODE = "w"
+FILE_READ_MODE = "r"
+JSON_FILE_INDENT_LEVEL = 4
+
 
 @dataclass
 class ChatuiConfig:
@@ -73,7 +77,7 @@ class SharedState(BaseSharedState):
                 f"ChatUI JSON store {chatui_store_path!r} does not exist."
             )
             return {}
-        with open(chatui_store_path, "r") as store_file:
+        with open(chatui_store_path, FILE_READ_MODE) as store_file:
             try:
                 return json.load(store_file)
             except json.JSONDecodeError:
@@ -86,8 +90,8 @@ class SharedState(BaseSharedState):
         """Set the store with the chat UI parameters."""
         chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
 
-        with open(chatui_store_path, "w") as f:
-            json.dump(store, f, indent=4)
+        with open(chatui_store_path, FILE_WRITE_MODE) as f:
+            json.dump(store, f, indent=JSON_FILE_INDENT_LEVEL)
 
     def _ensure_chatui_store(self) -> None:
         """Ensure that the chat UI store is set up correctly."""
