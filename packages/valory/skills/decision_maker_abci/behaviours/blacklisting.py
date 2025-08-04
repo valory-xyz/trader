@@ -66,13 +66,12 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
             yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            if not self.policy:
-                success = yield from self._setup_policy_and_tools()
-                if not success:
-                    self.context.logger.info(
-                        "Tool selection failed, skipping blacklisting"
-                    )
-                    return
+            success = yield from self._setup_policy_and_tools()
+            if not success:
+                self.context.logger.info(
+                    "Tool selection failed, skipping blacklisting"
+                )
+                return
 
             self.read_bets()
             self._blacklist()
