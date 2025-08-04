@@ -819,7 +819,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             "performative": ContractApiMessage.Performative.GET_STATE,  # type: ignore
             "contract_address": self.market_maker_contract_address,
             "contract_id": str(FixedProductMarketMakerContract.contract_id),
-            "contract_callable": f"get_{operation}_data",
+            "contract_callable": f"get_{operation.value}_data",
             "outcome_index": self.outcome_index,
             "chain_id": self.params.mech_chain_id,
         }
