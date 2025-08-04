@@ -114,18 +114,18 @@ HTTP_CONTENT_TYPE_MAP = {
 
 
 # ChatUI constants
-CHATUI_PROMPT_FIELD = "prompt"
-CHATUI_RESPONSE_FIELD = "response"
-CHATUI_MESSAGE_FIELD = "message"
-CHATUI_UPDATED_CONFIG_FIELD = "updated_agent_config"
-CHATUI_UPDATED_PARAMS_FIELD = "updated_params"
-CHATUI_LLM_MESSAGE_FIELD = "llm_message"
-CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
-CHATUI_RESPONSE_ISSUES_FIELD = "issues"
-CHATUI_MECH_TOOL_FIELD = "mech_tool"
-CHATUI_REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
-CHATUI_GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
-CHATUI_GENAI_RATE_LIMIT_ERROR = "429"
+PROMPT_FIELD = "prompt"
+RESPONSE_FIELD = "response"
+MESSAGE_FIELD = "message"
+UPDATED_CONFIG_FIELD = "updated_agent_config"
+UPDATED_PARAMS_FIELD = "updated_params"
+LLM_MESSAGE_FIELD = "llm_message"
+TRADING_STRATEGY_FIELD = "trading_strategy"
+RESPONSE_ISSUES_FIELD = "issues"
+MECH_TOOL_FIELD = "mech_tool"
+REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
+GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
+GENAI_RATE_LIMIT_ERROR = "429"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -337,7 +337,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Handling chatui prompt")
         # Parse incoming data
         data = json.loads(http_msg.body.decode("utf-8"))
-        user_prompt = data.get(CHATUI_PROMPT_FIELD, "")
+        user_prompt = data.get(PROMPT_FIELD, "")
 
         if not user_prompt:
             self._send_bad_request_response(
@@ -437,11 +437,11 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        llm_response = genai_response.get(CHATUI_RESPONSE_FIELD, "{}")
+        llm_response = genai_response.get(RESPONSE_FIELD, "{}")
         llm_response_json = json.loads(llm_response)
 
-        llm_message = llm_response_json.get(CHATUI_MESSAGE_FIELD, "")
-        updated_agent_config = llm_response_json.get(CHATUI_UPDATED_CONFIG_FIELD, {})
+        llm_message = llm_response_json.get(MESSAGE_FIELD, "")
+        updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})
 
         if not updated_agent_config:
             self.context.logger.warning(
@@ -451,8 +451,8 @@ class HttpHandler(BaseHttpHandler):
                 http_msg,
                 http_dialogue,
                 {
-                    CHATUI_UPDATED_PARAMS_FIELD: {},
-                    CHATUI_LLM_MESSAGE_FIELD: llm_message,
+                    UPDATED_PARAMS_FIELD: {},
+                    LLM_MESSAGE_FIELD: llm_message,
                 },
             )
             return
@@ -465,9 +465,9 @@ class HttpHandler(BaseHttpHandler):
             http_msg,
             http_dialogue,
             {
-                CHATUI_UPDATED_PARAMS_FIELD: updated_params,
-                CHATUI_LLM_MESSAGE_FIELD: llm_message,
-                CHATUI_RESPONSE_ISSUES_FIELD: issues,
+                UPDATED_PARAMS_FIELD: updated_params,
+                LLM_MESSAGE_FIELD: llm_message,
+                RESPONSE_ISSUES_FIELD: issues,
             },
         )
 
@@ -482,7 +482,7 @@ class HttpHandler(BaseHttpHandler):
         issues: List[str] = []
 
         updated_trading_strategy: Optional[str] = updated_agent_config.get(
-            CHATUI_TRADING_STRATEGY_FIELD, None
+            TRADING_STRATEGY_FIELD, None
         )
         if updated_trading_strategy:
             if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
@@ -496,20 +496,20 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
 
         updated_mech_tool: Optional[str] = updated_agent_config.get(
-            CHATUI_MECH_TOOL_FIELD, None
+            MECH_TOOL_FIELD, None
         )
         mech_tool_is_removed: bool = (
             FieldsThatCanBeRemoved.MECH_TOOL.value
-            in updated_agent_config.get(CHATUI_REMOVED_CONFIG_FIELDS_FIELD, [])
+            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
         )
 
         if mech_tool_is_removed:
-            updated_params.update({CHATUI_MECH_TOOL_FIELD: None})
+            updated_params.update({MECH_TOOL_FIELD: None})
             self._store_selected_tool(None)
 
         elif updated_mech_tool:
             if updated_mech_tool in self.synchronized_data.available_mech_tools:
-                updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
+                updated_params.update({MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
             else:
                 self.context.logger.error(f"Unsupported mech tool: {updated_mech_tool}")
@@ -521,7 +521,7 @@ class HttpHandler(BaseHttpHandler):
         self, error_message: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         self.context.logger.error(f"LLM error response: {error_message}")
-        if CHATUI_GENAI_API_KEY_NOT_SET_ERROR in error_message:
+        if GENAI_API_KEY_NOT_SET_ERROR in error_message:
             self._send_internal_server_error_response(
                 http_msg,
                 http_dialogue,
@@ -529,7 +529,7 @@ class HttpHandler(BaseHttpHandler):
                 content_type=HttpContentType.JSON.header,
             )
             return
-        if CHATUI_GENAI_RATE_LIMIT_ERROR in error_message:
+        if GENAI_RATE_LIMIT_ERROR in error_message:
             self._send_too_many_requests_response(
                 http_msg,
                 http_dialogue,
@@ -555,13 +555,13 @@ class HttpHandler(BaseHttpHandler):
         """Store the trading strategy."""
         self.shared_state.chatui_config.trading_strategy = trading_strategy
         self._store_chatui_param_to_json(
-            CHATUI_TRADING_STRATEGY_FIELD, trading_strategy
+            TRADING_STRATEGY_FIELD, trading_strategy
         )
 
     def _store_selected_tool(self, selected_tool: Optional[str] = None) -> None:
         """Store the selected tool."""
         self.shared_state.chatui_config.mech_tool = selected_tool
-        self._store_chatui_param_to_json(CHATUI_MECH_TOOL_FIELD, selected_tool)
+        self._store_chatui_param_to_json(MECH_TOOL_FIELD, selected_tool)
 
 
 class SrrHandler(AbstractResponseHandler):
