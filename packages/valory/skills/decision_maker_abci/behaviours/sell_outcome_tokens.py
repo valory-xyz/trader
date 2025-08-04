@@ -123,7 +123,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             tx_hex = yield from self._prepare_safe_tx()
             self.context.logger.info("Finished preparing the safe transaction")
 
-            if not self.synchronized_data.vote:
+            if self.synchronized_data.vote is None:
                 raise ValueError("Vote is not set")
 
             opposite_vote = self.sampled_bet.opposite_vote(self.synchronized_data.vote)
