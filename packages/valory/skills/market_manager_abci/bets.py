@@ -332,6 +332,7 @@ class Bet:
             self.set_investment_amount(vote, 0)
             return True
 
+        # this introduces a bug with multibets
         self.investments[outcome] = [amount]
         return True
 
