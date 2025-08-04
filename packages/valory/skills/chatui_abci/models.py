@@ -27,13 +27,26 @@ from aea.skills.base import SkillContext
 
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import BaseParams
-from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
-from packages.valory.skills.market_manager_abci.models import (
+from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
+from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
 
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
+
+FILE_WRITE_MODE = "w"
+FILE_READ_MODE = "r"
+JSON_FILE_INDENT_LEVEL = 4
+
+
+@dataclass
+class ChatuiConfig:
+    """Parameters for the chat UI."""
+
+    trading_strategy: str
+    initial_trading_strategy: str
+    mech_tool: Optional[str] = None
 
 
 class SharedState(BaseSharedState):
@@ -45,10 +58,10 @@ class SharedState(BaseSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
 
-        self._chatui_config: Optional["ChatuiConfig"] = None
+        self._chatui_config: Optional[ChatuiConfig] = None
 
     @property
-    def chatui_config(self) -> "ChatuiConfig":
+    def chatui_config(self) -> ChatuiConfig:
         """Get the chat UI parameters."""
         self._ensure_chatui_store()
 
@@ -58,29 +71,27 @@ class SharedState(BaseSharedState):
 
     def _get_current_json_store(self) -> Dict[str, Any]:
         """Get the current store."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-        try:
-            if os.path.exists(chatui_store_path):
-                with open(chatui_store_path, "r") as f:
-                    current_store: dict = json.load(f)
-            else:
-                current_store = {}
-        except FileNotFoundError:
-            self.context.logger.error(f"JSON store {chatui_store_path} does not exist.")
-            current_store = {}
-        except json.JSONDecodeError:
+        chatui_store_path: os.path = self.context.params.store_path / CHATUI_PARAM_STORE
+        if not chatui_store_path.exists():
             self.context.logger.error(
-                f"{f.read()} is not a valid JSON file. Resetting the store."
+                f"ChatUI JSON store {chatui_store_path!r} does not exist."
             )
-            current_store = {}
-        return current_store
+            return {}
+        with open(chatui_store_path, FILE_READ_MODE) as store_file:
+            try:
+                return json.load(store_file)
+            except json.JSONDecodeError:
+                self.context.logger.error(
+                    f"{store_file.read()} is not a valid JSON file. Resetting the store."
+                )
+            return {}
 
     def _set_json_store(self, store: Dict[str, Any]) -> None:
         """Set the store with the chat UI parameters."""
         chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
 
-        with open(chatui_store_path, "w") as f:
-            json.dump(store, f, indent=4)
+        with open(chatui_store_path, FILE_WRITE_MODE) as f:
+            json.dump(store, f, indent=JSON_FILE_INDENT_LEVEL)
 
     def _ensure_chatui_store(self) -> None:
         """Ensure that the chat UI store is set up correctly."""
@@ -118,15 +129,6 @@ class SharedState(BaseSharedState):
         self._set_json_store(current_store)
 
         self._chatui_config = ChatuiConfig(**current_store)
-
-
-@dataclass
-class ChatuiConfig:
-    """Parameters for the chat UI."""
-
-    trading_strategy: str
-    initial_trading_strategy: str
-    mech_tool: Optional[str] = None
 
 
 class ChatuiParams(BaseParams):

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 
 """This package contains round behaviours of ChatUIAbciApp."""
 
-from typing import Any, Generator, Set, Type, cast
+from typing import Generator, Set, Type, cast
 
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
@@ -37,10 +37,6 @@ class ChatuiLoadBehaviour(BaseBehaviour):
 
     matching_round = ChatuiLoadRound
 
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the behaviour."""
-        super().__init__(**kwargs)
-
     @property
     def params(self) -> ChatuiParams:
         """Return the params."""
@@ -54,7 +50,7 @@ class ChatuiLoadBehaviour(BaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            payload = ChatuiPayload(sender=self.context.agent_address)
+            payload = ChatuiPayload(sender=self.context.agent_address, vote=True)
             self.shared_state._ensure_chatui_store()
             if self.shared_state._chatui_config is None:
                 raise ValueError("The chat UI config has not been set!")

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -27,3 +27,5 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 @dataclass(frozen=True)
 class ChatuiPayload(BaseTxPayload):
     """A transaction payload for the chat ui abci."""
+
+    vote: bool
