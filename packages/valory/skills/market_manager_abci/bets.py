@@ -36,6 +36,13 @@ BINARY_N_SLOTS = 2
 DAY_IN_SECONDS = 24 * 60 * 60
 
 
+class BinaryOutcome(Enum):
+    """The outcome of a binary bet."""
+
+    YES = "Yes"
+    NO = "No"
+
+
 class QueueStatus(Enum):
     """The status of a bet in the queue."""
 
@@ -151,7 +158,10 @@ class Bet:
         self._validate()
         self._cast()
         self._check_usefulness()
-        self.investments = {"Yes": [], "No": []}
+        if BinaryOutcome.YES.value not in self.investments:
+            self.investments[BinaryOutcome.YES.value] = []
+        if BinaryOutcome.NO.value not in self.investments:
+            self.investments[BinaryOutcome.NO.value] = []
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
@@ -265,7 +275,7 @@ class Bet:
         if self.outcomes is None:
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
-            return self.outcomes[index]
+            return self.outcomes[index].capitalize()
         except KeyError as exc:
             error = f"Cannot get outcome with index {index} from {self.outcomes}"
             raise ValueError(error) from exc
@@ -274,7 +284,7 @@ class Bet:
         """Get an outcome only if it is binary."""
         if self.outcomeSlotCount == BINARY_N_SLOTS:
             return self.get_outcome(int(no))
-        requested_outcome = "no" if no else "yes"
+        requested_outcome = BinaryOutcome.NO if no else BinaryOutcome.YES
         error = (
             f"A {requested_outcome!r} outcome is only available for binary questions."
         )
@@ -282,12 +292,12 @@ class Bet:
 
     @property
     def yes(self) -> str:
-        """Return the "yes" outcome."""
+        """Return the "Yes" outcome."""
         return self._get_binary_outcome(False)
 
     @property
     def no(self) -> str:
-        """Return the "no" outcome."""
+        """Return the "No" outcome."""
         return self._get_binary_outcome(True)
 
     def get_vote_amount(self, vote: int) -> int:
@@ -298,6 +308,8 @@ class Bet:
     def append_investment_amount(self, vote: int, amount: int) -> None:
         """Append an investment amount to the vote."""
         vote_name = self.get_outcome(vote)
+        if vote_name not in self.investments:
+            self.investments[vote_name] = []
         self.investments[vote_name].append(amount)
 
     def set_investment_amount(self, vote: int, amount: int) -> None:
@@ -311,12 +323,16 @@ class Bet:
         if vote is None:
             return False
 
+        outcome = self.get_outcome(vote)
+        if vote is None:
+            return False
+
         # method to reset the investment amount for a vote
         if amount == 0:
             self.set_investment_amount(vote, 0)
             return True
 
-        self.append_investment_amount(vote, amount)
+        self.investments[outcome] = [amount]
         return True
 
     def update_market_info(self, bet: "Bet") -> None:
@@ -331,6 +347,11 @@ class Bet:
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
+
+    def set_processed_sell_check(self, processed_time: int) -> None:
+        """Set the processed sell check."""
+        # stored in memory, lost on restart. todo: figure if makes sense to preserve
+        self.last_processed_sell_check = processed_time
 
     def rebet_allowed(
         self,
@@ -359,6 +380,7 @@ class Bet:
         return (
             current_timestamp
             > (self.openingTimestamp - opening_margin) + DAY_IN_SECONDS
+            and self.invested_amount > 0  # only consider selling if has tokens
         )
 
 

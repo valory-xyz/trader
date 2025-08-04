@@ -62,7 +62,6 @@ def get_position_balance(
         if condition_id.lower() in position_condition_ids:
             positions[outcomes[outcome_index]] += balance
 
-    print(f"Returning positions: {positions=}")
     return positions
 
 
