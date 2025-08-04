@@ -11,6 +11,7 @@ alphabet_in:
 - CHECK_LATE_ARRIVING_MESSAGE
 - CHECK_TIMEOUT
 - DONE
+- DONE_NO_SELL
 - DONE_SELL
 - FETCH_ERROR
 - FINALIZATION_FAILED
@@ -156,6 +157,7 @@ transition_func:
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
     (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, DONE_NO_SELL): PreTxSettlementRound
     (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
@@ -242,7 +244,7 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
     (SellOutcomeTokensRound, CALC_SELL_AMOUNT_FAILED): HandleFailedTxRound
     (SellOutcomeTokensRound, DONE): PreTxSettlementRound
-    (SellOutcomeTokensRound, MOCK_TX): RedeemRound
+    (SellOutcomeTokensRound, MOCK_TX): BetPlacementRound
     (SellOutcomeTokensRound, NONE): ImpossibleRound
     (SellOutcomeTokensRound, NO_MAJORITY): SellOutcomeTokensRound
     (SellOutcomeTokensRound, ROUND_TIMEOUT): SellOutcomeTokensRound

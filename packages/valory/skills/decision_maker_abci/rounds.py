@@ -144,6 +144,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 7.
         8. DecisionReceiveRound
             - done: 10.
+            - done no sell: 13.
             - done sell: 22.
             - mech response error: 9.
             - no majority: 8.
@@ -188,7 +189,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         22. SellOutcomeTokensRound
             - done: 13.
             - calc sell amount failed: 12.
-            - mock tx: 11.
+            - mock tx: 10.
             - no majority: 22.
             - round timeout: 22.
             - none: 20.
@@ -281,6 +282,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
+            Event.DONE_NO_SELL: FinishedDecisionMakerRound,
             Event.DONE_SELL: SellOutcomeTokensRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionReceiveRound,
@@ -341,7 +343,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         ImpossibleRound: {},
         BenchmarkingDoneRound: {},
         SellOutcomeTokensRound: {
-            Event.DONE: BetPlacementRound,
+            Event.DONE: FinishedDecisionMakerRound,
             # skip the bet placement tx
             Event.CALC_SELL_AMOUNT_FAILED: HandleFailedTxRound,
             Event.MOCK_TX: BetPlacementRound,

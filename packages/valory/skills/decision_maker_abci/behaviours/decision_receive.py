@@ -550,16 +550,21 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
         """Whether the outcome tokens should be sold."""
+        # self.bets is empty. Read from file
+        self.read_bets()
 
         if prediction_response is None or prediction_response.vote is None:
             return False
 
         tokens_to_be_sold = self.sampled_bet.get_vote_amount(prediction_response.vote)
 
-        if (
-            prediction_response.confidence >= self.params.min_confidence_for_selling
-            and tokens_to_be_sold > 0
-        ):
+        current_time = datetime.now().timestamp()
+        self.sampled_bet.set_processed_sell_check(int(current_time))
+
+        if not tokens_to_be_sold:
+            return False
+
+        if prediction_response.confidence >= self.params.min_confidence_for_selling:
             self.sell_amount = tokens_to_be_sold
             return True
         return False

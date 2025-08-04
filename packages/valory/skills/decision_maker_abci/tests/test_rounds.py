@@ -179,6 +179,7 @@ def test_decision_receive_round_transition(setup_app: DecisionMakerAbciApp) -> N
     # Test transition on done
     assert transition_function[Event.DONE] == BetPlacementRound
     assert transition_function[Event.DONE_SELL] == SellOutcomeTokensRound
+    assert transition_function[Event.DONE_NO_SELL] == FinishedDecisionMakerRound
 
 
 def test_blacklisting_round_transition(setup_app: DecisionMakerAbciApp) -> None:

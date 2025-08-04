@@ -43,7 +43,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the sell token behaviour."""
         super().__init__(**kwargs)
-        self.sell_amount: int = 0
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -70,7 +69,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         status = yield from self.build_approval_tx(
             self.return_amount,
             self.market_maker_contract_address,
-            self.collateral_token,
+            self.params.conditional_tokens_address,
         )
         return status
 
@@ -96,7 +95,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.info(
             f"Preparing a multisig transaction to sell the outcome token for {outcome!r}, with confidence "
             f"{self.synchronized_data.confidence!r}, for the amount of {investment}, which is equal to the amount of "
-            f"{self.sell_amount!r} WEI of the conditional token corresponding to {outcome!r}."
+            f"{self.return_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )
 
         return self.tx_hex
@@ -110,11 +109,9 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Do the action."""
 
         agent = self.context.agent_address
+        tx_submitter = betting_tx_hex = mocking_mode = None
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            self.update_sell_transaction_information()
-            mocking_mode = None
-
             self.context.logger.info(
                 "Preparing a multisig transaction to sell the outcome token"
             )
@@ -126,8 +123,16 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             if self.synchronized_data.vote is None:
                 raise ValueError("Vote is not set")
 
-            opposite_vote = self.sampled_bet.opposite_vote(self.synchronized_data.vote)
+            # we flip the vote to the opposite one to buy the outcome token
+            opposite_vote = self.sampled_bet.opposite_vote(self.outcome_index)
 
-            payload = SellOutcomeTokensPayload(agent, tx_submitter, tx_hex, mocking_mode, opposite_vote)
+            payload = SellOutcomeTokensPayload(
+                agent,
+                tx_submitter,
+                tx_hex,
+                mocking_mode,
+                self.sell_amount,
+                opposite_vote,
+            )
 
         yield from self.finish_behaviour(payload)

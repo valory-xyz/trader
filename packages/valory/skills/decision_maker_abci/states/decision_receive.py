@@ -54,6 +54,20 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
     )
     collection_key = get_name(SynchronizedData.participant_to_decision)
 
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Get the synchronized data."""
+        return cast(SynchronizedData, super().synchronized_data)
+
+    @property
+    def review_bets_for_selling_mode(self) -> bool:
+        """Get the review bets for selling mode."""
+        return self.synchronized_data.review_bets_for_selling
+
+    def payload(self, payload_values: Tuple[Any, ...]) -> DecisionReceivePayload:
+        """Get the payload."""
+        return DecisionReceivePayload(*payload_values)
+
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -63,15 +77,14 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
 
         if event == Event.DONE:
-            decision_receive_timestamp = self.most_voted_payload_values[
-                -2
-            ]  # -1 is the should_be_sold, -2 is the decision_receive_timestamp
+            payload = self.payload(self.most_voted_payload_values)
+            decision_receive_timestamp = payload.decision_received_timestamp
 
             synced_data = cast(
                 SynchronizedData,
                 synced_data.update(
                     decision_receive_timestamp=decision_receive_timestamp,
-                    should_be_sold=self.most_voted_payload_values[-1],
+                    should_be_sold=payload.should_be_sold,
                 ),
             )
 
@@ -80,11 +93,16 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
 
         self.context.logger.info(f"Should be sold. {synced_data=}")
         self.context.logger.info(f"Vote: {synced_data.should_be_sold=}")
-        if event == Event.DONE and synced_data.should_be_sold:
-            self.context.logger.info(f"Should be sold. {synced_data.should_be_sold=}")
-            return synced_data, Event.DONE_SELL
+        if event == Event.DONE and self.review_bets_for_selling_mode:
+            if self.synchronized_data.should_be_sold:
+                self.context.logger.info(
+                    f"Should be sold. {synced_data.should_be_sold=}"
+                )
+                return synced_data, Event.DONE_SELL
+            else:
+                return synced_data, Event.DONE_NO_SELL
 
-        if event == Event.DONE and not synced_data.is_profitable and not synced_data.should_be_sold:
+        if event == Event.DONE and not synced_data.is_profitable:
             return synced_data, Event.UNPROFITABLE
 
         return synced_data, event

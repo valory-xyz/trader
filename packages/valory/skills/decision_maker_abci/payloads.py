@@ -134,4 +134,5 @@ class HandleFailedTxPayload(VotingPayload):
 class SellOutcomeTokensPayload(MultisigTxPayload):
     """Represents a transaction payload for selling outcome tokens."""
 
+    sell_amount: Optional[int] = None
     vote: Optional[int] = None
