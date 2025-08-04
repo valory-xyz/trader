@@ -53,12 +53,14 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         # therefore, we bump the queue's status to the next one
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
-    def setup(self) -> None:
-        """Setup the behaviour"""
-        self._policy = self.synchronized_data.policy
-
     def async_act(self) -> Generator:
         """Do the action."""
+        success = yield from self._setup_policy_and_tools()
+        if not success:
+            self.context.logger.info(
+                "Tool selection failed, skipping blacklisting"
+            )
+            return
         # if the tool selection has not been run for the current period, do not do anything
         if not self.synchronized_data.has_tool_selection_run:
             policy = self.policy.serialize()
@@ -66,13 +68,6 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
             yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            success = yield from self._setup_policy_and_tools()
-            if not success:
-                self.context.logger.info(
-                    "Tool selection failed, skipping blacklisting"
-                )
-                return
-
             self.read_bets()
             self._blacklist()
             self.store_bets()
