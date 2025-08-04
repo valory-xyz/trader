@@ -15,15 +15,15 @@
         "contract/valory/staking_token/0.1.0": "bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm",
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeigzfyzbixum5cqvcbyc24dqwce25dr6nyqvgjm2eqpt6tgo2perd4",
-        "skill/valory/market_manager_abci/0.1.0": "bafybeibpalfyusr5p7ayhgl5gktwo4enkt3pvy5ds3tjt7vtyvztiv2hii",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiacetpm74izrbgnoz47b4oshioyfd7rs4hiwaut2srhbi2kizs5ka",
-        "skill/valory/trader_abci/0.1.0": "bafybeiacub6qmdnetj22buohmy2mzr5silh3yomiwvvw2y3vpvkun7szoe",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibjdnb6m4n5oyaibnrkoeqv3og6svt7czg2dbhspcqbiwhtl3y7mi",
+        "skill/valory/market_manager_abci/0.1.0": "bafybeiaqld2sfr6mo36yv5kropwdnzn5qlssh472ezub3odbpeenhl5wca",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeia44kdepv7ins6ucv2lwjsyi7f37ne7afoo5qpu552hj757kgloze",
+        "skill/valory/trader_abci/0.1.0": "bafybeiarbwhgpehgs67i3mykynvwn5dv7ipkc4zznrc573macrt3satnnq",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibopb23n7opgdjup6lpmiqnh6ar64niccm6gfdjmvuminls2ygjaq",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeignl5w4o4ghcpan7nsor5elvuid4si7t4rnfqga47bwvlgp22xwsa",
-        "agent/valory/trader/0.1.0": "bafybeiaazrhx4e7oinaih4m7xxfeeoxc4gzokdlsnzlvfvg6kta2kfobdu",
-        "service/valory/trader/0.1.0": "bafybeigu3n5kfq6cg6zk3sx3zb4zecc3otie67p45v7b7bvbnc7f6tbnai",
-        "service/valory/trader_pearl/0.1.0": "bafybeiah2esuoqosh3xopmxz4ndpzujisjtts3mh6fdubgrhwlwvhm3sna"
+        "agent/valory/trader/0.1.0": "bafybeifp62qyftxrkflvq2porrzt5rnax7pdiuwuntuib6jddnfp54h4h4",
+        "service/valory/trader/0.1.0": "bafybeifakq53pioofiqitd72k2xtmc56hcekk72qoi65wavf46akmioli4",
+        "service/valory/trader_pearl/0.1.0": "bafybeihrqmxommvuhkgyzqngtygqjabigsyo3f6xcepswegcwppgg66bsu"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
