@@ -569,8 +569,29 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             return True
         return False
 
+    def initialize_bet_id_row_manager(self) -> Dict[str, List[int]]:
+        """Initialization of the dictionary used to traverse mocked tool responses."""
+        bets_mapping: Dict[str, List[int]] = {}
+        dataset_filepath = (
+            self.params.store_path / self.benchmarking_mode.dataset_filename
+        )
+
+        with open(dataset_filepath, mode="r") as file:
+            reader = csv.DictReader(file)
+            for row_number, row in enumerate(reader, start=1):
+                question_id = row[self.benchmarking_mode.question_id_field]
+                if question_id not in bets_mapping:
+                    bets_mapping[question_id] = []
+                bets_mapping[question_id].append(row_number)
+        return bets_mapping
+
     def async_act(self) -> Generator:
         """Do the action."""
+
+        if self.benchmarking_mode.enabled:
+            if len(self.shared_state.bet_id_row_manager) == 0:
+                bets_mapping = self.initialize_bet_id_row_manager()
+                self.shared_state.bet_id_row_manager = bets_mapping
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             success = yield from self._setup_policy_and_tools()

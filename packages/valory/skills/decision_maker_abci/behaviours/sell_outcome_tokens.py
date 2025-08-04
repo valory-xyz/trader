@@ -111,6 +111,18 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         agent = self.context.agent_address
         tx_submitter = betting_tx_hex = mocking_mode = None
 
+        if self.benchmarking_mode.enabled:
+            self.update_sell_transaction_information()
+            payload = SellOutcomeTokensPayload(
+                agent,
+                tx_submitter,
+                betting_tx_hex,
+                True,
+                self.sell_amount,
+                vote=self.outcome_index,
+            )
+            yield from self.finish_behaviour(payload)
+
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.context.logger.info(
                 "Preparing a multisig transaction to sell the outcome token"
