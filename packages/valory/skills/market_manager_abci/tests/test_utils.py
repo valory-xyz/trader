@@ -39,7 +39,7 @@ from packages.valory.skills.market_manager_abci.bets import (
                     id="0x1ecd2fafee33e19cc4d5a150314c25aaeca95cea",
                     market="omen_subgraph",
                     title="Will the LTO Program publicly announce the commercial availability of an LTO-11 tape cartridge before or on August 1, 2025?",
-                    collateralToken="0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",
+                    collateralToken="0xe91d153e0b41518a2ce8dd3d7944fa863463a97d",  #nosec
                     creator="0x89c5cc945dd550bcffb72fe42bff002429f46fec",
                     fee=10000000000000000,
                     openingTimestamp=1754092800,
