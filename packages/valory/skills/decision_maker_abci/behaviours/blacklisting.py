@@ -21,8 +21,8 @@
 
 from typing import Generator
 
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
@@ -33,7 +33,7 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 
 
-class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
+class BlacklistingBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = BlacklistingRound
