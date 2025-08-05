@@ -95,7 +95,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         self.context.logger.info(f"Vote: {synced_data.should_be_sold=}")
         if event == Event.DONE and self.review_bets_for_selling_mode:
             if self.synchronized_data.should_be_sold:
-                self.context.logger.info(
+                self.context.logger.debug(
                     f"Should be sold. {synced_data.should_be_sold=}"
                 )
                 return synced_data, Event.DONE_SELL
