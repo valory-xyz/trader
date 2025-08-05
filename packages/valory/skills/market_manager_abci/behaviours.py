@@ -91,7 +91,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             with open(self.multi_bets_filepath, WRITE_MODE) as bets_file:
                 try:
                     bets_file.write(serialized)
-                    print(f"Bets written to file: {self.multi_bets_filepath=}")
                     return
                 except (IOError, OSError):
                     err = f"Error writing to file {self.multi_bets_filepath!r}!"
@@ -157,8 +156,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 and not bet.queue_status.is_expired()
                 and bet.invested_amount > 0
             ):
-                self.context.logger.info(f"Requeueing bet {bet.id} for selling")
-                self.context.logger.info(f"Bet invested amount: {bet.invested_amount}")
+                self.context.logger.info(f"Requeueing bet {bet.id!r} for selling, with invested amount: {bet.invested_amount!r}.")
                 bet.queue_status = bet.queue_status.move_to_fresh()
 
     def _blacklist_expired_bets(self) -> None:
@@ -171,11 +169,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def update_bets_investments(self, bets: List[Bet]) -> Generator:
+    def update_bets_investments(self, bets: List[Bet]) -> Generator[None, None, List[Bet]]:
         """Update the investments of the bets."""
         self.context.logger.info("Updating bets investments")
         balances = yield from self.get_active_bets()
-
         self.context.logger.debug(f"Balances: {balances=}")
 
         result = []
@@ -187,7 +184,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 continue
 
             for outcome, value in balances[bet.id].items():
-                outcome_is_no = outcome.lower() == "no"
+                outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
                 outcome_int = 0 if outcome_is_no else 1
                 self.context.logger.debug(f"Outcome {outcome_int} value {value}")
                 bet.set_investment_amount(outcome_int, value)
@@ -199,7 +196,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         return result
 
-    def get_active_bets(self) -> Generator:
+    def get_active_bets(self) -> Generator[None, None, Optional[List[Dict[str, Any]]]]]:
         """Get the active bets."""
         trades = yield from self.fetch_trades(
             self.synchronized_data.safe_contract_address.lower(), 0.0, time.time()

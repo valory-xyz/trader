@@ -50,8 +50,7 @@ class SellOutcomeTokensRound(TxPreparationRound):
 
     # we are updating the vote to opposite as this round receives vote to be sold
     selection_key: Any = (
-        # todo: is it needed?
-        DecisionReceiveRound.selection_key,
+        *DecisionReceiveRound.selection_key,
         get_name(SynchronizedData.vote),
     )
     collection_key = get_name(SynchronizedData.participant_to_selection)
@@ -63,8 +62,6 @@ class SellOutcomeTokensRound(TxPreparationRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-
-        print(f"synced_data: {synced_data}")
 
         if event == Event.DONE and not synced_data.most_voted_tx_hash:
             event = Event.CALC_SELL_AMOUNT_FAILED

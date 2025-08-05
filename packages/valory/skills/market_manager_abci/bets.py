@@ -42,6 +42,14 @@ class BinaryOutcome(Enum):
     YES = "Yes"
     NO = "No"
 
+    @classmethod
+    def from_string(cls, value: str) -> "BinaryOutcome":
+        """Get enum from string value."""
+        try:
+            return cls(value.capitalize())
+        except ValueError:
+            raise ValueError(f"Invalid binary outcome: {value}")
+
 
 class QueueStatus(Enum):
     """The status of a bet in the queue."""
@@ -323,9 +331,10 @@ class Bet:
         if vote is None:
             return False
 
-        outcome = self.get_outcome(vote)
         if vote is None:
             return False
+
+        outcome = self.get_outcome(vote)
 
         # method to reset the investment amount for a vote
         if amount == 0:
