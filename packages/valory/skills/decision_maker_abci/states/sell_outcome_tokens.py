@@ -50,8 +50,7 @@ class SellOutcomeTokensRound(TxPreparationRound):
 
     # we are updating the vote to opposite as this round receives vote to be sold
     selection_key: Any = (
-        # todo: is it needed?
-        DecisionReceiveRound.selection_key,
+        *DecisionReceiveRound.selection_key,
         get_name(SynchronizedData.vote),
     )
     collection_key = get_name(SynchronizedData.participant_to_selection)
