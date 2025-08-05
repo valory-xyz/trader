@@ -7,10 +7,13 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeieurzzbegcyxvw3hnecicsjlyubdezythemvrqnw2stp3illaaqpy
+  behaviours.py: bafybeigeuwdzstcrdnxawbruczrwziublqd3remzvmmv2p2d3xjziazisy
   dialogues.py: bafybeibx2cn2rayw5svbqqd5sai4czbxxbf4eul6kz6iyyzao4jyf5tdky
-  handlers.py: bafybeie4vs74obz2ennkkjxd6hlowgojyi7hkayfbfizhitz7pf5t5z3lq
-  models.py: bafybeidaytofkywjta67mc35yct6gppujg54wntywgaliq3xx6zrhbbhgi
+  handlers.py: bafybeig5nkqpibf5qc75oofzqzifwpj2jzmxxuhty7rbzre4wyir7zsnd4
+  models.py: bafybeidarz6ngvbpogz5e35xrwrrr7foz5wxln6hfrqirvcy4gc56lbseu
+  payloads.py: bafybeig3amftsqqxsbsbip67jzffnutec324xnkfbe63xl5bqiesvsfdge
   prompts.py: bafybeicohzwtnsijfw5j6fnxty3uyq33qmenqpcp34rga7q4vnuvwv6jjm
+  rounds.py: bafybeifcq4m5dphg5zpcr5lwihgg7hz37aiyardaasdgrafif4vqdzsttm
 fingerprint_ignore_patterns: []
 connections:
 - dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
@@ -20,6 +23,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
+- valory/market_manager_abci:0.1.0:bafybeigzldcghoxbg73e53ha2v3cayshswrrgeg4bqpcwd6al237v2ssle
 handlers:
   abci:
     args: {}
@@ -54,5 +58,8 @@ models:
   srr_dialogues:
     args: {}
     class_name: SrrDialogues
+  state:
+    args: {}
+    class_name: SharedState
 dependencies: {}
 is_abstract: true
