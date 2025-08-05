@@ -63,8 +63,6 @@ class SellOutcomeTokensRound(TxPreparationRound):
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
 
-        print(f"synced_data: {synced_data}")
-
         if event == Event.DONE and not synced_data.most_voted_tx_hash:
             event = Event.CALC_SELL_AMOUNT_FAILED
 
