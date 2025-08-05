@@ -20,7 +20,7 @@
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Type
 
 from aea.skills.base import SkillContext
@@ -44,8 +44,8 @@ JSON_FILE_INDENT_LEVEL = 4
 class ChatuiConfig:
     """Parameters for the chat UI."""
 
-    trading_strategy: str
-    initial_trading_strategy: str
+    trading_strategy: Optional[str] = None
+    initial_trading_strategy: Optional[str] = None
     mech_tool: Optional[str] = None
 
 
@@ -100,35 +100,37 @@ class SharedState(BaseSharedState):
             return
 
         current_store = self._get_current_json_store()
-
-        # Trading strategy
+        try:
+            self._chatui_config = ChatuiConfig(**current_store)
+        except TypeError as e:
+            self.context.logger.error(
+                f"Error while loading chat UI config from store: {e}. "
+                "Resetting the store."
+            )
+            self._chatui_config = ChatuiConfig()
         trading_strategy_yaml = self.context.params.trading_strategy
 
-        trading_strategy_store = current_store.get("trading_strategy", None)
-        initial_trading_strategy_store = current_store.get(
-            "initial_trading_strategy", None
-        )
+        trading_strategy_store = self._chatui_config.trading_strategy
+        initial_trading_strategy_store = self._chatui_config.initial_trading_strategy
 
         if trading_strategy_store is None or not isinstance(
             trading_strategy_store, str
         ):
-            current_store["trading_strategy"] = trading_strategy_yaml
+            self._chatui_config.trading_strategy = trading_strategy_yaml
 
         if initial_trading_strategy_store is None or not isinstance(
             initial_trading_strategy_store, str
         ):
-            current_store["initial_trading_strategy"] = trading_strategy_yaml
+            self._chatui_config.initial_trading_strategy = trading_strategy_yaml
 
         # This is to ensure that changes made in the YAML file
         # are reflected in the store.
         if initial_trading_strategy_store != trading_strategy_yaml:
             # update the store with the YAML value
-            current_store["trading_strategy"] = trading_strategy_yaml
-            current_store["initial_trading_strategy"] = trading_strategy_yaml
+            self._chatui_config.trading_strategy = trading_strategy_yaml
+            self._chatui_config.initial_trading_strategy = trading_strategy_yaml
 
-        self._set_json_store(current_store)
-
-        self._chatui_config = ChatuiConfig(**current_store)
+        self._set_json_store(asdict(self._chatui_config))
 
 
 class ChatuiParams(BaseParams):
