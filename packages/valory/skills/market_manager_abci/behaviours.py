@@ -187,7 +187,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 continue
 
             for outcome, value in balances[bet.id].items():
-                outcome_is_no = outcome.lower() == "no"
+                outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
                 outcome_int = 0 if outcome_is_no else 1
                 self.context.logger.debug(f"Outcome {outcome_int} value {value}")
                 bet.set_investment_amount(outcome_int, value)

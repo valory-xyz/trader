@@ -42,6 +42,14 @@ class BinaryOutcome(Enum):
     YES = "Yes"
     NO = "No"
 
+    @classmethod
+    def from_string(cls, value: str) -> "BinaryOutcome":
+        """Get enum from string value."""
+        try:
+            return cls(value.capitalize())
+        except ValueError:
+            raise ValueError(f"Invalid binary outcome: {value}")
+
 
 class QueueStatus(Enum):
     """The status of a bet in the queue."""
