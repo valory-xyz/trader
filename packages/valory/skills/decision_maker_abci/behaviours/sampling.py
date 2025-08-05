@@ -103,11 +103,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         bet_queue_processable = bet.queue_status in processable_statuses
 
         if selling_specific and bets_placed and within_ranges:
-            bet_was_already_placed = bet.invested_amount > 0
             self.context.logger.info(
-                f"Bet was already placed: {bet_was_already_placed}"
+                f"Bets have been placed for market with id {bet.id!r}."
             )
-            return within_ranges and bet_queue_processable and bet_was_already_placed
+            return within_ranges and bet_queue_processable
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod

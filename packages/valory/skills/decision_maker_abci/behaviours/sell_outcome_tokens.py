@@ -127,7 +127,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 raise ValueError("Vote is not set")
 
             opposite_vote = self.sampled_bet.opposite_vote(self.synchronized_data.vote)
-
             payload = SellOutcomeTokensPayload(agent, tx_submitter, tx_hex, mocking_mode, opposite_vote)
 
         yield from self.finish_behaviour(payload)
