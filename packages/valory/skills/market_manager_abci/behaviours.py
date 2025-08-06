@@ -183,11 +183,13 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 result.append(bet)
                 continue
 
+            bet.reset_investments()
+
             for outcome, value in balances[bet.id].items():
                 outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
                 outcome_int = 0 if outcome_is_no else 1
                 self.context.logger.debug(f"Outcome {outcome_int} value {value}")
-                bet.set_investment_amount(outcome_int, value)
+                bet.append_investment_amount(outcome_int, value)
                 self.context.logger.debug(
                     f"Bet {bet.id} investments: {bet.investments=}"
                 )
