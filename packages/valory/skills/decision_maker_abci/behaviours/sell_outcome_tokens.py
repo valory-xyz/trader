@@ -133,13 +133,12 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.info("Finished preparing the safe transaction")
 
             if self.synchronized_data.vote is None:
-                raise ValueError("The round was called with no vote, nothing to sell. Most likely it's a bug.")
-
-            # we flip the vote to the opposite one to buy the outcome token
-            outcome_index = self.sampled_bet.opposite_vote(self.outcome_index)
-
+                raise ValueError(
+                    "The round was called with no vote, nothing to sell. Most likely it's a bug."
+                )
             if self.sell_amount:
                 sell_amount = self.sell_amount
+                outcome_index = self.sampled_bet.opposite_vote(self.outcome_index)
 
             payload = SellOutcomeTokensPayload(
                 agent,

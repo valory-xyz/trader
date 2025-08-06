@@ -222,7 +222,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.synchronized_data.safe_contract_address.lower()
         )
         if user_positions is None:
-            return []
+            return {}
 
         balances = get_bet_id_to_balance(trades, user_positions)
         return balances
