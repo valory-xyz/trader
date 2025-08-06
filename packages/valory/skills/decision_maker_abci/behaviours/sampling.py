@@ -71,13 +71,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         selling_specific = self.kpi_is_met and self.review_bets_for_selling
 
-        no_bets = all(not value for value in bet.investments.values())
-        if no_bets and selling_specific:
+        bets_placed = bool(bet.n_bets)
+        if not bets_placed and selling_specific:
             # non-expired bet with no bets, not processable
             self.context.logger.info(f"Bet {bet.id} has no bets")
             return False
 
-        bets_placed = bool(bet.n_bets)
         bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
 
         within_opening_range = bet.openingTimestamp <= (

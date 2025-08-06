@@ -34,6 +34,9 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
 
+IGNORED = "ignored"
+
+
 class DecisionReceiveRound(CollectSameUntilThresholdRound):
     """A round in which the agents decide on the bet's answer."""
 
@@ -66,7 +69,7 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
 
     def payload(self, payload_values: Tuple[Any, ...]) -> DecisionReceivePayload:
         """Get the payload."""
-        return DecisionReceivePayload(*payload_values)
+        return DecisionReceivePayload(IGNORED, *payload_values)
 
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""

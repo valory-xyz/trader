@@ -109,7 +109,19 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Do the action."""
 
         agent = self.context.agent_address
-        tx_submitter = betting_tx_hex = mocking_mode = None
+        tx_submitter = tx_hex = mocking_mode = sell_amount = outcome_index = None
+
+        if self.benchmarking_mode.enabled:
+            self.update_sell_transaction_information()
+            payload = SellOutcomeTokensPayload(
+                agent,
+                tx_submitter,
+                tx_hex,
+                True,
+                sell_amount,
+                vote=outcome_index,
+            )
+            yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.context.logger.info(
@@ -121,18 +133,20 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.info("Finished preparing the safe transaction")
 
             if self.synchronized_data.vote is None:
-                raise ValueError("Vote is not set")
-
-            # we flip the vote to the opposite one to buy the outcome token
-            opposite_vote = self.sampled_bet.opposite_vote(self.outcome_index)
+                raise ValueError(
+                    "The round was called with no vote, nothing to sell. Most likely it's a bug."
+                )
+            if self.sell_amount:
+                sell_amount = self.sell_amount
+                outcome_index = self.sampled_bet.opposite_vote(self.outcome_index)
 
             payload = SellOutcomeTokensPayload(
                 agent,
                 tx_submitter,
                 tx_hex,
                 mocking_mode,
-                self.sell_amount,
-                opposite_vote,
+                sell_amount,
+                outcome_index,
             )
 
         yield from self.finish_behaviour(payload)
