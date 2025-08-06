@@ -49,6 +49,7 @@ class Event(Enum):
 
     DONE = "done"
     DONE_SELL = "done_sell"
+    DONE_NO_SELL = "done_no_sell"
     NONE = "none"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
