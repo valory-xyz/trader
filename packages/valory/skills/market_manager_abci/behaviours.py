@@ -35,6 +35,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     BetsDecoder,
     serialize_bets,
 )
+from packages.valory.skills.market_manager_abci.bets import BinaryOutcome
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
@@ -196,7 +197,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         return result
 
-    def get_active_bets(self) -> Generator[None, None, Optional[List[Dict[str, Any]]]]]:
+    def get_active_bets(self) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
         """Get the active bets."""
         trades = yield from self.fetch_trades(
             self.synchronized_data.safe_contract_address.lower(), 0.0, time.time()
