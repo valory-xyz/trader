@@ -588,11 +588,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
 
-        if self.benchmarking_mode.enabled:
-            if len(self.shared_state.bet_id_row_manager) == 0:
-                bets_mapping = self.initialize_bet_id_row_manager()
-                self.shared_state.bet_id_row_manager = bets_mapping
-
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             success = yield from self._setup_policy_and_tools()
             if not success:
