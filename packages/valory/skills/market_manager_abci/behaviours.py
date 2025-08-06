@@ -33,9 +33,9 @@ from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundB
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
+    BinaryOutcome,
     serialize_bets,
 )
-from packages.valory.skills.market_manager_abci.bets import BinaryOutcome
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
@@ -152,14 +152,21 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _requeue_bets_for_selling(self) -> None:
         """Requeue sell bets."""
         for bet in self.bets:
-            time_since_last_sell_check = self.synced_time - self.last_processed_sell_check
+            time_since_last_sell_check = (
+                self.synced_time - self.last_processed_sell_check
+            )
             if (
                 bet.is_ready_to_sell(self.synced_time, self.params.opening_margin)
                 and not bet.queue_status.is_expired()
                 and bet.invested_amount > 0
-                and (not self.last_processed_sell_check or time_since_last_sell_check > self.params.sell_check_interval)
+                and (
+                    not self.last_processed_sell_check
+                    or time_since_last_sell_check > self.params.sell_check_interval
+                )
             ):
-                self.context.logger.info(f"Requeueing bet {bet.id!r} for selling, with invested amount: {bet.invested_amount!r}.")
+                self.context.logger.info(
+                    f"Requeueing bet {bet.id!r} for selling, with invested amount: {bet.invested_amount!r}."
+                )
                 bet.queue_status = bet.queue_status.move_to_fresh()
 
     def _blacklist_expired_bets(self) -> None:
@@ -172,7 +179,9 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def update_bets_investments(self, bets: List[Bet]) -> Generator[None, None, List[Bet]]:
+    def update_bets_investments(
+        self, bets: List[Bet]
+    ) -> Generator[None, None, List[Bet]]:
         """Update the investments of the bets."""
         self.context.logger.info("Updating bets investments")
         balances = yield from self.get_active_bets()
@@ -201,19 +210,19 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         return result
 
-    def get_active_bets(self) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+    def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
         """Get the active bets."""
         trades = yield from self.fetch_trades(
             self.synchronized_data.safe_contract_address.lower(), 0.0, time.time()
         )
         if trades is None:
-            return []
+            return {}
 
         user_positions = yield from self.fetch_user_positions(
             self.synchronized_data.safe_contract_address.lower()
         )
         if user_positions is None:
-            return []
+            return {}
 
         balances = get_bet_id_to_balance(trades, user_positions)
         return balances
