@@ -153,14 +153,14 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Requeue sell bets."""
         for bet in self.bets:
             time_since_last_sell_check = (
-                self.synced_time - self.last_processed_sell_check
+                self.synced_time - bet.last_processed_sell_check
             )
             if (
                 bet.is_ready_to_sell(self.synced_time, self.params.opening_margin)
                 and not bet.queue_status.is_expired()
                 and bet.invested_amount > 0
                 and (
-                    not self.last_processed_sell_check
+                    not bet.last_processed_sell_check
                     or time_since_last_sell_check > self.params.sell_check_interval
                 )
             ):
@@ -222,7 +222,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.synchronized_data.safe_contract_address.lower()
         )
         if user_positions is None:
-            return {}
+            return []
 
         balances = get_bet_id_to_balance(trades, user_positions)
         return balances
