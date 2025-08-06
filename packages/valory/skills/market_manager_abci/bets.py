@@ -313,6 +313,10 @@ class Bet:
         vote_name = self.get_outcome(vote)
         return sum(self.investments[vote_name])
 
+    def reset_investments(self) -> None:
+        """Reset the investments."""
+        self.investments = {}
+
     def append_investment_amount(self, vote: int, amount: int) -> None:
         """Append an investment amount to the vote."""
         vote_name = self.get_outcome(vote)
@@ -341,7 +345,7 @@ class Bet:
             self.set_investment_amount(vote, 0)
             return True
 
-        self.investments[outcome] = [amount]
+        self.investments[outcome] = [*self.investments[outcome], amount]
         return True
 
     def update_market_info(self, bet: "Bet") -> None:

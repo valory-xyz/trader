@@ -75,3 +75,7 @@ ef4b31dd87eafed37776689be95b0002ae235bd4:packages/valory/skills/trader_abci/pred
 49ec1ac5b48a98d8411e9da6e8553714ce5d1af3:packages/valory/skills/trader_abci/predict-ui-build/assets/index-BrVYRq-p.js:generic-api-key:122
 e2da93326e7b16ec63a74d2296d6245763af8be6:packages/valory/skills/chatui/skill.yaml:generic-api-key:114
 e2da93326e7b16ec63a74d2296d6245763af8be6:packages/valory/skills/chatui/skill.yaml:generic-api-key:125
+09ce040b18be35ae6243995dfd25704d8ca8d000:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42
+1dbefdf26b25a8fe3939644929f9b6c4ece7baca:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42
+f160f09d6635ffe7878a00ee0a54fcc1f447ccc5:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42
+4fc9325a5620d4f70742e390dcdd6db52b8ffe22:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42

@@ -21,7 +21,7 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping
+from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
 
 import pytest
@@ -58,6 +58,7 @@ def get_payloads(
     tx_hash: str,
     mocking_mode: bool,
     vote: int,
+    sell_amount: Optional[int],
 ) -> Mapping[str, Any]:  # Replace Any with SellOutcomeTokensPayload if available
     """Get payloads."""
     # Replace with actual payload class and fields if available
@@ -68,6 +69,7 @@ def get_payloads(
             tx_hash=tx_hash,
             mocking_mode=mocking_mode,
             vote=vote,
+            sell_amount=sell_amount,
         )
         for participant in get_participants()
     }
@@ -79,7 +81,9 @@ class RoundTestCase:
 
     name: str
     initial_data: Dict[str, Hashable]
-    payloads: Mapping[str, Any]  # Replace Any with SellOutcomeTokensPayload if available
+    payloads: Mapping[
+        str, Any
+    ]  # Replace Any with SellOutcomeTokensPayload if available
     final_data: Dict[str, Hashable]
     event: Event
     most_voted_payload: Any
@@ -96,12 +100,15 @@ class TestSellOutcomeTokensRound(BaseCollectSameUntilThresholdRoundTest):
         (
             RoundTestCase(
                 name="Happy path",
-                initial_data={},
+                initial_data={
+                    "vote": 0,
+                },
                 payloads=get_payloads(
                     tx_submitter="tx_submitter",
                     tx_hash="tx_hash",
                     mocking_mode=False,
-                    vote=1,
+                    vote=0,
+                    sell_amount=100,
                 ),
                 final_data={
                     "vote": 1,
@@ -120,6 +127,7 @@ class TestSellOutcomeTokensRound(BaseCollectSameUntilThresholdRoundTest):
                     tx_hash="tx_hash",
                     mocking_mode=False,
                     vote=1,
+                    sell_amount=None,
                 ),
                 final_data={},
                 event=Event.NO_MAJORITY,
@@ -134,6 +142,7 @@ class TestSellOutcomeTokensRound(BaseCollectSameUntilThresholdRoundTest):
                     tx_hash="tx_hash",
                     mocking_mode=False,
                     vote=1,
+                    sell_amount=None,
                 ),
                 final_data={},
                 event=Event.CALC_SELL_AMOUNT_FAILED,
