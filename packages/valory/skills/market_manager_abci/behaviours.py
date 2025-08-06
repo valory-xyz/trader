@@ -152,10 +152,12 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _requeue_bets_for_selling(self) -> None:
         """Requeue sell bets."""
         for bet in self.bets:
+            time_since_last_sell_check = self.synced_time - self.last_processed_sell_check
             if (
                 bet.is_ready_to_sell(self.synced_time, self.params.opening_margin)
                 and not bet.queue_status.is_expired()
                 and bet.invested_amount > 0
+                and (not self.last_processed_sell_check or time_since_last_sell_check > self.params.sell_check_interval)
             ):
                 self.context.logger.info(f"Requeueing bet {bet.id!r} for selling, with invested amount: {bet.invested_amount!r}.")
                 bet.queue_status = bet.queue_status.move_to_fresh()
