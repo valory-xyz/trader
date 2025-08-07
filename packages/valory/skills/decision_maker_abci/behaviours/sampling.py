@@ -19,7 +19,6 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import time
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Tuple
@@ -32,9 +31,6 @@ from packages.valory.skills.decision_maker_abci.states.sampling import SamplingR
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
-)
-from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
-    get_bet_id_to_balance,
 )
 
 
@@ -67,33 +63,20 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def update_bets_investments(self, bets: List[Bet]) -> Generator:
-        """Update the investments of the bets."""
-        self.context.logger.info("Updating bets investments")
-        balances = yield from self.get_active_bets()
-
-        for i, bet in enumerate(bets):
-            if bet.queue_status.is_expired():
-                self.context.logger.info(f"Bet {bet.id} is expired")
-                continue
-
-            for outcome, value in balances[bet.id].items():
-                outcome_is_no = outcome.lower() == "no"
-                outcome_int = 0 if outcome_is_no else 1
-                self.context.logger.info(f"Outcome {outcome_int} value {value}")
-                bet.append_investment_amount(outcome_int, value)
-                self.context.logger.info(f"Bet {bet.id} updated")
-                self.bets[i] = bet
-
-        return bets
-
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
         if bet.queue_status.is_expired():
             return False
 
+        selling_specific = self.kpi_is_met and self.review_bets_for_selling
+
         bets_placed = bool(bet.n_bets)
+        if not bets_placed and selling_specific:
+            # non-expired bet with no bets, not processable
+            self.context.logger.info(f"Bet {bet.id} has no bets")
+            return False
+
         bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
 
         within_opening_range = bet.openingTimestamp <= (
@@ -118,9 +101,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        if self.kpi_is_met and self.review_bets_for_selling:
-            bet_was_already_placed = bet.invested_amount > 0
-            return within_ranges and bet_queue_processable and bet_was_already_placed
+        if selling_specific and bets_placed and within_ranges:
+            self.context.logger.info(
+                f"Bets have been placed for market with id {bet.id!r}."
+            )
+            return within_ranges and bet_queue_processable
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod
@@ -275,27 +260,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return benchmarking_finished, day_increased
 
-    def get_active_bets(self) -> Generator:
-        """Get the active bets."""
-        trades = yield from self.fetch_trades(
-            self.synchronized_data.safe_contract_address.lower(), 0.0, time.time()
-        )
-        if trades is None:
-            return []
-
-        user_positions = yield from self.fetch_user_positions(
-            self.synchronized_data.safe_contract_address.lower()
-        )
-        if user_positions is None:
-            return []
-
-        balances = get_bet_id_to_balance(trades, user_positions)
-        return balances
-
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            yield from self.update_bets_investments(self.bets)
             idx = self._sample()
             benchmarking_finished = None
             day_increased = None

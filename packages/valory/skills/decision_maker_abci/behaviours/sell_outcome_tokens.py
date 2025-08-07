@@ -26,7 +26,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
@@ -43,7 +43,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the sell token behaviour."""
         super().__init__(**kwargs)
-        self.sell_amount: int = 0
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -70,7 +69,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         status = yield from self.build_approval_tx(
             self.return_amount,
             self.market_maker_contract_address,
-            self.collateral_token,
+            self.params.conditional_tokens_address,
         )
         return status
 
@@ -96,7 +95,7 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.info(
             f"Preparing a multisig transaction to sell the outcome token for {outcome!r}, with confidence "
             f"{self.synchronized_data.confidence!r}, for the amount of {investment}, which is equal to the amount of "
-            f"{self.sell_amount!r} WEI of the conditional token corresponding to {outcome!r}."
+            f"{self.return_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )
 
         return self.tx_hex
@@ -110,11 +109,21 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Do the action."""
 
         agent = self.context.agent_address
+        tx_submitter = tx_hex = mocking_mode = sell_amount = outcome_index = None
+
+        if self.benchmarking_mode.enabled:
+            self.update_sell_transaction_information()
+            payload = SellOutcomeTokensPayload(
+                agent,
+                tx_submitter,
+                tx_hex,
+                True,
+                sell_amount,
+                vote=outcome_index,
+            )
+            yield from self.finish_behaviour(payload)
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            self.update_sell_transaction_information()
-            mocking_mode = None
-
             self.context.logger.info(
                 "Preparing a multisig transaction to sell the outcome token"
             )
@@ -123,6 +132,21 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             tx_hex = yield from self._prepare_safe_tx()
             self.context.logger.info("Finished preparing the safe transaction")
 
-            payload = MultisigTxPayload(agent, tx_submitter, tx_hex, mocking_mode)
+            if self.synchronized_data.vote is None:
+                raise ValueError(
+                    "The round was called with no vote, nothing to sell. Most likely it's a bug."
+                )
+            if self.sell_amount:
+                sell_amount = self.sell_amount
+                outcome_index = self.sampled_bet.opposite_vote(self.outcome_index)
+
+            payload = SellOutcomeTokensPayload(
+                agent,
+                tx_submitter,
+                tx_hex,
+                mocking_mode,
+                sell_amount,
+                outcome_index,
+            )
 
         yield from self.finish_behaviour(payload)
