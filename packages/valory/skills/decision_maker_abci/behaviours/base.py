@@ -467,7 +467,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         yield from self.download_strategies()
         yield from self.wait_for_condition_with_sleep(self.check_balance)
 
-        next_strategy: str = self.shared_state.chatui_config.trading_strategy
+        next_strategy: str = self.shared_state.chatui_config.trading_strategy  # type: ignore[assignment]
 
         tried_strategies: Set[str] = set()
         while True:
