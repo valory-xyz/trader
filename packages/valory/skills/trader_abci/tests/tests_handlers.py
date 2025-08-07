@@ -44,6 +44,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
@@ -56,7 +57,6 @@ from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     HandleTestCase,
 )
 from packages.valory.skills.trader_abci.handlers import (
-    CONTENT_TYPES,
     ContractApiHandler,
     DEFAULT_HEADER,
     HttpHandler,
@@ -119,18 +119,32 @@ class TestHttpHandler:
     def test_get_content_type(self) -> None:
         """Test _get_content_type method."""
         # Test known extensions
-        assert self.handler._get_content_type(Path("test.js")) == CONTENT_TYPES[".js"]
         assert (
-            self.handler._get_content_type(Path("test.html")) == CONTENT_TYPES[".html"]
+            self.handler._get_content_type(Path("test.js")) == HttpContentType.JS.header
         )
         assert (
-            self.handler._get_content_type(Path("test.json")) == CONTENT_TYPES[".json"]
+            self.handler._get_content_type(Path("test.html"))
+            == HttpContentType.HTML.header
         )
-        assert self.handler._get_content_type(Path("test.css")) == CONTENT_TYPES[".css"]
-        assert self.handler._get_content_type(Path("test.png")) == CONTENT_TYPES[".png"]
-        assert self.handler._get_content_type(Path("test.jpg")) == CONTENT_TYPES[".jpg"]
         assert (
-            self.handler._get_content_type(Path("test.jpeg")) == CONTENT_TYPES[".jpeg"]
+            self.handler._get_content_type(Path("test.json"))
+            == HttpContentType.JSON.header
+        )
+        assert (
+            self.handler._get_content_type(Path("test.css"))
+            == HttpContentType.CSS.header
+        )
+        assert (
+            self.handler._get_content_type(Path("test.png"))
+            == HttpContentType.PNG.header
+        )
+        assert (
+            self.handler._get_content_type(Path("test.jpg"))
+            == HttpContentType.JPG.header
+        )
+        assert (
+            self.handler._get_content_type(Path("test.jpeg"))
+            == HttpContentType.JPEG.header
         )
 
         # Test unknown extension
@@ -309,7 +323,7 @@ class TestHttpHandler:
             version=http_msg.version,
             status_code=200,
             status_text="Success",
-            headers=f"{CONTENT_TYPES['.json']}{http_msg.headers}",
+            headers=f"{HttpContentType.JSON.header}{http_msg.headers}",
             body=json.dumps(data).encode("utf-8"),
         )
 

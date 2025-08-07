@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-import json
 import os
 import re
 import time
@@ -43,15 +42,15 @@ from packages.valory.skills.abstract_round_abci.models import (
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
+from packages.valory.skills.chatui_abci.models import SharedState as BaseSharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.bets import Bet
-from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 from packages.valory.skills.market_manager_abci.models import (
-    SharedState as BaseSharedState,
+    MarketManagerParams,
+    Subgraph,
 )
-from packages.valory.skills.market_manager_abci.models import Subgraph
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
@@ -73,8 +72,6 @@ L0_END_FIELD = "l0_end"
 L1_END_FIELD = "l1_end"
 YES = "yes"
 NO = "no"
-
-CHATUI_PARAM_STORE = "chatui_param_store.json"
 
 
 class PromptTemplate(Template):
@@ -188,15 +185,6 @@ class RedeemingProgress:
         return history_hashes, addresses, bonds, answers
 
 
-@dataclass
-class ChatUIParams:
-    """Parameters for the chat UI."""
-
-    trading_strategy: str
-    initial_trading_strategy: str
-    mech_tool: Optional[str] = None
-
-
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -229,17 +217,6 @@ class SharedState(BaseSharedState):
         self.benchmarking_mech_calls: int = 0
         # whether the code has detected the new mech marketplace being used
         self.new_mm_detected: Optional[bool] = None
-
-        self._chat_ui_params: Optional["ChatUIParams"] = None
-
-    @property
-    def chat_ui_params(self) -> "ChatUIParams":
-        """Get the chat UI parameters."""
-        self._ensure_chatui_store()
-
-        if self._chat_ui_params is None:
-            raise ValueError("The chat UI parameters have not been set!")
-        return self._chat_ui_params
 
     @property
     def mock_question_id(self) -> Any:
@@ -345,63 +322,6 @@ class SharedState(BaseSharedState):
                 f"The selected trading strategy {selected_strategy} "
                 f"is not in the strategies' executables {strategy_exec}."
             )
-
-    def _get_current_json_store(self) -> Dict[str, Any]:
-        """Get the current store."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-        try:
-            if os.path.exists(chatui_store_path):
-                with open(chatui_store_path, "r") as f:
-                    current_store: dict = json.load(f)
-            else:
-                current_store = {}
-        except (FileNotFoundError, json.JSONDecodeError):
-            current_store = {}
-        return current_store
-
-    def _set_json_store(self, store: Dict[str, Any]) -> None:
-        """Set the store with the chat UI parameters."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-
-        with open(chatui_store_path, "w") as f:
-            json.dump(store, f, indent=4)
-
-    def _ensure_chatui_store(self) -> None:
-        """Ensure that the chat UI store is set up correctly."""
-
-        if self._chat_ui_params is not None:
-            return
-
-        current_store = self._get_current_json_store()
-
-        # Trading strategy
-        trading_strategy_yaml = self.context.params.trading_strategy
-
-        trading_strategy_store = current_store.get("trading_strategy", None)
-        initial_trading_strategy_store = current_store.get(
-            "initial_trading_strategy", None
-        )
-
-        if trading_strategy_store is None or not isinstance(
-            trading_strategy_store, str
-        ):
-            current_store["trading_strategy"] = trading_strategy_yaml
-
-        if initial_trading_strategy_store is None or not isinstance(
-            initial_trading_strategy_store, str
-        ):
-            current_store["initial_trading_strategy"] = trading_strategy_yaml
-
-        # This is to ensure that changes made in the YAML file
-        # are reflected in the store.
-        if initial_trading_strategy_store != trading_strategy_yaml:
-            # update the store with the YAML value
-            current_store["trading_strategy"] = trading_strategy_yaml
-            current_store["initial_trading_strategy"] = trading_strategy_yaml
-
-        self._set_json_store(current_store)
-
-        self._chat_ui_params = ChatUIParams(**current_store)
 
 
 def extract_keys_from_template(delimiter: str, template: str) -> Set[str]:
