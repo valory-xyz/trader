@@ -22,23 +22,38 @@
 """This module contains the sell outcome token state of the decision-making abci app."""
 
 from enum import Enum
-from typing import Optional, Tuple, Type, cast
+from typing import Any, Optional, Tuple, Type, cast
 
-from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
-from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    get_name,
+)
+from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
     TxPreparationRound,
+)
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
 )
 
 
 class SellOutcomeTokensRound(TxPreparationRound):
     """A round for selling a token."""
 
-    payload_class: Type[MultisigTxPayload] = MultisigTxPayload
+    payload_class: Type[SellOutcomeTokensPayload] = SellOutcomeTokensPayload
+    synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+
+    # we are updating the vote to opposite as this round receives vote to be sold
+    selection_key: Any = (
+        *DecisionReceiveRound.selection_key,
+        get_name(SynchronizedData.vote),
+    )
+    collection_key = get_name(SynchronizedData.participant_to_selection)
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
