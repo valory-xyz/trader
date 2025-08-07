@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 
 from typing import Generator
 
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
@@ -33,7 +33,7 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 
 
-class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
+class BlacklistingBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = BlacklistingRound
@@ -53,12 +53,12 @@ class BlacklistingBehaviour(DecisionMakerBaseBehaviour):
         # therefore, we bump the queue's status to the next one
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
 
-    def setup(self) -> None:
-        """Setup the behaviour"""
-        self._policy = self.synchronized_data.policy
-
     def async_act(self) -> Generator:
         """Do the action."""
+        success = yield from self._setup_policy_and_tools()
+        if not success:
+            self.context.logger.info("Tool selection failed, skipping blacklisting")
+            return
         # if the tool selection has not been run for the current period, do not do anything
         if not self.synchronized_data.has_tool_selection_run:
             policy = self.policy.serialize()
