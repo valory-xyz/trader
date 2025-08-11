@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,7 +18,8 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the blacklisting state of the decision-making abci app."""
+
+"""This module contains the sell outcome token state of the decision-making abci app."""
 
 from enum import Enum
 from typing import Any, Optional, Tuple, Type, cast
@@ -26,26 +28,32 @@ from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
+from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
+    TxPreparationRound,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
+)
 
 
-class BlacklistingRound(UpdateBetsRound):
-    """A round for updating the bets after blacklisting the sampled one."""
+class SellOutcomeTokensRound(TxPreparationRound):
+    """A round for selling a token."""
 
-    payload_class: Type[UpdateBetsPayload] = BlacklistingPayload
+    payload_class: Type[SellOutcomeTokensPayload] = SellOutcomeTokensPayload
+    synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+
+    # we are updating the vote to opposite as this round receives vote to be sold
     selection_key: Any = (
-        UpdateBetsRound.selection_key,
-        get_name(SynchronizedData.policy),
+        *DecisionReceiveRound.selection_key,
+        get_name(SynchronizedData.vote),
     )
+    collection_key = get_name(SynchronizedData.participant_to_selection)
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
@@ -54,6 +62,8 @@ class BlacklistingRound(UpdateBetsRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        if event == Event.DONE and self.context.benchmarking_mode.enabled:
-            return synced_data, Event.MOCK_TX
-        return res
+
+        if event == Event.DONE and not synced_data.most_voted_tx_hash:
+            event = Event.CALC_SELL_AMOUNT_FAILED
+
+        return synced_data, event

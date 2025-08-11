@@ -181,6 +181,11 @@ ROUNDS_INFO = {
         "description": "Selects a new keeper for the transaction submission",
         "transitions": {},
     },
+    "sell_outcome_tokens_round": {
+        "name": "Selling the outcome tokens",
+        "description": "Sells the outcome tokens",
+        "transitions": {},
+    },
     "service_evicted_round": {
         "name": "Terminating the service",
         "description": "Terminated the service if it has been evicted from the staking contract",

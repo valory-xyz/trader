@@ -29,6 +29,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
+from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    QueryingBehaviour,
+)
 
 
 WEEKDAYS = 7
@@ -36,7 +39,7 @@ UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
 
-class SamplingBehaviour(DecisionMakerBaseBehaviour):
+class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = SamplingRound
@@ -50,10 +53,30 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         """Setup the behaviour."""
         self.read_bets()
 
+    @property
+    def kpi_is_met(self) -> bool:
+        """Whether the kpi is met."""
+        return self.synchronized_data.is_staking_kpi_met
+
+    @property
+    def review_bets_for_selling(self) -> bool:
+        """Whether to review bets for selling."""
+        return self.synchronized_data.review_bets_for_selling
+
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
+        if bet.queue_status.is_expired():
+            return False
+
+        selling_specific = self.kpi_is_met and self.review_bets_for_selling
+
         bets_placed = bool(bet.n_bets)
+        if not bets_placed and selling_specific:
+            # non-expired bet with no bets, not processable
+            self.context.logger.info(f"Bet {bet.id} has no bets")
+            return False
+
         bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
 
         within_opening_range = bet.openingTimestamp <= (
@@ -78,6 +101,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
+        if selling_specific and bets_placed and within_ranges:
+            self.context.logger.info(
+                f"Bets have been placed for market with id {bet.id!r}."
+            )
+            return within_ranges and bet_queue_processable
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod
@@ -136,6 +164,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour):
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
             bets
         )
+
         # pick the first queue status that has bets in it
         bets_to_sort: List[Bet] = to_process_bets or processed_bets or reprocessed_bets
 

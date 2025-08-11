@@ -21,6 +21,7 @@
 
 import json
 import os.path
+import time
 from abc import ABC
 from json import JSONDecodeError
 from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
@@ -32,12 +33,16 @@ from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundB
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
+    BinaryOutcome,
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
     QueryingBehaviour,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    get_bet_id_to_balance,
 )
 from packages.valory.skills.market_manager_abci.models import (
     BenchmarkingMode,
@@ -144,17 +149,93 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         for bet in self.bets:
             bet.queue_status = bet.queue_status.move_to_fresh()
 
+    def _requeue_bets_for_selling(self) -> None:
+        """Requeue sell bets."""
+        for bet in self.bets:
+            time_since_last_sell_check = (
+                self.synced_time - bet.last_processed_sell_check
+            )
+            if (
+                bet.is_ready_to_sell(self.synced_time, self.params.opening_margin)
+                and not bet.queue_status.is_expired()
+                and bet.invested_amount > 0
+                and (
+                    not bet.last_processed_sell_check
+                    or time_since_last_sell_check > self.params.sell_check_interval
+                )
+            ):
+                self.context.logger.info(
+                    f"Requeueing bet {bet.id!r} for selling, with invested amount: {bet.invested_amount!r}."
+                )
+                bet.queue_status = bet.queue_status.move_to_fresh()
+
     def _blacklist_expired_bets(self) -> None:
         """Blacklist bets that are older than the opening margin."""
         for bet in self.bets:
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
 
+    def review_bets_for_selling(self) -> bool:
+        """Review bets for selling."""
+        return self.synchronized_data.review_bets_for_selling
+
+    def update_bets_investments(
+        self, bets: List[Bet]
+    ) -> Generator[None, None, List[Bet]]:
+        """Update the investments of the bets."""
+        self.context.logger.info("Updating bets investments")
+        balances = yield from self.get_active_bets()
+        self.context.logger.debug(f"Balances: {balances=}")
+
+        result = []
+
+        for bet in bets:
+            if bet.queue_status.is_expired():
+                self.context.logger.debug(f"Bet {bet.id} is expired")
+                result.append(bet)
+                continue
+
+            bet.reset_investments()
+
+            for outcome, value in balances[bet.id].items():
+                outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
+                outcome_int = 0 if outcome_is_no else 1
+                self.context.logger.debug(f"Outcome {outcome_int} value {value}")
+                bet.append_investment_amount(outcome_int, value)
+                self.context.logger.debug(
+                    f"Bet {bet.id} investments: {bet.investments=}"
+                )
+
+            result.append(bet)
+
+        return result
+
+    def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
+        """Get the active bets."""
+        trades = yield from self.fetch_trades(
+            self.synchronized_data.safe_contract_address.lower(), 0.0, time.time()
+        )
+        if trades is None:
+            return {}
+
+        user_positions = yield from self.fetch_user_positions(
+            self.synchronized_data.safe_contract_address.lower()
+        )
+        if user_positions is None:
+            return {}
+
+        balances = get_bet_id_to_balance(trades, user_positions)
+        return balances
+
     def setup(self) -> None:
         """Set up the behaviour."""
 
         # Read the bets from the agent's data dir as JSON, if they exist
         self.read_bets()
+
+        self.context.logger.info(
+            f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}"
+        )
 
         # fetch checkpoint status and if reached requeue all bets
         if self.synchronized_data.is_checkpoint_reached:
@@ -224,6 +305,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
+
+            self.bets = yield from self.update_bets_investments(self.bets)
+            if self.review_bets_for_selling():
+                self._requeue_bets_for_selling()
 
             # if trader is run after a long time, there is a possibility that
             # all bets are fresh and this should be updated to DAY_0_FRESH

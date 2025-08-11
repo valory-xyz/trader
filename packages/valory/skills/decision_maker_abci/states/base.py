@@ -48,6 +48,8 @@ class Event(Enum):
     """Event enumeration for the price estimation demo."""
 
     DONE = "done"
+    DONE_SELL = "done_sell"
+    DONE_NO_SELL = "done_no_sell"
     NONE = "none"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
@@ -60,6 +62,7 @@ class Event(Enum):
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
     CALC_BUY_AMOUNT_FAILED = "calc_buy_amount_failed"
+    CALC_SELL_AMOUNT_FAILED = "calc_sell_amount_failed"
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
@@ -150,8 +153,26 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def vote(self) -> Optional[int]:
         """Get the bet's vote index."""
-        vote = self.db.get_strict("vote")
+        vote = self.db.get_strict(
+            "vote"
+        )  # vote might be set to None, but must always present
         return int(vote) if vote is not None else None
+
+    @property
+    def previous_vote(self) -> Optional[int]:
+        """Get the bet's previous vote index."""
+        previous_vote = self.db.get_strict(
+            "previous_vote"
+        )  # previous_vote might be set to None, but must always present
+        return int(previous_vote) if previous_vote is not None else None
+
+    @property
+    def review_bets_for_selling(self) -> bool:
+        """Get the status of the review bets for selling."""
+        db_value = self.db.get("review_bets_for_selling", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
 
     @property
     def confidence(self) -> float:
@@ -283,6 +304,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def after_bet_attempt(self) -> bool:
         """Get the service's staking state."""
         return bool(self.db.get("after_bet_attempt", False))
+
+    @property
+    def should_be_sold(self) -> bool:
+        """Get the flag of should_be_sold."""
+        db_value = self.db.get("should_be_sold", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

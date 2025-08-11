@@ -15,11 +15,12 @@ connections:
 - valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
 - valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
+- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeidfvyc6bw4uigv3jfcxr23vysctki6x5rh5htp2azhncib27ydxdm
 - valory/service_registry:0.1.0:bafybeigaginvk2i6rycppfomk6tldkvunik6atuxtjpuuw6ndckymcojne
-- valory/market_maker:0.1.0:bafybeiepwclhyg7oo7wcffmben42wmwrxgb4ovoomw2zbjqljcy7b2neke
+- valory/market_maker:0.1.0:bafybeigzfyzbixum5cqvcbyc24dqwce25dr6nyqvgjm2eqpt6tgo2perd4
 - valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
 - valory/mech:0.1.0:bafybeib32m5zriagivlj7insajfs4jm5o5h53eym32wjjjp6qwv4lzl3pu
 - valory/conditional_tokens:0.1.0:bafybeiai7zwtdab2izyitvxph42kwtbvx6n5skm3i6jijd2653xjkoqd24
@@ -31,7 +32,7 @@ contracts:
 - valory/erc20:0.1.0:bafybeifyjub3v62r53by76u7cli7oqvg5qukb4e6gaa62z34euqfwnrsvi
 - valory/staking_token:0.1.0:bafybeigzerw3sxvrd4y6g4b5j6duqbjvxmqvarf2m5xovjsthhxyogpypm
 - valory/mech_activity:0.1.0:bafybeib3fsk4vaigytomohw6hovems7sr4nsbwlfm52724st5eorail444
-- valory/mech_marketplace:0.1.0:bafybeiccn4ohizw2wrjt7goidiakfik26ugm735lnm3fna3khko7qgkawm
+- valory/mech_marketplace:0.1.0:bafybeiar6rga33fkh5krhny5grcvpdbrpqglexle67am3livz35ksjiquq
 - valory/relayer:0.1.0:bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne
 - valory/mech_marketplace_legacy:0.1.0:bafybeiafwem7v7po7xb7rag4zfdqe2uoaqki3xybviciypxr5w6zkoxgse
 - valory/mech_mm:0.1.0:bafybeibbz2hlyvtg6yfojzdnou2xqbpu32a4mjvn2xidfypvwy5oj6gx4u
@@ -46,6 +47,7 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
 - valory/tendermint:0.1.0:bafybeigydrbfrlmr4f7shbtqx44kvmbg22im27mxdap2e3m5tkti6t445y
 - valory/acn_data_share:0.1.0:bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq
+- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
 skills:
 - valory/abstract_abci:0.1.0:bafybeibfsmbjasqnb3lgmwj7dlxvlfbngdyqc7a4n5q2g7phvmv4ktehq4
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
@@ -53,13 +55,13 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeignhce5zsyzdqi3sqtk6ayymrqbr44mkmhv3o5oa4e7ydhvlibtca
-- valory/market_manager_abci:0.1.0:bafybeihievdcieyf5lad7iamrgkuahxlcjyuqc4kzomi4chcy2pap47ehu
-- valory/decision_maker_abci:0.1.0:bafybeidqcrm6wvbvlxmai32zmj3vrvf4qnjzn3pm4g2o4cqen6f3avt35e
-- valory/trader_abci:0.1.0:bafybeifstfmmlhado5m4uds75orhbzxeynydfhbumceddksgdvjgylnjju
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicse7mucign56twhsfg2faek7fqk7kpltt6alzmowo5ywtmazudky
+- valory/market_manager_abci:0.1.0:bafybeigzbjix5utljmbw5nqhw3tkozlb6r73urutdpxtefge4ijdwqqwuq
+- valory/decision_maker_abci:0.1.0:bafybeidnk3j46n57yuytiyxidcexvp6htymwbgxduxwhqrofqupsdro2ii
+- valory/trader_abci:0.1.0:bafybeidynr2wrodygexag5dqj2bl7sxnu7i7mvue3ipvtljx66mmueudee
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeie7jbl24emwbujs34yojjaooyn5niuh3aqagv3nlqg4dg5rkuxyci
-- valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
+- valory/check_stop_trading_abci:0.1.0:bafybeibb4gq5u4w6dmabdgsaffsispamxbgkm27oc3llclyvtwezc3df5q
+- valory/mech_interact_abci:0.1.0:bafybeib6hw4c6u56j2xrfdj6vsr27ppkpzmsmrlflhsvkq42ifol45crni
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
@@ -257,6 +259,8 @@ models:
       tool_quarantine_duration: ${int:10800}
       default_chain_id: ${str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
+      enable_position_review: ${bool:true}
+      review_period_seconds: ${int:86400}
       use_multi_bets_mode: ${bool:true}
   benchmarking_mode:
     args:
@@ -410,3 +414,8 @@ config:
   host: ${str:0.0.0.0}
   port: ${int:8716}
   target_skill_id: valory/trader_abci:0.1.0
+---
+public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  genai_api_key: ${str:null}

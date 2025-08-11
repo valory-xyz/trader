@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -57,6 +57,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemB
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
+    SellOutcomeTokensBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,
 )
@@ -74,6 +77,7 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         DecisionReceiveBehaviour,  # type: ignore
         BlacklistingBehaviour,  # type: ignore
         BetPlacementBehaviour,  # type: ignore
+        SellOutcomeTokensBehaviour,  # type: ignore
         RedeemBehaviour,  # type: ignore
         HandleFailedTxBehaviour,  # type: ignore
         ToolSelectionBehaviour,  # type: ignore

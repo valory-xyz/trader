@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -61,6 +61,9 @@ from packages.valory.skills.decision_maker_abci.states.randomness import (
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )
@@ -175,6 +178,8 @@ def test_decision_receive_round_transition(setup_app: DecisionMakerAbciApp) -> N
 
     # Test transition on done
     assert transition_function[Event.DONE] == BetPlacementRound
+    assert transition_function[Event.DONE_SELL] == SellOutcomeTokensRound
+    assert transition_function[Event.DONE_NO_SELL] == FinishedDecisionMakerRound
 
 
 def test_blacklisting_round_transition(setup_app: DecisionMakerAbciApp) -> None:

@@ -28,6 +28,7 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
     FinishedCheckStopTradingRound,
+    FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
@@ -104,6 +105,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedRedeemingTxRound,
+    FinishedSellOutcomeTokensTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
     PostTxSettlementRound,
@@ -118,6 +120,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,
     FinishedWithSkipTradingRound: RedeemRound,
+    FinishedWithReviewBetsRound: RandomnessRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
     ChecksPassedRound: RandomnessTransactionSubmissionRound,
@@ -133,6 +136,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechRequestSkipRound: RedeemRound,
     FinishedSubscriptionRound: PreTxSettlementRound,
     FinishedBetPlacementTxRound: RedeemRound,
+    FinishedSellOutcomeTokensTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
     FinishedWithoutDecisionRound: RedeemRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,

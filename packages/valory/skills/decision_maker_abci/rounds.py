@@ -72,6 +72,9 @@ from packages.valory.skills.decision_maker_abci.states.randomness import (
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )
@@ -141,6 +144,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 7.
         8. DecisionReceiveRound
             - done: 10.
+            - done no sell: 13.
+            - done sell: 22.
             - mech response error: 9.
             - no majority: 8.
             - tie: 9.
@@ -181,6 +186,13 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         19. RefillRequiredRound
         20. ImpossibleRound
         21. BenchmarkingDoneRound
+        22. SellOutcomeTokensRound
+            - done: 13.
+            - calc sell amount failed: 12.
+            - mock tx: 10.
+            - no majority: 22.
+            - round timeout: 22.
+            - none: 20.
 
     Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
@@ -270,6 +282,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
+            Event.DONE_NO_SELL: FinishedDecisionMakerRound,
+            Event.DONE_SELL: SellOutcomeTokensRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
             Event.NO_MAJORITY: DecisionReceiveRound,
             Event.TIE: BlacklistingRound,
@@ -328,6 +342,17 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         RefillRequiredRound: {},
         ImpossibleRound: {},
         BenchmarkingDoneRound: {},
+        SellOutcomeTokensRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+            # skip the bet placement tx
+            Event.CALC_SELL_AMOUNT_FAILED: HandleFailedTxRound,
+            Event.MOCK_TX: BetPlacementRound,
+            Event.NO_MAJORITY: SellOutcomeTokensRound,
+            Event.ROUND_TIMEOUT: SellOutcomeTokensRound,
+            # this is here because of `autonomy analyse fsm-specs` falsely
+            # reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
     }
     cross_period_persisted_keys = frozenset(
         {

@@ -4,7 +4,10 @@ alphabet_in:
 - BENCHMARKING_FINISHED
 - BLACKLIST
 - CALC_BUY_AMOUNT_FAILED
+- CALC_SELL_AMOUNT_FAILED
 - DONE
+- DONE_NO_SELL
+- DONE_SELL
 - FETCH_ERROR
 - INSUFFICIENT_BALANCE
 - MECH_RESPONSE_ERROR
@@ -62,6 +65,7 @@ states:
 - RedeemRound
 - RefillRequiredRound
 - SamplingRound
+- SellOutcomeTokensRound
 - SubscriptionRound
 - ToolSelectionRound
 transition_func:
@@ -94,6 +98,8 @@ transition_func:
     (ClaimRound, ROUND_TIMEOUT): ClaimRound
     (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
     (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, DONE_NO_SELL): FinishedDecisionMakerRound
+    (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
@@ -125,6 +131,12 @@ transition_func:
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SellOutcomeTokensRound, CALC_SELL_AMOUNT_FAILED): HandleFailedTxRound
+    (SellOutcomeTokensRound, DONE): FinishedDecisionMakerRound
+    (SellOutcomeTokensRound, MOCK_TX): BetPlacementRound
+    (SellOutcomeTokensRound, NONE): ImpossibleRound
+    (SellOutcomeTokensRound, NO_MAJORITY): SellOutcomeTokensRound
+    (SellOutcomeTokensRound, ROUND_TIMEOUT): SellOutcomeTokensRound
     (SubscriptionRound, DONE): FinishedSubscriptionRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound

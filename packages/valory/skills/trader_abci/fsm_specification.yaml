@@ -5,11 +5,14 @@ alphabet_in:
 - BET_PLACEMENT_DONE
 - BLACKLIST
 - CALC_BUY_AMOUNT_FAILED
+- CALC_SELL_AMOUNT_FAILED
 - CHECKS_PASSED
 - CHECK_HISTORY
 - CHECK_LATE_ARRIVING_MESSAGE
 - CHECK_TIMEOUT
 - DONE
+- DONE_NO_SELL
+- DONE_SELL
 - FETCH_ERROR
 - FINALIZATION_FAILED
 - FINALIZE_TIMEOUT
@@ -33,7 +36,9 @@ alphabet_in:
 - REFILL_REQUIRED
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
+- REVIEW_BETS
 - ROUND_TIMEOUT
+- SELL_OUTCOME_TOKENS_DONE
 - SERVICE_EVICTED
 - SERVICE_NOT_STAKED
 - SKIP_REQUEST
@@ -88,6 +93,7 @@ states:
 - SelectKeeperTransactionSubmissionARound
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
+- SellOutcomeTokensRound
 - ServiceEvictedRound
 - SubscriptionRound
 - SynchronizeLateMessagesRound
@@ -134,6 +140,7 @@ transition_func:
     (CheckStopTradingRound, DONE): RandomnessRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
+    (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
     (CheckStopTradingRound, SKIP_TRADING): RedeemRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
@@ -150,6 +157,8 @@ transition_func:
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
     (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, DONE_NO_SELL): PreTxSettlementRound
+    (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
@@ -180,6 +189,7 @@ transition_func:
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): ClaimRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
@@ -232,6 +242,12 @@ transition_func:
     (SelectKeeperTransactionSubmissionBRound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionBRound, NO_MAJORITY): ResetRound
     (SelectKeeperTransactionSubmissionBRound, ROUND_TIMEOUT): SelectKeeperTransactionSubmissionBRound
+    (SellOutcomeTokensRound, CALC_SELL_AMOUNT_FAILED): HandleFailedTxRound
+    (SellOutcomeTokensRound, DONE): PreTxSettlementRound
+    (SellOutcomeTokensRound, MOCK_TX): BetPlacementRound
+    (SellOutcomeTokensRound, NONE): ImpossibleRound
+    (SellOutcomeTokensRound, NO_MAJORITY): SellOutcomeTokensRound
+    (SellOutcomeTokensRound, ROUND_TIMEOUT): SellOutcomeTokensRound
     (SubscriptionRound, DONE): PreTxSettlementRound
     (SubscriptionRound, MOCK_TX): ToolSelectionRound
     (SubscriptionRound, NONE): SubscriptionRound

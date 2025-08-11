@@ -152,6 +152,8 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         return False
 
     def _compute_stop_trading(self) -> Generator[None, None, bool]:
+        """Compute the stop trading condition."""
+        self.context.logger.debug(f"{self.params.disable_trading=}")
         if self.params.disable_trading:
             return True
 
