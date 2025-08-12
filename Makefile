@@ -162,3 +162,20 @@ build-agent-runner-mac:
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
 	./dist/agent_runner_bin 1>/dev/null
+
+
+AUTONOMY_VERSION := v$(shell autonomy --version | grep -oP '(?<=version\s)\S+')
+AEA_VERSION := v$(shell aea --version | grep -oP '(?<=version\s)\S+')
+MECH_INTERACT_VERSION := $(shell git ls-remote --tags --sort="v:refname" https://github.com/valory-xyz/mech-interact.git | tail -n1 | sed 's|.*refs/tags/||')
+
+.PHONY: sync-packages
+sync-packages:
+	@echo "Syncing packages with versions:"
+	@echo "Autonomy version: $(AUTONOMY_VERSION)"
+	@echo "AEA version: $(AEA_VERSION)"
+	@echo "Mech Interact version: $(MECH_INTERACT_VERSION)"
+	autonomy packages sync \
+		--source valory-xyz/open-aea:$(AEA_VERSION) \
+		--source valory-xyz/open-autonomy:$(AUTONOMY_VERSION) \
+		--source valory-xyz/mech-interact:$(MECH_INTERACT_VERSION) \
+		--update-packages
