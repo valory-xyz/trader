@@ -44,7 +44,7 @@
         "contract/valory/service_registry/0.1.0": "bafybeigaginvk2i6rycppfomk6tldkvunik6atuxtjpuuw6ndckymcojne",
         "contract/valory/multisend/0.1.0": "bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y",
         "contract/valory/erc20/0.1.0": "bafybeifyjub3v62r53by76u7cli7oqvg5qukb4e6gaa62z34euqfwnrsvi",
-        "contract/valory/mech_marketplace/0.1.0": "bafybeiccn4ohizw2wrjt7goidiakfik26ugm735lnm3fna3khko7qgkawm",
+        "contract/valory/mech_marketplace/0.1.0": "bafybeiar6rga33fkh5krhny5grcvpdbrpqglexle67am3livz35ksjiquq",
         "contract/valory/mech_marketplace_legacy/0.1.0": "bafybeiafwem7v7po7xb7rag4zfdqe2uoaqki3xybviciypxr5w6zkoxgse",
         "connection/valory/abci/0.1.0": "bafybeidn5gc6y3a6tkhgv753kkiub3mfas3tkemm4fs7i4kc4klkjlxpui",
         "connection/valory/http_client/0.23.0": "bafybeid5ffvg76ejjoese7brj5ji3lx66cu7p2ixfwflpo6rgofkypfd7y",
@@ -58,6 +58,6 @@
         "skill/valory/abstract_round_abci/0.1.0": "bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy",
         "skill/valory/transaction_settlement_abci/0.1.0": "bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya",
         "skill/valory/termination_abci/0.1.0": "bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a"
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeib6hw4c6u56j2xrfdj6vsr27ppkpzmsmrlflhsvkq42ifol45crni"
     }
 }
