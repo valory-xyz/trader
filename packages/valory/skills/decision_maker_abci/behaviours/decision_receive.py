@@ -602,7 +602,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             policy = None
             should_be_sold = False
             if prediction_response is not None and prediction_response.vote is not None:
-                if self.should_sell_outcome_tokens(prediction_response):
+                if (
+                    self.review_bets_for_selling_mode
+                    and self.should_sell_outcome_tokens(prediction_response)
+                ):
                     self.context.logger.info(
                         "The bet response has changed, so we need to sell the outcome tokens"
                     )
