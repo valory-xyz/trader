@@ -111,6 +111,7 @@ protolint_install:
 build-agent-runner:
 	poetry lock
 	poetry install
+	poetry  run pip install --upgrade --force-reinstall setuptools==59.5.0  # fix for KeyError: 'setuptools._distutils.compilers'
 	poetry run pyinstaller \
 	--collect-data eth_account \
 	--collect-all aea \
@@ -124,6 +125,8 @@ build-agent-runner:
 	--hidden-import aea_ledger_ethereum_flashbots \
 	--hidden-import grpc \
 	--hidden-import openapi_core \
+	--hidden-import google.generativeai \
+	--collect-all google.generativeai \
 	--collect-all google.protobuf \
 	--collect-all openapi_core \
 	--collect-all openapi_spec_validator \
@@ -139,6 +142,7 @@ build-agent-runner:
 build-agent-runner-mac:
 	poetry lock
 	poetry install
+	poetry  run pip install --upgrade --force-reinstall setuptools==59.5.0  # fix for KeyError: 'setuptools._distutils.compilers'
 	poetry run pyinstaller \
 	--collect-data eth_account \
 	--collect-all aea \
@@ -152,6 +156,8 @@ build-agent-runner-mac:
 	--hidden-import aea_ledger_ethereum_flashbots \
 	--hidden-import grpc \
 	--hidden-import openapi_core \
+	--hidden-import google.generativeai \
+	--collect-all google.generativeai \
 	--collect-all google.protobuf \
 	--collect-all openapi_core \
 	--collect-all openapi_spec_validator \
