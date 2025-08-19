@@ -310,8 +310,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             for bet in self.bets:
                 bet.queue_status = bet.queue_status.move_to_process()
 
-        return
-
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
