@@ -238,7 +238,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         )
 
         # fetch checkpoint status and if reached requeue all bets
-        if self.synchronized_data.is_checkpoint_reached:
+        if (
+            self.synchronized_data.is_checkpoint_reached
+            and self.params.use_multi_bets_mode
+        ):
             self._requeue_all_bets()
 
         # blacklist bets that are older than the opening margin
