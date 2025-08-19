@@ -105,6 +105,9 @@ class MarketManagerParams(BaseParams):
         self.the_graph_payment_required_error: str = self._ensure(
             "the_graph_payment_required_error", kwargs, str
         )
+        self.use_multi_bets_mode: bool = self._ensure(
+            "use_multi_bets_mode", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     @property
