@@ -77,7 +77,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.info(f"Bet {bet.id} has no bets")
             return False
 
-        bet_mode_allowable = self.params.use_multi_bets_mode or not bets_placed
+        bet_mode_allowable = (
+            self.params.use_multi_bets_mode or not bets_placed or selling_specific
+        )
 
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
@@ -101,11 +103,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        if selling_specific and bets_placed and within_ranges:
-            self.context.logger.info(
-                f"Bets have been placed for market with id {bet.id!r}."
-            )
-            return within_ranges and bet_queue_processable
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
     @staticmethod
