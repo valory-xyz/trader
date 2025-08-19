@@ -179,20 +179,15 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def update_bets_investments(
-        self, bets: List[Bet]
-    ) -> Generator[None, None, List[Bet]]:
+    def update_bets_investments(self) -> Generator:
         """Update the investments of the bets."""
-        self.context.logger.info("Updating bets investments")
+        self.context.logger.info("Updating bets investments.")
         balances = yield from self.get_active_bets()
         self.context.logger.debug(f"Balances: {balances=}")
 
-        result = []
-
-        for bet in bets:
+        for bet in self.bets:
             if bet.queue_status.is_expired():
                 self.context.logger.debug(f"Bet {bet.id} is expired")
-                result.append(bet)
                 continue
 
             bet.reset_investments()
@@ -205,10 +200,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.context.logger.debug(
                     f"Bet {bet.id} investments: {bet.investments=}"
                 )
-
-            result.append(bet)
-
-        return result
 
     def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
         """Get the active bets."""
@@ -315,8 +306,8 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
+            yield from self.update_bets_investments()
 
-            self.bets = yield from self.update_bets_investments(self.bets)
             if self.review_bets_for_selling():
                 self._requeue_bets_for_selling()
 
