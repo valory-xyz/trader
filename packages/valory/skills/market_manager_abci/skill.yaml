@@ -178,6 +178,7 @@ models:
       results_filename: benchmarking_results.csv
       randomness: benchmarking_randomness
       nr_mech_calls: 60
+      use_multi_bets_mode: true
     class_name: BenchmarkingMode
   network_subgraph:
     args:
