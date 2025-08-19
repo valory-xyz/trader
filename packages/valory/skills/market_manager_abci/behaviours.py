@@ -291,6 +291,15 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
+        # single-bets mode case - mark any market with a `FRESH` status as processable
+        if not self.params.use_multi_bets_mode:
+            for bet in self.bets:
+                if bet.queue_status.is_fresh():
+                    bet.queue_status = bet.queue_status.move_to_process()
+            return
+
+        # muti-bets mode case - mark markets as processable only if all the unexpired ones have a `FRESH` status
+        # this will happen if the agent just started or the checkpoint has just been reached
         all_bets_fresh = all(
             bet.queue_status.is_fresh()
             for bet in self.bets
