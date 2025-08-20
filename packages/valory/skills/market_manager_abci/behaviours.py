@@ -161,12 +161,14 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 and bet.invested_amount > 0
                 and (
                     not bet.last_processed_sell_check
+                    # TODO sell_check_interval
                     or time_since_last_sell_check > self.params.sell_check_interval
                 )
             ):
                 self.context.logger.info(
                     f"Requeueing bet {bet.id!r} for selling, with invested amount: {bet.invested_amount!r}."
                 )
+                # TODO check the implications. It is preferable to create a SELL status instead of reusing the FRESH.
                 bet.queue_status = bet.queue_status.move_to_fresh()
 
     def _blacklist_expired_bets(self) -> None:
