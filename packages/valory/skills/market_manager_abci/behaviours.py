@@ -161,6 +161,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 and bet.invested_amount > 0
                 and (
                     not bet.last_processed_sell_check
+                    # TODO sell_check_interval
                     or time_since_last_sell_check > self.params.sell_check_interval
                 )
             ):
