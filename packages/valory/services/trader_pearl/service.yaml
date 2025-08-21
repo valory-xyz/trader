@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigab5vw47o5tulu4qofr3eyl7xahj3clkfwx2k6fz67rydxj6bw6u
+agent: valory/trader:0.1.0:bafybeicpomm2uqyb6kfwq65im5ilnfbz3vwx7x3jpxe6hku2apclxck2ku
 number_of_agents: 1
 deployment:
   agent:
@@ -119,7 +119,8 @@ models:
         "openai-gpt-4", "openai-text-davinci-002", "openai-text-davinci-003", "prediction-online-sum-url-content",
         "prediction-online-summarized-info", "stabilityai-stable-diffusion-512-v2-1",
         "stabilityai-stable-diffusion-768-v2-1", "stabilityai-stable-diffusion-v1-5",
-        "stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
+        "stabilityai-stable-diffusion-xl-beta-v2-2-2", "prediction-url-cot-claude",
+        "prediction-url-cot"]}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
       disable_trading: ${DISABLE_TRADING:bool:false}
