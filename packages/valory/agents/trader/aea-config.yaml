@@ -225,7 +225,8 @@ models:
       irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
-        "stabilityai-stable-diffusion-768-v2-1"]}
+        "stabilityai-stable-diffusion-768-v2-1","prediction-offline-sme", "prediction-url-cot-claude",
+        "prediction-url-cot"]}
       use_nevermined: ${bool:true}
       mech_to_subscription_params: ${dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
         "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
