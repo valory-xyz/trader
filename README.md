@@ -57,7 +57,7 @@ Next, prepare the [Safe](https://safe.global/). The trader agent runs as part of
 which is an [autonomous service](https://docs.autonolas.network/open-autonomy/get_started/what_is_an_agent_service/) 
 represented on-chain in the [Autonolas Protocol](https://docs.autonolas.network/protocol/) by a [Safe](https://safe.global/) multisig. Follow the next steps to obtain a **Safe address** corresponding to your agent address:
 
-1. Visit https://registry.olas.network/gnosis/services/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
+1. Visit https://marketplace.olas.network/gnosis/ai-agents/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
 2. Fill in the following fields:
     - *"Owner address"*: a Gnosis address for which you will be able to sign later using a supported wallet. If you want to use the address you are connected to, click on *"Prefill Address"*.
     - Click on *"Generate Hash & File"* and enter the value corresponding to the `service/valory/trader/0.1.0` key in [`packages.json`](./packages/packages.json)
