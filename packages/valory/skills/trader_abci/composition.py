@@ -64,6 +64,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FinishedMechRequestBuySubscriptionRound,
     FinishedMechRequestRound,
     FinishedMechRequestSkipRound,
     FinishedMechResponseRound,
@@ -147,6 +148,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedResetAndPauseErrorRound: ResetAndPauseRound,
     # this has no effect, because the `BenchmarkingDoneRound` is terminal
     BenchmarkingDoneRound: ResetAndPauseRound,
+    FinishedMechRequestBuySubscriptionRound: CheckBenchmarkingModeRound,
 }
 
 termination_config = BackgroundAppConfig(
