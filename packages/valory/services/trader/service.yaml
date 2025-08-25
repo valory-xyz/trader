@@ -158,6 +158,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: &id003
       args:
+        nvm_balance_tracker_address: ${NVM_BALANCE_TRACKER_ADDRESS:str:0x7D686bD1fD3CFF6E45a40165154D61043af7D67c}
         log_dir: ${LOG_DIR:str:/benchmarks}
     benchmarking_mode:
       args:
@@ -385,6 +386,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+        nvm_balance_tracker_address: ${NVM_BALANCE_TRACKER_ADDRESS:str:0x7D686bD1fD3CFF6E45a40165154D61043af7D67c}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -514,6 +516,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+        nvm_balance_tracker_address: ${NVM_BALANCE_TRACKER_ADDRESS:str:0x7D686bD1fD3CFF6E45a40165154D61043af7D67c}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -643,6 +646,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+        nvm_balance_tracker_address: ${NVM_BALANCE_TRACKER_ADDRESS:str:0x7D686bD1fD3CFF6E45a40165154D61043af7D67c}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005

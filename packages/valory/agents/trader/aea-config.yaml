@@ -262,6 +262,7 @@ models:
       enable_position_review: ${bool:true}
       review_period_seconds: ${int:86400}
       use_multi_bets_mode: ${bool:true}
+      nvm_balance_tracker_address: ${str:0x7D686bD1fD3CFF6E45a40165154D61043af7D67c}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

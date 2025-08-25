@@ -272,6 +272,7 @@ models:
       use_multi_bets_mode: true
       enable_position_review: false
       review_period_seconds: 86400
+      nvm_balance_tracker_address: '0x7D686bD1fD3CFF6E45a40165154D61043af7D67c'
     class_name: TraderParams
   benchmarking_mode:
     args:
