@@ -30,6 +30,15 @@ packages/valory/contracts/gnosis_safe/
 packages/valory/contracts/agent_registry/
 packages/valory/contracts/complementary_service_metadata/
 packages/valory/contracts/mech_mm
+packages/valory/contracts/ierc1155
+packages/valory/contracts/nvm_balance_tracker_native
+packages/valory/contracts/nvm_balance_tracker_token
+packages/valory/contracts/escrow_payment_condition
+packages/valory/contracts/did_registry
+packages/valory/contracts/nft_sales
+packages/valory/contracts/lock_payment_condition
+packages/valory/contracts/agreement_store_manager
+packages/valory/contracts/subscription_provider
 packages/valory/protocols/abci
 packages/valory/protocols/acn
 packages/valory/protocols/acn_data_share

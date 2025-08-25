@@ -24,7 +24,7 @@ from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.transfer_nft_condition.contract import (
-    TransferNftCondition,
+    TransferNFTCondition,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -200,7 +200,7 @@ class OrderSubscriptionBehaviour(BaseSubscriptionBehaviour):
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=contract_address,
-            contract_public_id=TransferNftCondition.contract_id,
+            contract_public_id=TransferNFTCondition.contract_id,
             contract_callable="build_order_tx",
             data_key="data",
             placeholder="order_tx",

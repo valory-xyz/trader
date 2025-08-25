@@ -44,7 +44,7 @@ from packages.valory.contracts.mech.contract import Mech
 from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.contracts.transfer_nft_condition.contract import (
-    TransferNftCondition,
+    TransferNFTCondition,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
@@ -1027,7 +1027,7 @@ class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
         result = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=token,
-            contract_public_id=TransferNftCondition.contract_id,
+            contract_public_id=TransferNFTCondition.contract_id,
             contract_callable="balance_of",
             data_key="data",
             placeholder="balance",
