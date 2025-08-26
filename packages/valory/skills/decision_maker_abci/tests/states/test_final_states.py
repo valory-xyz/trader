@@ -34,7 +34,6 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
-    FinishedSubscriptionRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     ImpossibleRound,
@@ -101,17 +100,6 @@ class TestFinalStates:
             context=context, synchronized_data=synchronized_data
         )
         assert isinstance(round_instance, FinishedDecisionRequestRound)
-        assert isinstance(round_instance, DegenerateRound)
-
-    def test_finished_subscription_round(
-        self, setup_round: Tuple[MockSynchronizedData, MockContext]
-    ) -> None:
-        """Test instantiation of FinishedSubscriptionRound."""
-        synchronized_data, context = setup_round
-        round_instance = FinishedSubscriptionRound(
-            context=context, synchronized_data=synchronized_data
-        )
-        assert isinstance(round_instance, FinishedSubscriptionRound)
         assert isinstance(round_instance, DegenerateRound)
 
     def test_finished_without_redeeming_round(

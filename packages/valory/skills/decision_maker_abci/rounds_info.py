@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the information about the rounds that is used by the Decision Maker Http handler."""
+
 from pathlib import Path
 from typing import Dict
 
@@ -64,11 +65,6 @@ ROUNDS_INFO = {
     "check_transaction_history_round": {
         "name": "Checking the transaction history",
         "description": "Checks the transaction history to determine if any previous transactions have been validated",
-        "transitions": {},
-    },
-    "claim_round": {
-        "name": "Preparing a claim transaction",
-        "description": "Prepares a claim transaction for the subscription the agent has purchased",
         "transitions": {},
     },
     "collect_signature_round": {
@@ -189,11 +185,6 @@ ROUNDS_INFO = {
     "service_evicted_round": {
         "name": "Terminating the service",
         "description": "Terminated the service if it has been evicted from the staking contract",
-        "transitions": {},
-    },
-    "subscription_round": {
-        "name": "Ordering a subscription",
-        "description": "Purchases a subscription",
         "transitions": {},
     },
     "synchronize_late_messages_round": {

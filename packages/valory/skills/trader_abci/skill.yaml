@@ -220,18 +220,6 @@ models:
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
-      use_nevermined: true
-      mech_to_subscription_params:
-        base_url: url
-        did: did
-        escrow_payment_condition_address: address
-        lock_payment_condition_address: address
-        transfer_nft_condition_address: address
-        token_address: address
-        order_address: address
-        nft_amount: amount
-        payment_token: address
-        price: price
       contract_timeout: 300.0
       file_hash_to_strategies: {}
       strategies_kwargs:

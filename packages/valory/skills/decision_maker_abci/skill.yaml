@@ -98,7 +98,6 @@ contracts:
 - valory/realitio:0.1.0:bafybeieggqkuslxiuapneygnhkhgatk5jvjbw6p7ltxaab6au466ikxm3e
 - valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
 - valory/agent_registry:0.1.0:bafybeiepkbcx5jrcvoc5nfarw6gt4so4izqxuiliu7gukdvmjiodynecvy
-- valory/transfer_nft_condition:0.1.0:bafybeicq5jkvpdfciqybxs2n7zwkuprdcksuf7xcgyfxzbbd4w33rk5g3m
 - valory/mech_mm:0.1.0:bafybeibbz2hlyvtg6yfojzdnou2xqbpu32a4mjvn2xidfypvwy5oj6gx4u
 - valory/complementary_service_metadata:0.1.0:bafybeibu65wpdsbrbrt2wnf2lr3psy26jiaomyjkg4twbupve7o3kso2aa
 protocols:
@@ -254,19 +253,7 @@ models:
       slippage: 0.01
       policy_epsilon: 0.25
       use_subgraph_for_redeeming: true
-      use_nevermined: true
       policy_store_update_offset: 259200
-      mech_to_subscription_params:
-        base_url: url
-        did: did
-        escrow_payment_condition_address: address
-        lock_payment_condition_address: address
-        transfer_nft_condition_address: address
-        token_address: address
-        order_address: address
-        nft_amount: amount
-        payment_token: address
-        price: price
       irrelevant_tools:
       - openai-text-davinci-002
       - openai-text-davinci-003

@@ -20,7 +20,6 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
-import json
 import os
 from abc import ABC
 from datetime import datetime, timedelta
@@ -43,9 +42,6 @@ from packages.valory.contracts.market_maker.contract import (
 from packages.valory.contracts.mech.contract import Mech
 from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
-from packages.valory.contracts.transfer_nft_condition.contract import (
-    TransferNFTCondition,
-)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -65,10 +61,6 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
-from packages.valory.skills.decision_maker_abci.utils.nevermined import (
-    no_did_prefixed,
-    zero_x_transformer,
-)
 from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
@@ -131,23 +123,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         self.sell_amount: int = 0
         self.buy_amount: int = 0
-
-    @property
-    def subscription_params(self) -> Dict[str, Any]:
-        """Get the subscription params."""
-        return self.params.mech_to_subscription_params
-
-    @property
-    def did(self) -> str:
-        """Get the did."""
-        subscription_params = self.subscription_params
-        return subscription_params["did"]
-
-    @property
-    def token_address(self) -> str:
-        """Get the token address."""
-        subscription_params = self.subscription_params
-        return subscription_params["token_address"]
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -925,126 +900,3 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
-
-
-class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
-    """Base class for subscription behaviours."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize `BaseSubscriptionBehaviour`."""
-        super().__init__(**kwargs)
-        self.balance: int = 0
-
-    @property
-    def escrow_payment_condition_address(self) -> str:
-        """Get the escrow payment address."""
-        subscription_params = self.subscription_params
-        return subscription_params["escrow_payment_condition_address"]
-
-    @property
-    def lock_payment_condition_address(self) -> str:
-        """Get the lock payment address."""
-        subscription_params = self.subscription_params
-        return subscription_params["lock_payment_condition_address"]
-
-    @property
-    def transfer_nft_condition_address(self) -> str:
-        """Get the transfer nft condition address."""
-        subscription_params = self.subscription_params
-        return subscription_params["transfer_nft_condition_address"]
-
-    @property
-    def order_address(self) -> str:
-        """Get the order address."""
-        subscription_params = self.subscription_params
-        return subscription_params["order_address"]
-
-    @property
-    def purchase_amount(self) -> int:
-        """Get the purchase amount."""
-        subscription_params = self.subscription_params
-        return int(subscription_params["nft_amount"])
-
-    @property
-    def price(self) -> int:
-        """Get the price."""
-        subscription_params = self.subscription_params
-        return int(subscription_params["price"])
-
-    @property
-    def payment_token(self) -> str:
-        """Get the payment token."""
-        subscription_params = self.subscription_params
-        return subscription_params["payment_token"]
-
-    @property
-    def is_xdai(self) -> bool:
-        """
-        Check if the payment token is xDAI.
-
-        When the payment token for the subscription is xdai (the native token of the chain),
-        nevermined sets the payment address to the zeroAddress.
-
-        :return: True if the payment token is xDAI, False otherwise.
-        """
-        return self.payment_token == ZERO_ADDRESS
-
-    @property
-    def base_url(self) -> str:
-        """Get the base url."""
-        subscription_params = self.subscription_params
-        return subscription_params["base_url"]
-
-    def _resolve_did(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
-        """Resolve and parse the did."""
-        did_url = f"{self.base_url}/{self.did}"
-        response = yield from self.get_http_response(
-            method="GET",
-            url=did_url,
-            headers={"accept": "application/json"},
-        )
-        if response.status_code != 200:
-            self.context.logger.error(
-                f"Could not retrieve data from did url {did_url}. "
-                f"Received status code {response.status_code}."
-            )
-            return None
-        try:
-            data = json.loads(response.body)
-        except (ValueError, TypeError) as e:
-            self.context.logger.error(
-                f"Could not parse response from nervermined api, "
-                f"the following error was encountered {type(e).__name__}: {e}"
-            )
-            return None
-
-        return data
-
-    def _get_nft_balance(
-        self, token: str, address: str, did: str
-    ) -> Generator[None, None, bool]:
-        """Prepare an approval tx."""
-        result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=token,
-            contract_public_id=TransferNFTCondition.contract_id,
-            contract_callable="balance_of",
-            data_key="data",
-            placeholder="balance",
-            address=address,
-            did=did,
-        )
-        return result
-
-    def _has_positive_nft_balance(self) -> Generator[None, None, bool]:
-        """Check if the agent has a non-zero balance of the NFT."""
-        result = yield from self._get_nft_balance(
-            self.token_address,
-            self.synchronized_data.safe_contract_address,
-            zero_x_transformer(no_did_prefixed(self.did)),
-        )
-        if not result:
-            self.context.logger.warning("Failed to get balance")
-            return False
-
-        return self.balance > 0
