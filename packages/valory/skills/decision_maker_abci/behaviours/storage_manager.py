@@ -492,8 +492,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         :param global_update_timestamp: the timestamp of the latest global information update
         :param tool_to_global_info: the global information of the tools
         """
-        if self._should_use_global_info(global_update_timestamp):
-            self._overwrite_local_info(tool_to_global_info)
+        # if self._should_use_global_info(global_update_timestamp):
+        # should always overwrite the local info
+        self._overwrite_local_info(tool_to_global_info)
 
         # update the accuracy store by adding tools for which we do not have any global information yet
         for tool in self.mech_tools:
