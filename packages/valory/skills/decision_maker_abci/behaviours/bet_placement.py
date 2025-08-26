@@ -19,7 +19,7 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-from typing import Any, Generator, Optional, cast
+from typing import Any, Generator, Optional
 
 from hexbytes import HexBytes
 
@@ -48,24 +48,9 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
         self.buy_amount = 0
 
     @property
-    def market_maker_contract_address(self) -> str:
-        """Get the contract address of the market maker on which the service is going to place the bet."""
-        return self.sampled_bet.id
-
-    @property
-    def investment_amount(self) -> int:
-        """Get the investment amount of the bet."""
-        return self.synchronized_data.bet_amount
-
-    @property
     def w_xdai_deficit(self) -> int:
         """Get the amount of missing wxDAI for placing the bet."""
         return self.investment_amount - self.token_balance
-
-    @property
-    def outcome_index(self) -> int:
-        """Get the index of the outcome that the service is going to place a bet on."""
-        return cast(int, self.synchronized_data.vote)
 
     def _build_exchange_tx(self) -> WaitableConditionType:
         """Exchange xDAI to wxDAI."""
