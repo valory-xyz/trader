@@ -179,20 +179,15 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def update_bets_investments(
-        self, bets: List[Bet]
-    ) -> Generator[None, None, List[Bet]]:
+    def update_bets_investments(self) -> Generator:
         """Update the investments of the bets."""
-        self.context.logger.info("Updating bets investments")
+        self.context.logger.info("Updating bets investments.")
         balances = yield from self.get_active_bets()
         self.context.logger.debug(f"Balances: {balances=}")
 
-        result = []
-
-        for bet in bets:
+        for bet in self.bets:
             if bet.queue_status.is_expired():
                 self.context.logger.debug(f"Bet {bet.id} is expired")
-                result.append(bet)
                 continue
 
             bet.reset_investments()
@@ -205,10 +200,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.context.logger.debug(
                     f"Bet {bet.id} investments: {bet.investments=}"
                 )
-
-            result.append(bet)
-
-        return result
 
     def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
         """Get the active bets."""
@@ -238,7 +229,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         )
 
         # fetch checkpoint status and if reached requeue all bets
-        if self.synchronized_data.is_checkpoint_reached:
+        if (
+            self.synchronized_data.is_checkpoint_reached
+            and self.params.use_multi_bets_mode
+        ):
             self._requeue_all_bets()
 
         # blacklist bets that are older than the opening margin
@@ -288,6 +282,15 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
+        # single-bets mode case - mark any market with a `FRESH` status as processable
+        if not self.params.use_multi_bets_mode:
+            for bet in self.bets:
+                if bet.queue_status.is_fresh():
+                    bet.queue_status = bet.queue_status.move_to_process()
+            return
+
+        # muti-bets mode case - mark markets as processable only if all the unexpired ones have a `FRESH` status
+        # this will happen if the agent just started or the checkpoint has just been reached
         all_bets_fresh = all(
             bet.queue_status.is_fresh()
             for bet in self.bets
@@ -298,15 +301,13 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             for bet in self.bets:
                 bet.queue_status = bet.queue_status.move_to_process()
 
-        return
-
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
+            yield from self.update_bets_investments()
 
-            self.bets = yield from self.update_bets_investments(self.bets)
             if self.review_bets_for_selling():
                 self._requeue_bets_for_selling()
 

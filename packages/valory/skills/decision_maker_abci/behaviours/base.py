@@ -149,6 +149,26 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         subscription_params = self.subscription_params
         return subscription_params["token_address"]
 
+    @property
+    def market_maker_contract_address(self) -> str:
+        """Get the contract address of the market maker on which the service is going to place the bet."""
+        return self.sampled_bet.id
+
+    @property
+    def investment_amount(self) -> int:
+        """Get the investment amount of the bet."""
+        return self.synchronized_data.bet_amount
+
+    @property
+    def return_amount(self) -> int:
+        """Get the return amount."""
+        return self.sampled_bet.get_vote_amount(self.outcome_index)
+
+    @property
+    def outcome_index(self) -> int:
+        """Get the index of the outcome that the service is going to place a bet on."""
+        return cast(int, self.synchronized_data.vote)
+
     def strategy_exec(self, strategy: str) -> Optional[Tuple[str, str]]:
         """Get the executable strategy file's content."""
         return self.shared_state.strategies_executables.get(strategy, None)
@@ -815,7 +835,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _build_token_tx(self, operation: TradingOperation) -> WaitableConditionType:
         """Get the tx data encoded for buying or selling tokens."""
-        params = {
+        params: Dict[str, Any] = {
             "performative": ContractApiMessage.Performative.GET_STATE,  # type: ignore
             "contract_address": self.market_maker_contract_address,
             "contract_id": str(FixedProductMarketMakerContract.contract_id),

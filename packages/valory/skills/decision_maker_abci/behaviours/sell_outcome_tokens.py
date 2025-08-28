@@ -54,21 +54,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.built_data: str = ""
 
     @property
-    def market_maker_contract_address(self) -> str:
-        """Get the contract address of the market maker on which the service is going to place the bet."""
-        return self.sampled_bet.id
-
-    @property
-    def investment_amount(self) -> int:
-        """Get the investment amount of the bet."""
-        return self.synchronized_data.bet_amount
-
-    @property
-    def outcome_index(self) -> int:
-        """Get the index of the outcome for which the service is going to sell token."""
-        return cast(int, self.synchronized_data.vote)
-
-    @property
     def collateral_token(self) -> str:
         """Get the collateral token."""
         return self.sampled_bet.collateralToken
@@ -143,11 +128,6 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
 
         return self.tx_hex
-
-    @property
-    def return_amount(self) -> int:
-        """Get the return amount."""
-        return self.sampled_bet.get_vote_amount(self.outcome_index)
 
     def async_act(self) -> Generator:
         """Do the action."""

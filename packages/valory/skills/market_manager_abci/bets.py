@@ -315,7 +315,8 @@ class Bet:
 
     def reset_investments(self) -> None:
         """Reset the investments."""
-        self.investments = {}
+        for outcome in BinaryOutcome:
+            self.investments[outcome.value] = []
 
     def append_investment_amount(self, vote: int, amount: int) -> None:
         """Append an investment amount to the vote."""
