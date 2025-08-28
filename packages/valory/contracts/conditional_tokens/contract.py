@@ -477,3 +477,22 @@ class ConditionalTokensContract(Contract):
         return dict(
             data=data,
         )
+
+    @classmethod
+    def build_approval_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        spender: str,
+        allow: bool = True,
+    ) -> JSONLike:
+        """Build an approve transaction."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        data = contract_instance.encodeABI(
+            fn_name="setApprovalForAll",
+            args=[
+                ledger_api.api.to_checksum_address(spender),
+                allow,
+            ],
+        )
+        return dict(data=data)
