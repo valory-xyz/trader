@@ -216,6 +216,11 @@ ROUNDS_INFO = {
         "description": "Validates a transaction",
         "transitions": {},
     },
+    "prepare_sell_round": {
+        "name": "Preparing to sell the outcome tokens",
+        "description": "Prepares to sell the outcome tokens",
+        "transitions": {},
+    },
 }
 
 

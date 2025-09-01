@@ -66,6 +66,7 @@ class Event(Enum):
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
+    SELL_PROFITABLE_BET = "sell_profitable_bet"
     SUBSCRIPTION_ERROR = "subscription_error"
     NO_SUBSCRIPTION = "no_subscription"
     ROUND_TIMEOUT = "round_timeout"
@@ -309,6 +310,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def should_be_sold(self) -> bool:
         """Get the flag of should_be_sold."""
         db_value = self.db.get("should_be_sold", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
+
+    @property
+    def sell_profitable_bet(self) -> bool:
+        """Get the flag of sell_profitable_bet."""
+        db_value = self.db.get("sell_profitable_bet", None)
         if not isinstance(db_value, bool):
             return False
         return bool(db_value)

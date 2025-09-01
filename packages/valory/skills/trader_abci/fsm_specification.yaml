@@ -39,6 +39,7 @@ alphabet_in:
 - REVIEW_BETS
 - ROUND_TIMEOUT
 - SELL_OUTCOME_TOKENS_DONE
+- SELL_PROFITABLE_BET
 - SERVICE_EVICTED
 - SERVICE_NOT_STAKED
 - SKIP_REQUEST
@@ -82,6 +83,7 @@ states:
 - MechResponseRound
 - PostTxSettlementRound
 - PreTxSettlementRound
+- PrepareSellRound
 - RandomnessRound
 - RandomnessTransactionSubmissionRound
 - RedeemRound
@@ -197,6 +199,11 @@ transition_func:
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
     (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
     (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound
+    (PrepareSellRound, DONE): SellOutcomeTokensRound
+    (PrepareSellRound, MOCK_TX): ImpossibleRound
+    (PrepareSellRound, NONE): ImpossibleRound
+    (PrepareSellRound, NO_MAJORITY): PrepareSellRound
+    (PrepareSellRound, ROUND_TIMEOUT): PrepareSellRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
@@ -228,6 +235,7 @@ transition_func:
     (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SamplingRound, SELL_PROFITABLE_BET): PrepareSellRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
     (SelectKeeperTransactionSubmissionARound, INCORRECT_SERIALIZATION): HandleFailedTxRound
     (SelectKeeperTransactionSubmissionARound, NO_MAJORITY): ResetRound

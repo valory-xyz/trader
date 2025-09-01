@@ -263,6 +263,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             idx = self._sample()
             benchmarking_finished = None
             day_increased = None
+            sell_profitable_bet = None
 
             # day increase simulation and benchmarking finished check
             if idx is None and self.benchmarking_mode.enabled:
@@ -276,6 +277,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             if idx is None:
                 bets_hash = None
             else:
+                sell_profitable_bet = self.sampled_bet_is_already_profitable(idx)
                 bets_hash = self.hash_stored_bets()
 
             payload = SamplingPayload(
@@ -284,6 +286,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 idx,
                 benchmarking_finished,
                 day_increased,
+                sell_profitable_bet,
             )
 
         yield from self.finish_behaviour(payload)

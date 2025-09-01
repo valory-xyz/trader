@@ -21,6 +21,7 @@ alphabet_in:
 - NO_SUBSCRIPTION
 - REDEEM_ROUND_TIMEOUT
 - ROUND_TIMEOUT
+- SELL_PROFITABLE_BET
 - SLOTS_UNSUPPORTED_ERROR
 - SUBSCRIPTION_ERROR
 - TIE
@@ -42,6 +43,7 @@ start_states:
 - ClaimRound
 - DecisionReceiveRound
 - HandleFailedTxRound
+- PrepareSellRound
 - RandomnessRound
 - RedeemRound
 states:
@@ -61,6 +63,7 @@ states:
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
 - ImpossibleRound
+- PrepareSellRound
 - RandomnessRound
 - RedeemRound
 - RefillRequiredRound
@@ -113,6 +116,11 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
+    (PrepareSellRound, DONE): SellOutcomeTokensRound
+    (PrepareSellRound, MOCK_TX): ImpossibleRound
+    (PrepareSellRound, NONE): ImpossibleRound
+    (PrepareSellRound, NO_MAJORITY): PrepareSellRound
+    (PrepareSellRound, ROUND_TIMEOUT): PrepareSellRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
@@ -131,6 +139,7 @@ transition_func:
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
+    (SamplingRound, SELL_PROFITABLE_BET): PrepareSellRound
     (SellOutcomeTokensRound, CALC_SELL_AMOUNT_FAILED): HandleFailedTxRound
     (SellOutcomeTokensRound, DONE): FinishedDecisionMakerRound
     (SellOutcomeTokensRound, MOCK_TX): BetPlacementRound
