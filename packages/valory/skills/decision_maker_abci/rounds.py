@@ -66,6 +66,9 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.order_subscription import (
     SubscriptionRound,
 )
+from packages.valory.skills.decision_maker_abci.states.prepare_sell import (
+    PrepareSellRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
@@ -88,38 +91,39 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, ClaimRound, DecisionReceiveRound, HandleFailedTxRound, RandomnessRound, RedeemRound}
+    Initial states: {CheckBenchmarkingModeRound, ClaimRound, DecisionReceiveRound, HandleFailedTxRound, PrepareSellRound, RandomnessRound, RedeemRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
             - benchmarking enabled: 1.
-            - benchmarking disabled: 14.
+            - benchmarking disabled: 15.
             - no majority: 0.
             - round timeout: 0.
-            - none: 20.
-            - done: 20.
-            - subscription error: 20.
+            - none: 21.
+            - done: 21.
+            - subscription error: 21.
         1. BenchmarkingRandomnessRound
             - done: 3.
             - round timeout: 1.
             - no majority: 1.
-            - none: 20.
+            - none: 21.
         2. RandomnessRound
             - done: 3.
             - round timeout: 2.
             - no majority: 2.
-            - none: 20.
+            - none: 21.
         3. SamplingRound
             - done: 4.
-            - none: 16.
+            - none: 17.
             - no majority: 3.
             - round timeout: 3.
             - new simulated resample: 3.
             - benchmarking enabled: 6.
-            - benchmarking finished: 21.
-            - fetch error: 20.
+            - benchmarking finished: 22.
+            - sell profitable bet: 11.
+            - fetch error: 21.
         4. SubscriptionRound
-            - done: 18.
+            - done: 19.
             - mock tx: 6.
             - no subscription: 6.
             - none: 4.
@@ -137,62 +141,68 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 6.
             - round timeout: 6.
         7. DecisionRequestRound
-            - done: 15.
+            - done: 16.
             - mock mech request: 8.
             - slots unsupported error: 9.
             - no majority: 7.
             - round timeout: 7.
         8. DecisionReceiveRound
             - done: 10.
-            - done no sell: 13.
-            - done sell: 22.
+            - done no sell: 14.
+            - done sell: 23.
             - mech response error: 9.
             - no majority: 8.
             - tie: 9.
             - unprofitable: 9.
             - round timeout: 8.
         9. BlacklistingRound
-            - done: 16.
-            - mock tx: 16.
-            - none: 20.
+            - done: 17.
+            - mock tx: 17.
+            - none: 21.
             - no majority: 9.
             - round timeout: 9.
-            - fetch error: 20.
+            - fetch error: 21.
         10. BetPlacementRound
-            - done: 13.
-            - mock tx: 11.
-            - insufficient balance: 19.
-            - calc buy amount failed: 12.
+            - done: 14.
+            - mock tx: 12.
+            - insufficient balance: 20.
+            - calc buy amount failed: 13.
             - no majority: 10.
             - round timeout: 10.
-            - none: 20.
-        11. RedeemRound
-            - done: 13.
-            - mock tx: 3.
-            - no redeeming: 17.
+            - none: 21.
+        11. PrepareSellRound
+            - done: 23.
+            - none: 21.
+            - mock tx: 21.
             - no majority: 11.
-            - redeem round timeout: 17.
-            - none: 20.
-        12. HandleFailedTxRound
-            - blacklist: 9.
-            - no op: 11.
+            - round timeout: 11.
+        12. RedeemRound
+            - done: 14.
+            - mock tx: 3.
+            - no redeeming: 18.
             - no majority: 12.
-        13. FinishedDecisionMakerRound
-        14. BenchmarkingModeDisabledRound
-        15. FinishedDecisionRequestRound
-        16. FinishedWithoutDecisionRound
-        17. FinishedWithoutRedeemingRound
-        18. FinishedSubscriptionRound
-        19. RefillRequiredRound
-        20. ImpossibleRound
-        21. BenchmarkingDoneRound
-        22. SellOutcomeTokensRound
-            - done: 13.
-            - calc sell amount failed: 12.
+            - redeem round timeout: 18.
+            - none: 21.
+        13. HandleFailedTxRound
+            - blacklist: 9.
+            - no op: 12.
+            - no majority: 13.
+        14. FinishedDecisionMakerRound
+        15. BenchmarkingModeDisabledRound
+        16. FinishedDecisionRequestRound
+        17. FinishedWithoutDecisionRound
+        18. FinishedWithoutRedeemingRound
+        19. FinishedSubscriptionRound
+        20. RefillRequiredRound
+        21. ImpossibleRound
+        22. BenchmarkingDoneRound
+        23. SellOutcomeTokensRound
+            - done: 14.
+            - calc sell amount failed: 13.
             - mock tx: 10.
-            - no majority: 22.
-            - round timeout: 22.
-            - none: 20.
+            - no majority: 23.
+            - round timeout: 23.
+            - none: 21.
 
     Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedSubscriptionRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
@@ -209,6 +219,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         DecisionReceiveRound,
         RedeemRound,
         ClaimRound,
+        PrepareSellRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
@@ -246,6 +257,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NEW_SIMULATED_RESAMPLE: SamplingRound,
             Event.BENCHMARKING_ENABLED: ToolSelectionRound,
             Event.BENCHMARKING_FINISHED: BenchmarkingDoneRound,
+            Event.SELL_PROFITABLE_BET: PrepareSellRound,
             # this is here because of `autonomy analyse fsm-specs`
             # falsely reporting it as missing from the transition
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
@@ -314,6 +326,13 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # this is here because of `autonomy analyse fsm-specs`
             # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
+        },
+        PrepareSellRound: {
+            Event.DONE: SellOutcomeTokensRound,
+            Event.NONE: ImpossibleRound,
+            Event.MOCK_TX: ImpossibleRound,
+            Event.NO_MAJORITY: PrepareSellRound,
+            Event.ROUND_TIMEOUT: PrepareSellRound,
         },
         RedeemRound: {
             Event.DONE: FinishedDecisionMakerRound,
@@ -393,6 +412,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         RandomnessRound: set(),
         CheckBenchmarkingModeRound: set(),
+        PrepareSellRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {

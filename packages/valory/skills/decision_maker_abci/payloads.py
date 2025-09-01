@@ -47,6 +47,7 @@ class SamplingPayload(UpdateBetsPayload):
     index: Optional[int]
     benchmarking_finished: Optional[bool]
     day_increased: Optional[bool]
+    sell_profitable_bet: Optional[bool]  # required to understand if bet is being sold because of profitability
 
 
 @dataclass(frozen=True)
@@ -136,3 +137,10 @@ class SellOutcomeTokensPayload(MultisigTxPayload):
 
     sell_amount: Optional[int] = None
     vote: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class PrepareSellPayload(VotingPayload):
+    """Represents a transaction payload for preparing a sell."""
+
+    bet_amount: Optional[int] = None

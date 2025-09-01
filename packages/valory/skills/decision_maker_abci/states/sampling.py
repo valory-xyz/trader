@@ -47,6 +47,7 @@ class SamplingRound(UpdateBetsRound):
         get_name(SynchronizedData.sampled_bet_index),
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),
+        get_name(SynchronizedData.sell_profitable_bet),
     )
     synchronized_data_class = SynchronizedData
 
@@ -63,6 +64,11 @@ class SamplingRound(UpdateBetsRound):
 
         if synced_data.benchmarking_finished:
             return synced_data, Event.BENCHMARKING_FINISHED
+
+        # because we are routing to the selling bypassing the decision receive round
+        # we need to set few variables in `prepare_sell.py` manually
+        if synced_data.sell_profitable_bet:
+            return synced_data, Event.SELL_PROFITABLE_BET
 
         if synced_data.simulated_day:
             return synced_data, Event.NEW_SIMULATED_RESAMPLE

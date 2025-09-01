@@ -84,6 +84,7 @@ class TestSamplingRound:
             index=0,
             benchmarking_finished=False,
             day_increased=False,
+            sell_profitable_bet=False,
         )  # Added index
         assert payload is not None
         assert payload.sender == "mock_sender"
