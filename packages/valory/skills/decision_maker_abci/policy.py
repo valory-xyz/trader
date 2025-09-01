@@ -30,7 +30,7 @@ from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
-VOLUME_FACTOR_REGULARIZATION = 0.25
+VOLUME_FACTOR_REGULARIZATION = 0.1
 UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.5, 80.5)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
 
