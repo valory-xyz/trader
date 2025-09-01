@@ -213,4 +213,3 @@ endif
 .PHONY: check-agent-runner
 check-agent-runner:
 	python check_agent_runner.py
->>>>>>> bd468be1 (makefile command to check agent runner. updates for release process)
