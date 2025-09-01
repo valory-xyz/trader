@@ -62,6 +62,14 @@ class QueueStatus(Enum):
     REPROCESSED = 3  # Bets that have been reprocessed
     BENCHMARKING_DONE = 4
 
+    # Selling specific statuses
+    CHECK_FOR_SELLING = (
+        10  # Send mech request and sell if opposite side is more profitable
+    )
+    SELECTED_FOR_SELLING = (
+        11  # Bets that have been selected for selling because of profitability
+    )
+
     def is_fresh(self) -> bool:
         """Check if the bet is fresh."""
         return self == QueueStatus.FRESH
@@ -76,6 +84,14 @@ class QueueStatus(Enum):
             return QueueStatus.TO_PROCESS
         return self
 
+    def move_to_check_for_selling(self) -> "QueueStatus":
+        """Move the bet to the sell status."""
+        return QueueStatus.CHECK_FOR_SELLING
+
+    def move_to_selected_for_selling(self) -> "QueueStatus":
+        """Move the bet to the selected for selling status."""
+        return QueueStatus.SELECTED_FOR_SELLING
+
     def move_to_fresh(self) -> "QueueStatus":
         """Move the bet to the fresh status."""
         if self not in [QueueStatus.EXPIRED, QueueStatus.BENCHMARKING_DONE]:
@@ -84,9 +100,18 @@ class QueueStatus(Enum):
 
     def next_status(self) -> "QueueStatus":
         """Get the next status in the queue."""
+        final_statuses = [QueueStatus.PROCESSED]
+        sell_statuses = [
+            QueueStatus.CHECK_FOR_SELLING,
+            QueueStatus.SELECTED_FOR_SELLING,
+        ]
+
         if self == QueueStatus.TO_PROCESS:
             return QueueStatus.PROCESSED
-        elif self == QueueStatus.PROCESSED:
+        elif self in final_statuses:
+            return QueueStatus.REPROCESSED
+        # selling statuses are not final, so they should be reset to REPROCESSED
+        elif self in sell_statuses:
             return QueueStatus.REPROCESSED
         elif self != QueueStatus.REPROCESSED:
             return QueueStatus.FRESH
@@ -308,6 +333,11 @@ class Bet:
         """Return the "No" outcome."""
         return self._get_binary_outcome(True)
 
+    @property
+    def vote(self) -> Optional[int]:
+        """Return the vote."""
+        return self.prediction_response.vote
+
     def get_vote_amount(self, vote: int) -> int:
         """Get the amount invested in a vote."""
         vote_name = self.get_outcome(vote)
@@ -332,7 +362,7 @@ class Bet:
 
     def update_investments(self, amount: int) -> bool:
         """Get the investments for the current vote type."""
-        vote = self.prediction_response.vote
+        vote = self.vote
         if vote is None:
             return False
 
