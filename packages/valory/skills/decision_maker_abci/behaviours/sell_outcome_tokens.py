@@ -20,13 +20,20 @@
 
 
 """This module contains the behaviour for selling a token."""
+from typing import Any, Generator, Optional, Union, cast
 
-from typing import Any, Generator, Optional
+from hexbytes import HexBytes
 
+from packages.valory.contracts.conditional_tokens.contract import (
+    ConditionalTokensContract,
+)
+from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     WaitableConditionType,
 )
+from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -44,15 +51,55 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the sell token behaviour."""
         super().__init__(**kwargs)
+        self.built_data: str = ""
+
+    @property
+    def collateral_token(self) -> str:
+        """Get the collateral token."""
+        return self.sampled_bet.collateralToken
+
+    @property
+    def built_data(self) -> HexBytes:
+        """Get the built transaction's data."""
+        return self._built_data
+
+    @built_data.setter
+    def built_data(self, built_data: Union[str, bytes]) -> None:
+        """Set the built transaction's data."""
+        self._built_data = HexBytes(built_data)
+
+    def _conditional_tokens_interact(
+        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
+    ) -> WaitableConditionType:
+        """Interact with the conditional tokens contract."""
+        return self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.conditional_tokens_address,
+            contract_public_id=ConditionalTokensContract.contract_id,
+            contract_callable=contract_callable,
+            data_key=data_key,
+            placeholder=placeholder,
+            **kwargs,
+        )
 
     def _build_approval_tx(self) -> WaitableConditionType:
         """Build an ERC20 approve transaction."""
-        status = yield from self.build_approval_tx(
-            self.return_amount,
-            self.market_maker_contract_address,
-            self.params.conditional_tokens_address,
+        result = yield from self._conditional_tokens_interact(
+            contract_callable="build_approval_tx",
+            data_key="data",
+            placeholder=get_name(SellOutcomeTokensBehaviour.built_data),
+            spender=self.market_maker_contract_address,
+            allow=True,
         )
-        return status
+        if not result:
+            return False
+
+        batch = MultisendBatch(
+            to=self.params.conditional_tokens_address,
+            data=HexBytes(self.built_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
 
     def _prepare_safe_tx(self) -> Generator[None, None, Optional[str]]:
         """Prepare the safe transaction for selling an outcome token and return the hex for the tx settlement skill."""
@@ -73,9 +120,10 @@ class SellOutcomeTokensBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         outcome = self.sampled_bet.get_outcome(self.outcome_index)
         investment = self._collateral_amount_info(self.return_amount)
+
         self.context.logger.info(
-            f"Preparing a multisig transaction to sell the outcome token for {outcome!r}, with confidence "
-            f"{self.synchronized_data.confidence!r}, for the amount of {investment}, which is equal to the amount of "
+            f"Preparing a multisig transaction to sell the outcome token for {outcome!r}, "
+            f"for the amount of {investment}, which is equal to the amount of "
             f"{self.return_amount!r} WEI of the conditional token corresponding to {outcome!r}."
         )
 
