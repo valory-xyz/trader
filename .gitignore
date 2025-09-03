@@ -38,6 +38,7 @@ packages/valory/contracts/did_registry
 packages/valory/contracts/nft_sales
 packages/valory/contracts/lock_payment_condition
 packages/valory/contracts/agreement_store_manager
+packages/valory/contracts/transfer_nft_condition
 packages/valory/contracts/subscription_provider
 packages/valory/protocols/abci
 packages/valory/protocols/acn
