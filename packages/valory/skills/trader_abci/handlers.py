@@ -105,7 +105,6 @@ CHATUI_UPDATED_CONFIG_FIELD = "updated_agent_config"
 CHATUI_UPDATED_PARAMS_FIELD = "updated_params"
 CHATUI_LLM_MESSAGE_FIELD = "llm_message"
 CHATUI_TRADING_STRATEGY_FIELD = "trading_strategy"
-CHATUI_RESPONSE_ISSUES_FIELD = "issues"
 CHATUI_MECH_TOOL_FIELD = "mech_tool"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
@@ -474,7 +473,6 @@ class HttpHandler(BaseHttpHandler):
                 CHATUI_LLM_MESSAGE_FIELD: (
                     llm_message if not issues else "\n".join(issues)
                 ),
-                CHATUI_RESPONSE_ISSUES_FIELD: issues,
             },
         )
 
