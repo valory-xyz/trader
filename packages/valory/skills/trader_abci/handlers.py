@@ -496,7 +496,7 @@ class HttpHandler(BaseHttpHandler):
                 updated_params.update({"trading_strategy": updated_trading_strategy})
                 self._store_trading_strategy(updated_trading_strategy)
             else:
-                issue_message = f"Unsupported trading strategy: '{updated_trading_strategy}'. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
+                issue_message = f"Unsupported trading strategy: {updated_trading_strategy!r}. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
 
@@ -511,7 +511,7 @@ class HttpHandler(BaseHttpHandler):
                 updated_params.update({CHATUI_MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
             else:
-                issue_message = f"Unsupported mech tool: '{updated_mech_tool}'. Available tools are: {', '.join(self.synchronized_data.available_mech_tools)}."
+                issue_message = f"Unsupported mech tool: {updated_mech_tool!r}. Available tools are: {', '.join(self.synchronized_data.available_mech_tools)}."
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
 
