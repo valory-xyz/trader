@@ -107,6 +107,11 @@ ROUNDS_INFO = {
         "description": "Preforms a mech request to determine the answer of a bet",
         "transitions": {},
     },
+    "mech_purchase_subscription_round": {
+        "name": "Preparing an NVM purchase subscription tx",
+        "description": "Preparing a transaction to purchase an NVM subscription, in order to interact with an NVM Mech",
+        "transitions": {},
+    },
     "mech_response_round": {
         "name": "Collecting the responses from a Mech",
         "description": "Collects the responses from a Mech to determine the answer of a bet",
