@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeigl47wrvg6tpmslslqiwx63ugqhfqydjapycmfs35nvx77bqmc2ny
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeienwm4cs5tqx5xtouh4gi4h2vobhfra6kah76fjqcyd7hamefgnpq
-  handlers.py: bafybeift5oul7t5h24o5e2aig5qrqodixeb3hv7aq33jxixgbwaaehhinu
+  handlers.py: bafybeih7r2ei7mgbln5cdp55fvg7i2gzlz7url2cj3ajwgllccnmn7jd3e
   models.py: bafybeianrjqqbpci45d6dcoqcqs7gfyxqu26toncc2qv6zilpsz75hcd3e
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
@@ -27,7 +27,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
-- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
+- dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
