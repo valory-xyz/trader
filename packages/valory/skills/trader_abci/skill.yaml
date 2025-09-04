@@ -177,7 +177,6 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
-      mech_request_price: null
       mech_chain_id: gnosis
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10

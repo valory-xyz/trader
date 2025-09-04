@@ -217,7 +217,6 @@ models:
       tx_timeout: 10.0
       use_termination: false
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
-      mech_request_price: null
       mech_chain_id: gnosis
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       mech_interaction_sleep_time: 10

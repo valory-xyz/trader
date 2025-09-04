@@ -88,7 +88,6 @@ type: skill
         the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
@@ -319,7 +318,6 @@ type: skill
         the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
@@ -448,7 +446,6 @@ type: skill
         the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
@@ -577,7 +574,6 @@ type: skill
         the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
           required for subsequent requests for this API key}
         mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-        mech_request_price: ${MECH_REQUEST_PRICE:int:null}
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}

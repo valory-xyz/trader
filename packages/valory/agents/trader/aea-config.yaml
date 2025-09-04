@@ -204,7 +204,6 @@ models:
       the_graph_payment_required_error: ${str:payment required for subsequent requests
         for this API key}
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-      mech_request_price: ${int:null}
       mech_chain_id: ${str:gnosis}
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
       mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
