@@ -86,92 +86,90 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     Transition states:
         0. CheckBenchmarkingModeRound
             - benchmarking enabled: 1.
-            - benchmarking disabled: 14.
+            - benchmarking disabled: 12.
             - no majority: 0.
             - round timeout: 0.
-            - none: 20.
-            - done: 20.
-            - subscription error: 20.
+            - none: 17.
         1. BenchmarkingRandomnessRound
             - done: 3.
             - round timeout: 1.
             - no majority: 1.
-            - none: 20.
+            - none: 17.
         2. RandomnessRound
             - done: 3.
             - round timeout: 2.
             - no majority: 2.
-            - none: 20.
+            - none: 17.
         3. SamplingRound
             - done: 4.
-            - none: 16.
+            - none: 14.
             - no majority: 3.
             - round timeout: 3.
             - new simulated resample: 3.
-            - benchmarking enabled: 6.
-            - benchmarking finished: 21.
-            - fetch error: 20.
-        6. ToolSelectionRound
-            - done: 7.
-            - none: 6.
+            - benchmarking enabled: 4.
+            - benchmarking finished: 18.
+            - fetch error: 17.
+        4. ToolSelectionRound
+            - done: 5.
+            - none: 4.
+            - no majority: 4.
+            - round timeout: 4.
+        5. DecisionRequestRound
+            - done: 13.
+            - mock mech request: 6.
+            - slots unsupported error: 7.
+            - no majority: 5.
+            - round timeout: 5.
+        6. DecisionReceiveRound
+            - done: 8.
+            - done no sell: 11.
+            - done sell: 19.
+            - mech response error: 7.
             - no majority: 6.
+            - tie: 7.
+            - unprofitable: 7.
             - round timeout: 6.
-        7. DecisionRequestRound
-            - done: 15.
-            - mock mech request: 8.
-            - slots unsupported error: 9.
+        7. BlacklistingRound
+            - done: 14.
+            - mock tx: 14.
+            - none: 17.
             - no majority: 7.
             - round timeout: 7.
-        8. DecisionReceiveRound
-            - done: 10.
-            - done no sell: 13.
-            - done sell: 22.
-            - mech response error: 9.
+            - fetch error: 17.
+        8. BetPlacementRound
+            - done: 11.
+            - mock tx: 9.
+            - insufficient balance: 16.
+            - calc buy amount failed: 10.
             - no majority: 8.
-            - tie: 9.
-            - unprofitable: 9.
             - round timeout: 8.
-        9. BlacklistingRound
-            - done: 16.
-            - mock tx: 16.
-            - none: 20.
-            - no majority: 9.
-            - round timeout: 9.
-            - fetch error: 20.
-        10. BetPlacementRound
-            - done: 13.
-            - mock tx: 11.
-            - insufficient balance: 19.
-            - calc buy amount failed: 12.
-            - no majority: 10.
-            - round timeout: 10.
-            - none: 20.
-        11. RedeemRound
-            - done: 13.
+            - none: 17.
+        9. RedeemRound
+            - done: 11.
             - mock tx: 3.
-            - no redeeming: 17.
-            - no majority: 11.
-            - redeem round timeout: 17.
-            - none: 20.
-        12. HandleFailedTxRound
-            - blacklist: 9.
-            - no op: 11.
-            - no majority: 12.
-        13. FinishedDecisionMakerRound
-        14. BenchmarkingModeDisabledRound
-        15. FinishedDecisionRequestRound
-        16. FinishedWithoutDecisionRound
-        17. FinishedWithoutRedeemingRound
-        19. RefillRequiredRound
-        20. ImpossibleRound
-        21. BenchmarkingDoneRound
-        22. SellOutcomeTokensRound
-            - done: 13.
-            - calc sell amount failed: 12.
-            - mock tx: 10.
-            - no majority: 22.
-            - round timeout: 22.
-            - none: 20.
+            - no redeeming: 15.
+            - no majority: 9.
+            - redeem round timeout: 15.
+            - none: 17.
+        10. HandleFailedTxRound
+            - blacklist: 7.
+            - no op: 9.
+            - no majority: 10.
+        11. FinishedDecisionMakerRound
+        12. BenchmarkingModeDisabledRound
+        13. FinishedDecisionRequestRound
+        14. FinishedWithoutDecisionRound
+        15. FinishedWithoutRedeemingRound
+        16. RefillRequiredRound
+        17. ImpossibleRound
+        18. BenchmarkingDoneRound
+        19. SellOutcomeTokensRound
+            - done: 11.
+            - calc sell amount failed: 10.
+            - mock tx: 8.
+            - no majority: 19.
+            - round timeout: 19.
+            - none: 17.
 
     Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
