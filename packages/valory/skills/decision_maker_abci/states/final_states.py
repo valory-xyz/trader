@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -39,10 +39,6 @@ class FinishedDecisionMakerRound(DegenerateRound):
 
 class FinishedDecisionRequestRound(DegenerateRound):
     """A round representing that decision request has finished."""
-
-
-class FinishedSubscriptionRound(DegenerateRound):
-    """A round representing that subscription has finished."""
 
 
 class FinishedWithoutRedeemingRound(DegenerateRound):

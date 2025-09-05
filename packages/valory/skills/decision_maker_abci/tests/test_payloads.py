@@ -26,7 +26,6 @@ import pytest
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.decision_maker_abci.payloads import (
     BlacklistingPayload,
-    ClaimPayload,
     DecisionReceivePayload,
     DecisionRequestPayload,
     MultisigTxPayload,
@@ -101,10 +100,6 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "mocking_mode": True,
                 "wallet_balance": 10000,
             },
-        ),
-        (
-            ClaimPayload,
-            {"vote": True},
         ),
         (
             VotingPayload,

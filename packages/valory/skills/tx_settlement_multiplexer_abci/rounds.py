@@ -39,12 +39,12 @@ from packages.valory.skills.decision_maker_abci.states.base import SynchronizedD
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
-from packages.valory.skills.decision_maker_abci.states.order_subscription import (
-    SubscriptionRound,
-)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
+)
+from packages.valory.skills.mech_interact_abci.states.purchase_subscription import (
+    MechPurchaseSubscriptionRound,
 )
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
@@ -109,7 +109,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             SellOutcomeTokensRound.auto_round_id(): Event.SELL_OUTCOME_TOKENS_DONE,
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
-            SubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
+            MechPurchaseSubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
         }
 
         synced_data = SynchronizedData(self.synchronized_data.db)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,17 +19,21 @@
 
 """This module contains a state of the decision-making abci app which checks if the benchmarking mode is enabled."""
 
+from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
-from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.decision_maker_abci.states.claim_subscription import (
-    ClaimRound,
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
 )
 
 
-class CheckBenchmarkingModeRound(ClaimRound):
+class CheckBenchmarkingModeRound(VotingRound):
     """A round for checking whether the benchmarking mode is enabled."""
 
     payload_class = VotingPayload
+    synchronized_data_class = SynchronizedData
     done_event = Event.BENCHMARKING_ENABLED
     negative_event = Event.BENCHMARKING_DISABLED
     none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(SynchronizedData.participant_to_votes)

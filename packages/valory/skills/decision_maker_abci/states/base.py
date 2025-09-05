@@ -66,7 +66,6 @@ class Event(Enum):
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
-    SUBSCRIPTION_ERROR = "subscription_error"
     NO_SUBSCRIPTION = "no_subscription"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
@@ -229,11 +228,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def agreement_id(self) -> str:
         """Get the agreement id."""
         return str(self.db.get_strict("agreement_id"))
-
-    @property
-    def claim(self) -> bool:
-        """Get the claim."""
-        return bool(self.db.get_strict("claim"))
 
     @property
     def mech_price(self) -> int:

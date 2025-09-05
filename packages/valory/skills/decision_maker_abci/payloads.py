@@ -86,13 +86,6 @@ class SubscriptionPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
-class ClaimPayload(BaseTxPayload):
-    """Represents a transaction payload for claiming a subscription."""
-
-    vote: bool
-
-
-@dataclass(frozen=True)
 class VotingPayload(BaseTxPayload):
     """Represents a transaction payload for voting."""
 
