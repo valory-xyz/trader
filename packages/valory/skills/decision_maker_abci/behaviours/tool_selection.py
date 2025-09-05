@@ -43,9 +43,9 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             return None
 
         # If chat UI mech tool is provided, use it directly and skip randomness/policy.
-        chatui_mech_tool = self.shared_state.chat_ui_params.mech_tool
+        chatui_mech_tool = self.shared_state.chatui_config.mech_tool
         if chatui_mech_tool is not None:
-            selected_tool = self.shared_state.chat_ui_params.mech_tool
+            selected_tool = self.shared_state.chatui_config.mech_tool
         else:
             randomness = (
                 (self.benchmarking_mode.randomness if self.is_first_period else None)
