@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:latest
+            image: valory/open-autonomy-user:0.19.9
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Pushing Packages"
@@ -49,7 +49,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:latest
+            image: valory/open-autonomy-user:0.19.9
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Setting Tag Images"
@@ -73,7 +73,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
-            image: valory/open-autonomy-user:latest
+            image: valory/open-autonomy-user:0.19.9
             options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
             shell: bash
             run: |
@@ -147,6 +147,8 @@ jobs:
           $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
 
   build-agent-runner:
+    needs:
+    - "publish-packages"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -198,6 +200,20 @@ jobs:
       - name: Install and configure Poetry
         run: pip install poetry
 
+      - name: prepare agent
+        run: |
+          make poetry-install
+          poetry run autonomy init --reset --author "dummy_author_git_ci" --ipfs --remote
+          make hash_id
+          make agent_id
+          make ./agent/ethereum_private_key.txt
+
+      - name: prepare archives
+        if: runner.os != 'Windows'
+        run: |
+          make agent.zip
+          make agent.tar.gz
+
       #### MAC
       - name: build an sign sign the file mac os
         if: runner.os != 'Windows'
@@ -226,7 +242,7 @@ jobs:
         run: | 
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}|tr '[:upper:]' '[:lower:]'`
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
-          mv dist/agent_runner_bin dist/${FILENAME}
+          cp dist/agent_runner_bin dist/${FILENAME}
           dist/${FILENAME} --version
       
       ### WINDOWS
@@ -245,7 +261,12 @@ jobs:
         run: | 
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}.exe|tr '[:upper:]' '[:lower:]'`
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
-          mv dist/agent_runner_bin.exe dist/${FILENAME}
+          cp dist/agent_runner_bin.exe dist/${FILENAME}
+
+      ### PERFORM CHECK OF AGENT RUNNER
+      - name: check agent runner
+        run: | 
+          make check-agent-runner
 
       - name: Upload Release Assets Windows
         uses: actions/upload-artifact@v4
@@ -253,6 +274,32 @@ jobs:
           name: ${{env.FILENAME}}
           path: dist/${{env.FILENAME}}
 
+      - name: Upload Release Assets 
+        uses: actions/upload-artifact@v4
+        with:
+          name: hash_id
+          path: hash_id
+          overwrite: true
+      - name: Upload Release Assets 
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent_id
+          path: agent_id
+          overwrite: true
+
+      - name: Upload Release Assets 
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent.tar.gz
+          path: agent.tar.gz
+          overwrite: true
+
+      - name: Upload Release Assets 
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent.zip
+          path: agent.zip
+          overwrite: true
 
   upload-assets:
       needs: build-agent-runner
@@ -274,11 +321,42 @@ jobs:
           with:
             name: agent_runner_windows_x64.exe
             path: ./dist/
+
+
+
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: agent_id
+            path: ./dist/
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: hash_id
+            path: ./dist/
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: agent.zip
+            path: ./dist/
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: agent.tar.gz
+            path: ./dist/
+
         - name: List files
           run: ls ./dist/
+
+
+
         - name: Publish Release
           uses: softprops/action-gh-release@v2
           if: startsWith(github.ref, 'refs/tags/')
           with:
             files: |
               ./dist/agent_runner*
+              ./dist/hash_id
+              ./dist/agent_id
+              ./dist/agent.zip
+              ./dist/agent.tar.gz

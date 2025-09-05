@@ -107,58 +107,109 @@ protolint_install:
 	GO111MODULE=on GOPATH=~/go go get -u -v github.com/yoheimuta/protolint/cmd/protolint@v0.27.0
 
 
+AUTONOMY_VERSION := v$(shell autonomy --version | grep -oP '(?<=version\s)\S+')
+AEA_VERSION := v$(shell aea --version | grep -oP '(?<=version\s)\S+')
+MECH_INTERACT_VERSION := $(shell git ls-remote --tags --sort="v:refname" https://github.com/valory-xyz/mech-interact.git | tail -n1 | sed 's|.*refs/tags/||')
+
+.PHONY: sync-packages
+sync-packages:
+	@echo "Syncing packages with versions:"
+	@echo "Autonomy version: $(AUTONOMY_VERSION)"
+	@echo "AEA version: $(AEA_VERSION)"
+	@echo "Mech Interact version: $(MECH_INTERACT_VERSION)"
+	autonomy packages sync \
+		--source valory-xyz/open-aea:$(AEA_VERSION) \
+		--source valory-xyz/open-autonomy:$(AUTONOMY_VERSION) \
+		--source valory-xyz/mech-interact:$(MECH_INTERACT_VERSION) \
+		--update-packages
+
+
+
+.PHONY: poetry-install
+poetry-install: 
+
+	PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring poetry install
+	PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring poetry run pip install --upgrade --force-reinstall setuptools==59.5.0  # fix for KeyError: 'setuptools._distutils.compilers'
+
 .PHONY: build-agent-runner
-build-agent-runner:
-	poetry lock
-	poetry install
+build-agent-runner: poetry-install  agent
 	poetry run pyinstaller \
 	--collect-data eth_account \
 	--collect-all aea \
 	--collect-all autonomy \
-	--collect-all operate \
 	--collect-all aea_ledger_ethereum \
 	--collect-all aea_ledger_cosmos \
 	--collect-all aea_ledger_ethereum_flashbots \
 	--hidden-import aea_ledger_ethereum \
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
-	--hidden-import grpc \
-	--hidden-import openapi_core \
-	--collect-all google.protobuf \
-	--collect-all openapi_core \
-	--collect-all openapi_spec_validator \
-	--collect-all asn1crypto \
-	--hidden-import py_ecc \
-	--hidden-import pytz \
+	$(shell poetry run python get_pyinstaller_dependencies.py) \
 	--onefile pyinstaller/trader_bin.py \
 	--name agent_runner_bin
-	./dist/agent_runner_bin 1>/dev/null
-
+	./dist/agent_runner_bin --version 
+	
 
 .PHONY: build-agent-runner-mac
-build-agent-runner-mac:
-	poetry lock
-	poetry install
+build-agent-runner-mac: poetry-install  agent
 	poetry run pyinstaller \
 	--collect-data eth_account \
 	--collect-all aea \
 	--collect-all autonomy \
-	--collect-all operate \
 	--collect-all aea_ledger_ethereum \
 	--collect-all aea_ledger_cosmos \
 	--collect-all aea_ledger_ethereum_flashbots \
 	--hidden-import aea_ledger_ethereum \
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
-	--hidden-import grpc \
-	--hidden-import openapi_core \
-	--collect-all google.protobuf \
-	--collect-all openapi_core \
-	--collect-all openapi_spec_validator \
-	--collect-all asn1crypto \
-	--hidden-import py_ecc \
-	--hidden-import pytz \
+	$(shell poetry run python get_pyinstaller_dependencies.py) \
 	--onefile pyinstaller/trader_bin.py \
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
 	./dist/agent_runner_bin 1>/dev/null
+	./dist/agent_runner_bin --version
+
+
+./hash_id: ./packages/packages.json
+	cat ./packages/packages.json | jq -r '.dev | to_entries[] | select(.key | startswith("agent/")) | .value' > ./hash_id
+
+./agent_id: ./packages/packages.json
+	cat ./packages/packages.json | jq -r '.dev | to_entries[] | select(.key | startswith("agent/")) | .key | sub("^agent/"; "")' > ./agent_id
+
+./agent:  poetry-install ./hash_id
+	@if [ ! -d "agent" ]; then \
+		poetry run autonomy -s fetch --remote `cat ./hash_id` --alias agent; \
+	fi \
+
+
+./agent.zip: ./agent
+	zip -r ./agent.zip ./agent
+
+./agent.tar.gz: ./agent
+	tar czf ./agent.tar.gz ./agent
+
+./agent/ethereum_private_key.txt: ./agent
+	poetry run bash -c "cd ./agent; autonomy  -s generate-key ethereum; autonomy  -s add-key ethereum ethereum_private_key.txt; autonomy -s issue-certificates;"
+
+
+# Configuration
+TIMEOUT := 20
+COMMAND := cd ./agent && SKILL_TRADER_ABCI_MODELS_PARAMS_ARGS_STORE_PATH=/tmp ../dist/agent_runner_bin -s run
+SEARCH_STRING := Starting AEA
+
+
+# Determine OS and set appropriate options
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    # macOS specific settings
+    MKTEMP = mktemp -t tmp
+else ifeq ($(OS),Windows_NT)
+    # Windows specific settings
+    MKTEMP = echo $$(cygpath -m "$$(mktemp -t tmp.XXXXXX)")
+else
+    # Linux and other Unix-like systems
+    MKTEMP = mktemp
+endif
+
+.PHONY: check-agent-runner
+check-agent-runner:
+	python check_agent_runner.py

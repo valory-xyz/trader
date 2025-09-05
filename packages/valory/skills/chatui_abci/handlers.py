@@ -121,7 +121,6 @@ UPDATED_CONFIG_FIELD = "updated_agent_config"
 UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "llm_message"
 TRADING_STRATEGY_FIELD = "trading_strategy"
-RESPONSE_ISSUES_FIELD = "issues"
 MECH_TOOL_FIELD = "mech_tool"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
@@ -466,8 +465,7 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             {
                 UPDATED_PARAMS_FIELD: updated_params,
-                LLM_MESSAGE_FIELD: llm_message,
-                RESPONSE_ISSUES_FIELD: issues,
+                LLM_MESSAGE_FIELD: (llm_message if not issues else "\n".join(issues)),
             },
         )
 
@@ -489,10 +487,8 @@ class HttpHandler(BaseHttpHandler):
                 updated_params.update({"trading_strategy": updated_trading_strategy})
                 self._store_trading_strategy(updated_trading_strategy)
             else:
-                issue_message = (
-                    f"Unsupported trading strategy: {updated_trading_strategy}. "
-                )
-                self.context.logger.error(issue_message)
+                issue_message = f"Unsupported trading strategy: {updated_trading_strategy!r}. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
+                self.context.logger.warning(issue_message)
                 issues.append(issue_message)
 
         updated_mech_tool: Optional[str] = updated_agent_config.get(
@@ -512,8 +508,9 @@ class HttpHandler(BaseHttpHandler):
                 updated_params.update({MECH_TOOL_FIELD: updated_mech_tool})
                 self._store_selected_tool(updated_mech_tool)
             else:
-                self.context.logger.error(f"Unsupported mech tool: {updated_mech_tool}")
-                issues.append(f"Unsupported mech tool: {updated_mech_tool}")
+                issue_message = f"Unsupported mech tool: {updated_mech_tool!r}. Available tools are: {', '.join(self.synchronized_data.available_mech_tools)}."
+                self.context.logger.warning(issue_message)
+                issues.append(issue_message)
 
         return updated_params, issues
 
@@ -554,9 +551,7 @@ class HttpHandler(BaseHttpHandler):
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""
         self.shared_state.chatui_config.trading_strategy = trading_strategy
-        self._store_chatui_param_to_json(
-            TRADING_STRATEGY_FIELD, trading_strategy
-        )
+        self._store_chatui_param_to_json(TRADING_STRATEGY_FIELD, trading_strategy)
 
     def _store_selected_tool(self, selected_tool: Optional[str] = None) -> None:
         """Store the selected tool."""
