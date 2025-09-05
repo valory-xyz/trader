@@ -531,13 +531,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             kwargs,
             bool,
         )
-        self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[str, str] = self._ensure(
-            "mech_to_subscription_params",
-            kwargs,
-            Dict[str, str],
-        )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
         self.rebet_chance = self._ensure("rebet_chance", kwargs, float)
