@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiev2ukgalg5aha4v5sp4cyapky3t5srtd3adcomqugueokyeozr7i
-- valory/market_manager_abci:0.1.0:bafybeigzbjix5utljmbw5nqhw3tkozlb6r73urutdpxtefge4ijdwqqwuq
-- valory/decision_maker_abci:0.1.0:bafybeievzwm3gysi6edzs23fk2oitieahrbsaf6rz2kdvbqzqmbmdfg2sa
-- valory/trader_abci:0.1.0:bafybeiewovz2a37zkhiauqglpkyqfoadyf5bfjrndyvg4q7yzuutq7ult4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiavkqyzyvfnm5krcu63fio66pfnqf4vih22bd2jcang5aj2kpbwcu
+- valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
+- valory/decision_maker_abci:0.1.0:bafybeihvnwekpxfzawc4bqghzzcw5uhebj3ci4e4djxrn5s2bjnatuyu2q
+- valory/trader_abci:0.1.0:bafybeicfqwncltj5pphihe5bvwo7hvfzwuxp52wfem2bgq5saefw4kj7oy
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeignl5w4o4ghcpan7nsor5elvuid4si7t4rnfqga47bwvlgp22xwsa
-- valory/mech_interact_abci:0.1.0:bafybeigkizx3ecohtyshr6tq55zvp4sl5cou344a2t6nvwfgund4xnrj4a
-- valory/chatui_abci:0.1.0:bafybeidfl6qtnrg4cdamehdmj5fv5nmise4qnypajoufp3ypr3ixesuj7q
+- valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
+- valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
+- valory/chatui_abci:0.1.0:bafybeihizgqmnl6alyionewyclwmkvs4jcl4qc7brr7w2unc55fgkdsl4q
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
