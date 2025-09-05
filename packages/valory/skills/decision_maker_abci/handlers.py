@@ -62,6 +62,7 @@ from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
 from packages.valory.skills.decision_maker_abci.rounds_info import (
     load_rounds_info_with_transitions,
 )
+from packages.valory.skills.decision_maker_abci.rounds import Event
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -303,6 +304,56 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
 
+    def get_is_slow_transition_expected(self) -> bool:
+        """Check if a slow transition is expected."""
+        self.context.logger.info("Checking if a slow transition is expected.")
+        
+        current_state = self.context.state
+        round_sequence = self.round_sequence
+        synchronized_data = self.synchronized_data
+        
+        current_round_id = round_sequence.current_round_id
+        current_time = datetime.now().timestamp()
+        
+        seconds_since_last_transition = current_time - datetime.timestamp(
+            round_sequence.last_round_transition_timestamp
+        )
+        
+        abci_app = round_sequence.abci_app
+        event_to_timeout = abci_app.event_to_timeout
+        round_timeout = event_to_timeout.get(Event.ROUND_TIMEOUT, 30.0)  # Default 30s
+        
+        expected_mech_response_time = self.context.params.expected_mech_response_time  # 300s from config
+        
+        is_in_request_round = ["mech_request_round"].includes(current_round_id)
+        
+        self.context.logger.info(f"=== Slow Transition Debug Info ===")
+        self.context.logger.info(f"Current round: {current_round_id}")
+        self.context.logger.info(f"Seconds since last transition: {seconds_since_last_transition:.2f}")
+        self.context.logger.info(f"Round timeout configured: {round_timeout}s")
+        self.context.logger.info(f"Expected mech response time: {expected_mech_response_time}s")
+        self.context.logger.info(f"Decision receive timestamp: {decision_receive_timestamp}")
+        self.context.logger.info(f"Time since mech request: {time_since_mech_request}")
+        self.context.logger.info(f"Is waiting for mech response: {is_waiting_for_mech}")
+        
+        if mech_requests:
+            latest_request = mech_requests[-1]
+            self.context.logger.info(f"Latest mech request tool: {getattr(latest_request, 'tool', 'N/A')}")
+            self.context.logger.info(f"Latest mech request nonce: {getattr(latest_request, 'nonce', 'N/A')}")
+        
+        is_slow_expected = False
+        if is_waiting_for_mech and time_since_mech_request is not None:
+            # Allow for mech response time + some buffer
+            mech_timeout_threshold = expected_mech_response_time + round_timeout
+            is_slow_expected = time_since_mech_request < mech_timeout_threshold
+            self.context.logger.info(f"Mech timeout threshold: {mech_timeout_threshold}s")
+            self.context.logger.info(f"Slow transition expected (mech): {is_slow_expected}")
+        
+        self.context.logger.info(f"Final slow transition expected: {is_slow_expected}")
+        self.context.logger.info(f"================================")
+        
+        return is_slow_expected
+
     def _handle_get_health(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -348,6 +399,9 @@ class HttpHandler(BaseHttpHandler):
             round_sequence.current_round_id
         ]
 
+        slow_transition_is_expected = self.get_is_slow_transition_expected()
+        is_healthy = is_transitioning_fast or slow_transition_is_expected
+
         data = {
             "seconds_since_last_transition": seconds_since_last_transition,
             "is_tm_healthy": not is_tm_unhealthy,
@@ -355,6 +409,7 @@ class HttpHandler(BaseHttpHandler):
             "reset_pause_duration": self.context.params.reset_pause_duration,
             "rounds": rounds,
             "is_transitioning_fast": is_transitioning_fast,
+            "is_healthy": is_healthy,
             "agent_health": {
                 "is_making_on_chain_transactions": is_receiving_mech_responses,
                 "is_staking_kpi_met": is_staking_kpi_met,
