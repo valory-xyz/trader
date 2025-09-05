@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig2ued5fzjpxf5g5girkyrxe3mki7ynjto4u3aivefqf4bhc7qkg4
+agent: valory/trader:0.1.0:bafybeifex3tvhb4bzzfyocmbstimixc6yix47k623dz64ydytw2o67eqpe
 number_of_agents: 4
 deployment:
   agent:
@@ -131,15 +131,6 @@ type: skill
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
-        use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
-          "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
-          "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
-          "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
-          "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
-          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
-          "price":"1000000000000000000"}}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
@@ -357,15 +348,6 @@ type: skill
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
-        use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
-          "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
-          "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
-          "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
-          "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
-          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
-          "price":"1000000000000000000"}}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
@@ -485,15 +467,6 @@ type: skill
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
-        use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
-          "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
-          "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
-          "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
-          "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
-          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
-          "price":"1000000000000000000"}}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
@@ -613,15 +586,6 @@ type: skill
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
-        use_nevermined: ${USE_NEVERMINED:bool:false}
-        mech_to_subscription_params: ${SUBSCRIPTION_PARAMS:dict:{"base_url":"https://marketplace-api.gnosis.nevermined.app/api/v1/metadata/assets/ddo",
-          "did":"did:nv:01706149da2f9f3f67cf79ec86c37d63cec87fc148f5633b12bf6695653d5b3c",
-          "escrow_payment_condition_address":"0x31B2D187d674C9ACBD2b25f6EDce3d2Db2B7f446",
-          "lock_payment_condition_address":"0x2749DDEd394196835199471027713773736bffF2",
-          "transfer_nft_condition_address":"0x659fCA7436936e9fe8383831b65B8B442eFc8Ea8",
-          "token_address":"0x1b5DeaD7309b56ca7663b3301A503e077Be18cba", "order_address":"0x72201948087aE83f8Eac22cf7A9f2139e4cFA829",
-          "nft_amount":"100", "payment_token":"0x0000000000000000000000000000000000000000",
-          "price":"1000000000000000000"}}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
         service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
