@@ -164,8 +164,12 @@ class HttpHandler(BaseHttpHandler):
 
         self.routes = {
             **self.routes,  # persisting routes from base class
-            (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-                *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
+            (HttpMethod.GET.value): [
+                *(getattr(self, "routes", {}).get((HttpMethod.GET.value), []) or []),
+                (is_enabled_url, self._handle_get_features),
+            ],
+            (HttpMethod.HEAD.value): [
+                *(getattr(self, "routes", {}).get((HttpMethod.HEAD.value), []) or []),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.POST.value,): [
@@ -187,6 +191,8 @@ class HttpHandler(BaseHttpHandler):
         """
         # Check if GENAI_API_KEY is set
         api_key = self.context.params.genai_api_key
+
+        self.context.logger.info(f"GENAI_API_KEY: {api_key}")
 
         is_chat_enabled = (
             api_key is not None
