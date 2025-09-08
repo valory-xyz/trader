@@ -16,14 +16,15 @@
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeigzfyzbixum5cqvcbyc24dqwce25dr6nyqvgjm2eqpt6tgo2perd4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeie2n6hicjm3zoa6urutaiihak5abltdzj6nme2gfvxo5tkwkh26sa",
-        "skill/valory/trader_abci/0.1.0": "bafybeigngpv3oiv4jhmkwp6upjzqh6no4ddhlpzvdtb4kj3unkrlfc6gae",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidliyiyregzw2hbdosfbeeo5ihirrpnwlpkipzy46p4kka6j74e3i",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeieg232bti4fotewel7ttbfhrwtlozbnmrkvoq4v6xgyrzknljuwk4",
+        "skill/valory/trader_abci/0.1.0": "bafybeifhdwc6phbs5fvdbbfpd62x22j6uiixqrcwbguqt6vjaa4pdzkh3e",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiczqnzilbi7mn3fdo3dwfjcwm4m6fty3utg564asoj2g5h6v3oqb4",
         "skill/valory/staking_abci/0.1.0": "bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy",
-        "agent/valory/trader/0.1.0": "bafybeih72yd2hz34b7dwuaky56zpka57zjfi463tkqizaaafbthtar3gvu",
-        "service/valory/trader/0.1.0": "bafybeiahtehd5oxq2ykn7oi4xsd6z7fwwzlf6ha6y5bkkwjvi7dxzma2l4",
-        "service/valory/trader_pearl/0.1.0": "bafybeieqgalqpmp4pdbafph5kb3d7lx7x2swgiyzvliagyjxm66hu2ddwa"
+        "skill/valory/chatui_abci/0.1.0": "bafybeicvulddzvgydsr27vql57e3oqc6xp7vcnoqsekfjv37vltp6zb5cq",
+        "agent/valory/trader/0.1.0": "bafybeifrceo7qhbpwieoh3uzpkvxwssffrry66u3ezhifg3dno4djebo3i",
+        "service/valory/trader/0.1.0": "bafybeidb5zr27hxq3kfy63ehqimbnkfcneoozuokg4ysg4bv3v2nhw3azy",
+        "service/valory/trader_pearl/0.1.0": "bafybeic5vcmjcyb4byrkhkkkdibbrvlvaryyu56fyq5jtl2r5md6n74iya"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",

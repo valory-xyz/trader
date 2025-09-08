@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.chatui_abci.behaviours import ChatuiRoundBehaviour
 from packages.valory.skills.check_stop_trading_abci.behaviours import (
     CheckStopTradingRoundBehaviour,
 )
@@ -75,5 +76,6 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *PostTxSettlementFullBehaviour.behaviours,
         *StakingRoundBehaviour.behaviours,
         *CheckStopTradingRoundBehaviour.behaviours,
+        *ChatuiRoundBehaviour.behaviours,
     }
     background_behaviours_cls = {BackgroundBehaviour}  # type: ignore
