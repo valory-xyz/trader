@@ -112,6 +112,7 @@ class SharedState(BaseSharedState):
 
         trading_strategy_store = self._chatui_config.trading_strategy
         initial_trading_strategy_store = self._chatui_config.initial_trading_strategy
+        genai_api_key = self.context.params.genai_api_key
 
         if trading_strategy_store is None or not isinstance(
             trading_strategy_store, str

@@ -157,13 +157,48 @@ class HttpHandler(BaseHttpHandler):
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
 
         chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
+        configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
+
+        is_enabled_url = rf"{hostname_regex}\/features"
+
 
         self.routes = {
             **self.routes,  # persisting routes from base class
+            (HttpMethod.GET.value, HttpMethod.HEAD.value): [
+                *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
+                (is_enabled_url, self._handle_get_features),
+            ],
             (HttpMethod.POST.value,): [
+                # not used yet
                 (chatui_prompt_url, self._handle_chatui_prompt),
+                # correct name according to fe spec
+                (configure_strategies_url, self._handle_chatui_prompt),
             ],
         }
+
+    def _handle_get_features(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """
+        Handle a GET request to check if chat feature is enabled.
+
+        :param http_msg: the HTTP message
+        :param http_dialogue: the HTTP dialogue
+        """
+        # Check if GENAI_API_KEY is set
+        api_key = self.context.params.genai_api_key
+
+        is_chat_enabled = (
+            api_key is not None
+            and isinstance(api_key, str)
+            and api_key.strip() != ""
+            and api_key != "${str:}"
+            and api_key != '""'
+        )
+
+        data = {"isChatEnabled": is_chat_enabled}
+
+        self._send_ok_response(http_msg, http_dialogue, data)    
 
     @property
     def shared_state(self) -> SharedState:
