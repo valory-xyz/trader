@@ -77,7 +77,6 @@ class ChatUILLMResponse:
     """ChatUILLMResponse"""
 
     updated_agent_config: typing.Optional[UpdatedAgentConfig]
-
     message: str
 
 
