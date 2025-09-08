@@ -21,6 +21,7 @@
 import json
 import os
 from dataclasses import asdict, dataclass
+import enum
 from typing import Any, Dict, Optional, Type
 
 from aea.skills.base import SkillContext
@@ -38,6 +39,13 @@ CHATUI_PARAM_STORE = "chatui_param_store.json"
 FILE_WRITE_MODE = "w"
 FILE_READ_MODE = "r"
 JSON_FILE_INDENT_LEVEL = 4
+
+
+class TradingStrategyUI(enum.Enum):
+    """Trading strategy for the Agent's UI."""
+
+    RISKY = "risky"
+    BALANCED = "balanced"
 
 
 @dataclass
