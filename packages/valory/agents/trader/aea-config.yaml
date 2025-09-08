@@ -263,6 +263,7 @@ models:
       enable_position_review: ${bool:true}
       review_period_seconds: ${int:86400}
       use_multi_bets_mode: ${bool:true}
+      genai_api_key: ${str:""}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -419,4 +420,4 @@ config:
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  genai_api_key: ${str:null}
+  genai_api_key: ${str:""}

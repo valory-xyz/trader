@@ -643,6 +643,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+        genai_api_key: ${GENAI_API_KEY:str:""}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -715,4 +716,4 @@ config:
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  genai_api_key: ${GENAI_API_KEY:str:null}
+  genai_api_key: ${GENAI_API_KEY:str:""}

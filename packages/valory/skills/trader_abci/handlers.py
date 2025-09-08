@@ -144,7 +144,7 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_ui_trading_strategy(self) -> TradingStrategyUI:
         """Get the UI trading strategy."""
-        selected_value = self.shared_state.chat_ui_params.trading_strategy
+        selected_value = self.shared_state.chatui_config.trading_strategy
 
         if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
             return TradingStrategyUI.BALANCED
@@ -163,7 +163,7 @@ class HttpHandler(BaseHttpHandler):
             "safe_address": self.synchronized_data.safe_contract_address,
             "agent_ids": self.agent_ids,
             "service_id": self.staking_synchronized_data.service_id,
-            "trading_type": self._get_ui_trading_strategy(),
+            "trading_type": (self._get_ui_trading_strategy()).value,  # note the value call to not return the enum object
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_request_response(http_msg, http_dialogue, data)

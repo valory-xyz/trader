@@ -145,6 +145,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
+      genai_api_key: ''
       agent_registry_address: '0x0000000000000000000000000000000000000000'
       complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
