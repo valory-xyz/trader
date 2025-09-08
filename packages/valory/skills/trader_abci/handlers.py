@@ -22,18 +22,11 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
-from aea.configurations.data_types import PublicId
-from aea.protocols.base import Message
-
 from packages.valory.protocols.http.message import HttpMessage
-from packages.valory.protocols.srr.message import SrrMessage
-from packages.valory.skills.abstract_round_abci.handlers import (
-    ABCIRoundHandler,
-    AbstractResponseHandler,
-)
+from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
