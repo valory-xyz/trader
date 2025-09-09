@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_STAKING_SERVICE_QUERY,
+    GET_TRADER_AGENT_BETS_QUERY,
     GET_TRADER_AGENT_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -220,6 +221,19 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 variables={"timestamp_gt": int(timestamp_gt)},
                 subgraph=self.context.open_markets_subgraph,
                 res_context="open_markets",
+            )
+        )
+
+    def _fetch_trader_agent_bets(
+        self, agent_id
+    ) -> Generator[None, None, Optional[List]]:
+        """Fetch trader agent details."""
+        return (
+            yield from self._fetch_from_subgraph(
+                query=GET_TRADER_AGENT_BETS_QUERY,
+                variables={"id": agent_id},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="trader_agent_bets",
             )
         )
 

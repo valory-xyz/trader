@@ -7,11 +7,11 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeibyrfqkaqr6vwc424srbc7d53rmucikbgapytyezwwcs4irq5gb6u
-  behaviours.py: bafybeichycan2ql3emm2c5mv7puujvs4tto7je2ifw7nx77cyg43dukax4
+  behaviours.py: bafybeicf7cwfinwt3aargrfajji3yi2fzq33zv572gyoxh4pgmcnpoqb4a
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/queries.py: bafybeiadi7ujbr55idijn26jwmrpuc7nm4bag46ytiyh6fatiog5vw6pli
-  graph_tooling/requests.py: bafybeicamjp5r7mye6bjiw6wzy7kcagjhmrnaikskokqunyztdkprbjdku
+  graph_tooling/queries.py: bafybeibzgke7lmowujrnkhlp47m35jq6wiygtohjwclcy2ce67x7klsuce
+  graph_tooling/requests.py: bafybeicuvbta5ipayi4sffuye7y35rqfftbdxlldwridq72ufhdsef2mkq
   handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
   models.py: bafybeid24mtojqgwl7p42tu4ipkt364zacy3fohw3ccjnrh7gtfzyxpfpa
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe

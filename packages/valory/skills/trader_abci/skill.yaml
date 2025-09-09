@@ -43,7 +43,7 @@ skills:
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
 - valory/chatui_abci:0.1.0:bafybeicvulddzvgydsr27vql57e3oqc6xp7vcnoqsekfjv37vltp6zb5cq
-- valory/agent_performance_summary_abci:0.1.0:bafybeibfeldyycwtdo6wdggexk77bzx5zsjejt32hhhw4qixuzsfcmilge
+- valory/agent_performance_summary_abci:0.1.0:bafybeic6f37rk3lsy7pb7pcs7zlb7neqdvufogo6ynkxl6movjt7dncxfq
 behaviours:
   main:
     args: {}

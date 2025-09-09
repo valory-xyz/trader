@@ -51,7 +51,6 @@ query Fpmms($timestamp_gt: Int!) {
 }
 """
 
-
 GET_STAKING_SERVICE_QUERY = """
 query StakingService($id: ID!) {
   service(id: $id) {
@@ -60,3 +59,17 @@ query StakingService($id: ID!) {
   }
 }
 """
+
+GET_TRADER_AGENT_BETS_QUERY = """
+query GetOlasTraderAgentBets($id: ID!) {
+    traderAgent(id: $id) {
+      id
+      bets(first: 1000, orderBy: timestamp, orderDirection: desc) {
+        outcomeIndex
+        fixedProductMarketMaker {
+          id
+          currentAnswer
+        }
+      }
+    }
+  }"""
