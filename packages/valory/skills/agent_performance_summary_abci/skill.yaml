@@ -7,10 +7,13 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeibyrfqkaqr6vwc424srbc7d53rmucikbgapytyezwwcs4irq5gb6u
-  behaviours.py: bafybeighfqvdhyaptnwxfauup5tbthaae6psmibmrf3xiqxelxlrqg7ghi
+  behaviours.py: bafybeichycan2ql3emm2c5mv7puujvs4tto7je2ifw7nx77cyg43dukax4
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
+  graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
+  graph_tooling/queries.py: bafybeiadi7ujbr55idijn26jwmrpuc7nm4bag46ytiyh6fatiog5vw6pli
+  graph_tooling/requests.py: bafybeicamjp5r7mye6bjiw6wzy7kcagjhmrnaikskokqunyztdkprbjdku
   handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
-  models.py: bafybeigkb2jfkhnzomvgy7uuwssxcu2sdbg2wwmcvegbunfnbkvksyyu4a
+  models.py: bafybeid24mtojqgwl7p42tu4ipkt364zacy3fohw3ccjnrh7gtfzyxpfpa
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
   rounds.py: bafybeihbulavjkuo57kiljtv3uql4s3jfjpia44bz2f2anafe6ilxfd6ui
 fingerprint_ignore_patterns: []
@@ -44,7 +47,60 @@ models:
   state:
     args: {}
     class_name: SharedState
+  params:
+    args:
+      the_graph_error_message_key: message
+      the_graph_payment_required_error: payment required for subsequent requests for
+        this API key
+      coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+    class_name: AgentPerformanceSummaryParams
+  olas_agents_subgraph:
+    args:
+      api_id: olas_agents
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:traderAgent
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://predict-agents.subgraph.autonolas.tech
+    class_name: OlasAgentsSubgraph
+  olas_mech_subgraph:
+    args:
+      api_id: olas_mech
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:sender
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.autonolas.tech/subgraphs/name/mech
+    class_name: OlasMechSubgraph
+  gnosis_staking_subgraph:
+    args:
+      api_id: gnosis_staking
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:service
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+    class_name: GnosisStakingSubgraph
 dependencies: {}
 is_abstract: true
 connections: []
-protocols: []
+protocols:
+- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa

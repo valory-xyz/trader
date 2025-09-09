@@ -20,12 +20,15 @@
 
 """This module contains the models for the skill."""
 
+import builtins
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Type
 
 from aea.skills.base import SkillContext
 
+from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -68,3 +71,50 @@ class SharedState(BaseSharedState):
     def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
+
+
+class AgentPerformanceSummaryParams(BaseParams):
+    """Agent Performance Summary's parameters."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the parameters' object."""
+        self.coingecko_olas_in_usd_price_url: str = self._ensure(
+            "coingecko_olas_in_usd_price_url", kwargs, str
+        )
+        super().__init__(*args, **kwargs)
+
+
+class Subgraph(ApiSpecs):
+    """Specifies `ApiSpecs` with common functionality for subgraphs."""
+
+    def process_response(self, response: HttpMessage) -> Any:
+        """Process the response."""
+        res = super().process_response(response)
+        if res is not None:
+            return res
+
+        error_data = self.response_info.error_data
+        expected_error_type = getattr(builtins, self.response_info.error_type)
+        if isinstance(error_data, expected_error_type):
+            error_message_key = self.context.params.the_graph_error_message_key
+            error_message = error_data.get(error_message_key, None)
+            if self.context.params.the_graph_payment_required_error in error_message:
+                err = "Payment required for subsequent requests for the current 'The Graph' API key!"
+                self.context.logger.error(err)
+        return None
+
+
+class OlasAgentsSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Olas Agent's subgraph specifications for trades."""
+
+
+class OlasMechSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Olas Mech's subgraph specifications."""
+
+
+class GnosisStakingSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Gnosis Staking's subgraph specifications."""
+
+
+class OpenMarketsSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Open Markets subgraph specifications."""

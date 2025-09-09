@@ -58,12 +58,12 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidojgf2xgwtst67p3qeijbndcspee6uo4orgiefh4vdg2yjf2ppoe
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
 - valory/decision_maker_abci:0.1.0:bafybeiaeiia4hm6gmyr2fego3ywl5ni3st5wdilmzd5rqsddm6fshgiiim
-- valory/trader_abci:0.1.0:bafybeih72svlnzirnu527sdnkdye6vxkkdthsbbzltu26mc4zmuebu4gka
+- valory/trader_abci:0.1.0:bafybeiel7gfiydhw27ga6mfr6uct3dxmpuev2mqlgjkgy7neaqgl5qoxim
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
 - valory/chatui_abci:0.1.0:bafybeicvulddzvgydsr27vql57e3oqc6xp7vcnoqsekfjv37vltp6zb5cq
-- valory/agent_performance_summary_abci:0.1.0:bafybeiddssocyc4xcadea77tnm57cw5j7z7d477gfwla5rtl2acbz442fy
+- valory/agent_performance_summary_abci:0.1.0:bafybeibfeldyycwtdo6wdggexk77bzx5zsjejt32hhhw4qixuzsfcmilge
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
@@ -264,6 +264,7 @@ models:
       enable_position_review: ${bool:true}
       review_period_seconds: ${int:86400}
       use_multi_bets_mode: ${bool:true}
+      coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -378,6 +379,54 @@ models:
       error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
+  open_markets_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:questions}
+      response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+  olas_agents_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:traderAgent}
+      response_type: ${str:dict}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+  olas_mech_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:sender}
+      response_type: ${str:dict}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://subgraph.autonolas.tech/subgraphs/name/mech}
+  gnosis_staking_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:service}
+      response_type: ${str:dict}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

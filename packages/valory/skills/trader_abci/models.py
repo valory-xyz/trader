@@ -26,6 +26,21 @@ from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    AgentPerformanceSummaryParams,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    GnosisStakingSubgraph as APTGnosisStakingSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    OlasAgentsSubgraph as APTOlasAgentsSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    OlasMechSubgraph as APTOlasMechSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    OpenMarketsSubgraph as APTOpenMarketsSubgraph,
+)
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     Event as AgentPerformanceSummaryEvent,
 )
@@ -108,7 +123,10 @@ ConditionalTokensSubgraph = DecisionMakerConditionalTokensSubgraph
 RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
-
+GnosisStakingSubgraph = APTGnosisStakingSubgraph
+OlasMechSubgraph = APTOlasMechSubgraph
+OlasAgentsSubgraph = APTOlasAgentsSubgraph
+OpenMarketsSubgraph = APTOpenMarketsSubgraph
 
 MARGIN = 5
 
@@ -125,6 +143,7 @@ class TraderParams(
     # also contains the `MechInteractParams`
     DecisionMakerParams,
     TerminationParams,
+    AgentPerformanceSummaryParams,
 ):
     """A model to represent the trader params."""
 

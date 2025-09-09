@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifw74g7ugsphdbpnpyg4rpwnsr4gtobipvxlaldur3jh5jqd4h3za
+agent: valory/trader:0.1.0:bafybeidyvlxa4rzvebkjuyyir5jmgwe6qthkv5imk5e6a2vldos762ngxy
 number_of_agents: 1
 deployment:
   agent:
@@ -155,6 +155,7 @@ models:
       default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
       mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
       use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:false}
+      coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
@@ -264,6 +265,50 @@ models:
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
       url: ${REALITIO_SUBGRAPH_URL:str:https://realitio.subgraph.autonolas.tech}
+  open_markets_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OPEN_MARKETS_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_KEY:str:data:questions}
+      response_type: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OPEN_MARKETS_SUBGRAPH_RETRIES:int:5}
+      url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+  olas_agents_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OLAS_AGENTS_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_KEY:str:data:traderAgent}
+      response_type: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
+      url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+  olas_mech_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OLAS_MECH_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OLAS_MECH_SUBGRAPH_RESPONSE_KEY:str:data:sender}
+      response_type: ${OLAS_MECH_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
+      url: ${OLAS_MECH_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/subgraphs/name/mech}
+  gnosis_staking_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${GNOSIS_STAKING_SUBGRAPH_METHOD:str:POST}
+      response_key: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_KEY:str:data:service}
+      response_type: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
+      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
 ---
 public_id: valory/ledger:0.19.0
 type: connection

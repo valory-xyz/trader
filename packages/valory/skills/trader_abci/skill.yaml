@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeign7fzktx2mj3lgyoozzclxe2pvuf5dsjl6blpxfjjm7szsoiwb5m
   handlers.py: bafybeiazb3u25fpulyb2x7vxho3xdwwuccomnuazumjwugvpfwsgbc6tte
-  models.py: bafybeihk7nkm3bls7mmf6b3jwsefgs6yowfx2llqfzyuo7jlp3rxiq3mfa
+  models.py: bafybeigdebcysiyjprmq5asamjfqe7xapb26wqpkhjuzoejo53iwdaeuo4
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
@@ -43,7 +43,7 @@ skills:
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
 - valory/chatui_abci:0.1.0:bafybeicvulddzvgydsr27vql57e3oqc6xp7vcnoqsekfjv37vltp6zb5cq
-- valory/agent_performance_summary_abci:0.1.0:bafybeiddssocyc4xcadea77tnm57cw5j7z7d477gfwla5rtl2acbz442fy
+- valory/agent_performance_summary_abci:0.1.0:bafybeibfeldyycwtdo6wdggexk77bzx5zsjejt32hhhw4qixuzsfcmilge
 behaviours:
   main:
     args: {}
@@ -272,6 +272,7 @@ models:
       use_multi_bets_mode: true
       enable_position_review: false
       review_period_seconds: 86400
+      coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
     class_name: TraderParams
   benchmarking_mode:
     args:
@@ -420,6 +421,66 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis
     class_name: RealitioSubgraph
+  open_markets_subgraph:
+    args:
+      api_id: open_markets
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:questions
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://predict-agents.subgraph.autonolas.tech
+    class_name: OpenMarketsSubgraph
+  olas_agents_subgraph:
+    args:
+      api_id: olas_agents
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:traderAgent
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://predict-agents.subgraph.autonolas.tech
+    class_name: OlasAgentsSubgraph
+  olas_mech_subgraph:
+    args:
+      api_id: olas_mech
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:sender
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.autonolas.tech/subgraphs/name/mech
+    class_name: OlasMechSubgraph
+  gnosis_staking_subgraph:
+    args:
+      api_id: gnosis_staking
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:service
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+    class_name: GnosisStakingSubgraph
   requests:
     args: {}
     class_name: Requests
