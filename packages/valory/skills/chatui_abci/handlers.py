@@ -161,18 +161,17 @@ class HttpHandler(BaseHttpHandler):
 
         chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
         configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
-
         is_enabled_url = rf"{hostname_regex}\/features"
 
 
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value): [
-                *(getattr(self, "routes", {}).get((HttpMethod.GET.value), []) or []),
+                *(self.routes.get((HttpMethod.GET.value), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.HEAD.value): [
-                *(getattr(self, "routes", {}).get((HttpMethod.HEAD.value), []) or []),
+                *(self.routes.get((HttpMethod.HEAD.value), [])), 
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.POST.value,): [
@@ -192,10 +191,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the HTTP message
         :param http_dialogue: the HTTP dialogue
         """
-        # Check if GENAI_API_KEY is set
         api_key = self.context.params.genai_api_key
-
-        self.context.logger.info(f"GENAI_API_KEY: {api_key}")
 
         is_chat_enabled = (
             api_key is not None
@@ -206,7 +202,6 @@ class HttpHandler(BaseHttpHandler):
         )
 
         data = {"isChatEnabled": is_chat_enabled}
-
         self._send_ok_response(http_msg, http_dialogue, data)    
 
     @property
