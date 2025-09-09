@@ -66,7 +66,6 @@ states:
 - BetPlacementRound
 - BlacklistingRound
 - CallCheckpointRound
-- FetchPerformanceDataRound
 - ChatuiLoadRound
 - CheckBenchmarkingModeRound
 - CheckLateTxHashesRound
@@ -77,6 +76,7 @@ states:
 - DecisionReceiveRound
 - DecisionRequestRound
 - FailedMultiplexerRound
+- FetchPerformanceDataRound
 - FinalizationRound
 - HandleFailedTxRound
 - ImpossibleRound
@@ -126,10 +126,6 @@ transition_func:
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
-    (FetchPerformanceDataRound, DONE): ChatuiLoadRound
-    (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
-    (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
-    (FetchPerformanceDataRound, ROUND_TIMEOUT): FetchPerformanceDataRound
     (ChatuiLoadRound, DONE): CheckBenchmarkingModeRound
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
@@ -179,6 +175,10 @@ transition_func:
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (FetchPerformanceDataRound, DONE): ChatuiLoadRound
+    (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, ROUND_TIMEOUT): FetchPerformanceDataRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound
