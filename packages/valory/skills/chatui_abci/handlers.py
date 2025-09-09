@@ -19,6 +19,7 @@
 
 """This module contains the handlers for the skill of ChatAbciApp."""
 
+import copy
 import json
 from enum import Enum
 from http import HTTPStatus
@@ -58,7 +59,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
-from packages.valory.skills.chatui_abci.models import SharedState
+from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
@@ -119,12 +120,14 @@ RESPONSE_FIELD = "response"
 MESSAGE_FIELD = "message"
 UPDATED_CONFIG_FIELD = "updated_agent_config"
 UPDATED_PARAMS_FIELD = "updated_params"
-LLM_MESSAGE_FIELD = "llm_message"
+LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 MECH_TOOL_FIELD = "mech_tool"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
+TRADING_TYPE_FIELD = "trading_type"
+PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -450,6 +453,18 @@ class HttpHandler(BaseHttpHandler):
             )
             return None
 
+    def _get_ui_trading_strategy(self, selected_value: Optional[str]) -> TradingStrategyUI:
+        """Get the UI trading strategy."""
+        if selected_value is None:
+            return TradingStrategyUI.BALANCED
+
+        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
+            return TradingStrategyUI.BALANCED
+        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
+            return TradingStrategyUI.RISKY
+        else:
+            return TradingStrategyUI.RISKY
+
     def _handle_chatui_llm_response(
         self,
         llm_response_message: SrrMessage,
@@ -468,6 +483,9 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info(
             f"LLM response payload: {llm_response_message.payload}"
         )
+
+        # Store the current trading strategy before any updates
+        previous_trading_strategy = copy.deepcopy(self.shared_state.chatui_config.trading_strategy)
 
         genai_response: dict = json.loads(llm_response_message.payload)
 
@@ -501,11 +519,14 @@ class HttpHandler(BaseHttpHandler):
             updated_agent_config
         )
 
+        selected_trading_strategy = updated_params.get(TRADING_STRATEGY_FIELD, None)
+
         self._send_ok_request_response(
             http_msg,
             http_dialogue,
             {
-                UPDATED_PARAMS_FIELD: updated_params,
+                TRADING_TYPE_FIELD: self._get_ui_trading_strategy(selected_trading_strategy).value,
+                PREVIOUS_TRADING_TYPE_FIELD: self._get_ui_trading_strategy(previous_trading_strategy).value,
                 LLM_MESSAGE_FIELD: (llm_message if not issues else "\n".join(issues)),
             },
         )
