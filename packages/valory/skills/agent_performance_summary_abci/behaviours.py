@@ -19,10 +19,8 @@
 
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
-import json
-from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Generator, Optional, Set, Type
+from typing import Any, Generator, Optional, Set, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -34,6 +32,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
+    SharedState,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
@@ -43,8 +42,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     FetchPerformanceDataRound,
 )
 
-
-AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 DEFAULT_MECH_FEE = 10_000_000_000_000_000  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
@@ -68,16 +65,16 @@ class FetchPerformanceSummaryBehaviour(
         self._agent_performance_summary: Optional[AgentPerformanceSummary] = None
 
     @property
-    def synced_timestamp(self) -> int:
-        """Return the synchronized timestamp across the agents."""
-        return int(
-            self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
-        )
+    def shared_state(self) -> SharedState:
+        """Return the shared state."""
+        return cast(SharedState, self.context.state)
 
     @property
     def market_open_timestamp(self) -> int:
         """Return the UTC timestamp for market open."""
-        synced_dt = datetime.fromtimestamp(self.synced_timestamp, tz=timezone.utc)
+        synced_dt = datetime.fromtimestamp(
+            self.shared_state.synced_timestamp, tz=timezone.utc
+        )
 
         utc_midnight_synced = datetime(
             year=synced_dt.year,
@@ -188,7 +185,7 @@ class FetchPerformanceSummaryBehaviour(
 
     def _fetch_agent_performance_summary(self) -> Generator:
         """Fetch the agent performance summary"""
-        current_timestamp = self.synced_timestamp
+        current_timestamp = self.shared_state.synced_timestamp
 
         final_roi, partial_roi = yield from self.calculate_roi() or (None, None)
 
@@ -232,14 +229,9 @@ class FetchPerformanceSummaryBehaviour(
         self, agent_performance_summary: AgentPerformanceSummary
     ) -> None:
         """Save the agent performance summary to a file."""
-        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
-        with open(file_path, "w") as f:
-            json.dump(
-                asdict(agent_performance_summary),
-                f,
-                indent=2,
-            )
-        self.context.logger.info(f"Agent performance summary saved to {file_path}.")
+        existing_data = self.shared_state._read_existing_performance_summary()
+        agent_performance_summary.agent_behavior = existing_data.agent_behavior
+        self.shared_state._overwrite_performance_summary(agent_performance_summary)
 
     def async_act(self) -> Generator:
         """Do the action."""
