@@ -130,7 +130,6 @@ class TraderParams(
         self.mech_interact_round_timeout_seconds: int = self._ensure(
             "mech_interact_round_timeout_seconds", kwargs, type_=int
         )
-        self.genai_api_key: str = self._ensure("genai_api_key", kwargs, str)
         super().__init__(*args, **kwargs)
 
 
