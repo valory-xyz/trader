@@ -158,7 +158,6 @@ class HttpHandler(BaseHttpHandler):
 
         chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
         configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
-
         is_enabled_url = rf"{hostname_regex}\/features"
 
 
@@ -197,7 +196,6 @@ class HttpHandler(BaseHttpHandler):
         )
 
         data = {"isChatEnabled": is_chat_enabled}
-
         self._send_ok_response(http_msg, http_dialogue, data)    
 
     @property
