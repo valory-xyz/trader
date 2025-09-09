@@ -1,0 +1,32 @@
+name: Release Candidate Flow
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+
+jobs:
+  publish-packages:
+    if: github.head_ref =~ '^v[0-9]+\.[0-9]+\.[0-9]+$'
+    name: Push Packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-versions }}
+      - uses: addnab/docker-run-action@v3
+        with:
+          image: valory/open-autonomy-user:0.19.9
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            echo "Pushing Packages"
+            cd /work
+            export AUTHOR=$(grep 'service' packages/packages.json | awk -F/ '{print $2}' | head -1)
+            autonomy init --reset --author $AUTHOR --ipfs --remote
+            autonomy push-all
