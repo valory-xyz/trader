@@ -19,6 +19,7 @@
 
 """This module contains the handlers for the skill of ChatAbciApp."""
 
+import copy
 import json
 from enum import Enum
 from http import HTTPStatus
@@ -483,6 +484,9 @@ class HttpHandler(BaseHttpHandler):
             f"LLM response payload: {llm_response_message.payload}"
         )
 
+        # Store the current trading strategy before any updates
+        previous_trading_strategy = copy.deepcopy(self.shared_state.chatui_config.trading_strategy)
+
         genai_response: dict = json.loads(llm_response_message.payload)
 
         if "error" in genai_response:
@@ -516,7 +520,6 @@ class HttpHandler(BaseHttpHandler):
         )
 
         selected_trading_strategy = updated_params.get(TRADING_STRATEGY_FIELD, None)
-        previous_trading_strategy = self.shared_state.chatui_config.trading_strategy
 
         self._send_ok_request_response(
             http_msg,
