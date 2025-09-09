@@ -25,6 +25,9 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.agent_performance_summary_abci.behaviours import (
+    AgentPerformanceSummaryRoundBehaviour,
+)
 from packages.valory.skills.chatui_abci.behaviours import ChatuiRoundBehaviour
 from packages.valory.skills.check_stop_trading_abci.behaviours import (
     CheckStopTradingRoundBehaviour,
@@ -77,5 +80,6 @@ class TraderConsensusBehaviour(AbstractRoundBehaviour):
         *StakingRoundBehaviour.behaviours,
         *CheckStopTradingRoundBehaviour.behaviours,
         *ChatuiRoundBehaviour.behaviours,
+        *AgentPerformanceSummaryRoundBehaviour.behaviours,
     }
     background_behaviours_cls = {BackgroundBehaviour}  # type: ignore

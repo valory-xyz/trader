@@ -1,0 +1,50 @@
+name: agent_performance_summary_abci
+version: 0.1.0
+description: Agent Performance summary skill for Predict agent
+author: valory
+type: skill
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeibyrfqkaqr6vwc424srbc7d53rmucikbgapytyezwwcs4irq5gb6u
+  behaviours.py: bafybeighfqvdhyaptnwxfauup5tbthaae6psmibmrf3xiqxelxlrqg7ghi
+  dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
+  handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
+  models.py: bafybeigkb2jfkhnzomvgy7uuwssxcu2sdbg2wwmcvegbunfnbkvksyyu4a
+  payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
+  rounds.py: bafybeihbulavjkuo57kiljtv3uql4s3jfjpia44bz2f2anafe6ilxfd6ui
+fingerprint_ignore_patterns: []
+contracts: []
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
+handlers:
+  abci:
+    args: {}
+    class_name: AgentPerformanceSummaryABCIHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+behaviours: {}
+models:
+  state:
+    args: {}
+    class_name: SharedState
+dependencies: {}
+is_abstract: true
+connections: []
+protocols: []

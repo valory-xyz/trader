@@ -221,6 +221,11 @@ ROUNDS_INFO = {
         "description": "Loads the ChatUI configuration",
         "transitions": {},
     },
+    "fetch_performance_data_round": {
+        "name": "Fetching agent performance summary",
+        "description": "Fetches the agent performance summary data",
+        "transitions": {},
+    },
 }
 
 
