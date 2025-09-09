@@ -39,7 +39,7 @@ from packages.valory.skills.agent_performance_summary_abci.payloads import (
 
 
 class Event(Enum):
-    """Event enumeration for the agent performany summary skill."""
+    """Events triggering state transitions in the Agent Performance Summary ABCI app."""
 
     DONE = "done"
     NONE = "none"
@@ -60,13 +60,11 @@ class FetchPerformanceDataRound(VotingRound):
 
 
 class FinishedFetchPerformanceDataRound(DegenerateRound, ABC):
-    """A round that represents fetch performance data has finished."""
+    """A terminal round indicating that performance data collection is complete."""
 
 
-class AgentPerformanceSummaryAbciApp(
-    AbciApp[Event]
-):  # pylint: disable=too-few-public-methods
-    """AgentPerformanceSummaryApp
+class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
+    """AgentPerformanceSummaryAbciApp
 
     Initial round: FetchPerformanceDataRound
 
