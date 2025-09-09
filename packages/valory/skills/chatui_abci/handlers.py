@@ -191,10 +191,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the HTTP message
         :param http_dialogue: the HTTP dialogue
         """
-        # Check if GENAI_API_KEY is set
         api_key = self.context.params.genai_api_key
-
-        self.context.logger.info(f"GENAI_API_KEY: {api_key}")
 
         is_chat_enabled = (
             api_key is not None
