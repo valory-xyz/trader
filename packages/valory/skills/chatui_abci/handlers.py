@@ -167,11 +167,11 @@ class HttpHandler(BaseHttpHandler):
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value): [
-                *(getattr(self, "routes", {}).get((HttpMethod.GET.value), []) or []),
+                *(self.routes.get((HttpMethod.GET.value), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.HEAD.value): [
-                *(getattr(self, "routes", {}).get((HttpMethod.HEAD.value), []) or []),
+                *(self.routes.get((HttpMethod.HEAD.value), [])), 
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.POST.value,): [
