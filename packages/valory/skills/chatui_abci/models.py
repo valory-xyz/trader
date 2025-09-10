@@ -120,7 +120,6 @@ class SharedState(BaseSharedState):
 
         trading_strategy_store = self._chatui_config.trading_strategy
         initial_trading_strategy_store = self._chatui_config.initial_trading_strategy
-        genai_api_key = self.context.params.genai_api_key
 
         if trading_strategy_store is None or not isinstance(
             trading_strategy_store, str
@@ -148,4 +147,5 @@ class ChatuiParams(BaseParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
+        self.genai_api_key = self._ensure("genai_api_key", kwargs, str)
         super().__init__(*args, **kwargs)
