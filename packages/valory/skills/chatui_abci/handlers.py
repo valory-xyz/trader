@@ -390,10 +390,15 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
+        current_mech_tool = (
+            self.shared_state.chatui_config.mech_tool
+            or "Automatic tool selection based on policy"
+        )
 
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
+            current_mech_tool=current_mech_tool,
             available_tools=available_tools,
         )
         self._send_chatui_llm_request(
@@ -513,17 +518,29 @@ class HttpHandler(BaseHttpHandler):
         updated_params, issues = self._process_updated_agent_config(
             updated_agent_config
         )
+        selected_trading_strategy = updated_params.get(
+            TRADING_STRATEGY_FIELD, previous_trading_strategy
+        )
 
-        selected_trading_strategy = updated_params.get(TRADING_STRATEGY_FIELD, None)
+        selected_ui_strategy = self._get_ui_trading_strategy(
+            selected_trading_strategy
+        ).value
+        previous_ui_strategy = self._get_ui_trading_strategy(
+            previous_trading_strategy
+        ).value
+
+        response_body = {
+            TRADING_TYPE_FIELD: selected_ui_strategy,
+            LLM_MESSAGE_FIELD: "\n".join(issues) if issues else llm_message,
+        }
+        if selected_trading_strategy != previous_trading_strategy:
+            # In case of update, reflect the previous value in the response. Needed for frontend
+            response_body[PREVIOUS_TRADING_TYPE_FIELD] = previous_ui_strategy
 
         self._send_ok_request_response(
             http_msg,
             http_dialogue,
-            {
-                TRADING_TYPE_FIELD: self._get_ui_trading_strategy(selected_trading_strategy).value,
-                PREVIOUS_TRADING_TYPE_FIELD: self._get_ui_trading_strategy(previous_trading_strategy).value,
-                LLM_MESSAGE_FIELD: (llm_message if not issues else "\n".join(issues)),
-            },
+            response_body,
         )
 
     def _process_updated_agent_config(self, updated_agent_config: dict) -> tuple:
