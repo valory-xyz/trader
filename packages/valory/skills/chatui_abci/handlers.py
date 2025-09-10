@@ -513,24 +513,24 @@ class HttpHandler(BaseHttpHandler):
         updated_params, issues = self._process_updated_agent_config(
             updated_agent_config
         )
-
-        response_body = {
-            LLM_MESSAGE_FIELD: (llm_message if not issues else "\n".join(issues)),
-        }
-
         selected_trading_strategy = updated_params.get(
             TRADING_STRATEGY_FIELD, previous_trading_strategy
         )
 
-        if selected_trading_strategy != previous_trading_strategy:
-            # In case of update, reflect the previous value in the response. Needed for frontend
-            response_body[PREVIOUS_TRADING_TYPE_FIELD] = self._get_ui_trading_strategy(
-                previous_trading_strategy
-            ).value
-
-        response_body[TRADING_TYPE_FIELD] = self._get_ui_trading_strategy(
+        selected_ui_strategy = self._get_ui_trading_strategy(
             selected_trading_strategy
         ).value
+        previous_ui_strategy = self._get_ui_trading_strategy(
+            previous_trading_strategy
+        ).value
+
+        response_body = {
+            TRADING_TYPE_FIELD: selected_ui_strategy,
+            LLM_MESSAGE_FIELD: "\n".join(issues) if issues else llm_message,
+        }
+        if selected_trading_strategy != previous_trading_strategy:
+            # In case of update, reflect the previous value in the response. Needed for frontend
+            response_body[PREVIOUS_TRADING_TYPE_FIELD] = previous_ui_strategy
 
         self._send_ok_request_response(
             http_msg,
