@@ -111,7 +111,7 @@ class SharedState(BaseSharedState):
         try:
             self._chatui_config = ChatuiConfig(**current_store)
         except TypeError as e:
-            self.context.logger.error(
+            self.context.logger.warning(
                 f"Error while loading chat UI config from store: {e}. "
                 "Resetting the store."
             )

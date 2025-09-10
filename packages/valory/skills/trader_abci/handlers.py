@@ -22,18 +22,11 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
-from aea.configurations.data_types import PublicId
-from aea.protocols.base import Message
-
 from packages.valory.protocols.http.message import HttpMessage
-from packages.valory.protocols.srr.message import SrrMessage
-from packages.valory.skills.abstract_round_abci.handlers import (
-    ABCIRoundHandler,
-    AbstractResponseHandler,
-)
+from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -52,6 +45,7 @@ from packages.valory.skills.chatui_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
+from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
@@ -73,6 +67,7 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
 AcnHandler = BaseAcnHandler
+SrrHandler = BaseSrrHandler
 
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
@@ -220,42 +215,3 @@ class HttpHandler(BaseHttpHandler):
                 self._send_ok_request_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
             self._handle_not_found(http_msg, http_dialogue)
-
-
-class SrrHandler(AbstractResponseHandler):
-    """A class for handling SRR messages."""
-
-    SUPPORTED_PROTOCOL: Optional[PublicId] = SrrMessage.protocol_id
-    allowed_response_performatives = frozenset(
-        {
-            SrrMessage.Performative.REQUEST,
-            SrrMessage.Performative.RESPONSE,
-        }
-    )
-
-    def handle(self, message: Message) -> None:
-        """
-        React to an SRR message.
-
-        :param message: the SrrMessage instance
-        """
-        self.context.logger.info(f"Received Srr message: {message}")
-        srr_msg = cast(SrrMessage, message)
-
-        if srr_msg.performative not in self.allowed_response_performatives:
-            self.context.logger.warning(
-                f"SRR performative not recognized: {srr_msg.performative}"
-            )
-            return
-
-        nonce = srr_msg.dialogue_reference[
-            0
-        ]  # Assuming dialogue_reference is accessible
-        callback, kwargs = self.context.state.req_to_callback.pop(nonce, (None, {}))
-
-        if callback is None:
-            super().handle(message)
-            return
-
-        dialogue = self.context.srr_dialogues.update(srr_msg)
-        callback(srr_msg, dialogue, **kwargs)
