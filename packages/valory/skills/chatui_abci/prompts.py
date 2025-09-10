@@ -33,8 +33,8 @@ You are an expert assistant tasked with helping users update an agent's trading 
 Configuration details:
 - Trading strategy: "{current_trading_strategy}"
     -- Available strategies:
-        --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while maximizing the long-term return on an investment. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount).
-        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts.
+        --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while maximizing the long-term return on an investment. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount). This is also known as the risky strategy.
+        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts. This is also known as the balanced strategy.
     -- Can not be deselected, but can be changed to another strategy if the user says to change it.
 - Mech tool: "{current_mech_tool}"
     -- Available tools: {available_tools}
