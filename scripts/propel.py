@@ -50,7 +50,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 dotenv.load_dotenv(override=True)
 
 HTTP_OK = 200
-TRADER_SERVICE_NAME = "trader"
+TRADER_SERVICE_NAME = "trader_pearl"
 PROPEL_TRADER_PROD_KEY_IDXS = [
     int(x) for x in os.getenv("PROPEL_TRADER_PROD_KEY_IDXS", "").split(",") if x
 ]
@@ -216,7 +216,7 @@ class Propel:
 
         agent_names = [f"{service_name}_agent_{i}" for i in range(number_of_agents)]
 
-        # Check if Contribute is already deployed and stop it
+        # Check if Agent is already deployed and stop it
         existing_agents = []
         for agent_name in agent_names:
             agent = None
