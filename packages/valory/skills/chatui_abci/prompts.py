@@ -53,7 +53,6 @@ class TradingStrategy(enum.Enum):
 
     KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
     BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
-    # MIKE_STRAT = "mike_strat" # Removed for now
 
 
 class FieldsThatCanBeRemoved(enum.Enum):
