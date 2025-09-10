@@ -22,7 +22,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from packages.valory.protocols.http.message import HttpMessage
@@ -43,9 +43,9 @@ from packages.valory.skills.chatui_abci.handlers import (
     DEFAULT_HEADER,
     HTTP_CONTENT_TYPE_MAP,
 )
+from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
-from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
