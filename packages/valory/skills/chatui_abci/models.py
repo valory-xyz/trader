@@ -21,6 +21,7 @@
 import json
 import os
 from dataclasses import asdict, dataclass
+import enum
 from typing import Any, Dict, Optional, Type
 
 from aea.skills.base import SkillContext
@@ -38,6 +39,13 @@ CHATUI_PARAM_STORE = "chatui_param_store.json"
 FILE_WRITE_MODE = "w"
 FILE_READ_MODE = "r"
 JSON_FILE_INDENT_LEVEL = 4
+
+
+class TradingStrategyUI(enum.Enum):
+    """Trading strategy for the Agent's UI."""
+
+    RISKY = "risky"
+    BALANCED = "balanced"
 
 
 @dataclass
@@ -112,7 +120,6 @@ class SharedState(BaseSharedState):
 
         trading_strategy_store = self._chatui_config.trading_strategy
         initial_trading_strategy_store = self._chatui_config.initial_trading_strategy
-        genai_api_key = self.context.params.genai_api_key
 
         if trading_strategy_store is None or not isinstance(
             trading_strategy_store, str
@@ -140,4 +147,5 @@ class ChatuiParams(BaseParams):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
+        self.genai_api_key = self._ensure("genai_api_key", kwargs, str)
         super().__init__(*args, **kwargs)

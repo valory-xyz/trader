@@ -50,6 +50,8 @@ from packages.valory.skills.chatui_abci.handlers import (
     DEFAULT_HEADER,
     HTTP_CONTENT_TYPE_MAP,
 )
+from packages.valory.skills.chatui_abci.models import TradingStrategyUI
+from packages.valory.skills.chatui_abci.prompts import TradingStrategy
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
@@ -140,6 +142,21 @@ class HttpHandler(BaseHttpHandler):
         """Get the appropriate content type header based on file extension."""
         return HTTP_CONTENT_TYPE_MAP.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
+    def _get_ui_trading_strategy(
+        self, selected_value: Optional[str]
+    ) -> TradingStrategyUI:
+        """Get the UI trading strategy."""
+        if selected_value is None:
+            return TradingStrategyUI.BALANCED
+
+        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
+            return TradingStrategyUI.BALANCED
+        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
+            return TradingStrategyUI.RISKY
+        else:
+            # mike strat
+            return TradingStrategyUI.RISKY
+
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -149,6 +166,11 @@ class HttpHandler(BaseHttpHandler):
             "safe_address": self.synchronized_data.safe_contract_address,
             "agent_ids": self.agent_ids,
             "service_id": self.staking_synchronized_data.service_id,
+            "trading_type": (
+                self._get_ui_trading_strategy(
+                    self.shared_state.chatui_config.trading_strategy
+                )
+            ).value,  # note the value call to not return the enum object
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_request_response(http_msg, http_dialogue, data)
