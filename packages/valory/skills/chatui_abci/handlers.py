@@ -514,16 +514,28 @@ class HttpHandler(BaseHttpHandler):
             updated_agent_config
         )
 
-        selected_trading_strategy = updated_params.get(TRADING_STRATEGY_FIELD, None)
+        response_body = {
+            LLM_MESSAGE_FIELD: (llm_message if not issues else "\n".join(issues)),
+        }
+
+        selected_trading_strategy = updated_params.get(
+            TRADING_STRATEGY_FIELD, previous_trading_strategy
+        )
+
+        if selected_trading_strategy != previous_trading_strategy:
+            # In case of update, reflect the previous value in the response. Needed for frontend
+            response_body[PREVIOUS_TRADING_TYPE_FIELD] = self._get_ui_trading_strategy(
+                previous_trading_strategy
+            ).value
+
+        response_body[TRADING_TYPE_FIELD] = self._get_ui_trading_strategy(
+            selected_trading_strategy
+        ).value
 
         self._send_ok_request_response(
             http_msg,
             http_dialogue,
-            {
-                TRADING_TYPE_FIELD: self._get_ui_trading_strategy(selected_trading_strategy).value,
-                PREVIOUS_TRADING_TYPE_FIELD: self._get_ui_trading_strategy(previous_trading_strategy).value,
-                LLM_MESSAGE_FIELD: (llm_message if not issues else "\n".join(issues)),
-            },
+            response_body,
         )
 
     def _process_updated_agent_config(self, updated_agent_config: dict) -> tuple:
