@@ -390,10 +390,15 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
+        current_mech_tool = (
+            self.shared_state.chatui_config.mech_tool
+            or "Automatic tool selection based on policy"
+        )
 
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
+            current_mech_tool=current_mech_tool,
             available_tools=available_tools,
         )
         self._send_chatui_llm_request(
