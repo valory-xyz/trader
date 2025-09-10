@@ -37,7 +37,7 @@ Configuration details:
         --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts.
         --- "mike_strat": Similar to "bet_amount_per_threshold", but the fixed amount from the mapping is multiplied by the AI's confidence (e.g., for confidence 0.6 and mapping value 60000000000000000, the bet is 0.6 * 60000000000000000).
     -- Can not be deselected, but can be changed to another strategy if the user says to change it.
-- Mech tool:
+- Mech tool: "{current_mech_tool}"
     -- Available tools: {available_tools}
     -- Can be deselected to let the agent choose the best tool based on its policy if the user says to remove the tool.
 
