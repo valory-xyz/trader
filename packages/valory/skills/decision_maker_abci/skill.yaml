@@ -103,7 +103,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/mech_interact_abci:0.1.0:bafybeifpoee4q26fd3vmayiqrbw5inczuzwy7zrvez3k245y4pmhweyq2i
+- valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
 - valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
 behaviours:
   main:

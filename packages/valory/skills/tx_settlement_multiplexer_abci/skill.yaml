@@ -25,7 +25,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/decision_maker_abci:0.1.0:bafybeiabkjyk7ju4mrqp4oxqfmeqv5g2laswgzjjg3zu5ywg5zeopmo4he
 - valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
-- valory/mech_interact_abci:0.1.0:bafybeifpoee4q26fd3vmayiqrbw5inczuzwy7zrvez3k245y4pmhweyq2i
+- valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
 behaviours:
   main:
     args: {}
