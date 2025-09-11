@@ -230,18 +230,23 @@ class HttpHandler(BaseHttpHandler):
         if isinstance(data, (dict, list)):
             data = json.dumps(data)
 
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=status_code,
-            status_text=status_text,
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
+        try:
+            http_response = http_dialogue.reply(
+                performative=HttpMessage.Performative.RESPONSE,
+                target_message=http_msg,
+                version=http_msg.version,
+                status_code=status_code,
+                status_text=status_text,
+                headers=headers,
+                body=data.encode("utf-8") if isinstance(data, str) else data,
+            )
 
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
+            self.context.logger.info("Responding with: {}".format(http_response))
+            self.context.outbox.put_message(message=http_response)
+        except KeyError as e:
+            self.context.logger.error(f"KeyError: {e}")
+        except Exception as e:
+            self.context.logger.error(f"Error: {e}")
 
     def _send_too_early_request_response(
         self,
