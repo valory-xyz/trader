@@ -51,6 +51,9 @@ INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 )
 
+PERCENTAGE_FACTOR = 100
+WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
+
 
 class FetchPerformanceSummaryBehaviour(
     APTQueryingBehaviour,
@@ -169,11 +172,14 @@ class FetchPerformanceSummaryBehaviour(
         total_market_payout = int(trader_agent["totalPayout"])
         total_olas_rewards_payout_in_usd = (
             int(staking_service.get("olasRewardsEarned", 0)) * olas_in_usd_price
-        ) // 10**18
+        ) // WEI_IN_ETH
 
-        partial_roi = ((total_market_payout - total_costs) * 100) // total_costs
+        partial_roi = (
+            (total_market_payout - total_costs) * PERCENTAGE_FACTOR
+        ) // total_costs
         final_roi = (
-            (total_market_payout + total_olas_rewards_payout_in_usd - total_costs) * 100
+            (total_market_payout + total_olas_rewards_payout_in_usd - total_costs)
+            * PERCENTAGE_FACTOR
         ) // total_costs
 
         return final_roi, partial_roi
