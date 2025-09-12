@@ -218,7 +218,7 @@ class FetchPerformanceSummaryBehaviour(
         """Fetch the agent performance summary"""
         current_timestamp = self.shared_state.synced_timestamp
 
-        final_roi, partial_roi = yield from self.calculate_roi() or (None, None)
+        final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
         if final_roi is not None:
