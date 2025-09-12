@@ -43,6 +43,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
+OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"
+DECIMAL_SCALING_FACTOR = 10**18
+
 
 def to_content(query: str, variables: Dict) -> bytes:
     """Convert the given query string to payload content, i.e., add it under a `queries` key and convert it to bytes."""
@@ -257,7 +260,5 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             self._log_response(decoded_response)
             return None
 
-        usd_price = response_data.get(
-            "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f", {}
-        ).get("usd", None)
-        return int(usd_price * 10**18)  # scale to 18 decimals
+        usd_price = response_data.get(OLAS_TOKEN_ADDRESS, {}).get("usd", None)
+        return int(usd_price * DECIMAL_SCALING_FACTOR)  # scale to 18 decimals
