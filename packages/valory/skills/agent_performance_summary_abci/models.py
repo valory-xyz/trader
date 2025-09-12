@@ -25,8 +25,6 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any, List, Optional, Type
 
-from aea.skills.base import SkillContext
-
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
@@ -71,10 +69,6 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls: Type[AbciApp] = AgentPerformanceSummaryAbciApp
-
-    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
-        """Initialize the state."""
-        super().__init__(*args, skill_context=skill_context, **kwargs)
 
     @property
     def synced_timestamp(self) -> int:
