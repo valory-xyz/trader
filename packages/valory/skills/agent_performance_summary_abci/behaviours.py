@@ -147,9 +147,9 @@ class FetchPerformanceSummaryBehaviour(
 
         last_four_days_requests = mech_sender["requests"] if mech_sender else []
 
-        open_market_titles = [
+        open_market_titles = {
             q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
-        ]
+        }
 
         # Subtract requests for still-open markets
         requests_to_subtract = sum(
