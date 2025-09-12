@@ -43,7 +43,7 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 )
 
 
-DEFAULT_MECH_FEE = 10_000_000_000_000_000  # 0.01 ETH
+DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 
