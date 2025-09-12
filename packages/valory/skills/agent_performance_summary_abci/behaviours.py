@@ -153,9 +153,8 @@ class FetchPerformanceSummaryBehaviour(
 
         # Subtract requests for still-open markets
         requests_to_subtract = sum(
-            1
+            r.get("questionTitle", None) in open_market_titles
             for r in last_four_days_requests
-            if r["questionTitle"] in open_market_titles
         )
 
         total_costs = (
