@@ -308,7 +308,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
-      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
+      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
 ---
 public_id: valory/ledger:0.19.0
 type: connection

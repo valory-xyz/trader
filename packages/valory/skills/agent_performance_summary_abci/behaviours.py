@@ -103,18 +103,30 @@ class FetchPerformanceSummaryBehaviour(
             agent_id=agent_id,
         )
         if trader_agent is None:
+            self.context.logger.warning(
+                f"Trader agent data not found for agent id {agent_id}"
+            )
             return None, None
 
         open_markets = yield from self._fetch_open_markets(
             timestamp_gt=self.market_open_timestamp,
         )
+        if open_markets is None:
+            self.context.logger.warning("Open markets data not found")
+            return None, None
 
         staking_service = yield from self._fetch_staking_service(
             service_id=trader_agent["serviceId"],
         )
+        if staking_service is None:
+            self.context.logger.warning(
+                f"Staking service data not found for service id {trader_agent['serviceId']}"
+            )
+            return None, None
 
         olas_in_usd_price = yield from self._fetch_olas_in_usd_price()
         if olas_in_usd_price is None:
+            self.context.logger.warning("Olas in USD price data not found")
             return None, None
 
         total_mech_requests = int(mech_sender["totalRequests"]) if mech_sender else 0
