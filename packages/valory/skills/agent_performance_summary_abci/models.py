@@ -89,7 +89,7 @@ class SharedState(BaseSharedState):
             self.context.logger.warning(
                 f"Could not read existing agent performance summary: {e}"
             )
-            return None
+            return AgentPerformanceSummary()
 
     def _overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file."""
