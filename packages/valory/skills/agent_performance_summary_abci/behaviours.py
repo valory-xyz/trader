@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    AgentPerformanceMetrics,
     AgentPerformanceSummary,
     SharedState,
 )
@@ -223,33 +224,32 @@ class FetchPerformanceSummaryBehaviour(
         metrics = []
         if final_roi is not None:
             metrics.append(
-                {
-                    "name": "Total ROI",
-                    "is_primary": True,
-                    "description": "With staking rewards included",
-                    "value": f"{final_roi}%",
-                }
+                AgentPerformanceMetrics(
+                    name="Total ROI",
+                    is_primary=True,
+                    description="With staking rewards included",
+                    value=f"{final_roi}%",
+                )
             )
         if partial_roi is not None:
             metrics.append(
-                {
-                    "name": "Partial ROI",
-                    "is_primary": False,
-                    "description": "Clean ROI without staking rewards",
-                    "value": f"{partial_roi}%",
-                }
+                AgentPerformanceMetrics(
+                    name="Partial ROI",
+                    is_primary=False,
+                    description="Clean ROI without staking rewards",
+                    value=f"{partial_roi}%",
+                )
             )
-
         accuracy = yield from self._get_prediction_accuracy()
 
         if accuracy is not None:
             metrics.append(
-                {
-                    "name": "Prediction accuracy",
-                    "is_primary": False,
-                    "description": "Percentage of correct predictions",
-                    "value": f"{accuracy:.0f}%",
-                }
+                AgentPerformanceMetrics(
+                    name="Prediction accuracy",
+                    is_primary=False,
+                    description="Percentage of correct predictions",
+                    value=f"{accuracy:.0f}%",
+                )
             )
 
         self._agent_performance_summary = AgentPerformanceSummary(
