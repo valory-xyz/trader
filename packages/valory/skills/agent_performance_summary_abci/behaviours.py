@@ -98,13 +98,27 @@ class FetchPerformanceSummaryBehaviour(
             agent_id=agent_id,
             timestamp_gt=self.market_open_timestamp,
         )
+        if mech_sender and (
+            mech_sender.get("totalRequests") is None
+            or mech_sender.get("requests") is None
+        ):
+            self.context.logger.warning(
+                f"Mech sender data not found or incomplete for {agent_id=} and {mech_sender=}"
+            )
+            return None, None
 
         trader_agent = yield from self._fetch_trader_agent(
             agent_id=agent_id,
         )
-        if trader_agent is None:
+        if (
+            trader_agent is None
+            or trader_agent.get("serviceId") is None
+            or trader_agent.get("totalTraded") is None
+            or trader_agent.get("totalFees") is None
+            or trader_agent.get("totalPayout") is None
+        ):
             self.context.logger.warning(
-                f"Trader agent data not found for agent id {agent_id}"
+                f"Trader agent data not found or incomplete for {agent_id=} and {trader_agent=}"
             )
             return None, None
 
