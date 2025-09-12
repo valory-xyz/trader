@@ -66,6 +66,7 @@ states:
 - BetPlacementRound
 - BlacklistingRound
 - CallCheckpointRound
+- ChatuiLoadRound
 - CheckBenchmarkingModeRound
 - CheckLateTxHashesRound
 - CheckStopTradingRound
@@ -124,6 +125,10 @@ transition_func:
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
+    (ChatuiLoadRound, DONE): CheckBenchmarkingModeRound
+    (ChatuiLoadRound, NONE): ChatuiLoadRound
+    (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
+    (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, DONE): ImpossibleRound
@@ -211,9 +216,9 @@ transition_func:
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
-    (RegistrationRound, DONE): CheckBenchmarkingModeRound
+    (RegistrationRound, DONE): ChatuiLoadRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
-    (RegistrationStartupRound, DONE): CheckBenchmarkingModeRound
+    (RegistrationStartupRound, DONE): ChatuiLoadRound
     (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
     (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
     (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound

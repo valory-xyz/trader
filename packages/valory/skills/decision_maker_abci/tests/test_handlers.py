@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -160,11 +160,19 @@ class TestHttpHandler:
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
         health_url_regex = rf"{hostname_regex}\/healthcheck"
         assert self.handler.handler_url_regex == rf"{hostname_regex}\/.*"
-        assert self.handler.routes == {
-            (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-                (health_url_regex, self.handler._handle_get_health),
-            ],
-        }
+        # Check that the health route is present in the handler's routes
+
+        found = False
+        for methods, routes in self.handler.routes.items():
+            for regex, handler in routes:
+                if (
+                    methods == (HttpMethod.GET.value, HttpMethod.HEAD.value)
+                    and regex == health_url_regex
+                    and handler == self.handler._handle_get_health
+                ):
+                    found = True
+                    break
+        assert found, "Health route not found in handler.routes"
         assert self.handler.json_content_header == "Content-Type: application/json\n"
 
     @pytest.mark.parametrize(
