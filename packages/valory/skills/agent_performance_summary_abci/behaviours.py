@@ -191,21 +191,21 @@ class FetchPerformanceSummaryBehaviour(
         agent_bets_data = yield from self._fetch_trader_agent_bets(
             agent_id=agent_id,
         )
-        if agent_bets_data is None or len(agent_bets_data["bets"]) == 0:
+        if agent_bets_data is None or len(agent_bets_data.get("bets", [])) == 0:
             return None
 
         bets_on_closed_markets = [
             bet
             for bet in agent_bets_data["bets"]
-            if bet["fixedProductMarketMaker"]["currentAnswer"] is not None
+            if bet.get("fixedProductMarketMaker", {}).get("currentAnswer") is not None
         ]
         total_bets = len(bets_on_closed_markets)
         won_bets = 0
 
         for bet in bets_on_closed_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
-            bet_answer = bet["outcomeIndex"]
-            if market_answer == INVALID_ANSWER_HEX:
+            bet_answer = bet.get("outcomeIndex")
+            if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
                 continue
             if int(market_answer, 0) == int(bet_answer):
                 won_bets += 1
