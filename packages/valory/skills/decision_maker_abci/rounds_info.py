@@ -216,6 +216,11 @@ ROUNDS_INFO = {
         "description": "Validates a transaction",
         "transitions": {},
     },
+    "chatui_load_round": {
+        "name": "Loading ChatUI configuration",
+        "description": "Loads the ChatUI configuration",
+        "transitions": {},
+    },
 }
 
 

@@ -8,8 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check branch
-        # Only allow merges to main from either 'develop' or version tags (e.g., v0.26.2)
-        if: github.base_ref == 'main' && !(github.head_ref == 'develop' || matches(github.head_ref, '^v\d+\.\d+\.\d+$'))
+        # Only allow merges to main from either 'develop' or version tags (e.g., v0.26.2 or v0.27.1-rc)
+        if: github.base_ref == 'main' && !(github.head_ref == 'develop')
         run: |
-          echo "ERROR: You can only merge to main from develop."
-          exit 1
+          # check for version branch
+          if [[ "${{ github.head_ref }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc)?$ ]]; then
+                echo "All ok. it's a version branch."
+                exit 0
+          else
+                echo "ERROR: You can only merge to main from develop or version tags (e.g., v0.26.2 or v0.27.1-rc)"
+                exit 1
+          fi
+

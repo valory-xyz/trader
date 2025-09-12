@@ -15,7 +15,7 @@ connections:
 - valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
 - valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
-- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
+- dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeidfvyc6bw4uigv3jfcxr23vysctki6x5rh5htp2azhncib27ydxdm
@@ -55,13 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiachgo6reit2q4jw75mefw2acj4ldedeqmn3rewjm4dbzts2l7oxe
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidliyiyregzw2hbdosfbeeo5ihirrpnwlpkipzy46p4kka6j74e3i
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihscepheyiwsrpqyiqdrd62ymi4pzq3hi2t6kui6bxsxgmn3b5axy
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
-- valory/decision_maker_abci:0.1.0:bafybeie2n6hicjm3zoa6urutaiihak5abltdzj6nme2gfvxo5tkwkh26sa
-- valory/trader_abci:0.1.0:bafybeigbq5zsijpgshp62qzpwqzqzacayyqxjajxwxvyotc7a4juzfahuq
+- valory/decision_maker_abci:0.1.0:bafybeiecyuvgzswxc4txv7zxracmqts5rj3rcwukstiuzlhh3eu2xubkwq
+- valory/trader_abci:0.1.0:bafybeibwolwtyp6wltb4gq6kv62p7prsrv5hdcogu3aiyoxiwzbtxaevye
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
+- valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
@@ -262,6 +263,7 @@ models:
       enable_position_review: ${bool:true}
       review_period_seconds: ${int:86400}
       use_multi_bets_mode: ${bool:true}
+      genai_api_key: ${str:""}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -418,4 +420,4 @@ config:
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  genai_api_key: ${str:null}
+  genai_api_key: ${str:""}

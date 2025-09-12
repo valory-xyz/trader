@@ -8,26 +8,27 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeigc6hszbu66ccajny5eh7thfgsrlr36je4mzziwp4mupgvtaeu6aa
-  composition.py: bafybeigl47wrvg6tpmslslqiwx63ugqhfqydjapycmfs35nvx77bqmc2ny
+  behaviours.py: bafybeiaa2e2jetas3xptaz3wpykq2ptysdjhbb2mvqz5xnd7gcvyqu4sue
+  composition.py: bafybeifct76ut7nu4dla7qfmq6blfsjzxwh2zu7zfkemqieganhxk4hcwa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeienwm4cs5tqx5xtouh4gi4h2vobhfra6kah76fjqcyd7hamefgnpq
-  handlers.py: bafybeift5oul7t5h24o5e2aig5qrqodixeb3hv7aq33jxixgbwaaehhinu
-  models.py: bafybeianrjqqbpci45d6dcoqcqs7gfyxqu26toncc2qv6zilpsz75hcd3e
+  fsm_specification.yaml: bafybeicauircsipef44gx5p5uwus7v7yim5uilzh7kpa5fsdjzcrjvy2xu
+  handlers.py: bafybeibw6arrdygdcpmbydu3biybejfnpgn72wuhxwhhqxzkki2scg7beq
+  models.py: bafybeihqmi5ogj6ioasnz5wn4h653zvafi66tcb4mvd4ne4457rqxju24q
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
-  predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
+  predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
+  predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
+  predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
+  predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeid3tx3zsbvepfphgc73czpo6eajv3jy5z6rxc5adns42kqqbrqb2q
+  predict-ui-build/index.html: bafybeidffl62vtttjlmlow2qs43swzvu5nq6nh2ufh27tyf6q7cdgr2ema
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
-  prompts.py: bafybeiggczobeuezzmqh4rns6py5upedhzgs6yuq66wv7ovz4cgo5vqzhe
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/tests_handlers.py: bafybeidl66z57qnyl7ystvaj4xnpb6ot6aybg2l6bikkuanae7iqdempya
+  tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
-- dvilela/genai:0.1.0:bafybeihp6t4y7mynitwj3afwet2lr5ittrqmk4hop7ycmgyyx3nqkc5sty
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
@@ -39,11 +40,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
-- valory/decision_maker_abci:0.1.0:bafybeie2n6hicjm3zoa6urutaiihak5abltdzj6nme2gfvxo5tkwkh26sa
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidliyiyregzw2hbdosfbeeo5ihirrpnwlpkipzy46p4kka6j74e3i
+- valory/decision_maker_abci:0.1.0:bafybeiecyuvgzswxc4txv7zxracmqts5rj3rcwukstiuzlhh3eu2xubkwq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihscepheyiwsrpqyiqdrd62ymi4pzq3hi2t6kui6bxsxgmn3b5axy
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
+- valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
 behaviours:
   main:
     args: {}
@@ -145,6 +147,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
+      genai_api_key: ''
       agent_registry_address: '0x0000000000000000000000000000000000000000'
       complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
