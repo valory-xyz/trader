@@ -140,7 +140,7 @@ jobs:
           echo >> github.vars
           echo '${{ toJSON(vars) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' >> github.vars
           source github.vars
-          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
+          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 600
 
   build-agent-runner:
     needs:
@@ -237,7 +237,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}|tr '[:upper:]' '[:lower:]'`
-          echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV;
           cp dist/agent_runner_bin dist/${FILENAME}
           dist/${FILENAME} --version
 
@@ -256,12 +256,12 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}.exe|tr '[:upper:]' '[:lower:]'`
-          echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV;
           cp dist/agent_runner_bin.exe dist/${FILENAME}
 
       ### PERFORM CHECK OF AGENT RUNNER
       - name: check agent runner
-        run: | 
+        run: |
           make check-agent-runner
 
       - name: Upload Release Assets Windows
@@ -270,27 +270,27 @@ jobs:
           name: ${{env.FILENAME}}
           path: dist/${{env.FILENAME}}
 
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: hash_id
           path: hash_id
           overwrite: true
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: agent_id
           path: agent_id
           overwrite: true
 
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: agent.tar.gz
           path: agent.tar.gz
           overwrite: true
 
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: agent.zip
