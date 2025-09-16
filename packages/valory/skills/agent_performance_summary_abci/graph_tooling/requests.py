@@ -23,7 +23,7 @@
 import json
 from abc import ABC
 from enum import Enum, auto
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
+from typing import Any, Dict, Generator, List, Optional, cast
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
@@ -78,11 +78,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self._call_failed: bool = False
         self._fetch_status: FetchStatus = FetchStatus.NONE
-        self._creators_iterator: Iterator[Tuple[str, List[str]]] = (
-            self.params.creators_iterator
-        )
         self._current_market: str = ""
-        self._current_creators: List[str] = []
 
     @property
     def params(self) -> AgentPerformanceSummaryParams:
@@ -99,20 +95,6 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         """Get the synchronized time among agents."""
         synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
         return int(synced_time.timestamp())
-
-    def _prepare_fetching(self) -> bool:
-        """Prepare for fetching a bet."""
-        if self._fetch_status in (FetchStatus.SUCCESS, FetchStatus.NONE):
-            res = next(self._creators_iterator, None)
-            if res is None:
-                return False
-            self._current_market, self._current_creators = res
-
-        if self._fetch_status == FetchStatus.FAIL:
-            return False
-
-        self._fetch_status = FetchStatus.IN_PROGRESS
-        return True
 
     def _handle_response(
         self,
@@ -257,8 +239,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         try:
             response_data = json.loads(decoded_response)
         except json.JSONDecodeError:
-            self.context.logger.error("Could not parse the response body!")
-            self._log_response(decoded_response)
+            self.context.logger.error(
+                f"Could not parse the response body: {decoded_response}"
+            )
             return None
 
         usd_price = response_data.get(OLAS_TOKEN_ADDRESS, {}).get(USD_PRICE_FIELD, None)
