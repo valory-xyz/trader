@@ -77,7 +77,7 @@ class SharedState(BaseSharedState):
             self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
         )
 
-    def _read_existing_performance_summary(self) -> Optional[AgentPerformanceSummary]:
+    def _read_existing_performance_summary(self) -> AgentPerformanceSummary:
         """Read the existing agent performance summary from a file."""
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
