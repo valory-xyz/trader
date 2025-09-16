@@ -63,6 +63,7 @@ class MonitorBehaviour(TickerBehaviour, BaseBehaviour):
             self.update_balances()
             fund_requirements = self.build_fund_requirements()
 
+        # This object is read when the funding endpoint is called
         self.context.state.fund_requirements = fund_requirements
 
 
