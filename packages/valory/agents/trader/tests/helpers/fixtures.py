@@ -26,8 +26,8 @@ import docker
 import pytest
 from aea_test_autonomy.docker.base import launch_image
 
-from packages.valory.agents.impact_evaluator.tests.helpers.constants import ACCOUNTS
-from packages.valory.agents.impact_evaluator.tests.helpers.docker import (
+from packages.valory.agents.trader.tests.helpers.constants import ACCOUNTS
+from packages.valory.agents.trader.tests.helpers.docker import (
     DEFAULT_HARDHAT_ADDR,
     DEFAULT_HARDHAT_PORT,
     DEFAULT_JSON_SERVER_ADDR,

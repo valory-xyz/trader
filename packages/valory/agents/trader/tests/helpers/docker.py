@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 # pylint: disable=import-error
 
-"""Impact Evaluator Contracts Docker image."""
+"""Trader Docker images"""
 import logging
 import time
 from pathlib import Path
@@ -30,8 +30,8 @@ from aea.exceptions import enforce
 from aea_test_autonomy.docker.base import DockerImage
 from docker.models.containers import Container
 
-from packages.valory.agents.impact_evaluator import PACKAGE_DIR
-from packages.valory.agents.impact_evaluator.tests.helpers.constants import (
+from packages.valory.agents.trader import PACKAGE_DIR
+from packages.valory.agents.trader.tests.helpers.constants import (
     DYNAMIC_CONTRIBUTION_CONTRACT_ADDRESS,
 )
 

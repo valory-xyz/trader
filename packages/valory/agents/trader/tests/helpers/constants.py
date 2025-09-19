@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Defines constant used in the ImpactEvaluator docker image."""
+"""Defines constants used in the Trader docker image."""
 
 # the network is configured with these accounts
 ACCOUNTS = [
