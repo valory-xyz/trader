@@ -52,7 +52,7 @@ from packages.valory.agents.trader.tests.helpers.docker import (
 )
 from packages.valory.agents.trader.tests.helpers.fixtures import (  # noqa: F401
     UseHardHatTraderBaseTest,
-    UseMockGraphApiBaseTest,
+    UseMockAPIDockerImageBaseTest,
 )
 from packages.valory.skills.registration_abci.rounds import RegistrationStartupRound
 from packages.valory.skills.reset_pause_abci.rounds import ResetAndPauseRound
@@ -69,11 +69,14 @@ STRICT_CHECK_STRINGS = (
 PACKAGES_DIR = Path(__file__).parent.parent.parent.parent.parent
 
 
-MOCK_TWITTER_API_ADDRESS = _DEFAULT_JSON_SERVER_ADDR
-MOCK_TWITTER_API_PORT = _DEFAULT_JSON_SERVER_PORT
+MOCK_NETWORK_SUBGRAPH_URL = f"{_DEFAULT_JSON_SERVER_ADDR}/network_subgraph/"
+MOCK_NETWORK_SUBGRAPH_PORT = _DEFAULT_JSON_SERVER_PORT
 
-MOCK_CERAMIC_API_ADDRESS = _DEFAULT_JSON_SERVER_ADDR
-MOCK_CERAMIC_API_PORT = _DEFAULT_JSON_SERVER_PORT
+MOCK_NETWORK_OMEN_URL = f"{_DEFAULT_JSON_SERVER_ADDR}/omen_subgraph/"
+MOCK_NETWORK_OMEN_PORT = _DEFAULT_JSON_SERVER_PORT
+
+MOCK_DRAND_URL = f"{_DEFAULT_JSON_SERVER_ADDR}/randomness_api/"
+MOCK_DRAND_PORT = _DEFAULT_JSON_SERVER_PORT
 
 
 @pytest.mark.usefixtures("ipfs_daemon")
@@ -87,15 +90,29 @@ class BaseTestEnd2EndTraderNormalExecution(BaseTestEnd2EndExecution):
     happy_path = HAPPY_PATH
     package_registry_src_rel = PACKAGES_DIR
 
-    __param_args_prefix = f"vendor.valory.skills.{PublicId.from_str(skill_package).name}.models.params.args"
+    __models_prefix = f"vendor.valory.skills.{PublicId.from_str(skill_package).name}.models"
+    __param_args_prefix = f"{__models_prefix}.params.args"
+    __network_subgraph_args_prefix = f"{__models_prefix}.network_subgraph.args"
+    __omen_subgraph_args_prefix = f"{__models_prefix}.omen_subgraph.args"
+    __drand_args_prefix = f"{__models_prefix}.randomness_api.args"
 
+    # Set param overrides
     extra_configs = [
         {
-            "dotted_path": f"{__param_args_prefix}.twitter_api_base",
-            "value": f"{MOCK_TWITTER_API_ADDRESS}:{MOCK_TWITTER_API_PORT}/",
+            "dotted_path": f"{__network_subgraph_args_prefix}.url",
+            "value": f"{MOCK_NETWORK_SUBGRAPH_URL}:{MOCK_NETWORK_SUBGRAPH_PORT}/",
+        },
+        {
+            "dotted_path": f"{__omen_subgraph_args_prefix}.url",
+            "value": f"{MOCK_NETWORK_OMEN_URL}:{MOCK_NETWORK_OMEN_PORT}/",
+        },
+        {
+            "dotted_path": f"{__drand_args_prefix}.url",
+            "value": f"{MOCK_DRAND_URL}:{MOCK_DRAND_PORT}/",
         },
     ]
 
+    # Set the http server port config
     http_server_port_config = {
         "dotted_path": "vendor.valory.connections.http_server.config.port",
         "value": 8000,
@@ -107,14 +124,14 @@ class BaseTestEnd2EndTraderNormalExecution(BaseTestEnd2EndExecution):
             self.set_config(**config)
 
         self.set_config(**self.http_server_port_config)
-        self.http_server_port_config["value"] += 1  # port number increment
+        self.http_server_port_config["value"] += 1  # avoid collisions in multi-agent setups
 
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("nb_nodes", (1,))
 class TestEnd2EndTraderSingleAgent(
     BaseTestEnd2EndTraderNormalExecution,
-    UseMockGraphApiBaseTest,
+    UseMockAPIDockerImageBaseTest,
     UseHardHatTraderBaseTest,
 ):
     """Test the trader with only one agent."""

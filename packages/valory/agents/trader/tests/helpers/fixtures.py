@@ -33,7 +33,7 @@ from packages.valory.agents.trader.tests.helpers.docker import (
     DEFAULT_JSON_SERVER_ADDR,
     DEFAULT_JSON_SERVER_PORT,
     TraderNetworkDockerImage,
-    MockGraphApi,
+    MockAPIDockerImage,
 )
 
 
@@ -68,7 +68,7 @@ class UseHardHatTraderBaseTest:  # pylint: disable=too-few-public-methods
 
 
 @pytest.mark.integration
-class UseMockGraphApiBaseTest:  # pylint: disable=too-few-public-methods
+class UseMockAPIDockerImageBaseTest:  # pylint: disable=too-few-public-methods
     """Inherit from this class to use a mock of Graph API."""
 
     MOCK_API_ADDRESS = DEFAULT_JSON_SERVER_ADDR
@@ -84,7 +84,7 @@ class UseMockGraphApiBaseTest:  # pylint: disable=too-few-public-methods
         """Start a Graph API instance."""
         client = docker.from_env()
         logging.info(f"Launching the Graph API on port {cls.MOCK_API_PORT}")
-        image = MockGraphApi(
+        image = MockAPIDockerImage(
             client,
             addr=cls.MOCK_API_ADDRESS,
             port=cls.MOCK_API_PORT,

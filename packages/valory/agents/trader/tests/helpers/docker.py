@@ -131,7 +131,7 @@ DEFAULT_JSON_DATA_DIR = (
 )
 
 
-class MockGraphApi(DockerImage):
+class MockAPIDockerImage(DockerImage):
     """Spawn a JSON server to for mocking the Twitter API."""
 
     def __init__(
