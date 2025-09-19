@@ -270,17 +270,18 @@ class FetchPerformanceSummaryBehaviour(
 
             yield from self._fetch_agent_performance_summary()
 
-            if self._agent_performance_summary is None:
+            success = (
+                len(self._agent_performance_summary.metrics) == 3
+            )  # Trader has 3 metrics to show
+            if not success:
                 self.context.logger.warning(
                     "Agent performance summary could not be fetched. Saving default values"
                 )
-                self._agent_performance_summary = AgentPerformanceSummary()
-
             self._save_agent_performance_summary(self._agent_performance_summary)
 
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=True,
+                vote=success,
             )
 
         yield from self.finish_behaviour(payload)
