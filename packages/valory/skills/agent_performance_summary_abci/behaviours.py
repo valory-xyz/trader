@@ -173,15 +173,15 @@ class FetchPerformanceSummaryBehaviour(
         total_market_payout = int(trader_agent["totalPayout"])
         total_olas_rewards_payout_in_usd = (
             int(staking_service.get("olasRewardsEarned", 0)) * olas_in_usd_price
-        ) // WEI_IN_ETH
+        ) / WEI_IN_ETH
 
         partial_roi = (
             (total_market_payout - total_costs) * PERCENTAGE_FACTOR
-        ) // total_costs
+        ) / total_costs
         final_roi = (
             (total_market_payout + total_olas_rewards_payout_in_usd - total_costs)
             * PERCENTAGE_FACTOR
-        ) // total_costs
+        ) / total_costs
 
         return final_roi, partial_roi
 
@@ -203,6 +203,8 @@ class FetchPerformanceSummaryBehaviour(
         total_bets = len(bets_on_closed_markets)
         won_bets = 0
 
+        if total_bets == 0:
+            return 0.0
         for bet in bets_on_closed_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
@@ -228,7 +230,7 @@ class FetchPerformanceSummaryBehaviour(
                     name="Total ROI",
                     is_primary=True,
                     description="With staking rewards included",
-                    value=f"{final_roi}%",
+                    value=f"{round(final_roi)}%",
                 )
             )
         if partial_roi is not None:
@@ -237,7 +239,7 @@ class FetchPerformanceSummaryBehaviour(
                     name="Partial ROI",
                     is_primary=False,
                     description="Clean ROI without staking rewards",
-                    value=f"{partial_roi}%",
+                    value=f"{round(partial_roi)}%",
                 )
             )
         accuracy = yield from self._get_prediction_accuracy()
@@ -248,7 +250,7 @@ class FetchPerformanceSummaryBehaviour(
                     name="Prediction accuracy",
                     is_primary=False,
                     description="Percentage of correct predictions",
-                    value=f"{accuracy:.0f}%",
+                    value=f"{round(accuracy)}%",
                 )
             )
 
