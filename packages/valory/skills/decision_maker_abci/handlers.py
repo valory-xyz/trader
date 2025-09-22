@@ -367,7 +367,7 @@ class HttpHandler(BaseHttpHandler):
             "is_transitioning_fast": is_transitioning_fast,
             "is_healthy": is_healthy,
             "agent_health": {
-                "is_making_on_chain_transactions": self._is_mech_reliable(),
+                "is_making_on_chain_transactions": is_mech_reliable,
                 "is_mech_reliable": is_mech_reliable,
                 "is_staking_kpi_met": is_staking_kpi_met,
                 "has_required_funds": has_required_funds,
