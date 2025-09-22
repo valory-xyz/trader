@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicj2jz7m4wwtopxyrvijhxgp6g4b5qmmd6yv56jiwczajvvpbs7vu
+agent: valory/trader:0.1.0:bafybeiexskvkjiaf3bkxchq5p5dewix2qt7x6hg2mwtdollii276bkoh3q
 number_of_agents: 1
 deployment:
   agent:
@@ -145,6 +145,7 @@ models:
       default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
       mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
       use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:false}
+      genai_api_key: ${GENAI_API_KEY:str:""}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
@@ -291,4 +292,4 @@ config:
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  genai_api_key: ${GENAI_API_KEY:str:null}
+  genai_api_key: ${GENAI_API_KEY:str:""}

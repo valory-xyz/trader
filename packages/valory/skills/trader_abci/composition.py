@@ -24,6 +24,11 @@ from packages.valory.skills.abstract_round_abci.abci_app_chain import (
     chain,
 )
 from packages.valory.skills.abstract_round_abci.base import BackgroundAppConfig
+from packages.valory.skills.chatui_abci.rounds import (
+    ChatuiAbciApp,
+    ChatuiLoadRound,
+    FinishedChatuiLoadRound,
+)
 from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
@@ -112,7 +117,8 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    FinishedRegistrationRound: CheckBenchmarkingModeRound,
+    FinishedRegistrationRound: ChatuiLoadRound,
+    FinishedChatuiLoadRound: CheckBenchmarkingModeRound,
     BenchmarkingModeDisabledRound: UpdateBetsRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,
@@ -156,6 +162,7 @@ termination_config = BackgroundAppConfig(
 TraderAbciApp = chain(
     (
         AgentRegistrationAbciApp,
+        ChatuiAbciApp,
         DecisionMakerAbciApp,
         MarketManagerAbciApp,
         MechInteractAbciApp,
