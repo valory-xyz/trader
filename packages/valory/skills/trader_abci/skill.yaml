@@ -9,11 +9,11 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiae4j35uqsubdy7pjzfhlcewcb3mfhhyny7h46wf4bquf27or4iu4
-  composition.py: bafybeiezsq3nhe7o5e3nmm2pickcaakntxny3zn7ghzcjn6laa4ysm73uq
+  composition.py: bafybeidymszdxhsfg3ehb5waq2x5vjtf2vxf3to6gdcugrei6jdtcrhrwi
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeidlumf3zuglrtzi5u4ez3sacxzu5tgzgpzqqejdutc72vpcaejxja
-  handlers.py: bafybeiazb3u25fpulyb2x7vxho3xdwwuccomnuazumjwugvpfwsgbc6tte
-  models.py: bafybeihirkmfs6lvi3lomaroyv4qozmow2uy6vczwqtu4tfsgw3aqy24u4
+  fsm_specification.yaml: bafybeid754bv2d2nr7ji33ydgxbld5baakurthy7antb5piqjevih36x3a
+  handlers.py: bafybeibw6arrdygdcpmbydu3biybejfnpgn72wuhxwhhqxzkki2scg7beq
+  models.py: bafybeic4dzli2yhd4k3rn4zedxbiaziggaxdrshftjrinnikbyng7ocnym
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
@@ -40,13 +40,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
-- valory/decision_maker_abci:0.1.0:bafybeigat26n2j2ogiqibcmknz5uuh3e6o2njft4n2zubrjgpkq2jjnuce
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidtqxifhinuh6m3ingatfhjey2sm5cibzgiey7tecwco5xvkz6qaq
-- valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
-- valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
-- valory/chatui_abci:0.1.0:bafybeib64bkdbqby4rttdlc6dpcppp2xv3oyeusi2ohvm6q63qepxofgqe
-- valory/agent_performance_summary_abci:0.1.0:bafybeibcvph5pv73nlbs4yq3rmgbxk7bpsydnx6gq4ugg3ikj4hrca35ki
+- valory/decision_maker_abci:0.1.0:bafybeihvsgor4try2j3fxquk4lkghgps564bhhizlgctdj455sgae3bsky
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeignl5lmmkasg7uctqnbijow6stqchjbchna2xnsx5lzmyvhgpouyq
+- valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
+- valory/check_stop_trading_abci:0.1.0:bafybeiecqvfqys7yjgtof5zu3nlhdolaluwz3pacvbzylpgntzg7pwlopq
+- valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
+- valory/chatui_abci:0.1.0:bafybeiad3vbcmrc53gfrqzdqodt7txr7dergttxtvvdo32gs6komjxh6ma
+- valory/agent_performance_summary_abci:0.1.0:bafybeigt6hi52fqq3cd44zgpjs5zgkr7qupjjgpy5xelw7jpblygd7duum
 behaviours:
   main:
     args: {}

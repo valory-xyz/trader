@@ -14,6 +14,7 @@ alphabet_in:
 - DONE
 - DONE_NO_SELL
 - DONE_SELL
+- FAIL
 - FETCH_ERROR
 - FINALIZATION_FAILED
 - FINALIZE_TIMEOUT
@@ -168,7 +169,7 @@ transition_func:
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
     (FetchPerformanceDataRound, DONE): ChatuiLoadRound
-    (FetchPerformanceDataRound, FAIL): FinishedFetchPerformanceDataRound
+    (FetchPerformanceDataRound, FAIL): ChatuiLoadRound
     (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
     (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
     (FetchPerformanceDataRound, ROUND_TIMEOUT): FetchPerformanceDataRound
