@@ -11,9 +11,9 @@ fingerprint:
   behaviours.py: bafybeiae4j35uqsubdy7pjzfhlcewcb3mfhhyny7h46wf4bquf27or4iu4
   composition.py: bafybeiezsq3nhe7o5e3nmm2pickcaakntxny3zn7ghzcjn6laa4ysm73uq
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeign7fzktx2mj3lgyoozzclxe2pvuf5dsjl6blpxfjjm7szsoiwb5m
+  fsm_specification.yaml: bafybeidlumf3zuglrtzi5u4ez3sacxzu5tgzgpzqqejdutc72vpcaejxja
   handlers.py: bafybeiazb3u25fpulyb2x7vxho3xdwwuccomnuazumjwugvpfwsgbc6tte
-  models.py: bafybeigdebcysiyjprmq5asamjfqe7xapb26wqpkhjuzoejo53iwdaeuo4
+  models.py: bafybeihirkmfs6lvi3lomaroyv4qozmow2uy6vczwqtu4tfsgw3aqy24u4
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
@@ -37,13 +37,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
-- valory/decision_maker_abci:0.1.0:bafybeiaeiia4hm6gmyr2fego3ywl5ni3st5wdilmzd5rqsddm6fshgiiim
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidojgf2xgwtst67p3qeijbndcspee6uo4orgiefh4vdg2yjf2ppoe
+- valory/decision_maker_abci:0.1.0:bafybeigat26n2j2ogiqibcmknz5uuh3e6o2njft4n2zubrjgpkq2jjnuce
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidtqxifhinuh6m3ingatfhjey2sm5cibzgiey7tecwco5xvkz6qaq
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
-- valory/chatui_abci:0.1.0:bafybeicvulddzvgydsr27vql57e3oqc6xp7vcnoqsekfjv37vltp6zb5cq
-- valory/agent_performance_summary_abci:0.1.0:bafybeic6f37rk3lsy7pb7pcs7zlb7neqdvufogo6ynkxl6movjt7dncxfq
+- valory/chatui_abci:0.1.0:bafybeib64bkdbqby4rttdlc6dpcppp2xv3oyeusi2ohvm6q63qepxofgqe
+- valory/agent_performance_summary_abci:0.1.0:bafybeibcvph5pv73nlbs4yq3rmgbxk7bpsydnx6gq4ugg3ikj4hrca35ki
 behaviours:
   main:
     args: {}
@@ -479,7 +479,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+      url: https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
     class_name: GnosisStakingSubgraph
   requests:
     args: {}

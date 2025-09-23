@@ -6,16 +6,16 @@ type: skill
 license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  __init__.py: bafybeibyrfqkaqr6vwc424srbc7d53rmucikbgapytyezwwcs4irq5gb6u
-  behaviours.py: bafybeicf7cwfinwt3aargrfajji3yi2fzq33zv572gyoxh4pgmcnpoqb4a
+  __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
+  behaviours.py: bafybeicsywbzepxpgeciw6fjdv3bjbrn7yickrfpjndj4ef6t2ff52xqs4
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/queries.py: bafybeibzgke7lmowujrnkhlp47m35jq6wiygtohjwclcy2ce67x7klsuce
+  graph_tooling/queries.py: bafybeieopwu53mqp5drryyairk2k45otc2x4ilblsklm5ylr3ugto2rake
   graph_tooling/requests.py: bafybeicuvbta5ipayi4sffuye7y35rqfftbdxlldwridq72ufhdsef2mkq
   handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
-  models.py: bafybeid24mtojqgwl7p42tu4ipkt364zacy3fohw3ccjnrh7gtfzyxpfpa
+  models.py: bafybeia2w7qwls3lalwnqd6qgmlaooorigtdlnndfalywj55ps65e3ityu
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
-  rounds.py: bafybeihbulavjkuo57kiljtv3uql4s3jfjpia44bz2f2anafe6ilxfd6ui
+  rounds.py: bafybeibxs5r2dndvcawlnjlplsh5ua7drqxlecgtjhtmna6pxreciekt4a
 fingerprint_ignore_patterns: []
 contracts: []
 skills:
@@ -97,7 +97,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+      url: https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
     class_name: GnosisStakingSubgraph
 dependencies: {}
 is_abstract: true

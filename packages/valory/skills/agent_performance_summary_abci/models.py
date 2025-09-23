@@ -21,10 +21,9 @@
 """This module contains the models for the skill."""
 
 import builtins
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
 from typing import Any, List, Optional, Type
-
-from aea.skills.base import SkillContext
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
@@ -35,6 +34,9 @@ from packages.valory.skills.abstract_round_abci.models import (
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
 )
+
+
+AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 
 @dataclass
@@ -68,9 +70,40 @@ class SharedState(BaseSharedState):
 
     abci_app_cls: Type[AbciApp] = AgentPerformanceSummaryAbciApp
 
-    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
-        """Initialize the state."""
-        super().__init__(*args, skill_context=skill_context, **kwargs)
+    @property
+    def synced_timestamp(self) -> int:
+        """Return the synchronized timestamp across the agents."""
+        return int(
+            self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
+        )
+
+    def _read_existing_performance_summary(self) -> AgentPerformanceSummary:
+        """Read the existing agent performance summary from a file."""
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                existing_data = AgentPerformanceSummary(**json.load(f))
+            return existing_data
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            self.context.logger.warning(
+                f"Could not read existing agent performance summary: {e}"
+            )
+            return AgentPerformanceSummary()
+
+    def _overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
+        """Write the agent performance summary to a file."""
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        with open(file_path, "w") as f:
+            json.dump(asdict(summary), f, indent=4)
+
+    def update_agent_behavior(self, behavior: str) -> None:
+        """Update the agent behavior in agent performance template file."""
+        existing_data = self._read_existing_performance_summary()
+        existing_data.agent_behavior = behavior
+        existing_data.timestamp = self.synced_timestamp
+        self._overwrite_performance_summary(existing_data)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
