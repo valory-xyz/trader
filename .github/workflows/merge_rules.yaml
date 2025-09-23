@@ -19,4 +19,3 @@ jobs:
                 echo "ERROR: You can only merge to main from develop or version tags (e.g., v0.26.2 or v0.27.1-rc)"
                 exit 1
           fi
-
