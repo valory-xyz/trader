@@ -22,8 +22,10 @@
 
 import builtins
 import json
+import os
 from dataclasses import asdict, dataclass, field
-from typing import Any, List, Optional, Type
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Type, cast
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
@@ -65,10 +67,41 @@ class AgentPerformanceSummary:
     agent_behavior: Optional[str] = None
 
 
+class AgentPerformanceSummaryParams(BaseParams):
+    """Agent Performance Summary's parameters."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the parameters' object."""
+        self.coingecko_olas_in_usd_price_url: str = self._ensure(
+            "coingecko_olas_in_usd_price_url", kwargs, str
+        )
+        self.store_path: Path = self.get_store_path(kwargs)
+        super().__init__(*args, **kwargs)
+
+    def get_store_path(self, kwargs: Dict) -> Path:
+        """Get the path of the store."""
+        path = self._ensure("store_path", kwargs, str)
+        # check if path exists, and we can write to it
+        if (
+            not os.path.isdir(path)
+            or not os.access(path, os.W_OK)
+            or not os.access(path, os.R_OK)
+        ):
+            raise ValueError(
+                f"Policy store path {path!r} is not a directory or is not writable."
+            )
+        return Path(path)
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls: Type[AbciApp] = AgentPerformanceSummaryAbciApp
+
+    @property
+    def params(self) -> AgentPerformanceSummaryParams:
+        """Return the params."""
+        return cast(AgentPerformanceSummaryParams, self.params)
 
     @property
     def synced_timestamp(self) -> int:
@@ -104,17 +137,6 @@ class SharedState(BaseSharedState):
         existing_data.agent_behavior = behavior
         existing_data.timestamp = self.synced_timestamp
         self._overwrite_performance_summary(existing_data)
-
-
-class AgentPerformanceSummaryParams(BaseParams):
-    """Agent Performance Summary's parameters."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the parameters' object."""
-        self.coingecko_olas_in_usd_price_url: str = self._ensure(
-            "coingecko_olas_in_usd_price_url", kwargs, str
-        )
-        super().__init__(*args, **kwargs)
 
 
 class Subgraph(ApiSpecs):
