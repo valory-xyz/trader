@@ -256,6 +256,50 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
         url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
+    open_markets_subgraph:
+      args:
+        headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+        method: ${OPEN_MARKETS_SUBGRAPH_METHOD:str:POST}
+        response_key: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_KEY:str:data:questions}
+        response_type: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_TYPE:str:list}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+        retries: ${OPEN_MARKETS_SUBGRAPH_RETRIES:int:5}
+        url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+    olas_agents_subgraph:
+      args:
+        headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+        method: ${OLAS_AGENTS_SUBGRAPH_METHOD:str:POST}
+        response_key: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_KEY:str:data:traderAgent}
+        response_type: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+        retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
+        url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+    olas_mech_subgraph:
+      args:
+        headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+        method: ${OLAS_MECH_SUBGRAPH_METHOD:str:POST}
+        response_key: ${OLAS_MECH_SUBGRAPH_RESPONSE_KEY:str:data:sender}
+        response_type: ${OLAS_MECH_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+        retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
+        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/subgraphs/name/mech}
+    gnosis_staking_subgraph:
+      args:
+        headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+        method: ${GNOSIS_STAKING_SUBGRAPH_METHOD:str:POST}
+        response_key: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_KEY:str:data:service}
+        response_type: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_TYPE:str:dict}
+        error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+        error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+        error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+        retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
+        url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
 1:
   models:
     params:
