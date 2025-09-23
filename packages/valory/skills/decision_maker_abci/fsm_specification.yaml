@@ -18,11 +18,9 @@ alphabet_in:
 - NO_MAJORITY
 - NO_OP
 - NO_REDEEMING
-- NO_SUBSCRIPTION
 - REDEEM_ROUND_TIMEOUT
 - ROUND_TIMEOUT
 - SLOTS_UNSUPPORTED_ERROR
-- SUBSCRIPTION_ERROR
 - TIE
 - UNPROFITABLE
 default_start_state: CheckBenchmarkingModeRound
@@ -31,7 +29,6 @@ final_states:
 - BenchmarkingModeDisabledRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
-- FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
 - ImpossibleRound
@@ -39,7 +36,6 @@ final_states:
 label: DecisionMakerAbciApp
 start_states:
 - CheckBenchmarkingModeRound
-- ClaimRound
 - DecisionReceiveRound
 - HandleFailedTxRound
 - RandomnessRound
@@ -51,12 +47,10 @@ states:
 - BetPlacementRound
 - BlacklistingRound
 - CheckBenchmarkingModeRound
-- ClaimRound
 - DecisionReceiveRound
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
-- FinishedSubscriptionRound
 - FinishedWithoutDecisionRound
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
@@ -66,7 +60,6 @@ states:
 - RefillRequiredRound
 - SamplingRound
 - SellOutcomeTokensRound
-- SubscriptionRound
 - ToolSelectionRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
@@ -88,15 +81,9 @@ transition_func:
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
     (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
-    (CheckBenchmarkingModeRound, DONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
-    (CheckBenchmarkingModeRound, SUBSCRIPTION_ERROR): ImpossibleRound
-    (ClaimRound, DONE): ToolSelectionRound
-    (ClaimRound, NO_MAJORITY): ClaimRound
-    (ClaimRound, ROUND_TIMEOUT): ClaimRound
-    (ClaimRound, SUBSCRIPTION_ERROR): ClaimRound
     (DecisionReceiveRound, DONE): BetPlacementRound
     (DecisionReceiveRound, DONE_NO_SELL): FinishedDecisionMakerRound
     (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
@@ -125,7 +112,7 @@ transition_func:
     (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
     (SamplingRound, BENCHMARKING_ENABLED): ToolSelectionRound
     (SamplingRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
-    (SamplingRound, DONE): SubscriptionRound
+    (SamplingRound, DONE): ToolSelectionRound
     (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
@@ -137,13 +124,6 @@ transition_func:
     (SellOutcomeTokensRound, NONE): ImpossibleRound
     (SellOutcomeTokensRound, NO_MAJORITY): SellOutcomeTokensRound
     (SellOutcomeTokensRound, ROUND_TIMEOUT): SellOutcomeTokensRound
-    (SubscriptionRound, DONE): FinishedSubscriptionRound
-    (SubscriptionRound, MOCK_TX): ToolSelectionRound
-    (SubscriptionRound, NONE): SubscriptionRound
-    (SubscriptionRound, NO_MAJORITY): SubscriptionRound
-    (SubscriptionRound, NO_SUBSCRIPTION): ToolSelectionRound
-    (SubscriptionRound, ROUND_TIMEOUT): SubscriptionRound
-    (SubscriptionRound, SUBSCRIPTION_ERROR): SubscriptionRound
     (ToolSelectionRound, DONE): DecisionRequestRound
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound

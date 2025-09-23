@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiaa2e2jetas3xptaz3wpykq2ptysdjhbb2mvqz5xnd7gcvyqu4sue
-  composition.py: bafybeifct76ut7nu4dla7qfmq6blfsjzxwh2zu7zfkemqieganhxk4hcwa
+  composition.py: bafybeihtcpnrg26dycmo7pk7pg6lxan7vr3r7orc6i4xufy4aq2muyrkee
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeicauircsipef44gx5p5uwus7v7yim5uilzh7kpa5fsdjzcrjvy2xu
+  fsm_specification.yaml: bafybeiak6ubocbnmnho5z5azlsz5t73atzf7iynojokr5zhrvut5vr7gje
   handlers.py: bafybeibw6arrdygdcpmbydu3biybejfnpgn72wuhxwhhqxzkki2scg7beq
   models.py: bafybeihqmi5ogj6ioasnz5wn4h653zvafi66tcb4mvd4ne4457rqxju24q
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
@@ -40,11 +40,11 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/termination_abci:0.1.0:bafybeibtbboau3q5fxfviwm7lbeix4z55uptfqqiyiu6siivxwkp3o5pju
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
-- valory/decision_maker_abci:0.1.0:bafybeiecyuvgzswxc4txv7zxracmqts5rj3rcwukstiuzlhh3eu2xubkwq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihscepheyiwsrpqyiqdrd62ymi4pzq3hi2t6kui6bxsxgmn3b5axy
-- valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
-- valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
-- valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
+- valory/decision_maker_abci:0.1.0:bafybeia5znmyrrp7izlyrxnedtvktcam2rtt7jmlrwom6pe2j75kknyi7q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibt6vkct5g6byjyse2oiu5zycnfyjib6yq4utks5pletxo2uaobru
+- valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
+- valory/check_stop_trading_abci:0.1.0:bafybeiecqvfqys7yjgtof5zu3nlhdolaluwz3pacvbzylpgntzg7pwlopq
+- valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
 - valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
 behaviours:
   main:
@@ -180,7 +180,6 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
-      mech_request_price: null
       mech_chain_id: gnosis
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
@@ -224,18 +223,6 @@ models:
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
-      use_nevermined: true
-      mech_to_subscription_params:
-        base_url: url
-        did: did
-        escrow_payment_condition_address: address
-        lock_payment_condition_address: address
-        transfer_nft_condition_address: address
-        token_address: address
-        order_address: address
-        nft_amount: amount
-        payment_token: address
-        price: price
       contract_timeout: 300.0
       file_hash_to_strategies: {}
       strategies_kwargs:
