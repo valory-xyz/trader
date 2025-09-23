@@ -15,11 +15,14 @@ fingerprint:
   handlers.py: bafybeiazb3u25fpulyb2x7vxho3xdwwuccomnuazumjwugvpfwsgbc6tte
   models.py: bafybeihirkmfs6lvi3lomaroyv4qozmow2uy6vczwqtu4tfsgw3aqy24u4
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
-  predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
+  predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
+  predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
+  predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
+  predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeid3tx3zsbvepfphgc73czpo6eajv3jy5z6rxc5adns42kqqbrqb2q
+  predict-ui-build/index.html: bafybeidffl62vtttjlmlow2qs43swzvu5nq6nh2ufh27tyf6q7cdgr2ema
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
@@ -145,6 +148,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
+      genai_api_key: ''
       agent_registry_address: '0x0000000000000000000000000000000000000000'
       complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
@@ -177,7 +181,6 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       mech_contract_address: '0x77af31de935740567cf4ff1986d04b2c964a786a'
-      mech_request_price: null
       mech_chain_id: gnosis
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
@@ -221,18 +224,6 @@ models:
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
       tool_punishment_multiplier: 1
-      use_nevermined: true
-      mech_to_subscription_params:
-        base_url: url
-        did: did
-        escrow_payment_condition_address: address
-        lock_payment_condition_address: address
-        transfer_nft_condition_address: address
-        token_address: address
-        order_address: address
-        nft_amount: amount
-        payment_token: address
-        price: price
       contract_timeout: 300.0
       file_hash_to_strategies: {}
       strategies_kwargs:
