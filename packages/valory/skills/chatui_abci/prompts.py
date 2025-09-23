@@ -45,6 +45,8 @@ Carefully read the user's prompt below and decide what configuration changes, if
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations.
 
+When summarizing your actions, include a field called 'behavior' that describes the agent's behavior in one sentence. This description should be easy for a non-technical user to understand. For example: 'Adopting a conservative strategy with small, high-confidence bets.' if using bet_amount_per_threshold or 'Aggressively pursuing high rewards using the Kelly criterion for bet sizing.' if using kelly_criterion_no_conf.
+
 User prompt: "{user_prompt}"
 """
 
@@ -70,6 +72,7 @@ class UpdatedAgentConfig:
     trading_strategy: typing.Optional[TradingStrategy]
     mech_tool: typing.Optional[str]
     removed_config_fields: typing.List[FieldsThatCanBeRemoved]
+    behavior: typing.Optional[str]
 
 
 @dataclass(frozen=True)

@@ -17,9 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the agent performance skill for an AEA."""
-
-from aea.configurations.base import PublicId
-
-
-PUBLIC_ID = PublicId.from_str("valory/agent_performance_summary_abci:0.1.0")
+"""This module contains functionality for interacting with a GraphQL API."""
