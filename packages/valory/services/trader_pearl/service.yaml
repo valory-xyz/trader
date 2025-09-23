@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidyvlxa4rzvebkjuyyir5jmgwe6qthkv5imk5e6a2vldos762ngxy
+agent: valory/trader:0.1.0:bafybeidg5quo62cf2uxae6wqsdy2zqiwh477uy2rqnk7ehtyqkyczvgbmy
 number_of_agents: 1
 deployment:
   agent:
@@ -308,7 +308,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
-      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/5c035877a4af18d178c96afe55ed41ae/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
+      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
 ---
 public_id: valory/ledger:0.19.0
 type: connection

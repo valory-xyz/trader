@@ -512,6 +512,10 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
 
+        behavior: Optional[str] = updated_agent_config.get("behavior", None)
+        if behavior:
+            self.shared_state.update_agent_behavior(behavior)
+
         return updated_params, issues
 
     def _handle_chatui_llm_error(
