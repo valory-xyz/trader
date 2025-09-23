@@ -12,14 +12,17 @@ fingerprint:
   composition.py: bafybeifct76ut7nu4dla7qfmq6blfsjzxwh2zu7zfkemqieganhxk4hcwa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeicauircsipef44gx5p5uwus7v7yim5uilzh7kpa5fsdjzcrjvy2xu
-  handlers.py: bafybeiazb3u25fpulyb2x7vxho3xdwwuccomnuazumjwugvpfwsgbc6tte
-  models.py: bafybeigvjqso7ncpl6wo3zskvqrxxuz7qwvmrie75wzwcurdr7eeixtiae
+  handlers.py: bafybeibw6arrdygdcpmbydu3biybejfnpgn72wuhxwhhqxzkki2scg7beq
+  models.py: bafybeihqmi5ogj6ioasnz5wn4h653zvafi66tcb4mvd4ne4457rqxju24q
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
-  predict-ui-build/assets/index-BrVYRq-p.js: bafybeid6cgvwnfytp3hf5c3kpykx5rewlbteopy72cvlt6vw2rkpkesrwm
+  predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
+  predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
+  predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
+  predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeid3tx3zsbvepfphgc73czpo6eajv3jy5z6rxc5adns42kqqbrqb2q
+  predict-ui-build/index.html: bafybeidffl62vtttjlmlow2qs43swzvu5nq6nh2ufh27tyf6q7cdgr2ema
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
@@ -144,6 +147,7 @@ models:
       round_timeout_seconds: 350.0
       service_id: trader
       service_registry_address: null
+      genai_api_key: ''
       agent_registry_address: '0x0000000000000000000000000000000000000000'
       complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
