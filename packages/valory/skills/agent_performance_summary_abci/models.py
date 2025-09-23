@@ -25,8 +25,6 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any, List, Optional, Type
 
-from aea.skills.base import SkillContext
-
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
@@ -72,10 +70,6 @@ class SharedState(BaseSharedState):
 
     abci_app_cls: Type[AbciApp] = AgentPerformanceSummaryAbciApp
 
-    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
-        """Initialize the state."""
-        super().__init__(*args, skill_context=skill_context, **kwargs)
-
     @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
@@ -83,7 +77,7 @@ class SharedState(BaseSharedState):
             self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
         )
 
-    def _read_existing_performance_summary(self) -> Optional[AgentPerformanceSummary]:
+    def _read_existing_performance_summary(self) -> AgentPerformanceSummary:
         """Read the existing agent performance summary from a file."""
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
@@ -95,7 +89,7 @@ class SharedState(BaseSharedState):
             self.context.logger.warning(
                 f"Could not read existing agent performance summary: {e}"
             )
-            return None
+            return AgentPerformanceSummary()
 
     def _overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file."""
