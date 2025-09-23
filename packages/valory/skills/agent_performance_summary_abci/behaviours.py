@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    AgentPerformanceMetrics,
     AgentPerformanceSummary,
     SharedState,
 )
@@ -43,13 +44,16 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 )
 
 
-DEFAULT_MECH_FEE = 10_000_000_000_000_000  # 0.01 ETH
+DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 
 INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 )
+
+PERCENTAGE_FACTOR = 100
+WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -98,38 +102,63 @@ class FetchPerformanceSummaryBehaviour(
             agent_id=agent_id,
             timestamp_gt=self.market_open_timestamp,
         )
+        if mech_sender and (
+            mech_sender.get("totalRequests") is None
+            or mech_sender.get("requests") is None
+        ):
+            self.context.logger.warning(
+                f"Mech sender data not found or incomplete for {agent_id=} and {mech_sender=}"
+            )
+            return None, None
 
         trader_agent = yield from self._fetch_trader_agent(
             agent_id=agent_id,
         )
-        if trader_agent is None:
+        if (
+            trader_agent is None
+            or trader_agent.get("serviceId") is None
+            or trader_agent.get("totalTraded") is None
+            or trader_agent.get("totalFees") is None
+            or trader_agent.get("totalPayout") is None
+        ):
+            self.context.logger.warning(
+                f"Trader agent data not found or incomplete for {agent_id=} and {trader_agent=}"
+            )
             return None, None
 
         open_markets = yield from self._fetch_open_markets(
             timestamp_gt=self.market_open_timestamp,
         )
+        if open_markets is None:
+            self.context.logger.warning("Open markets data not found")
+            return None, None
 
         staking_service = yield from self._fetch_staking_service(
             service_id=trader_agent["serviceId"],
         )
+        if staking_service is None:
+            self.context.logger.warning(
+                f"Staking service data not found for service id {trader_agent['serviceId']}"
+            )
+            return None, None
 
         olas_in_usd_price = yield from self._fetch_olas_in_usd_price()
         if olas_in_usd_price is None:
+            self.context.logger.warning("Olas in USD price data not found")
             return None, None
 
         total_mech_requests = int(mech_sender["totalRequests"]) if mech_sender else 0
 
         last_four_days_requests = mech_sender["requests"] if mech_sender else []
 
-        open_market_titles = [
+        open_market_titles = {
             q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
-        ]
+        }
 
         # Subtract requests for still-open markets
         requests_to_subtract = sum(
-            1
+            r.get("questionTitle", None) in open_market_titles
             for r in last_four_days_requests
-            if r["questionTitle"] in open_market_titles
         )
 
         total_costs = (
@@ -144,12 +173,15 @@ class FetchPerformanceSummaryBehaviour(
         total_market_payout = int(trader_agent["totalPayout"])
         total_olas_rewards_payout_in_usd = (
             int(staking_service.get("olasRewardsEarned", 0)) * olas_in_usd_price
-        ) // 10**18
+        ) / WEI_IN_ETH
 
-        partial_roi = ((total_market_payout - total_costs) * 100) // total_costs
+        partial_roi = (
+            (total_market_payout - total_costs) * PERCENTAGE_FACTOR
+        ) / total_costs
         final_roi = (
-            (total_market_payout + total_olas_rewards_payout_in_usd - total_costs) * 100
-        ) // total_costs
+            (total_market_payout + total_olas_rewards_payout_in_usd - total_costs)
+            * PERCENTAGE_FACTOR
+        ) / total_costs
 
         return final_roi, partial_roi
 
@@ -160,21 +192,23 @@ class FetchPerformanceSummaryBehaviour(
         agent_bets_data = yield from self._fetch_trader_agent_bets(
             agent_id=agent_id,
         )
-        if agent_bets_data is None or len(agent_bets_data["bets"]) == 0:
+        if agent_bets_data is None or len(agent_bets_data.get("bets", [])) == 0:
             return None
 
         bets_on_closed_markets = [
             bet
             for bet in agent_bets_data["bets"]
-            if bet["fixedProductMarketMaker"]["currentAnswer"] is not None
+            if bet.get("fixedProductMarketMaker", {}).get("currentAnswer") is not None
         ]
         total_bets = len(bets_on_closed_markets)
         won_bets = 0
 
+        if total_bets == 0:
+            return 0.0
         for bet in bets_on_closed_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
-            bet_answer = bet["outcomeIndex"]
-            if market_answer == INVALID_ANSWER_HEX:
+            bet_answer = bet.get("outcomeIndex")
+            if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
                 continue
             if int(market_answer, 0) == int(bet_answer):
                 won_bets += 1
@@ -187,38 +221,37 @@ class FetchPerformanceSummaryBehaviour(
         """Fetch the agent performance summary"""
         current_timestamp = self.shared_state.synced_timestamp
 
-        final_roi, partial_roi = yield from self.calculate_roi() or (None, None)
+        final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
         if final_roi is not None:
             metrics.append(
-                {
-                    "name": "Total ROI",
-                    "is_primary": True,
-                    "description": "With staking rewards included",
-                    "value": f"{final_roi}%",
-                }
+                AgentPerformanceMetrics(
+                    name="Total ROI",
+                    is_primary=True,
+                    description="With staking rewards included",
+                    value=f"{round(final_roi)}%",
+                )
             )
         if partial_roi is not None:
             metrics.append(
-                {
-                    "name": "Partial ROI",
-                    "is_primary": False,
-                    "description": "Clean ROI without staking rewards",
-                    "value": f"{partial_roi}%",
-                }
+                AgentPerformanceMetrics(
+                    name="Partial ROI",
+                    is_primary=False,
+                    description="Clean ROI without staking rewards",
+                    value=f"{round(partial_roi)}%",
+                )
             )
-
         accuracy = yield from self._get_prediction_accuracy()
 
         if accuracy is not None:
             metrics.append(
-                {
-                    "name": "Prediction accuracy",
-                    "is_primary": False,
-                    "description": "Percentage of correct predictions",
-                    "value": f"{accuracy:.0f}%",
-                }
+                AgentPerformanceMetrics(
+                    name="Prediction accuracy",
+                    is_primary=False,
+                    description="Percentage of correct predictions",
+                    value=f"{round(accuracy)}%",
+                )
             )
 
         self._agent_performance_summary = AgentPerformanceSummary(
@@ -239,17 +272,18 @@ class FetchPerformanceSummaryBehaviour(
 
             yield from self._fetch_agent_performance_summary()
 
-            if self._agent_performance_summary is None:
+            success = (
+                len(self._agent_performance_summary.metrics) == 3
+            )  # Trader has 3 metrics to show
+            if not success:
                 self.context.logger.warning(
                     "Agent performance summary could not be fetched. Saving default values"
                 )
-                self._agent_performance_summary = AgentPerformanceSummary()
-
             self._save_agent_performance_summary(self._agent_performance_summary)
 
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=True,
+                vote=success,
             )
 
         yield from self.finish_behaviour(payload)

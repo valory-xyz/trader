@@ -43,6 +43,7 @@ class Event(Enum):
 
     DONE = "done"
     NONE = "none"
+    FAIL = "fail"
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
 
@@ -53,7 +54,7 @@ class FetchPerformanceDataRound(VotingRound):
     payload_class = FetchPerformanceDataPayload
     synchronized_data_class = BaseSynchronizedData
     done_event = Event.DONE
-    negative_event = Event.DONE
+    negative_event = Event.FAIL
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(BaseSynchronizedData.participant_to_votes)
@@ -74,6 +75,7 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
         0. FetchPerformanceDataRound
             - done: 1.
             - none: 0.
+            - fail 1.
             - round timeout: 0.
             - no majority: 0.
         1. FinishedFetchPerformanceDataRound
@@ -89,6 +91,7 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
         FetchPerformanceDataRound: {
             Event.DONE: FinishedFetchPerformanceDataRound,
             Event.NONE: FetchPerformanceDataRound,
+            Event.FAIL: FinishedFetchPerformanceDataRound,
             Event.ROUND_TIMEOUT: FetchPerformanceDataRound,
             Event.NO_MAJORITY: FetchPerformanceDataRound,
         },
