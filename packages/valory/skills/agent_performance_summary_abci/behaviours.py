@@ -262,9 +262,9 @@ class FetchPerformanceSummaryBehaviour(
         self, agent_performance_summary: AgentPerformanceSummary
     ) -> None:
         """Save the agent performance summary to a file."""
-        existing_data = self.shared_state._read_existing_performance_summary()
+        existing_data = self.shared_state.read_existing_performance_summary()
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
-        self.shared_state._overwrite_performance_summary(agent_performance_summary)
+        self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
     def async_act(self) -> Generator:
         """Do the action."""
