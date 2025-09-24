@@ -213,7 +213,7 @@ class FetchPerformanceSummaryBehaviour(
             if int(market_answer, 0) == int(bet_answer):
                 won_bets += 1
 
-        win_rate = (won_bets / total_bets) * 100
+        win_rate = (won_bets / total_bets) * PERCENTAGE_FACTOR
 
         return win_rate
 
