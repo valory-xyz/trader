@@ -32,7 +32,7 @@ from docker.models.containers import Container
 
 from packages.valory.agents.trader import PACKAGE_DIR
 from packages.valory.agents.trader.tests.helpers.constants import (
-    DYNAMIC_CONTRIBUTION_CONTRACT_ADDRESS,
+    MECH_MARKETPLACE_CONTRACT_ADDRESS,
 )
 
 
@@ -105,7 +105,7 @@ class TraderNetworkDockerImage(DockerImage):
                 body = {
                     "jsonrpc": "2.0",
                     "method": "eth_getCode",
-                    "params": [DYNAMIC_CONTRIBUTION_CONTRACT_ADDRESS],
+                    "params": [MECH_MARKETPLACE_CONTRACT_ADDRESS],
                     "id": 1,
                 }
                 response = requests.post(
@@ -207,7 +207,6 @@ class MockMechDockerImage(DockerImage):
         client: docker.DockerClient,
     ):
         """Initialize."""
-        self.port = port
         super().__init__(client)
 
     def create_many(self, nb_containers: int) -> List[Container]:
