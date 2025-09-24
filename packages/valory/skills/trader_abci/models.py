@@ -27,6 +27,9 @@ from packages.valory.skills.abstract_round_abci.models import (
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    AgentPerformanceSummaryParams,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
     GnosisStakingSubgraph as APTGnosisStakingSubgraph,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -140,6 +143,7 @@ class TraderParams(
     # also contains the `MechInteractParams`
     DecisionMakerParams,
     TerminationParams,
+    AgentPerformanceSummaryParams,
 ):
     """A model to represent the trader params."""
 

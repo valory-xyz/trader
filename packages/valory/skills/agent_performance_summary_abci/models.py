@@ -101,7 +101,7 @@ class SharedState(BaseSharedState):
     @property
     def params(self) -> AgentPerformanceSummaryParams:
         """Return the params."""
-        return cast(AgentPerformanceSummaryParams, self.params)
+        return cast(AgentPerformanceSummaryParams, self.context.params)
 
     @property
     def synced_timestamp(self) -> int:
