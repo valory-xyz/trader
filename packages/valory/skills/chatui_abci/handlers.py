@@ -248,6 +248,23 @@ class HttpHandler(BaseHttpHandler):
         except Exception as e:
             self.context.logger.error(f"Error: {e}")
 
+    def _send_ok_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Dict,
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP OK response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.OK.value,
+            HTTPStatus.OK.phrase,
+            content_type,
+        )
+
     def _send_too_early_request_response(
         self,
         http_msg: HttpMessage,
