@@ -60,12 +60,14 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
+from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
+from packages.valory.skills.abstract_round_abci.base import RoundSequence
 
 
 class HttpMethod(Enum):
@@ -208,6 +210,16 @@ class HttpHandler(BaseHttpHandler):
     def shared_state(self) -> SharedState:
         """Return the shared state."""
         return cast(SharedState, self.context.state)
+
+    @property
+    def round_sequence(self) -> RoundSequence:
+        """Return the round sequence."""
+        return self.shared_state.round_sequence
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _send_http_response(
         self,
