@@ -31,7 +31,7 @@ fingerprint:
   handlers.py: bafybeiexdroxyctgb6t2ofdzrrka6biipqni3hxtrep4uxiv4b7e27odgm
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeihx5hx6m352kyawdg3hqirttompqqdoxyap4gmvtpjexenq4mu7gy
+  models.py: bafybeie5krdo6qe4iaqqt2shnsbgipozryuo7jxvpz6dugok4rxkhnrxau
   payloads.py: bafybeiafgv7u5ogcwo5ulmxescbowcmm6ytu23m5mcyblmpzzamjspkfnu
   policy.py: bafybeig5dnlwua4pzyz74rifkauuu2xvrusuwkqfsvetbh7trp3kzkpdyq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -105,7 +105,7 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
 - valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
-- valory/agent_performance_summary_abci:0.1.0:bafybeiggxduyoz2m6ol6yobqczolda7jnaugb2u5u7kk5uky66xfgmtsgm
+- valory/agent_performance_summary_abci:0.1.0:bafybeiga6s6mzjlgjxgkoyj2urx3aos2dtrr2zsihncli5c3mb3qinszjy
 behaviours:
   main:
     args: {}
