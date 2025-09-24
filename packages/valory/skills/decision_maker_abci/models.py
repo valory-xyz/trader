@@ -19,12 +19,11 @@
 
 """This module contains the models for the skill."""
 
-import os
+
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
 from string import Template
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
@@ -42,6 +41,9 @@ from packages.valory.skills.abstract_round_abci.models import (
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    AgentPerformanceSummaryParams,
+)
 from packages.valory.skills.chatui_abci.models import SharedState as BaseSharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
@@ -357,7 +359,9 @@ def _raise_incorrect_config(key: str, values: Any) -> None:
     )
 
 
-class DecisionMakerParams(MarketManagerParams, MechInteractParams):
+class DecisionMakerParams(
+    MarketManagerParams, MechInteractParams, AgentPerformanceSummaryParams
+):
     """Decision maker's parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -434,7 +438,6 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
         self.metadata_address: str = metadata_address
-        self.store_path: Path = self.get_store_path(kwargs)
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
@@ -451,13 +454,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             kwargs,
             bool,
         )
-        self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[str, str] = self._ensure(
-            "mech_to_subscription_params",
-            kwargs,
-            Dict[str, str],
-        )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
         self.rebet_chance = self._ensure("rebet_chance", kwargs, float)
@@ -508,20 +505,6 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
                 f"The configured slippage {slippage!r} is not in the range [0, 1]."
             )
         self._slippage = slippage
-
-    def get_store_path(self, kwargs: Dict) -> Path:
-        """Get the path of the store."""
-        path = self._ensure("store_path", kwargs, str)
-        # check if path exists, and we can write to it
-        if (
-            not os.path.isdir(path)
-            or not os.access(path, os.W_OK)
-            or not os.access(path, os.R_OK)
-        ):
-            raise ValueError(
-                f"Policy store path {path!r} is not a directory or is not writable."
-            )
-        return Path(path)
 
 
 class AccuracyInfoFields(Model, TypeCheckMixin):
