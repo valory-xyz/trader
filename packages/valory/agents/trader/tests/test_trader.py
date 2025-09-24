@@ -53,6 +53,7 @@ from packages.valory.agents.trader.tests.helpers.docker import (
 from packages.valory.agents.trader.tests.helpers.fixtures import (  # noqa: F401
     UseHardHatTraderBaseTest,
     UseMockAPIDockerImageBaseTest,
+    UseMechMockDockerImageBaseTest
 )
 from packages.valory.skills.registration_abci.rounds import RegistrationStartupRound
 from packages.valory.skills.reset_pause_abci.rounds import ResetAndPauseRound
@@ -133,5 +134,6 @@ class TestEnd2EndTraderSingleAgent(
     BaseTestEnd2EndTraderNormalExecution,
     UseMockAPIDockerImageBaseTest,
     UseHardHatTraderBaseTest,
+    UseMechMockDockerImageBaseTest,
 ):
     """Test the trader with only one agent."""

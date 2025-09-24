@@ -195,3 +195,50 @@ class MockAPIDockerImage(DockerImage):
                 )
                 time.sleep(sleep_rate)
         return False
+
+
+class MockMechDockerImage(DockerImage):
+    """Spawn a JSON server to for mocking the Twitter API."""
+
+    _CONTAINER_PORT = DEFAULT_HARDHAT_PORT
+
+    def __init__(
+        self,
+        client: docker.DockerClient,
+    ):
+        """Initialize."""
+        self.port = port
+        super().__init__(client)
+
+    def create_many(self, nb_containers: int) -> List[Container]:
+        """Instantiate the image in many containers, parametrized."""
+        raise NotImplementedError()
+
+    @property
+    def image(self) -> str:
+        """Get the image."""
+        return "valory/mock-mech:latest"
+
+    def create(self) -> Container:
+        """Create the container."""
+
+        ports = {}  # nosec
+        container = self._client.containers.run(
+            self.image,
+            detach=True,
+            ports=ports,
+            volumes=None,
+            extra_hosts={"host.docker.internal": "host-gateway"},
+        )
+        return container
+
+    def wait(self, max_attempts: int = 15, sleep_rate: float = 1.0) -> bool:
+        """
+        Wait until the image is running.
+
+        :param max_attempts: max number of attempts.
+        :param sleep_rate: the amount of time to sleep between different requests.
+        :return: True if the wait was successful, False otherwise.
+        """
+        time.sleep(sleep_rate)
+        return True

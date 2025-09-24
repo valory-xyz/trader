@@ -34,6 +34,7 @@ from packages.valory.agents.trader.tests.helpers.docker import (
     DEFAULT_JSON_SERVER_PORT,
     TraderNetworkDockerImage,
     MockAPIDockerImage,
+    MockMechDockerImage
 )
 
 
@@ -88,5 +89,25 @@ class UseMockAPIDockerImageBaseTest:  # pylint: disable=too-few-public-methods
             client,
             addr=cls.MOCK_API_ADDRESS,
             port=cls.MOCK_API_PORT,
+        )
+        yield from launch_image(image, timeout=timeout, max_attempts=max_attempts)
+
+
+@pytest.mark.integration
+class UseMechMockDockerImageBaseTest:  # pylint: disable=too-few-public-methods
+    """Inherit from this class to use a mock Mech."""
+
+    @classmethod
+    @pytest.fixture(autouse=True)
+    def _start_mock_api(
+        cls,
+        timeout: int = 3,
+        max_attempts: int = 200,
+    ) -> Generator:
+        """Start a Graph API instance."""
+        client = docker.from_env()
+        logging.info("Launching the Mech Mock")
+        image = MockMechDockerImage(
+            client,
         )
         yield from launch_image(image, timeout=timeout, max_attempts=max_attempts)
