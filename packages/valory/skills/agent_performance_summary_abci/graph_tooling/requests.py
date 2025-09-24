@@ -56,11 +56,6 @@ def to_content(query: str, variables: Dict) -> bytes:
     return encoded_query
 
 
-def to_graphql_list(li: list) -> str:
-    """Convert the given list to a string representing a list for a GraphQL query."""
-    return repr(li).replace("'", '"')
-
-
 class FetchStatus(Enum):
     """The status of a fetch operation."""
 
