@@ -110,7 +110,7 @@ class SharedState(BaseSharedState):
             self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
         )
 
-    def _read_existing_performance_summary(self) -> AgentPerformanceSummary:
+    def read_existing_performance_summary(self) -> AgentPerformanceSummary:
         """Read the existing agent performance summary from a file."""
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
@@ -124,7 +124,7 @@ class SharedState(BaseSharedState):
             )
             return AgentPerformanceSummary()
 
-    def _overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
+    def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file."""
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
@@ -133,10 +133,10 @@ class SharedState(BaseSharedState):
 
     def update_agent_behavior(self, behavior: str) -> None:
         """Update the agent behavior in agent performance template file."""
-        existing_data = self._read_existing_performance_summary()
+        existing_data = self.read_existing_performance_summary()
         existing_data.agent_behavior = behavior
         existing_data.timestamp = self.synced_timestamp
-        self._overwrite_performance_summary(existing_data)
+        self.overwrite_performance_summary(existing_data)
 
 
 class Subgraph(ApiSpecs):
