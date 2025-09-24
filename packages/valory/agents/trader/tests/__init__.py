@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2021-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,8 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Implements the trader agent."""
-from pathlib import Path
-
-
-PACKAGE_DIR = Path(__file__).parent
+"""Tests package for valory/trader agent."""
