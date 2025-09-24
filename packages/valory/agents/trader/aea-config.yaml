@@ -6,13 +6,13 @@ description: Trader agent.
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
-  __init__.py: bafybeidd5fhnucsfwxrf27mkodzg5db4mz7fnfc4u6tlpkbt6g4jq42hg4
+  __init__.py: bafybeie7krf2hpkbo4eswyzwsjgrargwqzxwpbb6nkwmclkhsziwavhgpi
   tests/__init__.py: bafybeielmgplak53seoxkxkm5shwhysyqlmga2sm555wcffu6fpv5knhi4
-  tests/helpers/__init__.py: bafybeieflnlsppjs3r6xkag6musr7ncwyq7mwkgx73gvnin3nozukv7tpu
-  tests/helpers/constants.py: bafybeihpc7hgojnr6pettvatg3x7bb7x4phjgv5hyqz27koswcisboy6wq
+  tests/helpers/__init__.py: bafybeigdifxs4s4smhctqw2kxu6fk3sh4vam3vb55ihnleycefs6pe72a4
+  tests/helpers/constants.py: bafybeighsl74kowilg7wo6b6im36fb7kysuuna74qophju2old4doxaubm
   tests/helpers/data/json_server/data.json: bafybeicl5oiu2bdkgxomqlkgwvmw74yutaqtz6ala5tdscov7gjxqqyhia
-  tests/helpers/docker.py: bafybeiajv2bqt3zecqx3forf7uscn7flfnaf5fl3o2he6y6m4dr7jwczya
-  tests/helpers/fixtures.py: bafybeigkl2mif4vdaq4qxwqecvk35mapukpzzmuiepolg5skf3grbnlhya
+  tests/helpers/docker.py: bafybeie4s6b2c56h7vnrsexzartlr6aslyh26tmwqcdnmbgce3ceoevuli
+  tests/helpers/fixtures.py: bafybeifjt43osjgvmuilw7ztiivxs54qziuy34svdrw3qnf6riujlcyjnm
   tests/test_trader.py: bafybeif3ruy7gjjifpb647mowlid54jttfmkgvzqxfaeydeczkyzcyb37e
 fingerprint_ignore_patterns: []
 connections:
