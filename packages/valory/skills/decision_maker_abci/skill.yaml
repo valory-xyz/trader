@@ -105,7 +105,7 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
 - valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
 - valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
-- valory/chatui_abci:0.1.0:bafybeiad3vbcmrc53gfrqzdqodt7txr7dergttxtvvdo32gs6komjxh6ma
+- valory/agent_performance_summary_abci:0.1.0:bafybeiggxduyoz2m6ol6yobqczolda7jnaugb2u5u7kk5uky66xfgmtsgm
 behaviours:
   main:
     args: {}
@@ -244,7 +244,6 @@ models:
       max_filtering_retries: 6
       minimum_batch_size: 500
       redeeming_batch_size: 5
-      store_path: data
       slippage: 0.01
       policy_epsilon: 0.25
       use_subgraph_for_redeeming: true

@@ -212,7 +212,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
     def _fetch_trader_agent_bets(
         self, agent_id
-    ) -> Generator[None, None, Optional[List]]:
+    ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         return (
             yield from self._fetch_from_subgraph(
