@@ -36,7 +36,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
-    SharedState,
 )
 
 
@@ -79,17 +78,6 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def params(self) -> AgentPerformanceSummaryParams:
         """Get the params."""
         return cast(AgentPerformanceSummaryParams, self.context.params)
-
-    @property
-    def shared_state(self) -> SharedState:
-        """Get the shared state."""
-        return cast(SharedState, self.context.state)
-
-    @property
-    def synced_time(self) -> int:
-        """Get the synchronized time among agents."""
-        synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
-        return int(synced_time.timestamp())
 
     def _handle_response(
         self,
