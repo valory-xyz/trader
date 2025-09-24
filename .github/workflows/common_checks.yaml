@@ -1,14 +1,14 @@
 name: main_workflow
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
       - develop
       - main
   pull_request:
-
-permissions:
-  contents: read
 
 jobs:
   lock_check:
