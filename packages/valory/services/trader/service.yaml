@@ -145,6 +145,7 @@ type: skill
         tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+        coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
     benchmark_tool: &id003
       args:
@@ -256,7 +257,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
         url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
-    open_markets_subgraph:
+    open_markets_subgraph: &id013
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${OPEN_MARKETS_SUBGRAPH_METHOD:str:POST}
@@ -267,7 +268,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OPEN_MARKETS_SUBGRAPH_RETRIES:int:5}
         url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
-    olas_agents_subgraph:
+    olas_agents_subgraph: &id014
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${OLAS_AGENTS_SUBGRAPH_METHOD:str:POST}
@@ -278,7 +279,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
         url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
-    olas_mech_subgraph:
+    olas_mech_subgraph: &id015
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${OLAS_MECH_SUBGRAPH_METHOD:str:POST}
@@ -289,7 +290,7 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
         url: ${OLAS_MECH_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/subgraphs/name/mech}
-    gnosis_staking_subgraph:
+    gnosis_staking_subgraph: &id016
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
         method: ${GNOSIS_STAKING_SUBGRAPH_METHOD:str:POST}
@@ -409,6 +410,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+        coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -419,6 +421,10 @@ type: skill
     trades_subgraph: *id010
     conditional_tokens_subgraph: *id011
     realitio_subgraph: *id012
+    open_markets_subgraph: *id013
+    olas_agents_subgraph: *id014
+    olas_mech_subgraph: *id015
+    gnosis_staking_subgraph: *id016
 2:
   models:
     params:
@@ -528,6 +534,7 @@ type: skill
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+        coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -538,6 +545,10 @@ type: skill
     trades_subgraph: *id010
     conditional_tokens_subgraph: *id011
     realitio_subgraph: *id012
+    open_markets_subgraph: *id013
+    olas_agents_subgraph: *id014
+    olas_mech_subgraph: *id015
+    gnosis_staking_subgraph: *id016
 3:
   models:
     params:
@@ -648,6 +659,7 @@ type: skill
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         genai_api_key: ${GENAI_API_KEY:str:""}
+        coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -658,6 +670,10 @@ type: skill
     trades_subgraph: *id010
     conditional_tokens_subgraph: *id011
     realitio_subgraph: *id012
+    open_markets_subgraph: *id013
+    olas_agents_subgraph: *id014
+    olas_mech_subgraph: *id015
+    gnosis_staking_subgraph: *id016
 ---
 public_id: valory/ledger:0.19.0
 type: connection
