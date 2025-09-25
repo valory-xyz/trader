@@ -22,9 +22,9 @@
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeicubnrbt5zbh6wldwbe7ryv5g76zjzppklv7wgjlqtwxirdcnzdoi",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeiecqvfqys7yjgtof5zu3nlhdolaluwz3pacvbzylpgntzg7pwlopq",
         "skill/valory/chatui_abci/0.1.0": "bafybeigugdg7lvtgdlsizu6cwiwzan6sp5znce2yavxm2ctq5gehko565y",
-        "agent/valory/trader/0.1.0": "bafybeiek5tkhhtvowwdy5px4ezni4yfyzjfak3cl5ti2xngsznlwgi4jrm",
-        "service/valory/trader/0.1.0": "bafybeidfxrs6pcnlzro7yiuap6us4m3ablby2kg6xwnrlfstkslwcckjwe",
-        "service/valory/trader_pearl/0.1.0": "bafybeibgmloqmtsqigh26yirunpgkekza3566esksydeolvtufr5vdukmu"
+        "agent/valory/trader/0.1.0": "bafybeiflilvhkq5fmg5evbd4plfklf2myqxv5wz6nviom73b5w44s5ad4i",
+        "service/valory/trader/0.1.0": "bafybeifjlnnag4wtqg6uvh7ksmmwcoc6u65etcghhvegzecwk7ln7yjwrq",
+        "service/valory/trader_pearl/0.1.0": "bafybeifr6ikxv5poxjapuoazvwry67uppf47ebiqytkcvdkhntvcxk75vy"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",

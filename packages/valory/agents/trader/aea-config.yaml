@@ -13,7 +13,7 @@ fingerprint:
   tests/helpers/data/json_server/data.json: bafybeicl5oiu2bdkgxomqlkgwvmw74yutaqtz6ala5tdscov7gjxqqyhia
   tests/helpers/docker.py: bafybeig4iaebfkaqwkfmemckyemjlamd5cbx3ot2fx6zaqdamkaheribvu
   tests/helpers/fixtures.py: bafybeifjt43osjgvmuilw7ztiivxs54qziuy34svdrw3qnf6riujlcyjnm
-  tests/test_trader.py: bafybeiehmcauxjn2wq4w2m2b2pmjnaurpsl4tja5una52qtt2jjjpie3sm
+  tests/test_trader.py: bafybeiachlr55y5btt23q7u6kpsnfnhrqlukupb75d23dvw3civgoatiua
 fingerprint_ignore_patterns: []
 connections:
 - valory/abci:0.1.0:bafybeidn5gc6y3a6tkhgv753kkiub3mfas3tkemm4fs7i4kc4klkjlxpui

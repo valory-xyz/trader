@@ -76,3 +76,5 @@ benchmarks/
 .vscode/
 coverage.xml
 .hypothesis/
+
+e2e.log
