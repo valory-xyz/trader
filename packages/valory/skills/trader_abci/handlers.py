@@ -119,6 +119,8 @@ class HttpHandler(BaseHttpHandler):
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
 
+        funds_status_regex = f"{hostname_regex}\/funds-status"
+
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
@@ -127,6 +129,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     static_files_regex,
                     self._handle_get_static_file,
+                ),
+                (
+                    funds_status_regex,
+                    self._handle_get_funds_status,
                 ),
             ],
         }
@@ -216,7 +222,7 @@ class HttpHandler(BaseHttpHandler):
         except FileNotFoundError:
             self._handle_not_found(http_msg, http_dialogue)
 
-    def _handle_get_fund_status(
+    def _handle_get_funds_status(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
