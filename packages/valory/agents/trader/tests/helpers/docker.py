@@ -23,7 +23,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Dict, List
-
+import os
 import docker
 import requests
 from aea.exceptions import enforce
@@ -32,8 +32,16 @@ from docker.models.containers import Container
 
 from packages.valory.agents.trader import PACKAGE_DIR
 from packages.valory.agents.trader.tests.helpers.constants import (
-    MECH_MARKETPLACE_CONTRACT_ADDRESS,
+    MECH_MARKETPLACE_PROXY_ADDRESS,
 )
+from packages.valory.agents.trader.tests.helpers.constants import (
+    MECH_MARKETPLACE_PROXY_ADDRESS, MECH_FIXED_PRICE_NATIVE_ADDRESS, SAFE_ADDRESS
+)
+
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 DEFAULT_HARDHAT_ADDR = "http://127.0.0.1"
@@ -105,7 +113,7 @@ class TraderNetworkDockerImage(DockerImage):
                 body = {
                     "jsonrpc": "2.0",
                     "method": "eth_getCode",
-                    "params": [MECH_MARKETPLACE_CONTRACT_ADDRESS],
+                    "params": [MECH_MARKETPLACE_PROXY_ADDRESS],
                     "id": 1,
                 }
                 response = requests.post(
@@ -228,6 +236,13 @@ class MockMechDockerImage(DockerImage):
             ports=ports,
             volumes=None,
             extra_hosts={"host.docker.internal": "host-gateway"},
+            environment={
+                "GNOSIS_LEDGER_RPC": os.getenv("E2E_TEST_GNOSIS_LEDGER_RPC"),
+                "MECH_AGENT_PKEY": os.getenv("E2E_TEST_MECH_AGENT_PKEY"),
+                "MECH_FIXED_PRICE_NATIVE_ADDRESS": MECH_FIXED_PRICE_NATIVE_ADDRESS,
+                "SAFE_ADDRESS": SAFE_ADDRESS,
+                "PYTHONUNBUFFERED": "1"
+            }
         )
         return container
 

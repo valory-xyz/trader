@@ -133,7 +133,6 @@ class BaseTestEnd2EndTraderNormalExecution(BaseTestEnd2EndExecution):
 class TestEnd2EndTraderSingleAgent(
     BaseTestEnd2EndTraderNormalExecution,
     UseMockAPIDockerImageBaseTest,
-    UseHardHatTraderBaseTest,
     UseMechMockDockerImageBaseTest,
 ):
     """Test the trader with only one agent."""
