@@ -65,7 +65,6 @@ class State(Model):
         """Initialize the state."""
         super().__init__(*args, **kwargs)
         self.funds = self.initialize_funds(self.context.params.fund_requirements)
-        self.funds_update_requested = False
 
     def initialize_funds(self, fund_requirements: dict) -> dict:
         """Initialize funds"""

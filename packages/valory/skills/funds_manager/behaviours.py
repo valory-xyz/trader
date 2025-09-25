@@ -45,12 +45,7 @@ class MonitorBehaviour(TickerBehaviour, BaseBehaviour):
 
     def act(self) -> None:
         """Do the action."""
-
-        if not self.context.state.funds_update_requested:
-            return
-
         yield from self.update_balances()
-        self.context.state.funds_update_requested = False
 
     def update_balances(self) -> Generator[None, None, None]:
         """Read the balances from the Safe and the agent's EOA."""

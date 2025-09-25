@@ -226,11 +226,5 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
-        self.context.state.funds_update_requested = True
-
-        while self.context.state.funds_update_requested:
-            self.context.logger.info("Waiting for fund status update...")
-            time.sleep(1.0)
-
         data = self.context.state.funds
         self._send_ok_request_response(http_msg, http_dialogue, data)
