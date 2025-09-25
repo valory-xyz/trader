@@ -36,6 +36,7 @@ from packages.dvilela.connections.genai.connection import (
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.srr.dialogues import SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
+from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
@@ -60,14 +61,13 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
-from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
-from packages.valory.skills.abstract_round_abci.base import RoundSequence
+from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 
 
 class HttpMethod(Enum):
@@ -100,6 +100,7 @@ class HttpContentType(Enum):
 
     @property
     def header(self) -> str:
+        """Return the HTTP header for the content type."""
         return f"Content-Type: {self.value}\n"
 
 
@@ -165,15 +166,14 @@ class HttpHandler(BaseHttpHandler):
         configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
         is_enabled_url = rf"{hostname_regex}\/features"
 
-
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value,): [
-                *(self.routes.get((HttpMethod.GET.value), [])),
+                *(self.routes.get((HttpMethod.GET.value,), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.HEAD.value,): [
-                *(self.routes.get((HttpMethod.HEAD.value), [])),
+                *(self.routes.get((HttpMethod.HEAD.value,), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.POST.value,): [
@@ -204,7 +204,7 @@ class HttpHandler(BaseHttpHandler):
         )
 
         data = {"isChatEnabled": is_chat_enabled}
-        self._send_ok_response(http_msg, http_dialogue, data)    
+        self._send_ok_response(http_msg, http_dialogue, data)
 
     @property
     def shared_state(self) -> SharedState:
@@ -470,7 +470,9 @@ class HttpHandler(BaseHttpHandler):
             )
             return None
 
-    def _get_ui_trading_strategy(self, selected_value: Optional[str]) -> TradingStrategyUI:
+    def _get_ui_trading_strategy(
+        self, selected_value: Optional[str]
+    ) -> TradingStrategyUI:
         """Get the UI trading strategy."""
         if selected_value is None:
             return TradingStrategyUI.BALANCED
@@ -502,7 +504,9 @@ class HttpHandler(BaseHttpHandler):
         )
 
         # Store the current trading strategy before any updates
-        previous_trading_strategy = copy.deepcopy(self.shared_state.chatui_config.trading_strategy)
+        previous_trading_strategy = copy.deepcopy(
+            self.shared_state.chatui_config.trading_strategy
+        )
 
         genai_response: dict = json.loads(llm_response_message.payload)
 
