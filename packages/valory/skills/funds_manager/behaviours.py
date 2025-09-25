@@ -18,24 +18,17 @@
 # ------------------------------------------------------------------------------
 """This module contains the behaviours for the 'funds_manager' skill."""
 
-import json
 from abc import ABC
-from typing import Dict, Optional, cast
+from typing import Optional, cast, Generator
 
 from aea.skills.base import Behaviour
 from aea.skills.behaviours import TickerBehaviour
 
-from packages.valory.connections.http_client.connection import (  # pylint: disable=no-name-in-module,import-error
-    PUBLIC_ID as HTTP_CLIENT_PUBLIC_ID,
-)
-from packages.valory.protocols.http import (
-    HttpMessage,
-)  # pylint: disable=no-name-in-module,import-error
 
-# pylint: disable=no-name-in-module,import-error
-from packages.valory.skills.counter_client.dialogues import HttpDialogues
-from packages.valory.skills.counter_client.handlers import curdatetime
-
+CHAIN_NAME_TO_ID = {
+    "ethereum": 1,
+    "gnosis": 100,
+}
 
 class BaseBehaviour(Behaviour, ABC):
     """Abstract base behaviour for this skill."""
@@ -52,55 +45,96 @@ class MonitorBehaviour(TickerBehaviour, BaseBehaviour):
 
     def act(self) -> None:
         """Do the action."""
-        self.update_balances()
-        fund_requirements = self.build_fund_requirements()
 
-        # Check if funding is required and if the Safe has enough funds
-        if fund_requirements and self.check_safe_funds():
-            self.fund_eoa_from_safe()
+        if not self.context.state.funds_update_requested:
+            return
 
-            # Update the fund requirements after funding
-            self.update_balances()
-            fund_requirements = self.build_fund_requirements()
+        yield from self.update_balances()
+        self.context.state.funds_update_requested = False
 
-        # This object is read when the funding endpoint is called
-        self.context.state.fund_requirements = fund_requirements
-
-
-    def update_balances(self) -> None:
+    def update_balances(self) -> Generator[None, None, None]:
         """Read the balances from the Safe and the agent's EOA."""
-        for chain_name, chain_info in self.context.state.funds.__root__.items():
+        for chain_name, chain_info in self.context.state.funds.items():
             for account_address, account_requirements in chain_info.items():
-                for token_address, token_balance in account_requirements.items():
-                    updated_token_balance = # TODO: read balance
-                    token_balance = updated_token_balance
+                for token_address, token_data in account_requirements.items():
 
-    def build_fund_requirements(self) -> Dict[str, Dict[str, Dict[str, int]]]:
-        """Build the fund requirements from the config."""
-        fund_requirements = {}
-        for chain_name, chain_info in self.context.state.funds.__root__.items():
-            for account_address, account_requirements in chain_info.__root__.items():
-                for token_address, required_balance in account_requirements.__root__.items():
-                    current_balance = (
-                        self.context.state.funds.__root__
-                        .get(chain_name, {})
-                        .get(account_address, {})
-                        .get(token_address, 0)
-                    )
-                    deficit = required_balance - current_balance
-                    if deficit > 0:
-                        fund_requirements.setdefault(chain_name, {}).setdefault(
-                            account_address, {}
-                        )[token_address] = deficit
-        return fund_requirements
+                    # Read the balance
+                    if token_data["is_native"]:
+                        balance = yield from self.get_native_balance(
+                            chain_name,
+                            account_address,
+                        )
+                    else:
+                        balance = yield from self.get_erc20_balance(
+                            chain_name,
+                            account_address,
+                            token_address,
+                        )
 
+                    # Update the balance
+                    self.context.state.funds[chain_name][account_address][
+                        token_address
+                    ]["balance"] = balance
 
-    def check_safe_funds(self) -> None:
-        """Check if the Safe has enough funds to cover the agent's requirements."""
-        # TODO: implement the logic to check if the Safe has enough funds to cover the agent's requirements
+                    # Calculate the deficit
+                    deficit = token_data["required_balance"] - balance if balance < token_data["required_balance"] else 0
+                    self.context.state.funds[chain_name][account_address][
+                        token_address
+                    ]["deficit"] = deficit
 
+    def get_native_balance(self, chain_name, account_address) -> Generator[None, None, Optional[float]]:
+        """Get the native balance"""
 
-    def fund_eoa_from_safe(self) -> None:
-        """Move funds from the Safe to the agent's account"""
-        # TODO: implement the funding logic to send funds from the safe to the agent's EOA
+        # TODO: use the correct ledger api to get the native balance
+        ledger_api_response = yield from self.get_ledger_api_response(
+            performative=LedgerApiMessage.Performative.GET_STATE,
+            ledger_callable="get_balance",
+            account=account_address,
+            chain_id=CHAIN_NAME_TO_ID[chain_name],
+        )
 
+        if ledger_api_response.performative != LedgerApiMessage.Performative.STATE:
+            self.context.logger.error(
+                f"Error while retrieving the native balance: {ledger_api_response}"
+            )
+            return None
+
+        balance = cast(int, ledger_api_response.state.body["get_balance_result"])
+        balance = balance / 10**18  # from wei
+
+        self.context.logger.error(f"Got native balance: {balance}")
+
+        return balance
+
+    def get_erc20_balance(self, chain_name, account_address, token_address) -> Generator[None, None, Optional[float]]:
+        """Get ERC20 balance"""
+
+        # TODO: use the correct contract api to get the native balance
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=token_address,
+            contract_id=str(ERC20Custom.contract_id),
+            contract_callable="check_balance",
+            account=account_address,
+            chain_id=CHAIN_NAME_TO_ID[chain_name],
+        )
+
+        # Check that the response is what we expect
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Error while retrieving the balance: {response_msg}"
+            )
+            return None
+
+        balance = response_msg.raw_transaction.body.get("token", None)
+
+        # Ensure that the balance is not None
+        if balance is None:
+            self.context.logger.error(
+                f"Error while retrieving the balance:  {response_msg}"
+            )
+            return None
+
+        balance = balance / 10**18  # from wei
+
+        return balance

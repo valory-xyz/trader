@@ -18,39 +18,12 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the model 'state' for the 'counter_client' skill."""
-from typing import Any, Dict, Optional
+from typing import Any
 
 from aea.skills.base import Model
-from typing import Dict
-from pydantic import BaseModel, Field, constr, field_validator
 
 
-EthAddress = constr(pattern=r"^0x[a-fA-F0-9]{40}$")
-
-
-class TokenBalances(BaseModel):
-    """Map token -> balance."""
-    __root__: Dict[EthAddress, Optional[int]]
-
-    @field_validator("__root__", mode="before")
-    @classmethod
-    def check_balances(cls, v: Dict[str, int]):
-        """Check that all balances are non-negative."""
-        for token, balance in v.items():
-            if balance < 0:
-                raise ValueError(f"Negative balance for token {token}")
-        return v
-
-
-class ChainAddresses(BaseModel):
-    """Map addresses -> tokens -> balances."""
-    __root__: Dict[EthAddress, TokenBalances]
-
-
-class FundsConfig(BaseModel):
-    """Map chain -> addresses -> tokens -> balances."""
-    __root__: Dict[str, ChainAddresses]
-
+NATIVE_ADDRESSES = ["0x0000000000000000000000000000000000000000", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"]
 
 class Params(Model):
     """Parameters."""
@@ -91,22 +64,31 @@ class State(Model):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the state."""
         super().__init__(*args, **kwargs)
+        self.funds = self.initialize_funds(self.context.params.fund_requirements)
+        self.funds_update_requested = False
 
-        fund_requirements = self.context.params.fund_requirements
-        initial_data = {chain_name: {} for chain_name in fund_requirements.keys()}
+    def initialize_funds(self, fund_requirements: dict) -> dict:
+        """Initialize funds"""
 
-        # Replace "agent" and "safe" keys with corresponding addresses
+        funds = {}
+
         for chain_name, chain_info in fund_requirements.items():
+
+            funds[chain_name] = {}
+
             for account_name, account_requirements in chain_info.items():
 
-                initial_token_balances = {
-                    token: None for token in account_requirements.keys()
-                }
+                account_address = self.context.agent_address if account_name == "agent" else self.context.params.safe_address
 
-                if account_name == "agent":
-                    initial_data[chain_name][self.context.agent_address] = initial_token_balances
-                elif account_name == "safe":
-                    initial_data[chain_name][self.context.params.safe_address] = initial_token_balances
+                funds[chain_name][account_address] = {}
 
-        self.funds = FundsConfig.model_validate(initial_data)
-        self.fund_requirements = {}
+                for token_address, balance_requirement in account_requirements.items():
+
+                    funds[chain_name][account_address][token_address] = {
+                        "requirement": balance_requirement,
+                        "balance": None,
+                        "deficit": None,
+                        "is_native": token_address in NATIVE_ADDRESSES,
+                    }
+
+        return funds
