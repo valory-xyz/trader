@@ -260,23 +260,6 @@ class HttpHandler(BaseHttpHandler):
         except Exception as e:
             self.context.logger.error(f"Error: {e}")
 
-    def _send_ok_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Dict,
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Handle a HTTP OK response."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            data,
-            HTTPStatus.OK.value,
-            HTTPStatus.OK.phrase,
-            content_type,
-        )
-
     def _send_too_early_request_response(
         self,
         http_msg: HttpMessage,
@@ -361,7 +344,7 @@ class HttpHandler(BaseHttpHandler):
             content_type,
         )
 
-    def _send_ok_request_response(
+    def _send_ok_response(
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
@@ -539,7 +522,7 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.warning(
                 "No agent configuration update provided by the LLM."
             )
-            self._send_ok_request_response(
+            self._send_ok_response(
                 http_msg,
                 http_dialogue,
                 {
@@ -571,7 +554,7 @@ class HttpHandler(BaseHttpHandler):
             # In case of update, reflect the previous value in the response. Needed for frontend
             response_body[PREVIOUS_TRADING_TYPE_FIELD] = previous_ui_strategy
 
-        self._send_ok_request_response(
+        self._send_ok_response(
             http_msg,
             http_dialogue,
             response_body,
