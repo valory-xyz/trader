@@ -7,6 +7,7 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
+  tests/helpers/data/json_server/data.json: bafybeicl5oiu2bdkgxomqlkgwvmw74yutaqtz6ala5tdscov7gjxqqyhia
 fingerprint_ignore_patterns: []
 connections:
 - valory/abci:0.1.0:bafybeidn5gc6y3a6tkhgv753kkiub3mfas3tkemm4fs7i4kc4klkjlxpui
@@ -58,12 +59,12 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihscepheyiwsrpqyiqdrd62ymi4pzq3hi2t6kui6bxsxgmn3b5axy
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
 - valory/decision_maker_abci:0.1.0:bafybeiecyuvgzswxc4txv7zxracmqts5rj3rcwukstiuzlhh3eu2xubkwq
-- valory/trader_abci:0.1.0:bafybeibwolwtyp6wltb4gq6kv62p7prsrv5hdcogu3aiyoxiwzbtxaevye
+- valory/trader_abci:0.1.0:bafybeihgghxtmk7xh4yc4cqpi73lwmle6rohzej2tkffmq7yibytmzcssu
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
 - valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
-- valory/funds_manager:0.1.0:bafybeib6z7q3g7zj4qf6g7x7y3qf5x7zj5y4z5t5v6y6y7y6z7y6y7y6y7y6y
+- valory/funds_manager:0.1.0:bafybeieu62arv6qp2zox4itqwpir76qh4kxwjf6id2ap2jx53vstwze62m
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu

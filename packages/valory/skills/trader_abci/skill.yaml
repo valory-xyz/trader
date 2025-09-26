@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeifct76ut7nu4dla7qfmq6blfsjzxwh2zu7zfkemqieganhxk4hcwa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeicauircsipef44gx5p5uwus7v7yim5uilzh7kpa5fsdjzcrjvy2xu
-  handlers.py: bafybeibw6arrdygdcpmbydu3biybejfnpgn72wuhxwhhqxzkki2scg7beq
+  handlers.py: bafybeidiked2wkrh7jb3kzcnqe56yqzhiftm3fwwih6y3tq7odg5pj7n5u
   models.py: bafybeihqmi5ogj6ioasnz5wn4h653zvafi66tcb4mvd4ne4457rqxju24q
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
@@ -46,7 +46,7 @@ skills:
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
 - valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
-- valory/funds_manager:0.1.0:bafybeib6z7q3g7zj4qf6g7x7y3qf5x7zj5y4z5t5v6y6y7y6z7y6y7y6y7y6y
+- valory/funds_manager:0.1.0:bafybeieu62arv6qp2zox4itqwpir76qh4kxwjf6id2ap2jx53vstwze62m
 behaviours:
   main:
     args: {}
