@@ -7,7 +7,7 @@ description: This skill is responsible for the decision making and placing the b
   what to vote for, it receives the response from the mech, it decides whether voting
   is profitable or not, and ultimately, it either bets or blacklists the market.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
@@ -81,32 +81,32 @@ fingerprint:
   utils/scaling.py: bafybeialr3z4zogp4k3l2bzcjfi4igvxzjexmlpgze2bai2ufc3plaow4y
 fingerprint_ignore_patterns: []
 connections:
-- valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
+- valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeibgpgpi7w6xtxg3zr7tye3f6g6tu7fnvy7yxlgunbjqin3ou7e5pi
-- valory/market_maker:0.1.0:bafybeigzfyzbixum5cqvcbyc24dqwce25dr6nyqvgjm2eqpt6tgo2perd4
-- valory/erc20:0.1.0:bafybeif2ad3gsp7zhmw55rpfy7kiooqjswanyvjisdu43kqaoycspfrbui
-- valory/multisend:0.1.0:bafybeig5byt5urg2d2bsecufxe5ql7f4mezg3mekfleeh32nmuusx66p4y
-- valory/mech:0.1.0:bafybeifthpyd2oq5izworldr755sigefinki7caath4aao3hrajpjbhbxe
-- valory/conditional_tokens:0.1.0:bafybeiai7zwtdab2izyitvxph42kwtbvx6n5skm3i6jijd2653xjkoqd24
-- valory/realitio:0.1.0:bafybeieggqkuslxiuapneygnhkhgatk5jvjbw6p7ltxaab6au466ikxm3e
-- valory/realitio_proxy:0.1.0:bafybeidx37xzjjmapwacedgzhum6grfzhp5vhouz4zu3pvpgdy5pgb2fr4
-- valory/agent_registry:0.1.0:bafybeiepkbcx5jrcvoc5nfarw6gt4so4izqxuiliu7gukdvmjiodynecvy
-- valory/mech_mm:0.1.0:bafybeibbz2hlyvtg6yfojzdnou2xqbpu32a4mjvn2xidfypvwy5oj6gx4u
+- valory/gnosis_safe:0.1.0:bafybeifhfvsuizkoxveehiwk3cbf2du6yjisyxofc4az6ihauzg5a3vntu
+- valory/market_maker:0.1.0:bafybeickk5ap5ys4fo27qdg5zcyxmngpx22xy6wgimbfi3yndthuncppje
+- valory/erc20:0.1.0:bafybeiha5ye3bp4ok73p42cqtqto7huyy7grdkt3akvg3fc47c7lhdnqcm
+- valory/multisend:0.1.0:bafybeidjdgi2kyexajirj3cnpzgse4y5u664b2blztt4flv6i7knlecyr4
+- valory/mech:0.1.0:bafybeigcv6mg3cc3te7qvukqj5pavjo63wi7zh3o5ftmofrypmzw2chp6m
+- valory/conditional_tokens:0.1.0:bafybeih2q4aulmafyt6ottsvf5eewkmk42eochvtpljoe3b6uid6tvzf5a
+- valory/realitio:0.1.0:bafybeiaz57opcc24multhnrtvqy7gp2cgbrsitwzpefmmlrhfoxnza333e
+- valory/realitio_proxy:0.1.0:bafybeicjqngmdkzckugkrxlqx4vydzd7c4uqaqve5z5v7yixu3livvovva
+- valory/agent_registry:0.1.0:bafybeidkx3rq66yzedwfkhxslipq5dxhm3i5jaq6bve35witewkgodgzzy
+- valory/mech_mm:0.1.0:bafybeid6otx4rfzrr6mnl7n7otjazmdngqql5vrfdmm7csquces3vlsubm
 - valory/complementary_service_metadata:0.1.0:bafybeibu65wpdsbrbrt2wnf2lr3psy26jiaomyjkg4twbupve7o3kso2aa
 protocols:
-- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
-- valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
-- valory/ipfs:0.1.0:bafybeifi2nri7sprmkez4rqzwb4lnu6peoy3bax5k6asf6k5ms7kmjpmkq
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/contract_api:1.0.0:bafybeicmo2ufeoqyyczkom6xp3nwmhosd75kpe4xfwn7gaz6vegj732b4m
+- valory/ledger_api:1.0.0:bafybeiga6gdd3ccdt5jgrov474koz524f3pfbhprwxfjj7wextkl7wozsa
+- valory/ipfs:0.1.0:bafybeib7jhgyocjwdq3r5wzq3z4qeubj3dwi3aqjn2uxzuwnjp5fhvafcu
+- valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
-- valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/mech_interact_abci:0.1.0:bafybeif5qpxsvwmxtywrwfj27gkhrwtq7gyzb63cohv7345zoh4p34jh2m
-- valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
-- valory/agent_performance_summary_abci:0.1.0:bafybeicubnrbt5zbh6wldwbe7ryv5g76zjzppklv7wgjlqtwxirdcnzdoi
-- valory/chatui_abci:0.1.0:bafybeigugdg7lvtgdlsizu6cwiwzan6sp5znce2yavxm2ctq5gehko565y
+- valory/abstract_round_abci:0.1.0:bafybeidcobuwi3tk5p6uloptehwj6ostzg2u5vpwz2lyhtzwlu4flnos3a
+- valory/market_manager_abci:0.1.0:bafybeia5ngni2gxtfpm4yv5kkns56i6gvhmhezo77a7gty2h7rtz2rzvfu
+- valory/transaction_settlement_abci:0.1.0:bafybeibicrc2ro4dhdehlhnpy2myufk3tfsndvd67bygu2ylyjus4hjzfi
+- valory/mech_interact_abci:0.1.0:bafybeigdm4thbd72aklh7vbto6qqynv72fneee4voxdgan2oxrwmd3beji
+- valory/staking_abci:0.1.0:bafybeifhjqbgl6iu3a4pwtx2rcwllvw52m5lycvm2tngf4ysmje6mvr3u4
+- valory/agent_performance_summary_abci:0.1.0:bafybeifzhltsksbzd76unw22jnclz54vetysr3b7g4vz6d6si3yr4fidfq
+- valory/chatui_abci:0.1.0:bafybeibgeshfszrknlcbuteztx2z2fy4yr6clf3uhgx5oqpq6i4qdsugri
 behaviours:
   main:
     args: {}

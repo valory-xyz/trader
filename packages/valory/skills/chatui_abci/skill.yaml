@@ -4,7 +4,7 @@ description: Chat UI skill for Valory agents
 author: valory
 type: skill
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeiezyii5oqibm26ogl3tqx7m34d7znj443jfbcl26rp2oz5g2mjnzy
   behaviours.py: bafybeicr4jqw3u4u6vnvnueegxzag55tmizcis6zdfj6vet3guguyidrau
@@ -18,12 +18,12 @@ fingerprint_ignore_patterns: []
 connections:
 - dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
 protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 - valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/agent_performance_summary_abci:0.1.0:bafybeicubnrbt5zbh6wldwbe7ryv5g76zjzppklv7wgjlqtwxirdcnzdoi
+- valory/abstract_round_abci:0.1.0:bafybeidcobuwi3tk5p6uloptehwj6ostzg2u5vpwz2lyhtzwlu4flnos3a
+- valory/agent_performance_summary_abci:0.1.0:bafybeifzhltsksbzd76unw22jnclz54vetysr3b7g4vz6d6si3yr4fidfq
 handlers:
   abci:
     args: {}

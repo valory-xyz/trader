@@ -4,7 +4,7 @@ description: Agent Performance summary skill for Predict agent
 author: valory
 type: skill
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
   behaviours.py: bafybeiaschstegwyhutdmsm4tcz7znmsgfmburb632h6ha2ipfbgasstbm
@@ -19,7 +19,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
+- valory/abstract_round_abci:0.1.0:bafybeidcobuwi3tk5p6uloptehwj6ostzg2u5vpwz2lyhtzwlu4flnos3a
 handlers:
   abci:
     args: {}
@@ -104,4 +104,4 @@ dependencies: {}
 is_abstract: true
 connections: []
 protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
