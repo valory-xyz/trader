@@ -4,27 +4,31 @@ version: 0.1.0
 type: skill
 description: A skill to track agent funds.
 license: Apache-2.0
-aea_version: '>=2.0.0, <3.0.0'
+aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
-  behaviours.py: bafybeifv3arwwszlvj7gqdnaktnh6sf74qetfcnxwi4bwn72vdyzxsptzq
-  models.py: bafybeidljgvhkgxz6m2jszlrdi3exyahefrij2jtaqb6smrm5esxwdd45q
+  __init__.py: bafybeiglhekx55noix6x6rmng7hsoqqpgythltdcocrmsxbvpdfi6kq6ye
+  behaviours.py: bafybeieckux4zbj6tuyfmixlbowpw5l4vl73gnlzpu2dqoqyio3icbr4uu
+  models.py: bafybeib3ydti3fz427sqxisokulgg2me2s7hul7fth7cnd53vai26edafy
 fingerprint_ignore_patterns: []
-connections:
-- valory/abci:0.1.0:bafybeidn5gc6y3a6tkhgv753kkiub3mfas3tkemm4fs7i4kc4klkjlxpui
-contracts: []
+connections: []
+contracts:
+- valory/erc20:0.1.0:bafybeif2ad3gsp7zhmw55rpfy7kiooqjswanyvjisdu43kqaoycspfrbui
 protocols:
-- valory/abci:0.1.0:bafybeiatodhboj6a3p35x4f4b342lzk6ckxpud23awnqbxwjeon3k5y36u
-skills:
-- valory/abstract_abci:0.1.0:bafybeibfsmbjasqnb3lgmwj7dlxvlfbngdyqc7a4n5q2g7phvmv4ktehq4
-behaviours: {}
-handlers:
-  abci:
+- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
+- valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
+skills: []
+behaviours:
+  main:
     args: {}
-    class_name: ABCICounterHandler
+    class_name: MonitorBehaviour
+handlers: {}
 models:
-  abci_dialogues:
-    args: {}
-    class_name: AbciDialogues
+  params:
+    args:
+      fund_requirements: {}
+      rpc_urls: {}
+      safe_address: ''
+    class_name: Params
 dependencies: {}
 is_abstract: false
 customs: []

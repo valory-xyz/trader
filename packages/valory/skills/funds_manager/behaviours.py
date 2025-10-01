@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,25 +17,48 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the behaviours for the 'funds_manager' skill."""
+from typing import Generator, Optional, cast
 
-from abc import ABC
-from typing import Optional, cast, Generator
-
-from aea.skills.base import Behaviour
 from aea.skills.behaviours import TickerBehaviour
+from w3multicall.multicall import W3Multicall
+from web3 import Web3
 
+from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.protocols.ledger_api import LedgerApiMessage
+from packages.valory.skills.funds_manager.models import (
+    AccountRequirements,
+    ChainRequirements,
+    Funds,
+    Params,
+    TokenRequest,
+    TokenRequirement,
+)
+
+
+ERC20Custom = ERC20
 
 CHAIN_NAME_TO_ID = {
     "ethereum": 1,
     "gnosis": 100,
 }
 
-class BaseBehaviour(Behaviour, ABC):
-    """Abstract base behaviour for this skill."""
+
+ERC20_DECIMALS_ABI = "decimals()(uint8)"
+NATIVE_BALANCE_ABI = "getEthBalance(address)(uint256)"
+ERC20_BALANCE_ABI = "balanceOf(address)(uint256)"
+NATIVE_DECIMALS = 18
+
+MULTICALL_ADDR = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+FIVE_MINUTES_IN_SECONDS = 300
 
 
-class MonitorBehaviour(TickerBehaviour, BaseBehaviour):
+class MonitorBehaviour(TickerBehaviour):
     """Send an ABCI query periodically."""
+
+    def __init__(self, tick_interval=FIVE_MINUTES_IN_SECONDS, start_at=None, **kwargs):
+        super().__init__(tick_interval, start_at, **kwargs)
 
     def setup(self) -> None:
         """Set up the behaviour."""
@@ -45,91 +68,133 @@ class MonitorBehaviour(TickerBehaviour, BaseBehaviour):
 
     def act(self) -> None:
         """Do the action."""
-        yield from self.update_balances()
+        self.update_balances()
 
-    def update_balances(self) -> Generator[None, None, None]:
+    def do_w3_multicall(self, rpc_url, calls):
+        """Do a multicall using w3_multicall."""
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+
+        w3_multicall = W3Multicall(w3)
+        for token_address, token_data, call in calls:
+            w3_multicall.add(call)
+
+        return w3_multicall.call()
+
+    @property
+    def params(self) -> Params:
+        """Return the params."""
+        return cast(Params, self.context.params)
+
+    @property
+    def shared_state_funds(self) -> Funds:
+        """Return the funds from the shared state."""
+        return cast(Funds, self.context.shared_state.get("funds", {}))
+
+    @shared_state_funds.setter
+    def shared_state_funds(self, value: dict) -> None:
+        """Set the funds in the shared state."""
+        self.context.shared_state["funds"] = value
+
+    def update_balances(self) -> None:
         """Read the balances from the Safe and the agent's EOA."""
-        for chain_name, chain_info in self.context.state.funds.items():
-            for account_address, account_requirements in chain_info.items():
-                for token_address, token_data in account_requirements.items():
 
-                    # Read the balance
-                    if token_data["is_native"]:
-                        balance = yield from self.get_native_balance(
-                            chain_name,
-                            account_address,
+        self._ensure_funds()
+
+        for (
+            chain_name,
+            chain_requirements,
+        ) in self.shared_state_funds.fund_requirements.items():
+            w3 = Web3(Web3.HTTPProvider(self.params.rpc_urls[chain_name]))
+
+            self.shared_state_funds.funds_status[chain_name] = {}
+
+            for (
+                account_address,
+                account_requirements,
+            ) in chain_requirements.accounts.items():
+
+                self.shared_state_funds.funds_status[chain_name][account_address] = {}
+                calls = []
+                decimals_calls = {}
+
+                for (
+                    token_address,
+                    token_requirements,
+                ) in account_requirements.tokens.items():
+                    if token_requirements.is_native:
+                        # Native tokens: prepare multicall for balance
+                        calls.append(
+                            (
+                                token_address,
+                                token_requirements,
+                                W3Multicall.Call(
+                                    MULTICALL_ADDR,
+                                    NATIVE_BALANCE_ABI,
+                                    [account_address],
+                                ),
+                                NATIVE_DECIMALS,
+                            )
                         )
                     else:
-                        balance = yield from self.get_erc20_balance(
-                            chain_name,
-                            account_address,
+                        # ERC20: prepare multicall for balance
+                        balance_call = W3Multicall.Call(
                             token_address,
+                            ERC20_BALANCE_ABI,
+                            [account_address],
                         )
+                        # ERC20: prepare multicall for decimals
+                        decimals_call = W3Multicall.Call(
+                            token_address, ERC20_DECIMALS_ABI
+                        )
+                        calls.append(
+                            (token_address, token_requirements, balance_call, None)
+                        )
+                        decimals_calls[token_address] = decimals_call
 
-                    # Update the balance
-                    self.context.state.funds[chain_name][account_address][
+                # Execute multicall for balances
+                web3_multicall = W3Multicall(w3)
+                for _, _, call, _ in calls:
+                    web3_multicall.add(call)
+
+                balances = web3_multicall.call()
+
+                # Execute multicall for decimals (only ERC20)
+                web3_multicall_decimals = W3Multicall(w3)
+                for dec_call in decimals_calls.values():
+                    web3_multicall_decimals.add(dec_call)
+                decimals_results = web3_multicall_decimals.call()
+
+                # Map decimals back to token addresses
+                decimal_results_map = {
+                    token_address: value
+                    for token_address, value in zip(
+                        decimals_calls.keys(), decimals_results
+                    )
+                }
+                decimal_results_map.update(
+                    {
+                        token_address: 18
+                        for token_address, _, _, decimals in calls
+                        if decimals is not None
+                    }
+                )
+
+                # Write balances + deficits + decimals back
+                for (token_address, token_requirements, _, _), balance in zip(
+                    calls, balances
+                ):
+                    balance = int(balance or 0)
+                    deficit = max(token_requirements.topup - balance, 0)
+                    self.shared_state_funds.funds_status[chain_name][account_address][
                         token_address
-                    ]["balance"] = balance
+                    ] = TokenRequest(
+                        balance=balance,
+                        deficit=deficit,
+                        decimals=decimal_results_map[token_address],
+                    )
 
-                    # Calculate the deficit
-                    deficit = token_data["required_balance"] - balance if balance < token_data["required_balance"] else 0
-                    self.context.state.funds[chain_name][account_address][
-                        token_address
-                    ]["deficit"] = deficit
+    def _ensure_funds(self) -> None:
+        if self.shared_state_funds:
+            return
 
-    def get_native_balance(self, chain_name, account_address) -> Generator[None, None, Optional[float]]:
-        """Get the native balance"""
-
-        # TODO: use the correct ledger api to get the native balance
-        ledger_api_response = yield from self.get_ledger_api_response(
-            performative=LedgerApiMessage.Performative.GET_STATE,
-            ledger_callable="get_balance",
-            account=account_address,
-            chain_id=CHAIN_NAME_TO_ID[chain_name],
-        )
-
-        if ledger_api_response.performative != LedgerApiMessage.Performative.STATE:
-            self.context.logger.error(
-                f"Error while retrieving the native balance: {ledger_api_response}"
-            )
-            return None
-
-        balance = cast(int, ledger_api_response.state.body["get_balance_result"])
-        balance = balance / 10**18  # from wei
-
-        self.context.logger.error(f"Got native balance: {balance}")
-
-        return balance
-
-    def get_erc20_balance(self, chain_name, account_address, token_address) -> Generator[None, None, Optional[float]]:
-        """Get ERC20 balance"""
-
-        # TODO: use the correct contract api to get the native balance
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=token_address,
-            contract_id=str(ERC20Custom.contract_id),
-            contract_callable="check_balance",
-            account=account_address,
-            chain_id=CHAIN_NAME_TO_ID[chain_name],
-        )
-
-        # Check that the response is what we expect
-        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
-            self.context.logger.error(
-                f"Error while retrieving the balance: {response_msg}"
-            )
-            return None
-
-        balance = response_msg.raw_transaction.body.get("token", None)
-
-        # Ensure that the balance is not None
-        if balance is None:
-            self.context.logger.error(
-                f"Error while retrieving the balance:  {response_msg}"
-            )
-            return None
-
-        balance = balance / 10**18  # from wei
-
-        return balance
+        self.shared_state_funds = Funds.from_dict(self.params.fund_requirements)

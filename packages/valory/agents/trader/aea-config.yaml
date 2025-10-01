@@ -7,7 +7,6 @@ aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
-  tests/helpers/data/json_server/data.json: bafybeicl5oiu2bdkgxomqlkgwvmw74yutaqtz6ala5tdscov7gjxqqyhia
 fingerprint_ignore_patterns: []
 connections:
 - valory/abci:0.1.0:bafybeidn5gc6y3a6tkhgv753kkiub3mfas3tkemm4fs7i4kc4klkjlxpui
@@ -59,12 +58,12 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihscepheyiwsrpqyiqdrd62ymi4pzq3hi2t6kui6bxsxgmn3b5axy
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
 - valory/decision_maker_abci:0.1.0:bafybeiecyuvgzswxc4txv7zxracmqts5rj3rcwukstiuzlhh3eu2xubkwq
-- valory/trader_abci:0.1.0:bafybeihgghxtmk7xh4yc4cqpi73lwmle6rohzej2tkffmq7yibytmzcssu
+- valory/trader_abci:0.1.0:bafybeigecqnvga2r5qcbe5ra6c3qlaet652tukibevvbx6otvqoi34ujry
 - valory/staking_abci:0.1.0:bafybeifupwkfbxa4c4jogpudvzwt5rkgfuedgd65sj2bf2z5ver4phq64m
 - valory/check_stop_trading_abci:0.1.0:bafybeifcc2dkyijmzuwli2ovg72ypmx6vplj3klgxcblnwvyxz3t4jfcpy
 - valory/mech_interact_abci:0.1.0:bafybeihwuhjifsksoht35q6wk2qwwkzsqvo6sjgzwapyeg2wr7w2lpjp3m
 - valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
-- valory/funds_manager:0.1.0:bafybeieu62arv6qp2zox4itqwpir76qh4kxwjf6id2ap2jx53vstwze62m
+- valory/funds_manager:0.1.0:bafybeibwuwqval5aerwxcsxamnirbbynpetyrrlkwelsot3dlwym4iioea
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
@@ -423,3 +422,15 @@ public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlco
 type: connection
 config:
   genai_api_key: ${str:""}
+---
+public_id: valory/funds_manager:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: skill
+models:
+  params:
+    args:
+      fund_requirements: ${dict:{"ethereum":{"0x4c190e3C582e877942007Db3009feACc1Da6C481":{"0x0000000000000000000000000000000000000000":{"topup":500,"threshold":100,"description":"ethonethereum"},"0x0001A500A6B18995B03f44bb040A5fFc28E45CB0":{"topup":500,"threshold":100,"description":"olasoneth"}}},"gnosis":{"0x4c190e3C582e877942007Db3009feACc1Da6C481":{"0x0000000000000000000000000000000000000000":{"topup":500,"threshold":100,"description":"xdaiongnosis"},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":500,"threshold":100,"description":"wrappedxdaiongnosis"},"0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f":{"topup":500,"threshold":100,"description":"olasongnosis"}}},"base":{"0x4c190e3C582e877942007Db3009feACc1Da6C481":{"0x0000000000000000000000000000000000000000":{"topup":500,"threshold":100,"description":"etheronbase"},"0x54330d28ca3357F294334BDC454a032e7f353416":{"topup":500,"threshold":100,"description":"olasonbase"}}}}}
+      rpc_urls:
+        gnosis: ${str:https://rpc.gnosischain.com}
+        ethereum: ${str:https://eth.llamarpc.com}
+        base: ${str:https://base.llamarpc.com}
+      safe_address: ${str:0x4c190e3C582e877942007Db3009feACc1Da6C481}

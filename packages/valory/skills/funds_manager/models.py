@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021 Valory AG
+#   Copyright 2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,77 +17,85 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the model 'state' for the 'counter_client' skill."""
-from typing import Any
+"""This module contains the model 'state' for the 'funds_manager' skill."""
+from typing import Any, Dict
 
 from aea.skills.base import Model
+from pydantic import BaseModel
 
 
-NATIVE_ADDRESSES = ["0x0000000000000000000000000000000000000000", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"]
+NATIVE_ADDRESSES = [
+    "0x0000000000000000000000000000000000000000",
+    "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+]
+
+
+class TokenRequirement(BaseModel):
+    """Balance requirements for a specific token in an account."""
+
+    topup: int
+    threshold: int
+    is_native: bool
+
+
+class TokenRequest(BaseModel):
+    balance: int
+    deficit: int
+    decimals: int
+
+
+class AccountRequirements(BaseModel):
+    """All token requirements for a single account address."""
+
+    tokens: Dict[str, TokenRequirement] = {}
+
+
+class ChainRequirements(BaseModel):
+    """All account requirements for a single chain."""
+
+    accounts: Dict[str, AccountRequirements] = {}
+
+
+class Funds(BaseModel):
+    """Funds"""
+
+    fund_requirements: Dict[str, ChainRequirements] = {}
+    funds_status: Dict[str, Any] = {}
+
+    @classmethod
+    def from_dict(cls, fund_dict: Dict[str, Any]) -> "Funds":
+        fund_requirements = {}
+        for chain, accounts in fund_dict.items():
+            chain_obj = {}
+            for account, tokens in accounts.items():
+                token_objs = {}
+                for token_address, token_data in tokens.items():
+                    is_native = token_address in NATIVE_ADDRESSES
+                    token_objs[token_address] = TokenRequirement(
+                        topup=token_data["topup"],
+                        threshold=token_data["threshold"],
+                        is_native=is_native,
+                    )
+                chain_obj[account] = AccountRequirements(tokens=token_objs)
+            fund_requirements[chain] = ChainRequirements(accounts=chain_obj)
+        return cls(fund_requirements=fund_requirements)
+
+    def retrieve_fund_status_dict(self) -> Dict[str, Any]:
+        """Get the fund requirements as a dictionary."""
+        return self.model_dump()["funds_status"]
+
 
 class Params(Model):
     """Parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the parameters object."""
+        """Initialize the parameters' object."""
+        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {kwargs.get('fund_requirements')=}")
+        self.fund_requirements: Dict[str, Any] = kwargs.get("fund_requirements")
+        self.rpc_urls: Dict[str, str] = kwargs.get("rpc_urls")
+        self.safe_address: str = kwargs.get("safe_address")
+
+        # self.fund_requirements = kwargs.get("fund_requirements")
+        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {self.fund_requirements=}")
+
         super().__init__(*args, **kwargs)
-
-        # Example:
-        # fund_requirements = {
-        #     "ethereum": {
-        #         "agent": {
-        #             "0x000000": 50
-        #         },
-        #         "safe": {
-        #             "0x000000": 500,
-        #             "0xToken1": 1000,
-        #             "0xToken2": 2000
-        #         }
-        #     },
-        #     "gnosis": {
-        #         "agent": {
-        #             "0x000000": 50
-        #         },
-        #         "safe": {
-        #             "0xToken1": 100,
-        #             "0xToken2": 200
-        #         }
-        #     }
-        # }
-
-        self.fund_requirements = kwargs.get("fund_requirements")
-
-
-class State(Model):
-    """Keep the current state."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the state."""
-        super().__init__(*args, **kwargs)
-        self.funds = self.initialize_funds(self.context.params.fund_requirements)
-
-    def initialize_funds(self, fund_requirements: dict) -> dict:
-        """Initialize funds"""
-
-        funds = {}
-
-        for chain_name, chain_info in fund_requirements.items():
-
-            funds[chain_name] = {}
-
-            for account_name, account_requirements in chain_info.items():
-
-                account_address = self.context.agent_address if account_name == "agent" else self.context.params.safe_address
-
-                funds[chain_name][account_address] = {}
-
-                for token_address, balance_requirement in account_requirements.items():
-
-                    funds[chain_name][account_address][token_address] = {
-                        "requirement": balance_requirement,
-                        "balance": None,
-                        "deficit": None,
-                        "is_native": token_address in NATIVE_ADDRESSES,
-                    }
-
-        return funds

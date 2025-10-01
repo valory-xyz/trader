@@ -22,9 +22,9 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from urllib.parse import urlparse
-import time
+
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -53,6 +53,7 @@ from packages.valory.skills.decision_maker_abci.handlers import HttpMethod
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
+from packages.valory.skills.funds_manager.models import Funds
 from packages.valory.skills.mech_interact_abci.handlers import (
     AcnHandler as BaseAcnHandler,
 )
@@ -92,6 +93,11 @@ class HttpHandler(BaseHttpHandler):
         )
 
     @property
+    def shared_state_funds(self) -> Funds:
+        """Return the funds from the shared state."""
+        return cast(Funds, self.context.shared_state.get("funds", {}))
+
+    @property
     def agent_ids(self) -> List[int]:
         """Get the agent ids."""
         return json.loads(self.staking_synchronized_data.agent_ids)
@@ -119,7 +125,7 @@ class HttpHandler(BaseHttpHandler):
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
 
-        funds_status_regex = f"{hostname_regex}\/funds-status"
+        funds_status_regex = rf"{hostname_regex}\/funds-status"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -127,12 +133,12 @@ class HttpHandler(BaseHttpHandler):
                 *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
                 (agent_info_url_regex, self._handle_get_agent_info),
                 (
-                    static_files_regex,
-                    self._handle_get_static_file,
-                ),
-                (
                     funds_status_regex,
                     self._handle_get_funds_status,
+                ),
+                (
+                    static_files_regex,  # Always keep this route last as it is a catch-all for static files
+                    self._handle_get_static_file,
                 ),
             ],
         }
@@ -226,5 +232,9 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
-        data = self.context.state.funds
-        self._send_ok_request_response(http_msg, http_dialogue, data)
+
+        funds = self.shared_state_funds
+
+        self._send_ok_request_response(
+            http_msg, http_dialogue, funds.retrieve_fund_status_dict()
+        )
