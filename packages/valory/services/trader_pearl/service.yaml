@@ -338,3 +338,13 @@ public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlco
 type: connection
 config:
   genai_api_key: ${GENAI_API_KEY:str:""}
+---
+public_id: valory/funds_manager:0.1.0
+type: skill
+models:
+  params:
+    args:
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":2500000000000000000}}}}}
+      rpc_urls:
+        gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
+      safe_address: ${SAFE_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
