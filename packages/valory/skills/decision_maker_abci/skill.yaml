@@ -84,7 +84,7 @@ connections:
 - valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeifhfvsuizkoxveehiwk3cbf2du6yjisyxofc4az6ihauzg5a3vntu
-- valory/market_maker:0.1.0:bafybeickk5ap5ys4fo27qdg5zcyxmngpx22xy6wgimbfi3yndthuncppje
+- valory/market_maker:0.1.0:bafybeia642rxwxhxb4f2kr6o6hackmcrsctxbqrnlx37vwbc7j6q5ggswe
 - valory/erc20:0.1.0:bafybeiha5ye3bp4ok73p42cqtqto7huyy7grdkt3akvg3fc47c7lhdnqcm
 - valory/multisend:0.1.0:bafybeidjdgi2kyexajirj3cnpzgse4y5u664b2blztt4flv6i7knlecyr4
 - valory/mech:0.1.0:bafybeigcv6mg3cc3te7qvukqj5pavjo63wi7zh3o5ftmofrypmzw2chp6m
@@ -104,7 +104,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeia5ngni2gxtfpm4yv5kkns56i6gvhmhezo77a7gty2h7rtz2rzvfu
 - valory/transaction_settlement_abci:0.1.0:bafybeibicrc2ro4dhdehlhnpy2myufk3tfsndvd67bygu2ylyjus4hjzfi
 - valory/mech_interact_abci:0.1.0:bafybeigdm4thbd72aklh7vbto6qqynv72fneee4voxdgan2oxrwmd3beji
-- valory/staking_abci:0.1.0:bafybeifhjqbgl6iu3a4pwtx2rcwllvw52m5lycvm2tngf4ysmje6mvr3u4
+- valory/staking_abci:0.1.0:bafybeifkh6c2xehrh6lhg7cxu353ghezdeui6auu7imyuc5b6neyts7pay
 - valory/agent_performance_summary_abci:0.1.0:bafybeifzhltsksbzd76unw22jnclz54vetysr3b7g4vz6d6si3yr4fidfq
 - valory/chatui_abci:0.1.0:bafybeibgeshfszrknlcbuteztx2z2fy4yr6clf3uhgx5oqpq6i4qdsugri
 behaviours:
@@ -387,7 +387,7 @@ dependencies:
   py-multicodec:
     version: ==0.2.1
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
   eth-abi:
     version: ==4.0.0
   pyyaml:
