@@ -96,7 +96,7 @@ class FetchPerformanceSummaryBehaviour(
 
     def calculate_roi(self):
         """Calculate the ROI."""
-        agent_id = self.context.agent_address.lower()
+        agent_id = self.synchronized_data.safe_contract_address
 
         mech_sender = yield from self._fetch_mech_sender(
             agent_id=agent_id,
@@ -107,7 +107,7 @@ class FetchPerformanceSummaryBehaviour(
             or mech_sender.get("requests") is None
         ):
             self.context.logger.warning(
-                f"Mech sender data not found or incomplete for {agent_id=} and {mech_sender=}"
+                f"Mech sender data not found or incomplete for {agent_id=} and {mech_sender=}. Trader may be unstaked."
             )
             return None, None
 
@@ -124,7 +124,7 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning(
                 f"Trader agent data not found or incomplete for {agent_id=} and {trader_agent=}"
             )
-            return None, None
+            return 0, 0
 
         open_markets = yield from self._fetch_open_markets(
             timestamp_gt=self.market_open_timestamp,
@@ -168,7 +168,7 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         if total_costs == 0:
-            return None, None
+            return 0, 0
 
         total_market_payout = int(trader_agent["totalPayout"])
         total_olas_rewards_payout_in_usd = (
@@ -187,13 +187,19 @@ class FetchPerformanceSummaryBehaviour(
 
     def _get_prediction_accuracy(self):
         """Get the prediction accuracy."""
+        agent_id = self.synchronized_data.safe_contract_address
 
-        agent_id = self.context.agent_address.lower()
         agent_bets_data = yield from self._fetch_trader_agent_bets(
             agent_id=agent_id,
         )
-        if agent_bets_data is None or len(agent_bets_data.get("bets", [])) == 0:
+        if agent_bets_data is None:
+            self.context.logger.warning(
+                f"Agent bets data not found for {agent_id=}. Trader may be unstaked."
+            )
             return None
+
+        if len(agent_bets_data.get("bets", [])) == 0:
+            return 0
 
         bets_on_closed_markets = [
             bet
