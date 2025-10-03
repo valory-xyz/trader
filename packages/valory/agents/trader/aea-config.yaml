@@ -64,15 +64,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihhf2s5nson7l37jt3tltboxrhjer2oa2w7fiyrrcgf7srqc44i74
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifeow7ezuojqyiuhtecv6o75gf4l74fepmtq2uqxj2ahuvlbmmihe
 - valory/market_manager_abci:0.1.0:bafybeic53notqnsyhmt7gu46zbszgfigiy2mlrumjvavyk5lspjuinbcke
-- valory/decision_maker_abci:0.1.0:bafybeibb5xpyfvjcefl2nspqwlbiygrbrliu3emppba7yp7p7rkuyhdo4e
-- valory/trader_abci:0.1.0:bafybeid5o27qrggl3nebd2yurpyr6eq364mvtp2mfys6xehkjnulsstw2e
+- valory/decision_maker_abci:0.1.0:bafybeidsgj7jzwu7sal5rdlxsqrqhwt3leq32ok7reagc6wibecp3xtoia
+- valory/trader_abci:0.1.0:bafybeie3mpcfey2rninzfzerkpprovfx4reiyyqniih7kqhwhb2sojlyhi
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/check_stop_trading_abci:0.1.0:bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeibbwcjefjkxgishquyisdcmwyxfpld4v4fqg47tu3v44nvgihzq3i
-- valory/agent_performance_summary_abci:0.1.0:bafybeienr3u647aebmlbwmnjuj6nn2zays2oehewvazkdneqsoxv5ik3xu
+- valory/chatui_abci:0.1.0:bafybeib5j2zsaq7epmuyfbbda55adozd5mht2uhw4vzxhsgpu3pzhn6vcu
+- valory/agent_performance_summary_abci:0.1.0:bafybeighog72ssxqdyqwc4qsqncriorqocfztjvvqn5bzxqt4xy5t6yj2q
 - valory/funds_manager:0.1.0:bafybeibmp2fhlsfqvxm7u3sgpjyeirhdrvbp6zjspxjbyucfpdrnyq5qai
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
