@@ -84,6 +84,7 @@ jobs:
               echo "Pinning click temporarily as a workaround to address a breaking change in its defaults, \
               which is introduced due to a too wide range of click used in open-autonomy"
               pip install click==8.2.0
+              echo "Pinnning cffi"
               pip install cffi==1.17.1
               echo "Building images for $AUTHOR for service $SERVICE"
               autonomy init --reset --author $AUTHOR --ipfs --remote
@@ -92,9 +93,10 @@ jobs:
               echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
               docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
               echo "Building images for $AUTHOR for service $SERVICE with default tag $DEFAULT_IMAGE_TAG"
-              autonomy build-image --builder multiarch-builder --platform linux/arm/v7 --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/arm/v7 || exit 1
+              # autonomy build-image --builder multiarch-builder --platform linux/arm/v7 --push || exit 1
               echo "Building images for $AUTHOR for agent $AGENT with tag $VERSION"
-              autonomy build-image --builder multiarch-builder --platform linux/arm/v7 --push --version $VERSION || exit 1
+              # autonomy build-image --builder multiarch-builder --platform linux/arm/v7 --push --version $VERSION || exit 1
 
   deploy-service-on-propel:
     if: false
