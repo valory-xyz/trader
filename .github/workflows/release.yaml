@@ -87,8 +87,8 @@ jobs:
               echo "Pinnning cffi"
               pip install cffi==1.17.1
               echo "Installing build dependencies"
-              sudo apt-get update
-              sudo apt-get install build-essential libffi-dev python3-dev
+              apt-get update
+              apt-get install -y build-essential libffi-dev python3-dev
               echo "Building images for $AUTHOR for service $SERVICE"
               autonomy init --reset --author $AUTHOR --ipfs --remote
               autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
