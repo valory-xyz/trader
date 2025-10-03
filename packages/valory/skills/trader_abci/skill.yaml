@@ -9,9 +9,9 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiae4j35uqsubdy7pjzfhlcewcb3mfhhyny7h46wf4bquf27or4iu4
-  composition.py: bafybeidymszdxhsfg3ehb5waq2x5vjtf2vxf3to6gdcugrei6jdtcrhrwi
+  composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeid754bv2d2nr7ji33ydgxbld5baakurthy7antb5piqjevih36x3a
+  fsm_specification.yaml: bafybeieeyeyq6pwzgqz36uc5awftg32odndv6vj2hawrh4ay4yt5ygmga4
   handlers.py: bafybeicniqoi6eb4bmlitdzv3zyidqjkqlbsyv7lni7gkhqm3dpyxajw2y
   models.py: bafybeiel3eybscub4mbtz26snpkxfittl6z6va5xavogacgg7ihkc2a2lu
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
@@ -40,13 +40,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/market_manager_abci:0.1.0:bafybeic53notqnsyhmt7gu46zbszgfigiy2mlrumjvavyk5lspjuinbcke
-- valory/decision_maker_abci:0.1.0:bafybeibb5xpyfvjcefl2nspqwlbiygrbrliu3emppba7yp7p7rkuyhdo4e
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihhf2s5nson7l37jt3tltboxrhjer2oa2w7fiyrrcgf7srqc44i74
+- valory/decision_maker_abci:0.1.0:bafybeidsgj7jzwu7sal5rdlxsqrqhwt3leq32ok7reagc6wibecp3xtoia
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifeow7ezuojqyiuhtecv6o75gf4l74fepmtq2uqxj2ahuvlbmmihe
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/check_stop_trading_abci:0.1.0:bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeibbwcjefjkxgishquyisdcmwyxfpld4v4fqg47tu3v44nvgihzq3i
-- valory/agent_performance_summary_abci:0.1.0:bafybeienr3u647aebmlbwmnjuj6nn2zays2oehewvazkdneqsoxv5ik3xu
+- valory/chatui_abci:0.1.0:bafybeib5j2zsaq7epmuyfbbda55adozd5mht2uhw4vzxhsgpu3pzhn6vcu
+- valory/agent_performance_summary_abci:0.1.0:bafybeighog72ssxqdyqwc4qsqncriorqocfztjvvqn5bzxqt4xy5t6yj2q
 - valory/funds_manager:0.1.0:bafybeibmp2fhlsfqvxm7u3sgpjyeirhdrvbp6zjspxjbyucfpdrnyq5qai
 behaviours:
   main:
