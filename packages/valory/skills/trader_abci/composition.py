@@ -151,7 +151,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedStakingRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
-    FinishedResetAndPauseRound: CheckBenchmarkingModeRound,
+    FinishedResetAndPauseRound: FetchPerformanceDataRound,
     FinishedResetAndPauseErrorRound: ResetAndPauseRound,
     # this has no effect, because the `BenchmarkingDoneRound` is terminal
     BenchmarkingDoneRound: ResetAndPauseRound,

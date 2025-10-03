@@ -223,7 +223,7 @@ transition_func:
     (RegistrationRound, DONE): FetchPerformanceDataRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
     (RegistrationStartupRound, DONE): FetchPerformanceDataRound
-    (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
+    (ResetAndPauseRound, DONE): FetchPerformanceDataRound
     (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
     (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
     (ResetRound, DONE): RandomnessTransactionSubmissionRound
