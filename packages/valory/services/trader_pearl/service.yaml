@@ -17,9 +17,6 @@ deployment:
         8716: 8716
     volumes:
       ./data: /data
-dependencies:
-  cffi:
-    version: ==1.17.1
 ---
 public_id: valory/trader_abci:0.1.0
 type: skill
