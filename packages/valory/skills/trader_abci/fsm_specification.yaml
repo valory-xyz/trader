@@ -14,6 +14,7 @@ alphabet_in:
 - DONE
 - DONE_NO_SELL
 - DONE_SELL
+- FAIL
 - FETCH_ERROR
 - FINALIZATION_FAILED
 - FINALIZE_TIMEOUT
@@ -74,6 +75,7 @@ states:
 - DecisionReceiveRound
 - DecisionRequestRound
 - FailedMultiplexerRound
+- FetchPerformanceDataRound
 - FinalizationRound
 - HandleFailedTxRound
 - ImpossibleRound
@@ -166,6 +168,11 @@ transition_func:
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (FetchPerformanceDataRound, DONE): ChatuiLoadRound
+    (FetchPerformanceDataRound, FAIL): ChatuiLoadRound
+    (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, ROUND_TIMEOUT): FetchPerformanceDataRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound
@@ -213,9 +220,9 @@ transition_func:
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
-    (RegistrationRound, DONE): ChatuiLoadRound
+    (RegistrationRound, DONE): FetchPerformanceDataRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
-    (RegistrationStartupRound, DONE): ChatuiLoadRound
+    (RegistrationStartupRound, DONE): FetchPerformanceDataRound
     (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
     (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
     (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
