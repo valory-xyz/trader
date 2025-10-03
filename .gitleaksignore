@@ -79,4 +79,10 @@ e2da93326e7b16ec63a74d2296d6245763af8be6:packages/valory/skills/chatui/skill.yam
 1dbefdf26b25a8fe3939644929f9b6c4ece7baca:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42
 f160f09d6635ffe7878a00ee0a54fcc1f447ccc5:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42
 4fc9325a5620d4f70742e390dcdd6db52b8ffe22:packages/valory/skills/market_manager_abci/tests/test_utils.py:generic-api-key:42
+a99c107526203fcdc7dc7813d00eb87eb66d1630:packages/valory/skills/trader_abci/predict-ui-build/assets/index-DQfXFEHM.js:generic-api-key:193
+91a34fc4de7680913382972acaec425bbafbb499:packages/valory/skills/trader_abci/predict-ui-build/assets/index-du2vWJrK.js:generic-api-key:122
+91a34fc4de7680913382972acaec425bbafbb499:packages/valory/skills/trader_abci/predict-ui-build/assets/index-du2vWJrK.js:generic-api-key:726
+a99c107526203fcdc7dc7813d00eb87eb66d1630:packages/valory/skills/trader_abci/predict-ui-build/assets/index-DQfXFEHM.js:generic-api-key:431
 784f5876436696071a48fa38d89d42094d47ce77:packages/valory/skills/agent_performance_summary_abci/graph_tooling/requests.py:generic-api-key:46
+c06c6420d13a2f593c5105d13bb6a4f5409fcba8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-DZkNbpPR.js:generic-api-key:431
+c06c6420d13a2f593c5105d13bb6a4f5409fcba8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-DZkNbpPR.js:generic-api-key:193

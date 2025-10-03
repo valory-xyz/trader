@@ -1,0 +1,107 @@
+name: agent_performance_summary_abci
+version: 0.1.0
+description: Agent Performance summary skill for Predict agent
+author: valory
+type: skill
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
+  behaviours.py: bafybeiaschstegwyhutdmsm4tcz7znmsgfmburb632h6ha2ipfbgasstbm
+  dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
+  graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
+  graph_tooling/queries.py: bafybeieopwu53mqp5drryyairk2k45otc2x4ilblsklm5ylr3ugto2rake
+  graph_tooling/requests.py: bafybeifyrltcwg7czo2zmeoa553okbwrlwtk4652y3vz4l66iv2przgw2m
+  handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
+  models.py: bafybeicz7nxrbee7yxc4xvkedscapbuh3b5v23kklsezd54dcimxi73byu
+  payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
+  rounds.py: bafybeifurv73ocy77vqfahv2xao7oiaejvhrcsm3kufyls2pthyhqil5pe
+fingerprint_ignore_patterns: []
+contracts: []
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
+handlers:
+  abci:
+    args: {}
+    class_name: AgentPerformanceSummaryABCIHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+behaviours: {}
+models:
+  state:
+    args: {}
+    class_name: SharedState
+  params:
+    args:
+      the_graph_error_message_key: message
+      the_graph_payment_required_error: payment required for subsequent requests for
+        this API key
+      coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      store_path: /data/
+    class_name: AgentPerformanceSummaryParams
+  olas_agents_subgraph:
+    args:
+      api_id: olas_agents
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:traderAgent
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://predict-agents.subgraph.autonolas.tech
+    class_name: OlasAgentsSubgraph
+  olas_mech_subgraph:
+    args:
+      api_id: olas_mech
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:sender
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.autonolas.tech/subgraphs/name/mech
+    class_name: OlasMechSubgraph
+  gnosis_staking_subgraph:
+    args:
+      api_id: gnosis_staking
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:service
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+    class_name: GnosisStakingSubgraph
+dependencies: {}
+is_abstract: true
+connections: []
+protocols:
+- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa

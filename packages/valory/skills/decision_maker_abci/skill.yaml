@@ -28,15 +28,15 @@ fingerprint:
   behaviours/tool_selection.py: bafybeieqddpsoekpmkp5oz2gph42i3stqigg2663kphne7b5twju4arnqe
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigympgwyprigcasp3j2vcwyuvmoctgxd4xdu2g5356f2pljt5vyia
-  handlers.py: bafybeiexdroxyctgb6t2ofdzrrka6biipqni3hxtrep4uxiv4b7e27odgm
+  handlers.py: bafybeia5hacz3pcuf5soqsjgv44orddwwcgze2alhlj6i4qdgj4h6i3y3q
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeihx5hx6m352kyawdg3hqirttompqqdoxyap4gmvtpjexenq4mu7gy
+  models.py: bafybeie5krdo6qe4iaqqt2shnsbgipozryuo7jxvpz6dugok4rxkhnrxau
   payloads.py: bafybeiafgv7u5ogcwo5ulmxescbowcmm6ytu23m5mcyblmpzzamjspkfnu
   policy.py: bafybeig5dnlwua4pzyz74rifkauuu2xvrusuwkqfsvetbh7trp3kzkpdyq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeibnpck3wd2jugitdq3khmexaieb7hccmauj2ueiyosg67rahfruiy
-  rounds_info.py: bafybeidlx7sxttnrl33rxhrqaywxknfyvlbyci7sijnfp6mzzpdc7tqo4a
+  rounds_info.py: bafybeibz6johx2fbi75h7dgbdokdocj3xk3nb5fhek253e3dtpatokk6zi
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeifwmbhs3hgjyje2ftmphijeozhxi4uyrofxznxptmeemschfuvr6e
   states/bet_placement.py: bafybeidd3k6bbnjkznwbv43l44wexaci7k7axz6mfrgca76mjljp5o2344
@@ -103,9 +103,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
 - valory/market_manager_abci:0.1.0:bafybeif3zwrjq6suryleltxd3vkta5zeiczyrzpgsbwjlpo26g2gfxf4iq
 - valory/transaction_settlement_abci:0.1.0:bafybeic2ywzpwkyeqbzsvkbvurhsptemam4xtceihax2tmxmlxtgd3xpya
-- valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
+- valory/mech_interact_abci:0.1.0:bafybeif5qpxsvwmxtywrwfj27gkhrwtq7gyzb63cohv7345zoh4p34jh2m
 - valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
-- valory/chatui_abci:0.1.0:bafybeiapudsle4xuuconnhxbxyhmh5m4y2wyrifqm6kjsw5fbmtduotzxi
+- valory/agent_performance_summary_abci:0.1.0:bafybeicubnrbt5zbh6wldwbe7ryv5g76zjzppklv7wgjlqtwxirdcnzdoi
+- valory/chatui_abci:0.1.0:bafybeigugdg7lvtgdlsizu6cwiwzan6sp5znce2yavxm2ctq5gehko565y
 behaviours:
   main:
     args: {}
@@ -244,7 +245,6 @@ models:
       max_filtering_retries: 6
       minimum_batch_size: 500
       redeeming_batch_size: 5
-      store_path: data
       slippage: 0.01
       policy_epsilon: 0.25
       use_subgraph_for_redeeming: true
@@ -296,6 +296,8 @@ models:
       use_multi_bets_mode: true
       enable_position_review: false
       review_period_seconds: 86400
+      coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      store_path: data/
     class_name: DecisionMakerParams
   acc_info_fields:
     args:
