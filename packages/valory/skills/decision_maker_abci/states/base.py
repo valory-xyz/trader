@@ -29,6 +29,9 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
+from packages.valory.skills.chatui_abci.rounds import (
+    SynchronizedData as ChatuiSyncedData,
+)
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -73,7 +76,9 @@ class Event(Enum):
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
 
 
-class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
+class SynchronizedData(
+    MarketManagerSyncedData, TxSettlementSyncedData, ChatuiSyncedData
+):
     """Class to represent the synchronized data.
 
     This data is replicated by the tendermint application.
@@ -98,12 +103,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def is_mech_price_set(self) -> bool:
         """Get whether mech's price is known."""
         return bool(self.db.get("mech_price", False))
-
-    @property
-    def available_mech_tools(self) -> List[str]:
-        """Get all the available mech tools."""
-        tools = self.db.get_strict("available_mech_tools")
-        return json.loads(tools)
 
     @property
     def is_policy_set(self) -> bool:

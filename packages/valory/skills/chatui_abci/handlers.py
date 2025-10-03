@@ -60,12 +60,14 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
+from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
+from packages.valory.skills.abstract_round_abci.base import RoundSequence
 
 
 class HttpMethod(Enum):
@@ -166,12 +168,12 @@ class HttpHandler(BaseHttpHandler):
 
         self.routes = {
             **self.routes,  # persisting routes from base class
-            (HttpMethod.GET.value): [
+            (HttpMethod.GET.value,): [
                 *(self.routes.get((HttpMethod.GET.value), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
-            (HttpMethod.HEAD.value): [
-                *(self.routes.get((HttpMethod.HEAD.value), [])), 
+            (HttpMethod.HEAD.value,): [
+                *(self.routes.get((HttpMethod.HEAD.value), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.POST.value,): [
@@ -208,6 +210,16 @@ class HttpHandler(BaseHttpHandler):
     def shared_state(self) -> SharedState:
         """Return the shared state."""
         return cast(SharedState, self.context.state)
+
+    @property
+    def round_sequence(self) -> RoundSequence:
+        """Return the round sequence."""
+        return self.shared_state.round_sequence
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _send_http_response(
         self,
@@ -332,7 +344,7 @@ class HttpHandler(BaseHttpHandler):
             content_type,
         )
 
-    def _send_ok_request_response(
+    def _send_ok_response(
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
@@ -510,7 +522,7 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.warning(
                 "No agent configuration update provided by the LLM."
             )
-            self._send_ok_request_response(
+            self._send_ok_response(
                 http_msg,
                 http_dialogue,
                 {
@@ -542,7 +554,7 @@ class HttpHandler(BaseHttpHandler):
             # In case of update, reflect the previous value in the response. Needed for frontend
             response_body[PREVIOUS_TRADING_TYPE_FIELD] = previous_ui_strategy
 
-        self._send_ok_request_response(
+        self._send_ok_response(
             http_msg,
             http_dialogue,
             response_body,
