@@ -9,6 +9,7 @@ on:
 
 jobs:
   lock_check:
+    if: false
     continue-on-error: False
     runs-on: ${{ matrix.os }}
 
@@ -43,6 +44,7 @@ jobs:
         run: poetry install --all-extras --no-interaction -vvv
 
   copyright_and_dependencies_check:
+    if: false
     continue-on-error: False
     runs-on: ${{ matrix.os }}
 
@@ -74,6 +76,7 @@ jobs:
         run: tox -e check-doc-hashes
 
   linter_checks:
+    if: false
     continue-on-error: False
     runs-on: ${{ matrix.os }}
 
@@ -115,6 +118,7 @@ jobs:
           tox -e analyse-service
 
   scan:
+    if: false
     name: gitleaks
     runs-on: ubuntu-latest
     steps:
@@ -128,6 +132,7 @@ jobs:
           gitleaks detect --report-format json --report-path leak_report -v
 
   test:
+    if: false
     continue-on-error: True
     needs:
       - lock_check

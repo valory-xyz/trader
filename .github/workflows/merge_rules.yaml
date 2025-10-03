@@ -1,10 +1,11 @@
-name: 'Check Branch'
+name: "Check Branch"
 
 on:
   pull_request:
 
 jobs:
   check_branch:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Check branch

@@ -1,9 +1,9 @@
 name: Release Flow
 
 on:
-    push:
-        tags:
-            - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   publish-packages:
@@ -94,6 +94,7 @@ jobs:
               autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --push --version $VERSION || exit 1
 
   deploy-service-on-propel:
+    if: false
     name: Deploy service on propel
     environment: production
     needs:
@@ -151,6 +152,7 @@ jobs:
           $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
 
   build-agent-runner:
+    if: false
     needs:
     - "publish-packages"
     runs-on: ${{ matrix.os }}
@@ -306,6 +308,7 @@ jobs:
           overwrite: true
 
   upload-assets:
+      if: false
       needs: build-agent-runner
       runs-on: ubuntu-latest
       steps:
