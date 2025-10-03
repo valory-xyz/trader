@@ -96,7 +96,7 @@ jobs:
               echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
               docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
               echo "Building images for $AUTHOR for service $SERVICE with default tag $DEFAULT_IMAGE_TAG"
-              autonomy build-image --builder multiarch-builder --platform linux/arm/v7 -e cffi==1.17.1 || exit 1
+              autonomy build-image --pre-install-command "apt update && apt upgrade -y && apt install -y build-essential libffi-dev python3-dev" --builder multiarch-builder --platform linux/arm/v7 -e cffi==1.17.1 || exit 1
               # autonomy build-image --builder multiarch-builder --platform linux/arm/v7 --push || exit 1
               echo "Building images for $AUTHOR for agent $AGENT with tag $VERSION"
               # autonomy build-image --builder multiarch-builder --platform linux/arm/v7 --push --version $VERSION || exit 1
