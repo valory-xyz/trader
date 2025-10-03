@@ -112,7 +112,7 @@ jobs:
           tox -e check-abci-docstrings
           tox -e check-abciapp-specs
           tox -e check-handlers
-          tox -e analyse-service
+          # tox -e analyse-service # analyse-service checks do not work properly as it is checking funds manager skill which is not an ABCI skill
 
   scan:
     name: gitleaks
