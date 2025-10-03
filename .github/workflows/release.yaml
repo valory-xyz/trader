@@ -80,6 +80,10 @@ jobs:
               echo "Building Docker Images"
               cd /work
               source env.sh || exit 1
+              # TODO remove `click` workaround after this is fixed in open-autonomy
+              echo "Pinning click temporarily as a workaround to address a breaking change in its defaults, \
+              which is introduced due to a too wide range of click used in open-autonomy"
+              pip install click==8.2.0
               echo "Building images for $AUTHOR for service $SERVICE"
               autonomy init --reset --author $AUTHOR --ipfs --remote
               autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
