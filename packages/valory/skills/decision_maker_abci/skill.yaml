@@ -28,7 +28,7 @@ fingerprint:
   behaviours/tool_selection.py: bafybeieqddpsoekpmkp5oz2gph42i3stqigg2663kphne7b5twju4arnqe
   dialogues.py: bafybeigpwuzku3we7axmxeamg7vn656maww6emuztau5pg3ebsoquyfdqm
   fsm_specification.yaml: bafybeigympgwyprigcasp3j2vcwyuvmoctgxd4xdu2g5356f2pljt5vyia
-  handlers.py: bafybeia5hacz3pcuf5soqsjgv44orddwwcgze2alhlj6i4qdgj4h6i3y3q
+  handlers.py: bafybeib2hkoeizwlghpz4ojk2i4lkxo4x4lou4nw7odlf4rhbx55o7w5r4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
   models.py: bafybeie5krdo6qe4iaqqt2shnsbgipozryuo7jxvpz6dugok4rxkhnrxau
@@ -38,7 +38,7 @@ fingerprint:
   rounds.py: bafybeibnpck3wd2jugitdq3khmexaieb7hccmauj2ueiyosg67rahfruiy
   rounds_info.py: bafybeibz6johx2fbi75h7dgbdokdocj3xk3nb5fhek253e3dtpatokk6zi
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeifwmbhs3hgjyje2ftmphijeozhxi4uyrofxznxptmeemschfuvr6e
+  states/base.py: bafybeiecfhc3mcpdvyf4c6qco4jtrf2kz37eja5rx5f4m6qiguknwap3oq
   states/bet_placement.py: bafybeidd3k6bbnjkznwbv43l44wexaci7k7axz6mfrgca76mjljp5o2344
   states/blacklisting.py: bafybeic4y6m5uyf25qzsdbjcwrfjil3tj77lr7wxjdhwtps7p2hzxw53fm
   states/check_benchmarking.py: bafybeic2hni3wdcqygr5wzroe4pinav6hthfz2stkf6tylrfceqm37wqfq
@@ -72,7 +72,7 @@ fingerprint:
   tests/states/test_sell_tokens.py: bafybeiboa7akubpvyslggwb25t2qrcurd65xrqfhgmq5n6rbqmuddpczgm
   tests/states/test_tool_selection.py: bafybeib7js3dj7647t33o5ybfqftwytxktwrvhbri5yuyymg6znj6y7xxa
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
-  tests/test_handlers.py: bafybeidfeqbiydtaf4vfukevk5ofsonrh7o2d7ozci32g42kkfvr7yn5cq
+  tests/test_handlers.py: bafybeic7lgf5puxk6sch7ncv7a2krey6wpbxf7mckduywlpb2rkat7hr74
   tests/test_payloads.py: bafybeidwigp5zkqtjctxwwdqdnrg7aekhjl26nmdwoby3vvggshxsj574q
   tests/test_policy.py: bafybeicam5j67poflsqz7mrifenzh2l4cj6u4xcekoakhksfunvmkmcfci
   tests/test_rounds.py: bafybeifgkaveyfynfx6yqtgpycjcrgenobnvi37cejigwk6fajxxeogppu
@@ -106,7 +106,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/agent_performance_summary_abci:0.1.0:bafybeicaxoo4y3sa2pvelwmob6p65fkw3zdpow3y7lf3uvhb2eme2dffhm
-- valory/chatui_abci:0.1.0:bafybeifefakz6wb7nm34afcuwgldz5zpwlszpj4u5fkessubikxjkbi34y
+- valory/chatui_abci:0.1.0:bafybeif7yqbhgx46z6acdio7syvn6xzzccslklxppqbwipk7unx3yjzy6q
 behaviours:
   main:
     args: {}

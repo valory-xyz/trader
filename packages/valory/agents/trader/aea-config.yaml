@@ -64,14 +64,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigdotm2vgjgr3gsxygzxkgt6h4wphiyk5sfgv65ibnr7hvp4fpyhe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicswr4orperxph5slwxwer73mrkihl7o72wz6i76naawjtx6jhggy
 - valory/market_manager_abci:0.1.0:bafybeic53notqnsyhmt7gu46zbszgfigiy2mlrumjvavyk5lspjuinbcke
-- valory/decision_maker_abci:0.1.0:bafybeieeeall4bx3l2n3timqelxukfsbqhf6ktl7xsgjz4ilvv6vbnlvka
-- valory/trader_abci:0.1.0:bafybeia2svczgba7kz7ealm577xh5tvb2xyvfjkst7k3lppuow5ywykj6i
+- valory/decision_maker_abci:0.1.0:bafybeidp3hvz3skct5f2qrvsqduvewutltyf2h45y6wgjaw6zuqgbs7hz4
+- valory/trader_abci:0.1.0:bafybeia2qdgjudrsesf3b7sjkf74wqt7sgrzr2zpb7yqjyyy6ycffa2zsa
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/check_stop_trading_abci:0.1.0:bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeifefakz6wb7nm34afcuwgldz5zpwlszpj4u5fkessubikxjkbi34y
+- valory/chatui_abci:0.1.0:bafybeif7yqbhgx46z6acdio7syvn6xzzccslklxppqbwipk7unx3yjzy6q
 - valory/agent_performance_summary_abci:0.1.0:bafybeicaxoo4y3sa2pvelwmob6p65fkw3zdpow3y7lf3uvhb2eme2dffhm
 - valory/funds_manager:0.1.0:bafybeibmp2fhlsfqvxm7u3sgpjyeirhdrvbp6zjspxjbyucfpdrnyq5qai
 customs:
