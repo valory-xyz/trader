@@ -1,21 +1,20 @@
 name: Release Flow
 
 on:
-    push:
-        tags:
-            - 'v*.*.*'
+  release:
+    types: [prereleased, released]
 
 jobs:
   publish-packages:
     name: Push Packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
@@ -44,8 +43,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-        with:
-            fetch-depth: 0
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
@@ -66,8 +63,7 @@ jobs:
               echo VERSION=$TAG> env.sh
               echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
               echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
-              echo AGENT=$(grep 'agent/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
-              echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
+              echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ') >> env.sh
               cat env.sh
 
       - uses: addnab/docker-run-action@v3
@@ -77,7 +73,7 @@ jobs:
             options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
             shell: bash
             run: |
-              echo "Building Docker Images"
+              echo "Building and Pushing Docker Images"
               cd /work
               source env.sh || exit 1
               # TODO remove `click` workaround after this is fixed in open-autonomy
@@ -90,12 +86,12 @@ jobs:
               cd $SERVICE || exit 1
               echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
               docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --push || exit 1
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --push --version $VERSION || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" --version $VERSION --push || exit 1
 
   deploy-service-on-propel:
     name: Deploy service on propel
-    environment: production
+    environment: ${{ github.event.action == 'released' && 'production' || 'staging' }}
     needs:
     - "publish-packages"
     - "publish-images"
@@ -148,7 +144,7 @@ jobs:
           echo >> github.vars
           echo '${{ toJSON(vars) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' >> github.vars
           source github.vars
-          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 320
+          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 600
 
   build-agent-runner:
     needs:
@@ -175,31 +171,31 @@ jobs:
 
       - name: prepare sign things windows
         if: runner.os == 'Windows'
-        run: |  
-          echo Setup Certificate 
-          echo "${{secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12 
+        run: |
+          echo Setup Certificate
+          echo "${{secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
           echo "Set Variables!"
-          echo "::set-output name=version::${GITHUB_REF#refs/tags/v}" 
-          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV" 
-          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV" 
-          echo "SM_KEY_PAIR_ALIAS=${{ secrets.SM_KEY_PAIR_ALIAS }}" >> "$GITHUB_ENV" 
-          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV" 
-          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV" 
-          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH 
-          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH 
-          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH 
-        shell: bash             
+          echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
+          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
+          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
+          echo "SM_KEY_PAIR_ALIAS=${{ secrets.SM_KEY_PAIR_ALIAS }}" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH
+        shell: bash
 
       - name: Setup SSM KSP on windows latest
         if: runner.os == 'Windows'
-        run: | 
-          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi 
-          msiexec /i smtools-windows-x64.msi /quiet /qn 
-          smksp_registrar.exe list 
-          smctl.exe keypair ls 
-          C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user 
-          smksp_cert_sync.exe 
-        shell: cmd 
+        run: |
+          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi
+          msiexec /i smtools-windows-x64.msi /quiet /qn
+          smksp_registrar.exe list
+          smctl.exe keypair ls
+          C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
+          smksp_cert_sync.exe
+        shell: cmd
 
       - name: Install and configure Poetry
         run: pip install poetry
@@ -228,7 +224,7 @@ jobs:
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}  # App-specific password
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}  # Team ID из Apple Dev Account
           SIGN_ID: "Developer ID Application: Valory AG (${{ secrets.APPLE_TEAM_ID }})"
-        run: | 
+        run: |
           echo "$CSC_LINK" | base64 --decode > certificate.p12
 
           security create-keychain -p temp build.keychain
@@ -240,15 +236,15 @@ jobs:
           make build-agent-runner-mac
 
           codesign -dv --verbose=4 dist/agent_runner_bin
-    
+
       - name: rename the file mac os
         if: runner.os != 'Windows'
-        run: | 
+        run: |
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}|tr '[:upper:]' '[:lower:]'`
-          echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV;
           cp dist/agent_runner_bin dist/${FILENAME}
           dist/${FILENAME} --version
-      
+
       ### WINDOWS
       - name: Build Agent Runner Windonws
         if: runner.os == 'Windows'
@@ -257,19 +253,19 @@ jobs:
 
       - name: sign the file
         if: runner.os == 'Windows'
-        run: | 
+        run: |
           "C:\\Program Files\\DigiCert\\DigiCert One Signing Manager Tools\\smctl.exe" sign --keypair-alias=${{ secrets.SM_KEY_PAIR_ALIAS }} --input "dist/agent_runner_bin.exe"
 
       - name: rename the file windows
         if: runner.os == 'Windows'
-        run: | 
+        run: |
           export FILENAME=`echo -n agent_runner_${{runner.os}}_${{runner.arch}}.exe|tr '[:upper:]' '[:lower:]'`
-          echo "FILENAME=$FILENAME" >> $GITHUB_ENV; 
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV;
           cp dist/agent_runner_bin.exe dist/${FILENAME}
 
       ### PERFORM CHECK OF AGENT RUNNER
       - name: check agent runner
-        run: | 
+        run: |
           make check-agent-runner
 
       - name: Upload Release Assets Windows
@@ -278,27 +274,27 @@ jobs:
           name: ${{env.FILENAME}}
           path: dist/${{env.FILENAME}}
 
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: hash_id
           path: hash_id
           overwrite: true
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: agent_id
           path: agent_id
           overwrite: true
 
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: agent.tar.gz
           path: agent.tar.gz
           overwrite: true
 
-      - name: Upload Release Assets 
+      - name: Upload Release Assets
         uses: actions/upload-artifact@v4
         with:
           name: agent.zip

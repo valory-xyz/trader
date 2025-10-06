@@ -28,7 +28,7 @@ from aea.skills.base import SkillContext
 
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import BaseParams
-from packages.valory.skills.abstract_round_abci.models import (
+from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
