@@ -36,6 +36,7 @@ from packages.dvilela.connections.genai.connection import (
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.protocols.srr.dialogues import SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
+from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
@@ -66,6 +67,7 @@ from packages.valory.skills.chatui_abci.prompts import (
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
+from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 
 
 class HttpMethod(Enum):
@@ -98,6 +100,7 @@ class HttpContentType(Enum):
 
     @property
     def header(self) -> str:
+        """Return the HTTP header for the content type."""
         return f"Content-Type: {self.value}\n"
 
 
@@ -163,15 +166,14 @@ class HttpHandler(BaseHttpHandler):
         configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
         is_enabled_url = rf"{hostname_regex}\/features"
 
-
         self.routes = {
             **self.routes,  # persisting routes from base class
-            (HttpMethod.GET.value): [
-                *(self.routes.get((HttpMethod.GET.value), [])),
+            (HttpMethod.GET.value,): [
+                *(self.routes.get((HttpMethod.GET.value,), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
-            (HttpMethod.HEAD.value): [
-                *(self.routes.get((HttpMethod.HEAD.value), [])), 
+            (HttpMethod.HEAD.value,): [
+                *(self.routes.get((HttpMethod.HEAD.value,), [])),
                 (is_enabled_url, self._handle_get_features),
             ],
             (HttpMethod.POST.value,): [
@@ -202,12 +204,22 @@ class HttpHandler(BaseHttpHandler):
         )
 
         data = {"isChatEnabled": is_chat_enabled}
-        self._send_ok_response(http_msg, http_dialogue, data)    
+        self._send_ok_response(http_msg, http_dialogue, data)
 
     @property
     def shared_state(self) -> SharedState:
         """Return the shared state."""
         return cast(SharedState, self.context.state)
+
+    @property
+    def round_sequence(self) -> RoundSequence:
+        """Return the round sequence."""
+        return self.shared_state.round_sequence
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _send_http_response(
         self,
@@ -332,7 +344,7 @@ class HttpHandler(BaseHttpHandler):
             content_type,
         )
 
-    def _send_ok_request_response(
+    def _send_ok_response(
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
@@ -458,7 +470,9 @@ class HttpHandler(BaseHttpHandler):
             )
             return None
 
-    def _get_ui_trading_strategy(self, selected_value: Optional[str]) -> TradingStrategyUI:
+    def _get_ui_trading_strategy(
+        self, selected_value: Optional[str]
+    ) -> TradingStrategyUI:
         """Get the UI trading strategy."""
         if selected_value is None:
             return TradingStrategyUI.BALANCED
@@ -490,7 +504,9 @@ class HttpHandler(BaseHttpHandler):
         )
 
         # Store the current trading strategy before any updates
-        previous_trading_strategy = copy.deepcopy(self.shared_state.chatui_config.trading_strategy)
+        previous_trading_strategy = copy.deepcopy(
+            self.shared_state.chatui_config.trading_strategy
+        )
 
         genai_response: dict = json.loads(llm_response_message.payload)
 
@@ -510,7 +526,7 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.warning(
                 "No agent configuration update provided by the LLM."
             )
-            self._send_ok_request_response(
+            self._send_ok_response(
                 http_msg,
                 http_dialogue,
                 {
@@ -542,7 +558,7 @@ class HttpHandler(BaseHttpHandler):
             # In case of update, reflect the previous value in the response. Needed for frontend
             response_body[PREVIOUS_TRADING_TYPE_FIELD] = previous_ui_strategy
 
-        self._send_ok_request_response(
+        self._send_ok_response(
             http_msg,
             http_dialogue,
             response_body,

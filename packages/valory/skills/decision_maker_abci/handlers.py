@@ -19,7 +19,6 @@
 
 """This module contains the handler for the 'decision_maker_abci' skill."""
 
-import json
 import re
 from datetime import datetime, timezone
 from enum import Enum
@@ -377,24 +376,6 @@ class HttpHandler(BaseHttpHandler):
         }
 
         self._send_ok_response(http_msg, http_dialogue, data)
-
-    def _send_ok_response(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, data: Dict
-    ) -> None:
-        """Send an OK response with the provided data"""
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=OK_CODE,
-            status_text="Success",
-            headers=f"{self.json_content_header}{http_msg.headers}",
-            body=json.dumps(data).encode("utf-8"),
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_not_found_response(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
