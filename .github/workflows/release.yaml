@@ -19,7 +19,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:0.19.9
+            image: valory/open-autonomy-user:0.19.11
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Pushing Packages"
@@ -46,7 +46,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:0.19.9
+            image: valory/open-autonomy-user:0.19.11
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Setting Tag Images"
@@ -69,7 +69,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
-            image: valory/open-autonomy-user:0.19.9
+            image: valory/open-autonomy-user:0.19.11
             options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
             shell: bash
             run: |
