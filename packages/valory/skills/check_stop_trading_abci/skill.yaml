@@ -24,12 +24,12 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/mech:0.1.0:bafybeifthpyd2oq5izworldr755sigefinki7caath4aao3hrajpjbhbxe
-- valory/mech_marketplace:0.1.0:bafybeibigvscbk5tbfgwlnu6bpnng7yiahyqoholepj7q6sy53gl7w4nbi
+- valory/mech_marketplace:0.1.0:bafybeiaqye6khcinjf73kyil5jepjet57fb3a2ets7vn2ozdp7iknhtenq
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/mech_interact_abci:0.1.0:bafybeig2i5kjddtyhljxl7buaptnnj44ijf4hblmf34lceqkg6mg3bmk3u
-- valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
+- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
+- valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
+- valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 behaviours:
   main:
     args: {}
