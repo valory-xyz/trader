@@ -79,11 +79,13 @@ def get_position_lifetime_value(
         matching_positions = []
 
         for condition in position["position"]["conditions"]:
-            if condition["id"].lower() == condition_id.lower():
-                # if position is claimed, balance is 0
-                balance = int(position["totalBalance"])
-                if balance > 0:
-                    matching_positions.append(condition)
+            if condition["id"].lower() != condition_id.lower():
+                continue
+
+            # if position is claimed, balance is 0
+            balance = int(position["totalBalance"])
+            if balance > 0:
+                matching_positions.append(condition)
 
         if (
             condition_id.lower() in position_condition_ids
