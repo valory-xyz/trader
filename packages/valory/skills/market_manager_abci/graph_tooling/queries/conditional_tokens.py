@@ -41,6 +41,7 @@ user_positions = Template(
                     lifetimeValue
                     indexSets
                     conditions {
+                        id
                         outcomes
                     }
                 }

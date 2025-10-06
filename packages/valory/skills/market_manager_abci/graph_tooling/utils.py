@@ -71,9 +71,26 @@ def get_position_lifetime_value(
 ) -> int:
     """Get the balance of a position."""
     for position in user_positions:
-        position_condition_ids = position["position"]["conditionIds"]
+        position_condition_ids = map(
+            lambda x: x.lower(), position["position"]["conditionIds"]
+        )
         balance = int(position["position"]["lifetimeValue"])
-        if condition_id.lower() in position_condition_ids:
+
+        matching_positions = []
+
+        for condition in position["position"]["conditions"]:
+            if condition["id"].lower() != condition_id.lower():
+                continue
+
+            # if position is claimed, balance is 0
+            balance = int(position["totalBalance"])
+            if balance > 0:
+                matching_positions.append(condition)
+
+        if (
+            condition_id.lower() in position_condition_ids
+            and len(matching_positions) > 0
+        ):
             return balance
 
     return 0
@@ -146,6 +163,8 @@ def get_condition_id_to_balances(
                 payout = get_position_lifetime_value(user_positions, condition_id)
                 if payout > 0 and balance[str(outcome_index)] == 0:
                     condition_id_to_payout[condition_id] = payout
+                    # if position is not claimed, balance is the payout
+                    condition_id_to_balance[condition_id] = payout
 
     return condition_id_to_payout, condition_id_to_balance
 
