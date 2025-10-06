@@ -156,6 +156,8 @@ def get_condition_id_to_balances(
                 payout = get_position_lifetime_value(user_positions, condition_id)
                 if payout > 0 and balance[str(outcome_index)] == 0:
                     condition_id_to_payout[condition_id] = payout
+                    # if position is not claimed, balance is the payout
+                    condition_id_to_balance[condition_id] = payout
 
     return condition_id_to_payout, condition_id_to_balance
 
