@@ -53,6 +53,8 @@ from packages.valory.skills.decision_maker_abci.handlers import HttpMethod
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
+from packages.valory.skills.funds_manager.behaviours import GET_FUNDS_STATUS_METHOD_NAME
+from packages.valory.skills.funds_manager.models import FundRequirements
 from packages.valory.skills.mech_interact_abci.handlers import (
     AcnHandler as BaseAcnHandler,
 )
@@ -96,6 +98,11 @@ class HttpHandler(BaseHttpHandler):
         """Get the agent ids."""
         return json.loads(self.staking_synchronized_data.agent_ids)
 
+    @property
+    def funds_status(self) -> FundRequirements:
+        """Get the fund status."""
+        return self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
@@ -115,6 +122,8 @@ class HttpHandler(BaseHttpHandler):
 
         agent_info_url_regex = rf"{hostname_regex}\/agent-info"
 
+        funds_status_regex = rf"{hostname_regex}\/funds-status"
+
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
@@ -125,7 +134,11 @@ class HttpHandler(BaseHttpHandler):
                 *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
                 (agent_info_url_regex, self._handle_get_agent_info),
                 (
-                    static_files_regex,
+                    funds_status_regex,
+                    self._handle_get_funds_status,
+                ),
+                (
+                    static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
                 ),
             ],
@@ -215,3 +228,11 @@ class HttpHandler(BaseHttpHandler):
                 self._send_ok_request_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
             self._handle_not_found(http_msg, http_dialogue)
+
+    def _handle_get_funds_status(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle a fund status request."""
+        self._send_ok_request_response(
+            http_msg, http_dialogue, self.funds_status.get_response_body()
+        )
