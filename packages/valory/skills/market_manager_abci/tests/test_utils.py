@@ -28,7 +28,10 @@ from packages.valory.skills.market_manager_abci.bets import (
     QueueStatus,
     serialize_bets,
 )
-from packages.valory.skills.market_manager_abci.graph_tooling.utils import get_position_lifetime_value, get_condition_id_to_balances
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    get_condition_id_to_balances,
+    get_position_lifetime_value,
+)
 
 
 @pytest.mark.parametrize(
@@ -84,12 +87,11 @@ def test_get_position_lifetime_value_claimed() -> None:
                         "payoutDenominator": 100,
                         "payoutNumerators": [100, 100],
                     }
-                ]
+                ],
             },
             "totalBalance": "0",
         }
     ]
-
 
     assert get_position_lifetime_value(user_positions, condition_id) == 0
 
@@ -110,12 +112,14 @@ def test_get_position_lifetime_value_unclaimed() -> None:
                         "payoutDenominator": 100,
                         "payoutNumerators": [100, 100],
                     }
-                ]
+                ],
             },
             "totalBalance": "2238183507853351332",
         }
     ]
-    assert get_position_lifetime_value(user_positions, condition_id) == 2238183507853351332
+    assert (
+        get_position_lifetime_value(user_positions, condition_id) == 2238183507853351332
+    )
 
 
 def test_get_condition_id_to_balances() -> None:
@@ -134,7 +138,7 @@ def test_get_condition_id_to_balances() -> None:
                     "id": condition_id,
                 },
                 "openingTimestamp": "1754092800",
-            }
+            },
         }
     ]
     user_positions = [
@@ -151,14 +155,16 @@ def test_get_condition_id_to_balances() -> None:
                         "payoutDenominator": 100,
                         "payoutNumerators": [100, 100],
                     }
-                ]
+                ],
             },
             "balance": "2238183507853351332",
             "totalBalance": "2238183507853351332",
         }
     ]
 
-    condition_to_payout, condition_to_balance = get_condition_id_to_balances(trades, user_positions)
+    condition_to_payout, condition_to_balance = get_condition_id_to_balances(
+        trades, user_positions
+    )
 
     # needs to be presented in both
     assert condition_to_payout[condition_id] == 2238183507853351332
