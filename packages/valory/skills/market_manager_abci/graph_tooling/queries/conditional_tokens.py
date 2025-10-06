@@ -41,7 +41,10 @@ user_positions = Template(
                     lifetimeValue
                     indexSets
                     conditions {
+                        id
                         outcomes
+                        payoutDenominator
+                        payoutNumerators
                     }
                 }
                 totalBalance
