@@ -805,14 +805,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
             return False
 
-        if self.params.use_subgraph_for_redeeming:
-            condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
-            if (
-                condition_id not in self.redeeming_progress.unredeemed_trades
-                or self.redeeming_progress.unredeemed_trades[condition_id] == 0
-            ):
-                return False
-
         # in case that the claimable amount is dust
         if self.is_dust:
             self.context.logger.info("Position's redeeming amount is dust.")
