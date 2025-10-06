@@ -18,10 +18,13 @@
 #
 # ------------------------------------------------------------------------------
 
-import json
-import os
-from dataclasses import asdict, dataclass
+"""Models for the ChatUI ABCI application."""
+
+
 import enum
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional, Type
 
 from aea.skills.base import SkillContext
@@ -79,7 +82,7 @@ class SharedState(BaseSharedState):
 
     def _get_current_json_store(self) -> Dict[str, Any]:
         """Get the current store."""
-        chatui_store_path: os.path = self.context.params.store_path / CHATUI_PARAM_STORE
+        chatui_store_path: Path = self.context.params.store_path / CHATUI_PARAM_STORE
         if not chatui_store_path.exists():
             self.context.logger.error(
                 f"ChatUI JSON store {chatui_store_path!r} does not exist."

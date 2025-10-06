@@ -19,7 +19,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:0.19.9
+            image: valory/open-autonomy-user:0.19.11
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Pushing Packages"
@@ -46,7 +46,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:0.19.9
+            image: valory/open-autonomy-user:0.19.11
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Setting Tag Images"
@@ -69,13 +69,17 @@ jobs:
       - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
-            image: valory/open-autonomy-user:0.19.9
+            image: valory/open-autonomy-user:0.19.11
             options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
             shell: bash
             run: |
               echo "Building and Pushing Docker Images"
               cd /work
               source env.sh || exit 1
+              # TODO remove `click` workaround after this is fixed in open-autonomy
+              echo "Pinning click temporarily as a workaround to address a breaking change in its defaults, \
+              which is introduced due to a too wide range of click used in open-autonomy"
+              pip install click==8.2.0
               echo "Building images for $AUTHOR for service $SERVICE"
               autonomy init --reset --author $AUTHOR --ipfs --remote
               autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
