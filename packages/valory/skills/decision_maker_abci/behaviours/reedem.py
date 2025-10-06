@@ -539,8 +539,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         payouts = self.redeeming_progress.payouts
         payouts_amount = sum(payouts.values())
+        zero_payouts = {condition_id: payout for condition_id, payout in payouts.items() if payout == 0}
+
         if payouts_amount > 0:
-            self.redeemed_condition_ids |= set(payouts.keys())
+            self.redeemed_condition_ids |= set(zero_payouts.keys())
             if self.params.use_subgraph_for_redeeming:
                 self.payout_so_far = payouts_amount
             else:
@@ -816,7 +818,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
             if (
                 condition_id not in self.redeeming_progress.unredeemed_trades
-                or self.redeeming_progress.unredeemed_trades[condition_id] == 0
+                or self.redeeming_progress.unredeemed_trades.get(condition_id, None) == 0
             ):
                 return False
 
