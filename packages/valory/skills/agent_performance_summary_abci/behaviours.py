@@ -96,10 +96,10 @@ class FetchPerformanceSummaryBehaviour(
 
     def calculate_roi(self):
         """Calculate the ROI."""
-        agent_id = self.synchronized_data.safe_contract_address
+        agent_safe_address = self.synchronized_data.safe_contract_address
 
         mech_sender = yield from self._fetch_mech_sender(
-            agent_id=agent_id,
+            agent_safe_address=agent_safe_address,
             timestamp_gt=self.market_open_timestamp,
         )
         if mech_sender and (
@@ -107,12 +107,12 @@ class FetchPerformanceSummaryBehaviour(
             or mech_sender.get("requests") is None
         ):
             self.context.logger.warning(
-                f"Mech sender data not found or incomplete for {agent_id=} and {mech_sender=}. Trader may be unstaked."
+                f"Mech sender data not found or incomplete for {agent_safe_address=} and {mech_sender=}. Trader may be unstaked."
             )
             return None, None
 
         trader_agent = yield from self._fetch_trader_agent(
-            agent_id=agent_id,
+            agent_safe_address=agent_safe_address,
         )
         if (
             trader_agent is None
@@ -122,7 +122,7 @@ class FetchPerformanceSummaryBehaviour(
             or trader_agent.get("totalPayout") is None
         ):
             self.context.logger.warning(
-                f"Trader agent data not found or incomplete for {agent_id=} and {trader_agent=}"
+                f"Trader agent data not found or incomplete for {agent_safe_address=} and {trader_agent=}"
             )
             return 0, 0
 
@@ -187,14 +187,14 @@ class FetchPerformanceSummaryBehaviour(
 
     def _get_prediction_accuracy(self):
         """Get the prediction accuracy."""
-        agent_id = self.synchronized_data.safe_contract_address
+        agent_safe_address = self.synchronized_data.safe_contract_address
 
         agent_bets_data = yield from self._fetch_trader_agent_bets(
-            agent_id=agent_id,
+            agent_safe_address=agent_safe_address,
         )
         if agent_bets_data is None:
             self.context.logger.warning(
-                f"Agent bets data not found for {agent_id=}. Trader may be unstaked."
+                f"Agent bets data not found for {agent_safe_address=}. Trader may be unstaked."
             )
             return None
 
