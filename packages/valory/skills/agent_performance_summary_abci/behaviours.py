@@ -55,6 +55,8 @@ INVALID_ANSWER_HEX = (
 PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 
+NA = "N/A"
+
 
 class FetchPerformanceSummaryBehaviour(
     APTQueryingBehaviour,
@@ -96,10 +98,10 @@ class FetchPerformanceSummaryBehaviour(
 
     def calculate_roi(self):
         """Calculate the ROI."""
-        agent_id = self.context.agent_address.lower()
+        agent_safe_address = self.synchronized_data.safe_contract_address
 
         mech_sender = yield from self._fetch_mech_sender(
-            agent_id=agent_id,
+            agent_safe_address=agent_safe_address,
             timestamp_gt=self.market_open_timestamp,
         )
         if mech_sender and (
@@ -107,12 +109,12 @@ class FetchPerformanceSummaryBehaviour(
             or mech_sender.get("requests") is None
         ):
             self.context.logger.warning(
-                f"Mech sender data not found or incomplete for {agent_id=} and {mech_sender=}"
+                f"Mech sender data not found or incomplete for {agent_safe_address=} and {mech_sender=}. Trader may be unstaked."
             )
             return None, None
 
         trader_agent = yield from self._fetch_trader_agent(
-            agent_id=agent_id,
+            agent_safe_address=agent_safe_address,
         )
         if (
             trader_agent is None
@@ -122,7 +124,7 @@ class FetchPerformanceSummaryBehaviour(
             or trader_agent.get("totalPayout") is None
         ):
             self.context.logger.warning(
-                f"Trader agent data not found or incomplete for {agent_id=} and {trader_agent=}"
+                f"Trader agent data not found or incomplete for {agent_safe_address=} and {trader_agent=}"
             )
             return None, None
 
@@ -187,12 +189,18 @@ class FetchPerformanceSummaryBehaviour(
 
     def _get_prediction_accuracy(self):
         """Get the prediction accuracy."""
+        agent_safe_address = self.synchronized_data.safe_contract_address
 
-        agent_id = self.context.agent_address.lower()
         agent_bets_data = yield from self._fetch_trader_agent_bets(
-            agent_id=agent_id,
+            agent_safe_address=agent_safe_address,
         )
-        if agent_bets_data is None or len(agent_bets_data.get("bets", [])) == 0:
+        if agent_bets_data is None:
+            self.context.logger.warning(
+                f"Agent bets data not found for {agent_safe_address=}. Trader may be unstaked."
+            )
+            return None
+
+        if len(agent_bets_data.get("bets", [])) == 0:
             return None
 
         bets_on_closed_markets = [
@@ -204,7 +212,7 @@ class FetchPerformanceSummaryBehaviour(
         won_bets = 0
 
         if total_bets == 0:
-            return 0.0
+            return None
         for bet in bets_on_closed_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
@@ -224,35 +232,32 @@ class FetchPerformanceSummaryBehaviour(
         final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
-        if final_roi is not None:
-            metrics.append(
-                AgentPerformanceMetrics(
-                    name="Total ROI",
-                    is_primary=True,
-                    description="With staking rewards included",
-                    value=f"{round(final_roi)}%",
-                )
+        metrics.append(
+            AgentPerformanceMetrics(
+                name="Total ROI",
+                is_primary=True,
+                description="With staking rewards included",
+                value=f"{round(final_roi)}%" if final_roi is not None else NA,
             )
-        if partial_roi is not None:
-            metrics.append(
-                AgentPerformanceMetrics(
-                    name="Partial ROI",
-                    is_primary=False,
-                    description="Clean ROI without staking rewards",
-                    value=f"{round(partial_roi)}%",
-                )
+        )
+        metrics.append(
+            AgentPerformanceMetrics(
+                name="Partial ROI",
+                is_primary=False,
+                description="Clean ROI without staking rewards",
+                value=f"{round(partial_roi)}%" if partial_roi is not None else NA,
             )
+        )
         accuracy = yield from self._get_prediction_accuracy()
 
-        if accuracy is not None:
-            metrics.append(
-                AgentPerformanceMetrics(
-                    name="Prediction accuracy",
-                    is_primary=False,
-                    description="Percentage of correct predictions",
-                    value=f"{round(accuracy)}%",
-                )
+        metrics.append(
+            AgentPerformanceMetrics(
+                name="Prediction accuracy",
+                is_primary=False,
+                description="Percentage of correct predictions",
+                value=f"{round(accuracy)}%" if accuracy is not None else NA,
             )
+        )
 
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp, metrics=metrics, agent_behavior=None
@@ -272,8 +277,8 @@ class FetchPerformanceSummaryBehaviour(
 
             yield from self._fetch_agent_performance_summary()
 
-            success = (
-                len(self._agent_performance_summary.metrics) == 3
+            success = all(
+                metric.value != NA for metric in self._agent_performance_summary.metrics
             )  # Trader has 3 metrics to show
             if not success:
                 self.context.logger.warning(

@@ -144,24 +144,26 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_mech_sender(
-        self, agent_id, timestamp_gt
+        self, agent_safe_address, timestamp_gt
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch mech sender details."""
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_MECH_SENDER_QUERY,
-                variables={"id": agent_id, "timestamp_gt": int(timestamp_gt)},
+                variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt)},
                 subgraph=self.context.olas_mech_subgraph,
                 res_context="mech_sender",
             )
         )
 
-    def _fetch_trader_agent(self, agent_id) -> Generator[None, None, Optional[Dict]]:
+    def _fetch_trader_agent(
+        self, agent_safe_address
+    ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_TRADER_AGENT_QUERY,
-                variables={"id": agent_id},
+                variables={"id": agent_safe_address},
                 subgraph=self.context.olas_agents_subgraph,
                 res_context="trader_agent",
             )
@@ -194,13 +196,13 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
 
     def _fetch_trader_agent_bets(
-        self, agent_id
+        self, agent_safe_address
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_TRADER_AGENT_BETS_QUERY,
-                variables={"id": agent_id},
+                variables={"id": agent_safe_address},
                 subgraph=self.context.olas_agents_subgraph,
                 res_context="trader_agent_bets",
             )
