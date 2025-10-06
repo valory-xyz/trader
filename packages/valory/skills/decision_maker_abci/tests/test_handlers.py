@@ -332,11 +332,13 @@ class TestHttpHandler:
     def test_send_ok_response(self) -> None:
         """Test send_ok_response function."""
         http_msg = MagicMock()
-        http_dialogue = MagicMock()
-        data = {"key": "value"}
+        http_msg.headers = ""
 
-        mock_response = MagicMock()
-        http_dialogue.reply.return_value = mock_response
+        http_dialogue = MagicMock()
+        http_dialogue.reply.return_value = MagicMock()
+
+        data = {"key": "value"}
+        mock_response = http_dialogue.reply.return_value
 
         # Call the method
         self.handler._send_ok_response(http_msg, http_dialogue, data)
