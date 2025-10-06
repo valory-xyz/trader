@@ -55,6 +55,8 @@ INVALID_ANSWER_HEX = (
 PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 
+NA = "N/A"
+
 
 class FetchPerformanceSummaryBehaviour(
     APTQueryingBehaviour,
@@ -124,7 +126,7 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning(
                 f"Trader agent data not found or incomplete for {agent_safe_address=} and {trader_agent=}"
             )
-            return 0, 0
+            return None, None
 
         open_markets = yield from self._fetch_open_markets(
             timestamp_gt=self.market_open_timestamp,
@@ -168,7 +170,7 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         if total_costs == 0:
-            return 0, 0
+            return None, None
 
         total_market_payout = int(trader_agent["totalPayout"])
         total_olas_rewards_payout_in_usd = (
@@ -199,7 +201,7 @@ class FetchPerformanceSummaryBehaviour(
             return None
 
         if len(agent_bets_data.get("bets", [])) == 0:
-            return 0
+            return None
 
         bets_on_closed_markets = [
             bet
@@ -210,7 +212,7 @@ class FetchPerformanceSummaryBehaviour(
         won_bets = 0
 
         if total_bets == 0:
-            return 0.0
+            return None
         for bet in bets_on_closed_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
@@ -230,35 +232,32 @@ class FetchPerformanceSummaryBehaviour(
         final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
-        if final_roi is not None:
-            metrics.append(
-                AgentPerformanceMetrics(
-                    name="Total ROI",
-                    is_primary=True,
-                    description="With staking rewards included",
-                    value=f"{round(final_roi)}%",
-                )
+        metrics.append(
+            AgentPerformanceMetrics(
+                name="Total ROI",
+                is_primary=True,
+                description="With staking rewards included",
+                value=f"{round(final_roi)}%" if final_roi is not None else NA,
             )
-        if partial_roi is not None:
-            metrics.append(
-                AgentPerformanceMetrics(
-                    name="Partial ROI",
-                    is_primary=False,
-                    description="Clean ROI without staking rewards",
-                    value=f"{round(partial_roi)}%",
-                )
+        )
+        metrics.append(
+            AgentPerformanceMetrics(
+                name="Partial ROI",
+                is_primary=False,
+                description="Clean ROI without staking rewards",
+                value=f"{round(partial_roi)}%" if partial_roi is not None else NA,
             )
+        )
         accuracy = yield from self._get_prediction_accuracy()
 
-        if accuracy is not None:
-            metrics.append(
-                AgentPerformanceMetrics(
-                    name="Prediction accuracy",
-                    is_primary=False,
-                    description="Percentage of correct predictions",
-                    value=f"{round(accuracy)}%",
-                )
+        metrics.append(
+            AgentPerformanceMetrics(
+                name="Prediction accuracy",
+                is_primary=False,
+                description="Percentage of correct predictions",
+                value=f"{round(accuracy)}%" if accuracy is not None else NA,
             )
+        )
 
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp, metrics=metrics, agent_behavior=None
@@ -278,8 +277,8 @@ class FetchPerformanceSummaryBehaviour(
 
             yield from self._fetch_agent_performance_summary()
 
-            success = (
-                len(self._agent_performance_summary.metrics) == 3
+            success = all(
+                metric.value != NA for metric in self._agent_performance_summary.metrics
             )  # Trader has 3 metrics to show
             if not success:
                 self.context.logger.warning(
