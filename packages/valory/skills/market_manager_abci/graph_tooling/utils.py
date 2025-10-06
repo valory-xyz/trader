@@ -71,7 +71,9 @@ def get_position_lifetime_value(
 ) -> int:
     """Get the balance of a position."""
     for position in user_positions:
-        position_condition_ids = map(lambda x: x.lower(), position["position"]["conditionIds"])
+        position_condition_ids = map(
+            lambda x: x.lower(), position["position"]["conditionIds"]
+        )
         balance = int(position["position"]["lifetimeValue"])
 
         matching_positions = []
@@ -83,7 +85,10 @@ def get_position_lifetime_value(
                 if balance > 0:
                     matching_positions.append(condition)
 
-        if condition_id.lower() in position_condition_ids and len(matching_positions) > 0:
+        if (
+            condition_id.lower() in position_condition_ids
+            and len(matching_positions) > 0
+        ):
             return balance
 
     return 0
