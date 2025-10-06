@@ -43,8 +43,6 @@ user_positions = Template(
                     conditions {
                         id
                         outcomes
-                        payoutDenominator
-                        payoutNumerators
                     }
                 }
                 totalBalance

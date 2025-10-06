@@ -84,8 +84,6 @@ def test_get_position_lifetime_value_claimed() -> None:
                     {
                         "id": condition_id,
                         "outcomes": ["Yes", "No"],
-                        "payoutDenominator": 100,
-                        "payoutNumerators": [100, 100],
                     }
                 ],
             },
@@ -109,8 +107,6 @@ def test_get_position_lifetime_value_unclaimed() -> None:
                     {
                         "id": condition_id,
                         "outcomes": ["Yes", "No"],
-                        "payoutDenominator": 100,
-                        "payoutNumerators": [100, 100],
                     }
                 ],
             },
@@ -152,8 +148,6 @@ def test_get_condition_id_to_balances() -> None:
                     {
                         "id": condition_id,
                         "outcomes": ["Yes", "No"],
-                        "payoutDenominator": 100,
-                        "payoutNumerators": [100, 100],
                     }
                 ],
             },
