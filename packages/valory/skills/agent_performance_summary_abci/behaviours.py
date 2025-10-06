@@ -277,8 +277,8 @@ class FetchPerformanceSummaryBehaviour(
 
             yield from self._fetch_agent_performance_summary()
 
-            success = any(
-                metric.value == NA for metric in self._agent_performance_summary.metrics
+            success = all(
+                metric.value != NA for metric in self._agent_performance_summary.metrics
             )  # Trader has 3 metrics to show
             if not success:
                 self.context.logger.warning(
