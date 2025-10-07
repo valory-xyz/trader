@@ -98,7 +98,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+      url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
 dependencies: {}
 is_abstract: true

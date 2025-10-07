@@ -427,7 +427,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
+      url: ${str:https://staking-gnosis.subgraph.autonolas.tech}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
