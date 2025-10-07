@@ -232,22 +232,17 @@ class FetchPerformanceSummaryBehaviour(
         final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
+
+        partial_roi_string = f"{round(partial_roi)}%" if partial_roi is not None else NA
         metrics.append(
             AgentPerformanceMetrics(
                 name="Total ROI",
                 is_primary=True,
-                description="With staking rewards included",
+                description=f"Total return on investment including staking rewards. Partial ROI (Prediction market activity only): <b>{partial_roi_string}</b>",
                 value=f"{round(final_roi)}%" if final_roi is not None else NA,
             )
         )
-        metrics.append(
-            AgentPerformanceMetrics(
-                name="Partial ROI",
-                is_primary=False,
-                description="Clean ROI without staking rewards",
-                value=f"{round(partial_roi)}%" if partial_roi is not None else NA,
-            )
-        )
+
         accuracy = yield from self._get_prediction_accuracy()
 
         metrics.append(
@@ -279,7 +274,7 @@ class FetchPerformanceSummaryBehaviour(
 
             success = all(
                 metric.value != NA for metric in self._agent_performance_summary.metrics
-            )  # Trader has 3 metrics to show
+            )
             if not success:
                 self.context.logger.warning(
                     "Agent performance summary could not be fetched. Saving default values"
