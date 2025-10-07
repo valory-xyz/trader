@@ -181,7 +181,7 @@ class HttpHandler(BaseHttpHandler):
             ).value,  # note the value call to not return the enum object
         }
         self.context.logger.info(f"Sending agent info: {data=}")
-        self._send_ok_request_response(http_msg, http_dialogue, data)
+        self._send_ok_response(http_msg, http_dialogue, data)
 
     def _handle_get_static_file(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -212,7 +212,7 @@ class HttpHandler(BaseHttpHandler):
                 content_type = self._get_content_type(file_path)
 
                 # Send the file content as a response
-                self._send_ok_request_response(
+                self._send_ok_response(
                     http_msg, http_dialogue, file_content, content_type
                 )
             else:
@@ -225,14 +225,14 @@ class HttpHandler(BaseHttpHandler):
                     index_html = file.read()
 
                 # Send the HTML response
-                self._send_ok_request_response(http_msg, http_dialogue, index_html)
+                self._send_ok_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
-            self._handle_not_found(http_msg, http_dialogue)
+            self._send_not_found_response(http_msg, http_dialogue)
 
     def _handle_get_funds_status(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
-        self._send_ok_request_response(
+        self._send_ok_response(
             http_msg, http_dialogue, self.funds_status.get_response_body()
         )
