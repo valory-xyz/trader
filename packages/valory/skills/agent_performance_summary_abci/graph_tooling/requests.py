@@ -230,4 +230,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             return None
 
         usd_price = response_data.get(OLAS_TOKEN_ADDRESS, {}).get(USD_PRICE_FIELD, None)
+        if usd_price is None:
+            self.context.logger.error(
+                f"Could not get {USD_PRICE_FIELD} price for OLAS from the response: {response_data}"
+            )
+            return None
         return int(usd_price * DECIMAL_SCALING_FACTOR)  # scale to 18 decimals
