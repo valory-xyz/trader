@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicxhkpr3ro7osdhatltc2fo2df534o6y2mwkargi6a2vni4rwaqs4
+agent: valory/trader:0.1.0:bafybeifgiy2ln2ayb2gxim5nuhhdtpdxhlww7rdb2svpq2bapvzqaz7v7e
 number_of_agents: 4
 deployment:
   agent:
@@ -300,7 +300,7 @@ type: skill
         error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
-        url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
+        url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
 1:
   models:
     params:
@@ -743,7 +743,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":2500000000000000000}}}}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000}}}}}
       rpc_urls:
         gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       setup:

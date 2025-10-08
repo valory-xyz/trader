@@ -64,15 +64,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic4ek2d574no5y4fjjtwmr3hugwtvyuutqxx5kmaz6y6tvch4xvoy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidapfxzz7qqtdjvik62e3ibjnvpizginuyrxa7ci63cqfsxzfz3uu
 - valory/market_manager_abci:0.1.0:bafybeifhlv744xptwl56epv5ghzd264nwmjew7kp2kwbsr6mphgqynmdhm
-- valory/decision_maker_abci:0.1.0:bafybeibm26qgtmnrfbygxqbkgridndujfjvhodqipc5mtkysopfl6dyypi
-- valory/trader_abci:0.1.0:bafybeigu33nxv3iw33ohuk4fqmefmy6eh3ibpakvikak4ddhvj2y2j4ehu
+- valory/decision_maker_abci:0.1.0:bafybeidtynwynms6j3gwb46gc7mtof56znl44pwp62i5tucyhojmrg7usa
+- valory/trader_abci:0.1.0:bafybeifpnjmgkosywsijiniuelftlp2gwtnoqqbyjprdpukidlrtyvp7j4
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/check_stop_trading_abci:0.1.0:bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeif7yqbhgx46z6acdio7syvn6xzzccslklxppqbwipk7unx3yjzy6q
-- valory/agent_performance_summary_abci:0.1.0:bafybeicaxoo4y3sa2pvelwmob6p65fkw3zdpow3y7lf3uvhb2eme2dffhm
+- valory/chatui_abci:0.1.0:bafybeih5uqk6unk53izmoul3zl66qz2prlftlgidigwcwjqvnhl2xg2vsy
+- valory/agent_performance_summary_abci:0.1.0:bafybeigy5jfbfiklbjthcrk5e653nxdlzbcbix453xcxbyyo7wc6bfjwha
 - valory/funds_manager:0.1.0:bafybeibmp2fhlsfqvxm7u3sgpjyeirhdrvbp6zjspxjbyucfpdrnyq5qai
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -427,7 +427,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e}
+      url: ${str:https://staking-gnosis.subgraph.autonolas.tech}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
@@ -477,7 +477,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":2500000000000000000}}}}}
+      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000}}}}}
       rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
       setup:
         safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
