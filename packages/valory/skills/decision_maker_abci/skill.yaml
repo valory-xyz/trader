@@ -7,7 +7,7 @@ description: This skill is responsible for the decision making and placing the b
   what to vote for, it receives the response from the mech, it decides whether voting
   is profitable or not, and ultimately, it either bets or blacklists the market.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih563ujnigeci2ldzh7hakbau6a222vsed7leg3b7lq32vcn3nm4a
@@ -379,7 +379,7 @@ models:
     class_name: TendermintDialogues
 dependencies:
   hexbytes:
-    version: ==0.3.1
+    version: ==1.3.0
   hypothesis:
     version: ==6.21.6
   py-multibase:
@@ -387,9 +387,9 @@ dependencies:
   py-multicodec:
     version: ==0.2.1
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
   eth-abi:
-    version: ==4.0.0
+    version: ==5.2.0
   pyyaml:
     version: <=6.0.1,>=3.10
 is_abstract: true
