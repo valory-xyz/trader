@@ -20,12 +20,12 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols:
-- valory/ledger_api:1.0.0:bafybeihmqzcbj6t7vxz2aehd5726ofnzsfjs5cwlf42ro4tn6i34cbfrc4
+- valory/ledger_api:1.0.0:bafybeiga6gdd3ccdt5jgrov474koz524f3pfbhprwxfjj7wextkl7wozsa
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
-- valory/decision_maker_abci:0.1.0:bafybeibxyuzt53ulz4kb2f73slon5ld3zb5d2ihdzl37ogsrmxbws4bmuu
-- valory/staking_abci:0.1.0:bafybeibocfxvws7yrpukhqkpwxwxugnbvzeacqcbed7d557f6f33anuijq
-- valory/mech_interact_abci:0.1.0:bafybeif5qpxsvwmxtywrwfj27gkhrwtq7gyzb63cohv7345zoh4p34jh2m
+- valory/abstract_round_abci:0.1.0:bafybeiemzg3e2hc5hjnpqj4kulxq4mjz65ktelqdgb6wvxekiwudjp63uu
+- valory/decision_maker_abci:0.1.0:bafybeibkastf2q6favejru3o2rixqh7j42hw7dnwhjuz4x3wbemrkwu2wi
+- valory/staking_abci:0.1.0:bafybeihq5m6bjiulzhfvsqnyd6ikbrp2zbkp4ptvq64ojto6rdkzklpo6m
+- valory/mech_interact_abci:0.1.0:bafybeifobdhv43h2qabmlkinsl4gcai62cxti5zsnt2jgnyvr4gcdwrk7e
 behaviours:
   main:
     args: {}
