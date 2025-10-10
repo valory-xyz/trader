@@ -33,7 +33,7 @@ from hexbytes import HexBytes
 from web3._utils.events import get_event_data
 from web3.contract import Contract as W3Contract
 from web3.eth import Eth
-from web3.types import BlockIdentifier, FilterParams, _Hash32, LogReceipt, ABIEvent
+from web3.types import BlockIdentifier, FilterParams, _Hash32, LogReceipt, TContractEvent
 
 FIVE_MINUTES = 300.0
 DEFAULT_OUTCOME_SLOT = 2
@@ -67,7 +67,7 @@ def update_from_event(redeeming: Dict[str, Any], payouts: Dict[str, int]) -> Non
 def get_logs(
     eth: Eth,
     contract_instance: W3Contract,
-    event_abi: ABIEvent,
+    event_abi: TContractEvent,
     topics: List[Optional[Union[_Hash32, Sequence[_Hash32]]]],
     from_block: BlockIdentifier = "earliest",
     to_block: BlockIdentifier = "latest",
@@ -213,8 +213,8 @@ class ConditionalTokensContract(Contract):
     ) -> JSONLike:
         """Build a `redeemPositions` tx."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        data = contract_instance.encodeABI(
-            fn_name="redeemPositions",
+        data = contract_instance.encode_abi(
+            abi_element_identifier="redeemPositions",
             args=[
                 ledger_api.api.to_checksum_address(collateral_token),
                 parent_collection_id,
@@ -316,7 +316,7 @@ class ConditionalTokensContract(Contract):
         contract_instance = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        data = contract_instance.encodeABI(fn_name="prepareCondition", kwargs=kwargs)
+        data = contract_instance.encode_abi(abi_element_identifier="prepareCondition", kwargs=kwargs)
         return {"data": bytes.fromhex(data[2:])}
 
     @classmethod
@@ -464,8 +464,8 @@ class ConditionalTokensContract(Contract):
         """Build mergePositions tx."""
         instance = cls.get_instance(ledger_api, contract_address)
         partition = cls.get_partitions(count=outcome_slot_count)
-        data = instance.encodeABI(
-            fn_name="mergePositions",
+        data = instance.encode_abi(
+            abi_element_identifier="mergePositions",
             args=[
                 ledger_api.api.to_checksum_address(collateral_token),
                 parent_collection_id,
