@@ -4,7 +4,7 @@ description: Chat UI skill for Valory agents
 author: valory
 type: skill
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeiezyii5oqibm26ogl3tqx7m34d7znj443jfbcl26rp2oz5g2mjnzy
   behaviours.py: bafybeicr4jqw3u4u6vnvnueegxzag55tmizcis6zdfj6vet3guguyidrau

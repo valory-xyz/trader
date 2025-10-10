@@ -3,7 +3,7 @@ author: valory
 version: 0.1.0
 license: Apache-2.0
 description: Trader agent.
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeiexvxghmwzokfocrlq6johtoz7dvpqm6gg6vmcapu43yjjfqc435q
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
@@ -114,11 +114,11 @@ logging_config:
       propagate: true
 dependencies:
   open-aea-ledger-cosmos:
-    version: ==1.65.0
+    version: ==2.0.6
   open-aea-ledger-ethereum:
-    version: ==1.65.0
+    version: ==2.0.6
   open-aea-test-autonomy:
-    version: ==0.19.11
+    version: ==0.21.2
   typing_extensions:
     version: ==4.13.2
 skill_exception_policy: stop_and_exit
