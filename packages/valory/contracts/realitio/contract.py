@@ -35,7 +35,7 @@ from web3._utils.events import get_event_data
 from web3.eth import Eth
 from web3.contract import Contract as W3Contract
 from web3.exceptions import ContractLogicError
-from web3.types import BlockIdentifier, FilterParams, ABIEvent, _Hash32, LogReceipt, EventData
+from web3.types import BlockIdentifier, FilterParams, _Hash32, LogReceipt, EventData, TContractEvent
 
 ClaimParamsType = Tuple[
     List[bytes], List[ChecksumAddress], List[int], List[bytes]
@@ -72,7 +72,7 @@ def build_question(question_data: Dict) -> str:
 def get_entries(
     eth: Eth,
     contract_instance: W3Contract,
-    event_abi: ABIEvent,
+    event_abi: TContractEvent,
     topics: List[Optional[Union[_Hash32, Sequence[_Hash32]]]],
     from_block: BlockIdentifier = "earliest",
     to_block: BlockIdentifier = "latest",
@@ -182,8 +182,8 @@ class RealitioContract(Contract):
     ) -> JSONLike:
         """Build `claimWinnings` transaction."""
         contract = cls.get_instance(ledger_api, contract_address)
-        data = contract.encodeABI(
-            fn_name="claimWinnings",
+        data = contract.encode_abi(
+            abi_element_identifier="claimWinnings",
             args=(question_id, *claim_params),
         )
         return dict(data=data)
@@ -331,7 +331,7 @@ class RealitioContract(Contract):
         contract_instance = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        data = contract_instance.encodeABI(fn_name="askQuestion", kwargs=kwargs)
+        data = contract_instance.encode_abi(abi_element_identifier="askQuestion", kwargs=kwargs)
         return {"data": bytes.fromhex(data[2:])}  # type: ignore
 
     @classmethod
@@ -414,8 +414,8 @@ class RealitioContract(Contract):
         contract = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        data = contract.encodeABI(
-            fn_name="submitAnswer",
+        data = contract.encode_abi(
+            abi_element_identifier="submitAnswer",
             args=[
                 question_id,
                 answer,
@@ -444,7 +444,7 @@ class RealitioContract(Contract):
     ) -> JSONLike:
         """Build `withdraw` transaction."""
         contract = cls.get_instance(ledger_api, contract_address)
-        data = contract.encodeABI(
-            fn_name="withdraw",
+        data = contract.encode_abi(
+            abi_element_identifier="withdraw",
         )
         return dict(data=data)

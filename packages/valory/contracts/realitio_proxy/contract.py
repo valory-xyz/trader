@@ -42,8 +42,8 @@ class RealitioProxyContract(Contract):
     ) -> JSONLike:
         """Build a `resolve` tx."""
         contract = cls.get_instance(ledger_api, contract_address)
-        data = contract.encodeABI(
-            fn_name="resolve",
+        data = contract.encode_abi(
+            abi_element_identifier="resolve",
             args=[
                 question_id,
                 template_id,
