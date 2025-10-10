@@ -19,6 +19,7 @@
 
 """This module contains the tests for valory/decision_maker_abci's base behaviour."""
 
+import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
@@ -42,6 +43,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
 from packages.valory.skills.market_manager_abci.behaviours import READ_MODE
 
@@ -52,6 +54,11 @@ CURRENT_FILE_PATH = Path(__file__).resolve()
 PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
 DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strategy.py"
 
+# fmt: off
+STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": 500000000000000000, "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": 60000000000000000, "0.7": 90000000000000000, "0.8": 100000000000000000, "0.9": 1000000000000000000, "1.0": 10000000000000000000}}
+
+STRATEGY_TO_FILEPATH = {"bet_amount_per_threshold": "packages/valory/customs/bet_amount_per_threshold", "kelly_criterion_no_conf": "packages/valory/customs/kelly_criterion_no_conf"}
+# fmt: on
 
 DefaultValueType = TypeVar("DefaultValueType")
 ExecutablesMockReturnType = Union[Tuple[str, str], DefaultValueType]
@@ -76,6 +83,35 @@ def strategies_executables_get_mock_wrapper(
         )
 
     return strategies_executables_get_mock
+
+
+def folder_to_serialized_objects(folder_path: str) -> dict[str, str]:
+    """Convert all files in a folder to a dict of serialized objects."""
+    serialized_objects: dict[str, str] = {}
+
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, folder_path)
+            with open(full_path, "r", encoding="utf-8") as f:
+                serialized_objects[relative_path] = f.read()
+
+    return serialized_objects
+
+
+def get_strategy_executables() -> Dict[str, Tuple[str, str]]:
+    """Load strategy executables from their respective folders."""
+
+    strategy_hm = {}
+    for strategy_name, folder_path in STRATEGY_TO_FILEPATH.items():
+        _component_yaml, strategy_exec, callable_method = ComponentPackageLoader.load(
+            folder_to_serialized_objects(folder_path)
+        )
+        strategy_hm[strategy_name] = (
+            strategy_exec,
+            callable_method,
+        )
+    return strategy_hm
 
 
 @st.composite
@@ -236,7 +272,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
         with mock.patch.object(behaviour, "read_bets"):
             collateral_token = WXDAI if is_wxdai else "unknown"
-            behaviour.bets = [(mock.MagicMock(collateralToken=collateral_token))]
+            behaviour.bets = [mock.MagicMock(collateralToken=collateral_token)]
             result = behaviour._collateral_amount_info(amount)
 
         if benchmarking_mode_enabled or is_wxdai:
@@ -297,5 +333,68 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             next(gen)
         except StopIteration as e:
             assert e.value == expected_result
+        else:
+            raise AssertionError("Expected `StopIteration` exception!")
+
+    @pytest.mark.parametrize(
+        "trading_strategy, win_probability, confidence, selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee, weighted_accuracy, token_balance, wallet_balance, expected_result",
+        # fmt: off
+        (
+            # bet amount per threshold strategy
+            ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, 0),
+            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, 60000000000000000),
+            ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, 100000000000000000),
+            ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, 1000000000000000000),
+            # kelly criterion no confidence strategy
+            ("kelly_criterion_no_conf", 0.75, 0.0, 300000000000000000, 700000000000000000, 1000000000000000, 0.0, 1000000000000000000, 2000000000000000000, 44582143382087584),
+        ),
+        ids=[
+            "bet_amount_per_threshold_0",
+            "bet_amount_per_threshold_high",
+            "bet_amount_per_threshold_higher",
+            "bet_amount_per_threshold_very_high",
+            "kelly_criterion_no_conf",
+        ],
+        # fmt: on
+    )
+    def test_bet_amount_based_on_strategy(
+        self,
+        trading_strategy: str,
+        win_probability: float,
+        confidence: float,
+        selected_type_tokens_in_pool: int,
+        other_tokens_in_pool: int,
+        bet_fee: int,
+        weighted_accuracy: float,
+        token_balance: int,
+        wallet_balance: int,
+        expected_result: int,
+    ) -> None:
+        """Test the `get_bet_amount` method."""
+        behaviour = self.behaviour
+        behaviour.download_strategies = lambda: (yield)  # type: ignore
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
+        behaviour.params.strategies_kwargs = STRATEGIES_KWARGS
+        behaviour.shared_state.chatui_config.trading_strategy = trading_strategy
+        behaviour.params.use_fallback_strategy = False
+        behaviour.shared_state.strategies_executables = get_strategy_executables()
+        behaviour.token_balance = token_balance
+        behaviour.wallet_balance = wallet_balance
+
+        get_bet_amount_generator = behaviour.get_bet_amount(
+            win_probability,
+            confidence,
+            selected_type_tokens_in_pool,
+            other_tokens_in_pool,
+            bet_fee,
+            weighted_accuracy,
+        )
+        for _ in range(2):
+            # `download_strategies` and `wait_for_condition_with_sleep` mock calls
+            next(get_bet_amount_generator)
+        try:
+            next(get_bet_amount_generator)
+        except StopIteration as e:
+            assert int(e.value) == int(expected_result)
         else:
             raise AssertionError("Expected `StopIteration` exception!")
