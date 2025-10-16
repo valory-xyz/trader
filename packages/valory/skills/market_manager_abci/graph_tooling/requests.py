@@ -55,6 +55,8 @@ from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
+QUESTION_DATA_SEPARATOR = "\u241f"
+
 
 def to_content(query: str) -> bytes:
     """Convert the given query string to payload content, i.e., add it under a `queries` key and convert it to bytes."""
@@ -165,7 +167,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
         # truncate the response, otherwise logs get too big
         res_str = str(res)[:MAX_LOG_SIZE]
-        self.context.logger.info(f"Retrieved {res_context}: {res_str}.")
+        clean_res_str = res_str.replace(
+            QUESTION_DATA_SEPARATOR, " "
+        )  # Windows terminal can't print this character
+        self.context.logger.info(f"Retrieved {res_context}: {clean_res_str}.")
         self._call_failed = False
         subgraph.reset_retries()
         self._fetch_status = FetchStatus.SUCCESS
