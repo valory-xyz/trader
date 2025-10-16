@@ -15,15 +15,15 @@
         "contract/valory/market_maker/0.1.0": "bafybeibo3yighqtem2zanqnrmbsgniokz7ohm2aa2r2yblztznkpwkeqpy",
         "skill/valory/market_manager_abci/0.1.0": "bafybeifhlv744xptwl56epv5ghzd264nwmjew7kp2kwbsr6mphgqynmdhm",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeiexttly4kjg2yawmhaqp6fqhre7izadjw4h46nfpj577bztankhda",
-        "skill/valory/trader_abci/0.1.0": "bafybeihtkgy4oegc6ahrnzzo2k3elaa26qvqrbwwvitlth3h2i5ihgendy",
+        "skill/valory/trader_abci/0.1.0": "bafybeic4zocidn64iv2hjx466y4rfo3qttikd7gzm2jh5dmegsmiqukhaa",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibvr6le2l6bfiye5ioh2o3xdhnn2han7degp7bxhbnh4cw33fqwz4",
         "skill/valory/staking_abci/0.1.0": "bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeihxrju2lu7ot3w27cabekmzyxmhkg7spd6oaedrtutlwjg6nfj6u4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa",
         "skill/valory/chatui_abci/0.1.0": "bafybeidrgk7mawbkp76ngkgjlwsomat34gvfveqm64fqnuafudx6n7hgdq",
-        "agent/valory/trader/0.1.0": "bafybeicej2qzkccsujald7tt2l3zxg73k3nby47hcdffelaudpu4o3ycnu",
-        "service/valory/trader/0.1.0": "bafybeidqrmwimk6syb3xryfgulstbkozhqedfoe67d5o2de6kdnfavoglu",
-        "service/valory/trader_pearl/0.1.0": "bafybeicav6czopdtsenpfsozub5pqcnfdbhy7ys2komiu7x2vviutp2ice"
+        "agent/valory/trader/0.1.0": "bafybeiamicobzqrelsqsxxijx7v3vuteprukqkbgsy2moqfyzgombt4exy",
+        "service/valory/trader/0.1.0": "bafybeidbnpmv5yp53f62kr6fpno2c72fzwexltsftlxpq7ey6wzexx7lje",
+        "service/valory/trader_pearl/0.1.0": "bafybeibn5qfzk7y7gfz6mycvp65bjwpb73nmpu6oq2mbirqwwvnl2fi5aq"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
@@ -64,7 +64,7 @@
         "connection/valory/ipfs/0.1.0": "bafybeiamz23olgtow4wqf7zpsfnfzf7pxiognrxl2mhn5kvqutlwhgukxa",
         "connection/valory/http_server/0.22.0": "bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy",
         "connection/dvilela/genai/0.1.0": "bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu",
-        "skill/valory/funds_manager/0.1.0": "bafybeibsdy3ribme7xxmd3a3gvz3qsatpv3durumi4e3dlsxhm56cufkoe",
+        "skill/valory/funds_manager/0.1.0": "bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq",
         "skill/valory/abstract_abci/0.1.0": "bafybeieteucm3rudnnbesnu53wbv3ojnhrwqbvfrsqwvhg6ksgriqyl67i",
         "skill/valory/abstract_round_abci/0.1.0": "bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du",
