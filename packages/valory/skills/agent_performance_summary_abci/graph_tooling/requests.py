@@ -46,6 +46,8 @@ OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"
 DECIMAL_SCALING_FACTOR = 10**18
 USD_PRICE_FIELD = "usd"
 
+QUESTION_DATA_SEPARATOR = "\u241f"
+
 
 def to_content(query: str, variables: Dict) -> bytes:
     """Convert the given query string to payload content, i.e., add it under a `queries` key and convert it to bytes."""
@@ -112,7 +114,10 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
         # truncate the response, otherwise logs get too big
         res_str = str(res)[:MAX_LOG_SIZE]
-        self.context.logger.info(f"Retrieved {res_context}: {res_str}.")
+        clean_res_str = res_str.replace(
+            QUESTION_DATA_SEPARATOR, " "
+        )  # Windows terminal can't print this character
+        self.context.logger.info(f"Retrieved {res_context}: {clean_res_str}.")
         self._call_failed = False
         subgraph.reset_retries()
         self._fetch_status = FetchStatus.SUCCESS
