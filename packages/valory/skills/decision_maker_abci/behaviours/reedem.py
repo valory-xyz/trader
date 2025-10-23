@@ -772,7 +772,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._current_redeem_info = redeem_candidate
 
         msg = f"Processing position with condition id {self.current_condition_id!r}..."
-        self.context.logger.info(msg)
+        self.context.logger.debug(msg)
 
         # in case that the claimable amount is dust
         if self.is_dust:
@@ -827,7 +827,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             is_claimable = yield from self._process_candidate(redeem_candidate)
             if not is_claimable:
                 msg = "Not redeeming position. Moving to the next one..."
-                self.context.logger.info(msg)
+                self.context.logger.debug(msg)
                 continue
 
             if self.params.redeeming_batch_size > 1:
