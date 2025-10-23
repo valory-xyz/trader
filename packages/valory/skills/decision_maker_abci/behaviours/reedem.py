@@ -776,7 +776,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         # in case that the claimable amount is dust
         if self.is_dust:
-            self.context.logger.info("Position's redeeming amount is dust.")
+            self.context.logger.info(
+                f"The redeeming amount for the position with condition id {self.current_condition_id!r} is dust."
+                "Skipping..."
+            )
             return False
 
         if self.params.use_subgraph_for_redeeming:
@@ -819,7 +822,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         :returns: the safe's transaction hash for the redeeming operation.
         """
         if len(self.trades) > 0:
-            self.context.logger.info("Preparing a multisend tx to redeem payout...")
+            self.context.logger.info(
+                "Checking if there is payout available to redeem..."
+            )
 
         winnings_found = 0
 
