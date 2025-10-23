@@ -284,16 +284,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._payouts = payouts
 
     @property
-    def finalized(self) -> bool:
-        """Get whether the current market has been finalized."""
-        return self._finalized
-
-    @finalized.setter
-    def finalized(self, flag: bool) -> None:
-        """Set whether the current market has been finalized."""
-        self._finalized = flag
-
-    @property
     def history_hash(self) -> bytes:
         """Get the history hash for the current question."""
         return self._history_hash
@@ -575,16 +565,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         )
         return status
 
-    def _check_finalized(self) -> WaitableConditionType:
-        """Check whether the question has been finalized."""
-        result = yield from self._realitio_interact(
-            contract_callable="check_finalized",
-            data_key="finalized",
-            placeholder=get_name(RedeemBehaviour.finalized),
-            question_id=self.current_question_id,
-        )
-        return result
-
     def _get_history_hash(self) -> WaitableConditionType:
         """Get the history hash for the current question id."""
         result = yield from self._realitio_interact(
@@ -793,17 +773,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         msg = f"Processing position with condition id {self.current_condition_id!r}..."
         self.context.logger.info(msg)
-
-        # double check whether the market is finalized
-        yield from self.wait_for_condition_with_sleep(self._check_finalized)
-        if not self.finalized:
-            self.context.logger.warning(
-                f"Conflict found! The current market, with condition id {self.current_condition_id!r}, "
-                f"is reported as not finalized by the realitio contract. "
-                f"However, an answer was finalized on {redeem_candidate.fpmm.answerFinalizedTimestamp}, "
-                f"and the last service transition occurred on {self.synced_timestamp}."
-            )
-            return False
 
         # in case that the claimable amount is dust
         if self.is_dust:
