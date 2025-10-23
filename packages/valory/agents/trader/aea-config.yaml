@@ -64,16 +64,16 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibvr6le2l6bfiye5ioh2o3xdhnn2han7degp7bxhbnh4cw33fqwz4
-- valory/market_manager_abci:0.1.0:bafybeifhlv744xptwl56epv5ghzd264nwmjew7kp2kwbsr6mphgqynmdhm
-- valory/decision_maker_abci:0.1.0:bafybeiexttly4kjg2yawmhaqp6fqhre7izadjw4h46nfpj577bztankhda
-- valory/trader_abci:0.1.0:bafybeihtkgy4oegc6ahrnzzo2k3elaa26qvqrbwwvitlth3h2i5ihgendy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihhp73m5oaqjn46jwqelytovr45xxmtdd5nmgjbyybb5zzau42iaq
+- valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
+- valory/decision_maker_abci:0.1.0:bafybeigcf3yofwi2paz52qeaj2isvn6gtgzufepgyshhr2pye5xgkdpqlm
+- valory/trader_abci:0.1.0:bafybeif2monkcbd2dz2rzttizdonpbsadvxjyhdnhgbnkprlvgxvcnjwle
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/check_stop_trading_abci:0.1.0:bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeidrgk7mawbkp76ngkgjlwsomat34gvfveqm64fqnuafudx6n7hgdq
-- valory/agent_performance_summary_abci:0.1.0:bafybeihxrju2lu7ot3w27cabekmzyxmhkg7spd6oaedrtutlwjg6nfj6u4
-- valory/funds_manager:0.1.0:bafybeibmp2fhlsfqvxm7u3sgpjyeirhdrvbp6zjspxjbyucfpdrnyq5qai
+- valory/chatui_abci:0.1.0:bafybeif2ca425odpur2qiij4oauwrkdwai7z2qe75f6y5pkhnjcmy2kt2y
+- valory/agent_performance_summary_abci:0.1.0:bafybeifcj2b4j5m6gbob77qmwhlzsf374snw2u7cisggrqg2p2vsdchph4
+- valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
 - valory/bet_amount_per_threshold:0.1.0:bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu
@@ -479,5 +479,4 @@ models:
     args:
       fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000}}}}}
       rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
-      setup:
-        safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
+      safe_contract_addresses: ${dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
