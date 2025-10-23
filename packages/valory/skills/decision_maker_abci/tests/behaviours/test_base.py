@@ -55,7 +55,7 @@ PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
 DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strategy.py"
 
 # fmt: off
-STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": 500000000000000000, "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": 60000000000000000, "0.7": 90000000000000000, "0.8": 100000000000000000, "0.9": 1000000000000000000, "1.0": 10000000000000000000}}
+STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": 5000000000000000000, "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": 60000000000000000, "0.7": 90000000000000000, "0.8": 100000000000000000, "0.9": 1000000000000000000, "1.0": 10000000000000000000}}
 
 STRATEGY_TO_FILEPATH = {"bet_amount_per_threshold": "packages/valory/customs/bet_amount_per_threshold", "kelly_criterion_no_conf": "packages/valory/customs/kelly_criterion_no_conf"}
 # fmt: on
@@ -104,7 +104,7 @@ def get_strategy_executables() -> Dict[str, Tuple[str, str]]:
 
     strategy_hm = {}
     for strategy_name, folder_path in STRATEGY_TO_FILEPATH.items():
-        _component_yaml, strategy_exec, callable_method = ComponentPackageLoader.load(
+        _, strategy_exec, callable_method = ComponentPackageLoader.load(
             folder_to_serialized_objects(folder_path)
         )
         strategy_hm[strategy_name] = (
@@ -346,14 +346,21 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, 100000000000000000),
             ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, 1000000000000000000),
             # kelly criterion no confidence strategy
-            ("kelly_criterion_no_conf", 0.75, 0.0, 300000000000000000, 700000000000000000, 1000000000000000, 0.0, 1000000000000000000, 2000000000000000000, 44582143382087584),
+            ("kelly_criterion_no_conf", 0.85, 0.0, 100, 200, 1_000_000_000_000_000, 0.75, 50_000_000_000_000_000_000, 0, 243),
+            ("kelly_criterion_no_conf", 0.80, 0.0, 150, 100, 500_000_000_000_000, 0.90, 75_000_000_000_000_000_000, 10_000_000_000_000_000_000, 37241555003),
+            ("kelly_criterion_no_conf", 0.95, 0.0, 150, 100, 500_000_000_000_000, 0.90, 75_000_000_000_000_000_000, 10_000_000_000_000_000_000, 1139999999999998976),
+            ("kelly_criterion_no_conf", 0.20, 0.0, 150, 100, 500_000_000_000_000, 0.90, 75_000_000_000_000_000_000, 10_000_000_000_000_000_000, 0),
+
         ),
         ids=[
             "bet_amount_per_threshold_0",
             "bet_amount_per_threshold_high",
             "bet_amount_per_threshold_higher",
             "bet_amount_per_threshold_very_high",
-            "kelly_criterion_no_conf",
+            "kelly_criterion_no_conf_low",
+            "kelly_criterion_no_conf_medium",
+            "kelly_criterion_no_conf_high",
+            "kelly_criterion_no_conf_zero",
         ],
         # fmt: on
     )
