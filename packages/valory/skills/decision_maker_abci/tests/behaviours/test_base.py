@@ -55,7 +55,7 @@ PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
 DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strategy.py"
 
 # fmt: off
-STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": 5000000000000000000, "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": 60000000000000000, "0.7": 90000000000000000, "0.8": 100000000000000000, "0.9": 1000000000000000000, "1.0": 10000000000000000000}}
+STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": int(5e18), "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": int(6e16), "0.7": int(9e16), "0.8": int(1e17), "0.9": int(1e18), "1.0": int(1e19)}}
 
 STRATEGY_TO_FILEPATH = {"bet_amount_per_threshold": "packages/valory/customs/bet_amount_per_threshold", "kelly_criterion_no_conf": "packages/valory/customs/kelly_criterion_no_conf"}
 # fmt: on
@@ -342,14 +342,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         (
             # bet amount per threshold strategy
             ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, 0),
-            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, 60000000000000000),
-            ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, 100000000000000000),
-            ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, 1000000000000000000),
+            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, int(6e16)),
+            ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, int(1e17)),
+            ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, int(1e18)),
             # kelly criterion no confidence strategy
-            ("kelly_criterion_no_conf", 0.85, 0.0, 100, 200, 1_000_000_000_000_000, 0.75, 50_000_000_000_000_000_000, 0, 243),
-            ("kelly_criterion_no_conf", 0.80, 0.0, 150, 100, 500_000_000_000_000, 0.90, 75_000_000_000_000_000_000, 10_000_000_000_000_000_000, 37241555003),
-            ("kelly_criterion_no_conf", 0.95, 0.0, 150, 100, 500_000_000_000_000, 0.90, 75_000_000_000_000_000_000, 10_000_000_000_000_000_000, 1139999999999998976),
-            ("kelly_criterion_no_conf", 0.20, 0.0, 150, 100, 500_000_000_000_000, 0.90, 75_000_000_000_000_000_000, 10_000_000_000_000_000_000, 0),
+            ("kelly_criterion_no_conf", 0.85, 0.0, 100, 200, int(1e15), 0.75, int(5e19), 0, 243),
+            ("kelly_criterion_no_conf", 0.80, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 37_241_555_003),
+            ("kelly_criterion_no_conf", 0.95, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 1_139_999_999_999_998_976),
+            ("kelly_criterion_no_conf", 0.20, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 0),
 
         ),
         ids=[
