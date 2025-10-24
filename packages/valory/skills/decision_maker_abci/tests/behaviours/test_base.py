@@ -19,7 +19,6 @@
 
 """This module contains the tests for valory/decision_maker_abci's base behaviour."""
 
-import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
@@ -54,6 +53,8 @@ CURRENT_FILE_PATH = Path(__file__).resolve()
 PACKAGE_DIR = CURRENT_FILE_PATH.parents[2]
 DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strategy.py"
 
+VALID_STRATEGY_FILE_EXTENSIONS = {".py", ".yaml", ".yml"}
+
 # fmt: off
 STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": int(5e18), "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": int(6e16), "0.7": int(9e16), "0.8": int(1e17), "0.9": int(1e18), "1.0": int(1e19)}}
 
@@ -85,17 +86,27 @@ def strategies_executables_get_mock_wrapper(
     return strategies_executables_get_mock
 
 
-def folder_to_serialized_objects(folder_path: str) -> dict[str, str]:
+def folder_to_serialized_objects(folder_path: str | Path) -> dict[str, str]:
     """Convert all files in a folder to a dict of serialized objects."""
+    folder_path = Path(folder_path)
     serialized_objects: dict[str, str] = {}
-
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            full_path = os.path.join(root, file)
-            relative_path = os.path.relpath(full_path, folder_path)
-            with open(full_path, "r", encoding="utf-8") as f:
-                serialized_objects[relative_path] = f.read()
-
+    for file_path in folder_path.rglob("*"):
+        if (
+            not file_path.is_file()
+            or file_path.suffix not in VALID_STRATEGY_FILE_EXTENSIONS
+        ):
+            continue
+        try:
+            text = file_path.read_text(encoding="utf-8")
+        except (
+            UnicodeDecodeError,
+            FileNotFoundError,
+            PermissionError,
+            IsADirectoryError,
+        ) as e:
+            raise RuntimeError(f"Failed to read {file_path}: {e}") from e
+        relative_path = str(file_path.relative_to(folder_path))
+        serialized_objects[relative_path] = text
     return serialized_objects
 
 
