@@ -190,7 +190,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         super().__init__(**kwargs)
         self._claim_params_batch: list = []
         self._latest_block_number: Optional[int] = None
-        self._finalized: bool = False
         self._already_resolved: bool = False
         self._payouts: Dict[str, int] = {}
         self._built_data: Optional[HexBytes] = None
