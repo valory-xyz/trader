@@ -86,8 +86,8 @@ jobs:
               cd $SERVICE || exit 1
               echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
               docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" --push || exit 1
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" --version $VERSION --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.19.11 --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.19.11 --version $VERSION --push || exit 1
 
   deploy-service-on-propel:
     name: Deploy service on propel
