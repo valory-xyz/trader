@@ -770,8 +770,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         """Process a redeeming candidate and return whether winnings were found."""
         self._current_redeem_info = redeem_candidate
 
-        msg = f"Processing position with condition id {self.current_condition_id!r}..."
-        self.context.logger.debug(msg)
+        self.context.logger.debug(
+            f"Processing position with condition id {self.current_condition_id!r}..."
+        )
 
         # in case that the claimable amount is dust
         if self.is_dust:
