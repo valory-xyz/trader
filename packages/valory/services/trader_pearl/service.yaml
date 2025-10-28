@@ -338,7 +338,7 @@ public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlco
 type: connection
 config:
   genai_api_key: ${GENAI_API_KEY:str:""}
-  genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:http://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
+  genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
   use_x402: ${USE_X402:bool:false}
 ---
 public_id: valory/funds_manager:0.1.0
