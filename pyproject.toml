@@ -84,6 +84,7 @@ pyinstaller = "==6.8.0"
 google-generativeai = "==0.8.2"
 w3multicall = ">=0.3.1"
 pydantic = "==2.11.9"
+multiaddr = "==0.0.9"
 
 [tool.poetry.dependencies.tomte]
 version = "==0.2.17"
