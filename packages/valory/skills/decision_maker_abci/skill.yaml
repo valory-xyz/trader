@@ -81,7 +81,7 @@ fingerprint:
   utils/scaling.py: bafybeialr3z4zogp4k3l2bzcjfi4igvxzjexmlpgze2bai2ufc3plaow4y
 fingerprint_ignore_patterns: []
 connections:
-- valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
+- valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihqefvhxbdocjphrcz33txmbgembl35qtcc7nusdvymrh4o3sp5um
 - valory/market_maker:0.1.0:bafybeibo3yighqtem2zanqnrmbsgniokz7ohm2aa2r2yblztznkpwkeqpy
@@ -106,7 +106,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/agent_performance_summary_abci:0.1.0:bafybeihxrju2lu7ot3w27cabekmzyxmhkg7spd6oaedrtutlwjg6nfj6u4
-- valory/chatui_abci:0.1.0:bafybeidrgk7mawbkp76ngkgjlwsomat34gvfveqm64fqnuafudx6n7hgdq
+- valory/chatui_abci:0.1.0:bafybeigr7qntxnr57toxw7b2koxpwnzr2nvfiwhnxqr4sxc4ipu52riqle
 behaviours:
   main:
     args: {}
