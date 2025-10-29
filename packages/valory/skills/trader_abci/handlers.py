@@ -455,7 +455,7 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to get LiFi quote")
                 return False
 
-            tx_request: Dict = quote.get("transactionRequest")
+            tx_request: Optional[Dict] = quote.get("transactionRequest")
             if not tx_request:
                 self.context.logger.error("No transactionRequest in quote")
                 return False
