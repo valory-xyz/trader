@@ -22,9 +22,14 @@
 
 import copy
 import json
+import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
+
+import requests
+from eth_account import Account
+from web3 import Web3
 
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
@@ -61,6 +66,7 @@ from packages.valory.skills.mech_interact_abci.handlers import (
 )
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
+from packages.valory.skills.trader_abci.models import TraderParams
 
 
 TraderHandler = ABCIRoundHandler
@@ -77,6 +83,9 @@ PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 GNOSIS_CHAIN_NAME = "gnosis"
 XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
 WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
+GNOSIS_CHAIN_ID = 100
+SLIPPAGE = "0.005"
 
 
 class HttpHandler(BaseHttpHandler):
@@ -107,9 +116,21 @@ class HttpHandler(BaseHttpHandler):
         """Get the fund status."""
         return self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
 
+    @property
+    def params(self) -> TraderParams:
+        """Get the skill params."""
+        return self.context.params
+
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
+
+        # Only check funds if using X402
+        if self.params.use_x402:
+            threading.Thread(
+                target=self._ensure_sufficient_funds_for_x402_payments, daemon=True
+            ).start()
+
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -259,8 +280,225 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
+        # Only check funds if using X402
+        if self.params.use_x402:
+            threading.Thread(
+                target=self._ensure_sufficient_funds_for_x402_payments, daemon=True
+            ).start()
+
         self._send_ok_response(
             http_msg,
             http_dialogue,
             self._get_adjusted_funds_status().get_response_body(),
         )
+
+    def _get_eoa_account(self) -> Account:
+        """Get EOA account from private key file."""
+        default_ledger = self.context.default_ledger_id
+        eoa_file = Path(self.context.data_dir) / f"{default_ledger}_private_key.txt"
+        with eoa_file.open("r") as f:
+            private_key = f.read().strip()
+        return Account.from_key(private_key=private_key)
+
+    def _get_web3_instance(self, chain: str) -> Optional[Web3]:
+        """Get Web3 instance for the specified chain."""
+        try:
+            rpc_url = self.params.gnosis_ledger_rpc
+
+            if not rpc_url:
+                self.context.logger.warning(f"No RPC URL for {chain}")
+                return None
+
+            return Web3(Web3.HTTPProvider(rpc_url))
+        except Exception as e:
+            self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
+            return None
+
+    def _check_usdc_balance(
+        self, eoa_address: str, chain: str, usdc_address: str
+    ) -> Optional[float]:
+        """Check USDC balance using Web3 library."""
+        try:
+            w3 = self._get_web3_instance(chain)
+            if not w3:
+                return None
+
+            # ERC20 ABI for balanceOf
+            erc20_abi = [
+                {
+                    "constant": True,
+                    "inputs": [{"name": "_owner", "type": "address"}],
+                    "name": "balanceOf",
+                    "outputs": [{"name": "balance", "type": "uint256"}],
+                    "type": "function",
+                }
+            ]
+
+            usdc_contract = w3.eth.contract(
+                address=Web3.to_checksum_address(usdc_address), abi=erc20_abi
+            )
+            balance = usdc_contract.functions.balanceOf(
+                Web3.to_checksum_address(eoa_address)
+            ).call()
+
+            balance_usdc = balance / 10**6  # USDC.e has 6 decimals
+            return balance_usdc
+
+        except Exception as e:
+            self.context.logger.error(f"Error checking USDC balance: {str(e)}")
+            return None
+
+    def _get_lifi_quote_sync(
+        self, eoa_address: str, chain: str, usdc_address: str, to_amount: str
+    ) -> Optional[Dict]:
+        """Get LiFi quote synchronously."""
+        try:
+            chain_id = GNOSIS_CHAIN_ID
+
+            params = {
+                "fromChain": chain_id,
+                "toChain": chain_id,
+                "fromToken": XDAI_ADDRESS,
+                "toToken": usdc_address,
+                "fromAddress": eoa_address,
+                "toAddress": eoa_address,
+                "toAmount": to_amount,
+                "slippage": SLIPPAGE,
+                "integrator": "valory",
+            }
+
+            response = requests.get(
+                self.params.lifi_quote_to_amount_url, params=params, timeout=30
+            )
+
+            if response.status_code == 200:
+                return response.json()
+
+            return None
+        except Exception as e:
+            self.context.logger.error(f"Error getting LiFi quote: {str(e)}")
+            return None
+
+    def _sign_and_submit_tx_web3(
+        self, tx_data: Dict, chain: str, eoa_account: Account
+    ) -> Optional[str]:
+        """Sign and submit transaction using Web3."""
+        try:
+            w3 = self._get_web3_instance(chain)
+            if not w3:
+                return None
+
+            signed_tx = eoa_account.sign_transaction(tx_data)
+
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            return tx_hash.hex()
+
+        except Exception as e:
+            self.context.logger.error(f"Error submitting transaction: {str(e)}")
+            return None
+
+    def _get_nonce_and_gas_web3(
+        self, address: str, chain: str
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """Get nonce and gas price using Web3."""
+        try:
+            w3 = self._get_web3_instance(chain)
+            if not w3:
+                return None, None
+
+            nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(address))
+            gas_price = w3.eth.gas_price
+
+            return nonce, gas_price
+
+        except Exception as e:
+            self.context.logger.error(f"Error getting nonce/gas: {str(e)}")
+            return None, None
+
+    def _ensure_sufficient_funds_for_x402_payments(self) -> bool:
+        """Ensure agent EOA has at sufficient funds for x402 requests payments"""
+        self.context.logger.info("Checking USDC balance for x402 payments...")
+        try:
+            chain = GNOSIS_CHAIN_NAME
+            eoa_account = self._get_eoa_account()
+            eoa_address = eoa_account.address
+
+            usdc_address = USDC_E_ADDRESS
+            if not usdc_address:
+                self.context.logger.error(f"No USDC address for {chain}")
+                return False
+
+            usdc_balance = self._check_usdc_balance(eoa_address, chain, usdc_address)
+
+            if usdc_balance is None:
+                self.context.logger.warning("Could not check USDC balance, skipping")
+                return True
+
+            threshold = self.params.x402_payment_requirements.get("threshold", 0)
+            top_up = self.params.x402_payment_requirements.get("top_up", 0)
+
+            if usdc_balance >= threshold:
+                self.context.logger.info(
+                    f"USDC balance sufficient: {usdc_balance} USDC (threshold: {threshold})"
+                )
+                return True
+
+            self.context.logger.info(
+                f"USDC balance ({usdc_balance}) < {threshold}, swapping ETH to {top_up} USDC..."
+            )
+
+            top_up_usdc_amount = str(int(top_up * 10**6))
+            quote = self._get_lifi_quote_sync(
+                eoa_address, chain, usdc_address, top_up_usdc_amount
+            )
+            if not quote:
+                self.context.logger.error("Failed to get LiFi quote")
+                return False
+
+            tx_request: Dict = quote.get("transactionRequest")
+            if not tx_request:
+                self.context.logger.error("No transactionRequest in quote")
+                return False
+
+            nonce, gas_price = self._get_nonce_and_gas_web3(eoa_address, chain)
+            if nonce is None or gas_price is None:
+                self.context.logger.error("Failed to get nonce or gas price")
+                return False
+
+            tx_value = (
+                int(tx_request["value"], 16)
+                if isinstance(tx_request["value"], str)
+                else tx_request["value"]
+            )
+            tx_gas = (
+                int(tx_request.get("gasLimit", "0x7a120"), 16)
+                if isinstance(tx_request.get("gasLimit"), str)
+                else self.params.default_gas_limit
+            )
+
+            tx_data = {
+                "to": Web3.to_checksum_address(tx_request["to"]),
+                "data": tx_request["data"],
+                "value": tx_value,
+                "gas": tx_gas,
+                "gasPrice": gas_price,
+                "nonce": nonce,
+                "chainId": GNOSIS_CHAIN_ID,
+            }
+
+            self.context.logger.info(
+                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}"
+            )
+
+            tx_hash = self._sign_and_submit_tx_web3(tx_data, chain, eoa_account)
+
+            if not tx_hash:
+                self.context.logger.error("Failed to submit transaction")
+                return False
+
+            self.context.logger.info(f"ETH to USDC swap submitted: {tx_hash}")
+            return True
+
+        except Exception as e:
+            self.context.logger.error(f"Error in _ensure_usdc_balance: {str(e)}")
+            return False
