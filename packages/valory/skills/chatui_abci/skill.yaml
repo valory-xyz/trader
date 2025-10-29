@@ -12,11 +12,11 @@ fingerprint:
   handlers.py: bafybeihd37lnjqtd4mozvjoddqwpxch7v7ogjbmvzy3tulaco66juzrs5u
   models.py: bafybeicuoeurdfdjxisst3a7wfilkneen5n3tew4mlppevuzlsiuy46hba
   payloads.py: bafybeigz4dhwvlwrvmczowphzu37lutqwrxpb6pvunkxwngmwmabhbaozq
-  prompts.py: bafybeih3fkjwz3u62fkjaixuiv5qb4sbk5ukkqgcck5ealcbevd67urlum
+  prompts.py: bafybeid4c4vkxbrf4bsnrxyentl4oagsu3o3btjnas22klzfzm5cbwmbia
   rounds.py: bafybeigielozsspklfmbcjne63yzqkr25242kmckxqwurkp5dazcy5z4ry
 fingerprint_ignore_patterns: []
 connections:
-- dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
+- dvilela/genai:0.1.0:bafybeif42dgcucrs7sv5ajme6n7hoa44hbglj47zhbodyqmrtimw2hf5mu
 protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 - valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
@@ -61,5 +61,7 @@ models:
   state:
     args: {}
     class_name: SharedState
-dependencies: {}
+dependencies:
+  pydantic:
+    version: ==2.11.9
 is_abstract: true
