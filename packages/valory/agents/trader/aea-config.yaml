@@ -15,7 +15,7 @@ connections:
 - valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
 - valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
 - valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
-- dvilela/genai:0.1.0:bafybeie7obqwifr7ryjrfnaiuj6vra3g5rc47eolsfm32j7kvelwxcyl7u
+- dvilela/genai:0.1.0:bafybeiddpq62pnvm5hkkajgprkxfn556uh3rdmkycb3qjvsev5fpkghkfe
 - valory/x402:0.1.0:bafybeif7fjrjtsqdyzxfn3cx4ffcmsnzaz3yhcnylmgbxp5baiy4qgwqwm
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihqefvhxbdocjphrcz33txmbgembl35qtcc7nusdvymrh4o3sp5um
@@ -65,14 +65,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiflpjfbsgz55elwrmbo35czcx2mmmc3uwo63hyjnn7b2ejqnjmtuy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaf6g4hgaredvdb7i56c5lvtpt4irvhblkvxywpg56txt2wu2fjqa
 - valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
-- valory/decision_maker_abci:0.1.0:bafybeialw63l3du4ynrvuenfjikvk3q4cs4mptaw4j3uxbxbqdsqx7npgm
-- valory/trader_abci:0.1.0:bafybeidlwjickiev4i73gcptp5vucf6zgvkzgry5sy5gwbixpgoal2k3we
+- valory/decision_maker_abci:0.1.0:bafybeiah5256lyu2iqun2qxfudv4gtnfpe53wxshwm2getb6uaem2arw74
+- valory/trader_abci:0.1.0:bafybeieibxgqdppgpt57kqrf7oauh2g7sb37nttvpshoulcz6wwx227q3m
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 - valory/check_stop_trading_abci:0.1.0:bafybeickuzdubsniyblfnjs7dqjww6j7ogxh2tauwx6tnjiuu6roliu7fq
 - valory/mech_interact_abci:0.1.0:bafybeieangry43e7w2yrlacnnxrbbziyhqrz4ji7vgro75sbpr2bxp3wbi
-- valory/chatui_abci:0.1.0:bafybeihgmlbpidpc4mizombjs73tncp5oioxa6ael6xlcszbpf7idd4g2u
+- valory/chatui_abci:0.1.0:bafybeihorbmpissbjt7haky26vgumdnfdcd63mv57ewoespfnls4jd626q
 - valory/agent_performance_summary_abci:0.1.0:bafybeig3vhxozqrvy44ycy3pakn27lqnabjaljl5oh747iio5rb6zih7bm
 - valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 customs:
