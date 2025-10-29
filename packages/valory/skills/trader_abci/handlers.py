@@ -20,6 +20,7 @@
 
 """This module contains the handlers for the 'trader_abci' skill."""
 
+import copy
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -73,6 +74,9 @@ SrrHandler = BaseSrrHandler
 
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
+GNOSIS_CHAIN_NAME = "gnosis"
+XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
+WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
 class HttpHandler(BaseHttpHandler):
@@ -229,10 +233,34 @@ class HttpHandler(BaseHttpHandler):
         except FileNotFoundError:
             self._send_not_found_response(http_msg, http_dialogue)
 
+    def _get_adjusted_funds_status(self) -> FundRequirements:
+        """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it."""
+        funds_status = copy.deepcopy(self.funds_status)
+        try:
+            safe_balances = funds_status[GNOSIS_CHAIN_NAME].accounts[
+                self.synchronized_data.safe_contract_address
+            ]
+
+            xDAI_status = safe_balances.tokens[XDAI_ADDRESS]
+            wxDAI_status = safe_balances.tokens[WRAPPED_XDAI_ADDRESS]
+        except KeyError:
+            self.context.logger.error(
+                "Misconfigured fund requirements data. Can't apply adjustment."
+            )
+            return funds_status
+        if xDAI_status.deficit != 0:
+            xDAI_status.deficit = max(
+                0, int(xDAI_status.deficit) - int(wxDAI_status.balance)
+            )
+
+        return funds_status
+
     def _handle_get_funds_status(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
         self._send_ok_response(
-            http_msg, http_dialogue, self.funds_status.get_response_body()
+            http_msg,
+            http_dialogue,
+            self._get_adjusted_funds_status().get_response_body(),
         )
