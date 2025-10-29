@@ -12,8 +12,8 @@ fingerprint:
   composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeieeyeyq6pwzgqz36uc5awftg32odndv6vj2hawrh4ay4yt5ygmga4
-  handlers.py: bafybeiadmsozpi5eoiyk7sbuiwrep4rpijzym3pw2qgeyb5vuyyfr6f3ji
-  models.py: bafybeiel3eybscub4mbtz26snpkxfittl6z6va5xavogacgg7ihkc2a2lu
+  handlers.py: bafybeigyvi6uofphuhwcvadavoolaydntzipipwrnjeknag3vp5fcq5gau
+  models.py: bafybeicx7qwdiiwdqll3cemmn3v6sjuc6fjpkbt5hypvbx6cgq4j5vssoa
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
@@ -493,5 +493,11 @@ models:
   srr_dialogues:
     args: {}
     class_name: SrrDialogues
-dependencies: {}
+dependencies:
+  eth-account:
+    version: '>=0.8.0, <0.9.0'
+  web3:
+    version: <7,>=6.0.0
+  requests:
+    version: '>=2.28.1, <2.31.2'
 is_abstract: false
