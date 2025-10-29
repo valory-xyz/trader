@@ -34,6 +34,7 @@ python scripts/aea-config-replace.py
 cd agent
 cp $PWD/../ethereum_private_key.txt .
 autonomy add-key ethereum ethereum_private_key.txt
+autonomy add-key ethereum ethereum_private_key.txt --connection
 autonomy issue-certificates
 
 # Run tendermint

@@ -57,6 +57,8 @@ PATH_TO_VAR = {
     "models/params/args/mech_contract_address": "MECH_CONTRACT_ADDRESS",
     "models/params/args/genai_api_key": "GENAI_API_KEY",
     "config/genai_api_key": "GENAI_API_KEY",
+    "config/genai_x402_server_base_url": "GENAI_X402_SERVER_BASE_URL",
+    "config/use_x402": "USE_X402",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
