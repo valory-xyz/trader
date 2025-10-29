@@ -466,6 +466,7 @@ type: connection
 config:
   host: ${str:0.0.0.0}
   port: ${int:8716}
+  timeout: ${float:30.0}
   target_skill_id: valory/trader_abci:0.1.0
 ---
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
