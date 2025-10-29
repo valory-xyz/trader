@@ -61,5 +61,7 @@ models:
   state:
     args: {}
     class_name: SharedState
-dependencies: {}
+dependencies:
+  pydantic:
+    version: ==2.11.9
 is_abstract: true

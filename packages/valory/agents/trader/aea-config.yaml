@@ -15,7 +15,8 @@ connections:
 - valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
 - valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
 - valory/http_server:0.22.0:bafybeic3jpkum7g6qo6x6vdrmvvhj7vqw7ec2op72uc3yfhmnlp5hn3joy
-- dvilela/genai:0.1.0:bafybeigjsmpmlt5tfdrtnfvqblpexyngl7qryusy6ytkebim5flswivbgu
+- dvilela/genai:0.1.0:bafybeidshaucprqemxiesvxgwuv5bpll2vxfn7axjmvk2ulo4g4ptuxyki
+- valory/x402:0.1.0:bafybeib3ihv7rg5elfh7qbx2mq62vd2qhh4dq4lat3nq5dhby3yirhtqoa
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihqefvhxbdocjphrcz33txmbgembl35qtcc7nusdvymrh4o3sp5um
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeiegj5zx4wrahc6gpunxvxgjkzdg4nvdojbqkk5xggv2mt56oecpoa
@@ -471,6 +472,8 @@ public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlco
 type: connection
 config:
   genai_api_key: ${str:""}
+  genai_x402_server_base_url: ${str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
+  use_x402: ${bool:false}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill
