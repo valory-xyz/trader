@@ -20,9 +20,10 @@
 
 """This module contains the handlers for the 'trader_abci' skill."""
 
+import atexit
+import concurrent.futures
 import copy
 import json
-import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -85,7 +86,7 @@ XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
 WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
-SLIPPAGE = "0.005"
+SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 
 
 class HttpHandler(BaseHttpHandler):
@@ -98,6 +99,9 @@ class HttpHandler(BaseHttpHandler):
         super().__init__(**kwargs)
         self.handler_url_regex: str = ""
         self.routes: Dict[tuple, list] = {}
+
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        atexit.register(self._executor_shutdown)
 
     @property
     def staking_synchronized_data(self) -> SynchronizedData:
@@ -127,9 +131,7 @@ class HttpHandler(BaseHttpHandler):
 
         # Only check funds if using X402
         if self.params.use_x402:
-            threading.Thread(
-                target=self._ensure_sufficient_funds_for_x402_payments, daemon=True
-            ).start()
+            self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
 
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
@@ -282,9 +284,7 @@ class HttpHandler(BaseHttpHandler):
         """Handle a fund status request."""
         # Only check funds if using X402
         if self.params.use_x402:
-            threading.Thread(
-                target=self._ensure_sufficient_funds_for_x402_payments, daemon=True
-            ).start()
+            self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
 
         self._send_ok_response(
             http_msg,
@@ -309,6 +309,10 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(f"No RPC URL for {chain}")
                 return None
 
+            # Commented for future bebugging purposes:
+            # Note that you should create only one HTTPProvider with the same provider URL per python process,
+            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
+            # Multiple HTTPProviders with different URLs will work as expected.
             return Web3(Web3.HTTPProvider(rpc_url))
         except Exception as e:
             self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
@@ -340,10 +344,7 @@ class HttpHandler(BaseHttpHandler):
             balance = usdc_contract.functions.balanceOf(
                 Web3.to_checksum_address(eoa_address)
             ).call()
-
-            balance_usdc = balance / 10**6  # USDC.e has 6 decimals
-            return balance_usdc
-
+            return balance
         except Exception as e:
             self.context.logger.error(f"Error checking USDC balance: {str(e)}")
             return None
@@ -363,7 +364,7 @@ class HttpHandler(BaseHttpHandler):
                 "fromAddress": eoa_address,
                 "toAddress": eoa_address,
                 "toAmount": to_amount,
-                "slippage": SLIPPAGE,
+                "slippage": SLIPPAGE_FOR_SWAP,
                 "integrator": "valory",
             }
 
@@ -444,10 +445,10 @@ class HttpHandler(BaseHttpHandler):
                 return True
 
             self.context.logger.info(
-                f"USDC balance ({usdc_balance}) < {threshold}, swapping ETH to {top_up} USDC..."
+                f"USDC balance ({usdc_balance}) < {threshold}, swapping xDAI to {top_up} USDC..."
             )
 
-            top_up_usdc_amount = str(int(top_up * 10**6))
+            top_up_usdc_amount = str(int(top_up))
             quote = self._get_lifi_quote_sync(
                 eoa_address, chain, usdc_address, top_up_usdc_amount
             )
@@ -487,7 +488,7 @@ class HttpHandler(BaseHttpHandler):
             }
 
             self.context.logger.info(
-                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}"
+                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}, to={tx_data['to']}, data={tx_data['data'][:10]}..."
             )
 
             tx_hash = self._sign_and_submit_tx_web3(tx_data, chain, eoa_account)
@@ -496,9 +497,18 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to submit transaction")
                 return False
 
-            self.context.logger.info(f"ETH to USDC swap submitted: {tx_hash}")
+            self.context.logger.info(f"xDAI to USDC swap submitted: {tx_hash}")
             return True
 
         except Exception as e:
             self.context.logger.error(f"Error in _ensure_usdc_balance: {str(e)}")
             return False
+
+    def teardown(self) -> None:
+        """Tear down the handler."""
+        super().teardown()
+        self._executor_shutdown()
+
+    def _executor_shutdown(self) -> None:
+        """Shut down the executor."""
+        self.executor.shutdown(wait=False, cancel_futures=True)
