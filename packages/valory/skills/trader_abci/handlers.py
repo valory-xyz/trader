@@ -528,7 +528,7 @@ class HttpHandler(BaseHttpHandler):
             }
 
             self.context.logger.info(
-                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}, to={tx_data['to']}, data={tx_data['data'][:10]}..."
+                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}, to={tx_data['to']}, data={tx_data['data']}..."
             )
 
             tx_hash = self._sign_and_submit_tx_web3(tx_data, chain, eoa_account)
