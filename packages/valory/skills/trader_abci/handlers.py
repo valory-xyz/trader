@@ -309,7 +309,7 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(f"No RPC URL for {chain}")
                 return None
 
-            # Commented for future bebugging purposes:
+            # Commented for future debugging purposes:
             # Note that you should create only one HTTPProvider with the same provider URL per python process,
             # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
             # Multiple HTTPProviders with different URLs will work as expected.
@@ -528,7 +528,7 @@ class HttpHandler(BaseHttpHandler):
             }
 
             self.context.logger.info(
-                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}, to={tx_data['to']}, data={tx_data['data'][:10]}..."
+                f"Signing and submitting tx: value={tx_data['value']}, gas={tx_data['gas']}, to={tx_data['to']}, data={tx_data['data']}..."
             )
 
             tx_hash = self._sign_and_submit_tx_web3(tx_data, chain, eoa_account)
