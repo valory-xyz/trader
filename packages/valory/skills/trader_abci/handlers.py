@@ -309,6 +309,10 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(f"No RPC URL for {chain}")
                 return None
 
+            # Commented for future bebugging purposes:
+            # Note that you should create only one HTTPProvider with the same provider URL per python process,
+            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
+            # Multiple HTTPProviders with different URLs will work as expected.
             return Web3(Web3.HTTPProvider(rpc_url))
         except Exception as e:
             self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
