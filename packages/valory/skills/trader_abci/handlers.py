@@ -340,10 +340,7 @@ class HttpHandler(BaseHttpHandler):
             balance = usdc_contract.functions.balanceOf(
                 Web3.to_checksum_address(eoa_address)
             ).call()
-
-            balance_usdc = balance / 10**6  # USDC.e has 6 decimals
-            return balance_usdc
-
+            return balance
         except Exception as e:
             self.context.logger.error(f"Error checking USDC balance: {str(e)}")
             return None
@@ -444,10 +441,10 @@ class HttpHandler(BaseHttpHandler):
                 return True
 
             self.context.logger.info(
-                f"USDC balance ({usdc_balance}) < {threshold}, swapping ETH to {top_up} USDC..."
+                f"USDC balance ({usdc_balance}) < {threshold}, swapping xDAI to {top_up} USDC..."
             )
 
-            top_up_usdc_amount = str(int(top_up * 10**6))
+            top_up_usdc_amount = str(int(top_up))
             quote = self._get_lifi_quote_sync(
                 eoa_address, chain, usdc_address, top_up_usdc_amount
             )
@@ -496,7 +493,7 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to submit transaction")
                 return False
 
-            self.context.logger.info(f"ETH to USDC swap submitted: {tx_hash}")
+            self.context.logger.info(f"xDAI to USDC swap submitted: {tx_hash}")
             return True
 
         except Exception as e:
