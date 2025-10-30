@@ -398,6 +398,35 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error submitting transaction: {str(e)}")
             return None
 
+    def _check_transaction_status(
+        self, tx_hash: str, chain: str, timeout: int = 60
+    ) -> bool:
+        """Check if transaction was successful by waiting for receipt."""
+        try:
+            w3 = self._get_web3_instance(chain)
+            if not w3:
+                return False
+
+            self.context.logger.info(
+                f"Waiting for transaction {tx_hash} to be mined..."
+            )
+
+            # Wait for transaction receipt with timeout
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
+
+            if receipt.status == 1:
+                self.context.logger.info(f"Transaction {tx_hash} successful")
+                return True
+            else:
+                self.context.logger.error(
+                    f"Transaction {tx_hash} failed (status: {receipt.status})"
+                )
+                return False
+
+        except Exception as e:
+            self.context.logger.error(f"Error checking transaction status: {str(e)}")
+            return False
+
     def _get_nonce_and_gas_web3(
         self, address: str, chain: str
     ) -> Tuple[Optional[int], Optional[int]]:
@@ -538,6 +567,17 @@ class HttpHandler(BaseHttpHandler):
                 return False
 
             self.context.logger.info(f"xDAI to USDC swap submitted: {tx_hash}")
+
+            # Check transaction status to ensure it was successful
+            tx_successful = self._check_transaction_status(tx_hash, chain)
+
+            if not tx_successful:
+                self.context.logger.error(f"Transaction {tx_hash} failed or timed out")
+                return False
+
+            self.context.logger.info(
+                f"xDAI to USDC swap completed successfully: {tx_hash}"
+            )
             return True
 
         except Exception as e:
