@@ -267,7 +267,7 @@ models:
       use_multi_bets_mode: ${bool:true}
       coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       genai_api_key: ${str:""}
-      x402_payment_requirements: ${dict:{"threshold":20000,"top_up":25000}}
+      x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${bool:false}
@@ -485,7 +485,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":125000000000000000,"threshold":70000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
+      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":350000000000000000,"threshold":70000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
       rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
       setup:
         safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
