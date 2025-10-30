@@ -518,7 +518,7 @@ class HttpHandler(BaseHttpHandler):
                 f"USDC balance ({usdc_balance}) < {threshold}, swapping xDAI to {top_up} USDC..."
             )
 
-            top_up_usdc_amount = str(int(top_up))
+            top_up_usdc_amount = str(top_up)
             quote = self._get_lifi_quote_sync(
                 eoa_address, chain, usdc_address, top_up_usdc_amount
             )
