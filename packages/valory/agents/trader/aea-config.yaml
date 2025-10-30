@@ -270,7 +270,6 @@ models:
       x402_payment_requirements: ${dict:{"threshold":20000,"top_up":25000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
-      default_gas_limit: ${int:500000}
       use_x402: ${bool:false}
   benchmarking_mode:
     args:
