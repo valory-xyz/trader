@@ -85,7 +85,7 @@ XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
 WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
-SLIPPAGE = "0.005"
+SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 
 
 class HttpHandler(BaseHttpHandler):
@@ -360,7 +360,7 @@ class HttpHandler(BaseHttpHandler):
                 "fromAddress": eoa_address,
                 "toAddress": eoa_address,
                 "toAmount": to_amount,
-                "slippage": SLIPPAGE,
+                "slippage": SLIPPAGE_FOR_SWAP,
                 "integrator": "valory",
             }
 
