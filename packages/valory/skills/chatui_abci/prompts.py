@@ -24,7 +24,8 @@
 import enum
 import pickle  # nosec
 import typing
-from dataclasses import dataclass
+
+from pydantic import BaseModel
 
 
 CHATUI_PROMPT = """
@@ -63,8 +64,7 @@ class FieldsThatCanBeRemoved(enum.Enum):
     MECH_TOOL = "mech_tool"
 
 
-@dataclass(frozen=True)
-class UpdatedAgentConfig:
+class UpdatedAgentConfig(BaseModel):
     """UpdatedAgentConfig"""
 
     trading_strategy: typing.Optional[TradingStrategy]
@@ -73,8 +73,7 @@ class UpdatedAgentConfig:
     behavior: typing.Optional[str]
 
 
-@dataclass(frozen=True)
-class ChatUILLMResponse:
+class ChatUILLMResponse(BaseModel):
     """ChatUILLMResponse"""
 
     updated_agent_config: typing.Optional[UpdatedAgentConfig]
