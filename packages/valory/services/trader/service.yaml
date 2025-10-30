@@ -147,6 +147,10 @@ type: skill
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":0.2,"top_up":0.25}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -411,6 +415,10 @@ type: skill
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":0.2,"top_up":0.25}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -535,6 +543,10 @@ type: skill
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":0.2,"top_up":0.25}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -660,6 +672,10 @@ type: skill
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         genai_api_key: ${GENAI_API_KEY:str:""}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":0.2,"top_up":0.25}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -746,7 +762,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":125000000000000000,"threshold":70000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
       rpc_urls:
         gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       setup:
