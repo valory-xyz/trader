@@ -101,6 +101,7 @@ fix-abci-app-specs:
 	autonomy analyse fsm-specs --update --app-class DecisionMakerAbciApp --package packages/valory/skills/decision_maker_abci
 	autonomy analyse fsm-specs --update --app-class TraderAbciApp --package packages/valory/skills/trader_abci
 	autonomy analyse fsm-specs --update --app-class TxSettlementMultiplexerAbciApp --package packages/valory/skills/tx_settlement_multiplexer_abci
+	autonomy analyse fsm-specs --update --app-class AgentPerformanceSummaryAbciApp --package packages/valory/skills/agent_performance_summary_abci
 	echo "Successfully validated abcis!"
 
 protolint_install:
@@ -213,3 +214,29 @@ endif
 .PHONY: check-agent-runner
 check-agent-runner:
 	python check_agent_runner.py
+
+.PHONY: ci-linter-checks
+ci-linter-checks:
+	gitleaks detect --report-format json --report-path leak_report
+	tomte check-copyright --author valory --exclude-part abci --exclude-part http_client --exclude-part ipfs --exclude-part ledger --exclude-part p2p_libp2p_client --exclude-part gnosis_safe --exclude-part gnosis_safe_proxy_factory --exclude-part multisend --exclude-part service_registry --exclude-part protocols --exclude-part abstract_abci --exclude-part abstract_round_abci --exclude-part registration_abci --exclude-part reset_pause_abci --exclude-part termination_abci --exclude-part transaction_settlement_abci --exclude-part websocket_client --exclude-part contract_subscription --exclude-part mech --exclude-part mech_interact_abci  --exclude-part http_server --exclude-part mech_marketplace --exclude-part erc20
+	tox -e liccheck
+	tox -e check-dependencies
+	tomte check-doc-links
+	tox -e check-doc-hashes
+	tomte check-security
+	tox -e check-packages
+	tox -e check-hash
+	tomte check-code
+	tomte check-spelling
+	tox -e check-abci-docstrings
+	tox -e check-abciapp-specs
+	tox -e check-handlers
+
+.PHONY: run-agent
+run-agent:
+	mkdir -p ./logs && \
+	bash -c 'TIMESTAMP=$$(date +%d-%m-%y_%H-%M); \
+	LOG_FILE="./logs/agent_log_$$TIMESTAMP.log"; \
+	LATEST_LOG_FILE="./logs/agent_log_latest.log"; \
+	echo "Running agent and logging to $$LOG_FILE"; \
+	bash run_agent.sh 2>&1 | tee $$LOG_FILE $$LATEST_LOG_FILE'

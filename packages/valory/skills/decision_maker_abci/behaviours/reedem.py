@@ -190,7 +190,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         super().__init__(**kwargs)
         self._claim_params_batch: list = []
         self._latest_block_number: Optional[int] = None
-        self._finalized: bool = False
         self._already_resolved: bool = False
         self._payouts: Dict[str, int] = {}
         self._built_data: Optional[HexBytes] = None
@@ -282,16 +281,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def payouts_batch(self, payouts: Dict[str, int]) -> None:
         """Set the trades' transaction hashes mapped to payouts for the current market."""
         self._payouts = payouts
-
-    @property
-    def finalized(self) -> bool:
-        """Get whether the current market has been finalized."""
-        return self._finalized
-
-    @finalized.setter
-    def finalized(self, flag: bool) -> None:
-        """Set whether the current market has been finalized."""
-        self._finalized = flag
 
     @property
     def history_hash(self) -> bytes:
@@ -575,16 +564,6 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         )
         return status
 
-    def _check_finalized(self) -> WaitableConditionType:
-        """Check whether the question has been finalized."""
-        result = yield from self._realitio_interact(
-            contract_callable="check_finalized",
-            data_key="finalized",
-            placeholder=get_name(RedeemBehaviour.finalized),
-            question_id=self.current_question_id,
-        )
-        return result
-
     def _get_history_hash(self) -> WaitableConditionType:
         """Get the history hash for the current question id."""
         result = yield from self._realitio_interact(
@@ -791,23 +770,16 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         """Process a redeeming candidate and return whether winnings were found."""
         self._current_redeem_info = redeem_candidate
 
-        msg = f"Processing position with condition id {self.current_condition_id!r}..."
-        self.context.logger.info(msg)
-
-        # double check whether the market is finalized
-        yield from self.wait_for_condition_with_sleep(self._check_finalized)
-        if not self.finalized:
-            self.context.logger.warning(
-                f"Conflict found! The current market, with condition id {self.current_condition_id!r}, "
-                f"is reported as not finalized by the realitio contract. "
-                f"However, an answer was finalized on {redeem_candidate.fpmm.answerFinalizedTimestamp}, "
-                f"and the last service transition occurred on {self.synced_timestamp}."
-            )
-            return False
+        self.context.logger.debug(
+            f"Processing position with condition id {self.current_condition_id!r}..."
+        )
 
         # in case that the claimable amount is dust
         if self.is_dust:
-            self.context.logger.info("Position's redeeming amount is dust.")
+            self.context.logger.info(
+                f"The redeeming amount for the position with condition id {self.current_condition_id!r} is dust."
+                "Skipping..."
+            )
             return False
 
         if self.params.use_subgraph_for_redeeming:
@@ -850,7 +822,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         :returns: the safe's transaction hash for the redeeming operation.
         """
         if len(self.trades) > 0:
-            self.context.logger.info("Preparing a multisend tx to redeem payout...")
+            self.context.logger.info(
+                "Checking if there is payout available to redeem..."
+            )
 
         winnings_found = 0
 
@@ -858,7 +832,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             is_claimable = yield from self._process_candidate(redeem_candidate)
             if not is_claimable:
                 msg = "Not redeeming position. Moving to the next one..."
-                self.context.logger.info(msg)
+                self.context.logger.debug(msg)
                 continue
 
             if self.params.redeeming_batch_size > 1:

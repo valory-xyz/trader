@@ -9,13 +9,14 @@ fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
   behaviours.py: bafybeighp5mtabou2vvrgaduqoe477f7ohdgneqbwspoxpgpgp6ajkjgn4
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
+  fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
   graph_tooling/queries.py: bafybeieopwu53mqp5drryyairk2k45otc2x4ilblsklm5ylr3ugto2rake
-  graph_tooling/requests.py: bafybeidny3wsbzt25gl6gb76ho3xzuiyt7wnzkhd6dajxf2ajagrrqtbie
+  graph_tooling/requests.py: bafybeidfs6bv6ksfimsx7pwhmzohowzwjiwkf6d7vrbiqtt65iamvpepjy
   handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
   models.py: bafybeicz7nxrbee7yxc4xvkedscapbuh3b5v23kklsezd54dcimxi73byu
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
-  rounds.py: bafybeifurv73ocy77vqfahv2xao7oiaejvhrcsm3kufyls2pthyhqil5pe
+  rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
 contracts: []
 skills:

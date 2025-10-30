@@ -76,7 +76,7 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
             - done: 1.
             - none: 0.
             - fail: 1.
-            - round timeout: 0.
+            - round timeout: 1.
             - no majority: 0.
         1. FinishedFetchPerformanceDataRound
 
@@ -92,7 +92,7 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
             Event.DONE: FinishedFetchPerformanceDataRound,
             Event.NONE: FetchPerformanceDataRound,
             Event.FAIL: FinishedFetchPerformanceDataRound,
-            Event.ROUND_TIMEOUT: FetchPerformanceDataRound,
+            Event.ROUND_TIMEOUT: FinishedFetchPerformanceDataRound,
             Event.NO_MAJORITY: FetchPerformanceDataRound,
         },
         FinishedFetchPerformanceDataRound: {},
