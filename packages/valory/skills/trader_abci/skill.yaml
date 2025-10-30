@@ -12,8 +12,8 @@ fingerprint:
   composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeieeyeyq6pwzgqz36uc5awftg32odndv6vj2hawrh4ay4yt5ygmga4
-  handlers.py: bafybeiadmsozpi5eoiyk7sbuiwrep4rpijzym3pw2qgeyb5vuyyfr6f3ji
-  models.py: bafybeiel3eybscub4mbtz26snpkxfittl6z6va5xavogacgg7ihkc2a2lu
+  handlers.py: bafybeibdjidkt46vim6d76gutzblhrsu7v3lhpkuhszpphte2tspgont2e
+  models.py: bafybeibfbub6y66toll2rjgk6r7cbh6v4pxlu6nncp6kekvwnywsy4girq
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
@@ -40,12 +40,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/market_manager_abci:0.1.0:bafybeifhlv744xptwl56epv5ghzd264nwmjew7kp2kwbsr6mphgqynmdhm
-- valory/decision_maker_abci:0.1.0:bafybeibcgiex2ahyujgwrnawcvumoguxeqa34hyhkamt4bx7fpbocyjpli
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidiivy3zjxpctd25tfkscne4pftm5rloex4w24s6poks37i6r6hbm
+- valory/decision_maker_abci:0.1.0:bafybeidrr7ycsbqgxb4trsmruqdnins3egsh5y6l3avzevh3nr7bfmp75q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidcfxgmanrwuwxxafgjzwgq66r2o5bnlsshqug6zhwbysnflyesmq
 - valory/staking_abci:0.1.0:bafybeidiguiczk2ebazdzqv5ybmiutvaiytzvbxpmivthbaakqnxagr5qi
 - valory/check_stop_trading_abci:0.1.0:bafybeie7vystvzjlx5nyekubtdiigzgbcwljmlfslns3fnxiuufxc5twoa
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeia5xf3y6tdg5eit3ip33jngnehwtllvybf7ism6zp6myttrnyd7qi
+- valory/chatui_abci:0.1.0:bafybeiczf65dr3rkfu7iki2jp2zaabpcboseqzrjhq55wiai5ucqyqyasi
 - valory/agent_performance_summary_abci:0.1.0:bafybeihxrju2lu7ot3w27cabekmzyxmhkg7spd6oaedrtutlwjg6nfj6u4
 - valory/funds_manager:0.1.0:bafybeibmp2fhlsfqvxm7u3sgpjyeirhdrvbp6zjspxjbyucfpdrnyq5qai
 behaviours:
@@ -492,5 +492,11 @@ models:
   srr_dialogues:
     args: {}
     class_name: SrrDialogues
-dependencies: {}
+dependencies:
+  eth-account:
+    version: '>=0.8.0, <0.9.0'
+  web3:
+    version: <7,>=6.0.0
+  requests:
+    version: '>=2.28.1, <2.31.2'
 is_abstract: false
