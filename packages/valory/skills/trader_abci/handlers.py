@@ -20,9 +20,10 @@
 
 """This module contains the handlers for the 'trader_abci' skill."""
 
+import atexit
+import concurrent.futures
 import copy
 import json
-import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -99,6 +100,9 @@ class HttpHandler(BaseHttpHandler):
         self.handler_url_regex: str = ""
         self.routes: Dict[tuple, list] = {}
 
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        atexit.register(self._executor_shutdown)
+
     @property
     def staking_synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
@@ -127,9 +131,7 @@ class HttpHandler(BaseHttpHandler):
 
         # Only check funds if using X402
         if self.params.use_x402:
-            threading.Thread(
-                target=self._ensure_sufficient_funds_for_x402_payments, daemon=True
-            ).start()
+            self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
 
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
@@ -282,9 +284,7 @@ class HttpHandler(BaseHttpHandler):
         """Handle a fund status request."""
         # Only check funds if using X402
         if self.params.use_x402:
-            threading.Thread(
-                target=self._ensure_sufficient_funds_for_x402_payments, daemon=True
-            ).start()
+            self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
 
         self._send_ok_response(
             http_msg,
@@ -499,3 +499,12 @@ class HttpHandler(BaseHttpHandler):
         except Exception as e:
             self.context.logger.error(f"Error in _ensure_usdc_balance: {str(e)}")
             return False
+
+    def teardown(self) -> None:
+        """Tear down the handler."""
+        super().teardown()
+        self._executor_shutdown()
+
+    def _executor_shutdown(self) -> None:
+        """Shut down the executor."""
+        self.executor.shutdown(wait=False, cancel_futures=True)
