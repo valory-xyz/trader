@@ -416,6 +416,47 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error getting nonce/gas: {str(e)}")
             return None, None
 
+    def _estimate_gas(
+        self,
+        tx_request: Dict,
+        eoa_address: str,
+        chain: str,
+    ) -> Optional[int]:
+        """Estimate gas for a transaction"""
+        try:
+            w3 = self._get_web3_instance(chain)
+            if not w3:
+                self.context.logger.error(
+                    "Failed to get Web3 instance for gas estimation"
+                )
+                return False
+
+            tx_value = (
+                int(tx_request["value"], 16)
+                if isinstance(tx_request["value"], str)
+                else tx_request["value"]
+            )
+
+            # Prepare transaction data for gas estimation
+            tx_data_for_estimation = {
+                "to": Web3.to_checksum_address(tx_request["to"]),
+                "data": tx_request["data"],
+                "value": tx_value,
+                "from": Web3.to_checksum_address(eoa_address),
+            }
+            # Try to estimate gas using Web3
+            estimated_gas = w3.eth.estimate_gas(tx_data_for_estimation)
+            # Add 20% buffer to estimated gas
+            tx_gas = int(estimated_gas * 1.2)
+            self.context.logger.info(
+                f"Estimated gas: {estimated_gas}, with 20% buffer: {tx_gas}"
+            )
+            return tx_gas
+
+        except Exception as e:
+            self.context.logger.error(f"Error in gas estimation: {str(e)}")
+            return None
+
     def _ensure_sufficient_funds_for_x402_payments(self) -> bool:
         """Ensure agent EOA has at sufficient funds for x402 requests payments"""
         self.context.logger.info("Checking USDC balance for x402 payments...")
@@ -471,11 +512,10 @@ class HttpHandler(BaseHttpHandler):
                 if isinstance(tx_request["value"], str)
                 else tx_request["value"]
             )
-            tx_gas = (
-                int(tx_request.get("gasLimit", "0x7a120"), 16)
-                if isinstance(tx_request.get("gasLimit"), str)
-                else self.params.default_gas_limit
-            )
+            tx_gas = self._estimate_gas(tx_request, eoa_address, chain)
+            if tx_gas is None:
+                self.context.logger.error("Failed to estimate gas for transaction")
+                return False
 
             tx_data = {
                 "to": Web3.to_checksum_address(tx_request["to"]),

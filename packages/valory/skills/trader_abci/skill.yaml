@@ -268,7 +268,6 @@ models:
       x402_payment_requirements: {}
       gnosis_ledger_rpc: https://rpc.gnosischain.com/
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
-      default_gas_limit: 500000
       use_x402: false
     class_name: TraderParams
   benchmarking_mode:
