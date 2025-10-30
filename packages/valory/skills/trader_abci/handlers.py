@@ -309,7 +309,7 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(f"No RPC URL for {chain}")
                 return None
 
-            # Commented for future bebugging purposes:
+            # Commented for future debugging purposes:
             # Note that you should create only one HTTPProvider with the same provider URL per python process,
             # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
             # Multiple HTTPProviders with different URLs will work as expected.
