@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -117,7 +117,7 @@ def dump_git_cache() -> None:
 
 def make_git_request(url: str) -> requests.Response:
     """Make git request"""
-    auth = os.getenv("GITHUB_AUTH")
+    auth = os.getenv("GITHUB_AUTH")  # pylint: disable=E1101
     if auth is None:
         return requests.get(url=url)
     return requests.get(url=url, headers={"Authorization": f"Bearer {auth}"})

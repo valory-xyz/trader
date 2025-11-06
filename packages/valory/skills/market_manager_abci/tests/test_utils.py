@@ -28,6 +28,10 @@ from packages.valory.skills.market_manager_abci.bets import (
     QueueStatus,
     serialize_bets,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    get_condition_id_to_balances,
+    get_position_lifetime_value,
+)
 
 
 @pytest.mark.parametrize(
@@ -65,3 +69,97 @@ from packages.valory.skills.market_manager_abci.bets import (
 def test_serialize_bets(bets: List[Bet], expected: str) -> None:
     """Test the serialize_bets function."""
     assert serialize_bets(bets) == expected
+
+
+def test_get_position_lifetime_value_claimed() -> None:
+    """Test the get_position_lifetime_value function."""
+
+    condition_id = "0x1"
+    user_positions = [
+        {
+            "position": {
+                "conditionIds": [condition_id],
+                "lifetimeValue": "36587407016997229890",
+                "conditions": [
+                    {
+                        "id": condition_id,
+                        "outcomes": ["Yes", "No"],
+                    }
+                ],
+            },
+            "totalBalance": "0",
+        }
+    ]
+
+    assert get_position_lifetime_value(user_positions, condition_id) == 0
+
+
+def test_get_position_lifetime_value_unclaimed() -> None:
+    """Test the get_position_lifetime_value function."""
+
+    condition_id = "0x1"
+    user_positions = [
+        {
+            "position": {
+                "conditionIds": [condition_id],
+                "lifetimeValue": "25556977789032118615",
+                "conditions": [
+                    {
+                        "id": condition_id,
+                        "outcomes": ["Yes", "No"],
+                    }
+                ],
+            },
+            "totalBalance": "2238183507853351332",
+        }
+    ]
+    assert (
+        get_position_lifetime_value(user_positions, condition_id) == 2238183507853351332
+    )
+
+
+def test_get_condition_id_to_balances() -> None:
+    """Test the get_condition_id_to_balances function."""
+
+    condition_id = "0x1"
+    trades = [
+        {
+            "outcomeIndex": 0,
+            "fpmm": {
+                "id": "0x1",
+                "currentAnswer": "0x0",
+                "answerFinalizedTimestamp": "1754092800",
+                "isPendingArbitration": False,
+                "condition": {
+                    "id": condition_id,
+                },
+                "openingTimestamp": "1754092800",
+            },
+        }
+    ]
+    user_positions = [
+        {
+            "position": {
+                "indexSets": ["0"],
+                "conditionIds": [condition_id],
+                "lifetimeValue": "2238183507853351332",
+                "balance": "2238183507853351332",
+                "conditions": [
+                    {
+                        "id": condition_id,
+                        "outcomes": ["Yes", "No"],
+                    }
+                ],
+            },
+            "balance": "2238183507853351332",
+            "totalBalance": "2238183507853351332",
+        }
+    ]
+
+    condition_to_payout, condition_to_balance = get_condition_id_to_balances(
+        trades, user_positions
+    )
+
+    # needs to be presented in both
+    assert condition_to_payout[condition_id] == 2238183507853351332
+    assert condition_to_balance[condition_id] == 2238183507853351332
