@@ -188,7 +188,7 @@ build-agent-runner-mac: poetry-install  agent
 	tar czf ./agent.tar.gz ./agent
 
 ./agent/ethereum_private_key.txt: ./agent
-	poetry run bash -c "cd ./agent; autonomy  -s generate-key ethereum; autonomy  -s add-key ethereum ethereum_private_key.txt; autonomy -s issue-certificates;"
+	poetry run bash -c "cd ./agent; autonomy  -s generate-key ethereum; autonomy -s add-key ethereum ethereum_private_key.txt; autonomy -s add-key ethereum ethereum_private_key.txt --connection; autonomy -s issue-certificates;"
 
 
 # Configuration
