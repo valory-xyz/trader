@@ -19,9 +19,10 @@
 
 """This module contains the rounds for the check stop trading ABCI application."""
 
+import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Type
+from typing import Dict, List, Set, Type
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -34,6 +35,19 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
+
+
+class SynchronizedData(BaseSynchronizedData):
+    """Class to represent the synchronized data.
+
+    This data is replicated by the tendermint application.
+    """
+
+    @property
+    def available_mech_tools(self) -> List[str]:
+        """Get all the available mech tools."""
+        tools = self.db.get_strict("available_mech_tools")
+        return json.loads(tools)
 
 
 class Event(Enum):
@@ -49,12 +63,12 @@ class ChatuiLoadRound(VotingRound):
     """A round for loading ChatUI config."""
 
     payload_class = ChatuiPayload
-    synchronized_data_class = BaseSynchronizedData
+    synchronized_data_class = SynchronizedData
     done_event = Event.DONE
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    collection_key = get_name(BaseSynchronizedData.participant_to_votes)
+    collection_key = get_name(SynchronizedData.participant_to_votes)
 
 
 class FinishedChatuiLoadRound(DegenerateRound, ABC):

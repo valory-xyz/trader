@@ -9,10 +9,10 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiae4j35uqsubdy7pjzfhlcewcb3mfhhyny7h46wf4bquf27or4iu4
-  composition.py: bafybeidymszdxhsfg3ehb5waq2x5vjtf2vxf3to6gdcugrei6jdtcrhrwi
+  composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeid754bv2d2nr7ji33ydgxbld5baakurthy7antb5piqjevih36x3a
-  handlers.py: bafybeibw6arrdygdcpmbydu3biybejfnpgn72wuhxwhhqxzkki2scg7beq
+  fsm_specification.yaml: bafybeigjdfo62wldq4rjujmrbf3aspq6edsmitmrdj2d7qkovc42bipmvu
+  handlers.py: bafybeidfurkmrxke4jhasyqzfzbvbjnx7ayi7hm5xlqimhmijkbrpaf6v4
   models.py: bafybeiel3eybscub4mbtz26snpkxfittl6z6va5xavogacgg7ihkc2a2lu
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
@@ -470,7 +470,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/<api_key>/subgraphs/id/F3iqL2iw5UTrP1qbb4S694pGEkBwzoxXp1TRikB2K4e
+      url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
   requests:
     args: {}
