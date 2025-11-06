@@ -118,7 +118,7 @@ dependencies:
   open-aea-ledger-ethereum:
     version: ==2.0.6
   open-aea-test-autonomy:
-    version: ==0.21.2
+    version: ==0.21.3
   typing_extensions:
     version: ==4.13.2
 skill_exception_policy: stop_and_exit
