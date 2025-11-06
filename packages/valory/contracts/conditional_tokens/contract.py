@@ -33,7 +33,7 @@ from hexbytes import HexBytes
 from web3._utils.events import get_event_data
 from web3.contract import Contract as W3Contract
 from web3.eth import Eth
-from web3.types import BlockIdentifier, FilterParams, _Hash32, LogReceipt, TContractEvent
+from web3.types import BlockIdentifier, FilterParams, TContractEvent, _Hash32, LogReceipt
 
 FIVE_MINUTES = 300.0
 DEFAULT_OUTCOME_SLOT = 2
