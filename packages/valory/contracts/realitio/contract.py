@@ -35,7 +35,7 @@ from web3._utils.events import get_event_data
 from web3.eth import Eth
 from web3.contract import Contract as W3Contract
 from web3.exceptions import ContractLogicError
-from web3.types import BlockIdentifier, FilterParams, _Hash32, LogReceipt, EventData, TContractEvent
+from web3.types import BlockIdentifier, FilterParams, TContractEvent, _Hash32, LogReceipt, EventData
 
 ClaimParamsType = Tuple[
     List[bytes], List[ChecksumAddress], List[int], List[bytes]
