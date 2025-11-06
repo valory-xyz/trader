@@ -172,7 +172,7 @@ transition_func:
     (FetchPerformanceDataRound, FAIL): ChatuiLoadRound
     (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
     (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
-    (FetchPerformanceDataRound, ROUND_TIMEOUT): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, ROUND_TIMEOUT): ChatuiLoadRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound
@@ -223,7 +223,7 @@ transition_func:
     (RegistrationRound, DONE): FetchPerformanceDataRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
     (RegistrationStartupRound, DONE): FetchPerformanceDataRound
-    (ResetAndPauseRound, DONE): CheckBenchmarkingModeRound
+    (ResetAndPauseRound, DONE): FetchPerformanceDataRound
     (ResetAndPauseRound, NO_MAJORITY): ResetAndPauseRound
     (ResetAndPauseRound, RESET_AND_PAUSE_TIMEOUT): ResetAndPauseRound
     (ResetRound, DONE): RandomnessTransactionSubmissionRound

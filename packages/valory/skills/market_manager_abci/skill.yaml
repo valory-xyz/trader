@@ -14,13 +14,13 @@ fingerprint:
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
-  graph_tooling/queries/conditional_tokens.py: bafybeih4z4e7h7qyphhcookay36ehhkepf755hdnzxucyawufflfufzlu4
+  graph_tooling/queries/conditional_tokens.py: bafybeigs776l4uuty5nma67upiuc6eytrddk43xobl3elz55bep7kzrh54
   graph_tooling/queries/network.py: bafybeigeq72ys2nrjqspj2uacaudrgljrne5a3o5jvzsktldxdq6m2xmeu
   graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeibjyb6av33aswnptttekj6t7k7xysgphh2bigoorcgkc54y2j3xkm
-  graph_tooling/utils.py: bafybeid5ldx5vckcs2mmqem3kaxdsxbmzglo4dqxgrccbgmd26kwom4z7i
+  graph_tooling/requests.py: bafybeidrcbfoa7cjxywgigl2ltinurzlmn6ywnwv654m3t3k3xgzekyt6m
+  graph_tooling/utils.py: bafybeibnl7dax6gmpaf7ksw7qwlbjzdbch2o2gpxmju3fbyirq5dhwbzm4
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
   models.py: bafybeibipxtzxa2ta2ezsqead7qs2fsaxkyrrwcgsthjpkw5nroctsqytu
   payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
@@ -30,14 +30,14 @@ fingerprint:
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeidahkavof43y3o4omnihh6yxdx7gqofio7kzukdydymxbebylempu
-  tests/test_utils.py: bafybeiczmk3qpyuevwoitbj6sysmp7ylqevfupnqybpexogebojh3xo5kq
+  tests/test_utils.py: bafybeia77p5nsp6txhvcdh4kyzjjujbwd2gnoi7fnpwxheeezeqebbufqq
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiey45kkbniukmtpdjduwazpyygaiayeo7mh3tu6wfbau2bxvuljmy
+- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
 behaviours:
   main:
     args: {}
