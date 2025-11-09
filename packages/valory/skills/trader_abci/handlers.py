@@ -21,7 +21,6 @@
 """This module contains the handlers for the 'trader_abci' skill."""
 
 import json
-from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
@@ -40,6 +39,13 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.chatui_abci.handlers import (
+    DEFAULT_HEADER,
+    HTTP_CONTENT_TYPE_MAP,
+)
+from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
+from packages.valory.skills.chatui_abci.models import TradingStrategyUI
+from packages.valory.skills.chatui_abci.prompts import TradingStrategy
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
@@ -47,6 +53,8 @@ from packages.valory.skills.decision_maker_abci.handlers import HttpMethod
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
+from packages.valory.skills.funds_manager.behaviours import GET_FUNDS_STATUS_METHOD_NAME
+from packages.valory.skills.funds_manager.models import FundRequirements
 from packages.valory.skills.mech_interact_abci.handlers import (
     AcnHandler as BaseAcnHandler,
 )
@@ -62,21 +70,10 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
 AcnHandler = BaseAcnHandler
+SrrHandler = BaseSrrHandler
 
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
-
-# Content type constants
-DEFAULT_HEADER = HTML_HEADER = "Content-Type: text/html\n"
-CONTENT_TYPES = {
-    ".js": "Content-Type: application/javascript\n",
-    ".html": HTML_HEADER,
-    ".json": "Content-Type: application/json\n",
-    ".css": "Content-Type: text/css\n",
-    ".png": "Content-Type: image/png\n",
-    ".jpg": "Content-Type: image/jpeg\n",
-    ".jpeg": "Content-Type: image/jpeg\n",
-}
 
 
 class HttpHandler(BaseHttpHandler):
@@ -107,6 +104,11 @@ class HttpHandler(BaseHttpHandler):
         """Get the agent ids."""
         return json.loads(self.staking_synchronized_data.agent_ids)
 
+    @property
+    def funds_status(self) -> FundRequirements:
+        """Get the fund status."""
+        return self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
@@ -125,6 +127,9 @@ class HttpHandler(BaseHttpHandler):
         self.handler_url_regex = rf"{hostname_regex}\/.*"
 
         agent_info_url_regex = rf"{hostname_regex}\/agent-info"
+
+        funds_status_regex = rf"{hostname_regex}\/funds-status"
+
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
@@ -135,7 +140,11 @@ class HttpHandler(BaseHttpHandler):
                 *(self.routes[(HttpMethod.GET.value, HttpMethod.HEAD.value)] or []),
                 (agent_info_url_regex, self._handle_get_agent_info),
                 (
-                    static_files_regex,
+                    funds_status_regex,
+                    self._handle_get_funds_status,
+                ),
+                (
+                    static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
                 ),
             ],
@@ -145,38 +154,22 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_content_type(self, file_path: Path) -> str:
         """Get the appropriate content type header based on file extension."""
-        return CONTENT_TYPES.get(file_path.suffix.lower(), DEFAULT_HEADER)
+        return HTTP_CONTENT_TYPE_MAP.get(file_path.suffix.lower(), DEFAULT_HEADER)
 
-    def _send_ok_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Send an OK response with the provided data"""
-        headers = content_type or (
-            CONTENT_TYPES[".json"] if isinstance(data, (dict, list)) else DEFAULT_HEADER
-        )
-        headers += http_msg.headers
+    def _get_ui_trading_strategy(
+        self, selected_value: Optional[str]
+    ) -> TradingStrategyUI:
+        """Get the UI trading strategy."""
+        if selected_value is None:
+            return TradingStrategyUI.BALANCED
 
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.OK.value,
-            status_text="Success",
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
+        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
+            return TradingStrategyUI.BALANCED
+        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
+            return TradingStrategyUI.RISKY
+        else:
+            # mike strat
+            return TradingStrategyUI.RISKY
 
     def _handle_get_agent_info(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -187,6 +180,11 @@ class HttpHandler(BaseHttpHandler):
             "safe_address": self.synchronized_data.safe_contract_address,
             "agent_ids": self.agent_ids,
             "service_id": self.params.on_chain_service_id,
+            "trading_type": (
+                self._get_ui_trading_strategy(
+                    self.shared_state.chatui_config.trading_strategy
+                )
+            ).value,  # note the value call to not return the enum object
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_response(http_msg, http_dialogue, data)
@@ -235,4 +233,12 @@ class HttpHandler(BaseHttpHandler):
                 # Send the HTML response
                 self._send_ok_response(http_msg, http_dialogue, index_html)
         except FileNotFoundError:
-            self._handle_not_found(http_msg, http_dialogue)
+            self._send_not_found_response(http_msg, http_dialogue)
+
+    def _handle_get_funds_status(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle a fund status request."""
+        self._send_ok_response(
+            http_msg, http_dialogue, self.funds_status.get_response_body()
+        )

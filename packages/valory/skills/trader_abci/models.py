@@ -19,13 +19,29 @@
 
 """Custom objects for the trader ABCI application."""
 
-from typing import Any, Dict, Type, Union, cast
+from typing import Any, Callable, Dict, Type, Union, cast
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    GnosisStakingSubgraph as APTGnosisStakingSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    OlasAgentsSubgraph as APTOlasAgentsSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    OlasMechSubgraph as APTOlasMechSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    OpenMarketsSubgraph as APTOpenMarketsSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.rounds import (
+    Event as AgentPerformanceSummaryEvent,
+)
+from packages.valory.skills.chatui_abci.rounds import Event as ChatuiEvent
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields as BaseAccuracyInfoFields,
@@ -104,7 +120,10 @@ ConditionalTokensSubgraph = DecisionMakerConditionalTokensSubgraph
 RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
-
+GnosisStakingSubgraph = APTGnosisStakingSubgraph
+OlasMechSubgraph = APTOlasMechSubgraph
+OlasAgentsSubgraph = APTOlasAgentsSubgraph
+OpenMarketsSubgraph = APTOpenMarketsSubgraph
 
 MARGIN = 5
 
@@ -118,7 +137,7 @@ class TraderParams(
     CheckStopTradingParams,
     # must be before `MechInteractParams` because of the mech's chain id
     TxSettlementMultiplexerParams,
-    # also contains the `MechInteractParams`
+    # also contains `MechInteractParams` and `AgentPerformanceSummaryParams`
     DecisionMakerParams,
     TerminationParams,
 ):
@@ -129,6 +148,7 @@ class TraderParams(
         self.mech_interact_round_timeout_seconds: int = self._ensure(
             "mech_interact_round_timeout_seconds", kwargs, type_=int
         )
+        self.genai_api_key: str = self._ensure("genai_api_key", kwargs, str)
         super().__init__(*args, **kwargs)
 
 
@@ -152,6 +172,8 @@ class SharedState(BaseSharedState):
             DecisionMakerEvent,
             TSEvent,
             ResetPauseEvent,
+            ChatuiEvent,
+            AgentPerformanceSummaryEvent,
         )
         round_timeout = params.round_timeout_seconds
         round_timeout_overrides = {
@@ -173,3 +195,5 @@ class SharedState(BaseSharedState):
 
         for event, override in event_to_timeout_overrides.items():
             TraderAbciApp.event_to_timeout[event] = override
+
+        self.req_to_callback: Dict[str, Callable[..., Any]] = {}

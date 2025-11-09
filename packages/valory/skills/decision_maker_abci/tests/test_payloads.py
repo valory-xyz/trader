@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import pytest
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.decision_maker_abci.payloads import (
     BlacklistingPayload,
-    ClaimPayload,
     DecisionReceivePayload,
     DecisionRequestPayload,
     MultisigTxPayload,
@@ -52,6 +51,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "next_mock_data_row": 1,
                 "policy": "dummy policy",
                 "decision_received_timestamp": int(datetime.utcnow().timestamp()),
+                "should_be_sold": False,
             },
         ),
         (
@@ -100,10 +100,6 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "mocking_mode": True,
                 "wallet_balance": 10000,
             },
-        ),
-        (
-            ClaimPayload,
-            {"vote": True},
         ),
         (
             VotingPayload,

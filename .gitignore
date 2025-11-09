@@ -2,12 +2,14 @@
 *private_key.txt
 packages/fetchai/
 packages/open_aea/
+packages/dvilela/
 packages/valory/connections/abci/
 packages/valory/connections/http_client/
 packages/valory/connections/ipfs/
 packages/valory/connections/ledger/
 packages/valory/connections/p2p_libp2p_client/
 packages/valory/connections/http_server/
+
 
 packages/valory/skills/abstract_abci/
 packages/valory/skills/abstract_round_abci/
@@ -16,6 +18,7 @@ packages/valory/skills/registration_abci/
 packages/valory/skills/reset_pause_abci/
 packages/valory/skills/transaction_settlement_abci/
 packages/valory/skills/termination_abci/
+packages/valory/skills/funds_manager/
 
 packages/valory/contracts/erc20/
 packages/valory/contracts/mech/
@@ -26,7 +29,18 @@ packages/valory/contracts/multisend/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/
 packages/valory/contracts/agent_registry/
-
+packages/valory/contracts/complementary_service_metadata/
+packages/valory/contracts/mech_mm
+packages/valory/contracts/ierc1155
+packages/valory/contracts/nvm_balance_tracker_native
+packages/valory/contracts/nvm_balance_tracker_token
+packages/valory/contracts/escrow_payment_condition
+packages/valory/contracts/did_registry
+packages/valory/contracts/nft_sales
+packages/valory/contracts/lock_payment_condition
+packages/valory/contracts/agreement_store_manager
+packages/valory/contracts/transfer_nft_condition
+packages/valory/contracts/subscription_provider
 packages/valory/protocols/abci
 packages/valory/protocols/acn
 packages/valory/protocols/acn_data_share
@@ -35,7 +49,7 @@ packages/valory/protocols/http
 packages/valory/protocols/ipfs
 packages/valory/protocols/ledger_api
 packages/valory/protocols/tendermint
-packages/valory/contracts/mech_mm
+packages/valory/protocols/srr
 
 .idea
 **/__pycache__/
@@ -57,3 +71,9 @@ trader/
 /trader_service/
 /.coverage
 .dmypy.json
+logs/
+data/
+benchmarks/
+.vscode/
+coverage.xml
+.hypothesis/

@@ -29,4 +29,5 @@ cp $REPO_PATH/keys.json .
 autonomy deploy build -ltm
 
 # Run the deployment
-autonomy deploy run --build-dir abci_build/
+build_dir=$(find . -maxdepth 1 -type d -name "abci_build*")
+autonomy deploy run --build-dir $build_dir

@@ -19,7 +19,6 @@
 
 """This module contains the handler for the 'decision_maker_abci' skill."""
 
-import json
 import re
 from datetime import datetime, timezone
 from enum import Enum
@@ -42,9 +41,6 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
-    HttpHandler as BaseHttpHandler,
-)
-from packages.valory.skills.abstract_round_abci.handlers import (
     LedgerApiHandler as BaseLedgerApiHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -53,6 +49,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.chatui_abci.handlers import HttpHandler as BaseHttpHandler
 from packages.valory.skills.decision_maker_abci.dialogues import (
     HttpDialogue,
     HttpDialogues,
@@ -61,6 +58,9 @@ from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.rounds import SynchronizedData
 from packages.valory.skills.decision_maker_abci.rounds_info import (
     load_rounds_info_with_transitions,
+)
+from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+    DecisionReceiveRound,
 )
 
 
@@ -135,6 +135,7 @@ class HttpHandler(BaseHttpHandler):
 
     def setup(self) -> None:
         """Implement the setup."""
+        super().setup()
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -152,6 +153,7 @@ class HttpHandler(BaseHttpHandler):
 
         # Routes
         self.routes = {
+            **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
                 (health_url_regex, self._handle_get_health),
             ],
@@ -303,6 +305,11 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
 
+    @property
+    def waiting_for_a_mech_response(self) -> bool:
+        """Whether the agent is currently waiting for a mech response."""
+        return self.round_sequence.current_round_id == DecisionReceiveRound
+
     def _handle_get_health(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -317,7 +324,7 @@ class HttpHandler(BaseHttpHandler):
             return
 
         has_required_funds = self._check_required_funds()
-        is_receiving_mech_responses = self._check_is_receiving_mech_responses()
+        is_mech_reliable = self._is_mech_reliable()
         is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
         staking_status = self.synchronized_data.service_staking_state.name.lower()
 
@@ -348,6 +355,8 @@ class HttpHandler(BaseHttpHandler):
             round_sequence.current_round_id
         ]
 
+        is_healthy = is_transitioning_fast or self.waiting_for_a_mech_response
+
         data = {
             "seconds_since_last_transition": seconds_since_last_transition,
             "is_tm_healthy": not is_tm_unhealthy,
@@ -355,8 +364,10 @@ class HttpHandler(BaseHttpHandler):
             "reset_pause_duration": self.context.params.reset_pause_duration,
             "rounds": rounds,
             "is_transitioning_fast": is_transitioning_fast,
+            "is_healthy": is_healthy,
             "agent_health": {
-                "is_making_on_chain_transactions": is_receiving_mech_responses,
+                "is_making_on_chain_transactions": is_mech_reliable,
+                "is_mech_reliable": is_mech_reliable,
                 "is_staking_kpi_met": is_staking_kpi_met,
                 "has_required_funds": has_required_funds,
                 "staking_status": staking_status,
@@ -365,24 +376,6 @@ class HttpHandler(BaseHttpHandler):
         }
 
         self._send_ok_response(http_msg, http_dialogue, data)
-
-    def _send_ok_response(
-        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, data: Dict
-    ) -> None:
-        """Send an OK response with the provided data"""
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=OK_CODE,
-            status_text="Success",
-            headers=f"{self.json_content_header}{http_msg.headers}",
-            body=json.dumps(data).encode("utf-8"),
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
 
     def _send_not_found_response(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -408,7 +401,7 @@ class HttpHandler(BaseHttpHandler):
             > self.context.params.agent_balance_threshold
         )
 
-    def _check_is_receiving_mech_responses(self) -> bool:
+    def _is_mech_reliable(self) -> bool:
         """Check the agent is making on chain transactions."""
         # Checks the most recent decision receive timestamp, which can only be returned after making a mech call
         # (an on chain transaction)

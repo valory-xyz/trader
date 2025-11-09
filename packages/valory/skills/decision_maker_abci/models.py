@@ -19,14 +19,13 @@
 
 """This module contains the models for the skill."""
 
-import os
+
 import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
 from string import Template
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 from aea.exceptions import enforce
 from aea.skills.base import Model, SkillContext
@@ -42,15 +41,18 @@ from packages.valory.skills.abstract_round_abci.models import (
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    AgentPerformanceSummaryParams,
+)
+from packages.valory.skills.chatui_abci.models import SharedState as BaseSharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.bets import Bet
-from packages.valory.skills.market_manager_abci.models import MarketManagerParams
 from packages.valory.skills.market_manager_abci.models import (
-    SharedState as BaseSharedState,
+    MarketManagerParams,
+    Subgraph,
 )
-from packages.valory.skills.market_manager_abci.models import Subgraph
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
 )
@@ -210,13 +212,13 @@ class SharedState(BaseSharedState):
         self.liquidity_prices: Dict[str, List[float]] = {}
         # whether this is the last run of the benchmarking mode
         self.last_benchmarking_has_run: bool = False
-
         # the mapping from bet id to the row number in the dataset
         # the key is the market id/question_id
         self.bet_id_row_manager: Dict[str, List[int]] = {}
-
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
+        # whether the code has detected the new mech marketplace being used
+        self.new_mm_detected: Optional[bool] = None
 
     @property
     def mock_question_id(self) -> Any:
@@ -357,18 +359,32 @@ def _raise_incorrect_config(key: str, values: Any) -> None:
     )
 
 
-class DecisionMakerParams(MarketManagerParams, MechInteractParams):
+class DecisionMakerParams(
+    MarketManagerParams, MechInteractParams, AgentPerformanceSummaryParams
+):
     """Decision maker's parameters."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the parameters' object."""
 
-        # Handle agent_registry_address separately to avoid type issues
-        agent_registry_address = kwargs.get("agent_registry_address", None)
+        # do not pop the registry and metadata addresses, because they are also required for the `MechInteractParams`
+        agent_registry_address: Optional[str] = kwargs.get(
+            "agent_registry_address", None
+        )
         enforce(
             agent_registry_address is not None,
             "Agent registry address not specified!",
         )
+        agent_registry_address = cast(str, agent_registry_address)
+
+        metadata_address: Optional[str] = kwargs.get(
+            "complementary_service_metadata_address", None
+        )
+        enforce(
+            metadata_address is not None,
+            "Complementary service metadata address not specified!",
+        )
+        metadata_address = cast(str, metadata_address)
 
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
@@ -421,7 +437,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
-        self.store_path: Path = self.get_store_path(kwargs)
+        self.metadata_address: str = metadata_address
         self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
@@ -438,13 +454,7 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
             kwargs,
             bool,
         )
-        self.use_nevermined = self._ensure("use_nevermined", kwargs, bool)
         self.rpc_sleep_time: int = self._ensure("rpc_sleep_time", kwargs, int)
-        self.mech_to_subscription_params: Dict[str, str] = self._ensure(
-            "mech_to_subscription_params",
-            kwargs,
-            Dict[str, str],
-        )
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.safe_voting_range = self._ensure("safe_voting_range", kwargs, int)
         self.rebet_chance = self._ensure("rebet_chance", kwargs, float)
@@ -463,6 +473,13 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
         self.tool_quarantine_duration: int = self._ensure(
             "tool_quarantine_duration", kwargs, int
         )
+        self.enable_position_review: bool = self._ensure(
+            "enable_position_review", kwargs, bool
+        )
+        self.review_period_seconds: int = self._ensure(
+            "review_period_seconds", kwargs, int
+        )
+        self.min_confidence_for_selling: float = 0.5
         super().__init__(*args, **kwargs)
 
     @property
@@ -488,20 +505,6 @@ class DecisionMakerParams(MarketManagerParams, MechInteractParams):
                 f"The configured slippage {slippage!r} is not in the range [0, 1]."
             )
         self._slippage = slippage
-
-    def get_store_path(self, kwargs: Dict) -> Path:
-        """Get the path of the store."""
-        path = self._ensure("store_path", kwargs, str)
-        # check if path exists, and we can write to it
-        if (
-            not os.path.isdir(path)
-            or not os.access(path, os.W_OK)
-            or not os.access(path, os.R_OK)
-        ):
-            raise ValueError(
-                f"Policy store path {path!r} is not a directory or is not writable."
-            )
-        return Path(path)
 
 
 class AccuracyInfoFields(Model, TypeCheckMixin):

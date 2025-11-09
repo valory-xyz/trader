@@ -33,6 +33,22 @@ P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
 INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
+DAY_IN_SECONDS = 24 * 60 * 60
+
+
+class BinaryOutcome(Enum):
+    """The outcome of a binary bet."""
+
+    YES = "Yes"
+    NO = "No"
+
+    @classmethod
+    def from_string(cls, value: str) -> "BinaryOutcome":
+        """Get enum from string value."""
+        try:
+            return cls(value.capitalize())
+        except ValueError:
+            raise ValueError(f"Invalid binary outcome: {value}")
 
 
 class QueueStatus(Enum):
@@ -138,22 +154,71 @@ class Bet:
     prediction_response: PredictionResponse = dataclasses.field(
         default_factory=get_default_prediction_response
     )
-    invested_amount: float = 0.0
     position_liquidity: int = 0
     potential_net_profit: int = 0
     processed_timestamp: int = 0
-    n_bets: int = 0
     queue_status: QueueStatus = QueueStatus.FRESH
+    # a mapping from vote to investment amounts
+    investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
         self._validate()
         self._cast()
         self._check_usefulness()
+        if BinaryOutcome.YES.value not in self.investments:
+            self.investments[BinaryOutcome.YES.value] = []
+        if BinaryOutcome.NO.value not in self.investments:
+            self.investments[BinaryOutcome.NO.value] = []
 
     def __lt__(self, other: "Bet") -> bool:
         """Implements less than operator."""
         return self.scaledLiquidityMeasure < other.scaledLiquidityMeasure
+
+    @property
+    def yes_investments(self) -> List[int]:
+        """Get the yes investments."""
+        return self.investments[self.yes]
+
+    @property
+    def no_investments(self) -> List[int]:
+        """Get the no investments."""
+        return self.investments[self.no]
+
+    @property
+    def n_yes_bets(self) -> int:
+        """Get the number of yes bets."""
+        return len(self.yes_investments)
+
+    @property
+    def n_no_bets(self) -> int:
+        """Get the number of no bets."""
+        return len(self.no_investments)
+
+    @property
+    def n_bets(self) -> int:
+        """Get the number of bets."""
+        return self.n_yes_bets + self.n_no_bets
+
+    @property
+    def invested_amount_yes(self) -> int:
+        """Get the amount invested in yes bets."""
+        return sum(self.yes_investments)
+
+    @property
+    def invested_amount_no(self) -> int:
+        """Get the amount invested in no bets."""
+        return sum(self.no_investments)
+
+    @property
+    def invested_amount(self) -> int:
+        """Get the amount invested in bets."""
+        return self.invested_amount_yes + self.invested_amount_no
+
+    @staticmethod
+    def opposite_vote(vote: int) -> int:
+        """Get the opposite vote."""
+        return vote ^ 1
 
     def blacklist_forever(self) -> None:
         """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
@@ -218,7 +283,7 @@ class Bet:
         if self.outcomes is None:
             raise ValueError(f"Bet {self} has an incorrect outcomes list of `None`.")
         try:
-            return self.outcomes[index]
+            return self.outcomes[index].capitalize()
         except KeyError as exc:
             error = f"Cannot get outcome with index {index} from {self.outcomes}"
             raise ValueError(error) from exc
@@ -227,7 +292,7 @@ class Bet:
         """Get an outcome only if it is binary."""
         if self.outcomeSlotCount == BINARY_N_SLOTS:
             return self.get_outcome(int(no))
-        requested_outcome = "no" if no else "yes"
+        requested_outcome = BinaryOutcome.NO if no else BinaryOutcome.YES
         error = (
             f"A {requested_outcome!r} outcome is only available for binary questions."
         )
@@ -235,13 +300,54 @@ class Bet:
 
     @property
     def yes(self) -> str:
-        """Return the "yes" outcome."""
+        """Return the "Yes" outcome."""
         return self._get_binary_outcome(False)
 
     @property
     def no(self) -> str:
-        """Return the "no" outcome."""
+        """Return the "No" outcome."""
         return self._get_binary_outcome(True)
+
+    def get_vote_amount(self, vote: int) -> int:
+        """Get the amount invested in a vote."""
+        vote_name = self.get_outcome(vote)
+        return sum(self.investments[vote_name])
+
+    def reset_investments(self) -> None:
+        """Reset the investments."""
+        for outcome in BinaryOutcome:
+            self.investments[outcome.value] = []
+
+    def append_investment_amount(self, vote: int, amount: int) -> None:
+        """Append an investment amount to the vote."""
+        vote_name = self.get_outcome(vote)
+        if vote_name not in self.investments:
+            self.investments[vote_name] = []
+        self.investments[vote_name].append(amount)
+
+    def set_investment_amount(self, vote: int, amount: int) -> None:
+        """Set the investment amount for a vote."""
+        vote_name = self.get_outcome(vote)
+        self.investments[vote_name] = [amount]
+
+    def update_investments(self, amount: int) -> bool:
+        """Get the investments for the current vote type."""
+        vote = self.prediction_response.vote
+        if vote is None:
+            return False
+
+        if vote is None:
+            return False
+
+        outcome = self.get_outcome(vote)
+
+        # method to reset the investment amount for a vote
+        if amount == 0:
+            self.set_investment_amount(vote, 0)
+            return True
+
+        self.investments[outcome] = [*self.investments[outcome], amount]
+        return True
 
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information."""
@@ -255,6 +361,11 @@ class Bet:
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
+
+    def set_processed_sell_check(self, processed_time: int) -> None:
+        """Set the processed sell check."""
+        # stored in memory, lost on restart. todo: figure if makes sense to preserve
+        self.last_processed_sell_check = processed_time
 
     def rebet_allowed(
         self,
@@ -277,6 +388,14 @@ class Bet:
         else:
             profit_increases = self.potential_net_profit >= potential_net_profit
             return more_confident and profit_increases
+
+    def is_ready_to_sell(self, current_timestamp: int, opening_margin: int) -> bool:
+        """If more than 24 hours have passed since the bet was opened, it should be checked for selling."""
+        return (
+            current_timestamp
+            > (self.openingTimestamp - opening_margin) + DAY_IN_SECONDS
+            and self.invested_amount > 0  # only consider selling if has tokens
+        )
 
 
 class BetsEncoder(json.JSONEncoder):

@@ -29,6 +29,9 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
+from packages.valory.skills.chatui_abci.rounds import (
+    SynchronizedData as ChatuiSyncedData,
+)
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -48,6 +51,8 @@ class Event(Enum):
     """Event enumeration for the price estimation demo."""
 
     DONE = "done"
+    DONE_SELL = "done_sell"
+    DONE_NO_SELL = "done_no_sell"
     NONE = "none"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
@@ -60,10 +65,10 @@ class Event(Enum):
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
     CALC_BUY_AMOUNT_FAILED = "calc_buy_amount_failed"
+    CALC_SELL_AMOUNT_FAILED = "calc_sell_amount_failed"
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
-    SUBSCRIPTION_ERROR = "subscription_error"
     NO_SUBSCRIPTION = "no_subscription"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
@@ -71,7 +76,9 @@ class Event(Enum):
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
 
 
-class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
+class SynchronizedData(
+    MarketManagerSyncedData, TxSettlementSyncedData, ChatuiSyncedData
+):
     """Class to represent the synchronized data.
 
     This data is replicated by the tendermint application.
@@ -96,12 +103,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def is_mech_price_set(self) -> bool:
         """Get whether mech's price is known."""
         return bool(self.db.get("mech_price", False))
-
-    @property
-    def available_mech_tools(self) -> List[str]:
-        """Get all the available mech tools."""
-        tools = self.db.get_strict("available_mech_tools")
-        return json.loads(tools)
 
     @property
     def is_policy_set(self) -> bool:
@@ -150,8 +151,26 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     @property
     def vote(self) -> Optional[int]:
         """Get the bet's vote index."""
-        vote = self.db.get_strict("vote")
+        vote = self.db.get_strict(
+            "vote"
+        )  # vote might be set to None, but must always present
         return int(vote) if vote is not None else None
+
+    @property
+    def previous_vote(self) -> Optional[int]:
+        """Get the bet's previous vote index."""
+        previous_vote = self.db.get_strict(
+            "previous_vote"
+        )  # previous_vote might be set to None, but must always present
+        return int(previous_vote) if previous_vote is not None else None
+
+    @property
+    def review_bets_for_selling(self) -> bool:
+        """Get the status of the review bets for selling."""
+        db_value = self.db.get("review_bets_for_selling", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
 
     @property
     def confidence(self) -> float:
@@ -208,11 +227,6 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def agreement_id(self) -> str:
         """Get the agreement id."""
         return str(self.db.get_strict("agreement_id"))
-
-    @property
-    def claim(self) -> bool:
-        """Get the claim."""
-        return bool(self.db.get_strict("claim"))
 
     @property
     def mech_price(self) -> int:
@@ -283,6 +297,14 @@ class SynchronizedData(MarketManagerSyncedData, TxSettlementSyncedData):
     def after_bet_attempt(self) -> bool:
         """Get the service's staking state."""
         return bool(self.db.get("after_bet_attempt", False))
+
+    @property
+    def should_be_sold(self) -> bool:
+        """Get the flag of should_be_sold."""
+        db_value = self.db.get("should_be_sold", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
 
 
 class TxPreparationRound(CollectSameUntilThresholdRound):

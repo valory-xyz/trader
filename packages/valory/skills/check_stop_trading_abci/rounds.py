@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -48,6 +48,7 @@ class Event(Enum):
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
     SKIP_TRADING = "skip_trading"
+    REVIEW_BETS = "review_bets"
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -61,9 +62,23 @@ class SynchronizedData(BaseSynchronizedData):
         serialized = self.db.get_strict(key)
         return CollectionRound.deserialize_collection(serialized)
 
+    @property
+    def last_review_timestamp(self) -> int:
+        """Get the last review timestamp."""
+        return cast(int, self.db.get("last_review_timestamp", 0))
+
+    @property
     def is_staking_kpi_met(self) -> bool:
         """Get the status of the staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def review_bets_for_selling(self) -> bool:
+        """Get the status of the review bets for selling."""
+        db_value = self.db.get("review_bets_for_selling", None)
+        if not isinstance(db_value, bool):
+            return False
+        return bool(db_value)
 
 
 class CheckStopTradingRound(VotingRound):
@@ -75,7 +90,37 @@ class CheckStopTradingRound(VotingRound):
     negative_event = Event.DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+    selection_key = get_name(SynchronizedData.review_bets_for_selling)
     collection_key = get_name(SynchronizedData.participant_to_votes)
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(super().synchronized_data.db)
+
+    @property
+    def synced_timestamp(self) -> int:
+        """Return the synchronized timestamp across the agents."""
+        return int(
+            self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
+        )
+
+    def should_review_bets(self, is_staking_kpi_met: bool) -> bool:
+        """Check if the bets should be reviewed."""
+        if not is_staking_kpi_met:
+            self.context.logger.info("Staking kpi is not yet met")
+            return False
+
+        if not self.context.params.enable_position_review:
+            self.context.logger.info("Position review is disabled")
+            return False
+
+        last_review = self.synchronized_data.last_review_timestamp
+
+        return (
+            self.synced_timestamp - last_review
+            > self.context.params.review_period_seconds
+        )
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
@@ -87,6 +132,15 @@ class CheckStopTradingRound(VotingRound):
         is_staking_kpi_met = self.positive_vote_threshold_reached
         self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
 
+        if self.should_review_bets(is_staking_kpi_met):
+            self.context.logger.info(
+                "Updating synchronized data to review bets for selling"
+            )
+            self.synchronized_data.update(review_bets_for_selling=True)
+            return self.synchronized_data, Event.REVIEW_BETS
+
+        self.synchronized_data.update(review_bets_for_selling=False)
+
         return res
 
 
@@ -96,6 +150,10 @@ class FinishedCheckStopTradingRound(DegenerateRound, ABC):
 
 class FinishedWithSkipTradingRound(DegenerateRound, ABC):
     """A round that represents check stop trading has finished with skip trading."""
+
+
+class FinishedWithReviewBetsRound(DegenerateRound, ABC):
+    """A round that represents check stop trading has finished with review bets."""
 
 
 class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
@@ -112,10 +170,12 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
             - round timeout: 0.
             - no majority: 0.
             - skip trading: 2.
+            - review bets: 3.
         1. FinishedCheckStopTradingRound
         2. FinishedWithSkipTradingRound
+        3. FinishedWithReviewBetsRound
 
-    Final states: {FinishedCheckStopTradingRound, FinishedWithSkipTradingRound}
+    Final states: {FinishedCheckStopTradingRound, FinishedWithReviewBetsRound, FinishedWithSkipTradingRound}
 
     Timeouts:
         round timeout: 30.0
@@ -129,13 +189,16 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
             Event.ROUND_TIMEOUT: CheckStopTradingRound,
             Event.NO_MAJORITY: CheckStopTradingRound,
             Event.SKIP_TRADING: FinishedWithSkipTradingRound,
+            Event.REVIEW_BETS: FinishedWithReviewBetsRound,
         },
         FinishedCheckStopTradingRound: {},
         FinishedWithSkipTradingRound: {},
+        FinishedWithReviewBetsRound: {},
     }
     final_states: Set[AppState] = {
         FinishedCheckStopTradingRound,
         FinishedWithSkipTradingRound,
+        FinishedWithReviewBetsRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -144,4 +207,5 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
+        FinishedWithReviewBetsRound: set(),
     }

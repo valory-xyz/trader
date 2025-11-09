@@ -20,26 +20,28 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
-import json
 import os
 from abc import ABC
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
+from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
     SafeOperation,
 )
-from packages.valory.contracts.mech.contract import Mech
-from packages.valory.contracts.multisend.contract import MultiSendContract
-from packages.valory.contracts.transfer_nft_condition.contract import (
-    TransferNftCondition,
+from packages.valory.contracts.market_maker.contract import (
+    FixedProductMarketMakerContract,
 )
+from packages.valory.contracts.mech.contract import Mech
+from packages.valory.contracts.mech_mm.contract import MechMM
+from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -59,10 +61,6 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
-from packages.valory.skills.decision_maker_abci.utils.nevermined import (
-    no_did_prefixed,
-    zero_x_transformer,
-)
 from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
@@ -94,6 +92,13 @@ TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
 
 
+class TradingOperation(str, Enum):
+    """Trading operation."""
+
+    BUY = "buy"
+    SELL = "sell"
+
+
 def remove_fraction_wei(amount: int, fraction: float) -> int:
     """Removes the given fraction from the given integer amount and returns the value as an integer."""
     if 0 <= fraction <= 1:
@@ -116,22 +121,28 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._policy: Optional[EGreedyPolicy] = None
         self._inflight_strategy_req: Optional[str] = None
 
-    @property
-    def subscription_params(self) -> Dict[str, Any]:
-        """Get the subscription params."""
-        return self.params.mech_to_subscription_params
+        self.sell_amount: int = 0
+        self.buy_amount: int = 0
 
     @property
-    def did(self) -> str:
-        """Get the did."""
-        subscription_params = self.subscription_params
-        return subscription_params["did"]
+    def market_maker_contract_address(self) -> str:
+        """Get the contract address of the market maker on which the service is going to place the bet."""
+        return self.sampled_bet.id
 
     @property
-    def token_address(self) -> str:
-        """Get the token address."""
-        subscription_params = self.subscription_params
-        return subscription_params["token_address"]
+    def investment_amount(self) -> int:
+        """Get the investment amount of the bet."""
+        return self.synchronized_data.bet_amount
+
+    @property
+    def return_amount(self) -> int:
+        """Get the return amount."""
+        return self.sampled_bet.get_vote_amount(self.outcome_index)
+
+    @property
+    def outcome_index(self) -> int:
+        """Get the index of the outcome that the service is going to place a bet on."""
+        return cast(int, self.synchronized_data.vote)
 
     def strategy_exec(self, strategy: str) -> Optional[Tuple[str, str]]:
         """Get the executable strategy file's content."""
@@ -349,14 +360,31 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def update_bet_transaction_information(self) -> None:
         """Get whether the bet's invested amount should be updated."""
         sampled_bet = self.sampled_bet
-        # Update the bet's invested amount, the new bet amount is added to previously invested amount
-        sampled_bet.invested_amount += self.synchronized_data.bet_amount
         # Update bet transaction timestamp
         sampled_bet.processed_timestamp = self.synced_timestamp
-        # update no of bets made
-        sampled_bet.n_bets += 1
         # Update Queue number for priority logic
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        # Update the bet's invested amount
+        updated = sampled_bet.update_investments(self.synchronized_data.bet_amount)
+        if not updated:
+            self.context.logger.error("Could not update the investments!")
+
+        # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
+        # this will need to change if this sovereign agent is ever converted to a multi-agent service
+        self.store_bets()
+
+    def update_sell_transaction_information(self) -> None:
+        """Get whether the bet's invested amount should be updated."""
+        sampled_bet = self.sampled_bet
+        # Update bet transaction timestamp
+        sampled_bet.processed_timestamp = self.synced_timestamp
+        # Update Queue number for priority logic
+        sampled_bet.queue_status = sampled_bet.queue_status.next_status()
+
+        updated = sampled_bet.update_investments(0)
+        if not updated:
+            self.context.logger.error("Could not update the investments!")
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
@@ -434,7 +462,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         yield from self.download_strategies()
         yield from self.wait_for_condition_with_sleep(self.check_balance)
 
-        next_strategy = self.params.trading_strategy
+        # accessing `self.shared_state.chatui_config` calls `self._ensure_chatui_store()` which ensures `trading_strategy` can never be `None`
+        next_strategy: str = self.shared_state.chatui_config.trading_strategy  # type: ignore[assignment]
+
         tried_strategies: Set[str] = set()
         while True:
             self.context.logger.info(f"Used trading strategy: {next_strategy}")
@@ -520,6 +550,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     ) -> WaitableConditionType:
         """Interact with a contract."""
         contract_id = str(contract_public_id)
+
+        self.context.logger.info(
+            f"Interacting with contract {contract_id} at address {contract_address}\n"
+            f"Calling method {contract_callable} with parameters: {kwargs}"
+        )
+
         response_msg = yield from self.get_contract_api_response(
             performative,
             contract_address,
@@ -550,6 +586,21 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.mech_contract_address,
             contract_public_id=Mech.contract_id,
+            contract_callable=contract_callable,
+            data_key=data_key,
+            placeholder=placeholder,
+            **kwargs,
+        )
+        return status
+
+    def _mech_mm_contract_interact(
+        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
+    ) -> WaitableConditionType:
+        """Interact with the mech mm contract."""
+        status = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.mech_marketplace_config.priority_mech_address,
+            contract_public_id=MechMM.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
             placeholder=placeholder,
@@ -709,6 +760,146 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             row = ",".join(results_text) + NEW_LINE
             results_file.write(row)
 
+    def _calc_token_amount(
+        self,
+        operation: TradingOperation,
+        amount_field: str,
+        amount_param_name: str,
+    ) -> WaitableConditionType:
+        """Calculate the token amount for buying/selling."""
+
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.market_maker_contract_address,
+            contract_id=str(FixedProductMarketMakerContract.contract_id),
+            contract_callable=f"calc_{operation.value}_amount",
+            outcome_index=self.outcome_index,
+            chain_id=self.params.mech_chain_id,
+            **{
+                amount_param_name: self.investment_amount,
+            },  # type: ignore
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.error(
+                f"Could not calculate the {operation} amount: {response_msg}"
+            )
+            return False
+
+        token_amount = response_msg.raw_transaction.body.get(amount_field, None)
+        if token_amount is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to get the {amount_field} for the conditional token: {response_msg}"
+            )
+            return False
+
+        if operation == TradingOperation.BUY:
+            self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
+        else:
+            self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
+
+        return True
+
+    def _calc_buy_amount(self) -> WaitableConditionType:
+        """Calculate the buy amount of the conditional token."""
+        return self._calc_token_amount(
+            operation=TradingOperation.BUY,
+            amount_field="amount",
+            amount_param_name="investment_amount",
+        )
+
+    def _calc_sell_amount(self) -> WaitableConditionType:
+        """Calculate the sell amount of the conditional token."""
+        return self._calc_token_amount(
+            operation=TradingOperation.SELL,
+            amount_field="amount",
+            amount_param_name="return_amount",
+        )
+
+    def _build_token_tx(self, operation: TradingOperation) -> WaitableConditionType:
+        """Get the tx data encoded for buying or selling tokens."""
+        params: Dict[str, Any] = {
+            "performative": ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            "contract_address": self.market_maker_contract_address,
+            "contract_id": str(FixedProductMarketMakerContract.contract_id),
+            "contract_callable": f"get_{operation.value}_data",
+            "outcome_index": self.outcome_index,
+            "chain_id": self.params.mech_chain_id,
+        }
+
+        if operation == TradingOperation.BUY:
+            params.update(
+                {
+                    "investment_amount": self.investment_amount,
+                    "min_outcome_tokens_to_buy": self.buy_amount,
+                }
+            )
+        else:
+            params.update(
+                {
+                    "return_amount": self.return_amount,
+                    "max_outcome_tokens_to_sell": self.sell_amount,
+                }
+            )
+
+        response_msg = yield from self.get_contract_api_response(**params)
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.error(
+                f"Could not get the data for the {operation} transaction: {response_msg}"
+            )
+            return False
+
+        tx_data = response_msg.state.body.get("data", None)
+        if tx_data is None:
+            self.context.logger.error(
+                f"Something went wrong while trying to encode the {operation} data: {response_msg}"
+            )
+            return False
+
+        batch = MultisendBatch(
+            to=self.market_maker_contract_address,
+            data=HexBytes(tx_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
+
+    def _build_buy_tx(self) -> WaitableConditionType:
+        """Get the buy tx data encoded."""
+        return self._build_token_tx(TradingOperation.BUY)
+
+    def _build_sell_tx(self) -> WaitableConditionType:
+        """Get the sell tx data encoded."""
+        return self._build_token_tx(TradingOperation.SELL)
+
+    def build_approval_tx(
+        self, amount: int, spender: str, token: str
+    ) -> WaitableConditionType:
+        """Build an ERC20 approve transaction."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="build_approval_tx",
+            spender=spender,
+            amount=amount,
+        )
+
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.info(f"Could not build approval tx: {response_msg}")
+            return False
+
+        approval_data = response_msg.state.body.get("data")
+        if approval_data is None:
+            self.context.logger.info(f"Could not build approval tx: {response_msg}")
+            return False
+
+        batch = MultisendBatch(
+            to=token,
+            data=HexBytes(approval_data),
+        )
+        self.multisend_batches.append(batch)
+        return True
+
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
@@ -716,126 +907,3 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
-
-
-class BaseSubscriptionBehaviour(DecisionMakerBaseBehaviour, ABC):
-    """Base class for subscription behaviours."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize `BaseSubscriptionBehaviour`."""
-        super().__init__(**kwargs)
-        self.balance: int = 0
-
-    @property
-    def escrow_payment_condition_address(self) -> str:
-        """Get the escrow payment address."""
-        subscription_params = self.subscription_params
-        return subscription_params["escrow_payment_condition_address"]
-
-    @property
-    def lock_payment_condition_address(self) -> str:
-        """Get the lock payment address."""
-        subscription_params = self.subscription_params
-        return subscription_params["lock_payment_condition_address"]
-
-    @property
-    def transfer_nft_condition_address(self) -> str:
-        """Get the transfer nft condition address."""
-        subscription_params = self.subscription_params
-        return subscription_params["transfer_nft_condition_address"]
-
-    @property
-    def order_address(self) -> str:
-        """Get the order address."""
-        subscription_params = self.subscription_params
-        return subscription_params["order_address"]
-
-    @property
-    def purchase_amount(self) -> int:
-        """Get the purchase amount."""
-        subscription_params = self.subscription_params
-        return int(subscription_params["nft_amount"])
-
-    @property
-    def price(self) -> int:
-        """Get the price."""
-        subscription_params = self.subscription_params
-        return int(subscription_params["price"])
-
-    @property
-    def payment_token(self) -> str:
-        """Get the payment token."""
-        subscription_params = self.subscription_params
-        return subscription_params["payment_token"]
-
-    @property
-    def is_xdai(self) -> bool:
-        """
-        Check if the payment token is xDAI.
-
-        When the payment token for the subscription is xdai (the native token of the chain),
-        nevermined sets the payment address to the zeroAddress.
-
-        :return: True if the payment token is xDAI, False otherwise.
-        """
-        return self.payment_token == ZERO_ADDRESS
-
-    @property
-    def base_url(self) -> str:
-        """Get the base url."""
-        subscription_params = self.subscription_params
-        return subscription_params["base_url"]
-
-    def _resolve_did(self) -> Generator[None, None, Optional[Dict[str, Any]]]:
-        """Resolve and parse the did."""
-        did_url = f"{self.base_url}/{self.did}"
-        response = yield from self.get_http_response(
-            method="GET",
-            url=did_url,
-            headers={"accept": "application/json"},
-        )
-        if response.status_code != 200:
-            self.context.logger.error(
-                f"Could not retrieve data from did url {did_url}. "
-                f"Received status code {response.status_code}."
-            )
-            return None
-        try:
-            data = json.loads(response.body)
-        except (ValueError, TypeError) as e:
-            self.context.logger.error(
-                f"Could not parse response from nervermined api, "
-                f"the following error was encountered {type(e).__name__}: {e}"
-            )
-            return None
-
-        return data
-
-    def _get_nft_balance(
-        self, token: str, address: str, did: str
-    ) -> Generator[None, None, bool]:
-        """Prepare an approval tx."""
-        result = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=token,
-            contract_public_id=TransferNftCondition.contract_id,
-            contract_callable="balance_of",
-            data_key="data",
-            placeholder="balance",
-            address=address,
-            did=did,
-        )
-        return result
-
-    def _has_positive_nft_balance(self) -> Generator[None, None, bool]:
-        """Check if the agent has a non-zero balance of the NFT."""
-        result = yield from self._get_nft_balance(
-            self.token_address,
-            self.synchronized_data.safe_contract_address,
-            zero_x_transformer(no_did_prefixed(self.did)),
-        )
-        if not result:
-            self.context.logger.warning("Failed to get balance")
-            return False
-
-        return self.balance > 0

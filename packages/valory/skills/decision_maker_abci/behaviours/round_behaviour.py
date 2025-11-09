@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -34,9 +34,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
 from packages.valory.skills.decision_maker_abci.behaviours.check_benchmarking import (
     CheckBenchmarkingModeBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.claim_subscription import (
-    ClaimSubscriptionBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
@@ -46,9 +43,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.order_subscription import (
-    OrderSubscriptionBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
@@ -56,6 +50,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
+    SellOutcomeTokensBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,
@@ -74,11 +71,10 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         DecisionReceiveBehaviour,  # type: ignore
         BlacklistingBehaviour,  # type: ignore
         BetPlacementBehaviour,  # type: ignore
+        SellOutcomeTokensBehaviour,  # type: ignore
         RedeemBehaviour,  # type: ignore
         HandleFailedTxBehaviour,  # type: ignore
         ToolSelectionBehaviour,  # type: ignore
-        OrderSubscriptionBehaviour,
-        ClaimSubscriptionBehaviour,
         RandomnessBehaviour,  # type: ignore
         BenchmarkingRandomnessBehaviour,  # type: ignore
         CheckBenchmarkingModeBehaviour,  # type: ignore

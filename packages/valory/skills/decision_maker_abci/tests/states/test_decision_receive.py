@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ def get_payloads(
     is_profitable: Optional[bool],
     bets_hash: str,
     policy: str,
+    should_be_sold: bool,
 ) -> Mapping[str, UpdateBetsPayload]:
     """Get payloads."""
     return {
@@ -77,6 +78,7 @@ def get_payloads(
             bets_hash=bets_hash,
             policy=policy,
             decision_received_timestamp=int(datetime.datetime.utcnow().timestamp()),
+            should_be_sold=should_be_sold,
         )
         for participant in get_participants()
     }
@@ -114,6 +116,30 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
+                ),
+                final_data={
+                    "decision_hash": DUMMY_DECISION_HASH,
+                    "participant_to_decision_hash": DUMMY_PARTICIPANT_TO_DECISION_HASH,
+                },
+                event=Event.DONE,
+                most_voted_payload=DUMMY_DECISION_HASH,
+                synchronized_data_attr_checks=[
+                    lambda synchronized_data: synchronized_data.decision_hash,
+                ],
+            ),
+            RoundTestCase(
+                name="Should be sold decision",
+                initial_data={"should_be_sold": True},
+                payloads=get_payloads(
+                    vote=1,
+                    confidence=80.0,
+                    bet_amount=100,
+                    next_mock_data_row=1,
+                    is_profitable=True,
+                    policy="",
+                    bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=True,
                 ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
@@ -136,6 +162,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=False,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={
                     "decision_hash": DUMMY_DECISION_HASH,
@@ -158,6 +185,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={},
                 event=Event.NO_MAJORITY,
@@ -175,6 +203,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={},
                 event=Event.TIE,
@@ -192,6 +221,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
                     is_profitable=True,
                     policy="",
                     bets_hash=DUMMY_BETS_HASH,  # Added bets_hash
+                    should_be_sold=False,
                 ),
                 final_data={},
                 event=Event.MECH_RESPONSE_ERROR,

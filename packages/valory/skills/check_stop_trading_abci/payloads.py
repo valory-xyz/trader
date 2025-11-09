@@ -20,6 +20,7 @@
 """This module contains the transaction payloads for the check stop trading abci."""
 
 from dataclasses import dataclass
+from typing import Optional
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 
@@ -29,3 +30,4 @@ class CheckStopTradingPayload(BaseTxPayload):
     """A transaction payload for the check stop trading abci."""
 
     vote: bool
+    review_bets_for_selling: Optional[bool] = None
