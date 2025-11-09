@@ -22,7 +22,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 from packages.valory.protocols.http.message import HttpMessage
@@ -58,6 +58,7 @@ from packages.valory.skills.funds_manager.models import FundRequirements
 from packages.valory.skills.mech_interact_abci.handlers import (
     AcnHandler as BaseAcnHandler,
 )
+from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 
@@ -92,6 +93,11 @@ class HttpHandler(BaseHttpHandler):
         return SynchronizedData(
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
+
+    @property
+    def params(self) -> StakingParams:
+        """Return the params."""
+        return cast(StakingParams, self.context.params)
 
     @property
     def agent_ids(self) -> List[int]:
@@ -173,7 +179,7 @@ class HttpHandler(BaseHttpHandler):
             "address": self.context.agent_address,
             "safe_address": self.synchronized_data.safe_contract_address,
             "agent_ids": self.agent_ids,
-            "service_id": self.staking_synchronized_data.service_id,
+            "service_id": self.params.on_chain_service_id,
             "trading_type": (
                 self._get_ui_trading_strategy(
                     self.shared_state.chatui_config.trading_strategy
