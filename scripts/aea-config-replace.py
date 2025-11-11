@@ -38,6 +38,7 @@ PATH_TO_VAR = {
     # Agent
     "models/params/args/setup/all_participants": "ALL_PARTICIPANTS",
     "models/params/args/setup/safe_contract_address": "SAFE_CONTRACT_ADDRESS",
+    "models/params/args/setup/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
     "models/params/args/store_path": "STORE_PATH",
     "models/benchmark_tool/args/log_dir": "BENCHMARKS_DIR",
     "models/params/args/reset_tendermint_after": "RESET_TENDERMINT_AFTER",
@@ -57,6 +58,8 @@ PATH_TO_VAR = {
     "models/params/args/mech_contract_address": "MECH_CONTRACT_ADDRESS",
     "models/params/args/genai_api_key": "GENAI_API_KEY",
     "config/genai_api_key": "GENAI_API_KEY",
+    "models/params/args/use_x402": "USE_X402",
+    "config/use_x402": "USE_X402",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
@@ -114,6 +117,7 @@ def main() -> None:
             new_value = os.getenv(var)  # pylint: disable=E1101
             if new_value is None:
                 print(f"Environment variable {var} not found. Skipping...")
+                continue
             config = find_and_replace(config, path.split("/"), new_value)
         except Exception as e:
             print(f"Exception while replacing {path}:\n{e}")
