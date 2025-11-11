@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeic63tsuwdbf6mzufhqq64aeamo3t5fmln6nu2kq3kvze3ruvqvt5u
+agent: valory/trader:0.1.0:bafybeif7lmknpubguyfzujekjoymjxdhgywsvb2j4kyobf3u73mxeu6z3a
 number_of_agents: 4
 deployment:
   agent:
@@ -762,7 +762,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":350000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
       rpc_urls:
         gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
