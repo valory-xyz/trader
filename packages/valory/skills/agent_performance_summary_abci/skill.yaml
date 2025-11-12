@@ -84,7 +84,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.autonolas.tech/subgraphs/name/mech
+      url: https://api.subgraph.autonolas.tech/api/proxy/mech
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:
