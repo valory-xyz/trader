@@ -420,7 +420,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://subgraph.autonolas.tech/subgraphs/name/mech}
+      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/mech}
   gnosis_staking_subgraph:
     args:
       headers:
