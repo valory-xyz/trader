@@ -3,7 +3,7 @@ author: valory
 version: 0.1.0
 description: A single-agent service (sovereign agent) placing bets on Omen, used by
   Pearl.
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
