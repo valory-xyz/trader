@@ -12,17 +12,17 @@ fingerprint:
   composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeigjdfo62wldq4rjujmrbf3aspq6edsmitmrdj2d7qkovc42bipmvu
-  handlers.py: bafybeic6exlzxd7wnqx3hggqnbkefxrg35jik4ohx5cdjbta7cz7ascngi
+  handlers.py: bafybeif2z7qtabdq45omqarfsm46swpw2krhrtpebc3q4pyzhh7ebw6lm4
   models.py: bafybeibfbub6y66toll2rjgk6r7cbh6v4pxlu6nncp6kekvwnywsy4girq
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
-  predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
+  predict-ui-build/assets/index-A2u-GjHz.js: bafybeigh6jq4yzdietfwwtaouqwz5nolqyfb2wrc27szzodvt662343idm
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
   predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeidffl62vtttjlmlow2qs43swzvu5nq6nh2ufh27tyf6q7cdgr2ema
+  predict-ui-build/index.html: bafybeigh2lrkrosuc6capzh2ogkxpfvpbfxrcgdmam45ziay3tja6clzxy
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
@@ -40,13 +40,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
-- valory/decision_maker_abci:0.1.0:bafybeieqzzfinesin3faiwzskgnw3mjba4yyynrjnubha6nbgglp53qgk4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiftuvbdkfaqb2zomw7elobcmu5eewz4umkk57pk2nipzs37ceo6oi
+- valory/decision_maker_abci:0.1.0:bafybeiatarvxd2tptlppyzfldul2sxoxbg2e67hvil7q3miom5qjyc3nju
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiboj6noh6bctccglasitsazkpvopc7cubzlcifumtnqzmxrxbupca
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 - valory/check_stop_trading_abci:0.1.0:bafybeignitkkoe576joz5dfgknscq34uijfixpz2apqvp3jt2eejd7f5sm
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeigmivcqr5bjgno55moab45g24jw46dqxxeluqchmauct3vdnpkpme
-- valory/agent_performance_summary_abci:0.1.0:bafybeig3vhxozqrvy44ycy3pakn27lqnabjaljl5oh747iio5rb6zih7bm
+- valory/chatui_abci:0.1.0:bafybeic3hap46gem7pbqntxpplx3dhctenzwphcaddxvfvs2b2dwp6pkc4
+- valory/agent_performance_summary_abci:0.1.0:bafybeiczsxzgvzkoal27pq5pg4u3jp4r2ru46pn3fj4jmwklooeaficwxy
 - valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 behaviours:
   main:
@@ -460,7 +460,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.autonolas.tech/subgraphs/name/mech
+      url: https://api.subgraph.autonolas.tech/api/proxy/mech
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:
@@ -499,4 +499,6 @@ dependencies:
     version: <7,>=6.0.0
   requests:
     version: '>=2.28.1, <2.31.2'
+  open-aea-ledger-ethereum:
+    version: '>=1.65.0'
 is_abstract: false

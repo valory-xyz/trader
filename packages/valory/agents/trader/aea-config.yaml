@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiftuvbdkfaqb2zomw7elobcmu5eewz4umkk57pk2nipzs37ceo6oi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiboj6noh6bctccglasitsazkpvopc7cubzlcifumtnqzmxrxbupca
 - valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
-- valory/decision_maker_abci:0.1.0:bafybeieqzzfinesin3faiwzskgnw3mjba4yyynrjnubha6nbgglp53qgk4
-- valory/trader_abci:0.1.0:bafybeify7wzjrj6fyn7zpn7jcf74l4as5tk5mhwmng2ewhlqkkpfecraze
+- valory/decision_maker_abci:0.1.0:bafybeiatarvxd2tptlppyzfldul2sxoxbg2e67hvil7q3miom5qjyc3nju
+- valory/trader_abci:0.1.0:bafybeihsjdd5ui4uk2zz62ytr3kiwt6aoq2tgrpyk72g2wbs2jvprvgz6y
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 - valory/check_stop_trading_abci:0.1.0:bafybeignitkkoe576joz5dfgknscq34uijfixpz2apqvp3jt2eejd7f5sm
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeigmivcqr5bjgno55moab45g24jw46dqxxeluqchmauct3vdnpkpme
-- valory/agent_performance_summary_abci:0.1.0:bafybeig3vhxozqrvy44ycy3pakn27lqnabjaljl5oh747iio5rb6zih7bm
+- valory/chatui_abci:0.1.0:bafybeic3hap46gem7pbqntxpplx3dhctenzwphcaddxvfvs2b2dwp6pkc4
+- valory/agent_performance_summary_abci:0.1.0:bafybeiczsxzgvzkoal27pq5pg4u3jp4r2ru46pn3fj4jmwklooeaficwxy
 - valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 customs:
 - valory/mike_strat:0.1.0:bafybeihjiol7f4ch4piwfikurdtfwzsh6qydkbsztpbwbwb2yrqdqf726m
@@ -420,7 +420,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://subgraph.autonolas.tech/subgraphs/name/mech}
+      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/mech}
   gnosis_staking_subgraph:
     args:
       headers:
@@ -485,6 +485,6 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":350000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
+      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
       rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
       safe_contract_addresses: ${dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}

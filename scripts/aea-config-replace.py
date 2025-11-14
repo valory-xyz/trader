@@ -38,7 +38,7 @@ PATH_TO_VAR = {
     # Agent
     "models/params/args/setup/all_participants": "ALL_PARTICIPANTS",
     "models/params/args/setup/safe_contract_address": "SAFE_CONTRACT_ADDRESS",
-    "models/params/args/setup/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
+    "models/params/args/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
     "models/params/args/store_path": "STORE_PATH",
     "models/benchmark_tool/args/log_dir": "BENCHMARKS_DIR",
     "models/params/args/reset_tendermint_after": "RESET_TENDERMINT_AFTER",
