@@ -9,11 +9,11 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeiae4j35uqsubdy7pjzfhlcewcb3mfhhyny7h46wf4bquf27or4iu4
-  composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
+  composition.py: bafybeighy7x6nyi77q7a6fkgp5wkdivs5xax5bjpne6oaerlj667nevzgi
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeigjdfo62wldq4rjujmrbf3aspq6edsmitmrdj2d7qkovc42bipmvu
+  fsm_specification.yaml: bafybeidd5wzcmemuzm6uu2z336hbmco5wnv5rxizpbfa7u4mu4rlpnlfo4
   handlers.py: bafybeif2z7qtabdq45omqarfsm46swpw2krhrtpebc3q4pyzhh7ebw6lm4
-  models.py: bafybeibfbub6y66toll2rjgk6r7cbh6v4pxlu6nncp6kekvwnywsy4girq
+  models.py: bafybeifeixgffcdqhc36t6e37jwrscgwpg5qduzavef4wzdot55oifrgcm
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-A2u-GjHz.js: bafybeigh6jq4yzdietfwwtaouqwz5nolqyfb2wrc27szzodvt662343idm
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
@@ -40,12 +40,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
-- valory/decision_maker_abci:0.1.0:bafybeiatarvxd2tptlppyzfldul2sxoxbg2e67hvil7q3miom5qjyc3nju
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiboj6noh6bctccglasitsazkpvopc7cubzlcifumtnqzmxrxbupca
+- valory/decision_maker_abci:0.1.0:bafybeie5menmkvdakjenftuny3uiv7nkmdp45oxt3p67o2u4h2nbujc6ee
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibbfo7ggd4fy3bi56r6pu72s2zxjinuspqyhfkcuzqzlcrxktaihm
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
-- valory/check_stop_trading_abci:0.1.0:bafybeignitkkoe576joz5dfgknscq34uijfixpz2apqvp3jt2eejd7f5sm
-- valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
-- valory/chatui_abci:0.1.0:bafybeic3hap46gem7pbqntxpplx3dhctenzwphcaddxvfvs2b2dwp6pkc4
+- valory/check_stop_trading_abci:0.1.0:bafybeicx43f3jltwenr5fesd6pqfhkczegosvwi46vooqvykikusc3q4d4
+- valory/mech_interact_abci:0.1.0:bafybeiadspqed6kbs7q2642z33rdupjmudwh5egqxyw2tawhg6q7ge3cga
+- valory/chatui_abci:0.1.0:bafybeiegxzi3sl7kup6sxavuwwhoh3zt62c7sxs2u3yiwetsews4pdk55a
 - valory/agent_performance_summary_abci:0.1.0:bafybeiczsxzgvzkoal27pq5pg4u3jp4r2ru46pn3fj4jmwklooeaficwxy
 - valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 behaviours:
@@ -482,7 +482,7 @@ models:
       headers:
         Content-Type: application/json
       method: GET
-      parameters: { }
+      parameters: {}
       response_key: tools
       response_type: list
       retries: 5
@@ -494,7 +494,7 @@ models:
       headers:
         Content-Type: application/json
       method: POST
-      parameters: { }
+      parameters: {}
       response_key: data:meches
       response_type: list
       error_key: errors
