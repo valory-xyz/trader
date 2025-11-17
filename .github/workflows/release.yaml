@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-versions }}
@@ -103,7 +103,7 @@ jobs:
     env:
       CMD: "propel -U ${{ vars.PROPEL_BASE_URL }}"
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-versions }}
