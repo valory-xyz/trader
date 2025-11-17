@@ -24,7 +24,7 @@ import json
 from abc import ABC
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -58,18 +58,18 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_id: int = 0
         self._mech_hash: str = ""
         self._utilized_tools: Dict[str, str] = {}
-        self._mech_tools: Optional[List[str]] = None
+        self._mech_tools: Set[str] = set()
         self._remote_accuracy_information: StringIO = StringIO()
 
     @property
-    def mech_tools(self) -> List[str]:
+    def mech_tools(self) -> Set[str]:
         """Get the mech agent's tools."""
-        if self._mech_tools is None:
+        if not self._mech_tools:
             raise ValueError("The mech's tools have not been set.")
         return self._mech_tools
 
     @mech_tools.setter
-    def mech_tools(self, mech_tools: List[str]) -> None:
+    def mech_tools(self, mech_tools: Set[str]) -> None:
         """Set the mech agent's tools."""
         self._mech_tools = mech_tools
 
@@ -156,9 +156,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # parse tools from headers
         headers = row.split(self.benchmarking_mode.sep)
         p_yes_part = self.benchmarking_mode.p_yes_field_part
-        self.mech_tools = [
+        self.mech_tools = {
             header.replace(p_yes_part, "") for header in headers if p_yes_part in header
-        ]
+        }
 
     def _get_mech_id(self) -> WaitableConditionType:
         """Get the mech's id."""
@@ -213,10 +213,8 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
-        # keep only the relevant mech tools, sorted
-        # we sort the tools to avoid using dictionaries in the policy implementation,
-        # so that we can easily assess which index corresponds to which tool
-        res = sorted(set(res) - self.params.irrelevant_tools)
+        # keep only the relevant mech tools
+        res = set(res) - self.params.irrelevant_tools
         self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
 
         if len(res) == 0:
@@ -458,7 +456,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _setup_policy_and_tools(self) -> Generator[None, None, bool]:
         """Set up the policy and tools."""
         yield from self._get_tools()
-        if self._mech_tools is None:
+        if not self._mech_tools:
             return False
 
         yield from self._set_policy()
@@ -474,7 +472,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Store the policy"""
         policy_path = self.params.store_path / AVAILABLE_TOOLS_STORE
         with open(policy_path, "w") as f:
-            json.dump(self.mech_tools, f)
+            json.dump(list(self.mech_tools), f)
 
     def _store_utilized_tools(self) -> None:
         """Store the utilized tools."""
