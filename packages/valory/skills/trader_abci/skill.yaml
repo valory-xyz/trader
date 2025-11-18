@@ -269,6 +269,7 @@ models:
       gnosis_ledger_rpc: https://rpc.gnosischain.com/
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
+      is_agent_performance_summary_enabled: true
     class_name: TraderParams
   benchmarking_mode:
     args:
