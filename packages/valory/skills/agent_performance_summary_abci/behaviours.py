@@ -268,18 +268,18 @@ class FetchPerformanceSummaryBehaviour(
 
     def async_act(self) -> Generator:
         """Do the action."""
-        with self.context.benchmark_tool.measure(self.behaviour_id).local():
+        if not self.params.is_agent_performance_summary_enabled:
+            self.context.logger.info(
+                "Agent performance summary is disabled. Skipping fetch and save."
+            )
+            payload = FetchPerformanceDataPayload(
+                sender=self.context.agent_address,
+                vote=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
 
-            if not self.params.is_agent_performance_summary_enabled:
-                self.context.logger.info(
-                    "Agent performance summary is disabled. Skipping fetch and save."
-                )
-                payload = FetchPerformanceDataPayload(
-                    sender=self.context.agent_address,
-                    vote=False,
-                )
-                yield from self.finish_behaviour(payload)
-                return
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():
 
             yield from self._fetch_agent_performance_summary()
 
