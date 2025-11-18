@@ -420,6 +420,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -548,6 +549,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -677,6 +679,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
