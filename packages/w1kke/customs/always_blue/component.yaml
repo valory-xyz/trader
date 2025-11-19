@@ -4,7 +4,7 @@ version: 0.1.0
 type: custom
 description: A simple testing strategy strategy.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeibkl7srd6nmuo7p6vcrueviwryjo6y25xfkckndkghnos7okadzpm
   always_blue.py: bafybeidyj2m7hwfrufjpzsqdihsvdmbzvqjatqasfs4r7ihxx2pwhoe6li

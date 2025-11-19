@@ -4,7 +4,7 @@ version: 0.1.0
 type: skill
 description: This skill implements the MarketManager for an AEA.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
@@ -222,5 +222,5 @@ models:
     class_name: SharedState
 dependencies:
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
 is_abstract: true
