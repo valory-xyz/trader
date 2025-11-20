@@ -76,6 +76,9 @@ class AgentPerformanceSummaryParams(BaseParams):
             "coingecko_olas_in_usd_price_url", kwargs, str
         )
         self.store_path: Path = self.get_store_path(kwargs)
+        self.is_agent_performance_summary_enabled: bool = self._ensure(
+            "is_agent_performance_summary_enabled", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     def get_store_path(self, kwargs: Dict) -> Path:

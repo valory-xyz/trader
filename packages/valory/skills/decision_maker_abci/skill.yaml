@@ -105,8 +105,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
-- valory/agent_performance_summary_abci:0.1.0:bafybeiczsxzgvzkoal27pq5pg4u3jp4r2ru46pn3fj4jmwklooeaficwxy
-- valory/chatui_abci:0.1.0:bafybeic3hap46gem7pbqntxpplx3dhctenzwphcaddxvfvs2b2dwp6pkc4
+- valory/agent_performance_summary_abci:0.1.0:bafybeif6stcv5oce4gzmetghnrq2zikheghj62amnugnfwq3cul4p2kvle
+- valory/chatui_abci:0.1.0:bafybeihbt5ohnc3paeiwa7can6dzxqdlla2worxbxyez5hfr3dt7rptf54
 behaviours:
   main:
     args: {}
@@ -297,6 +297,7 @@ models:
       enable_position_review: false
       review_period_seconds: 86400
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      is_agent_performance_summary_enabled: true
       store_path: data/
     class_name: DecisionMakerParams
   acc_info_fields:
