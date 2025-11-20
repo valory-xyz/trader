@@ -24,11 +24,13 @@ import atexit
 import concurrent.futures
 import copy
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
+from aea_ledger_ethereum.ethereum import EthereumCrypto
 from eth_account import Account
 from web3 import Web3
 
@@ -292,13 +294,47 @@ class HttpHandler(BaseHttpHandler):
             self._get_adjusted_funds_status().get_response_body(),
         )
 
-    def _get_eoa_account(self) -> Account:
-        """Get EOA account from private key file."""
+    def _get_eoa_account(self) -> Optional[Account]:
+        """Get the EOA account, handling both plaintext and encrypted private keys."""
         default_ledger = self.context.default_ledger_id
-        eoa_file = Path(self.context.data_dir) / f"{default_ledger}_private_key.txt"
-        with eoa_file.open("r") as f:
-            private_key = f.read().strip()
-        return Account.from_key(private_key=private_key)
+        eoa_file_path = (
+            Path(self.context.data_dir) / f"{default_ledger}_private_key.txt"
+        )
+
+        password = self._get_password_from_args()
+        if password is None:
+            self.context.logger.error("No password provided for encrypted private key.")
+
+            # Fallback to plaintext private key
+            with eoa_file_path.open("r") as f:
+                private_key = f.read().strip()
+        else:
+            crypto = EthereumCrypto(
+                private_key_path=str(eoa_file_path), password=password
+            )
+            private_key = crypto.private_key
+
+        try:
+            return Account.from_key(private_key)
+        except Exception as e:
+            self.context.logger.error(f"Failed to decrypt private key: {e}")
+            return None
+
+    def _get_password_from_args(self) -> Optional[str]:
+        """Extract password from command line arguments."""
+        args = sys.argv
+        try:
+            password_index = args.index("--password")
+            if password_index + 1 < len(args):
+                return args[password_index + 1]
+        except ValueError:
+            pass
+
+        for arg in args:
+            if arg.startswith("--password="):
+                return arg.split("=", 1)[1]
+
+        return None
 
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
         """Get Web3 instance for the specified chain."""
@@ -492,6 +528,9 @@ class HttpHandler(BaseHttpHandler):
         try:
             chain = GNOSIS_CHAIN_NAME
             eoa_account = self._get_eoa_account()
+            if not eoa_account:
+                self.context.logger.error("Failed to get EOA account")
+                return False
             eoa_address = eoa_account.address
 
             usdc_address = USDC_E_ADDRESS
