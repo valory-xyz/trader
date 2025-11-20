@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidbobd4p7g67y57f6m4aoyvhfgi3s7qocq2kvh5u4rnzr6dnluare
+agent: valory/trader:0.1.0:bafybeifle3qmagjfb47pl3t3warlr5uxfwpmucncivs37iusra7kjnb5ae
 number_of_agents: 4
 deployment:
   agent:
@@ -151,6 +151,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -419,6 +420,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -547,6 +549,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -676,6 +679,7 @@ type: skill
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
