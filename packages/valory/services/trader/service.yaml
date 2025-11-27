@@ -322,7 +322,7 @@ type: skill
         error_index: ${MECHSPH_ERROR_INDEX:int:0}
         error_type: ${MECHSPH_ERROR_TYPE:str:dict}
         retries: ${MECHS_SUBGRAPH_RETRIES:int:5}
-        url: ${MECHS_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_1_1}
+        url: ${MECHS_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
         delivery_rate_cap: ${DELIVERY_RATE_CAP:int:10000000000000000}
 1:
   models:
