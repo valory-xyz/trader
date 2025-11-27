@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiekmsdehxcn7xuwsnrhxqfac2wekitwp7t5g4xchvcurxluhc55ou
+agent: valory/trader:0.1.0:bafybeifle3qmagjfb47pl3t3warlr5uxfwpmucncivs37iusra7kjnb5ae
 number_of_agents: 4
 deployment:
   agent:
@@ -147,6 +147,11 @@ type: skill
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -289,7 +294,7 @@ type: skill
         error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
-        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/subgraphs/name/mech}
+        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/mech}
     gnosis_staking_subgraph: &id016
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -411,6 +416,11 @@ type: skill
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -535,6 +545,11 @@ type: skill
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -660,6 +675,11 @@ type: skill
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         genai_api_key: ${GENAI_API_KEY:str:""}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+        x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
+        gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
+        lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+        use_x402: ${USE_X402:bool:false}
+        is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -731,19 +751,22 @@ type: connection
 config:
   host: ${HTTP_SERVER_HOST:str:0.0.0.0}
   port: ${HTTP_SERVER_PORT:int:8716}
+  timeout: ${HTTP_SERVER_TIMEOUT:float:30.0}
   target_skill_id: valory/trader_abci:0.1.0
 ---
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
   genai_api_key: ${GENAI_API_KEY:str:""}
+  genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
+  use_x402: ${USE_X402:bool:false}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill
 models:
   params:
     args:
-      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":100000000000000000,"threshold":50000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000}}}}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
       rpc_urls:
         gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
