@@ -193,15 +193,22 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the HTTP message
         :param http_dialogue: the HTTP dialogue
         """
-        api_key = self.context.params.genai_api_key
+        # Check if using X402 or if GENAI_API_KEY is set
+        use_x402 = getattr(self.context.params, "use_x402", False)
 
-        is_chat_enabled = (
-            api_key is not None
-            and isinstance(api_key, str)
-            and api_key.strip() != ""
-            and api_key != "${str:}"
-            and api_key != '""'
-        )
+        if use_x402:
+            # If using X402, chat is enabled without API key check
+            is_chat_enabled = True
+        else:
+            # Otherwise, check if GENAI_API_KEY is set
+            api_key = self.context.params.genai_api_key
+            is_chat_enabled = (
+                api_key is not None
+                and isinstance(api_key, str)
+                and api_key.strip() != ""
+                and api_key != "${str:}"
+                and api_key != '""'
+            )
 
         data = {"isChatEnabled": is_chat_enabled}
         self._send_ok_response(http_msg, http_dialogue, data)
