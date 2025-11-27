@@ -217,8 +217,6 @@ class SharedState(BaseSharedState):
         self.bet_id_row_manager: Dict[str, List[int]] = {}
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
-        # whether the code has detected the new mech marketplace being used
-        self.new_mm_detected: Optional[bool] = None
 
     @property
     def mock_question_id(self) -> Any:
@@ -377,15 +375,6 @@ class DecisionMakerParams(
         )
         agent_registry_address = cast(str, agent_registry_address)
 
-        metadata_address: Optional[str] = kwargs.get(
-            "complementary_service_metadata_address", None
-        )
-        enforce(
-            metadata_address is not None,
-            "Complementary service metadata address not specified!",
-        )
-        metadata_address = cast(str, metadata_address)
-
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
@@ -437,8 +426,6 @@ class DecisionMakerParams(
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
-        self.metadata_address: str = metadata_address
-        self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
         )
