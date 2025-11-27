@@ -12,42 +12,42 @@ fingerprint:
   composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeigjdfo62wldq4rjujmrbf3aspq6edsmitmrdj2d7qkovc42bipmvu
-  handlers.py: bafybeidfurkmrxke4jhasyqzfzbvbjnx7ayi7hm5xlqimhmijkbrpaf6v4
-  models.py: bafybeiel3eybscub4mbtz26snpkxfittl6z6va5xavogacgg7ihkc2a2lu
+  handlers.py: bafybeif2z7qtabdq45omqarfsm46swpw2krhrtpebc3q4pyzhh7ebw6lm4
+  models.py: bafybeibfbub6y66toll2rjgk6r7cbh6v4pxlu6nncp6kekvwnywsy4girq
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
-  predict-ui-build/assets/index-DZkNbpPR.js: bafybeidegxikaivb4wqt5ttpelnpzo5s5omic5nemqnwhx5yydphcv5t3i
+  predict-ui-build/assets/index-A2u-GjHz.js: bafybeigh6jq4yzdietfwwtaouqwz5nolqyfb2wrc27szzodvt662343idm
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
   predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeidffl62vtttjlmlow2qs43swzvu5nq6nh2ufh27tyf6q7cdgr2ema
+  predict-ui-build/index.html: bafybeigh2lrkrosuc6capzh2ogkxpfvpbfxrcgdmam45ziay3tja6clzxy
   predict-ui-build/robots.txt: bafybeifmudop7z45oyjc7jimzav6aqogvpwkobbtscdwidtpuovh6yp5wu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
 fingerprint_ignore_patterns: []
 connections:
-- valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
+- valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 - valory/srr:0.1.0:bafybeic2a7zy7laa73ieoerrel4kgp55jq7ektiqoay2jwlovmxlnrjtle
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib4xpcpuiryyfnkuyhypdvqi5ebbl7ugavv6ig6yp4nzk3fxosntm
-- valory/registration_abci:0.1.0:bafybeibf5nhislatztx2q3u46v7d36vmm7dnxpmuhrbxqxkz4lvdgifwha
-- valory/reset_pause_abci:0.1.0:bafybeihuxdetmcyqoqr7iatqsddufolzoebdxsxb4lxd2uiyvuwhb52ttq
-- valory/transaction_settlement_abci:0.1.0:bafybeids5bopaujr5bh2jfhvysl6fzf7zexsbdifaurf4nerp24hv5uqnm
-- valory/termination_abci:0.1.0:bafybeigysvgr5m6zj5b6ofadeddzpxxlhxzn2hyxfilcybhcpp252vdft4
-- valory/market_manager_abci:0.1.0:bafybeigljxljv3ordirczexmb6abow5srfjsfr2ahamailv2frhvabpfvi
-- valory/decision_maker_abci:0.1.0:bafybeifhrwuamwqtprv7rnnbgoams6kt3scpukqt6o7ymjba2cjf3jkfvq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihleaw6zagqa4ensgfxbhge7n4chcqzfojnkx5mdl2xkeelikescy
-- valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
-- valory/check_stop_trading_abci:0.1.0:bafybeic4b5lihuk7qtbu36amrcz3mtf7dv4nqyqhkkxarwjpu6cixlwbzm
-- valory/mech_interact_abci:0.1.0:bafybeicojoufsfi6vpgpueirkwetei65wcfiem23i4vdsrmn4zi3gfa5jy
-- valory/chatui_abci:0.1.0:bafybeice4wsbcfjmvnnk65u2ge3yi4qhpfynh44o5eysn7apc7o5avax6i
-- valory/agent_performance_summary_abci:0.1.0:bafybeig3a5wu5h5pojtph4mh2gmgwyms2e6dlws2kvqfk5shlokjdb4oiy
-- valory/funds_manager:0.1.0:bafybeihcvkhm46u6zenf5hf3ktkktc5t7cnttekkxzpxoslmfi7iwngpau
+- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
+- valory/registration_abci:0.1.0:bafybeie6rd7zlws4rxzkwka5mzhk56mn6clj3ocxbkbgeaiawv2c6b6jtm
+- valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
+- valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
+- valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
+- valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
+- valory/decision_maker_abci:0.1.0:bafybeihtod5ncqfme2l336ph7qgjomao3wyny2ka5urm6tibm23tzx24wm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigirhn36zxb7eyvrka6b7ukzutgvkhwnsemc32i5pgk5u4xskh4au
+- valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
+- valory/check_stop_trading_abci:0.1.0:bafybeignitkkoe576joz5dfgknscq34uijfixpz2apqvp3jt2eejd7f5sm
+- valory/mech_interact_abci:0.1.0:bafybeicinkpskogfzsdlqak2ky7yux3lftiut4x5t52n2xofj6zbsrkb3m
+- valory/chatui_abci:0.1.0:bafybeihbt5ohnc3paeiwa7can6dzxqdlla2worxbxyez5hfr3dt7rptf54
+- valory/agent_performance_summary_abci:0.1.0:bafybeif6stcv5oce4gzmetghnrq2zikheghj62amnugnfwq3cul4p2kvle
+- valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 behaviours:
   main:
     args: {}
@@ -265,6 +265,11 @@ models:
       enable_position_review: false
       review_period_seconds: 86400
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      x402_payment_requirements: {}
+      gnosis_ledger_rpc: https://rpc.gnosischain.com/
+      lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
+      use_x402: false
+      is_agent_performance_summary_enabled: true
     class_name: TraderParams
   benchmarking_mode:
     args:
@@ -456,7 +461,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.autonolas.tech/subgraphs/name/mech
+      url: https://api.subgraph.autonolas.tech/api/proxy/mech
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:
@@ -488,5 +493,13 @@ models:
   srr_dialogues:
     args: {}
     class_name: SrrDialogues
-dependencies: {}
+dependencies:
+  eth-account:
+    version: '>=0.8.0, <0.9.0'
+  web3:
+    version: <7,>=6.0.0
+  requests:
+    version: '>=2.28.1, <2.31.2'
+  open-aea-ledger-ethereum:
+    version: '>=1.65.0'
 is_abstract: false
