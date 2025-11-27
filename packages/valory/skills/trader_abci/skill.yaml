@@ -40,13 +40,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
 - valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
-- valory/decision_maker_abci:0.1.0:bafybeih7fno56vsybbmv2fbzy7tx3f4gk6vewfu4oug27givppbkwj5qee
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic7qjwq2wu75sgggphfni6to5rrf4cbvby2rrwvoqotnxbwc642dm
+- valory/decision_maker_abci:0.1.0:bafybeifywn3a6mxrql4hjd5rbc3nckvrs3zcwf53fykanjuiwzg6ub55cu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihbj6a2xcvn4pvhw4m5kwscssflolmqaeqmmh3o3kl6npcknxi2sa
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 - valory/check_stop_trading_abci:0.1.0:bafybeieskkzgjziaaa4kmcsjmxsvkbl43cvkcjlyhsaie6shpa63illkuq
 - valory/mech_interact_abci:0.1.0:bafybeiccsbkabxo5r5kwil4vyd5ofje6caomfae7sbydigoe446lzk2cf4
-- valory/chatui_abci:0.1.0:bafybeiegxzi3sl7kup6sxavuwwhoh3zt62c7sxs2u3yiwetsews4pdk55a
-- valory/agent_performance_summary_abci:0.1.0:bafybeiczsxzgvzkoal27pq5pg4u3jp4r2ru46pn3fj4jmwklooeaficwxy
+- valory/chatui_abci:0.1.0:bafybeiaaxfzmm6yu2mrzfrhxjygse3junmhdc64ycf3zsmrp5fwyogtiuu
+- valory/agent_performance_summary_abci:0.1.0:bafybeif6stcv5oce4gzmetghnrq2zikheghj62amnugnfwq3cul4p2kvle
 - valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
 behaviours:
   main:
@@ -268,6 +268,7 @@ models:
       gnosis_ledger_rpc: https://rpc.gnosischain.com/
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
+      is_agent_performance_summary_enabled: true
     class_name: TraderParams
   benchmarking_mode:
     args:
