@@ -222,6 +222,16 @@ ROUNDS_INFO = {
         "description": "Fetches the agent performance summary data",
         "transitions": {},
     },
+    "mech_information_round": {
+        "name": "Fetching mechs' information",
+        "description": "Fetches the mechs' information",
+        "transitions": {},
+    },
+    "mech_version_detection_round": {
+        "name": "Detecting the priority mech's version.",
+        "description": "Detect the version of the priority mech (Legacy, Legacy Mech Marketplace, Mech Marketplace)",
+        "transitions": {},
+    },
 }
 
 
