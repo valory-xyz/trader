@@ -19,16 +19,16 @@ fingerprint:
   tests/test_dialogues.py: bafybeia5ac27w7ijx2nyx5dqyrnv4troo4572gjq7nrcxdncexoxucnqti
   tests/test_handlers.py: bafybeigpmtx2hyunzn6nxk2x4bvvybek7jvuhbk34fqlj7fgfsszcoqhxy
   tests/test_payloads.py: bafybeid34tim55u7bn45idojx5vznk7j63bx7pg2blpk2zaudryc6katyu
-  tests/test_rounds.py: bafybeiccpnosz4rueytjjns75htv7wxrwnu5v53bz6y36zts6ovs3pjdpi
+  tests/test_rounds.py: bafybeiak4cak7vrlzhzj74rzojeni6z6gose6jazlqofkrtxbgzy7jr75i
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/mech:0.1.0:bafybeifwg3m375sv6i4grdj676qyaqw4hbwzblstahbepia27wwu6pu574
-- valory/mech_marketplace:0.1.0:bafybeifbipo6tpbyzm3sydkk3so6wyflnhy2xbiiomsz7pfriimyrdmcqi
+- valory/mech_marketplace:0.1.0:bafybeid76vbpzam4jtjrldclagrleykmkppaznkizrk63klhnz6gihzope
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib4xpcpuiryyfnkuyhypdvqi5ebbl7ugavv6ig6yp4nzk3fxosntm
-- valory/mech_interact_abci:0.1.0:bafybeicojoufsfi6vpgpueirkwetei65wcfiem23i4vdsrmn4zi3gfa5jy
+- valory/mech_interact_abci:0.1.0:bafybeiaf6t75uooqnotk5icvthbdut7fswnxakjraylt6lav27wunqyrhi
 - valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
 behaviours:
   main:
