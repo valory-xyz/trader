@@ -180,11 +180,13 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
                     ),
                     review_bets_for_selling=should_review_bets,
                 ),
-                synchronized_data_attr_checks=[
-                    lambda _synchronized_data: _synchronized_data.participant_to_votes.keys()
-                ]
-                if vote
-                else [],
+                synchronized_data_attr_checks=(
+                    [
+                        lambda _synchronized_data: _synchronized_data.participant_to_votes.keys()
+                    ]
+                    if vote
+                    else []
+                ),
                 exit_event=expected_event,
                 threshold_check=threshold_check,
             )
