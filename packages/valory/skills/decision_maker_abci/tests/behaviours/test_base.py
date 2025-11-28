@@ -236,7 +236,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
         with mock.patch.object(behaviour, "read_bets"):
             collateral_token = WXDAI if is_wxdai else "unknown"
-            behaviour.bets = [(mock.MagicMock(collateralToken=collateral_token))]
+            behaviour.bets = [mock.MagicMock(collateralToken=collateral_token)]
             result = behaviour._collateral_amount_info(amount)
 
         if benchmarking_mode_enabled or is_wxdai:
