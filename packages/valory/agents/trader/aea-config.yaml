@@ -33,7 +33,7 @@ contracts:
 - valory/staking_token:0.1.0:bafybeicsjzuzvnzynj7u2ybqpwk7tupdabnxl5tzzw6jrs6cq3yejglhtm
 - valory/mech_activity:0.1.0:bafybeia3qtb63r77sgiidpakot5b57vl3dhmy5f6mvdv5xifxlddoyrr6q
 - valory/mech_marketplace:0.1.0:bafybeid76vbpzam4jtjrldclagrleykmkppaznkizrk63klhnz6gihzope
-- valory/relayer:0.1.0:bafybeibfuxvazycpvacuj4h2d3allme4sqmfeuqmfaepwkk2bdlv67tgny
+- valory/relayer:0.1.0:bafybeifqp33dsf4tvgkh6u4cfgn7nngsfy62izdot7q7inlrbzoovufozi
 - valory/mech_marketplace_legacy:0.1.0:bafybeieuypdkhxjwo7mj2dm6j3hbojgu7gv7t6kg2hzc5ytlm3ap6xbylq
 - valory/mech_mm:0.1.0:bafybeigr2sf6zd4oxxkgkezowleso63prda4ofzn2uxcz2izpiyoa7ziq4
 - valory/ierc1155:0.1.0:bafybeibl6fadczofbzdwtu6gq4yx3rqzbqwhdx6bsar5dpz7m5xsksi7ee
@@ -64,12 +64,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihuxdetmcyqoqr7iatqsddufolzoebdxsxb4lxd2uiyvuwhb52ttq
 - valory/termination_abci:0.1.0:bafybeigysvgr5m6zj5b6ofadeddzpxxlhxzn2hyxfilcybhcpp252vdft4
 - valory/transaction_settlement_abci:0.1.0:bafybeids5bopaujr5bh2jfhvysl6fzf7zexsbdifaurf4nerp24hv5uqnm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiax7a2iqkqjhbisdqi6uzsxxzpkum2cqssnibrqt3cuqe36wknnum
-- valory/market_manager_abci:0.1.0:bafybeigljxljv3ordirczexmb6abow5srfjsfr2ahamailv2frhvabpfvi
-- valory/decision_maker_abci:0.1.0:bafybeiakfgwqgxslrkw2yz5j4fowusb74vug32ffszgemhvud6b4gpubqi
-- valory/trader_abci:0.1.0:bafybeifz7dyeptcia43bn2emb4ygj2tvga3iwmxdd5xfc5albm5hgjfyye
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib7t4mlpe2niaci4o5jpzm27xsopad5bcoacgb4uzxjqdx2qzmn7m
+- valory/market_manager_abci:0.1.0:bafybeihgf6rvnduwt33e4zpuwtycpucfz37ittn3jdg33nlr64eqbkeqc4
+- valory/decision_maker_abci:0.1.0:bafybeies4ib2pnmqbbno5kgp26n6ra3hgmhawitpqdso7anod6urtjf7vm
+- valory/trader_abci:0.1.0:bafybeiacfkw7p2hokgpzay3vgwln335g6ttcb655jz5xmu6ngzghixglde
 - valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
-- valory/check_stop_trading_abci:0.1.0:bafybeietrvoqpw6rr5ic5o3o7fsdtcyw6kzo7onnuguj3sizwgpcbzv44q
+- valory/check_stop_trading_abci:0.1.0:bafybeig3nweqnnzwgqbqpyda5aeajmgmx6gtj6dz2xqy36up4fapzlq2mq
 - valory/mech_interact_abci:0.1.0:bafybeiaf6t75uooqnotk5icvthbdut7fswnxakjraylt6lav27wunqyrhi
 - valory/chatui_abci:0.1.0:bafybeieq2u2dk4yh772oqfeu2nxytlwbtpy3heabhbaxdtnocchp7ejsme
 - valory/agent_performance_summary_abci:0.1.0:bafybeigb7si5zmfwhsmr2qsaoxtdqrzcmesycu7uhphwhhkj3fmuppwke4
