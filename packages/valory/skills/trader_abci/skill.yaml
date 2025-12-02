@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeidd5wzcmemuzm6uu2z336hbmco5wnv5rxizpbfa7u4mu4rlpnlfo4
   handlers.py: bafybeif2z7qtabdq45omqarfsm46swpw2krhrtpebc3q4pyzhh7ebw6lm4
-  models.py: bafybeifeixgffcdqhc36t6e37jwrscgwpg5qduzavef4wzdot55oifrgcm
+  models.py: bafybeiar4cp2z4uqrh4alv454pptd4aljrlrefsiy2wnfx6thv4ye37pvy
   predict-ui-build/assets/agent-agentsfun-logo-Cl82UKSm.png: bafybeia3nla5pruiurpwvzex6bbsgset4k2foerma2iwy5zxmtjidur454
   predict-ui-build/assets/index-A2u-GjHz.js: bafybeigh6jq4yzdietfwwtaouqwz5nolqyfb2wrc27szzodvt662343idm
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
@@ -39,11 +39,11 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihuxdetmcyqoqr7iatqsddufolzoebdxsxb4lxd2uiyvuwhb52ttq
 - valory/transaction_settlement_abci:0.1.0:bafybeids5bopaujr5bh2jfhvysl6fzf7zexsbdifaurf4nerp24hv5uqnm
 - valory/termination_abci:0.1.0:bafybeigysvgr5m6zj5b6ofadeddzpxxlhxzn2hyxfilcybhcpp252vdft4
-- valory/market_manager_abci:0.1.0:bafybeigljxljv3ordirczexmb6abow5srfjsfr2ahamailv2frhvabpfvi
-- valory/decision_maker_abci:0.1.0:bafybeiakfgwqgxslrkw2yz5j4fowusb74vug32ffszgemhvud6b4gpubqi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiax7a2iqkqjhbisdqi6uzsxxzpkum2cqssnibrqt3cuqe36wknnum
+- valory/market_manager_abci:0.1.0:bafybeihgf6rvnduwt33e4zpuwtycpucfz37ittn3jdg33nlr64eqbkeqc4
+- valory/decision_maker_abci:0.1.0:bafybeies4ib2pnmqbbno5kgp26n6ra3hgmhawitpqdso7anod6urtjf7vm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib7t4mlpe2niaci4o5jpzm27xsopad5bcoacgb4uzxjqdx2qzmn7m
 - valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
-- valory/check_stop_trading_abci:0.1.0:bafybeietrvoqpw6rr5ic5o3o7fsdtcyw6kzo7onnuguj3sizwgpcbzv44q
+- valory/check_stop_trading_abci:0.1.0:bafybeig3nweqnnzwgqbqpyda5aeajmgmx6gtj6dz2xqy36up4fapzlq2mq
 - valory/mech_interact_abci:0.1.0:bafybeiaf6t75uooqnotk5icvthbdut7fswnxakjraylt6lav27wunqyrhi
 - valory/chatui_abci:0.1.0:bafybeieq2u2dk4yh772oqfeu2nxytlwbtpy3heabhbaxdtnocchp7ejsme
 - valory/agent_performance_summary_abci:0.1.0:bafybeigb7si5zmfwhsmr2qsaoxtdqrzcmesycu7uhphwhhkj3fmuppwke4
@@ -522,11 +522,11 @@ models:
     class_name: SrrDialogues
 dependencies:
   eth-account:
-    version: '>=0.8.0, <0.9.0'
+    version: <0.14.0,>=0.13.0
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
   requests:
-    version: '>=2.28.1, <2.31.2'
+    version: <2.32.5,>=2.28.1
   open-aea-ledger-ethereum:
     version: '>=1.65.0'
 is_abstract: false

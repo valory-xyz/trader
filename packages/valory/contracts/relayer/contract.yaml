@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeibi3ij5t2qq2isuq4rtomvlmrcvreggzpzbzn3u7s6ndbo3tiv5c4
   build/Relayer.json: bafybeiao22dbtjh6nvtwzxkis6hgmi3yphwc6ghzmgbvqrl3dxsvhroike
-  contract.py: bafybeiadpguofz7ipwhwr3ngb4m6gblhjlaawrggqrxhix2vdu3kcv6vve
+  contract.py: bafybeibkbng5evcj5m6jbszf4xhseigk6jaw647itke2xgum6ddm75c4py
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: RelayerContract
