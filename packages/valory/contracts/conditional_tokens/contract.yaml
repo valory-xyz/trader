@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeidhdxio3oq5gqdnxmngumvt3fcd6zyiyrpk5f2k4dwhflbg4e5iky
   build/ConditionalTokens.json: bafybeia2ahis7zx2yhhf23kpkcxu56hto6fwg6ptjg5ld46lp4dgz7cz3e
-  contract.py: bafybeiggepqwlvsqqy3rhoq7qbdwfsbsho6v57lbx3mnakz3c27vncxvje
+  contract.py: bafybeihxvd73hyzvh3orjon5eunue5vwryrbwfwp2ejxhxxtessgbjvnaa
 fingerprint_ignore_patterns: []
 class_name: ConditionalTokensContract
 contract_interface_paths:
@@ -18,7 +18,7 @@ dependencies:
   web3:
     version: <8,>=7.0.0
   requests:
-    version: ==2.28.1
+    version: <2.32.5,>=2.28.1
   urllib3:
     version: ==1.26.16
   eth-utils:
