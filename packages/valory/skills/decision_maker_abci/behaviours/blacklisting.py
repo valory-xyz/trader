@@ -64,7 +64,7 @@ class BlacklistingBehaviour(  # type: ignore
 
         success = yield from self._setup_policy_and_tools()
         if not success:
-            self.context.logger.info("Tool selection failed, skipping blacklisting")
+            self.context.logger.info("Policy setup failed, skipping blacklisting.")
             return
         # if the tool selection has not been run for the current period, do not do anything
         if not self.synchronized_data.has_tool_selection_run:
