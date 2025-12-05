@@ -44,7 +44,7 @@ from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
-from packages.valory.skills.chatui_abci.models import SharedState as BaseSharedState
+from packages.valory.skills.chatui_abci.models import SharedState as ChatUISharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
@@ -55,6 +55,9 @@ from packages.valory.skills.market_manager_abci.models import (
 )
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    SharedState as MechInteractSharedState,
 )
 
 
@@ -187,10 +190,10 @@ class RedeemingProgress:
         return history_hashes, addresses, bonds, answers
 
 
-class SharedState(BaseSharedState):
+class SharedState(ChatUISharedState, MechInteractSharedState):
     """Keep the current shared state of the skill."""
 
-    abci_app_cls: Type[AbciApp] = DecisionMakerAbciApp
+    abci_app_cls: Type[AbciApp] = DecisionMakerAbciApp  # type: ignore
 
     def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
         """Initialize the state."""
