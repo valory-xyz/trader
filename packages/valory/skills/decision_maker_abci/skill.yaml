@@ -14,7 +14,7 @@ fingerprint:
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
   behaviours/base.py: bafybeiemg2fmsdcci6g7fukbiv2znwlmr4ugmlvvvewzbitfku4z7uxovu
   behaviours/bet_placement.py: bafybeidcbnvnlt6dtecwm3vewatmz5qx665ps2qubfbrsxgfys6cjjtrmi
-  behaviours/blacklisting.py: bafybeihc5gdtrnoioebfwvgoxajvdtqj6c7zyechtsuado52o4sb2badnu
+  behaviours/blacklisting.py: bafybeidkxzetcegfho7xddtixnolbvryjn2vkxwewwhfrpqq4j6ok24rnq
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/decision_receive.py: bafybeicvxorpnrzh5gjscvxqg226qs4g3ovui7w5dfgxhbpayymp3ialdq
   behaviours/decision_request.py: bafybeia22omb7tvocyfe3z2ucn5au5mcas7dg37ha42u7znefzrewjpk7y
@@ -31,7 +31,7 @@ fingerprint:
   handlers.py: bafybeib2hkoeizwlghpz4ojk2i4lkxo4x4lou4nw7odlf4rhbx55o7w5r4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeifc5bgdfcl7aaraguxjbiimqatggkpk53fwtvu6x77xc6w223fno4
+  models.py: bafybeihnfdqva2gah2rv3bq26zi6g54dh4pcqmcpltwzulpwxtrsnx6tkm
   payloads.py: bafybeiafgv7u5ogcwo5ulmxescbowcmm6ytu23m5mcyblmpzzamjspkfnu
   policy.py: bafybeig5dnlwua4pzyz74rifkauuu2xvrusuwkqfsvetbh7trp3kzkpdyq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -101,7 +101,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
 - valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/mech_interact_abci:0.1.0:bafybeiccsbkabxo5r5kwil4vyd5ofje6caomfae7sbydigoe446lzk2cf4
+- valory/mech_interact_abci:0.1.0:bafybeifig7i427sbpovlhpyybrii3i2hx4kre24i6xaz6wixi236tr6yne
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 - valory/agent_performance_summary_abci:0.1.0:bafybeif6stcv5oce4gzmetghnrq2zikheghj62amnugnfwq3cul4p2kvle
 - valory/chatui_abci:0.1.0:bafybeiaaxfzmm6yu2mrzfrhxjygse3junmhdc64ycf3zsmrp5fwyogtiuu
