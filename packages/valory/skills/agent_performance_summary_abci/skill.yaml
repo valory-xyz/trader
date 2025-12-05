@@ -11,9 +11,9 @@ fingerprint:
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/queries.py: bafybeieopwu53mqp5drryyairk2k45otc2x4ilblsklm5ylr3ugto2rake
-  graph_tooling/requests.py: bafybeidfs6bv6ksfimsx7pwhmzohowzwjiwkf6d7vrbiqtt65iamvpepjy
-  handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
+  graph_tooling/queries.py: bafybeigwtrnwgoyv4gyvdeuzl5qukhjnxjkynw4gu7rw5syg2tkky5qfa4
+  graph_tooling/requests.py: bafybeiadlmrgnydrfvnlhz6bqcga7tilkryacnzu4ayiromkme3rwwi6fi
+  handlers.py: bafybeicsophytt4ogisg2zth7fpy5yq34ifu2j2ow3jbmdgkuft64tos5i
   models.py: bafybeiasjd7xqqpns5bdjznnbovtyezcftw4rj5cvwy6m5vg435neaalr4
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
@@ -21,6 +21,7 @@ fingerprint_ignore_patterns: []
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
+- valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 handlers:
   abci:
     args: {}
