@@ -73,3 +73,13 @@ query GetOlasTraderAgentBets($id: ID!) {
       }
     }
   }"""
+
+GET_TRADER_AGENT_DETAILS_QUERY = """
+query GetTraderAgentDetails($id: ID!) {
+  traderAgent(id: $id) {
+    id
+    blockTimestamp
+    lastActive
+  }
+}
+"""
