@@ -23,7 +23,7 @@ import copy
 import json
 from enum import Enum
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
 from aea.configurations.data_types import PublicId
@@ -459,7 +459,7 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> Optional[List[str]]:
+    ) -> Optional[Set[str]]:
         """Get available mech tools, handle errors if not available."""
         try:
             return self.synchronized_data.available_mech_tools

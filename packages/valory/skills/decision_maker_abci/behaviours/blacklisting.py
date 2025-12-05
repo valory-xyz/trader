@@ -31,9 +31,14 @@ from packages.valory.skills.decision_maker_abci.states.blacklisting import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.mech_interact_abci.behaviours.base import (
+    MechInteractBaseBehaviour,
+)
 
 
-class BlacklistingBehaviour(StorageManagerBehaviour):
+class BlacklistingBehaviour(  # type: ignore
+    StorageManagerBehaviour, MechInteractBaseBehaviour
+):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = BlacklistingRound
@@ -55,9 +60,11 @@ class BlacklistingBehaviour(StorageManagerBehaviour):
 
     def async_act(self) -> Generator:
         """Do the action."""
+        self.shared_state.penalize_last_called_mech()
+
         success = yield from self._setup_policy_and_tools()
         if not success:
-            self.context.logger.info("Tool selection failed, skipping blacklisting")
+            self.context.logger.info("Policy setup failed, skipping blacklisting.")
             return
         # if the tool selection has not been run for the current period, do not do anything
         if not self.synchronized_data.has_tool_selection_run:

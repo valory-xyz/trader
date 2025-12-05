@@ -122,8 +122,8 @@ class CheckStopTradingParams(StakingParams):
         enforce(marketplace_config is not None, "Market place config cannot be empty")
 
         # Create MechMarketplaceConfig instance from the config dict
-        self.mech_marketplace_config = MechMarketplaceConfig.from_dict(
-            kwargs["mech_marketplace_config"]
+        self.mech_marketplace_config = MechMarketplaceConfig(
+            **kwargs["mech_marketplace_config"]
         )
 
         # Update the KPI request address to use marketplace address
