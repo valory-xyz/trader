@@ -270,6 +270,8 @@ models:
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${bool:false}
       is_agent_performance_summary_enabled: ${bool:true}
+      ignored_mechs: ${list:[]}
+      penalize_mech_time_window: ${int:1800}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

@@ -269,6 +269,8 @@ models:
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
       is_agent_performance_summary_enabled: true
+      ignored_mechs: []
+      penalize_mech_time_window: 1800
     class_name: TraderParams
   benchmarking_mode:
     args:
