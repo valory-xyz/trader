@@ -59,6 +59,9 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
@@ -185,8 +188,12 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound,
         DecisionReceiveRound,
         RedeemRound,
+        PolymarketBetPlacementRound,
     }
     transition_function: AbciAppTransitionFunction = {
+        PolymarketBetPlacementRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+        },
         CheckBenchmarkingModeRound: {
             Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,

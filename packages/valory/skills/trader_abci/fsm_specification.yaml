@@ -106,6 +106,7 @@ states:
 - ToolSelectionRound
 - UpdateBetsRound
 - ValidateTransactionRound
+- PolymarketBetPlacementRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -234,7 +235,7 @@ transition_func:
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
-    (RegistrationRound, DONE): FetchPerformanceDataRound
+    (RegistrationRound, DONE): PolymarketBetPlacementRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
     (RegistrationStartupRound, DONE): FetchPerformanceDataRound
     (ResetAndPauseRound, DONE): FetchPerformanceDataRound

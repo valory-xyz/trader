@@ -40,6 +40,7 @@ start_states:
 - HandleFailedTxRound
 - RandomnessRound
 - RedeemRound
+- PolymarketBetPlacementRound
 states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
@@ -57,6 +58,7 @@ states:
 - ImpossibleRound
 - RandomnessRound
 - RedeemRound
+- PolymarketBetPlacementRound
 - RefillRequiredRound
 - SamplingRound
 - SellOutcomeTokensRound

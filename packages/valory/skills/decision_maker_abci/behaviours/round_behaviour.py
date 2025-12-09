@@ -43,6 +43,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
+    PolymarketBetPlacementBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
@@ -78,4 +81,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         RandomnessBehaviour,  # type: ignore
         BenchmarkingRandomnessBehaviour,  # type: ignore
         CheckBenchmarkingModeBehaviour,  # type: ignore
+        PolymarketBetPlacementBehaviour,  # type: ignore
     }

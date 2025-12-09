@@ -115,6 +115,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
     TransactionSubmissionAbciApp,
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    BetPlacementRound,
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
@@ -129,7 +130,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    FinishedRegistrationRound: FetchPerformanceDataRound,
+    FinishedRegistrationRound: BetPlacementRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
     FinishedChatuiLoadRound: MechVersionDetectionRound,
     FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,

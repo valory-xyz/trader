@@ -17,6 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
 - dvilela/genai:0.1.0:bafybeiabp64cyd3m7pjbgeivcprijw7qqviycsu7l24useqttgjeif4vbi
 - valory/x402:0.1.0:bafybeibbmbx72zriokyed4rl7us6hjvxoxoqku737eqctsqjcncg3jlnku
+- valory/polymarket:0.1.0:bafybeieptf7tjz5dgyxfzyhbek6m6w25smzzm2lvxtwwl2ptxfpzdwo5be
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia4h7w5xcslzwphyupvqoijhf3wru4cswnztm24zwafyv5eliwm4a
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeifbty6k7cpi3srl56wjrrefwqteuomqarq4fd55vdrmnomk6cwdhu
@@ -64,10 +65,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihuxdetmcyqoqr7iatqsddufolzoebdxsxb4lxd2uiyvuwhb52ttq
 - valory/termination_abci:0.1.0:bafybeigysvgr5m6zj5b6ofadeddzpxxlhxzn2hyxfilcybhcpp252vdft4
 - valory/transaction_settlement_abci:0.1.0:bafybeids5bopaujr5bh2jfhvysl6fzf7zexsbdifaurf4nerp24hv5uqnm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib7t4mlpe2niaci4o5jpzm27xsopad5bcoacgb4uzxjqdx2qzmn7m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifuoklpqxp5pkzlc7qxfjrwkuy4xu6fpdozse6bx4pnxqpuru5qrm
 - valory/market_manager_abci:0.1.0:bafybeihgf6rvnduwt33e4zpuwtycpucfz37ittn3jdg33nlr64eqbkeqc4
-- valory/decision_maker_abci:0.1.0:bafybeies4ib2pnmqbbno5kgp26n6ra3hgmhawitpqdso7anod6urtjf7vm
-- valory/trader_abci:0.1.0:bafybeiacfkw7p2hokgpzay3vgwln335g6ttcb655jz5xmu6ngzghixglde
+- valory/decision_maker_abci:0.1.0:bafybeihfaptajuvbap2r7ucdowrdkzu7vfxlycje2zmpilmgkn2i3kn5am
+- valory/trader_abci:0.1.0:bafybeicsjndn76k7vc3outxowlvfwd65wlbpyicho73russggdcucqwbny
 - valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
 - valory/check_stop_trading_abci:0.1.0:bafybeig3nweqnnzwgqbqpyda5aeajmgmx6gtj6dz2xqy36up4fapzlq2mq
 - valory/mech_interact_abci:0.1.0:bafybeiaf6t75uooqnotk5icvthbdut7fswnxakjraylt6lav27wunqyrhi
@@ -258,7 +259,7 @@ models:
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
       tool_quarantine_duration: ${int:10800}
-      default_chain_id: ${str:gnosis}
+      default_chain_id: ${str:polygon}
       mech_interact_round_timeout_seconds: ${int:5400}
       enable_position_review: ${bool:true}
       review_period_seconds: ${int:86400}
@@ -483,6 +484,11 @@ config:
     gnosis:
       address: ${str:https://rpc.gnosischain.com}
       chain_id: ${int:100}
+      poa_chain: ${bool:false}
+      default_gas_price_strategy: ${str:eip1559}
+    polygon:
+      address: ${str:https://1rpc.io/matic}
+      chain_id: ${int:137}
       poa_chain: ${bool:false}
       default_gas_price_strategy: ${str:eip1559}
 ---

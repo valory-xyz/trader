@@ -34,7 +34,7 @@ AGENT_NAME = "agent"
 
 PATH_TO_VAR = {
     # Ledgers
-    "config/ledger_apis/gnosis/address": "GNOSIS_LEDGER_RPC",
+    "config/ledger_apis/polygon/address": "POLYGON_LEDGER_RPC",
     # Agent
     "models/params/args/setup/all_participants": "ALL_PARTICIPANTS",
     "models/params/args/setup/safe_contract_address": "SAFE_CONTRACT_ADDRESS",
