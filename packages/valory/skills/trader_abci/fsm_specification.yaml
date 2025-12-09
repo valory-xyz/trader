@@ -30,7 +30,6 @@ alphabet_in:
 - NEXT_CHECKPOINT_NOT_REACHED_YET
 - NONE
 - NO_MAJORITY
-- NO_MARKETPLACE
 - NO_OP
 - NO_REDEEMING
 - REDEEMING_DONE
@@ -52,8 +51,6 @@ alphabet_in:
 - TIE
 - UNPROFITABLE
 - UNRECOGNIZED
-- V1
-- V2
 - VALIDATE_TIMEOUT
 default_start_state: RegistrationStartupRound
 final_states:
@@ -82,11 +79,9 @@ states:
 - FinalizationRound
 - HandleFailedTxRound
 - ImpossibleRound
-- MechInformationRound
 - MechPurchaseSubscriptionRound
 - MechRequestRound
 - MechResponseRound
-- MechVersionDetectionRound
 - PostTxSettlementRound
 - PreTxSettlementRound
 - RandomnessRound
@@ -130,7 +125,7 @@ transition_func:
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
-    (ChatuiLoadRound, DONE): MechVersionDetectionRound
+    (ChatuiLoadRound, DONE): CheckBenchmarkingModeRound
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
@@ -187,10 +182,6 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
-    (MechInformationRound, DONE): CheckBenchmarkingModeRound
-    (MechInformationRound, NONE): MechVersionDetectionRound
-    (MechInformationRound, NO_MAJORITY): MechInformationRound
-    (MechInformationRound, ROUND_TIMEOUT): MechInformationRound
     (MechPurchaseSubscriptionRound, DONE): PreTxSettlementRound
     (MechPurchaseSubscriptionRound, NONE): MechPurchaseSubscriptionRound
     (MechPurchaseSubscriptionRound, NO_MAJORITY): MechPurchaseSubscriptionRound
@@ -203,11 +194,6 @@ transition_func:
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
-    (MechVersionDetectionRound, NO_MAJORITY): MechVersionDetectionRound
-    (MechVersionDetectionRound, NO_MARKETPLACE): CheckBenchmarkingModeRound
-    (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
-    (MechVersionDetectionRound, V1): CheckBenchmarkingModeRound
-    (MechVersionDetectionRound, V2): MechInformationRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
