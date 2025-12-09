@@ -75,7 +75,7 @@ def test_available_mech_tools(
 ) -> None:
     """Test the available_mech_tools property."""
     mocked_db.get_strict.return_value = '["tool1", "tool2"]'
-    assert sync_data.available_mech_tools == {"tool1", "tool2"}
+    assert sync_data.available_mech_tools == ["tool1", "tool2"]
     mocked_db.get_strict.assert_called_once_with("available_mech_tools")
 
 

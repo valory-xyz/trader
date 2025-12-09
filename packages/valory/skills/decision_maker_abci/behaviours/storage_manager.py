@@ -24,9 +24,12 @@ import json
 from abc import ABC
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
+from packages.valory.contracts.complementary_service_metadata.contract import (
+    ComplementaryServiceMetadata,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -39,6 +42,7 @@ from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
 )
+from packages.valory.skills.decision_maker_abci.utils.general import suppress_logs
 
 
 POLICY_STORE = "policy_store_multi_bet_failure_adjusting.json"
@@ -58,18 +62,18 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_id: int = 0
         self._mech_hash: str = ""
         self._utilized_tools: Dict[str, str] = {}
-        self._mech_tools: Set[str] = set()
+        self._mech_tools: Optional[List[str]] = None
         self._remote_accuracy_information: StringIO = StringIO()
 
     @property
-    def mech_tools(self) -> Set[str]:
+    def mech_tools(self) -> List[str]:
         """Get the mech agent's tools."""
-        if not self._mech_tools:
+        if self._mech_tools is None:
             raise ValueError("The mech's tools have not been set.")
         return self._mech_tools
 
     @mech_tools.setter
-    def mech_tools(self, mech_tools: Set[str]) -> None:
+    def mech_tools(self, mech_tools: List[str]) -> None:
         """Set the mech agent's tools."""
         self._mech_tools = mech_tools
 
@@ -128,11 +132,72 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             if self.utilized_tools is None:
                 self.utilized_tools = self._try_recover_utilized_tools()
 
-    def set_mech_agent_specs(self) -> None:
+    def detect_new_mm(self) -> WaitableConditionType:
+        """Detect whether the new mech marketplace is being used."""
+        # suppressing logs: contract method may not exist, but failure is expected during MM version detection
+        with suppress_logs():
+            # the `get_payment_type` is only available in mechs on the new marketplace
+            is_new_mm = yield from self._mech_mm_contract_interact(
+                contract_callable="get_payment_type",
+                data_key="payment_type",
+                placeholder="_",
+            )
+
+        if is_new_mm:
+            self.context.logger.info(
+                f"Mech with address {self.params.mech_contract_address} is on the latest mech marketplace."
+            )
+            self.shared_state.new_mm_detected = is_new_mm
+
+        return is_new_mm
+
+    def detect_legacy_mm(self) -> Generator:
+        """Detect whether the legacy mech marketplace is being used."""
+        # suppressing logs: contract method may not exist, but failure is expected during MM version detection
+        with suppress_logs():
+            # the `get_price` is only available in mechs on the legacy marketplace
+            is_legacy_mm = yield from self._mech_contract_interact(
+                contract_callable="get_price",
+                data_key="price",
+                placeholder="_",
+            )
+
+        if is_legacy_mm:
+            self.context.logger.info(
+                f"Mech with address {self.params.mech_contract_address} is on the legacy mech marketplace."
+            )
+            self.shared_state.new_mm_detected = False
+        else:
+            # we do not set the flag in the shared state in this case, so that the check is performed again next time
+            self.context.logger.error(
+                f"Could not verify the mech's version for address {self.params.mech_contract_address}! "
+                "Assuming legacy mech marketplace."
+            )
+
+    def detect_mm_version(self) -> WaitableConditionType:
+        """Detect the mech marketplace version in which the utilized mech belongs to."""
+        is_new_mm = yield from self.detect_new_mm()
+        if is_new_mm:
+            return True
+        yield from self.detect_legacy_mm()
+        return False
+
+    def using_new_mm(self) -> WaitableConditionType:
+        """Whether the new mech marketplace is being used."""
+        if self.shared_state.new_mm_detected is not None:
+            return self.shared_state.new_mm_detected
+
+        if not self.params.use_mech_marketplace:
+            self.shared_state.new_mm_detected = False
+            return False
+
+        return (yield from self.detect_mm_version())
+
+    def set_mech_agent_specs(self) -> Generator:
         """Set the mech's agent specs."""
         ipfs_link = (
             self.mech_hash
-            if self.synchronized_data.is_marketplace_v2
+            if (yield from self.using_new_mm())
             else self.params.ipfs_address + CID_PREFIX + self.mech_hash
         )
 
@@ -156,9 +221,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         # parse tools from headers
         headers = row.split(self.benchmarking_mode.sep)
         p_yes_part = self.benchmarking_mode.p_yes_field_part
-        self.mech_tools = {
+        self.mech_tools = [
             header.replace(p_yes_part, "") for header in headers if p_yes_part in header
-        }
+        ]
 
     def _get_mech_id(self) -> WaitableConditionType:
         """Get the mech's id."""
@@ -183,6 +248,29 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         )
         return result
 
+    def _get_mech_service_id(self) -> WaitableConditionType:
+        """Get the mech's id."""
+        result = yield from self._mech_mm_contract_interact(
+            contract_callable="get_service_id",
+            data_key="service_id",
+            placeholder=get_name(StorageManagerBehaviour.mech_id),
+        )
+
+        return result
+
+    def _get_metadata_uri(self) -> WaitableConditionType:
+        """Get the mech's hash."""
+        result = yield from self.contract_interact(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=self.params.metadata_address,
+            contract_public_id=ComplementaryServiceMetadata.contract_id,
+            contract_callable="get_token_uri",
+            data_key="uri",
+            placeholder=get_name(StorageManagerBehaviour.mech_hash),
+            service_id=self.mech_id,
+        )
+        return result
+
     def _check_hash(self) -> None:
         """Check the validity of the obtained mech hash."""
         if self.mech_hash.endswith(NO_METADATA_HASH):
@@ -194,7 +282,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _get_mech_tools(self) -> WaitableConditionType:
         """Get the mech agent's tools from IPFS."""
         self._check_hash()
-        self.set_mech_agent_specs()
+        yield from self.set_mech_agent_specs()
         specs = self.mech_tools_api.get_spec()
         res_raw = yield from self.get_http_response(**specs)
         res = self.mech_tools_api.process_response(res_raw)
@@ -213,8 +301,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
-        # keep only the relevant mech tools
-        res = set(res) - self.params.irrelevant_tools
+        # keep only the relevant mech tools, sorted
+        # we sort the tools to avoid using dictionaries in the policy implementation,
+        # so that we can easily assess which index corresponds to which tool
+        res = sorted(set(res) - self.params.irrelevant_tools)
         self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
 
         if len(res) == 0:
@@ -232,13 +322,20 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             self._get_tools_from_benchmark_file()
             return
 
-        if self.synchronized_data.is_marketplace_v2:
-            self.mech_tools = self.synchronized_data.mech_tools
-            return
+        metadata_steps = (
+            (
+                self._get_mech_service_id,
+                self._get_metadata_uri,
+            )
+            if (yield from self.using_new_mm())
+            else (
+                self._get_mech_id,
+                self._get_mech_hash,
+            )
+        )
 
         for step in (
-            self._get_mech_id,
-            self._get_mech_hash,
+            *metadata_steps,
             self._get_mech_tools,
         ):
             yield from self.wait_for_condition_with_sleep(step)
@@ -456,7 +553,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _setup_policy_and_tools(self) -> Generator[None, None, bool]:
         """Set up the policy and tools."""
         yield from self._get_tools()
-        if not self._mech_tools:
+        if self._mech_tools is None:
             return False
 
         yield from self._set_policy()
@@ -472,7 +569,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Store the policy"""
         policy_path = self.params.store_path / AVAILABLE_TOOLS_STORE
         with open(policy_path, "w") as f:
-            json.dump(list(self.mech_tools), f)
+            json.dump(self.mech_tools, f)
 
     def _store_utilized_tools(self) -> None:
         """Store the utilized tools."""
