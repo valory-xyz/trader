@@ -55,6 +55,8 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      olas_agents_subgraph_url: https://predict-agents.subgraph.autonolas.tech
+      trades_subgraph_url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
       store_path: /data/
       is_agent_performance_summary_enabled: true
     class_name: AgentPerformanceSummaryParams
@@ -103,6 +105,21 @@ models:
       retries: 5
       url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
+  trades_subgraph:
+    args:
+      api_id: trades
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
+    class_name: TradesSubgraph
 dependencies: {}
 is_abstract: true
 connections: []

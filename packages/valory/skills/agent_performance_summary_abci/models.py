@@ -75,6 +75,12 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.coingecko_olas_in_usd_price_url: str = self._ensure(
             "coingecko_olas_in_usd_price_url", kwargs, str
         )
+        self.olas_agents_subgraph_url: str = self._ensure(
+            "olas_agents_subgraph_url", kwargs, str
+        )
+        self.trades_subgraph_url: str = self._ensure(
+            "trades_subgraph_url", kwargs, str
+        )
         self.store_path: Path = self.get_store_path(kwargs)
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool
@@ -176,3 +182,7 @@ class GnosisStakingSubgraph(Subgraph):
 
 class OpenMarketsSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Open Markets subgraph specifications."""
+
+
+class TradesSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
