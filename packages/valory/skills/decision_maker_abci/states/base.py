@@ -41,9 +41,6 @@ from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
     MechMetadata,
 )
-from packages.valory.skills.mech_interact_abci.states.base import (
-    SynchronizedData as MechInteractSyncedData,
-)
 from packages.valory.skills.staking_abci.rounds import StakingState
 from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
@@ -80,10 +77,7 @@ class Event(Enum):
 
 
 class SynchronizedData(
-    MechInteractSyncedData,
-    MarketManagerSyncedData,
-    TxSettlementSyncedData,
-    ChatuiSyncedData,
+    MarketManagerSyncedData, TxSettlementSyncedData, ChatuiSyncedData
 ):
     """Class to represent the synchronized data.
 

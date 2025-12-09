@@ -305,26 +305,6 @@ models:
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
       url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
-  mech_tools:
-    args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
-      method: ${MECH_TOOLS_API_METHOD:str:GET}
-      response_key: ${MECH_TOOLS_API_RESPONSE_KEY:str:tools}
-      response_type: ${MECH_TOOLS_API_RESPONSE_TYPE:str:list}
-      retries: ${MECH_TOOLS_API_RETRIES:int:5}
-      url: ${MECH_TOOLS_API_URL:str:''}
-  mechs_subgraph:
-    args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
-      method: ${MECHS_SUBGRAPH_METHOD:str:POST}
-      response_key: ${MECHS_SUBGRAPH_RESPONSE_KEY:str:data:meches}
-      response_type: ${MECHS_SUBGRAPH_RESPONSE_TYPE:str:list}
-      error_key: ${MECHSPH_ERROR_KEY:str:errors}
-      error_index: ${MECHSPH_ERROR_INDEX:int:0}
-      error_type: ${MECHSPH_ERROR_TYPE:str:dict}
-      retries: ${MECHS_SUBGRAPH_RETRIES:int:5}
-      url: ${MECHS_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_1_1}
-      delivery_rate_cap: ${DELIVERY_RATE_CAP:int:10000000000000000}
 ---
 public_id: valory/ledger:0.19.0
 type: connection

@@ -80,12 +80,6 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
-from packages.valory.skills.mech_interact_abci.models import (
-    MechToolsSpecs as InteractMechToolsSpecs,
-)
-from packages.valory.skills.mech_interact_abci.models import (
-    MechsSubgraph as InteractMechsSubgraph,
-)
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.termination_abci.models import TerminationParams
@@ -130,8 +124,6 @@ GnosisStakingSubgraph = APTGnosisStakingSubgraph
 OlasMechSubgraph = APTOlasMechSubgraph
 OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph
-MechToolsSpecs = InteractMechToolsSpecs
-MechsSubgraph = InteractMechsSubgraph
 
 MARGIN = 5
 
