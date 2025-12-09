@@ -452,7 +452,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
+      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_1_1}
       delivery_rate_cap: ${int:10000000000000000}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0

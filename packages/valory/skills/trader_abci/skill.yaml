@@ -502,7 +502,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0
+      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_1_1
       delivery_rate_cap: 10000000000000000
     class_name: MechsSubgraph
   requests:
