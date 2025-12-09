@@ -102,3 +102,34 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
   }
 }
 """
+
+GET_PREDICTION_HISTORY_QUERY = """
+query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
+  traderAgent(id: $id) {
+    totalBets
+    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      id
+      timestamp
+      amount
+      outcomeIndex
+      fixedProductMarketMaker {
+        id
+        question
+        outcomes
+        currentAnswer
+        answerFinalizedTimestamp
+      }
+    }
+  }
+}
+"""
+
+GET_FPMM_PAYOUTS_QUERY = """
+query GetFPMMPayouts($fpmmIds: [ID!]!) {
+  fixedProductMarketMakers(where: { id_in: $fpmmIds }, first: 1000) {
+    id
+    payouts
+    resolutionTimestamp
+  }
+}
+"""
