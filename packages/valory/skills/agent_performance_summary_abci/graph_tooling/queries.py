@@ -83,3 +83,22 @@ query GetTraderAgentDetails($id: ID!) {
   }
 }
 """
+
+GET_TRADER_AGENT_PERFORMANCE_QUERY = """
+query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
+  traderAgent(id: $id) {
+    id
+    totalTraded
+    totalPayout
+    totalFees
+    totalBets
+    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      amount
+      outcomeIndex
+      fixedProductMarketMaker {
+        currentAnswer
+      }
+    }
+  }
+}
+"""
