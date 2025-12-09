@@ -28,6 +28,7 @@ from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 import requests
+from web3 import Web3
 
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
@@ -54,8 +55,17 @@ from packages.valory.skills.agent_performance_summary_abci.dialogues import (
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_TRADER_AGENT_DETAILS_QUERY,
+    GET_TRADER_AGENT_PERFORMANCE_QUERY,
 )
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
+
+
+# Constants
+DEFAULT_MECH_FEE = 10000000000000000  # 0.01 xDAI in wei (1e16)
+WEI_TO_NATIVE = 10**18
+WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+GRAPHQL_BATCH_SIZE = 1000  # Max items per GraphQL query
+INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
 
 class HttpMethod(Enum):
@@ -121,6 +131,7 @@ class HttpHandler(BaseHttpHandler):
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
         
         agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
+        agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -129,6 +140,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     agent_details_url_regex,
                     self._handle_get_agent_details,
+                ),
+                (
+                    agent_performance_url_regex,
+                    self._handle_get_agent_performance,
                 ),
             ],
         }
@@ -380,3 +395,308 @@ class HttpHandler(BaseHttpHandler):
         self.context.outbox.put_message(message=message)
         nonce = dialogue.dialogue_label.dialogue_reference[0]
         self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
+
+    def _send_not_found_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Send a NOT FOUND response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            {"error": "Agent not found"},
+            HTTPStatus.NOT_FOUND.value,
+            "Not Found",
+        )
+
+    def _get_web3_instance(self, chain: str) -> Optional[Web3]:
+        """Get Web3 instance for the specified chain."""
+        try:
+            rpc_url = self.params.gnosis_ledger_rpc
+
+            if not rpc_url:
+                self.context.logger.warning(f"No RPC URL for {chain}")
+                return None
+
+            # Commented for future debugging purposes:
+            # Note that you should create only one HTTPProvider with the same provider URL per python process,
+            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
+            # Multiple HTTPProviders with different URLs will work as expected.
+            return Web3(Web3.HTTPProvider(rpc_url))
+        except Exception as e:
+            self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
+            return None
+
+    def _fetch_all_bets_paginated(self, safe_address: str, subgraph_url: str) -> Optional[Dict]:
+        """
+        Fetch all bets for an agent with pagination support.
+        
+        :param safe_address: The agent's safe address
+        :param subgraph_url: The subgraph URL
+        :return: Trader agent data with all bets, or None if error
+        """
+        all_bets = []
+        skip = 0
+        trader_agent_base = None
+        
+        while True:
+            query_payload = {
+                "query": GET_TRADER_AGENT_PERFORMANCE_QUERY,
+                "variables": {
+                    "id": safe_address,
+                    "first": GRAPHQL_BATCH_SIZE,
+                    "skip": skip
+                }
+            }
+            
+            try:
+                response = requests.post(
+                    subgraph_url,
+                    json=query_payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                
+                if response.status_code != 200:
+                    self.context.logger.error(
+                        f"Failed to fetch bets batch at skip={skip}: {response.status_code}"
+                    )
+                    return None
+                
+                response_data = response.json()
+                trader_agent = response_data.get("data", {}).get("traderAgent")
+                
+                if not trader_agent:
+                    if skip == 0:
+                        # No trader agent found at all
+                        return None
+                    # No more bets to fetch
+                    break
+                
+                # Store base data on first iteration
+                if trader_agent_base is None:
+                    trader_agent_base = trader_agent.copy()
+                
+                bets_batch = trader_agent.get("bets", [])
+                if not bets_batch:
+                    # No more bets
+                    break
+                
+                all_bets.extend(bets_batch)
+                
+                # If we got less than GRAPHQL_BATCH_SIZE bets, we've reached the end
+                if len(bets_batch) < GRAPHQL_BATCH_SIZE:
+                    break
+                
+                skip += GRAPHQL_BATCH_SIZE
+                
+            except Exception as e:
+                self.context.logger.error(f"Error fetching bets batch at skip={skip}: {str(e)}")
+                return None
+        
+        # Merge all bets into the base trader agent data
+        if trader_agent_base:
+            trader_agent_base["bets"] = all_bets
+            self.context.logger.info(
+                f"Fetched {len(all_bets)} total bets for agent {safe_address} using pagination"
+            )
+        
+        return trader_agent_base
+
+    def _handle_get_agent_performance(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/performance request."""
+        try:
+            # Parse query parameters
+            url_parts = http_msg.url.split('?')
+            window = "lifetime"  # Default
+            currency = "USD"  # Default
+            
+            if len(url_parts) > 1:
+                params = {}
+                for param in url_parts[1].split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        params[key] = value
+                window = params.get('window', 'lifetime')
+                currency = params.get('currency', 'USD')
+            
+            # Validate window parameter
+            if window not in ["lifetime", "7d", "30d", "90d"]:
+                self._send_bad_request_response(
+                    http_msg, http_dialogue,
+                    {"error": f"Invalid window parameter: {window}. Must be one of: lifetime, 7d, 30d, 90d"}
+                )
+                return
+            
+            # Get safe address
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            subgraph_url = self.context.params.olas_agents_subgraph_url
+            
+            # Fetch all performance data with pagination support
+            trader_agent = self._fetch_all_bets_paginated(safe_address, subgraph_url)
+            
+            if not trader_agent:
+                self.context.logger.warning(
+                    f"No trader agent found for address: {safe_address}"
+                )
+                self._send_not_found_response(http_msg, http_dialogue)
+                return
+            
+            # Calculate metrics and stats
+            metrics = self._calculate_performance_metrics(trader_agent, safe_address)
+            stats = self._calculate_performance_stats(trader_agent)
+            
+            # Format response
+            formatted_response = {
+                "agent_id": safe_address,
+                "window": window,
+                "currency": currency,
+                "metrics": metrics,
+                "stats": stats
+            }
+            
+            self.context.logger.info(f"Sending performance data for agent: {safe_address}")
+            self._send_ok_response(http_msg, http_dialogue, formatted_response)
+            
+        except Exception as e:
+            self.context.logger.error(f"Error in performance endpoint: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue,
+                {"error": "Failed to fetch performance data"}
+            )
+
+    def _calculate_performance_metrics(self, trader_agent: Dict, safe_address: str) -> Dict:
+        """Calculate performance metrics from trader agent data."""
+        try:
+            # Extract base data
+            total_traded = int(trader_agent.get("totalTraded", 0))
+            total_fees = int(trader_agent.get("totalFees", 0))
+            total_payout = int(trader_agent.get("totalPayout", 0))
+            bets = trader_agent.get("bets", [])
+            
+            # For now, use a simple mech cost estimation
+            # TODO: Replace with actual mech subgraph query when available
+            total_bets_count = int(trader_agent.get("totalBets", 0))
+            estimated_mech_costs = total_bets_count * DEFAULT_MECH_FEE
+            
+            # Calculate all_time_funds_used
+            all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_TO_NATIVE
+            
+            # Calculate all_time_profit
+            total_costs = total_traded + total_fees + estimated_mech_costs
+            all_time_profit = (total_payout - total_costs) / WEI_TO_NATIVE
+            
+            # Calculate funds_locked_in_markets
+            funds_locked = 0
+            for bet in bets:
+                current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
+                if current_answer is None:  # Market not resolved
+                    bet_amount = int(bet.get("amount", 0))
+                    funds_locked += bet_amount
+            funds_locked_in_markets = funds_locked / WEI_TO_NATIVE
+            
+            # Get available funds (balance query)
+            available_funds = self._get_available_balance(safe_address)
+            
+            return {
+                "all_time_funds_used": round(all_time_funds_used, 4),
+                "all_time_profit": round(all_time_profit, 4),
+                "funds_locked_in_markets": round(funds_locked_in_markets, 4),
+                "available_funds": round(available_funds, 4)
+            }
+            
+        except Exception as e:
+            self.context.logger.error(f"Error calculating performance metrics: {str(e)}")
+            return {
+                "all_time_funds_used": 0.0,
+                "all_time_profit": 0.0,
+                "funds_locked_in_markets": 0.0,
+                "available_funds": 0.0
+            }
+
+    def _calculate_performance_stats(self, trader_agent: Dict) -> Dict:
+        """Calculate performance statistics from trader agent data."""
+        try:
+            # Extract data
+            total_bets = int(trader_agent.get("totalBets", 0))
+            bets = trader_agent.get("bets", [])
+            
+            # Calculate prediction accuracy
+            closed_bets = []
+            won_bets = 0
+            
+            for bet in bets:
+                fpmm = bet.get("fixedProductMarketMaker", {})
+                current_answer = fpmm.get("currentAnswer")
+                
+                # Only count closed markets (where currentAnswer is not None)
+                if current_answer is not None:
+                    closed_bets.append(bet)
+                    outcome_index = bet.get("outcomeIndex")
+                    
+                    if outcome_index is not None:
+                        try:
+                            # Convert hex answer to int and compare with outcome index
+                            answer_int = int(current_answer, 0)
+                            if answer_int == int(outcome_index):
+                                won_bets += 1
+                        except (ValueError, TypeError):
+                            continue
+            
+            # Calculate accuracy
+            prediction_accuracy = 0.0
+            if len(closed_bets) > 0:
+                prediction_accuracy = won_bets / len(closed_bets)
+            
+            return {
+                "predictions_made": total_bets,
+                "prediction_accuracy": round(prediction_accuracy, 4)
+            }
+            
+        except Exception as e:
+            self.context.logger.error(f"Error calculating performance stats: {str(e)}")
+            return {
+                "predictions_made": 0,
+                "prediction_accuracy": 0.0
+            }
+
+    def _get_available_balance(self, safe_address: str) -> float:
+        """Query xDAI and wxDAI balance using Web3."""
+        try:
+            w3 = self._get_web3_instance("gnosis")
+            if not w3:
+                self.context.logger.error("Failed to get Web3 instance for Gnosis Chain")
+                return 0.0
+            
+            # ERC20 ABI for balanceOf
+            erc20_abi = [{
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function",
+            }]
+            
+            # Get wxDAI balance
+            wxdai_contract = w3.eth.contract(
+                address=Web3.to_checksum_address(WXDAI_ADDRESS),
+                abi=erc20_abi
+            )
+            wxdai_balance = wxdai_contract.functions.balanceOf(
+                Web3.to_checksum_address(safe_address)
+            ).call()
+            
+            # Get native xDAI balance
+            xdai_balance = w3.eth.get_balance(Web3.to_checksum_address(safe_address))
+            
+            # Convert from wei to native token
+            total_balance = (wxdai_balance + xdai_balance) / WEI_TO_NATIVE
+            return total_balance
+            
+        except Exception as e:
+            self.context.logger.error(f"Error fetching balance: {str(e)}")
+            # Return 0 on error instead of failing the entire request
+            return 0.0
