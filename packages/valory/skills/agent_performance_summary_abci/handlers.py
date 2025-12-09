@@ -24,7 +24,7 @@ import json
 from datetime import datetime
 from enum import Enum
 from http import HTTPStatus
-from typing import Any, Dict, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 import requests
@@ -226,36 +226,131 @@ class HttpHandler(BaseHttpHandler):
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
-        data: Union[str, Dict],
+        data: Union[str, Dict, List, bytes],
         status_code: int,
         status_text: str,
+        content_type: Optional[str] = None,
     ) -> None:
         """Generic method to send HTTP responses."""
-        headers = HttpContentType.JSON.header if isinstance(data, dict) else ""
+        headers = content_type or (
+            HttpContentType.JSON.header
+            if isinstance(data, (dict, list))
+            else DEFAULT_HEADER
+        )
         headers += http_msg.headers
 
-        # Convert dictionary to JSON string
-        if isinstance(data, dict):
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
+            data = json.dumps(data)
+
+        try:
+            http_response = http_dialogue.reply(
+                performative=HttpMessage.Performative.RESPONSE,
+                target_message=http_msg,
+                version=http_msg.version,
+                status_code=status_code,
+                status_text=status_text,
+                headers=headers,
+                body=data.encode("utf-8") if isinstance(data, str) else data,
+            )
+
+            self.context.logger.info("Responding with: {}".format(http_response))
+            self.context.outbox.put_message(message=http_response)
+        except KeyError as e:
+            self.context.logger.error(f"KeyError: {e}")
+        except Exception as e:
+            self.context.logger.error(f"Error: {e}")
+
+    def _send_too_early_request_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP too early request response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.TOO_EARLY.value,
+            HTTPStatus.TOO_EARLY.phrase,
+            content_type,
+        )
+
+    def _send_too_many_requests_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP too many requests response."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.TOO_MANY_REQUESTS.value,
+            HTTPStatus.TOO_MANY_REQUESTS.phrase,
+            content_type,
+        )
+
+    def _send_internal_server_error_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a Http internal server error response."""
+        headers = content_type or (
+            HttpContentType.JSON.header
+            if isinstance(data, (dict, list))
+            else DEFAULT_HEADER
+        )
+        headers += http_msg.headers
+
+        # Convert dictionary or list to JSON string
+        if isinstance(data, (dict, list)):
             data = json.dumps(data)
 
         http_response = http_dialogue.reply(
             performative=HttpMessage.Performative.RESPONSE,
             target_message=http_msg,
             version=http_msg.version,
-            status_code=status_code,
-            status_text=status_text,
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
+            status_text=HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
             headers=headers,
             body=data.encode("utf-8") if isinstance(data, str) else data,
         )
 
+        # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _send_bad_request_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Handle a HTTP bad request."""
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.BAD_REQUEST.value,
+            HTTPStatus.BAD_REQUEST.phrase,
+            content_type,
+        )
 
     def _send_ok_response(
         self,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
-        data: Union[str, Dict],
+        data: Union[str, Dict, List, bytes],
+        content_type: Optional[str] = None,
     ) -> None:
         """Send an OK response with the provided data."""
         self._send_http_response(
@@ -264,33 +359,24 @@ class HttpHandler(BaseHttpHandler):
             data,
             HTTPStatus.OK.value,
             "Success",
+            content_type,
         )
 
-    def _send_not_found_response(
+    def _send_message(
         self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
+        message: Message,
+        dialogue: Dialogue,
+        callback: Callable,
+        callback_kwargs: Optional[Dict] = None,
     ) -> None:
-        """Send a NOT FOUND response."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            {"error": "Agent not found"},
-            HTTPStatus.NOT_FOUND.value,
-            "Not Found",
-        )
+        """
+        Send a message and set up a callback for the response.
 
-    def _send_internal_server_error_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict],
-    ) -> None:
-        """Handle a Http internal server error response."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            data,
-            HTTPStatus.INTERNAL_SERVER_ERROR.value,
-            HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
-        )
+        :param message: the Message to send
+        :param dialogue: the Dialogue context
+        :param callback: the callback function upon response
+        :param callback_kwargs: optional kwargs for the callback
+        """
+        self.context.outbox.put_message(message=message)
+        nonce = dialogue.dialogue_label.dialogue_reference[0]
+        self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
