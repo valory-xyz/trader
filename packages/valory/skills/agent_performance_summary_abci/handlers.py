@@ -56,6 +56,8 @@ from packages.valory.skills.agent_performance_summary_abci.dialogues import (
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
+    GET_PREDICTION_HISTORY_QUERY,
+    GET_FPMM_PAYOUTS_QUERY,
 )
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 
@@ -66,6 +68,9 @@ WEI_TO_NATIVE = 10**18
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GRAPHQL_BATCH_SIZE = 1000  # Max items per GraphQL query
 INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+PREDICT_BASE_URL = "https://predict.olas.network/questions"
+DEFAULT_PAGE_SIZE = 10
+MAX_PAGE_SIZE = 100
 
 
 class HttpMethod(Enum):
@@ -132,6 +137,7 @@ class HttpHandler(BaseHttpHandler):
         
         agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
         agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
+        agent_predictions_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/predictions"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -144,6 +150,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     agent_performance_url_regex,
                     self._handle_get_agent_performance,
+                ),
+                (
+                    agent_predictions_url_regex,
+                    self._handle_get_predictions,
                 ),
             ],
         }
@@ -700,3 +710,239 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error fetching balance: {str(e)}")
             # Return 0 on error instead of failing the entire request
             return 0.0
+
+    def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
+        """Get the prediction side from outcome index and outcomes array."""
+        try:
+            if not outcomes or outcome_index >= len(outcomes):
+                return "unknown"
+            return outcomes[outcome_index]
+        except (IndexError, TypeError) as e:
+            self.context.logger.error(f"Error getting prediction side: {e}")
+            return "unknown"
+
+    def _get_prediction_status(self, bet: Dict) -> str:
+        """Determine the status of a prediction (pending, won, lost)."""
+        try:
+            fpmm = bet.get("fixedProductMarketMaker", {})
+            current_answer = fpmm.get("currentAnswer")
+            
+            # Market not resolved
+            if current_answer is None:
+                return "pending"
+            
+            # Check for invalid market
+            if current_answer == INVALID_ANSWER_HEX:
+                return "lost"
+            
+            # Compare outcome
+            outcome_index = int(bet.get("outcomeIndex", 0))
+            correct_answer = int(current_answer, 0)
+            
+            return "won" if outcome_index == correct_answer else "lost"
+        except (ValueError, TypeError, KeyError) as e:
+            self.context.logger.error(f"Error determining prediction status: {e}")
+            return "pending"
+
+    def _calculate_net_profit_for_prediction(
+        self, bet: Dict, payouts_map: Dict[str, List]
+    ) -> float:
+        """Calculate net profit for a single prediction."""
+        try:
+            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            status = self._get_prediction_status(bet)
+            
+            if status == "pending":
+                return 0.0
+            
+            if status == "lost":
+                return -bet_amount
+            
+            # Won - calculate payout
+            fpmm_id = bet.get("fixedProductMarketMaker", {}).get("id")
+            payouts = payouts_map.get(fpmm_id, [])
+            outcome_index = int(bet.get("outcomeIndex", 0))
+            
+            if payouts and len(payouts) > outcome_index:
+                payout_amount = float(payouts[outcome_index]) / WEI_TO_NATIVE
+                return payout_amount - bet_amount
+            
+            # Fallback if payouts not available
+            return 0.0
+            
+        except Exception as e:
+            self.context.logger.error(f"Error calculating net profit: {e}")
+            return 0.0
+
+    def _fetch_fpmm_payouts(self, fpmm_ids: List[str], omen_url: str) -> Dict[str, List]:
+        """Fetch FPMM payouts from Omen subgraph."""
+        try:
+            query_payload = {
+                "query": GET_FPMM_PAYOUTS_QUERY,
+                "variables": {"fpmmIds": fpmm_ids}
+            }
+            
+            response = requests.post(
+                omen_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"Failed to fetch FPMM payouts: {response.status_code}"
+                )
+                return {}
+            
+            response_data = response.json()
+            fpmms = response_data.get("data", {}).get("fixedProductMarketMakers", [])
+            
+            # Build map: fpmm_id -> payouts
+            payouts_map = {}
+            for fpmm in fpmms:
+                fpmm_id = fpmm.get("id")
+                payouts = fpmm.get("payouts", [])
+                if fpmm_id and payouts:
+                    payouts_map[fpmm_id] = payouts
+            
+            return payouts_map
+            
+        except Exception as e:
+            self.context.logger.error(f"Error fetching FPMM payouts: {e}")
+            return {}
+
+    def _handle_get_predictions(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/predictions request."""
+        try:
+            # Parse query parameters
+            url_parts = http_msg.url.split('?')
+            page = 1
+            page_size = DEFAULT_PAGE_SIZE
+            status_filter = None
+            
+            if len(url_parts) > 1:
+                params = {}
+                for param in url_parts[1].split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        params[key] = value
+                
+                try:
+                    page = int(params.get('page', 1))
+                    page_size = min(int(params.get('page_size', DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
+                except ValueError:
+                    pass
+                
+                status_filter = params.get('status')
+                if status_filter and status_filter not in ["pending", "won", "lost"]:
+                    self._send_bad_request_response(
+                        http_msg, http_dialogue,
+                        {"error": "Invalid status parameter. Must be one of: pending, won, lost"}
+                    )
+                    return
+            
+            # Calculate skip
+            skip = (page - 1) * page_size
+            
+            # Get safe address
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            predict_url = self.context.params.olas_agents_subgraph_url
+            trades_url = self.context.params.trades_subgraph_url
+            
+            # Fetch bets from Predict subgraph
+            query_payload = {
+                "query": GET_PREDICTION_HISTORY_QUERY,
+                "variables": {
+                    "id": safe_address,
+                    "first": page_size,
+                    "skip": skip
+                }
+            }
+            
+            response = requests.post(
+                predict_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"Failed to fetch prediction history: {response.status_code}"
+                )
+                self._send_internal_server_error_response(
+                    http_msg, http_dialogue,
+                    {"error": "Failed to fetch prediction history"}
+                )
+                return
+            
+            response_data = response.json()
+            trader_agent = response_data.get("data", {}).get("traderAgent")
+            
+            if not trader_agent:
+                self.context.logger.warning(f"No trader agent found: {safe_address}")
+                self._send_not_found_response(http_msg, http_dialogue)
+                return
+            
+            total_bets = trader_agent.get("totalBets", 0)
+            bets = trader_agent.get("bets", [])
+            
+            # Extract unique FPMM IDs
+            fpmm_ids = list(set([bet["fixedProductMarketMaker"]["id"] for bet in bets]))
+            
+            # Fetch payouts for these markets
+            payouts_map = self._fetch_fpmm_payouts(fpmm_ids, trades_url)
+            
+            # Format predictions
+            items = []
+            for bet in bets:
+                fpmm = bet.get("fixedProductMarketMaker", {})
+                outcome_index = int(bet.get("outcomeIndex", 0))
+                outcomes = fpmm.get("outcomes", [])
+                
+                prediction_status = self._get_prediction_status(bet)
+                
+                # Apply status filter if provided
+                if status_filter and prediction_status != status_filter:
+                    continue
+                
+                prediction = {
+                    "id": bet.get("id"),
+                    "market": {
+                        "id": fpmm.get("id"),
+                        "title": fpmm.get("question", ""),
+                        "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
+                    },
+                    "prediction_side": self._get_prediction_side(outcome_index, outcomes),
+                    "bet_amount": round(float(bet.get("amount", 0)) / WEI_TO_NATIVE, 4),
+                    "status": prediction_status,
+                    "net_profit": round(
+                        self._calculate_net_profit_for_prediction(bet, payouts_map), 4
+                    ),
+                    "created_at": self._format_timestamp(bet.get("timestamp")),
+                    "settled_at": self._format_timestamp(fpmm.get("answerFinalizedTimestamp")) if prediction_status != "pending" else None
+                }
+                items.append(prediction)
+            
+            # Format response
+            formatted_response = {
+                "agent_id": safe_address,
+                "currency": "USD",
+                "page": page,
+                "page_size": page_size,
+                "total": total_bets,
+                "items": items
+            }
+            
+            self.context.logger.info(f"Sending {len(items)} predictions for page {page}")
+            self._send_ok_response(http_msg, http_dialogue, formatted_response)
+            
+        except Exception as e:
+            self.context.logger.error(f"Error in predictions endpoint: {e}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue,
+                {"error": "Failed to fetch predictions"}
+            )
