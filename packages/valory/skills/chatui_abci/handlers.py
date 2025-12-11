@@ -62,7 +62,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
     HttpContentType,
-    HttpMethod
+    HttpMethod,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
@@ -114,14 +114,6 @@ AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingS
 
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
-
-    SUPPORTED_PROTOCOL = HttpMessage.protocol_id
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the handler."""
-        super().__init__(**kwargs)
-        self.handler_url_regex: str = ""
-        self.routes: Dict[tuple, list] = {}
 
     def setup(self) -> None:
         """Setup the handler."""
