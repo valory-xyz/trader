@@ -62,6 +62,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
     HttpContentType,
+    HttpMethod
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
@@ -72,14 +73,6 @@ from packages.valory.skills.chatui_abci.prompts import (
     build_chatui_llm_response_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
-
-
-class HttpMethod(Enum):
-    """Http methods"""
-
-    GET = "get"
-    HEAD = "head"
-    POST = "post"
 
 
 ChatuiABCIHandler = BaseABCIRoundHandler
