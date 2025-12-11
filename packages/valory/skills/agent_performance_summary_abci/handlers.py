@@ -179,20 +179,20 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle GET /api/v1/agent/details request."""
+        # Get the safe contract address
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
+        # Prepare the GraphQL query
+        query_payload = {
+            "query": GET_TRADER_AGENT_DETAILS_QUERY,
+            "variables": {"id": safe_address}
+        }
+        
+        # Get the subgraph URL from params
+        subgraph_url = self.context.params.olas_agents_subgraph_url
+        
+        # Make synchronous request to subgraph
         try:
-            # Get the safe contract address
-            safe_address = self.synchronized_data.safe_contract_address.lower()
-            
-            # Prepare the GraphQL query
-            query_payload = {
-                "query": GET_TRADER_AGENT_DETAILS_QUERY,
-                "variables": {"id": safe_address}
-            }
-            
-            # Get the subgraph URL from params
-            subgraph_url = self.context.params.olas_agents_subgraph_url
-            
-            # Make synchronous request to subgraph
             response = requests.post(
                 subgraph_url,
                 json=query_payload,
@@ -212,37 +212,37 @@ class HttpHandler(BaseHttpHandler):
                 return
             
             response_data = response.json()
-            
-            # Extract trader agent data
-            trader_agent = response_data.get("data", {}).get("traderAgent")
-            
-            if not trader_agent:
-                self.context.logger.warning(
-                    f"No trader agent found for address: {safe_address}"
-                )
-                self._send_not_found_response(
-                    http_msg,
-                    http_dialogue
-                )
-                return
-            
-            # Format the response according to API spec
-            formatted_response = {
-                "id": trader_agent.get("id", safe_address),
-                "created_at": self._format_timestamp(trader_agent.get("blockTimestamp")),
-                "last_active_at": self._format_timestamp(trader_agent.get("lastActive")),
-            }
-            
-            self.context.logger.info(f"Sending agent details: {formatted_response}")
-            self._send_ok_response(http_msg, http_dialogue, formatted_response)
-            
         except Exception as e:
             self.context.logger.error(f"Error fetching agent details: {str(e)}")
             self._send_internal_server_error_response(
                 http_msg,
                 http_dialogue,
-                {"error": "Internal server error while fetching agent details"}
+                {"error": "Failed to fetch agent details from subgraph"}
             )
+            return
+        
+        # Extract trader agent data
+        trader_agent = response_data.get("data", {}).get("traderAgent")
+        
+        if not trader_agent:
+            self.context.logger.warning(
+                f"No trader agent found for address: {safe_address}"
+            )
+            self._send_not_found_response(
+                http_msg,
+                http_dialogue
+            )
+            return
+        
+        # Format the response according to API spec
+        formatted_response = {
+            "id": trader_agent.get("id", safe_address),
+            "created_at": self._format_timestamp(trader_agent.get("blockTimestamp")),
+            "last_active_at": self._format_timestamp(trader_agent.get("lastActive")),
+        }
+        
+        self.context.logger.info(f"Sending agent details: {formatted_response}")
+        self._send_ok_response(http_msg, http_dialogue, formatted_response)
 
     def _format_timestamp(self, timestamp: str) -> str:
         """
