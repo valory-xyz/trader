@@ -59,6 +59,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    DEFAULT_HEADER,
+    HttpContentType,
+)
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import (
@@ -85,26 +89,6 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
 
-
-# Content type constants
-class HttpContentType(Enum):
-    """Enum for HTTP content types."""
-
-    HTML = "text/html"
-    JS = "application/javascript"
-    JSON = "application/json"
-    CSS = "text/css"
-    PNG = "image/png"
-    JPG = "image/jpeg"
-    JPEG = "image/jpeg"
-
-    @property
-    def header(self) -> str:
-        """Return the HTTP header for the content type."""
-        return f"Content-Type: {self.value}\n"
-
-
-DEFAULT_HEADER = HttpContentType.HTML.header
 
 HTTP_CONTENT_TYPE_MAP = {
     ".js": HttpContentType.JS.header,
@@ -228,7 +212,6 @@ class HttpHandler(BaseHttpHandler):
         """Return the synchronized data."""
         return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
-    
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:

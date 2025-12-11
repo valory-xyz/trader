@@ -84,12 +84,21 @@ class HttpMethod(Enum):
 class HttpContentType(Enum):
     """Enum for HTTP content types."""
 
+    HTML = "text/html"
+    JS = "application/javascript"
     JSON = "application/json"
+    CSS = "text/css"
+    PNG = "image/png"
+    JPG = "image/jpeg"
+    JPEG = "image/jpeg"
 
     @property
     def header(self) -> str:
         """Return the HTTP header for the content type."""
         return f"Content-Type: {self.value}\n"
+
+
+DEFAULT_HEADER = HttpContentType.HTML.header
 
 
 AgentPerformanceSummaryABCIHandler = ABCIRoundHandler
