@@ -74,6 +74,7 @@ INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 100
+ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 class HttpMethod(Enum):
@@ -258,7 +259,7 @@ class HttpHandler(BaseHttpHandler):
             unix_timestamp = int(timestamp)
             # Convert to datetime and format as ISO 8601
             dt = datetime.utcfromtimestamp(unix_timestamp)
-            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            return dt.strftime(ISO_TIMESTAMP_FORMAT)
         except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
             return ""
