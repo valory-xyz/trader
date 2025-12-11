@@ -30,6 +30,9 @@ from urllib.parse import urlparse
 import requests
 from web3 import Web3
 
+from aea.protocols.base import Message
+from aea.protocols.dialogue.base import Dialogue
+
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
