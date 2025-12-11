@@ -905,33 +905,60 @@ class HttpHandler(BaseHttpHandler):
             # Fetch payouts for these markets
             payouts_map = self._fetch_fpmm_payouts(fpmm_ids, trades_url)
             
-            # Format predictions
-            items = []
+            # Group bets by FPMM (market) to aggregate multiple bets on same market
+            market_bets = {}
             for bet in bets:
                 fpmm = bet.get("fixedProductMarketMaker", {})
-                outcome_index = int(bet.get("outcomeIndex", 0))
+                fpmm_id = fpmm.get("id")
+                
+                if fpmm_id not in market_bets:
+                    market_bets[fpmm_id] = []
+                market_bets[fpmm_id].append(bet)
+            
+            # Format predictions (aggregated by market)
+            items = []
+            for fpmm_id, market_bet_list in market_bets.items():
+                # Get first bet for reference data
+                first_bet = market_bet_list[0]
+                fpmm = first_bet.get("fixedProductMarketMaker", {})
+                outcome_index = int(first_bet.get("outcomeIndex", 0))
                 outcomes = fpmm.get("outcomes", [])
                 
-                prediction_status = self._get_prediction_status(bet)
+                prediction_status = self._get_prediction_status(first_bet)
                 
                 # Apply status filter if provided
                 if status_filter and prediction_status != status_filter:
                     continue
                 
+                # Aggregate bet amounts and profits across all bets for this market
+                total_bet_amount = 0.0
+                total_net_profit = 0.0
+                earliest_timestamp = None
+                
+                for bet in market_bet_list:
+                    bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+                    total_bet_amount += bet_amount
+                    total_net_profit += self._calculate_net_profit_for_prediction(bet, payouts_map)
+                    
+                    # Track earliest timestamp
+                    bet_timestamp = bet.get("timestamp")
+                    if bet_timestamp:
+                        if earliest_timestamp is None or int(bet_timestamp) < int(earliest_timestamp):
+                            earliest_timestamp = bet_timestamp
+                
+                # Use first bet's ID as the aggregated prediction ID
                 prediction = {
-                    "id": bet.get("id"),
+                    "id": first_bet.get("id"),
                     "market": {
                         "id": fpmm.get("id"),
                         "title": fpmm.get("question", ""),
                         "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
                     },
                     "prediction_side": self._get_prediction_side(outcome_index, outcomes),
-                    "bet_amount": round(float(bet.get("amount", 0)) / WEI_TO_NATIVE, 4),
+                    "bet_amount": round(total_bet_amount, 4),
                     "status": prediction_status,
-                    "net_profit": round(
-                        self._calculate_net_profit_for_prediction(bet, payouts_map), 4
-                    ),
-                    "created_at": self._format_timestamp(bet.get("timestamp")),
+                    "net_profit": round(total_net_profit, 4),
+                    "created_at": self._format_timestamp(earliest_timestamp or first_bet.get("timestamp")),
                     "settled_at": self._format_timestamp(fpmm.get("answerFinalizedTimestamp")) if prediction_status != "pending" else None
                 }
                 items.append(prediction)
