@@ -118,22 +118,11 @@ class HttpHandler(BaseHttpHandler):
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
-        config_uri_base_hostname = urlparse(
-            self.context.params.service_endpoint
-        ).hostname
 
-        propel_uri_base_hostname = (
-            r"https?:\/\/[a-zA-Z0-9]{16}.agent\.propel\.(staging\.)?autonolas\.tech"
-        )
-
-        local_ip_regex = r"192\.168(\.\d{1,3}){2}"
-
-        # Route regexes
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
-
-        chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
-        configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
-        is_enabled_url = rf"{hostname_regex}\/features"
+        # Use hostname_regex from parent's setup
+        chatui_prompt_url = rf"{self.hostname_regex}\/chatui-prompt"
+        configure_strategies_url = rf"{self.hostname_regex}\/configure_strategies"
+        is_enabled_url = rf"{self.hostname_regex}\/features"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -191,11 +180,6 @@ class HttpHandler(BaseHttpHandler):
     def round_sequence(self) -> RoundSequence:
         """Return the round sequence."""
         return self.shared_state.round_sequence
-
-    @property
-    def synchronized_data(self) -> SynchronizedData:
-        """Return the synchronized data."""
-        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

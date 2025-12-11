@@ -130,10 +130,9 @@ class HttpHandler(BaseHttpHandler):
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
 
-    def setup(self) -> None:
-        """Setup the handler."""
-        super().setup()
-
+    @property
+    def hostname_regex(self) -> str:
+        """Build and return hostname regex pattern."""
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -146,10 +145,15 @@ class HttpHandler(BaseHttpHandler):
 
         # Route regexes
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
+        return hostname_regex
+
+    def setup(self) -> None:
+        """Setup the handler."""
+        super().setup()
         
-        agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
-        agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
-        agent_predictions_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/predictions-history"
+        agent_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/details"
+        agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
+        agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/predictions-history"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
