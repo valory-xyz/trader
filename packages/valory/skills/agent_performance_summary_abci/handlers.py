@@ -255,9 +255,9 @@ class HttpHandler(BaseHttpHandler):
         
         try:
             # Convert to int if it's a string
-            timestamp_int = int(timestamp)
+            unix_timestamp = int(timestamp)
             # Convert to datetime and format as ISO 8601
-            dt = datetime.utcfromtimestamp(timestamp_int)
+            dt = datetime.utcfromtimestamp(unix_timestamp)
             return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
