@@ -56,13 +56,13 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.dialogues import (
     HttpDialogue,
 )
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_PREDICTION_HISTORY_QUERY,
     GET_FPMM_PAYOUTS_QUERY,
 )
-from packages.valory.skills.staking_abci.rounds import SynchronizedData
 
 
 # Constants
@@ -124,9 +124,9 @@ class HttpHandler(BaseHttpHandler):
         self.routes: Dict[tuple, list] = {}
 
     @property
-    def synchronized_data(self) -> SynchronizedData:
+    def synchronized_data(self) -> BaseSynchronizedData:
         """Return the synchronized data."""
-        return SynchronizedData(
+        return BaseSynchronizedData(
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
 
