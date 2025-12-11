@@ -259,7 +259,7 @@ class HttpHandler(BaseHttpHandler):
             # Convert to datetime and format as ISO 8601
             dt = datetime.utcfromtimestamp(timestamp_int)
             return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-        except (ValueError, TypeError) as e:
+        except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
             return ""
 
