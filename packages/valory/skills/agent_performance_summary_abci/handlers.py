@@ -146,7 +146,7 @@ class HttpHandler(BaseHttpHandler):
         
         agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
         agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
-        agent_predictions_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/predictions"
+        agent_predictions_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/predictions-history"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
