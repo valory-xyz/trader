@@ -33,6 +33,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    AgentDetails,
+    AgentPerformanceData,
+    PerformanceMetricsData,
+    PerformanceStatsData,
     SharedState,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
@@ -225,6 +229,153 @@ class FetchPerformanceSummaryBehaviour(
 
         return win_rate
 
+    def _format_timestamp(self, timestamp: Optional[str]) -> Optional[str]:
+        """Format Unix timestamp to ISO 8601."""
+        if not timestamp:
+            return None
+        try:
+            unix_timestamp = int(timestamp)
+            dt = datetime.utcfromtimestamp(unix_timestamp)
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception as e:
+            self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
+            return None
+
+    def _fetch_agent_details_data(self) -> Generator:
+        """Fetch agent details"""
+        
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
+        agent_details_raw = yield from self._fetch_agent_details(safe_address)
+        
+        if not agent_details_raw:
+            self.context.logger.warning(f"Could not fetch agent details for {safe_address}")
+            return None
+        
+        return AgentDetails(
+            id=agent_details_raw.get("id", safe_address),
+            created_at=self._format_timestamp(agent_details_raw.get("blockTimestamp")),
+            last_active_at=self._format_timestamp(agent_details_raw.get("lastActive")),
+        )
+
+    def _fetch_agent_performance_data(self) -> Generator:
+        """Fetch agent performance data"""
+        
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
+        # Fetch trader agent with bets
+        trader_agent = yield from self._fetch_trader_agent_bets(safe_address)
+        
+        if not trader_agent:
+            self.context.logger.warning(f"Could not fetch trader agent for performance data")
+            return None
+        
+        # Calculate metrics
+        total_traded = int(trader_agent.get("totalTraded", 0))
+        total_fees = int(trader_agent.get("totalFees", 0))
+        total_payout = int(trader_agent.get("totalPayout", 0))
+        total_bets = int(trader_agent.get("totalBets", 0))
+        bets = trader_agent.get("bets", [])
+        
+        # Estimate mech costs
+        estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
+        all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
+        
+        # Calculate profit
+        total_costs = total_traded + total_fees + estimated_mech_costs
+        all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
+        
+        # Calculate funds_locked_in_markets
+        funds_locked = 0
+        for bet in bets:
+            current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
+            if current_answer is None:  # Market not resolved
+                bet_amount = int(bet.get("amount", 0))
+                funds_locked += bet_amount
+        funds_locked_in_markets = funds_locked / WEI_IN_ETH
+        
+        # Fetch available balance (wxDAI + xDAI) using contract API
+        from packages.valory.contracts.erc20.contract import ERC20
+        from packages.valory.protocols.contract_api import ContractApiMessage
+        
+        # Get collateral token from first bet (wxDAI)
+        collateral_token = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI address
+        if bets:
+            first_bet = bets[0]
+            fpmm = first_bet.get("fixedProductMarketMaker", {})
+            collateral_token = fpmm.get("collateralToken", collateral_token)
+        
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,
+            contract_address=collateral_token,
+            contract_id=str(ERC20.contract_id),
+            contract_callable="check_balance",
+            account=self.synchronized_data.safe_contract_address,
+            chain_id=self.params.mech_chain_id,
+        )
+        
+        available_funds = 0.0
+        if response_msg.performative == ContractApiMessage.Performative.RAW_TRANSACTION:
+            token = response_msg.raw_transaction.body.get("token", 0)
+            wallet = response_msg.raw_transaction.body.get("wallet", 0)
+            available_funds = (int(token) + int(wallet)) / WEI_IN_ETH
+        else:
+            self.context.logger.warning(f"Could not fetch available balance: {response_msg}")
+        
+        # Get accuracy from existing method
+        accuracy = yield from self._get_prediction_accuracy()
+        
+        metrics = PerformanceMetricsData(
+            all_time_funds_used=round(all_time_funds_used, 4) if all_time_funds_used else None,
+            all_time_profit=round(all_time_profit, 4) if all_time_profit else None,
+            funds_locked_in_markets=round(funds_locked_in_markets, 4),
+            available_funds=round(available_funds, 4),
+        )
+        
+        stats = PerformanceStatsData(
+            predictions_made=total_bets,
+            prediction_accuracy=round(accuracy / 100, 4) if accuracy is not None else None,  # Convert to decimal
+        )
+        
+        return AgentPerformanceData(
+            window="lifetime",
+            currency="USD",
+            metrics=metrics,
+            stats=stats,
+        )
+
+    def _fetch_prediction_history(self) -> Generator:
+        """Fetch latest 200 predictions."""
+        from packages.valory.skills.agent_performance_summary_abci.models import PredictionHistory
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+        
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
+        fetcher = PredictionsFetcher(self.context, self.context.logger)
+        
+        try:
+            result = fetcher.fetch_predictions(
+                safe_address=safe_address,
+                first=200,
+                skip=0,
+                status_filter=None
+            )
+            
+            return PredictionHistory(
+                total_predictions=result["total_predictions"],
+                stored_count=len(result["items"]),
+                last_updated=self.shared_state.synced_timestamp,
+                items=result["items"],
+            )
+        except Exception as e:
+            self.context.logger.error(f"Error fetching prediction history: {e}")
+            return PredictionHistory(
+                total_predictions=0,
+                stored_count=0,
+                last_updated=self.shared_state.synced_timestamp,
+                items=[],
+            )
+
     def _fetch_agent_performance_summary(self) -> Generator:
         """Fetch the agent performance summary"""
         current_timestamp = self.shared_state.synced_timestamp
@@ -254,8 +405,17 @@ class FetchPerformanceSummaryBehaviour(
             )
         )
 
+        agent_details = yield from self._fetch_agent_details_data()
+        agent_performance = yield from self._fetch_agent_performance_data()
+        prediction_history = yield from self._fetch_prediction_history()
+
         self._agent_performance_summary = AgentPerformanceSummary(
-            timestamp=current_timestamp, metrics=metrics, agent_behavior=None
+            timestamp=current_timestamp, 
+            metrics=metrics, 
+            agent_behavior=None,
+            agent_details=agent_details,
+            agent_performance=agent_performance,
+            prediction_history=prediction_history,
         )
 
     def _save_agent_performance_summary(
