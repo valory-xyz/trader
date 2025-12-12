@@ -214,6 +214,19 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             )
         )
 
+    def _fetch_agent_details(
+        self, agent_safe_address
+    ) -> Generator[None, None, Optional[Dict]]:
+        """Fetch agent metadata (id, created_at, last_active_at)."""
+        return (
+            yield from self._fetch_from_subgraph(
+                query=GET_TRADER_AGENT_DETAILS_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="agent_details",
+            )
+        )
+
     def _fetch_olas_in_usd_price(
         self,
     ) -> Generator[None, None, Optional[int]]:
