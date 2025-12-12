@@ -112,6 +112,9 @@ class AgentPerformanceSummary:
     timestamp: Optional[int] = None  # UNIX timestamp (in seconds, UTC)
     metrics: List[AgentPerformanceMetrics] = field(default_factory=list)
     agent_behavior: Optional[str] = None
+    agent_details: Optional[AgentDetails] = None
+    agent_performance: Optional[AgentPerformanceData] = None
+    prediction_history: Optional[PredictionHistory] = None
 
 
 class AgentPerformanceSummaryParams(BaseParams):
