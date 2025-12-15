@@ -153,6 +153,15 @@ class HttpHandler(BaseHttpHandler):
 
         funds_status_regex = rf"{hostname_regex}\/funds-status"
 
+        agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
+        agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
+        agent_predictions_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/prediction-history"
+        )
+        trading_details_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
+        )
+
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
@@ -166,6 +175,10 @@ class HttpHandler(BaseHttpHandler):
                     funds_status_regex,
                     self._handle_get_funds_status,
                 ),
+                (agent_details_url_regex, self._handle_get_agent_details),
+                (agent_performance_url_regex, self._handle_get_agent_performance),
+                (agent_predictions_url_regex, self._handle_get_predictions),
+                (trading_details_url_regex, self._handle_get_trading_details),
                 (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
@@ -211,6 +224,33 @@ class HttpHandler(BaseHttpHandler):
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_response(http_msg, http_dialogue, data)
+
+    def _handle_get_trading_details(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/trading_details request."""
+        try:
+            # Get safe address
+            safe_address = self.synchronized_data.safe_contract_address
+
+            # Get current trading strategy
+            trading_strategy = self.shared_state.chatui_config.trading_strategy
+            trading_type = self._get_ui_trading_strategy(trading_strategy).value
+
+            # Format response
+            formatted_response = {
+                "agent_id": safe_address,
+                "trading_type": trading_type,
+            }
+
+            self.context.logger.info(f"Sending trading details: {formatted_response}")
+            self._send_ok_response(http_msg, http_dialogue, formatted_response)
+
+        except Exception as e:
+            self.context.logger.error(f"Error fetching trading details: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue, {"error": "Failed to fetch trading details"}
+            )
 
     def _handle_get_static_file(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -335,24 +375,6 @@ class HttpHandler(BaseHttpHandler):
                 return arg.split("=", 1)[1]
 
         return None
-
-    def _get_web3_instance(self, chain: str) -> Optional[Web3]:
-        """Get Web3 instance for the specified chain."""
-        try:
-            rpc_url = self.params.gnosis_ledger_rpc
-
-            if not rpc_url:
-                self.context.logger.warning(f"No RPC URL for {chain}")
-                return None
-
-            # Commented for future debugging purposes:
-            # Note that you should create only one HTTPProvider with the same provider URL per python process,
-            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
-            # Multiple HTTPProviders with different URLs will work as expected.
-            return Web3(Web3.HTTPProvider(rpc_url))
-        except Exception as e:
-            self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
-            return None
 
     def _check_usdc_balance(
         self, eoa_address: str, chain: str, usdc_address: str
