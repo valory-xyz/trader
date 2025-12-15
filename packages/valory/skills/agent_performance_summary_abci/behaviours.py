@@ -357,36 +357,22 @@ class FetchPerformanceSummaryBehaviour(
         )
     def _fetch_prediction_history(self) -> Generator:
         """Fetch latest 200 predictions."""
-        from packages.valory.skills.agent_performance_summary_abci.models import PredictionHistory
-        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
-        
         safe_address = self.synchronized_data.safe_contract_address.lower()
         
         fetcher = PredictionsFetcher(self.context, self.context.logger)
+        result = fetcher.fetch_predictions(
+            safe_address=safe_address,
+            first=200,
+            skip=0,
+            status_filter=None
+        )
         
-        try:
-            result = fetcher.fetch_predictions(
-                safe_address=safe_address,
-                first=200,
-                skip=0,
-                status_filter=None
-            )
-            
-            return PredictionHistory(
-                total_predictions=result["total_predictions"],
-                stored_count=len(result["items"]),
-                last_updated=self.shared_state.synced_timestamp,
-                items=result["items"],
-            )
-        except Exception as e:
-            self.context.logger.error(f"Error fetching prediction history: {e}")
-            return PredictionHistory(
-                total_predictions=0,
-                stored_count=0,
-                last_updated=self.shared_state.synced_timestamp,
-                items=[],
-            )
-
+        return PredictionHistory(
+            total_predictions=result["total_predictions"],
+            stored_count=len(result["items"]),
+            last_updated=self.shared_state.synced_timestamp,
+            items=result["items"],
+        )
     def _fetch_agent_performance_summary(self) -> Generator:
         """Fetch the agent performance summary"""
         current_timestamp = self.shared_state.synced_timestamp
