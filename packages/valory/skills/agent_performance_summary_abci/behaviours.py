@@ -46,6 +46,8 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     FetchPerformanceDataRound,
 )
+from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.protocols.contract_api import ContractApiMessage
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -285,18 +287,28 @@ class FetchPerformanceSummaryBehaviour(
         total_costs = total_traded + total_fees + estimated_mech_costs
         all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
         
-        # Calculate funds_locked_in_markets
+        # Calculate funds_locked_in_markets (includes bet amount + market fees + mech fees)
         funds_locked = 0
+        pending_bets_count = 0
+        
         for bet in bets:
             current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
             if current_answer is None:  # Market not resolved
+                # Bet amount
                 bet_amount = int(bet.get("amount", 0))
-                funds_locked += bet_amount
-        funds_locked_in_markets = funds_locked / WEI_IN_ETH
+                
+                # Market fee for this bet
+                bet_fee = int(bet.get("feeAmount", 0))
+                
+                # Add to locked funds (bet amount + market fee)
+                funds_locked += bet_amount + bet_fee
+                pending_bets_count += 1
         
-        # Fetch available balance (wxDAI + xDAI) using contract API
-        from packages.valory.contracts.erc20.contract import ERC20
-        from packages.valory.protocols.contract_api import ContractApiMessage
+        # Add mech fees for pending bets
+        mech_costs_for_pending = pending_bets_count * DEFAULT_MECH_FEE
+        funds_locked += mech_costs_for_pending
+        
+        funds_locked_in_markets = funds_locked / WEI_IN_ETH
         
         # Get collateral token from first bet (wxDAI)
         collateral_token = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI address
@@ -343,7 +355,6 @@ class FetchPerformanceSummaryBehaviour(
             metrics=metrics,
             stats=stats,
         )
-
     def _fetch_prediction_history(self) -> Generator:
         """Fetch latest 200 predictions."""
         from packages.valory.skills.agent_performance_summary_abci.models import PredictionHistory
