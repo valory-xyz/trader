@@ -62,6 +62,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
     HttpContentType,
+    HttpMethod,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
@@ -72,14 +73,6 @@ from packages.valory.skills.chatui_abci.prompts import (
     build_chatui_llm_response_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
-
-
-class HttpMethod(Enum):
-    """Http methods"""
-
-    GET = "get"
-    HEAD = "head"
-    POST = "post"
 
 
 ChatuiABCIHandler = BaseABCIRoundHandler
@@ -122,33 +115,14 @@ AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingS
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
 
-    SUPPORTED_PROTOCOL = HttpMessage.protocol_id
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the handler."""
-        super().__init__(**kwargs)
-        self.handler_url_regex: str = ""
-        self.routes: Dict[tuple, list] = {}
-
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
-        config_uri_base_hostname = urlparse(
-            self.context.params.service_endpoint
-        ).hostname
 
-        propel_uri_base_hostname = (
-            r"https?:\/\/[a-zA-Z0-9]{16}.agent\.propel\.(staging\.)?autonolas\.tech"
-        )
-
-        local_ip_regex = r"192\.168(\.\d{1,3}){2}"
-
-        # Route regexes
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
-
-        chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
-        configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
-        is_enabled_url = rf"{hostname_regex}\/features"
+        # Use hostname_regex from parent's setup
+        chatui_prompt_url = rf"{self.hostname_regex}\/chatui-prompt"
+        configure_strategies_url = rf"{self.hostname_regex}\/configure_strategies"
+        is_enabled_url = rf"{self.hostname_regex}\/features"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -206,11 +180,6 @@ class HttpHandler(BaseHttpHandler):
     def round_sequence(self) -> RoundSequence:
         """Return the round sequence."""
         return self.shared_state.round_sequence
-
-    @property
-    def synchronized_data(self) -> SynchronizedData:
-        """Return the synchronized data."""
-        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

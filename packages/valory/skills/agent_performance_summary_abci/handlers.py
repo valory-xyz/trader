@@ -22,6 +22,7 @@
 
 import json
 from datetime import datetime
+from dataclasses import asdict
 from enum import Enum
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -56,13 +57,15 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.dialogues import (
     HttpDialogue,
 )
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_PREDICTION_HISTORY_QUERY,
     GET_FPMM_PAYOUTS_QUERY,
 )
-from packages.valory.skills.staking_abci.rounds import SynchronizedData
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+
 
 
 # Constants
@@ -74,6 +77,7 @@ INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 100
+ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 class HttpMethod(Enum):
@@ -124,16 +128,21 @@ class HttpHandler(BaseHttpHandler):
         self.routes: Dict[tuple, list] = {}
 
     @property
-    def synchronized_data(self) -> SynchronizedData:
+    def synchronized_data(self) -> BaseSynchronizedData:
         """Return the synchronized data."""
-        return SynchronizedData(
+        return BaseSynchronizedData(
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
 
-    def setup(self) -> None:
-        """Setup the handler."""
-        super().setup()
+    @property
+    def shared_state(self):
+        """Get the shared state."""
+        from packages.valory.skills.agent_performance_summary_abci.models import SharedState
+        return cast(SharedState, self.context.state)
 
+    @property
+    def hostname_regex(self) -> str:
+        """Build and return hostname regex pattern."""
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -146,10 +155,15 @@ class HttpHandler(BaseHttpHandler):
 
         # Route regexes
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
+        return hostname_regex
+
+    def setup(self) -> None:
+        """Setup the handler."""
+        super().setup()
         
-        agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
-        agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
-        agent_predictions_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/predictions-history"
+        agent_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/details"
+        agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
+        agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/predictions-history"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -174,70 +188,25 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle GET /api/v1/agent/details request."""
-        try:
-            # Get the safe contract address
-            safe_address = self.synchronized_data.safe_contract_address.lower()
-            
-            # Prepare the GraphQL query
-            query_payload = {
-                "query": GET_TRADER_AGENT_DETAILS_QUERY,
-                "variables": {"id": safe_address}
-            }
-            
-            # Get the subgraph URL from params
-            subgraph_url = self.context.params.olas_agents_subgraph_url
-            
-            # Make synchronous request to subgraph
-            response = requests.post(
-                subgraph_url,
-                json=query_payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30
-            )
-            
-            if response.status_code != 200:
-                self.context.logger.error(
-                    f"Failed to fetch agent details from subgraph: {response.status_code}"
-                )
-                self._send_internal_server_error_response(
-                    http_msg,
-                    http_dialogue,
-                    {"error": "Failed to fetch agent details from subgraph"}
-                )
-                return
-            
-            response_data = response.json()
-            
-            # Extract trader agent data
-            trader_agent = response_data.get("data", {}).get("traderAgent")
-            
-            if not trader_agent:
-                self.context.logger.warning(
-                    f"No trader agent found for address: {safe_address}"
-                )
-                self._send_not_found_response(
-                    http_msg,
-                    http_dialogue
-                )
-                return
-            
-            # Format the response according to API spec
-            formatted_response = {
-                "id": trader_agent.get("id", safe_address),
-                "created_at": self._format_timestamp(trader_agent.get("blockTimestamp")),
-                "last_active_at": self._format_timestamp(trader_agent.get("lastActive")),
-            }
-            
-            self.context.logger.info(f"Sending agent details: {formatted_response}")
-            self._send_ok_response(http_msg, http_dialogue, formatted_response)
-            
-        except Exception as e:
-            self.context.logger.error(f"Error fetching agent details: {str(e)}")
+        summary = self.shared_state.read_existing_performance_summary()
+        details = summary.agent_details
+        
+        if not details or not details.id:
             self._send_internal_server_error_response(
-                http_msg,
+                http_msg, 
                 http_dialogue,
-                {"error": "Internal server error while fetching agent details"}
+                {"error": "Agent details not available. Data may not have been fetched yet or there was an error retrieving it."}
             )
+            return
+            
+        formatted_response = {
+            "id": details.id,
+            "created_at": details.created_at,
+            "last_active_at": details.last_active_at,
+        }
+        
+        self.context.logger.info(f"Responding with agent details: {formatted_response}")
+        self._send_ok_response(http_msg, http_dialogue, formatted_response)
 
     def _format_timestamp(self, timestamp: str) -> str:
         """
@@ -251,11 +220,11 @@ class HttpHandler(BaseHttpHandler):
         
         try:
             # Convert to int if it's a string
-            timestamp_int = int(timestamp)
+            unix_timestamp = int(timestamp)
             # Convert to datetime and format as ISO 8601
-            dt = datetime.utcfromtimestamp(timestamp_int)
-            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-        except (ValueError, TypeError) as e:
+            dt = datetime.utcfromtimestamp(unix_timestamp)
+            return dt.strftime(ISO_TIMESTAMP_FORMAT)
+        except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
             return ""
 
@@ -553,31 +522,25 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return
             
-            # Get safe address
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            subgraph_url = self.context.params.olas_agents_subgraph_url
+            summary = self.shared_state.read_existing_performance_summary()
+            performance = summary.agent_performance
             
-            # Fetch all performance data with pagination support
-            trader_agent = self._fetch_all_bets_paginated(safe_address, subgraph_url)
-            
-            if not trader_agent:
-                self.context.logger.warning(
-                    f"No trader agent found for address: {safe_address}"
+            if not performance or not performance.metrics:
+                self._send_internal_server_error_response(
+                    http_msg, 
+                    http_dialogue,
+                    {"error": "Performance data not available. Data may not have been fetched yet or there was an error retrieving it."}
                 )
-                self._send_not_found_response(http_msg, http_dialogue)
                 return
             
-            # Calculate metrics and stats
-            metrics = self._calculate_performance_metrics(trader_agent, safe_address)
-            stats = self._calculate_performance_stats(trader_agent)
-            
-            # Format response
+            # Convert dataclasses to dicts for response
             formatted_response = {
                 "agent_id": safe_address,
                 "window": window,
                 "currency": currency,
-                "metrics": metrics,
-                "stats": stats
+                "metrics": asdict(performance.metrics),
+                "stats": asdict(performance.stats)
             }
             
             self.context.logger.info(f"Sending performance data for agent: {safe_address}")
@@ -861,122 +824,60 @@ class HttpHandler(BaseHttpHandler):
             
             # Get safe address
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            predict_url = self.context.params.olas_agents_subgraph_url
-            trades_url = self.context.params.trades_subgraph_url
             
-            # Fetch bets from Predict subgraph
-            query_payload = {
-                "query": GET_PREDICTION_HISTORY_QUERY,
-                "variables": {
-                    "id": safe_address,
-                    "first": page_size,
-                    "skip": skip
+            summary = self.shared_state.read_existing_performance_summary()
+            history = summary.prediction_history
+            
+            if history and history.stored_count > 0 and skip < history.stored_count:
+                self.context.logger.info(f"Serving predictions from stored history (page {page})")
+                
+                stored_items = history.items
+                
+                # Apply status filter if needed
+                if status_filter:
+                    stored_items = [
+                        item for item in stored_items 
+                        if item.get("status") == status_filter
+                    ]
+                
+                # Paginate
+                start_idx = skip
+                end_idx = skip + page_size
+                items = stored_items[start_idx:end_idx]
+                
+                response = {
+                    "agent_id": safe_address,
+                    "currency": "USD",
+                    "page": page,
+                    "page_size": page_size,
+                    "total": history.total_predictions,
+                    "items": items
                 }
-            }
+                
+                self._send_ok_response(http_msg, http_dialogue, response)
+                return
             
-            response = requests.post(
-                predict_url,
-                json=query_payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30
+            # Not in stored history - query subgraph
+            self.context.logger.info(f"Data not in stored history (page {page}), querying subgraph")
+                        
+            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            result = fetcher.fetch_predictions(
+                safe_address=safe_address,
+                first=page_size,
+                skip=skip,
+                status_filter=status_filter
             )
             
-            if response.status_code != 200:
-                self.context.logger.error(
-                    f"Failed to fetch prediction history: {response.status_code}"
-                )
-                self._send_internal_server_error_response(
-                    http_msg, http_dialogue,
-                    {"error": "Failed to fetch prediction history"}
-                )
-                return
-            
-            response_data = response.json()
-            trader_agent = response_data.get("data", {}).get("traderAgent")
-            
-            if not trader_agent:
-                self.context.logger.warning(f"No trader agent found: {safe_address}")
-                self._send_not_found_response(http_msg, http_dialogue)
-                return
-            
-            total_bets = trader_agent.get("totalBets", 0)
-            bets = trader_agent.get("bets", [])
-            
-            # Extract unique FPMM IDs
-            fpmm_ids = list(set([bet["fixedProductMarketMaker"]["id"] for bet in bets]))
-            
-            # Fetch payouts for these markets
-            payouts_map = self._fetch_fpmm_payouts(fpmm_ids, trades_url)
-            
-            # Group bets by FPMM (market) to aggregate multiple bets on same market
-            market_bets = {}
-            for bet in bets:
-                fpmm = bet.get("fixedProductMarketMaker", {})
-                fpmm_id = fpmm.get("id")
-                
-                if fpmm_id not in market_bets:
-                    market_bets[fpmm_id] = []
-                market_bets[fpmm_id].append(bet)
-            
-            # Format predictions (aggregated by market)
-            items = []
-            for fpmm_id, market_bet_list in market_bets.items():
-                # Get first bet for reference data
-                first_bet = market_bet_list[0]
-                fpmm = first_bet.get("fixedProductMarketMaker", {})
-                outcome_index = int(first_bet.get("outcomeIndex", 0))
-                outcomes = fpmm.get("outcomes", [])
-                
-                prediction_status = self._get_prediction_status(first_bet)
-                
-                # Apply status filter if provided
-                if status_filter and prediction_status != status_filter:
-                    continue
-                
-                # Aggregate bet amounts and profits across all bets for this market
-                total_bet_amount = 0.0
-                total_net_profit = 0.0
-                earliest_timestamp = None
-                
-                for bet in market_bet_list:
-                    bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-                    total_bet_amount += bet_amount
-                    total_net_profit += self._calculate_net_profit_for_prediction(bet, payouts_map)
-                    
-                    # Track earliest timestamp
-                    bet_timestamp = bet.get("timestamp")
-                    if bet_timestamp:
-                        if earliest_timestamp is None or int(bet_timestamp) < int(earliest_timestamp):
-                            earliest_timestamp = bet_timestamp
-                
-                # Use first bet's ID as the aggregated prediction ID
-                prediction = {
-                    "id": first_bet.get("id"),
-                    "market": {
-                        "id": fpmm.get("id"),
-                        "title": fpmm.get("question", ""),
-                        "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
-                    },
-                    "prediction_side": self._get_prediction_side(outcome_index, outcomes),
-                    "bet_amount": round(total_bet_amount, 4),
-                    "status": prediction_status,
-                    "net_profit": round(total_net_profit, 4),
-                    "created_at": self._format_timestamp(earliest_timestamp or first_bet.get("timestamp")),
-                    "settled_at": self._format_timestamp(fpmm.get("answerFinalizedTimestamp")) if prediction_status != "pending" else None
-                }
-                items.append(prediction)
-            
-            # Format response
             formatted_response = {
                 "agent_id": safe_address,
                 "currency": "USD",
                 "page": page,
                 "page_size": page_size,
-                "total": total_bets,
-                "items": items
+                "total": result["total_predictions"],
+                "items": result["items"]
             }
             
-            self.context.logger.info(f"Sending {len(items)} predictions for page {page}")
+            self.context.logger.info(f"Sending {len(result['items'])} predictions for page {page} from subgraph")
             self._send_ok_response(http_msg, http_dialogue, formatted_response)
             
         except Exception as e:
