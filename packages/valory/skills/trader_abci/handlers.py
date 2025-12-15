@@ -48,12 +48,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
-from packages.valory.skills.chatui_abci.handlers import (
-    HTTP_CONTENT_TYPE_MAP,
-)
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
+from packages.valory.skills.chatui_abci.handlers import HTTP_CONTENT_TYPE_MAP
 from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
