@@ -264,8 +264,6 @@ class FetchPerformanceSummaryBehaviour(
         """Fetch agent performance data"""
         
         safe_address = self.synchronized_data.safe_contract_address.lower()
-        
-        # Fetch trader agent with bets
         trader_agent = yield from self._fetch_trader_agent_bets(safe_address)
         
         if not trader_agent:
@@ -273,81 +271,8 @@ class FetchPerformanceSummaryBehaviour(
             return None
         
         # Calculate metrics
-        total_traded = int(trader_agent.get("totalTraded", 0))
-        total_fees = int(trader_agent.get("totalFees", 0))
-        total_payout = int(trader_agent.get("totalPayout", 0))
-        total_bets = int(trader_agent.get("totalBets", 0))
-        bets = trader_agent.get("bets", [])
-        
-        # Estimate mech costs
-        estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
-        all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
-        
-        # Calculate profit
-        total_costs = total_traded + total_fees + estimated_mech_costs
-        all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
-        
-        # Calculate funds_locked_in_markets (includes bet amount + market fees + mech fees)
-        funds_locked = 0
-        pending_bets_count = 0
-        
-        for bet in bets:
-            current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
-            if current_answer is None:  # Market not resolved
-                # Bet amount
-                bet_amount = int(bet.get("amount", 0))
-                
-                # Market fee for this bet
-                bet_fee = int(bet.get("feeAmount", 0))
-                
-                # Add to locked funds (bet amount + market fee)
-                funds_locked += bet_amount + bet_fee
-                pending_bets_count += 1
-        
-        # Add mech fees for pending bets
-        mech_costs_for_pending = pending_bets_count * DEFAULT_MECH_FEE
-        funds_locked += mech_costs_for_pending
-        
-        funds_locked_in_markets = funds_locked / WEI_IN_ETH
-        
-        # Get collateral token from first bet (wxDAI)
-        collateral_token = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI address
-        if bets:
-            first_bet = bets[0]
-            fpmm = first_bet.get("fixedProductMarketMaker", {})
-            collateral_token = fpmm.get("collateralToken", collateral_token)
-        
-        response_msg = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,
-            contract_address=collateral_token,
-            contract_id=str(ERC20.contract_id),
-            contract_callable="check_balance",
-            account=self.synchronized_data.safe_contract_address,
-            chain_id=self.params.mech_chain_id,
-        )
-        
-        available_funds = 0.0
-        if response_msg.performative == ContractApiMessage.Performative.RAW_TRANSACTION:
-            token = response_msg.raw_transaction.body.get("token", 0)
-            wallet = response_msg.raw_transaction.body.get("wallet", 0)
-            available_funds = (int(token) + int(wallet)) / WEI_IN_ETH
-        else:
-            self.context.logger.warning(f"Could not fetch available balance: {response_msg}")
-        
-        # Get accuracy from existing method
-        accuracy = yield from self._get_prediction_accuracy()
-        
-        metrics = PerformanceMetricsData(
-            all_time_funds_used=round(all_time_funds_used, 4) if all_time_funds_used else None,
-            all_time_profit=round(all_time_profit, 4) if all_time_profit else None,
-            funds_locked_in_markets=round(funds_locked_in_markets, 4),
-            available_funds=round(available_funds, 4),
-        )
-        
-        stats = PerformanceStatsData(
-            predictions_made=total_bets,
-            prediction_accuracy=round(accuracy / 100, 4) if accuracy is not None else None,  # Convert to decimal
-        )
+        metrics = yield from self._calculate_performance_metrics(trader_agent)
+        stats = yield from self._calculate_performance_stats(trader_agent)
         
         return AgentPerformanceData(
             window="lifetime",
@@ -355,6 +280,73 @@ class FetchPerformanceSummaryBehaviour(
             metrics=metrics,
             stats=stats,
         )
+
+    def _calculate_performance_metrics(self, trader_agent: dict) -> Generator:
+        """Calculate performance metrics from trader agent data."""
+        total_traded = int(trader_agent.get("totalTraded", 0))
+        total_fees = int(trader_agent.get("totalFees", 0))
+        total_payout = int(trader_agent.get("totalPayout", 0))
+        total_bets = int(trader_agent.get("totalBets", 0))
+        bets = trader_agent.get("bets", [])
+        
+        # Calculate funds used
+        estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
+        all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
+        
+        # Calculate profit
+        total_costs = total_traded + total_fees + estimated_mech_costs
+        all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
+        
+        # Calculate locked funds
+        funds_locked_in_markets = yield from self._calculate_funds_locked(bets)
+        
+        # Get available funds
+        available_funds = yield from self._fetch_available_funds(bets)
+        
+        return PerformanceMetricsData(
+            all_time_funds_used=round(all_time_funds_used, 4) if all_time_funds_used else None,
+            all_time_profit=round(all_time_profit, 4) if all_time_profit else None,
+            funds_locked_in_markets=round(funds_locked_in_markets, 4),
+            available_funds=round(available_funds, 4),
+        )
+
+    def _calculate_funds_locked(self, bets: list) -> Generator:
+        """Calculate funds locked in pending markets."""
+        funds_locked = 0
+        pending_bets_count = 0
+        
+        for bet in bets:
+            current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
+            if current_answer is None:  # Market not resolved
+                bet_amount = int(bet.get("amount", 0))
+                bet_fee = int(bet.get("feeAmount", 0))
+                funds_locked += bet_amount + bet_fee
+                pending_bets_count += 1
+        
+        # Add mech fees for pending bets
+        mech_costs_for_pending = pending_bets_count * DEFAULT_MECH_FEE
+        funds_locked += mech_costs_for_pending
+        
+        return funds_locked / WEI_IN_ETH
+
+    def _fetch_available_funds(self, bets: list) -> Generator[None, None, Optional[float]]:
+        """Fetch available funds (wxDAI + xDAI balance)."""
+        yield from self.wait_for_condition_with_sleep(self.check_balance)
+        token_balance = self.token_balance / WEI_IN_ETH
+        wallet_balance = self.wallet_balance / WEI_IN_ETH
+        available_funds = token_balance + wallet_balance
+        return available_funds
+
+    def _calculate_performance_stats(self, trader_agent: dict) -> Generator:
+        """Calculate performance statistics."""
+        total_bets = int(trader_agent.get("totalBets", 0))
+        accuracy = yield from self._get_prediction_accuracy()
+        
+        return PerformanceStatsData(
+            predictions_made=total_bets,
+            prediction_accuracy=round(accuracy / 100, 4) if accuracy is not None else None,
+        )
+
     def _fetch_prediction_history(self) -> Generator:
         """Fetch latest 200 predictions."""
         safe_address = self.synchronized_data.safe_contract_address.lower()
