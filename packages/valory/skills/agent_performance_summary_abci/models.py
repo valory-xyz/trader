@@ -128,9 +128,6 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.olas_agents_subgraph_url: str = self._ensure(
             "olas_agents_subgraph_url", kwargs, str
         )
-        self.trades_subgraph_url: str = self._ensure(
-            "trades_subgraph_url", kwargs, str
-        )
         self.store_path: Path = self.get_store_path(kwargs)
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool

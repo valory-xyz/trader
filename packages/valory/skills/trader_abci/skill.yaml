@@ -270,6 +270,7 @@ models:
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
       is_agent_performance_summary_enabled: true
+      olas_agents_subgraph_url: https://predict-agents.subgraph.autonolas.tech
     class_name: TraderParams
   benchmarking_mode:
     args:
