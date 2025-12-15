@@ -78,6 +78,11 @@ PREDICT_BASE_URL = "https://predict.olas.network/questions"
 DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 100
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+PREDICTION_STATUS_PENDING = "pending"
+PREDICTION_STATUS_WON = "won"
+PREDICTION_STATUS_LOST = "lost"
+PREDICTION_STATUS_ALL = "all"
+VALID_PREDICTION_STATUSES = [PREDICTION_STATUS_PENDING, PREDICTION_STATUS_WON, PREDICTION_STATUS_LOST]
 
 
 class HttpMethod(Enum):
@@ -793,57 +798,27 @@ class HttpHandler(BaseHttpHandler):
         """Handle GET /api/v1/agent/predictions request."""
         try:
             # Parse query parameters
-            url_parts = http_msg.url.split('?')
-            page = 1
-            page_size = DEFAULT_PAGE_SIZE
-            status_filter = None
+            page, page_size, status_filter = self._parse_query_params(http_msg)
             
-            if len(url_parts) > 1:
-                params = {}
-                for param in url_parts[1].split('&'):
-                    if '=' in param:
-                        key, value = param.split('=', 1)
-                        params[key] = value
-                
-                try:
-                    page = int(params.get('page', 1))
-                    page_size = min(int(params.get('page_size', DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
-                except ValueError:
-                    pass
-                
-                status_filter = params.get('status')
-                if status_filter and status_filter not in ["pending", "won", "lost"]:
-                    self._send_bad_request_response(
-                        http_msg, http_dialogue,
-                        {"error": "Invalid status parameter. Must be one of: pending, won, lost"}
-                    )
-                    return
+            # Validate status filter
+            if status_filter and status_filter not in VALID_PREDICTION_STATUSES:
+                self._send_bad_request_response(
+                    http_msg, http_dialogue,
+                    {"error": f"Invalid status parameter. Must be one of: {', '.join(VALID_PREDICTION_STATUSES)}"}
+                )
+                return
             
-            # Calculate skip
+            safe_address = self.synchronized_data.safe_contract_address.lower()
             skip = (page - 1) * page_size
             
-            # Get safe address
-            safe_address = self.synchronized_data.safe_contract_address.lower()
-            
+            # Check stored history first
             summary = self.shared_state.read_existing_performance_summary()
             history = summary.prediction_history
             
             if history and history.stored_count > 0 and skip < history.stored_count:
+                # Serve from stored history
                 self.context.logger.info(f"Serving predictions from stored history (page {page})")
-                
-                stored_items = history.items
-                
-                # Apply status filter if needed
-                if status_filter:
-                    stored_items = [
-                        item for item in stored_items 
-                        if item.get("status") == status_filter
-                    ]
-                
-                # Paginate
-                start_idx = skip
-                end_idx = skip + page_size
-                items = stored_items[start_idx:end_idx]
+                items = self._filter_and_paginate(history.items, status_filter, skip, page_size)
                 
                 response = {
                     "agent_id": safe_address,
@@ -853,22 +828,20 @@ class HttpHandler(BaseHttpHandler):
                     "total": history.total_predictions,
                     "items": items
                 }
-                
                 self._send_ok_response(http_msg, http_dialogue, response)
                 return
             
-            # Not in stored history - query subgraph
-            self.context.logger.info(f"Data not in stored history (page {page}), querying subgraph")
-                        
+            # Fetch from subgraph
+            self.context.logger.info(f"Querying subgraph (page {page})")
             fetcher = PredictionsFetcher(self.context, self.context.logger)
             result = fetcher.fetch_predictions(
                 safe_address=safe_address,
                 first=page_size,
                 skip=skip,
-                status_filter=status_filter
+                status_filter=status_filter if status_filter != PREDICTION_STATUS_ALL else None
             )
             
-            formatted_response = {
+            response = {
                 "agent_id": safe_address,
                 "currency": "USD",
                 "page": page,
@@ -877,8 +850,8 @@ class HttpHandler(BaseHttpHandler):
                 "items": result["items"]
             }
             
-            self.context.logger.info(f"Sending {len(result['items'])} predictions for page {page} from subgraph")
-            self._send_ok_response(http_msg, http_dialogue, formatted_response)
+            self.context.logger.info(f"Sending {len(result['items'])} predictions")
+            self._send_ok_response(http_msg, http_dialogue, response)
             
         except Exception as e:
             self.context.logger.error(f"Error in predictions endpoint: {e}")
@@ -886,3 +859,34 @@ class HttpHandler(BaseHttpHandler):
                 http_msg, http_dialogue,
                 {"error": "Failed to fetch predictions"}
             )
+
+    def _parse_query_params(self, http_msg: HttpMessage) -> tuple:
+        """Parse page, page_size, and status_filter from query string."""
+        page = 1
+        page_size = DEFAULT_PAGE_SIZE
+        status_filter = None
+        
+        url_parts = http_msg.url.split('?')
+        if len(url_parts) > 1:
+            params = {}
+            for param in url_parts[1].split('&'):
+                if '=' in param:
+                    key, value = param.split('=', 1)
+                    params[key] = value
+            
+            try:
+                page = int(params.get('page', 1))
+                page_size = min(int(params.get('page_size', DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
+            except ValueError:
+                pass
+            
+            status_filter = params.get('status')
+        
+        return page, page_size, status_filter
+
+    def _filter_and_paginate(self, items: list, status_filter: Optional[str], skip: int, page_size: int) -> list:
+        """Filter items by status and paginate."""
+        if status_filter and status_filter != PREDICTION_STATUS_ALL:
+            items = [item for item in items if item.get("status") == status_filter]
+        
+        return items[skip:skip + page_size]
