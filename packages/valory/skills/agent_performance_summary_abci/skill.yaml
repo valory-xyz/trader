@@ -11,17 +11,16 @@ fingerprint:
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/queries.py: bafybeibvjwtqq5ijrjzi7ahxux4enp7hi4ndfkqohlvlwwv3ean23whtdu
+  graph_tooling/queries.py: bafybeib55xse5b5rs72p2i7d32tc2g32adubr77idr6vrjf3goygqungii
   graph_tooling/requests.py: bafybeiadlmrgnydrfvnlhz6bqcga7tilkryacnzu4ayiromkme3rwwi6fi
-  handlers.py: bafybeic5sv7zecplmuvcamrqeba5ik22vjljnfjtmgy3x7jeguqu4nosqa
-  models.py: bafybeiasjd7xqqpns5bdjznnbovtyezcftw4rj5cvwy6m5vg435neaalr4
+  handlers.py: bafybeih6e6rcdpcm5lucn4lxcxth2njdsvrnk3p6znxj3zuptlu6opmxu4
+  models.py: bafybeihmvpljl6omhziuv4azhhpsk3i4iiwgdagwsw32ozbyxnxqcjfcsy
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
-- valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
 handlers:
   abci:
     args: {}
@@ -55,6 +54,8 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      olas_agents_subgraph_url: https://predict-agents.subgraph.autonolas.tech
+      trades_subgraph_url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
       store_path: /data/
       is_agent_performance_summary_enabled: true
     class_name: AgentPerformanceSummaryParams
@@ -103,6 +104,21 @@ models:
       retries: 5
       url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
+  trades_subgraph:
+    args:
+      api_id: trades
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
+    class_name: TradesSubgraph
 dependencies: {}
 is_abstract: true
 connections: []

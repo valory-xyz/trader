@@ -33,6 +33,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    AgentDetails,
+    AgentPerformanceData,
+    PerformanceMetricsData,
+    PerformanceStatsData,
     SharedState,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
@@ -42,6 +46,8 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     FetchPerformanceDataRound,
 )
+from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.protocols.contract_api import ContractApiMessage
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -225,6 +231,140 @@ class FetchPerformanceSummaryBehaviour(
 
         return win_rate
 
+    def _format_timestamp(self, timestamp: Optional[str]) -> Optional[str]:
+        """Format Unix timestamp to ISO 8601."""
+        if not timestamp:
+            return None
+        try:
+            unix_timestamp = int(timestamp)
+            dt = datetime.utcfromtimestamp(unix_timestamp)
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception as e:
+            self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
+            return None
+
+    def _fetch_agent_details_data(self) -> Generator:
+        """Fetch agent details"""
+        
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
+        agent_details_raw = yield from self._fetch_agent_details(safe_address)
+        
+        if not agent_details_raw:
+            self.context.logger.warning(f"Could not fetch agent details for {safe_address}")
+            return None
+        
+        return AgentDetails(
+            id=agent_details_raw.get("id", safe_address),
+            created_at=self._format_timestamp(agent_details_raw.get("blockTimestamp")),
+            last_active_at=self._format_timestamp(agent_details_raw.get("lastActive")),
+        )
+
+    def _fetch_agent_performance_data(self) -> Generator:
+        """Fetch agent performance data"""
+        
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        trader_agent = yield from self._fetch_trader_agent_bets(safe_address)
+        
+        if not trader_agent:
+            self.context.logger.warning(f"Could not fetch trader agent for performance data")
+            return None
+        
+        # Calculate metrics
+        metrics = yield from self._calculate_performance_metrics(trader_agent)
+        stats = yield from self._calculate_performance_stats(trader_agent)
+        
+        return AgentPerformanceData(
+            window="lifetime",
+            currency="USD",
+            metrics=metrics,
+            stats=stats,
+        )
+
+    def _calculate_performance_metrics(self, trader_agent: dict) -> Generator:
+        """Calculate performance metrics from trader agent data."""
+        total_traded = int(trader_agent.get("totalTraded", 0))
+        total_fees = int(trader_agent.get("totalFees", 0))
+        total_payout = int(trader_agent.get("totalPayout", 0))
+        total_bets = int(trader_agent.get("totalBets", 0))
+        bets = trader_agent.get("bets", [])
+        
+        # Calculate funds used
+        estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
+        all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
+        
+        # Calculate profit
+        total_costs = total_traded + total_fees + estimated_mech_costs
+        all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
+        
+        # Calculate locked funds
+        funds_locked_in_markets = yield from self._calculate_funds_locked(bets)
+        
+        # Get available funds
+        available_funds = yield from self._fetch_available_funds(bets)
+        
+        return PerformanceMetricsData(
+            all_time_funds_used=round(all_time_funds_used, 4) if all_time_funds_used else None,
+            all_time_profit=round(all_time_profit, 4) if all_time_profit else None,
+            funds_locked_in_markets=round(funds_locked_in_markets, 4),
+            available_funds=round(available_funds, 4),
+        )
+
+    def _calculate_funds_locked(self, bets: list) -> Generator:
+        """Calculate funds locked in pending markets."""
+        funds_locked = 0
+        pending_bets_count = 0
+        
+        for bet in bets:
+            current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
+            if current_answer is None:  # Market not resolved
+                bet_amount = int(bet.get("amount", 0))
+                bet_fee = int(bet.get("feeAmount", 0))
+                funds_locked += bet_amount + bet_fee
+                pending_bets_count += 1
+        
+        # Add mech fees for pending bets
+        mech_costs_for_pending = pending_bets_count * DEFAULT_MECH_FEE
+        funds_locked += mech_costs_for_pending
+        
+        return funds_locked / WEI_IN_ETH
+
+    def _fetch_available_funds(self, bets: list) -> Generator[None, None, Optional[float]]:
+        """Fetch available funds (wxDAI + xDAI balance)."""
+        yield from self.wait_for_condition_with_sleep(self.check_balance)
+        token_balance = self.token_balance / WEI_IN_ETH
+        wallet_balance = self.wallet_balance / WEI_IN_ETH
+        available_funds = token_balance + wallet_balance
+        return available_funds
+
+    def _calculate_performance_stats(self, trader_agent: dict) -> Generator:
+        """Calculate performance statistics."""
+        total_bets = int(trader_agent.get("totalBets", 0))
+        accuracy = yield from self._get_prediction_accuracy()
+        
+        return PerformanceStatsData(
+            predictions_made=total_bets,
+            prediction_accuracy=round(accuracy / 100, 4) if accuracy is not None else None,
+        )
+
+    def _fetch_prediction_history(self) -> Generator:
+        """Fetch latest 200 predictions."""
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
+        fetcher = PredictionsFetcher(self.context, self.context.logger)
+        result = fetcher.fetch_predictions(
+            safe_address=safe_address,
+            first=200,
+            skip=0,
+            status_filter=None
+        )
+        
+        return PredictionHistory(
+            total_predictions=result["total_predictions"],
+            stored_count=len(result["items"]),
+            last_updated=self.shared_state.synced_timestamp,
+            items=result["items"],
+        )
     def _fetch_agent_performance_summary(self) -> Generator:
         """Fetch the agent performance summary"""
         current_timestamp = self.shared_state.synced_timestamp
@@ -254,8 +394,17 @@ class FetchPerformanceSummaryBehaviour(
             )
         )
 
+        agent_details = yield from self._fetch_agent_details_data()
+        agent_performance = yield from self._fetch_agent_performance_data()
+        prediction_history = yield from self._fetch_prediction_history()
+
         self._agent_performance_summary = AgentPerformanceSummary(
-            timestamp=current_timestamp, metrics=metrics, agent_behavior=None
+            timestamp=current_timestamp, 
+            metrics=metrics, 
+            agent_behavior=None,
+            agent_details=agent_details,
+            agent_performance=agent_performance,
+            prediction_history=prediction_history,
         )
 
     def _save_agent_performance_summary(

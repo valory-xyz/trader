@@ -22,6 +22,7 @@
 
 import json
 from datetime import datetime
+from dataclasses import asdict
 from enum import Enum
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -29,6 +30,9 @@ from urllib.parse import urlparse
 
 import requests
 from web3 import Web3
+
+from aea.protocols.base import Message
+from aea.protocols.dialogue.base import Dialogue
 
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
@@ -53,11 +57,15 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.dialogues import (
     HttpDialogue,
 )
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
+    GET_PREDICTION_HISTORY_QUERY,
+    GET_FPMM_PAYOUTS_QUERY,
 )
-from packages.valory.skills.staking_abci.rounds import SynchronizedData
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+
 
 
 # Constants
@@ -66,6 +74,15 @@ WEI_TO_NATIVE = 10**18
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GRAPHQL_BATCH_SIZE = 1000  # Max items per GraphQL query
 INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+PREDICT_BASE_URL = "https://predict.olas.network/questions"
+DEFAULT_PAGE_SIZE = 10
+MAX_PAGE_SIZE = 100
+ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+PREDICTION_STATUS_PENDING = "pending"
+PREDICTION_STATUS_WON = "won"
+PREDICTION_STATUS_LOST = "lost"
+PREDICTION_STATUS_ALL = "all"
+VALID_PREDICTION_STATUSES = [PREDICTION_STATUS_PENDING, PREDICTION_STATUS_WON, PREDICTION_STATUS_LOST]
 
 
 class HttpMethod(Enum):
@@ -79,12 +96,21 @@ class HttpMethod(Enum):
 class HttpContentType(Enum):
     """Enum for HTTP content types."""
 
+    HTML = "text/html"
+    JS = "application/javascript"
     JSON = "application/json"
+    CSS = "text/css"
+    PNG = "image/png"
+    JPG = "image/jpeg"
+    JPEG = "image/jpeg"
 
     @property
     def header(self) -> str:
         """Return the HTTP header for the content type."""
         return f"Content-Type: {self.value}\n"
+
+
+DEFAULT_HEADER = HttpContentType.HTML.header
 
 
 AgentPerformanceSummaryABCIHandler = ABCIRoundHandler
@@ -107,16 +133,21 @@ class HttpHandler(BaseHttpHandler):
         self.routes: Dict[tuple, list] = {}
 
     @property
-    def synchronized_data(self) -> SynchronizedData:
+    def synchronized_data(self) -> BaseSynchronizedData:
         """Return the synchronized data."""
-        return SynchronizedData(
+        return BaseSynchronizedData(
             db=self.context.state.round_sequence.latest_synchronized_data.db
         )
 
-    def setup(self) -> None:
-        """Setup the handler."""
-        super().setup()
+    @property
+    def shared_state(self):
+        """Get the shared state."""
+        from packages.valory.skills.agent_performance_summary_abci.models import SharedState
+        return cast(SharedState, self.context.state)
 
+    @property
+    def hostname_regex(self) -> str:
+        """Build and return hostname regex pattern."""
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
         ).hostname
@@ -129,9 +160,15 @@ class HttpHandler(BaseHttpHandler):
 
         # Route regexes
         hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
+        return hostname_regex
+
+    def setup(self) -> None:
+        """Setup the handler."""
+        super().setup()
         
-        agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
-        agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
+        agent_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/details"
+        agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
+        agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/predictions-history"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -145,6 +182,10 @@ class HttpHandler(BaseHttpHandler):
                     agent_performance_url_regex,
                     self._handle_get_agent_performance,
                 ),
+                (
+                    agent_predictions_url_regex,
+                    self._handle_get_predictions,
+                ),
             ],
         }
 
@@ -152,70 +193,25 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle GET /api/v1/agent/details request."""
-        try:
-            # Get the safe contract address
-            safe_address = self.synchronized_data.safe_contract_address.lower()
-            
-            # Prepare the GraphQL query
-            query_payload = {
-                "query": GET_TRADER_AGENT_DETAILS_QUERY,
-                "variables": {"id": safe_address}
-            }
-            
-            # Get the subgraph URL from params
-            subgraph_url = self.context.params.olas_agents_subgraph_url
-            
-            # Make synchronous request to subgraph
-            response = requests.post(
-                subgraph_url,
-                json=query_payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30
-            )
-            
-            if response.status_code != 200:
-                self.context.logger.error(
-                    f"Failed to fetch agent details from subgraph: {response.status_code}"
-                )
-                self._send_internal_server_error_response(
-                    http_msg,
-                    http_dialogue,
-                    {"error": "Failed to fetch agent details from subgraph"}
-                )
-                return
-            
-            response_data = response.json()
-            
-            # Extract trader agent data
-            trader_agent = response_data.get("data", {}).get("traderAgent")
-            
-            if not trader_agent:
-                self.context.logger.warning(
-                    f"No trader agent found for address: {safe_address}"
-                )
-                self._send_not_found_response(
-                    http_msg,
-                    http_dialogue
-                )
-                return
-            
-            # Format the response according to API spec
-            formatted_response = {
-                "id": trader_agent.get("id", safe_address),
-                "created_at": self._format_timestamp(trader_agent.get("blockTimestamp")),
-                "last_active_at": self._format_timestamp(trader_agent.get("lastActive")),
-            }
-            
-            self.context.logger.info(f"Sending agent details: {formatted_response}")
-            self._send_ok_response(http_msg, http_dialogue, formatted_response)
-            
-        except Exception as e:
-            self.context.logger.error(f"Error fetching agent details: {str(e)}")
+        summary = self.shared_state.read_existing_performance_summary()
+        details = summary.agent_details
+        
+        if not details or not details.id:
             self._send_internal_server_error_response(
-                http_msg,
+                http_msg, 
                 http_dialogue,
-                {"error": "Internal server error while fetching agent details"}
+                {"error": "Agent details not available. Data may not have been fetched yet or there was an error retrieving it."}
             )
+            return
+            
+        formatted_response = {
+            "id": details.id,
+            "created_at": details.created_at,
+            "last_active_at": details.last_active_at,
+        }
+        
+        self.context.logger.info(f"Responding with agent details: {formatted_response}")
+        self._send_ok_response(http_msg, http_dialogue, formatted_response)
 
     def _format_timestamp(self, timestamp: str) -> str:
         """
@@ -229,11 +225,11 @@ class HttpHandler(BaseHttpHandler):
         
         try:
             # Convert to int if it's a string
-            timestamp_int = int(timestamp)
+            unix_timestamp = int(timestamp)
             # Convert to datetime and format as ISO 8601
-            dt = datetime.utcfromtimestamp(timestamp_int)
-            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-        except (ValueError, TypeError) as e:
+            dt = datetime.utcfromtimestamp(unix_timestamp)
+            return dt.strftime(ISO_TIMESTAMP_FORMAT)
+        except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
             return ""
 
@@ -531,31 +527,25 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return
             
-            # Get safe address
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            subgraph_url = self.context.params.olas_agents_subgraph_url
+            summary = self.shared_state.read_existing_performance_summary()
+            performance = summary.agent_performance
             
-            # Fetch all performance data with pagination support
-            trader_agent = self._fetch_all_bets_paginated(safe_address, subgraph_url)
-            
-            if not trader_agent:
-                self.context.logger.warning(
-                    f"No trader agent found for address: {safe_address}"
+            if not performance or not performance.metrics:
+                self._send_internal_server_error_response(
+                    http_msg, 
+                    http_dialogue,
+                    {"error": "Performance data not available. Data may not have been fetched yet or there was an error retrieving it."}
                 )
-                self._send_not_found_response(http_msg, http_dialogue)
                 return
             
-            # Calculate metrics and stats
-            metrics = self._calculate_performance_metrics(trader_agent, safe_address)
-            stats = self._calculate_performance_stats(trader_agent)
-            
-            # Format response
+            # Convert dataclasses to dicts for response
             formatted_response = {
                 "agent_id": safe_address,
                 "window": window,
                 "currency": currency,
-                "metrics": metrics,
-                "stats": stats
+                "metrics": asdict(performance.metrics),
+                "stats": asdict(performance.stats)
             }
             
             self.context.logger.info(f"Sending performance data for agent: {safe_address}")
@@ -700,3 +690,203 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error fetching balance: {str(e)}")
             # Return 0 on error instead of failing the entire request
             return 0.0
+
+    def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
+        """Get the prediction side from outcome index and outcomes array."""
+        try:
+            if not outcomes or outcome_index >= len(outcomes):
+                return "unknown"
+            return outcomes[outcome_index]
+        except (IndexError, TypeError) as e:
+            self.context.logger.error(f"Error getting prediction side: {e}")
+            return "unknown"
+
+    def _get_prediction_status(self, bet: Dict) -> str:
+        """Determine the status of a prediction (pending, won, lost)."""
+        try:
+            fpmm = bet.get("fixedProductMarketMaker", {})
+            current_answer = fpmm.get("currentAnswer")
+            
+            # Market not resolved
+            if current_answer is None:
+                return "pending"
+            
+            # Check for invalid market
+            if current_answer == INVALID_ANSWER_HEX:
+                return "lost"
+            
+            # Compare outcome
+            outcome_index = int(bet.get("outcomeIndex", 0))
+            correct_answer = int(current_answer, 0)
+            
+            return "won" if outcome_index == correct_answer else "lost"
+        except (ValueError, TypeError, KeyError) as e:
+            self.context.logger.error(f"Error determining prediction status: {e}")
+            return "pending"
+
+    def _calculate_net_profit_for_prediction(
+        self, bet: Dict, payouts_map: Dict[str, List]
+    ) -> float:
+        """Calculate net profit for a single prediction."""
+        try:
+            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            status = self._get_prediction_status(bet)
+            
+            if status == "pending":
+                return 0.0
+            
+            if status == "lost":
+                return -bet_amount
+            
+            # Won - calculate payout
+            fpmm_id = bet.get("fixedProductMarketMaker", {}).get("id")
+            payouts = payouts_map.get(fpmm_id, [])
+            outcome_index = int(bet.get("outcomeIndex", 0))
+            
+            if payouts and len(payouts) > outcome_index:
+                payout_amount = float(payouts[outcome_index]) / WEI_TO_NATIVE
+                return payout_amount - bet_amount
+            
+            # Fallback if payouts not available
+            return 0.0
+            
+        except Exception as e:
+            self.context.logger.error(f"Error calculating net profit: {e}")
+            return 0.0
+
+    def _fetch_fpmm_payouts(self, fpmm_ids: List[str], omen_url: str) -> Dict[str, List]:
+        """Fetch FPMM payouts from Omen subgraph."""
+        try:
+            query_payload = {
+                "query": GET_FPMM_PAYOUTS_QUERY,
+                "variables": {"fpmmIds": fpmm_ids}
+            }
+            
+            response = requests.post(
+                omen_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"Failed to fetch FPMM payouts: {response.status_code}"
+                )
+                return {}
+            
+            response_data = response.json()
+            fpmms = response_data.get("data", {}).get("fixedProductMarketMakers", [])
+            
+            # Build map: fpmm_id -> payouts
+            payouts_map = {}
+            for fpmm in fpmms:
+                fpmm_id = fpmm.get("id")
+                payouts = fpmm.get("payouts", [])
+                if fpmm_id and payouts:
+                    payouts_map[fpmm_id] = payouts
+            
+            return payouts_map
+            
+        except Exception as e:
+            self.context.logger.error(f"Error fetching FPMM payouts: {e}")
+            return {}
+
+    def _handle_get_predictions(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/predictions request."""
+        try:
+            # Parse query parameters
+            page, page_size, status_filter = self._parse_query_params(http_msg)
+            
+            # Validate status filter
+            if status_filter and status_filter not in VALID_PREDICTION_STATUSES:
+                self._send_bad_request_response(
+                    http_msg, http_dialogue,
+                    {"error": f"Invalid status parameter. Must be one of: {', '.join(VALID_PREDICTION_STATUSES)}"}
+                )
+                return
+            
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            skip = (page - 1) * page_size
+            
+            # Check stored history first
+            summary = self.shared_state.read_existing_performance_summary()
+            history = summary.prediction_history
+            
+            if history and history.stored_count > 0 and skip < history.stored_count:
+                # Serve from stored history
+                self.context.logger.info(f"Serving predictions from stored history (page {page})")
+                items = self._filter_and_paginate(history.items, status_filter, skip, page_size)
+                
+                response = {
+                    "agent_id": safe_address,
+                    "currency": "USD",
+                    "page": page,
+                    "page_size": page_size,
+                    "total": history.total_predictions,
+                    "items": items
+                }
+                self._send_ok_response(http_msg, http_dialogue, response)
+                return
+            
+            # Fetch from subgraph
+            self.context.logger.info(f"Querying subgraph (page {page})")
+            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            result = fetcher.fetch_predictions(
+                safe_address=safe_address,
+                first=page_size,
+                skip=skip,
+                status_filter=status_filter if status_filter != PREDICTION_STATUS_ALL else None
+            )
+            
+            response = {
+                "agent_id": safe_address,
+                "currency": "USD",
+                "page": page,
+                "page_size": page_size,
+                "total": result["total_predictions"],
+                "items": result["items"]
+            }
+            
+            self.context.logger.info(f"Sending {len(result['items'])} predictions")
+            self._send_ok_response(http_msg, http_dialogue, response)
+            
+        except Exception as e:
+            self.context.logger.error(f"Error in predictions endpoint: {e}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue,
+                {"error": "Failed to fetch predictions"}
+            )
+
+    def _parse_query_params(self, http_msg: HttpMessage) -> tuple:
+        """Parse page, page_size, and status_filter from query string."""
+        page = 1
+        page_size = DEFAULT_PAGE_SIZE
+        status_filter = None
+        
+        url_parts = http_msg.url.split('?')
+        if len(url_parts) > 1:
+            params = {}
+            for param in url_parts[1].split('&'):
+                if '=' in param:
+                    key, value = param.split('=', 1)
+                    params[key] = value
+            
+            try:
+                page = int(params.get('page', 1))
+                page_size = min(int(params.get('page_size', DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
+            except ValueError:
+                pass
+            
+            status_filter = params.get('status')
+        
+        return page, page_size, status_filter
+
+    def _filter_and_paginate(self, items: list, status_filter: Optional[str], skip: int, page_size: int) -> list:
+        """Filter items by status and paginate."""
+        if status_filter and status_filter != PREDICTION_STATUS_ALL:
+            items = [item for item in items if item.get("status") == status_filter]
+        
+        return items[skip:skip + page_size]
