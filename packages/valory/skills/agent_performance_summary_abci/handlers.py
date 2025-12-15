@@ -22,6 +22,7 @@
 
 import json
 from datetime import datetime
+from dataclasses import asdict
 from enum import Enum
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -191,17 +192,18 @@ class HttpHandler(BaseHttpHandler):
         details = summary.agent_details
         
         if not details or not details.id:
-            formatted_response = {
-                "id": None,
-                "created_at": None,
-                "last_active_at": None,
-            }
-        else:
-            formatted_response = {
-                "id": details.id,
-                "created_at": details.created_at,
-                "last_active_at": details.last_active_at,
-            }
+            self._send_internal_server_error_response(
+                http_msg, 
+                http_dialogue,
+                {"error": "Agent details not available. Data may not have been fetched yet or there was an error retrieving it."}
+            )
+            return
+            
+        formatted_response = {
+            "id": details.id,
+            "created_at": details.created_at,
+            "last_active_at": details.last_active_at,
+        }
         
         self.context.logger.info(f"Responding with agent details: {formatted_response}")
         self._send_ok_response(http_msg, http_dialogue, formatted_response)
@@ -520,39 +522,26 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return
             
-            # Get safe address
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
             
             if not performance or not performance.metrics:
-                # Return null values if not available yet
-                formatted_response = {
-                    "agent_id": safe_address,
-                    "window": window,
-                    "currency": currency,
-                    "metrics": {
-                        "all_time_funds_used": None,
-                        "all_time_profit": None,
-                        "funds_locked_in_markets": None,
-                        "available_funds": None
-                    },
-                    "stats": {
-                        "predictions_made": None,
-                        "prediction_accuracy": None
-                    }
-                }
-            else:
-                # Convert dataclasses to dicts for response
-                from dataclasses import asdict
-                formatted_response = {
-                    "agent_id": safe_address,
-                    "window": window,
-                    "currency": currency,
-                    "metrics": asdict(performance.metrics) if performance.metrics else {},
-                    "stats": asdict(performance.stats) if performance.stats else {}
-                }
+                self._send_internal_server_error_response(
+                    http_msg, 
+                    http_dialogue,
+                    {"error": "Performance data not available. Data may not have been fetched yet or there was an error retrieving it."}
+                )
+                return
+            
+            # Convert dataclasses to dicts for response
+            formatted_response = {
+                "agent_id": safe_address,
+                "window": window,
+                "currency": currency,
+                "metrics": asdict(performance.metrics),
+                "stats": asdict(performance.stats)
+            }
             
             self.context.logger.info(f"Sending performance data for agent: {safe_address}")
             self._send_ok_response(http_msg, http_dialogue, formatted_response)
