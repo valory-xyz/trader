@@ -118,6 +118,12 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
         outcomes
         currentAnswer
         answerFinalizedTimestamp
+        participants(where: { traderAgent: $id }) {
+          totalBets
+          totalTraded
+          totalPayout
+          totalFees
+        }
       }
     }
   }

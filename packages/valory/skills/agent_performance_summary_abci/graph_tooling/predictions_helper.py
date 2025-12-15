@@ -21,13 +21,12 @@
 """Shared helper for fetching and formatting predictions data."""
 
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_PREDICTION_HISTORY_QUERY,
-    GET_FPMM_PAYOUTS_QUERY,
 )
 
 
@@ -52,7 +51,6 @@ class PredictionsFetcher:
         self.context = context
         self.logger = logger
         self.predict_url = context.params.olas_agents_subgraph_url
-        self.trades_url = context.params.trades_subgraph_url
 
     def fetch_predictions(
         self,
@@ -92,20 +90,8 @@ class PredictionsFetcher:
                     "items": []
                 }
             
-            # Extract unique FPMM IDs
-            fpmm_ids = list(set([
-                bet["fixedProductMarketMaker"]["id"] 
-                for bet in bets 
-                if bet.get("fixedProductMarketMaker", {}).get("id")
-            ]))
-            
-            # Fetch payouts for these markets
-            payouts_map = self._fetch_fpmm_payouts(fpmm_ids)
-            
-            # Format predictions
-            items = self._format_predictions(
-                bets, payouts_map, status_filter
-            )
+            # Format predictions (aggregated by market)
+            items = self._format_predictions(bets, safe_address, status_filter)
             
             return {
                 "total_predictions": total_bets,
@@ -155,51 +141,10 @@ class PredictionsFetcher:
             self.logger.error(f"Error fetching trader agent bets: {str(e)}")
             return None
 
-    def _fetch_fpmm_payouts(self, fpmm_ids: List[str]) -> Dict[str, List]:
-        """Fetch FPMM payouts from trades subgraph."""
-        try:
-            if not fpmm_ids:
-                return {}
-            
-            query_payload = {
-                "query": GET_FPMM_PAYOUTS_QUERY,
-                "variables": {"fpmmIds": fpmm_ids}
-            }
-            
-            response = requests.post(
-                self.trades_url,
-                json=query_payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30
-            )
-            
-            if response.status_code != 200:
-                self.logger.error(
-                    f"Failed to fetch FPMM payouts: {response.status_code}"
-                )
-                return {}
-            
-            response_data = response.json()
-            fpmms = response_data.get("data", {}).get("fixedProductMarketMakers", [])
-            
-            # Build map: fpmm_id -> payouts
-            payouts_map = {}
-            for fpmm in fpmms:
-                fpmm_id = fpmm.get("id")
-                payouts = fpmm.get("payouts", [])
-                if fpmm_id and payouts:
-                    payouts_map[fpmm_id] = payouts
-            
-            return payouts_map
-            
-        except Exception as e:
-            self.logger.error(f"Error fetching FPMM payouts: {str(e)}")
-            return {}
-
     def _format_predictions(
         self, 
-        bets: List[Dict], 
-        payouts_map: Dict[str, List],
+        bets: List[Dict],
+        safe_address: str,
         status_filter: Optional[str] = None
     ) -> List[Dict]:
         """
@@ -221,38 +166,44 @@ class PredictionsFetcher:
                     market_bets[fpmm_id] = []
                 market_bets[fpmm_id].append(bet)
             
-            # Format predictions (aggregated by market)
+            # Format predictions (one per market)
             items = []
             for fpmm_id, market_bet_list in market_bets.items():
                 # Get first bet for reference data
                 first_bet = market_bet_list[0]
                 fpmm = first_bet.get("fixedProductMarketMaker", {})
-                outcome_index = int(first_bet.get("outcomeIndex", 0))
-                outcomes = fpmm.get("outcomes", [])
                 
+                # Get market participant data
+                participants = fpmm.get("participants", [])
+                market_participant = participants[0] if participants else None
+                
+                # Determine market-level status (use first bet as reference)
                 prediction_status = self._get_prediction_status(first_bet)
                 
                 # Apply status filter if provided
                 if status_filter and prediction_status != status_filter:
                     continue
                 
-                # Aggregate bet amounts and profits across all bets for this market
-                total_bet_amount = 0.0
-                total_net_profit = 0.0
-                earliest_timestamp = None
+                # Get prediction side (from first bet)
+                outcome_index = int(first_bet.get("outcomeIndex", 0))
+                outcomes = fpmm.get("outcomes", [])
                 
-                for bet in market_bet_list:
-                    bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-                    total_bet_amount += bet_amount
-                    total_net_profit += self._calculate_net_profit(
-                        bet, payouts_map
-                    )
-                    
-                    # Track earliest timestamp
-                    bet_timestamp = bet.get("timestamp")
-                    if bet_timestamp:
-                        if earliest_timestamp is None or int(bet_timestamp) < int(earliest_timestamp):
-                            earliest_timestamp = bet_timestamp
+                # Calculate aggregated values
+                total_bet_amount = sum(
+                    float(bet.get("amount", 0)) / WEI_TO_NATIVE 
+                    for bet in market_bet_list
+                )
+                
+                total_net_profit = self._calculate_market_net_profit(
+                    market_bet_list, market_participant, safe_address
+                )
+                
+                # Get earliest timestamp
+                earliest_timestamp = min(
+                    int(bet.get("timestamp", 0)) 
+                    for bet in market_bet_list 
+                    if bet.get("timestamp")
+                )
                 
                 # Build prediction object
                 prediction = {
@@ -265,8 +216,7 @@ class PredictionsFetcher:
                     "prediction_side": self._get_prediction_side(outcome_index, outcomes),
                     "bet_amount": round(total_bet_amount, 4),
                     "status": prediction_status,
-                    "net_profit": round(total_net_profit, 4),
-                    "created_at": self._format_timestamp(earliest_timestamp or first_bet.get("timestamp")),
+                    "net_profit": round(total_net_profit, 4) if total_net_profit is not None else None,                    "created_at": self._format_timestamp(str(earliest_timestamp)),
                     "settled_at": self._format_timestamp(fpmm.get("answerFinalizedTimestamp")) if prediction_status != "pending" else None
                 }
                 items.append(prediction)
@@ -276,6 +226,93 @@ class PredictionsFetcher:
         except Exception as e:
             self.logger.error(f"Error formatting predictions: {str(e)}")
             return []
+
+    def _calculate_market_net_profit(
+        self, 
+        market_bets: List[Dict],
+        market_participant: Optional[Dict],
+        safe_address: str
+    ) -> Optional[float]:
+        """
+        Calculate net profit for all bets on a market.
+        
+        For multi-bet scenarios, uses MarketParticipant data with proportional distribution.
+        """
+        try:
+            # Check if market is resolved
+            first_bet = market_bets[0]
+            fpmm = first_bet.get("fixedProductMarketMaker", {})
+            current_answer = fpmm.get("currentAnswer")
+            
+            # Pending market
+            if current_answer is None:
+                return 0.0
+            
+            # Invalid market - all bets lost
+            if current_answer == INVALID_ANSWER_HEX:
+                return -sum(
+                    float(bet.get("amount", 0)) / WEI_TO_NATIVE 
+                    for bet in market_bets
+                )
+            
+            correct_answer = int(current_answer, 0)
+            
+            # Separate winning and losing bets
+            winning_bets = []
+            losing_bets = []
+            
+            for bet in market_bets:
+                outcome_index = int(bet.get("outcomeIndex", 0))
+                if outcome_index == correct_answer:
+                    winning_bets.append(bet)
+                else:
+                    losing_bets.append(bet)
+            
+            # Calculate loss from losing bets
+            total_loss = sum(
+                float(bet.get("amount", 0)) / WEI_TO_NATIVE 
+                for bet in losing_bets
+            )
+            
+            # If no winning bets, return total loss
+            if not winning_bets:
+                return -total_loss
+            
+            if not market_participant:
+                return None
+            
+            # Get market participant data
+            total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+            total_traded = float(market_participant.get("totalTraded", 0)) / WEI_TO_NATIVE
+            total_fees = float(market_participant.get("totalFees", 0)) / WEI_TO_NATIVE
+            
+            # Calculate profit from winning bets using proportional distribution
+            total_winning_amount = sum(
+                float(bet.get("amount", 0)) / WEI_TO_NATIVE 
+                for bet in winning_bets
+            )
+            
+            if total_winning_amount == 0:
+                return -total_loss
+            
+            # Distribute payout proportionally among winning bets
+            winning_profit = 0.0
+            for bet in winning_bets:
+                bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+                bet_proportion = bet_amount / total_winning_amount
+                
+                bet_payout = total_payout * bet_proportion
+                bet_fees = total_fees * bet_proportion
+                
+                bet_profit = bet_payout - bet_amount - bet_fees
+                winning_profit += bet_profit
+            
+            # Total profit = winning profit - losing bets
+            return winning_profit - total_loss
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating market net profit: {e}")
+            return 0.0
 
     def _get_prediction_status(self, bet: Dict) -> str:
         """Determine the status of a prediction (pending, won, lost)."""
@@ -309,36 +346,6 @@ class PredictionsFetcher:
         except (IndexError, TypeError) as e:
             self.logger.error(f"Error getting prediction side: {e}")
             return "unknown"
-
-    def _calculate_net_profit(
-        self, bet: Dict, payouts_map: Dict[str, List]
-    ) -> float:
-        """Calculate net profit for a single bet."""
-        try:
-            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            status = self._get_prediction_status(bet)
-            
-            if status == "pending":
-                return 0.0
-            
-            if status == "lost":
-                return -bet_amount
-            
-            # Won - calculate payout
-            fpmm_id = bet.get("fixedProductMarketMaker", {}).get("id")
-            payouts = payouts_map.get(fpmm_id, [])
-            outcome_index = int(bet.get("outcomeIndex", 0))
-            
-            if payouts and len(payouts) > outcome_index:
-                payout_amount = float(payouts[outcome_index]) / WEI_TO_NATIVE
-                return payout_amount - bet_amount
-            
-            # Fallback if payouts not available
-            return 0.0
-            
-        except Exception as e:
-            self.logger.error(f"Error calculating net profit: {e}")
-            return 0.0
 
     def _format_timestamp(self, timestamp: Optional[str]) -> Optional[str]:
         """Format Unix timestamp to ISO 8601."""
