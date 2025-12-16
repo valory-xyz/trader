@@ -89,6 +89,13 @@ class AgentPerformanceData:
     metrics: Optional[PerformanceMetricsData] = None
     stats: Optional[PerformanceStatsData] = None
 
+    def __post_init__(self):
+        """Convert nested dicts to dataclass instances."""
+        if isinstance(self.metrics, dict):
+            self.metrics = PerformanceMetricsData(**self.metrics)
+        if isinstance(self.stats, dict):
+            self.stats = PerformanceStatsData(**self.stats)
+
 
 @dataclass
 class PredictionHistory:
