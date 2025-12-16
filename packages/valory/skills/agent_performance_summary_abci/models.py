@@ -117,16 +117,16 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
 
     def __post_init__(self):
-    """Convert dicts to dataclass instances."""
-    if isinstance(self.agent_details, dict):
-        self.agent_details = AgentDetails(**self.agent_details)
-    
-    # Similarly for other nested dataclasses
-    if isinstance(self.agent_performance, dict):
-        self.agent_performance = AgentPerformanceData(**self.agent_performance)
-    
-    if isinstance(self.prediction_history, dict):
-        self.prediction_history = PredictionHistory(**self.prediction_history)
+        """Convert dicts to dataclass instances."""
+        if isinstance(self.agent_details, dict):
+            self.agent_details = AgentDetails(**self.agent_details)
+        
+        # Similarly for other nested dataclasses
+        if isinstance(self.agent_performance, dict):
+            self.agent_performance = AgentPerformanceData(**self.agent_performance)
+        
+        if isinstance(self.prediction_history, dict):
+            self.prediction_history = PredictionHistory(**self.prediction_history)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
