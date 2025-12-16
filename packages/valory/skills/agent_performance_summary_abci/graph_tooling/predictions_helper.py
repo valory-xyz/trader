@@ -50,7 +50,7 @@ class PredictionsFetcher:
         """
         self.context = context
         self.logger = logger
-        self.predict_url = context.params.olas_agents_subgraph_url
+        self.predict_url = context.olas_agents_subgraph.url
 
     def fetch_predictions(
         self,
