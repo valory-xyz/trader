@@ -28,9 +28,6 @@ from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
-import requests
-from web3 import Web3
-
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 
