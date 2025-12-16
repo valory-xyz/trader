@@ -200,11 +200,23 @@ class HttpHandler(BaseHttpHandler):
                 {"error": "Agent details not available. Data may not have been fetched yet or there was an error retrieving it."}
             )
             return
+        
+        agent_id = details.get("id")
+        created_at = details.get("created_at")
+        last_active_at = details.get("last_active_at")
+        
+        if not agent_id:
+            self._send_internal_server_error_response(
+                http_msg, 
+                http_dialogue,
+                {"error": "Agent ID not available."}
+            )
+            return
             
         formatted_response = {
-            "id": details.id,
-            "created_at": details.created_at,
-            "last_active_at": details.last_active_at,
+            "id": agent_id,
+            "created_at": created_at,
+            "last_active_at": last_active_at,
         }
         
         self.context.logger.info(f"Responding with agent details: {formatted_response}")
@@ -422,13 +434,23 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return
             
-            # Convert dataclasses to dicts for response
+            metrics = performance.get("metrics")
+            stats = performance.get("stats")
+            
+            if not metrics:
+                self._send_internal_server_error_response(
+                    http_msg, 
+                    http_dialogue,
+                    {"error": "Performance metrics not available."}
+                )
+                return
+            
             formatted_response = {
                 "agent_id": safe_address,
                 "window": window,
                 "currency": currency,
-                "metrics": asdict(performance.metrics),
-                "stats": asdict(performance.stats)
+                "metrics": metrics,
+                "stats": stats
             }
             
             self.context.logger.info(f"Sending performance data for agent: {safe_address}")
