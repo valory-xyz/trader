@@ -193,7 +193,7 @@ class HttpHandler(BaseHttpHandler):
         summary = self.shared_state.read_existing_performance_summary()
         details = summary.agent_details
         
-        if not details or not details.id:
+        if not details:
             self._send_internal_server_error_response(
                 http_msg, 
                 http_dialogue,
@@ -414,7 +414,7 @@ class HttpHandler(BaseHttpHandler):
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
             
-            if not performance or not performance.metrics:
+            if not performance:
                 self._send_internal_server_error_response(
                     http_msg, 
                     http_dialogue,
@@ -508,7 +508,6 @@ class HttpHandler(BaseHttpHandler):
                 http_msg, http_dialogue,
                 {"error": "Failed to fetch predictions"}
             )
-
     def _parse_query_params(self, http_msg: HttpMessage) -> tuple:
         """Parse page, page_size, and status_filter from query string."""
         page = 1
