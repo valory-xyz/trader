@@ -21,10 +21,7 @@
 
 import copy
 import json
-from enum import Enum
-from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Union, cast
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -45,9 +42,6 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
-    HttpHandler as BaseHttpHandler,
-)
-from packages.valory.skills.abstract_round_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -59,6 +53,13 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    HttpContentType,
+)
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    HttpHandler as BaseHttpHandler,
+)
+from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import (
@@ -70,14 +71,6 @@ from packages.valory.skills.chatui_abci.prompts import (
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 
 
-class HttpMethod(Enum):
-    """Http methods"""
-
-    GET = "get"
-    HEAD = "head"
-    POST = "post"
-
-
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
@@ -85,26 +78,6 @@ ContractApiHandler = BaseContractApiHandler
 TendermintHandler = BaseTendermintHandler
 IpfsHandler = BaseIpfsHandler
 
-
-# Content type constants
-class HttpContentType(Enum):
-    """Enum for HTTP content types."""
-
-    HTML = "text/html"
-    JS = "application/javascript"
-    JSON = "application/json"
-    CSS = "text/css"
-    PNG = "image/png"
-    JPG = "image/jpeg"
-    JPEG = "image/jpeg"
-
-    @property
-    def header(self) -> str:
-        """Return the HTTP header for the content type."""
-        return f"Content-Type: {self.value}\n"
-
-
-DEFAULT_HEADER = HttpContentType.HTML.header
 
 HTTP_CONTENT_TYPE_MAP = {
     ".js": HttpContentType.JS.header,
@@ -138,33 +111,14 @@ AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingS
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
 
-    SUPPORTED_PROTOCOL = HttpMessage.protocol_id
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the handler."""
-        super().__init__(**kwargs)
-        self.handler_url_regex: str = ""
-        self.routes: Dict[tuple, list] = {}
-
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
-        config_uri_base_hostname = urlparse(
-            self.context.params.service_endpoint
-        ).hostname
 
-        propel_uri_base_hostname = (
-            r"https?:\/\/[a-zA-Z0-9]{16}.agent\.propel\.(staging\.)?autonolas\.tech"
-        )
-
-        local_ip_regex = r"192\.168(\.\d{1,3}){2}"
-
-        # Route regexes
-        hostname_regex = rf".*({config_uri_base_hostname}|{propel_uri_base_hostname}|{local_ip_regex}|localhost|127.0.0.1|0.0.0.0)(:\d+)?"
-
-        chatui_prompt_url = rf"{hostname_regex}\/chatui-prompt"
-        configure_strategies_url = rf"{hostname_regex}\/configure_strategies"
-        is_enabled_url = rf"{hostname_regex}\/features"
+        # Use hostname_regex from parent's setup
+        chatui_prompt_url = rf"{self.hostname_regex}\/chatui-prompt"
+        configure_strategies_url = rf"{self.hostname_regex}\/configure_strategies"
+        is_enabled_url = rf"{self.hostname_regex}\/features"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -227,165 +181,6 @@ class HttpHandler(BaseHttpHandler):
     def synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
         return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
-
-    def _send_http_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        status_code: int,
-        status_text: str,
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Generic method to send HTTP responses."""
-        headers = content_type or (
-            HttpContentType.JSON.header
-            if isinstance(data, (dict, list))
-            else DEFAULT_HEADER
-        )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        try:
-            http_response = http_dialogue.reply(
-                performative=HttpMessage.Performative.RESPONSE,
-                target_message=http_msg,
-                version=http_msg.version,
-                status_code=status_code,
-                status_text=status_text,
-                headers=headers,
-                body=data.encode("utf-8") if isinstance(data, str) else data,
-            )
-
-            self.context.logger.info("Responding with: {}".format(http_response))
-            self.context.outbox.put_message(message=http_response)
-        except KeyError as e:
-            self.context.logger.error(f"KeyError: {e}")
-        except Exception as e:
-            self.context.logger.error(f"Error: {e}")
-
-    def _send_too_early_request_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Handle a HTTP too early request response."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            data,
-            HTTPStatus.TOO_EARLY.value,
-            HTTPStatus.TOO_EARLY.phrase,
-            content_type,
-        )
-
-    def _send_too_many_requests_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Handle a HTTP too many requests response."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            data,
-            HTTPStatus.TOO_MANY_REQUESTS.value,
-            HTTPStatus.TOO_MANY_REQUESTS.phrase,
-            content_type,
-        )
-
-    def _send_internal_server_error_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Handle a Http internal server error response."""
-        headers = content_type or (
-            HttpContentType.JSON.header
-            if isinstance(data, (dict, list))
-            else DEFAULT_HEADER
-        )
-        headers += http_msg.headers
-
-        # Convert dictionary or list to JSON string
-        if isinstance(data, (dict, list)):
-            data = json.dumps(data)
-
-        http_response = http_dialogue.reply(
-            performative=HttpMessage.Performative.RESPONSE,
-            target_message=http_msg,
-            version=http_msg.version,
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
-            status_text=HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
-            headers=headers,
-            body=data.encode("utf-8") if isinstance(data, str) else data,
-        )
-
-        # Send response
-        self.context.logger.info("Responding with: {}".format(http_response))
-        self.context.outbox.put_message(message=http_response)
-
-    def _send_bad_request_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Handle a HTTP bad request."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            data,
-            HTTPStatus.BAD_REQUEST.value,
-            HTTPStatus.BAD_REQUEST.phrase,
-            content_type,
-        )
-
-    def _send_ok_response(
-        self,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-        data: Union[str, Dict, List, bytes],
-        content_type: Optional[str] = None,
-    ) -> None:
-        """Send an OK response with the provided data."""
-        self._send_http_response(
-            http_msg,
-            http_dialogue,
-            data,
-            HTTPStatus.OK.value,
-            "Success",
-            content_type,
-        )
-
-    def _send_message(
-        self,
-        message: Message,
-        dialogue: Dialogue,
-        callback: Callable,
-        callback_kwargs: Optional[Dict] = None,
-    ) -> None:
-        """
-        Send a message and set up a callback for the response.
-
-        :param message: the Message to send
-        :param dialogue: the Dialogue context
-        :param callback: the callback function upon response
-        :param callback_kwargs: optional kwargs for the callback
-        """
-        self.context.outbox.put_message(message=message)
-        nonce = dialogue.dialogue_label.dialogue_reference[0]
-        self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
 
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
