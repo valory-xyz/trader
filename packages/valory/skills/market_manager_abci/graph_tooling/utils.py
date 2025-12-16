@@ -54,7 +54,7 @@ def get_position_balance(
         position_data = position.get("position", {})
         position_condition_ids = position_data.get("conditionIds", [])
         
-        if condition_id.lower() not in position_conditions_ids:
+        if condition_id.lower() not in position_condition_ids:
             continue
         
         conditions = position_data.get("conditions", [])

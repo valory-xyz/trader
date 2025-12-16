@@ -203,7 +203,7 @@ class PredictionsFetcher:
             "status": prediction_status,
             "net_profit": round(total_net_profit, 4) if total_net_profit is not None else None,
             "created_at": self._format_timestamp(str(earliest_timestamp)),
-            "settled_at": self._format_timestamp(fpmm.get("answerFinalizedTimestamp")) if prediction_status != "pending" else None
+            "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if prediction_status != "pending" else None
         }
 
     def _calculate_total_bet_amount(self, market_bet_list: List[Dict]) -> float:
