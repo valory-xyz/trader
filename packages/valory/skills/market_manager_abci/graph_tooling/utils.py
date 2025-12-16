@@ -53,21 +53,21 @@ def get_position_balance(
     for position in user_positions:
         position_data = position.get("position", {})
         position_condition_ids = position_data.get("conditionIds", [])
-        
+
         if condition_id.lower() not in position_condition_ids:
             continue
-        
+
         conditions = position_data.get("conditions", [])
         indexSets = position_data.get("indexSets", [])
-        
+
         if not conditions or not indexSets:
             continue
-            
+
         outcomes = conditions[0].get("outcomes")
         if not outcomes:
             continue
-        
-        #index set is a position in outcomes counting from 1
+
+        # index set is a position in outcomes counting from 1
         outcome_index = int(indexSets[0]) - 1
 
         balance = int(position["balance"])
