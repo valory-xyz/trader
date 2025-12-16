@@ -30,9 +30,11 @@ from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
+    GET_PENDING_BETS_QUERY,
     GET_STAKING_SERVICE_QUERY,
     GET_TRADER_AGENT_BETS_QUERY,
     GET_TRADER_AGENT_DETAILS_QUERY,
+    GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_TRADER_AGENT_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -224,6 +226,32 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 variables={"id": agent_safe_address},
                 subgraph=self.context.olas_agents_subgraph,
                 res_context="agent_details",
+            )
+        )
+
+    def _fetch_trader_agent_performance(
+        self, agent_safe_address, first: int = 200, skip: int = 0
+    ) -> Generator[None, None, Optional[Dict]]:
+        """Fetch trader agent performance with bets (includes totalBets, totalTraded, etc)."""
+        return (
+            yield from self._fetch_from_subgraph(
+                query=GET_TRADER_AGENT_PERFORMANCE_QUERY,
+                variables={"id": agent_safe_address, "first": first, "skip": skip},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="trader_agent_performance",
+            )
+        )
+
+    def _fetch_pending_bets(
+        self, agent_safe_address
+    ) -> Generator[None, None, Optional[Dict]]:
+        """Fetch all pending bets (markets not yet resolved)."""
+        return (
+            yield from self._fetch_from_subgraph(
+                query=GET_PENDING_BETS_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="pending_bets",
             )
         )
 

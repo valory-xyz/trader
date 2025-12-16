@@ -143,3 +143,14 @@ query GetFPMMPayouts($fpmmIds: [ID!]!) {
   }
 }
 """
+
+GET_PENDING_BETS_QUERY = """
+query GetPendingBets($id: ID!) {
+  traderAgent(id: $id) {
+    bets(where: { fixedProductMarketMaker_: { currentAnswer: null } }) {
+      amount
+      feeAmount
+    }
+  }
+}
+"""
