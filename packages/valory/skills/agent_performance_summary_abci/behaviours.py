@@ -35,6 +35,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     AgentDetails,
     AgentPerformanceData,
+    PredictionHistory,
     PerformanceMetricsData,
     PerformanceStatsData,
     SharedState,
@@ -46,11 +47,15 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     FetchPerformanceDataRound,
 )
+from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
+WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
 
 INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
