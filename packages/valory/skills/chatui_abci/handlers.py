@@ -68,6 +68,7 @@ from packages.valory.skills.chatui_abci.prompts import (
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
+from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 
 
 ChatuiABCIHandler = BaseABCIRoundHandler
@@ -175,6 +176,11 @@ class HttpHandler(BaseHttpHandler):
     def round_sequence(self) -> RoundSequence:
         """Return the round sequence."""
         return self.shared_state.round_sequence
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
