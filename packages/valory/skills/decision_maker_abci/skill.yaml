@@ -36,7 +36,7 @@ fingerprint:
   policy.py: bafybeig5dnlwua4pzyz74rifkauuu2xvrusuwkqfsvetbh7trp3kzkpdyq
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeibzt2or6ydecadxrldpqunvqvl7hagla5buib22tfqls7fy2kjc6u
-  rounds_info.py: bafybeiev2xgeh6w2mt2xvr4os5l6bdqozat7buuxlgu6gypbvfvtc3bnwa
+  rounds_info.py: bafybeihwd65dl5xhgil36wtzz56xwx7vjx4rzohi4ixvoewcmxgpyyaymq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeifp7dr3gax26k5ionuqu4go7zkqnck7si7ayw353ddeinogliu5ba
   states/bet_placement.py: bafybeidd3k6bbnjkznwbv43l44wexaci7k7axz6mfrgca76mjljp5o2344
@@ -99,12 +99,12 @@ protocols:
 - valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
-- valory/market_manager_abci:0.1.0:bafybeifgrlpsxcqqaxnnxxp572lorbc7ogu36nklgpmmbuimxca2r5o4oa
+- valory/market_manager_abci:0.1.0:bafybeifkqnmoptfj4lmeazwxcgkutf3tsfldk5tc2nk4hp7n7sc7xgvgsa
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/mech_interact_abci:0.1.0:bafybeifig7i427sbpovlhpyybrii3i2hx4kre24i6xaz6wixi236tr6yne
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
-- valory/agent_performance_summary_abci:0.1.0:bafybeif6stcv5oce4gzmetghnrq2zikheghj62amnugnfwq3cul4p2kvle
-- valory/chatui_abci:0.1.0:bafybeiaaxfzmm6yu2mrzfrhxjygse3junmhdc64ycf3zsmrp5fwyogtiuu
+- valory/agent_performance_summary_abci:0.1.0:bafybeiafppnaikvcw6xnht7h5s6cqbpzsm36lif2tx34nu2sox6fqtdquy
+- valory/chatui_abci:0.1.0:bafybeieeaqfgc5hxkb2bxizxon52adqaeddmjt2eznog6snuata7lum2zu
 behaviours:
   main:
     args: {}

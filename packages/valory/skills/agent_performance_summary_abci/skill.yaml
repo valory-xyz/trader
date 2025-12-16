@@ -7,18 +7,23 @@ license: Apache-2.0
 aea_version: '>=1.0.0, <2.0.0'
 fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
-  behaviours.py: bafybeibwjwtdpth62uxadw3c7hfrjn7zhoynh4qct7fkotdudtmjrk5foa
+  behaviours.py: bafybeifc63c5tv7gze34pz3mzv4mus4sxuxaztgru3qttlb6ffkhbjiz3u
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/queries.py: bafybeieopwu53mqp5drryyairk2k45otc2x4ilblsklm5ylr3ugto2rake
-  graph_tooling/requests.py: bafybeidfs6bv6ksfimsx7pwhmzohowzwjiwkf6d7vrbiqtt65iamvpepjy
-  handlers.py: bafybeic32gqov34qy535ja27cvwid2nqitrzvp3h6eawq5gs5bkbq54u5u
-  models.py: bafybeiasjd7xqqpns5bdjznnbovtyezcftw4rj5cvwy6m5vg435neaalr4
+  graph_tooling/predictions_helper.py: bafybeied2m3ultxhmtn3dn6yjgmmxni6otvbpqzy6nocit5arxciol7u2i
+  graph_tooling/queries.py: bafybeihos3zggwzrheuuoabwh4wsxw4k63zx7uwrrp56jxoi5x2ttvfbay
+  graph_tooling/requests.py: bafybeifxmx7dvm5atnkmcg6jfavco4gesyhoxuz4gzysyqd6w2vaywmvxq
+  handlers.py: bafybeib6h36qqlo43vgvodzj5foy4z6u3i4mx6uuwmca64njsklmlsqgua
+  models.py: bafybeiextmw5r2hfnkxh5sskybfpfdaeawzzr4ahwndjgnf6gi5yrvorl4
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
-contracts: []
+contracts:
+- valory/erc20:0.1.0:bafybeifaep43unfegellngvqln7v5tsbmpb6vvkzc7k7ta7b5yyym3rr74
+protocols:
+- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
+- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
 handlers:
@@ -102,8 +107,23 @@ models:
       retries: 5
       url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
-dependencies: {}
+  trades_subgraph:
+    args:
+      api_id: trades
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
+    class_name: TradesSubgraph
+dependencies:
+  requests:
+    version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections: []
-protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
