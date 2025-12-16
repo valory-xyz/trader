@@ -89,6 +89,13 @@ class AgentPerformanceData:
     metrics: Optional[PerformanceMetricsData] = None
     stats: Optional[PerformanceStatsData] = None
 
+    def __post_init__(self):
+        """Convert nested dicts to dataclass instances."""
+        if isinstance(self.metrics, dict):
+            self.metrics = PerformanceMetricsData(**self.metrics)
+        if isinstance(self.stats, dict):
+            self.stats = PerformanceStatsData(**self.stats)
+
 
 @dataclass
 class PredictionHistory:
@@ -116,6 +123,18 @@ class AgentPerformanceSummary:
     agent_performance: Optional[AgentPerformanceData] = None
     prediction_history: Optional[PredictionHistory] = None
 
+    def __post_init__(self):
+        """Convert dicts to dataclass instances."""
+        if isinstance(self.agent_details, dict):
+            self.agent_details = AgentDetails(**self.agent_details)
+        
+        # Similarly for other nested dataclasses
+        if isinstance(self.agent_performance, dict):
+            self.agent_performance = AgentPerformanceData(**self.agent_performance)
+        
+        if isinstance(self.prediction_history, dict):
+            self.prediction_history = PredictionHistory(**self.prediction_history)
+
 
 class AgentPerformanceSummaryParams(BaseParams):
     """Agent Performance Summary's parameters."""
@@ -124,12 +143,6 @@ class AgentPerformanceSummaryParams(BaseParams):
         """Initialize the parameters' object."""
         self.coingecko_olas_in_usd_price_url: str = self._ensure(
             "coingecko_olas_in_usd_price_url", kwargs, str
-        )
-        self.olas_agents_subgraph_url: str = self._ensure(
-            "olas_agents_subgraph_url", kwargs, str
-        )
-        self.trades_subgraph_url: str = self._ensure(
-            "trades_subgraph_url", kwargs, str
         )
         self.store_path: Path = self.get_store_path(kwargs)
         self.is_agent_performance_summary_enabled: bool = self._ensure(

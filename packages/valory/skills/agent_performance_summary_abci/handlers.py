@@ -28,9 +28,6 @@ from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
 from urllib.parse import urlparse
 
-import requests
-from web3 import Web3
-
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 
@@ -196,7 +193,7 @@ class HttpHandler(BaseHttpHandler):
         summary = self.shared_state.read_existing_performance_summary()
         details = summary.agent_details
         
-        if not details or not details.id:
+        if not details:
             self._send_internal_server_error_response(
                 http_msg, 
                 http_dialogue,
@@ -212,26 +209,6 @@ class HttpHandler(BaseHttpHandler):
         
         self.context.logger.info(f"Responding with agent details: {formatted_response}")
         self._send_ok_response(http_msg, http_dialogue, formatted_response)
-
-    def _format_timestamp(self, timestamp: str) -> str:
-        """
-        Format a Unix timestamp to ISO 8601 format.
-        
-        :param timestamp: Unix timestamp as string
-        :return: ISO 8601 formatted timestamp
-        """
-        if not timestamp:
-            return ""
-        
-        try:
-            # Convert to int if it's a string
-            unix_timestamp = int(timestamp)
-            # Convert to datetime and format as ISO 8601
-            dt = datetime.utcfromtimestamp(unix_timestamp)
-            return dt.strftime(ISO_TIMESTAMP_FORMAT)
-        except Exception as e:
-            self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
-            return ""
 
     def _send_http_response(
         self,
@@ -406,100 +383,6 @@ class HttpHandler(BaseHttpHandler):
             "Not Found",
         )
 
-    def _get_web3_instance(self, chain: str) -> Optional[Web3]:
-        """Get Web3 instance for the specified chain."""
-        try:
-            rpc_url = self.params.gnosis_ledger_rpc
-
-            if not rpc_url:
-                self.context.logger.warning(f"No RPC URL for {chain}")
-                return None
-
-            # Commented for future debugging purposes:
-            # Note that you should create only one HTTPProvider with the same provider URL per python process,
-            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
-            # Multiple HTTPProviders with different URLs will work as expected.
-            return Web3(Web3.HTTPProvider(rpc_url))
-        except Exception as e:
-            self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
-            return None
-
-    def _fetch_all_bets_paginated(self, safe_address: str, subgraph_url: str) -> Optional[Dict]:
-        """
-        Fetch all bets for an agent with pagination support.
-        
-        :param safe_address: The agent's safe address
-        :param subgraph_url: The subgraph URL
-        :return: Trader agent data with all bets, or None if error
-        """
-        all_bets = []
-        skip = 0
-        trader_agent_base = None
-        
-        while True:
-            query_payload = {
-                "query": GET_TRADER_AGENT_PERFORMANCE_QUERY,
-                "variables": {
-                    "id": safe_address,
-                    "first": GRAPHQL_BATCH_SIZE,
-                    "skip": skip
-                }
-            }
-            
-            try:
-                response = requests.post(
-                    subgraph_url,
-                    json=query_payload,
-                    headers={"Content-Type": "application/json"},
-                    timeout=30
-                )
-                
-                if response.status_code != 200:
-                    self.context.logger.error(
-                        f"Failed to fetch bets batch at skip={skip}: {response.status_code}"
-                    )
-                    return None
-                
-                response_data = response.json()
-                trader_agent = response_data.get("data", {}).get("traderAgent")
-                
-                if not trader_agent:
-                    if skip == 0:
-                        # No trader agent found at all
-                        return None
-                    # No more bets to fetch
-                    break
-                
-                # Store base data on first iteration
-                if trader_agent_base is None:
-                    trader_agent_base = trader_agent.copy()
-                
-                bets_batch = trader_agent.get("bets", [])
-                if not bets_batch:
-                    # No more bets
-                    break
-                
-                all_bets.extend(bets_batch)
-                
-                # If we got less than GRAPHQL_BATCH_SIZE bets, we've reached the end
-                if len(bets_batch) < GRAPHQL_BATCH_SIZE:
-                    break
-                
-                skip += GRAPHQL_BATCH_SIZE
-                
-            except Exception as e:
-                self.context.logger.error(f"Error fetching bets batch at skip={skip}: {str(e)}")
-                return None
-        
-        # Merge all bets into the base trader agent data
-        if trader_agent_base:
-            trader_agent_base["bets"] = all_bets
-            self.context.logger.info(
-                f"Fetched {len(all_bets)} total bets for agent {safe_address} using pagination"
-            )
-        
-        return trader_agent_base
-
     def _handle_get_agent_performance(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -531,7 +414,7 @@ class HttpHandler(BaseHttpHandler):
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
             
-            if not performance or not performance.metrics:
+            if not performance:
                 self._send_internal_server_error_response(
                     http_msg, 
                     http_dialogue,
@@ -539,13 +422,13 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return
             
-            # Convert dataclasses to dicts for response
+
             formatted_response = {
                 "agent_id": safe_address,
                 "window": window,
                 "currency": currency,
-                "metrics": asdict(performance.metrics),
-                "stats": asdict(performance.stats)
+                "metrics": asdict(performance.metrics) if performance.metrics else {},
+                "stats": asdict(performance.stats) if performance.stats else {}
             }
             
             self.context.logger.info(f"Sending performance data for agent: {safe_address}")
@@ -557,240 +440,6 @@ class HttpHandler(BaseHttpHandler):
                 http_msg, http_dialogue,
                 {"error": "Failed to fetch performance data"}
             )
-
-    def _calculate_performance_metrics(self, trader_agent: Dict, safe_address: str) -> Dict:
-        """Calculate performance metrics from trader agent data."""
-        try:
-            # Extract base data
-            total_traded = int(trader_agent.get("totalTraded", 0))
-            total_fees = int(trader_agent.get("totalFees", 0))
-            total_payout = int(trader_agent.get("totalPayout", 0))
-            bets = trader_agent.get("bets", [])
-            
-            # For now, use a simple mech cost estimation
-            # TODO: Replace with actual mech subgraph query when available
-            total_bets_count = int(trader_agent.get("totalBets", 0))
-            estimated_mech_costs = total_bets_count * DEFAULT_MECH_FEE
-            
-            # Calculate all_time_funds_used
-            all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_TO_NATIVE
-            
-            # Calculate all_time_profit
-            total_costs = total_traded + total_fees + estimated_mech_costs
-            all_time_profit = (total_payout - total_costs) / WEI_TO_NATIVE
-            
-            # Calculate funds_locked_in_markets
-            funds_locked = 0
-            for bet in bets:
-                current_answer = bet.get("fixedProductMarketMaker", {}).get("currentAnswer")
-                if current_answer is None:  # Market not resolved
-                    bet_amount = int(bet.get("amount", 0))
-                    funds_locked += bet_amount
-            funds_locked_in_markets = funds_locked / WEI_TO_NATIVE
-            
-            # Get available funds (balance query)
-            available_funds = self._get_available_balance(safe_address)
-            
-            return {
-                "all_time_funds_used": round(all_time_funds_used, 4),
-                "all_time_profit": round(all_time_profit, 4),
-                "funds_locked_in_markets": round(funds_locked_in_markets, 4),
-                "available_funds": round(available_funds, 4)
-            }
-            
-        except Exception as e:
-            self.context.logger.error(f"Error calculating performance metrics: {str(e)}")
-            return {
-                "all_time_funds_used": 0.0,
-                "all_time_profit": 0.0,
-                "funds_locked_in_markets": 0.0,
-                "available_funds": 0.0
-            }
-
-    def _calculate_performance_stats(self, trader_agent: Dict) -> Dict:
-        """Calculate performance statistics from trader agent data."""
-        try:
-            # Extract data
-            total_bets = int(trader_agent.get("totalBets", 0))
-            bets = trader_agent.get("bets", [])
-            
-            # Calculate prediction accuracy
-            closed_bets = []
-            won_bets = 0
-            
-            for bet in bets:
-                fpmm = bet.get("fixedProductMarketMaker", {})
-                current_answer = fpmm.get("currentAnswer")
-                
-                # Only count closed markets (where currentAnswer is not None)
-                if current_answer is not None:
-                    closed_bets.append(bet)
-                    outcome_index = bet.get("outcomeIndex")
-                    
-                    if outcome_index is not None:
-                        try:
-                            # Convert hex answer to int and compare with outcome index
-                            answer_int = int(current_answer, 0)
-                            if answer_int == int(outcome_index):
-                                won_bets += 1
-                        except (ValueError, TypeError):
-                            continue
-            
-            # Calculate accuracy
-            prediction_accuracy = 0.0
-            if len(closed_bets) > 0:
-                prediction_accuracy = won_bets / len(closed_bets)
-            
-            return {
-                "predictions_made": total_bets,
-                "prediction_accuracy": round(prediction_accuracy, 4)
-            }
-            
-        except Exception as e:
-            self.context.logger.error(f"Error calculating performance stats: {str(e)}")
-            return {
-                "predictions_made": 0,
-                "prediction_accuracy": 0.0
-            }
-
-    def _get_available_balance(self, safe_address: str) -> float:
-        """Query xDAI and wxDAI balance using Web3."""
-        try:
-            w3 = self._get_web3_instance("gnosis")
-            if not w3:
-                self.context.logger.error("Failed to get Web3 instance for Gnosis Chain")
-                return 0.0
-            
-            # ERC20 ABI for balanceOf
-            erc20_abi = [{
-                "inputs": [{"name": "_owner", "type": "address"}],
-                "name": "balanceOf",
-                "outputs": [{"name": "balance", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function",
-            }]
-            
-            # Get wxDAI balance
-            wxdai_contract = w3.eth.contract(
-                address=Web3.to_checksum_address(WXDAI_ADDRESS),
-                abi=erc20_abi
-            )
-            wxdai_balance = wxdai_contract.functions.balanceOf(
-                Web3.to_checksum_address(safe_address)
-            ).call()
-            
-            # Get native xDAI balance
-            xdai_balance = w3.eth.get_balance(Web3.to_checksum_address(safe_address))
-            
-            # Convert from wei to native token
-            total_balance = (wxdai_balance + xdai_balance) / WEI_TO_NATIVE
-            return total_balance
-            
-        except Exception as e:
-            self.context.logger.error(f"Error fetching balance: {str(e)}")
-            # Return 0 on error instead of failing the entire request
-            return 0.0
-
-    def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
-        """Get the prediction side from outcome index and outcomes array."""
-        try:
-            if not outcomes or outcome_index >= len(outcomes):
-                return "unknown"
-            return outcomes[outcome_index]
-        except (IndexError, TypeError) as e:
-            self.context.logger.error(f"Error getting prediction side: {e}")
-            return "unknown"
-
-    def _get_prediction_status(self, bet: Dict) -> str:
-        """Determine the status of a prediction (pending, won, lost)."""
-        try:
-            fpmm = bet.get("fixedProductMarketMaker", {})
-            current_answer = fpmm.get("currentAnswer")
-            
-            # Market not resolved
-            if current_answer is None:
-                return "pending"
-            
-            # Check for invalid market
-            if current_answer == INVALID_ANSWER_HEX:
-                return "lost"
-            
-            # Compare outcome
-            outcome_index = int(bet.get("outcomeIndex", 0))
-            correct_answer = int(current_answer, 0)
-            
-            return "won" if outcome_index == correct_answer else "lost"
-        except (ValueError, TypeError, KeyError) as e:
-            self.context.logger.error(f"Error determining prediction status: {e}")
-            return "pending"
-
-    def _calculate_net_profit_for_prediction(
-        self, bet: Dict, payouts_map: Dict[str, List]
-    ) -> float:
-        """Calculate net profit for a single prediction."""
-        try:
-            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            status = self._get_prediction_status(bet)
-            
-            if status == "pending":
-                return 0.0
-            
-            if status == "lost":
-                return -bet_amount
-            
-            # Won - calculate payout
-            fpmm_id = bet.get("fixedProductMarketMaker", {}).get("id")
-            payouts = payouts_map.get(fpmm_id, [])
-            outcome_index = int(bet.get("outcomeIndex", 0))
-            
-            if payouts and len(payouts) > outcome_index:
-                payout_amount = float(payouts[outcome_index]) / WEI_TO_NATIVE
-                return payout_amount - bet_amount
-            
-            # Fallback if payouts not available
-            return 0.0
-            
-        except Exception as e:
-            self.context.logger.error(f"Error calculating net profit: {e}")
-            return 0.0
-
-    def _fetch_fpmm_payouts(self, fpmm_ids: List[str], omen_url: str) -> Dict[str, List]:
-        """Fetch FPMM payouts from Omen subgraph."""
-        try:
-            query_payload = {
-                "query": GET_FPMM_PAYOUTS_QUERY,
-                "variables": {"fpmmIds": fpmm_ids}
-            }
-            
-            response = requests.post(
-                omen_url,
-                json=query_payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30
-            )
-            
-            if response.status_code != 200:
-                self.context.logger.error(
-                    f"Failed to fetch FPMM payouts: {response.status_code}"
-                )
-                return {}
-            
-            response_data = response.json()
-            fpmms = response_data.get("data", {}).get("fixedProductMarketMakers", [])
-            
-            # Build map: fpmm_id -> payouts
-            payouts_map = {}
-            for fpmm in fpmms:
-                fpmm_id = fpmm.get("id")
-                payouts = fpmm.get("payouts", [])
-                if fpmm_id and payouts:
-                    payouts_map[fpmm_id] = payouts
-            
-            return payouts_map
-            
-        except Exception as e:
-            self.context.logger.error(f"Error fetching FPMM payouts: {e}")
-            return {}
 
     def _handle_get_predictions(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -859,7 +508,7 @@ class HttpHandler(BaseHttpHandler):
                 http_msg, http_dialogue,
                 {"error": "Failed to fetch predictions"}
             )
-
+    
     def _parse_query_params(self, http_msg: HttpMessage) -> tuple:
         """Parse page, page_size, and status_filter from query string."""
         page = 1

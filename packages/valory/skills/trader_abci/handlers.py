@@ -48,10 +48,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
-from packages.valory.skills.chatui_abci.handlers import (
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
-    HTTP_CONTENT_TYPE_MAP,
 )
+from packages.valory.skills.chatui_abci.handlers import HTTP_CONTENT_TYPE_MAP
 from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
@@ -375,6 +375,24 @@ class HttpHandler(BaseHttpHandler):
                 return arg.split("=", 1)[1]
 
         return None
+
+    def _get_web3_instance(self, chain: str) -> Optional[Web3]:
+        """Get Web3 instance for the specified chain."""
+        try:
+            rpc_url = self.params.gnosis_ledger_rpc
+
+            if not rpc_url:
+                self.context.logger.warning(f"No RPC URL for {chain}")
+                return None
+
+            # Commented for future debugging purposes:
+            # Note that you should create only one HTTPProvider with the same provider URL per python process,
+            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
+            # Multiple HTTPProviders with different URLs will work as expected.
+            return Web3(Web3.HTTPProvider(rpc_url))
+        except Exception as e:
+            self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
+            return None
 
     def _check_usdc_balance(
         self, eoa_address: str, chain: str, usdc_address: str

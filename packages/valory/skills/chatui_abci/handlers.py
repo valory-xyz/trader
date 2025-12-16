@@ -21,10 +21,7 @@
 
 import copy
 import json
-from enum import Enum
-from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Union, cast
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -44,9 +41,6 @@ from packages.valory.skills.abstract_round_abci.handlers import AbstractResponse
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
-from packages.valory.skills.agent_performance_summary_abci.handlers import (
-    HttpHandler as BaseHttpHandler,
-)
 from packages.valory.skills.abstract_round_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
@@ -60,10 +54,12 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
-    DEFAULT_HEADER,
     HttpContentType,
-    HttpMethod,
 )
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    HttpHandler as BaseHttpHandler,
+)
+from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import (
@@ -180,6 +176,11 @@ class HttpHandler(BaseHttpHandler):
     def round_sequence(self) -> RoundSequence:
         """Return the round sequence."""
         return self.shared_state.round_sequence
+
+    @property
+    def synchronized_data(self) -> SynchronizedData:
+        """Return the synchronized data."""
+        return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

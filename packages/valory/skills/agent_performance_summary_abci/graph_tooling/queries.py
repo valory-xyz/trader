@@ -107,17 +107,21 @@ GET_PREDICTION_HISTORY_QUERY = """
 query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
   traderAgent(id: $id) {
     totalBets
+    totalTraded
+    totalPayout
+    totalFees
     bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
       id
       timestamp
       amount
+      feeAmount
       outcomeIndex
       fixedProductMarketMaker {
         id
         question
         outcomes
         currentAnswer
-        answerFinalizedTimestamp
+        currentAnswerTimestamp
         participants(where: { traderAgent: $id }) {
           totalBets
           totalTraded
@@ -136,6 +140,17 @@ query GetFPMMPayouts($fpmmIds: [ID!]!) {
     id
     payouts
     resolutionTimestamp
+  }
+}
+"""
+
+GET_PENDING_BETS_QUERY = """
+query GetPendingBets($id: ID!) {
+  traderAgent(id: $id) {
+    bets(where: { fixedProductMarketMaker_: { currentAnswer: null } }) {
+      amount
+      feeAmount
+    }
   }
 }
 """
