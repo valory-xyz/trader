@@ -349,7 +349,7 @@ class PredictionsFetcher:
         """Get the prediction side from outcome index and outcomes array."""
         if not outcomes or outcome_index >= len(outcomes):
             return "unknown"
-        return outcomes[outcome_index]
+        return outcomes[outcome_index].lower()
 
     def _format_timestamp(self, timestamp: Optional[str]) -> Optional[str]:
         """Format Unix timestamp to ISO 8601."""
