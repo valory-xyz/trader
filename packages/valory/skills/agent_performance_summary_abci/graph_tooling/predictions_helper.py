@@ -322,6 +322,11 @@ class PredictionsFetcher:
         if total_winning_amount == 0:
             return 0.0
         
+        # If payout is 0, the winnings haven't been redeemed yet
+        # Show 0 profit (unclaimed winnings scenario)
+        if total_payout == 0:
+            return 0.0
+        
         # Distribute payout proportionally among winning bets
         winning_profit = 0.0
         for bet in winning_bets:
