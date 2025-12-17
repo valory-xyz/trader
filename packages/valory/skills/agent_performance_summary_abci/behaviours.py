@@ -291,16 +291,23 @@ class FetchPerformanceSummaryBehaviour(
         total_payout = int(trader_agent.get("totalPayout", 0))
         total_bets = int(trader_agent.get("totalBets", 0))
         
-        # Calculate funds used
-        estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
-        funds_used_in_settled_markets = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
+        # Get pending bets count to calculate settled bets
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        pending_bets_data = yield from self._fetch_pending_bets(safe_address)
+        pending_bets_count = len(pending_bets_data.get("bets", [])) if pending_bets_data else 0
+        settled_bets_count = total_bets - pending_bets_count
         
-        # Calculate profit
-        total_costs = total_traded + total_fees + estimated_mech_costs
-        all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
+        # Calculate funds used (includes mech costs for ALL bets)
+        estimated_mech_costs_all = total_bets * DEFAULT_MECH_FEE
+        funds_used_in_settled_markets = (total_traded + total_fees + estimated_mech_costs_all) / WEI_IN_ETH
+        
+        # Calculate profit (use mech costs ONLY for settled bets)
+        # totalPayout only includes settled markets, so costs must match
+        mech_costs_for_settled = settled_bets_count * DEFAULT_MECH_FEE
+        settled_costs = total_traded + total_fees + mech_costs_for_settled
+        all_time_profit = (total_payout - settled_costs) / WEI_IN_ETH
         
         # Calculate locked funds
-        safe_address = self.synchronized_data.safe_contract_address.lower()
         funds_locked_in_markets = yield from self._calculate_funds_locked(safe_address)
         
         # All-time funds used includes both settled AND locked funds
