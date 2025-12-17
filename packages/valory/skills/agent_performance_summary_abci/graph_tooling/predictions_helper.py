@@ -199,9 +199,9 @@ class PredictionsFetcher:
                 "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
             },
             "prediction_side": self._get_prediction_side(outcome_index, outcomes),
-            "bet_amount": round(total_bet_amount, 4),
+            "bet_amount": round(total_bet_amount, 3),
             "status": prediction_status,
-            "net_profit": round(total_net_profit, 4) if total_net_profit is not None else None,
+            "net_profit": round(total_net_profit, 3) if total_net_profit is not None else None,
             "created_at": self._format_timestamp(str(earliest_timestamp)),
             "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if prediction_status != "pending" else None
         }
@@ -349,7 +349,7 @@ class PredictionsFetcher:
         """Get the prediction side from outcome index and outcomes array."""
         if not outcomes or outcome_index >= len(outcomes):
             return "unknown"
-        return outcomes[outcome_index]
+        return outcomes[outcome_index].lower()
 
     def _format_timestamp(self, timestamp: Optional[str]) -> Optional[str]:
         """Format Unix timestamp to ISO 8601."""
