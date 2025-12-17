@@ -247,11 +247,10 @@ class PredictionsFetcher:
                 return 0.0
             
             total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-            total_fees = float(market_participant.get("totalFees", 0)) / WEI_TO_NATIVE
             total_bet_amount = self._calculate_total_loss(market_bets)
             
-            # Net profit = refund - original bet - fees
-            return total_payout - total_bet_amount - total_fees
+            # Net profit = refund - original bet
+            return total_payout - total_bet_amount
         
         # Parse correct answer
         correct_answer = int(current_answer, 0)
@@ -312,7 +311,6 @@ class PredictionsFetcher:
             return None
         
         total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-        total_fees = float(market_participant.get("totalFees", 0)) / WEI_TO_NATIVE
         
         total_winning_amount = sum(
             float(bet.get("amount", 0)) / WEI_TO_NATIVE 
@@ -334,9 +332,7 @@ class PredictionsFetcher:
             bet_proportion = bet_amount / total_winning_amount
             
             bet_payout = total_payout * bet_proportion
-            bet_fees = total_fees * bet_proportion
-            
-            bet_profit = bet_payout - bet_amount - bet_fees
+            bet_profit = bet_payout - bet_amount
             winning_profit += bet_profit
         
         return winning_profit
