@@ -161,6 +161,7 @@ class HttpHandler(BaseHttpHandler):
         trading_details_url_regex = (
             rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
         )
+        is_enabled_url = rf"{hostname_regex}\/features"
 
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
@@ -179,6 +180,7 @@ class HttpHandler(BaseHttpHandler):
                 (agent_performance_url_regex, self._handle_get_agent_performance),
                 (agent_predictions_url_regex, self._handle_get_predictions),
                 (trading_details_url_regex, self._handle_get_trading_details),
+                (is_enabled_url, self._handle_get_features),
                 (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
