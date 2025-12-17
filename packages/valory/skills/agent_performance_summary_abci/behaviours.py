@@ -334,16 +334,11 @@ class FetchPerformanceSummaryBehaviour(
         bets = pending_bets_data.get("bets", [])
         
         funds_locked = 0
-        pending_bets_count = len(bets)
         
         for bet in bets:
             bet_amount = int(bet.get("amount", 0))
-            bet_fee = int(bet.get("feeAmount", 0))
-            funds_locked += bet_amount + bet_fee
+            funds_locked += bet_amount
         
-        # Add mech fees for pending bets
-        mech_costs_for_pending = pending_bets_count * DEFAULT_MECH_FEE
-        funds_locked += mech_costs_for_pending
         
         return funds_locked / WEI_IN_ETH
 
