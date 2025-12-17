@@ -293,7 +293,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Calculate funds used
         estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
-        all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
+        funds_used_in_settled_markets = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
         
         # Calculate profit
         total_costs = total_traded + total_fees + estimated_mech_costs
@@ -302,6 +302,9 @@ class FetchPerformanceSummaryBehaviour(
         # Calculate locked funds
         safe_address = self.synchronized_data.safe_contract_address.lower()
         funds_locked_in_markets = yield from self._calculate_funds_locked(safe_address)
+        
+        # All-time funds used includes both settled AND locked funds
+        all_time_funds_used = funds_used_in_settled_markets + (funds_locked_in_markets or 0)
         
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
