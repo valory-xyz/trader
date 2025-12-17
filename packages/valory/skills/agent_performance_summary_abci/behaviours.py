@@ -307,10 +307,10 @@ class FetchPerformanceSummaryBehaviour(
         available_funds = yield from self._fetch_available_funds()
         
         return PerformanceMetricsData(
-            all_time_funds_used=round(all_time_funds_used, 4) if all_time_funds_used else None,
-            all_time_profit=round(all_time_profit, 4) if all_time_profit else None,
-            funds_locked_in_markets=round(funds_locked_in_markets, 4) if funds_locked_in_markets else None,
-            available_funds=round(available_funds, 4) if available_funds else None,
+            all_time_funds_used=round(all_time_funds_used, 2) if all_time_funds_used else None,
+            all_time_profit=round(all_time_profit, 2) if all_time_profit else None,
+            funds_locked_in_markets=round(funds_locked_in_markets, 2) if funds_locked_in_markets else None,
+            available_funds=round(available_funds, 2) if available_funds else None,
         )
 
     def _calculate_funds_locked(self, safe_address: str) -> Generator[None, None, Optional[float]]:
@@ -373,7 +373,7 @@ class FetchPerformanceSummaryBehaviour(
         
         return PerformanceStatsData(
             predictions_made=total_bets,
-            prediction_accuracy=round(accuracy / 100, 4) if accuracy is not None else None,
+            prediction_accuracy=round(accuracy / 100, 2) if accuracy is not None else None,
         )
 
     def _fetch_prediction_history(self):
