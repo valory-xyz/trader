@@ -241,9 +241,17 @@ class PredictionsFetcher:
         if current_answer is None:
             return 0.0
         
-        # Invalid market - all bets lost
+        # Invalid market - participants get refunds (use payout data)
         if current_answer == INVALID_ANSWER_HEX:
-            return -self._calculate_total_loss(market_bets)
+            if not market_participant:
+                return 0.0
+            
+            total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+            total_fees = float(market_participant.get("totalFees", 0)) / WEI_TO_NATIVE
+            total_bet_amount = self._calculate_total_loss(market_bets)
+            
+            # Net profit = refund - original bet - fees
+            return total_payout - total_bet_amount - total_fees
         
         # Parse correct answer
         correct_answer = int(current_answer, 0)
