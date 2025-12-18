@@ -330,20 +330,36 @@ class FetchPerformanceSummaryBehaviour(
         """
         try:
             fetcher = PredictionsFetcher(self.context, self.context.logger)
-            # Fetch all bets based on totalBets count
-            result = fetcher.fetch_predictions(
-                safe_address=safe_address,
-                first=total_bets,
-                skip=0,
-                status_filter=None
-            )
+            all_time_profit = 0.0
             
-            # Sum net_profit from settled bets only (pending bets have net_profit = 0)
-            all_time_profit = sum(
-                item.get("net_profit", 0) 
-                for item in result["items"]
-                if item.get("status") != "pending" and item.get("net_profit") is not None
-            )
+            # Fetch bets in batches of 1000 (subgraph max limit)
+            batch_size = 1000
+            skip = 0
+            
+            while skip < total_bets:
+                # Calculate how many bets to fetch in this batch
+                fetch_size = min(batch_size, total_bets - skip)
+                
+                result = fetcher.fetch_predictions(
+                    safe_address=safe_address,
+                    first=fetch_size,
+                    skip=skip,
+                    status_filter=None
+                )
+                
+                # Sum net_profit from settled bets only (pending bets have net_profit = 0)
+                batch_profit = sum(
+                    item.get("net_profit", 0) 
+                    for item in result["items"]
+                    if item.get("status") != "pending" and item.get("net_profit") is not None
+                )
+                
+                all_time_profit += batch_profit
+                skip += fetch_size
+                
+                # If we got fewer items than requested, we've reached the end
+                if len(result["items"]) < fetch_size:
+                    break
             
             return all_time_profit
         except Exception as e:
