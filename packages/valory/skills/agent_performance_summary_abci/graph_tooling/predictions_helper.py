@@ -36,6 +36,7 @@ INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+MECH_FEE_PER_BET = 0.01  # 0.01 ETH mech fee per bet
 
 
 class PredictionsFetcher:
@@ -229,13 +230,18 @@ class PredictionsFetcher:
         safe_address: str
     ) -> Optional[float]:
         """
-        Calculate net profit for all bets on a market.
+        Calculate net profit for all bets on a market, including mech and market fees.
         
         For multi-bet scenarios, uses MarketParticipant data with proportional distribution.
         """
         first_bet = market_bets[0]
         fpmm = first_bet.get("fixedProductMarketMaker", {})
         current_answer = fpmm.get("currentAnswer")
+        
+        # Calculate total fees for all bets on this market
+        total_market_fees = self._calculate_total_market_fees(market_bets)
+        total_mech_fees = len(market_bets) * MECH_FEE_PER_BET
+        total_fees = total_market_fees + total_mech_fees
         
         # Pending market
         if current_answer is None:
@@ -249,8 +255,8 @@ class PredictionsFetcher:
             total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
             total_bet_amount = self._calculate_total_loss(market_bets)
             
-            # Net profit = refund - original bet
-            return total_payout - total_bet_amount
+            # Net profit = refund - original bet - fees
+            return total_payout - total_bet_amount - total_fees
         
         # Parse correct answer
         correct_answer = int(current_answer, 0)
@@ -262,9 +268,9 @@ class PredictionsFetcher:
         
         total_loss = self._calculate_total_loss(losing_bets)
         
-        # If no winning bets, return total loss
+        # If no winning bets, return total loss including fees
         if not winning_bets:
-            return -total_loss
+            return -total_loss - total_fees
         
         # Calculate winning profit
         winning_profit = self._calculate_winning_profit(
@@ -274,7 +280,8 @@ class PredictionsFetcher:
         if winning_profit is None:
             return None
         
-        return winning_profit - total_loss
+        # Subtract losses and all fees from winning profit
+        return winning_profit - total_loss - total_fees
 
     def _separate_winning_losing_bets(
         self, 
@@ -299,6 +306,13 @@ class PredictionsFetcher:
         return sum(
             float(bet.get("amount", 0)) / WEI_TO_NATIVE 
             for bet in losing_bets
+        )
+    
+    def _calculate_total_market_fees(self, market_bets: List[Dict]) -> float:
+        """Calculate total market fees from all bets on a market."""
+        return sum(
+            float(bet.get("feeAmount", 0)) / WEI_TO_NATIVE 
+            for bet in market_bets
         )
 
     def _calculate_winning_profit(
