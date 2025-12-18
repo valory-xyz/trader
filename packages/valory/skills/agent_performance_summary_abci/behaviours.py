@@ -288,24 +288,20 @@ class FetchPerformanceSummaryBehaviour(
         """Calculate performance metrics from trader agent data."""
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
-        total_payout = int(trader_agent.get("totalPayout", 0))
         total_bets = int(trader_agent.get("totalBets", 0))
         
         # Get pending bets count to calculate settled bets
         safe_address = self.synchronized_data.safe_contract_address.lower()
         pending_bets_data = yield from self._fetch_pending_bets(safe_address)
         pending_bets_count = len(pending_bets_data.get("bets", [])) if pending_bets_data else 0
-        settled_bets_count = total_bets - pending_bets_count
         
         # Calculate funds used (includes mech costs for ALL bets)
         estimated_mech_costs_all = total_bets * DEFAULT_MECH_FEE
         funds_used_in_settled_markets = (total_traded + total_fees + estimated_mech_costs_all) / WEI_IN_ETH
         
-        # Calculate profit (use mech costs ONLY for settled bets)
-        # totalPayout only includes settled markets, so costs must match
-        mech_costs_for_settled = settled_bets_count * DEFAULT_MECH_FEE
-        settled_costs = total_traded + total_fees + mech_costs_for_settled
-        all_time_profit = (total_payout - settled_costs) / WEI_IN_ETH
+        # Calculate all_time_profit by summing individual bet net_profits (excludes pending bets)
+        # This is necessary because totalTraded includes pending bets but totalPayout doesn't
+        all_time_profit = self._calculate_all_time_profit_from_bets(safe_address, total_bets)
         
         # Calculate locked funds
         funds_locked_in_markets = yield from self._calculate_funds_locked(safe_address)
@@ -322,6 +318,37 @@ class FetchPerformanceSummaryBehaviour(
             funds_locked_in_markets=round(funds_locked_in_markets, 2) if funds_locked_in_markets else None,
             available_funds=round(available_funds, 2) if available_funds else None,
         )
+
+    def _calculate_all_time_profit_from_bets(self, safe_address: str, total_bets: int) -> Optional[float]:
+        """
+        Calculate all-time profit by summing individual bet net_profits.
+        Excludes pending bets (which have net_profit = 0).
+        
+        :param safe_address: The agent's safe address
+        :param total_bets: Total number of bets to fetch
+        :return: All-time profit from settled bets only
+        """
+        try:
+            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            # Fetch all bets based on totalBets count
+            result = fetcher.fetch_predictions(
+                safe_address=safe_address,
+                first=total_bets,
+                skip=0,
+                status_filter=None
+            )
+            
+            # Sum net_profit from settled bets only (pending bets have net_profit = 0)
+            all_time_profit = sum(
+                item.get("net_profit", 0) 
+                for item in result["items"]
+                if item.get("status") != "pending" and item.get("net_profit") is not None
+            )
+            
+            return all_time_profit
+        except Exception as e:
+            self.context.logger.error(f"Error calculating all-time profit from bets: {e}")
+            return 0.0
 
     def _calculate_funds_locked(self, safe_address: str) -> Generator[None, None, Optional[float]]:
         """Calculate funds locked in pending markets using dedicated query."""
