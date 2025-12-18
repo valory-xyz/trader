@@ -78,6 +78,8 @@ class FetchPerformanceSummaryBehaviour(
         """Initialize Behaviour."""
         super().__init__(**kwargs)
         self._agent_performance_summary: Optional[AgentPerformanceSummary] = None
+        self._total_mech_requests: Optional[int] = None
+        self._open_market_requests: Optional[int] = None
 
     @property
     def shared_state(self) -> SharedState:
@@ -105,22 +107,98 @@ class FetchPerformanceSummaryBehaviour(
         )
         return timestamp
 
-    def calculate_roi(self):
-        """Calculate the ROI."""
-        agent_safe_address = self.synchronized_data.safe_contract_address
-
+    def _get_total_mech_requests(self, agent_safe_address: str) -> Generator[None, None, int]:
+        """
+        Get total number of mech requests (cached).
+        
+        :param agent_safe_address: The agent's safe address
+        :return: Total number of mech requests
+        """
+        if self._total_mech_requests is not None:
+            return self._total_mech_requests
+        
         mech_sender = yield from self._fetch_mech_sender(
             agent_safe_address=agent_safe_address,
             timestamp_gt=self.market_open_timestamp,
         )
-        if mech_sender and (
-            mech_sender.get("totalRequests") is None
-            or mech_sender.get("requests") is None
-        ):
-            self.context.logger.warning(
-                f"Mech sender data not found or incomplete for {agent_safe_address=} and {mech_sender=}. Trader may be unstaked."
-            )
-            return None, None
+        
+        if not mech_sender or mech_sender.get("totalRequests") is None:
+            self._total_mech_requests = 0
+            return 0
+        
+        self._total_mech_requests = int(mech_sender["totalRequests"])
+        self.context.logger.info(f"{self._total_mech_requests=}")
+        return self._total_mech_requests
+
+    def _get_open_market_requests(self, agent_safe_address: str) -> Generator[None, None, int]:
+        """
+        Get number of mech requests for open markets (cached).
+        
+        :param agent_safe_address: The agent's safe address
+        :return: Number of open market requests
+        """
+        if self._open_market_requests is not None:
+            return self._open_market_requests
+        
+        # Fetch mech sender to get recent requests
+        mech_sender = yield from self._fetch_mech_sender(
+            agent_safe_address=agent_safe_address,
+            timestamp_gt=self.market_open_timestamp,
+        )
+        
+        if not mech_sender:
+            self._open_market_requests = 0
+            return 0
+        
+        last_four_days_requests = mech_sender.get("requests", [])
+        
+        # Get open markets to count pending mech requests
+        open_markets = yield from self._fetch_open_markets(
+            timestamp_gt=self.market_open_timestamp,
+        )
+        
+        if not open_markets:
+            self._open_market_requests = 0
+            return 0
+        
+        # Get titles of open markets
+        open_market_titles = {
+            q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
+        }
+        
+        # Count requests for still-open markets
+        open_market_requests = sum(
+            r.get("questionTitle", None) in open_market_titles
+            for r in last_four_days_requests
+        )
+        
+        self._open_market_requests = open_market_requests
+        self.context.logger.info(f"{self._open_market_requests=}")
+        return self._open_market_requests
+
+    def _calculate_settled_mech_requests(self, agent_safe_address: str) -> Generator[None, None, int]:
+        """
+        Calculate the number of settled mech requests.
+        Excludes mech requests for markets that are still open.
+        
+        :param agent_safe_address: The agent's safe address
+        :return: Number of settled mech requests
+        """
+        # Get total mech requests (uses cache if available)
+        total_mech_requests = yield from self._get_total_mech_requests(agent_safe_address)
+        
+        if total_mech_requests == 0:
+            return 0
+        
+        # Get open market requests (uses cache if available)
+        open_market_requests = yield from self._get_open_market_requests(agent_safe_address)
+        
+        # Settled = Total - Open
+        return total_mech_requests - open_market_requests
+
+    def calculate_roi(self):
+        """Calculate the ROI."""
+        agent_safe_address = self.synchronized_data.safe_contract_address
 
         trader_agent = yield from self._fetch_trader_agent(
             agent_safe_address=agent_safe_address,
@@ -137,13 +215,6 @@ class FetchPerformanceSummaryBehaviour(
             )
             return None, None
 
-        open_markets = yield from self._fetch_open_markets(
-            timestamp_gt=self.market_open_timestamp,
-        )
-        if open_markets is None:
-            self.context.logger.warning("Open markets data not found")
-            return None, None
-
         staking_service = yield from self._fetch_staking_service(
             service_id=trader_agent["serviceId"],
         )
@@ -158,24 +229,13 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning("Olas in USD price data not found")
             return None, None
 
-        total_mech_requests = int(mech_sender["totalRequests"]) if mech_sender else 0
-
-        last_four_days_requests = mech_sender["requests"] if mech_sender else []
-
-        open_market_titles = {
-            q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
-        }
-
-        # Subtract requests for still-open markets
-        requests_to_subtract = sum(
-            r.get("questionTitle", None) in open_market_titles
-            for r in last_four_days_requests
-        )
+        # Calculate settled mech requests using helper function
+        settled_mech_requests = yield from self._calculate_settled_mech_requests(agent_safe_address)
 
         total_costs = (
             int(trader_agent["totalTraded"])
             + int(trader_agent["totalFees"])
-            + (total_mech_requests - requests_to_subtract) * DEFAULT_MECH_FEE
+            + settled_mech_requests * DEFAULT_MECH_FEE
         )
 
         if total_costs == 0:
@@ -286,22 +346,42 @@ class FetchPerformanceSummaryBehaviour(
 
     def _calculate_performance_metrics(self, trader_agent: dict) -> Generator:
         """Calculate performance metrics from trader agent data."""
+        safe_address = self.synchronized_data.safe_contract_address.lower()
+        
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
         total_payout = int(trader_agent.get("totalPayout", 0))
         total_bets = int(trader_agent.get("totalBets", 0))
         
-        # Calculate funds used
-        estimated_mech_costs = total_bets * DEFAULT_MECH_FEE
-        all_time_funds_used = (total_traded + total_fees + estimated_mech_costs) / WEI_IN_ETH
+        # Get total mech requests (uses cache)
+        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
         
-        # Calculate profit
-        total_costs = total_traded + total_fees + estimated_mech_costs
-        all_time_profit = (total_payout - total_costs) / WEI_IN_ETH
+        # Get settled mech requests (uses cache for total and open market requests)
+        settled_mech_requests = yield from self._calculate_settled_mech_requests(safe_address)
+        
+        # Get pending bets to calculate locked amounts
+        pending_bets_data = yield from self._fetch_pending_bets(safe_address)
+        pending_bets = pending_bets_data.get("bets", []) if pending_bets_data else []
+        
+        # Calculate pending bet amounts
+        pending_bet_amounts = sum(int(bet.get("amount", 0)) for bet in pending_bets)
+        
+        # Calculate ALL mech costs (for all requests, not just settled)
+        all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
+        
+        # All-time funds used: traded + fees + ALL mech costs + locked funds
+        all_time_funds_used = (
+            total_traded + total_fees + all_mech_costs + pending_bet_amounts
+        ) / WEI_IN_ETH
+        
+        # All-time profit: uses only SETTLED mech costs
+        settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
+        all_time_profit = (
+            total_payout - total_traded - total_fees - settled_mech_costs
+        ) / WEI_IN_ETH
         
         # Calculate locked funds
-        safe_address = self.synchronized_data.safe_contract_address.lower()
-        funds_locked_in_markets = yield from self._calculate_funds_locked(safe_address)
+        funds_locked_in_markets = pending_bet_amounts / WEI_IN_ETH
         
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
@@ -313,29 +393,6 @@ class FetchPerformanceSummaryBehaviour(
             available_funds=round(available_funds, 2) if available_funds else None,
         )
 
-    def _calculate_funds_locked(self, safe_address: str) -> Generator[None, None, Optional[float]]:
-        """Calculate funds locked in pending markets using dedicated query."""
-        pending_bets_data = yield from self._fetch_pending_bets(safe_address)
-        
-        if not pending_bets_data:
-            self.context.logger.warning(f"Could not fetch pending bets for {safe_address}")
-            return 0.0
-        
-        bets = pending_bets_data.get("bets", [])
-        
-        funds_locked = 0
-        pending_bets_count = len(bets)
-        
-        for bet in bets:
-            bet_amount = int(bet.get("amount", 0))
-            bet_fee = int(bet.get("feeAmount", 0))
-            funds_locked += bet_amount + bet_fee
-        
-        # Add mech fees for pending bets
-        mech_costs_for_pending = pending_bets_count * DEFAULT_MECH_FEE
-        funds_locked += mech_costs_for_pending
-        
-        return funds_locked / WEI_IN_ETH
 
     def _fetch_available_funds(self) -> Generator[None, None, Optional[float]]:
         """Fetch available funds (wxDAI + xDAI balance)."""
@@ -403,8 +460,12 @@ class FetchPerformanceSummaryBehaviour(
                 last_updated=self.shared_state.synced_timestamp,
                 items=[],
             )
+
     def _fetch_agent_performance_summary(self) -> Generator:
         """Fetch the agent performance summary"""
+        self._total_mech_requests = None
+        self._open_market_requests = None
+        
         current_timestamp = self.shared_state.synced_timestamp
 
         final_roi, partial_roi = yield from self.calculate_roi()
@@ -455,6 +516,17 @@ class FetchPerformanceSummaryBehaviour(
 
     def async_act(self) -> Generator:
         """Do the action."""
+        if not self.params.is_agent_performance_summary_enabled:
+            self.context.logger.info(
+                "Agent performance summary is disabled. Skipping fetch and save."
+            )
+            payload = FetchPerformanceDataPayload(
+                sender=self.context.agent_address,
+                vote=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
+
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
 
             yield from self._fetch_agent_performance_summary()

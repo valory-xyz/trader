@@ -169,16 +169,16 @@ class PredictionsFetcher:
         first_bet = market_bet_list[0]
         fpmm = first_bet.get("fixedProductMarketMaker", {})
         
+        # Get market participant data
+        participants = fpmm.get("participants", [])
+        market_participant = participants[0] if participants else None
+        
         # Get basic prediction info
-        prediction_status = self._get_prediction_status(first_bet)
+        prediction_status = self._get_prediction_status(first_bet, market_participant)
         
         # Apply status filter
         if status_filter and prediction_status != status_filter:
             return None
-        
-        # Get market participant data
-        participants = fpmm.get("participants", [])
-        market_participant = participants[0] if participants else None
         
         # Calculate aggregated values
         total_bet_amount = self._calculate_total_bet_amount(market_bet_list)
@@ -230,6 +230,7 @@ class PredictionsFetcher:
     ) -> Optional[float]:
         """
         Calculate net profit for all bets on a market.
+        Net profit = payout - bet amount (no fees included)
         
         For multi-bet scenarios, uses MarketParticipant data with proportional distribution.
         """
@@ -241,9 +242,20 @@ class PredictionsFetcher:
         if current_answer is None:
             return 0.0
         
-        # Invalid market - all bets lost
+        # No market participant data available
+        if not market_participant:
+            return 0.0
+        
+        total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+        
+        # Invalid market - participants get refunds (use payout data)
         if current_answer == INVALID_ANSWER_HEX:
-            return -self._calculate_total_loss(market_bets)
+            # Only calculate if payout is actually received
+            if total_payout == 0:
+                return 0.0
+            total_bet_amount = self._calculate_total_loss(market_bets)
+            # Net profit = refund - original bet
+            return total_payout - total_bet_amount
         
         # Parse correct answer
         correct_answer = int(current_answer, 0)
@@ -253,13 +265,18 @@ class PredictionsFetcher:
             market_bets, correct_answer
         )
         
+        # Check if payout is redeemed
+        # If there are winning bets but payout is 0, treat as unredeemed (pending)
+        if winning_bets and total_payout == 0:
+            return 0.0
+        
         total_loss = self._calculate_total_loss(losing_bets)
         
         # If no winning bets, return total loss
         if not winning_bets:
             return -total_loss
         
-        # Calculate winning profit
+        # Calculate winning profit (payout - bet amount)
         winning_profit = self._calculate_winning_profit(
             winning_bets, market_participant
         )
@@ -267,8 +284,9 @@ class PredictionsFetcher:
         if winning_profit is None:
             return None
         
+        # Subtract losses from winning profit
         return winning_profit - total_loss
-
+        
     def _separate_winning_losing_bets(
         self, 
         market_bets: List[Dict], 
@@ -299,12 +317,11 @@ class PredictionsFetcher:
         winning_bets: List[Dict],
         market_participant: Optional[Dict]
     ) -> Optional[float]:
-        """Calculate profit from winning bets using proportional distribution."""
+        """Calculate profit from winning bets using proportional distribution (payout - bet amount only)."""
         if not market_participant:
             return None
         
         total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-        total_fees = float(market_participant.get("totalFees", 0)) / WEI_TO_NATIVE
         
         total_winning_amount = sum(
             float(bet.get("amount", 0)) / WEI_TO_NATIVE 
@@ -315,21 +332,23 @@ class PredictionsFetcher:
             return 0.0
         
         # Distribute payout proportionally among winning bets
+        # Profit = payout - bet amount
         winning_profit = 0.0
         for bet in winning_bets:
             bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
             bet_proportion = bet_amount / total_winning_amount
             
             bet_payout = total_payout * bet_proportion
-            bet_fees = total_fees * bet_proportion
-            
-            bet_profit = bet_payout - bet_amount - bet_fees
+            bet_profit = bet_payout - bet_amount
             winning_profit += bet_profit
         
         return winning_profit
 
-    def _get_prediction_status(self, bet: Dict) -> str:
-        """Determine the status of a prediction (pending, won, lost)."""
+    def _get_prediction_status(self, bet: Dict, market_participant: Optional[Dict]) -> str:
+        """
+        Determine the status of a prediction (pending, won, lost).
+        If won but no payout (unredeemed), treat as pending.
+        """
         fpmm = bet.get("fixedProductMarketMaker", {})
         current_answer = fpmm.get("currentAnswer")
         
@@ -343,7 +362,18 @@ class PredictionsFetcher:
         
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
-        return "won" if outcome_index == correct_answer else "lost"
+        
+        # Check if won
+        if outcome_index == correct_answer:
+            # Check if winnings have been redeemed
+            if market_participant:
+                total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+                if total_payout == 0:
+                    # Won but not redeemed yet - treat as pending
+                    return "pending"
+            return "won"
+        
+        return "lost"
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
