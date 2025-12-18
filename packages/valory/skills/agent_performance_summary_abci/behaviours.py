@@ -288,23 +288,31 @@ class FetchPerformanceSummaryBehaviour(
         """Calculate performance metrics from trader agent data."""
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
+        total_payout = int(trader_agent.get("totalPayout", 0))
         total_bets = int(trader_agent.get("totalBets", 0))
         
-        # Get pending bets count to calculate settled bets
+        # Get pending bets to calculate settled amounts
         safe_address = self.synchronized_data.safe_contract_address.lower()
         pending_bets_data = yield from self._fetch_pending_bets(safe_address)
-        pending_bets_count = len(pending_bets_data.get("bets", [])) if pending_bets_data else 0
+        pending_bets = pending_bets_data.get("bets", []) if pending_bets_data else []
+        
+        # Calculate pending bet amounts and count
+        pending_bet_amounts = sum(int(bet.get("amount", 0)) for bet in pending_bets)
+        pending_bets_count = len(pending_bets)
+        settled_bets_count = total_bets - pending_bets_count
         
         # Calculate funds used (includes mech costs for ALL bets)
         estimated_mech_costs_all = total_bets * DEFAULT_MECH_FEE
         funds_used_in_settled_markets = (total_traded + total_fees + estimated_mech_costs_all) / WEI_IN_ETH
         
-        # Calculate all_time_profit by summing individual bet net_profits (excludes pending bets)
-        # This is necessary because totalTraded includes pending bets but totalPayout doesn't
-        all_time_profit = self._calculate_all_time_profit_from_bets(safe_address, total_bets)
+        # Calculate all_time_profit using simplified formula
+        # Subtract pending bet amounts from totalTraded to get only settled bet amounts
+        settled_bet_amounts = total_traded - pending_bet_amounts
+        mech_fees_for_settled = settled_bets_count * DEFAULT_MECH_FEE
+        all_time_profit = (total_payout - settled_bet_amounts - total_fees - mech_fees_for_settled) / WEI_IN_ETH
         
         # Calculate locked funds
-        funds_locked_in_markets = yield from self._calculate_funds_locked(safe_address)
+        funds_locked_in_markets = pending_bet_amounts / WEI_IN_ETH
         
         # All-time funds used includes both settled AND locked funds
         all_time_funds_used = funds_used_in_settled_markets + (funds_locked_in_markets or 0)
@@ -319,71 +327,6 @@ class FetchPerformanceSummaryBehaviour(
             available_funds=round(available_funds, 2) if available_funds else None,
         )
 
-    def _calculate_all_time_profit_from_bets(self, safe_address: str, total_bets: int) -> Optional[float]:
-        """
-        Calculate all-time profit by summing individual bet net_profits.
-        Excludes pending bets (which have net_profit = 0).
-        
-        :param safe_address: The agent's safe address
-        :param total_bets: Total number of bets to fetch
-        :return: All-time profit from settled bets only
-        """
-        try:
-            fetcher = PredictionsFetcher(self.context, self.context.logger)
-            all_time_profit = 0.0
-            
-            # Fetch bets in batches of 1000 (subgraph max limit)
-            batch_size = 1000
-            skip = 0
-            
-            while skip < total_bets:
-                # Calculate how many bets to fetch in this batch
-                fetch_size = min(batch_size, total_bets - skip)
-                
-                result = fetcher.fetch_predictions(
-                    safe_address=safe_address,
-                    first=fetch_size,
-                    skip=skip,
-                    status_filter=None
-                )
-                
-                # Sum net_profit from settled bets only (pending bets have net_profit = 0)
-                batch_profit = sum(
-                    item.get("net_profit", 0) 
-                    for item in result["items"]
-                    if item.get("status") != "pending" and item.get("net_profit") is not None
-                )
-                
-                all_time_profit += batch_profit
-                skip += fetch_size
-                
-                # If we got fewer items than requested, we've reached the end
-                if len(result["items"]) < fetch_size:
-                    break
-            
-            return all_time_profit
-        except Exception as e:
-            self.context.logger.error(f"Error calculating all-time profit from bets: {e}")
-            return 0.0
-
-    def _calculate_funds_locked(self, safe_address: str) -> Generator[None, None, Optional[float]]:
-        """Calculate funds locked in pending markets using dedicated query."""
-        pending_bets_data = yield from self._fetch_pending_bets(safe_address)
-        
-        if not pending_bets_data:
-            self.context.logger.warning(f"Could not fetch pending bets for {safe_address}")
-            return 0.0
-        
-        bets = pending_bets_data.get("bets", [])
-        
-        funds_locked = 0
-        
-        for bet in bets:
-            bet_amount = int(bet.get("amount", 0))
-            funds_locked += bet_amount
-        
-        
-        return funds_locked / WEI_IN_ETH
 
     def _fetch_available_funds(self) -> Generator[None, None, Optional[float]]:
         """Fetch available funds (wxDAI + xDAI balance)."""
