@@ -54,6 +54,60 @@ class AgentPerformanceMetrics:
 
 
 @dataclass
+class AgentDetails:
+    """Agent metadata for /api/v1/agent/details endpoint."""
+    
+    id: Optional[str] = None
+    created_at: Optional[str] = None  # ISO 8601 format
+    last_active_at: Optional[str] = None  # ISO 8601 format
+
+
+@dataclass
+class PerformanceMetricsData:
+    """Performance metrics for /api/v1/agent/performance endpoint."""
+    
+    all_time_funds_used: Optional[float] = None
+    all_time_profit: Optional[float] = None
+    funds_locked_in_markets: Optional[float] = None
+    available_funds: Optional[float] = None
+
+
+@dataclass
+class PerformanceStatsData:
+    """Performance stats for /api/v1/agent/performance endpoint."""
+    
+    predictions_made: Optional[int] = None
+    prediction_accuracy: Optional[float] = None
+
+
+@dataclass
+class AgentPerformanceData:
+    """Complete performance data for /api/v1/agent/performance endpoint."""
+    
+    window: str = "lifetime"
+    currency: str = "USD"
+    metrics: Optional[PerformanceMetricsData] = None
+    stats: Optional[PerformanceStatsData] = None
+
+    def __post_init__(self):
+        """Convert nested dicts to dataclass instances."""
+        if isinstance(self.metrics, dict):
+            self.metrics = PerformanceMetricsData(**self.metrics)
+        if isinstance(self.stats, dict):
+            self.stats = PerformanceStatsData(**self.stats)
+
+
+@dataclass
+class PredictionHistory:
+    """Prediction history stored for faster API responses."""
+    
+    total_predictions: int = 0
+    stored_count: int = 0
+    last_updated: Optional[int] = None
+    items: List[Dict] = field(default_factory=list)
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -65,6 +119,21 @@ class AgentPerformanceSummary:
     timestamp: Optional[int] = None  # UNIX timestamp (in seconds, UTC)
     metrics: List[AgentPerformanceMetrics] = field(default_factory=list)
     agent_behavior: Optional[str] = None
+    agent_details: Optional[AgentDetails] = None
+    agent_performance: Optional[AgentPerformanceData] = None
+    prediction_history: Optional[PredictionHistory] = None
+
+    def __post_init__(self):
+        """Convert dicts to dataclass instances."""
+        if isinstance(self.agent_details, dict):
+            self.agent_details = AgentDetails(**self.agent_details)
+        
+        # Similarly for other nested dataclasses
+        if isinstance(self.agent_performance, dict):
+            self.agent_performance = AgentPerformanceData(**self.agent_performance)
+        
+        if isinstance(self.prediction_history, dict):
+            self.prediction_history = PredictionHistory(**self.prediction_history)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
@@ -176,3 +245,7 @@ class GnosisStakingSubgraph(Subgraph):
 
 class OpenMarketsSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Open Markets subgraph specifications."""
+
+
+class TradesSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
