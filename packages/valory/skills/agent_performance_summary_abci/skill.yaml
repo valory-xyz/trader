@@ -20,10 +20,9 @@ fingerprint:
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeifaep43unfegellngvqln7v5tsbmpb6vvkzc7k7ta7b5yyym3rr74
+- valory/erc20:0.1.0:bafybeiavgju7mwsoygjp5gtuyuvdtwp6dqqochbvi44rtqqh2czviqe4na
 protocols:
-- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeie7s5p4hv7cn5w5q4hlm7wtca5swou4yvhich5jmtjyghnlj332ae
 handlers:
@@ -127,5 +126,3 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections: []
-protocols:
-- valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi

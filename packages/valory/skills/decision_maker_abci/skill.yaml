@@ -101,12 +101,12 @@ protocols:
 - valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeie7s5p4hv7cn5w5q4hlm7wtca5swou4yvhich5jmtjyghnlj332ae
-- valory/market_manager_abci:0.1.0:bafybeieci7w2ha64jlhyq6dddsackeigrbg4jonrpu6rpy3kfamwnurjj4
+- valory/market_manager_abci:0.1.0:bafybeigh3hs4i6xs3ajqektx3ott4hfw4gbiqi7ifjfdcduy27tvlxku6m
 - valory/transaction_settlement_abci:0.1.0:bafybeiabt76em4baxbxaumvi5tpovasj4eqgarfliqx4yatr5czzkabbv4
 - valory/mech_interact_abci:0.1.0:bafybeieba23yyqnwakedhkilti4eqw3pfdrvs7vwqj3kgula3l4flfngj4
 - valory/staking_abci:0.1.0:bafybeihewinbh5y6lj3outql44rnczdw4idl2gwv5tqqkwkw4egkhkhimu
-- valory/agent_performance_summary_abci:0.1.0:bafybeibthd4afhhqxonztyfbb62kzvnxxq3sydlcsbovy5fpqokcipqxre
-- valory/chatui_abci:0.1.0:bafybeidjdk7v3lcuqpyef6bvpb22cno2ouzzfbalt475cewz45nd2r4vfq
+- valory/agent_performance_summary_abci:0.1.0:bafybeifl5fujfvemylfmuvha7yzoyc7zt6rnrlk3k73cwfe7iqkkogyzcu
+- valory/chatui_abci:0.1.0:bafybeigdr6poc2kxewpwrgvimfb4emk76gkmoobxpcibestwqvivjqz4nm
 behaviours:
   main:
     args: {}

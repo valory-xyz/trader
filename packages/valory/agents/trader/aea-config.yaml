@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeih56zt43lkb4gapxolm7n2dtcruvcbwlsgdsijxp4hutao56koe34
 - valory/termination_abci:0.1.0:bafybeignhvqcjbzdbwlpnlr4rw2brea3t23bfwfdoqzuuockk4xlfmn5su
 - valory/transaction_settlement_abci:0.1.0:bafybeiabt76em4baxbxaumvi5tpovasj4eqgarfliqx4yatr5czzkabbv4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifm4kgkdcwkjli4vtsyaiug45ibpiqwoq4xsdiz6wh7zuo6hnhjkq
-- valory/market_manager_abci:0.1.0:bafybeieci7w2ha64jlhyq6dddsackeigrbg4jonrpu6rpy3kfamwnurjj4
-- valory/decision_maker_abci:0.1.0:bafybeiajswz5ipe7lrw6rzhu4c52dmsynp5vdqxmuiyl4ezmjxr47i2fke
-- valory/trader_abci:0.1.0:bafybeihdskmhk2dnsecd5oi7c2moxc5zxjcpo4fmqhcf7ncyzvdl5z2z5m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicb4m2ivkohekloou6tqvacevxlhlbz23m7gpeyt4und7jyxypr2y
+- valory/market_manager_abci:0.1.0:bafybeigh3hs4i6xs3ajqektx3ott4hfw4gbiqi7ifjfdcduy27tvlxku6m
+- valory/decision_maker_abci:0.1.0:bafybeieoylmqflv4c6onh7acuv3ugigdky2amyunh5jtosgo7cnsxablwe
+- valory/trader_abci:0.1.0:bafybeihbkvcisufapvnmaomy5dhaqdrna6sdjiix3xzx6qljwp76fa6yee
 - valory/staking_abci:0.1.0:bafybeihewinbh5y6lj3outql44rnczdw4idl2gwv5tqqkwkw4egkhkhimu
 - valory/check_stop_trading_abci:0.1.0:bafybeigduuion4salyvgog4wbx275d3ywdymlbtlio6g243outptojhy2a
 - valory/mech_interact_abci:0.1.0:bafybeieba23yyqnwakedhkilti4eqw3pfdrvs7vwqj3kgula3l4flfngj4
-- valory/chatui_abci:0.1.0:bafybeidjdk7v3lcuqpyef6bvpb22cno2ouzzfbalt475cewz45nd2r4vfq
-- valory/agent_performance_summary_abci:0.1.0:bafybeibthd4afhhqxonztyfbb62kzvnxxq3sydlcsbovy5fpqokcipqxre
+- valory/chatui_abci:0.1.0:bafybeigdr6poc2kxewpwrgvimfb4emk76gkmoobxpcibestwqvivjqz4nm
+- valory/agent_performance_summary_abci:0.1.0:bafybeifl5fujfvemylfmuvha7yzoyc7zt6rnrlk3k73cwfe7iqkkogyzcu
 - valory/funds_manager:0.1.0:bafybeihdkjfjdicy7x3evrsz3g4qmj3fa6ujujvbqn3q7y3j2aummlty7e
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
