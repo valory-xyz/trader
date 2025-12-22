@@ -73,3 +73,84 @@ query GetOlasTraderAgentBets($id: ID!) {
       }
     }
   }"""
+
+GET_TRADER_AGENT_DETAILS_QUERY = """
+query GetTraderAgentDetails($id: ID!) {
+  traderAgent(id: $id) {
+    id
+    blockTimestamp
+    lastActive
+  }
+}
+"""
+
+GET_TRADER_AGENT_PERFORMANCE_QUERY = """
+query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
+  traderAgent(id: $id) {
+    id
+    totalTraded
+    totalPayout
+    totalFees
+    totalBets
+    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      amount
+      outcomeIndex
+      fixedProductMarketMaker {
+        currentAnswer
+      }
+    }
+  }
+}
+"""
+
+GET_PREDICTION_HISTORY_QUERY = """
+query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
+  traderAgent(id: $id) {
+    totalBets
+    totalTraded
+    totalPayout
+    totalFees
+    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      id
+      timestamp
+      amount
+      feeAmount
+      outcomeIndex
+      fixedProductMarketMaker {
+        id
+        question
+        outcomes
+        currentAnswer
+        currentAnswerTimestamp
+        participants(where: { traderAgent: $id }) {
+          totalBets
+          totalTraded
+          totalPayout
+          totalFees
+        }
+      }
+    }
+  }
+}
+"""
+
+GET_FPMM_PAYOUTS_QUERY = """
+query GetFPMMPayouts($fpmmIds: [ID!]!) {
+  fixedProductMarketMakers(where: { id_in: $fpmmIds }, first: 1000) {
+    id
+    payouts
+    resolutionTimestamp
+  }
+}
+"""
+
+GET_PENDING_BETS_QUERY = """
+query GetPendingBets($id: ID!) {
+  traderAgent(id: $id) {
+    bets(where: { fixedProductMarketMaker_: { currentAnswer: null } }) {
+      amount
+      feeAmount
+    }
+  }
+}
+"""
