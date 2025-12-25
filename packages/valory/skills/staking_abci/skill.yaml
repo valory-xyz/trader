@@ -24,9 +24,9 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia4h7w5xcslzwphyupvqoijhf3wru4cswnztm24zwafyv5eliwm4a
-- valory/service_staking_token:0.1.0:bafybeihxzj7bebkxk5uwcdac4od6nq2uaql7w2svl23ngackllwewur7vy
-- valory/staking_token:0.1.0:bafybeigpokowavuwugkwzadci2ctwowmahk33ws7grgvdyayy7j2wvdu5y
-- valory/mech_activity:0.1.0:bafybeiftpdoxszsjrslnq5oqnax46g7hev2ejt424f5qwwgiwp46ca6ru4
+- valory/service_staking_token:0.1.0:bafybeic7o4gx622nxym6ck33kf6jn4jc43uhp32r5nbttu22cbvlpcdgm4
+- valory/staking_token:0.1.0:bafybeicsjzuzvnzynj7u2ybqpwk7tupdabnxl5tzzw6jrs6cq3yejglhtm
+- valory/mech_activity:0.1.0:bafybeia3qtb63r77sgiidpakot5b57vl3dhmy5f6mvdv5xifxlddoyrr6q
 protocols:
 - valory/contract_api:1.0.0:bafybeicmo2ufeoqyyczkom6xp3nwmhosd75kpe4xfwn7gaz6vegj732b4m
 skills:
