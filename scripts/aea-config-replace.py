@@ -35,6 +35,7 @@ AGENT_NAME = "agent"
 PATH_TO_VAR = {
     # Ledgers
     "config/ledger_apis/gnosis/address": "GNOSIS_LEDGER_RPC",
+    "config/ledger_apis/polygon/address": "POLYGON_LEDGER_RPC",
     # Agent
     "models/params/args/setup/all_participants": "ALL_PARTICIPANTS",
     "models/params/args/setup/safe_contract_address": "SAFE_CONTRACT_ADDRESS",
@@ -61,6 +62,10 @@ PATH_TO_VAR = {
     "models/params/args/use_x402": "USE_X402",
     "config/use_x402": "USE_X402",
     "models/params/args/is_agent_performance_summary_enabled": "IS_AGENT_PERFORMANCE_SUMMARY_ENABLED",
+    "models/params/args/default_chain_id": "DEFAULT_CHAIN_ID",
+    "models/params/args/mech_chain_id": "MECH_CHAIN_ID",
+    "config/genai_x402_server_base_url": "GENAI_X402_SERVER_BASE_URL",
+    "models/params/args/fund_requirements": "FUND_REQUIREMENTS",
     "config/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
 }
 

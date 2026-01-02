@@ -270,6 +270,7 @@ models:
       genai_api_key: ${str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
+      polygon_ledger_rpc: ${str:https://1rpc.io/matic}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${bool:false}
       is_agent_performance_summary_enabled: ${bool:true}
@@ -464,6 +465,11 @@ config:
     gnosis:
       address: ${str:https://rpc.gnosischain.com}
       chain_id: ${int:100}
+      poa_chain: ${bool:false}
+      default_gas_price_strategy: ${str:eip1559}
+    polygon:
+      address: ${str:https://1rpc.io/matic}
+      chain_id: ${int:137}
       poa_chain: ${bool:false}
       default_gas_price_strategy: ${str:eip1559}
 ---

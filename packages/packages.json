@@ -22,9 +22,7 @@
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeianxozpo2tdt5vmcnavoffvzzubbyx2d2shj2kvh6v6ncehy74vf4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeignitkkoe576joz5dfgknscq34uijfixpz2apqvp3jt2eejd7f5sm",
         "skill/valory/chatui_abci/0.1.0": "bafybeib4vtemqvjlfwx73cyzvw2rx3kjstfp36u7hzag2hxdoqnsyipcvq",
-        "agent/valory/trader/0.1.0": "bafybeibh23iv75d42swfk62zfju5jjizrnvjtn2plycrvexvqvg2oeiepy",
-        "service/valory/trader/0.1.0": "bafybeihzdkilmsqff3e5hobpnytaq375f2ypviiufp32jhmajwn3lzft3i",
-        "service/valory/trader_pearl/0.1.0": "bafybeibw46xqqqpzfiw5if7aoknstlxc4bmraiqyj7v3w7a3kzcybpsbou"
+        "service/valory/polymarket_trader/0.1.0": "bafybeif5ou3p2luz65isboc3my4ymat2kxq2ej5cnrwo5ltews3hej2dg4"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
