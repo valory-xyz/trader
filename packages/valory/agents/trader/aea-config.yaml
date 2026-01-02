@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
 - dvilela/genai:0.1.0:bafybeif42dgcucrs7sv5ajme6n7hoa44hbglj47zhbodyqmrtimw2hf5mu
 - valory/x402:0.1.0:bafybeif7fjrjtsqdyzxfn3cx4ffcmsnzaz3yhcnylmgbxp5baiy4qgwqwm
-- valory/polymarket_client:0.1.0:bafybeidspvv6jxkzetz5d52lmauxxpu5zqhaalo2hcq2jdo6g7hrxkrdqy
+- valory/polymarket_client:0.1.0:bafybeicpgdi76dwicduhanbfy5uaosd6z6uoldxb3w3kb4w7oufcxjsssi
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihqefvhxbdocjphrcz33txmbgembl35qtcc7nusdvymrh4o3sp5um
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeiegj5zx4wrahc6gpunxvxgjkzdg4nvdojbqkk5xggv2mt56oecpoa
