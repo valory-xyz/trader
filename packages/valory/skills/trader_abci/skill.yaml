@@ -267,6 +267,7 @@ models:
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       x402_payment_requirements: {}
       gnosis_ledger_rpc: https://rpc.gnosischain.com/
+      polygon_ledger_rpc: https://1rpc.io/matic
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
       is_agent_performance_summary_enabled: true

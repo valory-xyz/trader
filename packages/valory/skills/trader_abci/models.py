@@ -156,6 +156,7 @@ class TraderParams(
             "lifi_quote_to_amount_url", kwargs, str
         )
         self.gnosis_ledger_rpc: str = self._ensure("gnosis_ledger_rpc", kwargs, str)
+        self.polygon_ledger_rpc: str = self._ensure("polygon_ledger_rpc", kwargs, str)
         self.use_x402: bool = self._ensure("use_x402", kwargs, bool)
         super().__init__(*args, **kwargs)
 
