@@ -61,6 +61,7 @@ PATH_TO_VAR = {
     "models/params/args/use_x402": "USE_X402",
     "config/use_x402": "USE_X402",
     "models/params/args/is_agent_performance_summary_enabled": "IS_AGENT_PERFORMANCE_SUMMARY_ENABLED",
+    "config/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"

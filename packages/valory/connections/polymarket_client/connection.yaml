@@ -1,0 +1,26 @@
+name: polymarket_client
+author: valory
+version: 0.1.0
+type: connection
+description: A connection that provides a wrapper around the py-clob-client library.
+license: Apache-2.0
+aea_version: '>=1.0.0, <2.0.0'
+fingerprint:
+  README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
+  __init__.py: bafybeifq5focylhfkgthz4r67rshfbw2ll2fymftsg3ucoz53prxletvwm
+  connection.py: bafybeifztehd6utvxpl7mjiueoopy5ylim6tgflht6r6bpwmmbgketpzyi
+  request_types.py: bafybeiayy47o5s74qvojcehoiskhwb6c6ppiicxzpgbkdpabjllpzbtpve
+fingerprint_ignore_patterns: []
+connections: []
+protocols:
+- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
+class_name: PolymarketClientConnection
+config:
+  host: https://clob.polymarket.com
+  chain_id: 137
+  safe_contract_addresses: {}
+excluded_protocols: []
+restricted_to_protocols: []
+dependencies: {}
+is_abstract: false
+cert_requests: []

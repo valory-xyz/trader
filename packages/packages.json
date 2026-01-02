@@ -13,6 +13,7 @@
         "contract/valory/staking_token/0.1.0": "bafybeieqpvgicsnb6wusm7rv2nw2hqihdks3s64xz66otgspnyubkgyoei",
         "contract/valory/relayer/0.1.0": "bafybeihypuljybkocl6iiacy52py7i5iqxdli3ily66q7b3nego4qajvne",
         "contract/valory/market_maker/0.1.0": "bafybeibo3yighqtem2zanqnrmbsgniokz7ohm2aa2r2yblztznkpwkeqpy",
+        "connection/valory/polymarket_client/0.1.0": "bafybeicpgdi76dwicduhanbfy5uaosd6z6uoldxb3w3kb4w7oufcxjsssi",
         "skill/valory/market_manager_abci/0.1.0": "bafybeifkqnmoptfj4lmeazwxcgkutf3tsfldk5tc2nk4hp7n7sc7xgvgsa",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeicp65m3yln3r4wrlzrqwelame6dtfjzubxxj62fuokxwu7ocgjtcu",
         "skill/valory/trader_abci/0.1.0": "bafybeif5mwwzxh54s73ouvgwd2jvypkvk3xygofqqm7mv7l6dicsicorny",
