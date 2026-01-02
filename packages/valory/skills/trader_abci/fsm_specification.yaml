@@ -52,6 +52,7 @@ alphabet_in:
 - UNPROFITABLE
 - UNRECOGNIZED
 - VALIDATE_TIMEOUT
+- POLYMARKET_DONE
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
@@ -64,6 +65,7 @@ start_states:
 states:
 - BenchmarkingRandomnessRound
 - BetPlacementRound
+- PolymarketBetPlacementRound
 - BlacklistingRound
 - CallCheckpointRound
 - ChatuiLoadRound
@@ -113,6 +115,12 @@ transition_func:
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
+    (PolymarketBetPlacementRound, DONE): RedeemRound
+    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
+    (PolymarketBetPlacementRound, MOCK_TX): RedeemRound
+    (PolymarketBetPlacementRound, NONE): ImpossibleRound
+    (PolymarketBetPlacementRound, NO_MAJORITY): BetPlacementRound
+    (PolymarketBetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
     (BlacklistingRound, MOCK_TX): RedeemRound
@@ -156,6 +164,7 @@ transition_func:
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
     (DecisionReceiveRound, DONE): BetPlacementRound
+    (DecisionReceiveRound, POLYMARKET_DONE): PolymarketBetPlacementRound
     (DecisionReceiveRound, DONE_NO_SELL): PreTxSettlementRound
     (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound

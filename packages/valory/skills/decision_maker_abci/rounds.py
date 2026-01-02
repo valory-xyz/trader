@@ -59,6 +59,9 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
@@ -240,6 +243,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
+            Event.POLYMARKET_DONE: PolymarketBetPlacementRound,
             Event.DONE_NO_SELL: FinishedDecisionMakerRound,
             Event.DONE_SELL: SellOutcomeTokensRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
@@ -269,6 +273,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        PolymarketBetPlacementRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+            # skip the bet placement tx
+            Event.MOCK_TX: RedeemRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
+            Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
+            Event.NO_MAJORITY: PolymarketBetPlacementRound,
+            Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
             # this is here because of `autonomy analyse fsm-specs`
             # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,

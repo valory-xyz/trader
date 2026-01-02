@@ -74,6 +74,7 @@ class Event(Enum):
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
+    POLYMARKET_DONE = "polymarket_done"
 
 
 class SynchronizedData(

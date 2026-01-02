@@ -37,6 +37,11 @@ ROUNDS_INFO = {
         "description": "Attempts to place a bet on a prediction market.",
         "transitions": {},
     },
+    "polymarket_bet_placement_round": {
+        "name": "Placing a bet on Polymarket",
+        "description": "Attempts to place a bet on a Polymarket prediction market.",
+        "transitions": {},
+    },
     "blacklisting_round": {
         "name": "Blacklisting the sampled bet",
         "description": "Removes the selected bet from consideration and updates the list of available bets.",

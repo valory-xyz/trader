@@ -40,12 +40,14 @@ start_states:
 - HandleFailedTxRound
 - RandomnessRound
 - RedeemRound
+- PolymarketBetPlacementRound
 states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
 - BenchmarkingRandomnessRound
 - BetPlacementRound
 - BlacklistingRound
+- PolymarketBetPlacementRound
 - CheckBenchmarkingModeRound
 - DecisionReceiveRound
 - DecisionRequestRound
