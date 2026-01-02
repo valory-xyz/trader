@@ -152,6 +152,7 @@ models:
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+      is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
