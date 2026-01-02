@@ -599,7 +599,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Interact with the mech mm contract."""
         status = yield from self.contract_interact(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.mech_marketplace_config.priority_mech_address,
+            contract_address=self.params.mech_marketplace_config.priority_mech_address,  # type: ignore[arg-type]
             contract_public_id=MechMM.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,

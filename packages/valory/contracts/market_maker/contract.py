@@ -73,7 +73,7 @@ class Contract(BaseContract):
         :return: the call result
         """
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        data = contract_instance.encodeABI(method_name, kwargs=kwargs)
+        data = contract_instance.encode_abi(method_name, kwargs=kwargs)
         return {"data": bytes.fromhex(data[2:])}
 
 

@@ -4,7 +4,7 @@ version: 0.1.0
 type: contract
 description: Mech activity checker contract
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeid4hg5rx75ltdjmekmxdddwqzbvblygmvlhws5samjxfirnkp666i
   build/MechActivity.json: bafybeiagrufcoljrlo2zklc7kxwh7eyrf67usos2bqnf7hss47hgm6low4
@@ -16,8 +16,8 @@ contract_interface_paths:
   ethereum: build/MechActivity.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==1.65.0
+    version: ==2.0.6
   open-aea-test-autonomy:
-    version: ==0.19.11
+    version: ==0.21.3
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
