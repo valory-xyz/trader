@@ -480,6 +480,9 @@ class DecisionMakerParams(
             "review_period_seconds", kwargs, int
         )
         self.min_confidence_for_selling: float = 0.5
+        self.is_running_on_polymarket: bool = self._ensure(
+            "is_running_on_polymarket", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     @property

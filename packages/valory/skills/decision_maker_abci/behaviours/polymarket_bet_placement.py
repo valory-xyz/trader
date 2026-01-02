@@ -42,14 +42,16 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WaitableConditionType,
 )
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
-from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    BetPlacementPayload,
+    PolymarketBetPlacementPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
     PolymarketBetPlacementRound,
 )
 
 
-# class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
-class PolymarketBetPlacementBehaviour(BaseBehaviour):
+class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = PolymarketBetPlacementRound
@@ -81,12 +83,17 @@ class PolymarketBetPlacementBehaviour(BaseBehaviour):
     def _send_polymarket_connection_request(
         self,
     ) -> None:
+
+        outcome = self.sampled_bet.get_outcome(self.outcome_index)
+        token_id = self.sampled_bet.outcome_token_ids[outcome]
+        amount = self._collateral_amount_info(self.investment_amount)
+
         # Prepare payload data
         payload_data = {
             "request_type": RequestType.PLACE_BET.value,
             "params": {
-                "token_id": 28930667176828097798361758759286792413043998985213248924800681060437857453238,
-                "amount": 1,
+                "token_id": token_id,
+                "amount": amount,
             },
         }
 
@@ -118,15 +125,11 @@ class PolymarketBetPlacementBehaviour(BaseBehaviour):
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # yield from self.wait_for_condition_with_sleep(self.check_balance)
-            tx_submitter = betting_tx_hex = mocking_mode = wallet_balance = None
 
             self._send_polymarket_connection_request()
-            payload = BetPlacementPayload(
-                "agent",
-                tx_submitter,
-                betting_tx_hex,
-                mocking_mode,
-                wallet_balance,
+            payload = PolymarketBetPlacementPayload(
+                sender=self.context.agent_address,
+                vote=True,
             )
 
         yield from self.finish_behaviour(payload)

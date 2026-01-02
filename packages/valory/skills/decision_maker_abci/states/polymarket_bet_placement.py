@@ -24,14 +24,17 @@ from packages.valory.skills.abstract_round_abci.base import (
     VotingRound,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    BetPlacementPayload,
+    PolymarketBetPlacementPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.base import Event
 
 
 class PolymarketBetPlacementRound(VotingRound):
     """A round for placing a bet."""
 
-    payload_class = BetPlacementPayload
+    payload_class = PolymarketBetPlacementPayload
     synchronized_data_class = BaseSynchronizedData
     done_event = Event.DONE
     negative_event = Event.INSUFFICIENT_BALANCE

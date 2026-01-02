@@ -67,6 +67,7 @@ PATH_TO_VAR = {
     "config/genai_x402_server_base_url": "GENAI_X402_SERVER_BASE_URL",
     "models/params/args/fund_requirements": "FUND_REQUIREMENTS",
     "config/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
+    "models/params/args/is_running_on_polymarket": "IS_RUNNING_ON_POLYMARKET",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
