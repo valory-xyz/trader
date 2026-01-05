@@ -75,6 +75,8 @@ class Event(Enum):
     NO_MAJORITY = "no_majority"
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
     POLYMARKET_DONE = "polymarket_done"
+    BET_PLACEMENT_FAILED = "bet_placement_failed"
+    BET_PLACEMENT_DONE = "bet_placement_done"
 
 
 class SynchronizedData(

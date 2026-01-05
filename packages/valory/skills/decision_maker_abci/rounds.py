@@ -279,6 +279,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         PolymarketBetPlacementRound: {
             Event.DONE: RedeemRound,
+            Event.BET_PLACEMENT_DONE: RedeemRound,
+            Event.BET_PLACEMENT_FAILED: PolymarketBetPlacementRound,
             # skip the bet placement tx
             Event.MOCK_TX: RedeemRound,
             # degenerate round on purpose, owner must refill the safe
