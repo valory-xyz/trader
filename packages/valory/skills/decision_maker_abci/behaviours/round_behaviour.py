@@ -49,6 +49,12 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placem
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     PolymarketRedeemBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (
+    PolymarketPostSetApprovalBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
+    PolymarketSetApprovalBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
@@ -90,4 +96,6 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketBetPlacementBehaviour,  # type: ignore
         PolymarketRedeemBehaviour,  # type: ignore
         RedeemRouterBehaviour,  # type: ignore
+        PolymarketSetApprovalBehaviour,  # type: ignore
+        PolymarketPostSetApprovalBehaviour,  # type: ignore
     }

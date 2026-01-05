@@ -64,6 +64,7 @@ class Event(Enum):
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
+    APPROVAL_FAILED = "approval_failed"
     CALC_BUY_AMOUNT_FAILED = "calc_buy_amount_failed"
     CALC_SELL_AMOUNT_FAILED = "calc_sell_amount_failed"
     NO_REDEEMING = "no_redeeming"
@@ -77,6 +78,7 @@ class Event(Enum):
     POLYMARKET_DONE = "polymarket_done"
     BET_PLACEMENT_FAILED = "bet_placement_failed"
     BET_PLACEMENT_DONE = "bet_placement_done"
+    SKIP = "skip"
 
 
 class SynchronizedData(
