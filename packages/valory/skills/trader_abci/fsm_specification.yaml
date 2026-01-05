@@ -116,7 +116,7 @@ transition_func:
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (PolymarketBetPlacementRound, DONE): RedeemRound
-    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
+    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (PolymarketBetPlacementRound, MOCK_TX): RedeemRound
     (PolymarketBetPlacementRound, NONE): ImpossibleRound
     (PolymarketBetPlacementRound, NO_MAJORITY): BetPlacementRound
