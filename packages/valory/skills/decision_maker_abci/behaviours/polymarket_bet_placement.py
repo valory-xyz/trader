@@ -124,7 +124,7 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            # yield from self.wait_for_condition_with_sleep(self.check_balance)
+            yield from self.wait_for_condition_with_sleep(self.check_balance)
 
             self._send_polymarket_connection_request()
             payload = PolymarketBetPlacementPayload(
