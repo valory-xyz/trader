@@ -35,7 +35,6 @@ from hexbytes import HexBytes
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -130,6 +129,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         self.sell_amount: int = 0
         self.buy_amount: int = 0
+        self.polymarket_last_request_status: Optional[str] = None
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -956,3 +956,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             callback,
             callback_kwargs,
         )
+
+    def _wait_for_polymarket_response(self):
+        while self.polymarket_last_request_status is None:
+            yield
+        return True

@@ -19,10 +19,13 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+import json
 from typing import Any, Generator
 
+from aea.protocols.dialogue.base import Dialogue
+
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
@@ -58,8 +61,19 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             },
         }
         self._send_polymarket_connection_request(
-            payload_data=payload_data, callback=lambda *args, **kwargs: None
+            payload_data=payload_data, callback=self._handle_place_bet_response
         )
+
+    def _handle_place_bet_response(
+        self,
+        message: SrrMessage,
+        dialogue: Dialogue,  # pylint: disable=unused-argument
+    ) -> None:
+        """Handle the response from the polymarket client after placing a bet."""
+        self.context.logger.info(f"Place bet response message: {message}")
+        data: dict = json.loads(message.payload)
+        status = data.get("success", False)
+        self.polymarket_last_request_status = status
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -68,19 +82,16 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             yield from self.wait_for_condition_with_sleep(self.check_balance)
 
             self._place_bet()
+            yield from self.wait_for_condition_with_sleep(
+                self._wait_for_polymarket_response,
+            )
+
             payload = PolymarketBetPlacementPayload(
                 self.context.agent_address,
                 None,
                 None,
                 False,
+                self.polymarket_last_request_status,
             )
 
         yield from self.finish_behaviour(payload)
-
-    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
-        """Finish the behaviour."""
-        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
-            yield from self.send_a2a_transaction(payload)
-            yield from self.wait_until_round_end()
-
-        self.set_done()

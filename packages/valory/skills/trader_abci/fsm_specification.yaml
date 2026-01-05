@@ -53,6 +53,8 @@ alphabet_in:
 - UNRECOGNIZED
 - VALIDATE_TIMEOUT
 - POLYMARKET_DONE
+- BET_PLACEMENT_FAILED
+- BET_PLACEMENT_DONE
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
@@ -116,6 +118,8 @@ transition_func:
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (PolymarketBetPlacementRound, DONE): RedeemRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (PolymarketBetPlacementRound, MOCK_TX): RedeemRound
     (PolymarketBetPlacementRound, NONE): ImpossibleRound
