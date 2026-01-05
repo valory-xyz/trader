@@ -316,7 +316,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Report the balances of the native and the collateral tokens."""
         native = self.wei_to_native(self.wallet_balance)
         collateral = self._collateral_amount_info(self.token_balance)
-        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
+        self.context.logger.info(f"The safe has {native} native and {collateral}.")
 
     def _mock_balance_check(self) -> None:
         """Mock the balance of the native and the collateral tokens."""
