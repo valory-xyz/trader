@@ -48,10 +48,11 @@ from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
-from packages.valory.protocols.srr.dialogues import SrrDialogues
+from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
+from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
@@ -129,7 +130,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         self.sell_amount: int = 0
         self.buy_amount: int = 0
-        self.polymarket_last_request_status: Optional[str] = None
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -915,49 +915,59 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         self.set_done()
 
-    def _send_message(
+    def _do_connection_request(
         self,
         message: Message,
-        dialogue: Dialogue,
-        callback: Callable,
-        callback_kwargs: Optional[Dict] = None,
-    ) -> None:
-        """
-        Send a message and set up a callback for the response.
+        dialogue: Message,
+        timeout: Optional[float] = None,
+    ) -> Generator[None, None, Message]:
+        """Do a request and wait the response, asynchronously."""
 
-        :param message: the Message to send
-        :param dialogue: the Dialogue context
-        :param callback: the callback function upon response
-        :param callback_kwargs: optional kwargs for the callback
-        """
         self.context.outbox.put_message(message=message)
-        nonce = dialogue.dialogue_label.dialogue_reference[0]
-        self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
+        request_nonce = self._get_request_nonce_from_dialogue(dialogue)  # type: ignore
+        cast(Requests, self.context.requests).request_id_to_callback[
+            request_nonce
+        ] = self.get_callback_request()
+        response = yield from self.wait_for_message(timeout=timeout)
+        return response
 
-    def _send_polymarket_connection_request(
+    def do_connection_request(
+        self,
+        message: Message,
+        dialogue: Message,
+        timeout: Optional[float] = None,
+    ) -> Generator[None, None, Message]:
+        """
+        Public wrapper for making a connection request and waiting for response.
+
+        Args:
+            message: The message to send
+            dialogue: The dialogue context
+            timeout: Optional timeout duration
+
+        Returns:
+            Message: The response message
+        """
+        return (yield from self._do_connection_request(message, dialogue, timeout))
+
+    def send_polymarket_connection_request(
         self,
         payload_data: Dict[str, Any],
-        callback: Callable,
-        callback_kwargs: Optional[Dict] = None,
-    ) -> None:
+    ) -> Generator[None, None, Optional[str]]:
 
         self.context.logger.info(f"Payload data: {payload_data}")
 
         srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
-        request_srr_message, srr_dialogue = srr_dialogues.create(
+        srr_message, srr_dialogue = srr_dialogues.create(
             counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
             performative=SrrMessage.Performative.REQUEST,
             payload=json.dumps(payload_data),
         )
 
-        self._send_message(
-            request_srr_message,
-            srr_dialogue,
-            callback,
-            callback_kwargs,
-        )
+        srr_message = cast(SrrMessage, srr_message)
+        srr_dialogue = cast(SrrDialogue, srr_dialogue)
+        response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
 
-    def _wait_for_polymarket_response(self):
-        while self.polymarket_last_request_status is None:
-            yield
-        return True
+        response_json = json.loads(response.payload)  # type: ignore
+
+        return response_json  # type: ignore

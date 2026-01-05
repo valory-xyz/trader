@@ -19,13 +19,9 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import json
 from typing import Any, Generator
 
-from aea.protocols.dialogue.base import Dialogue
-
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
@@ -47,51 +43,34 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         super().__init__(**kwargs)
         self.buy_amount = 0
 
-    def _place_bet(self) -> None:
-        outcome = self.sampled_bet.get_outcome(self.outcome_index)
-        token_id = self.sampled_bet.outcome_token_ids[outcome]
-        amount = self._collateral_amount_info(self.investment_amount)
-
-        # Prepare payload data
-        payload_data = {
-            "request_type": RequestType.PLACE_BET.value,
-            "params": {
-                "token_id": token_id,
-                "amount": amount,
-            },
-        }
-        self._send_polymarket_connection_request(
-            payload_data=payload_data, callback=self._handle_place_bet_response
-        )
-
-    def _handle_place_bet_response(
-        self,
-        message: SrrMessage,
-        dialogue: Dialogue,  # pylint: disable=unused-argument
-    ) -> None:
-        """Handle the response from the polymarket client after placing a bet."""
-        self.context.logger.info(f"Place bet response message: {message}")
-        data: dict = json.loads(message.payload)
-        status = data.get("success", False)
-        self.polymarket_last_request_status = status
-
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self.check_balance)
 
-            self._place_bet()
-            yield from self.wait_for_condition_with_sleep(
-                self._wait_for_polymarket_response,
-            )
+        outcome = self.sampled_bet.get_outcome(self.outcome_index)
+        token_id = self.sampled_bet.outcome_token_ids[outcome]
+        amount = self._collateral_amount_info(self.investment_amount)
 
-            payload = PolymarketBetPlacementPayload(
-                self.context.agent_address,
-                None,
-                None,
-                False,
-                self.polymarket_last_request_status,
-            )
+        # Prepare payload data
+        polymarket_bet_payload = {
+            "request_type": RequestType.PLACE_BET.value,
+            "params": {
+                "token_id": token_id,
+                "amount": amount,
+            },
+        }
+        response = yield from self.send_polymarket_connection_request(
+            polymarket_bet_payload
+        )
+
+        payload = PolymarketBetPlacementPayload(
+            self.context.agent_address,
+            None,
+            None,
+            False,
+            success=response.get("success", False),
+        )
 
         yield from self.finish_behaviour(payload)
