@@ -20,6 +20,7 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
+import json
 import os
 from abc import ABC
 from datetime import datetime, timedelta
@@ -31,6 +32,10 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.connection import (
+    PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
+)
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -44,6 +49,8 @@ from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
+from packages.valory.protocols.srr.dialogues import SrrDialogues
+from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
@@ -907,3 +914,45 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
+
+    def _send_message(
+        self,
+        message: Message,
+        dialogue: Dialogue,
+        callback: Callable,
+        callback_kwargs: Optional[Dict] = None,
+    ) -> None:
+        """
+        Send a message and set up a callback for the response.
+
+        :param message: the Message to send
+        :param dialogue: the Dialogue context
+        :param callback: the callback function upon response
+        :param callback_kwargs: optional kwargs for the callback
+        """
+        self.context.outbox.put_message(message=message)
+        nonce = dialogue.dialogue_label.dialogue_reference[0]
+        self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
+
+    def _send_polymarket_connection_request(
+        self,
+        payload_data: Dict[str, Any],
+        callback: Callable,
+        callback_kwargs: Optional[Dict] = None,
+    ) -> None:
+
+        self.context.logger.info(f"Payload data: {payload_data}")
+
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+        request_srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(payload_data),
+        )
+
+        self._send_message(
+            request_srr_message,
+            srr_dialogue,
+            callback,
+            callback_kwargs,
+        )

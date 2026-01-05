@@ -61,29 +61,7 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         super().__init__(**kwargs)
         self.buy_amount = 0
 
-    def _send_message(
-        self,
-        message: Message,
-        dialogue: Dialogue,
-        callback: Callable,
-        callback_kwargs: Optional[Dict] = None,
-    ) -> None:
-        """
-        Send a message and set up a callback for the response.
-
-        :param message: the Message to send
-        :param dialogue: the Dialogue context
-        :param callback: the callback function upon response
-        :param callback_kwargs: optional kwargs for the callback
-        """
-        self.context.outbox.put_message(message=message)
-        nonce = dialogue.dialogue_label.dialogue_reference[0]
-        self.context.state.req_to_callback[nonce] = (callback, callback_kwargs or {})
-
-    def _send_polymarket_connection_request(
-        self,
-    ) -> None:
-
+    def _place_bet(self) -> None:
         outcome = self.sampled_bet.get_outcome(self.outcome_index)
         token_id = self.sampled_bet.outcome_token_ids[outcome]
         amount = self._collateral_amount_info(self.investment_amount)
@@ -96,29 +74,9 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 "amount": amount,
             },
         }
-
-        self.context.logger.info(f"Payload data: {payload_data}")
-
-        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
-        request_srr_message, srr_dialogue = srr_dialogues.create(
-            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
-            performative=SrrMessage.Performative.REQUEST,
-            payload=json.dumps(payload_data),
+        self._send_polymarket_connection_request(
+            payload_data=payload_data, callback=lambda *args, **kwargs: None
         )
-
-        callback_kwargs = {}
-        self._send_message(
-            request_srr_message,
-            srr_dialogue,
-            self._just_print,
-            callback_kwargs,
-        )
-
-    def _just_print(self, *args, **kwargs) -> Generator:
-        """Just print something."""
-        self.context.logger.info(f"Just printing something...{args=} {kwargs=}")
-        yield "hello"
-        return "bye"
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -126,7 +84,7 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             yield from self.wait_for_condition_with_sleep(self.check_balance)
 
-            self._send_polymarket_connection_request()
+            self._place_bet()
             payload = PolymarketBetPlacementPayload(
                 sender=self.context.agent_address,
                 vote=True,
