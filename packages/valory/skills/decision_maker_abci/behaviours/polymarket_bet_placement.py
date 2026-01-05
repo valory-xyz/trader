@@ -19,31 +19,14 @@
 
 """This module contains the behaviour for sampling a bet."""
 
-import json
-from typing import Any, Callable, Dict, Generator, Optional, cast
+from typing import Any, Generator
 
-from aea.protocols.base import Message
-from aea.protocols.dialogue.base import Dialogue
-from hexbytes import HexBytes
-
-from packages.valory.connections.polymarket_client.connection import (
-    PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
-)
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.contracts.erc20.contract import ERC20
-from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.protocols.srr.dialogues import SrrDialogues
-from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
-    WXDAI,
-    WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import (
-    BetPlacementPayload,
     PolymarketBetPlacementPayload,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
@@ -86,8 +69,10 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
             self._place_bet()
             payload = PolymarketBetPlacementPayload(
-                sender=self.context.agent_address,
-                vote=True,
+                self.context.agent_address,
+                None,
+                None,
+                False,
             )
 
         yield from self.finish_behaviour(payload)

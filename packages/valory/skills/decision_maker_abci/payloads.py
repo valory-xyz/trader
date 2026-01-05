@@ -117,7 +117,7 @@ class BetPlacementPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
-class PolymarketBetPlacementPayload(VotingPayload):
+class PolymarketBetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
 
