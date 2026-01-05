@@ -135,8 +135,9 @@ transition_func:
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): PolymarketSetApprovalRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
+    (CheckBenchmarkingModeRound, SET_APPROVAL): PolymarketSetApprovalRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound

@@ -204,7 +204,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
             Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
-            Event.BENCHMARKING_DISABLED: PolymarketSetApprovalRound,
+            Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
+            Event.SET_APPROVAL: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs`

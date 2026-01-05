@@ -70,8 +70,10 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
 
             # self._place_bet()
             payload = PolymarketSetApprovalPayload(
-                sender=self.context.agent_address,
-                vote=True,
+                self.context.agent_address,
+                None,
+                None,
+                False,
             )
 
         yield from self.finish_behaviour(payload)

@@ -21,22 +21,31 @@
 
 from packages.valory.skills.abstract_round_abci.base import (
     BaseSynchronizedData,
-    VotingRound,
-    get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketSetApprovalPayload,
 )
-from packages.valory.skills.decision_maker_abci.states.base import Event
+from enum import Enum
+from typing import Optional, Tuple, cast
 
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+    TxPreparationRound,
+)
 
-class PolymarketSetApprovalRound(VotingRound):
+class PolymarketSetApprovalRound(TxPreparationRound):
     """A round for setting approval."""
 
     payload_class = PolymarketSetApprovalPayload
-    synchronized_data_class = BaseSynchronizedData
-    done_event = Event.DONE
-    negative_event = Event.APPROVAL_FAILED
     none_event = Event.NONE
-    no_majority_event = Event.NO_MAJORITY
-    collection_key = get_name(BaseSynchronizedData.participant_to_votes)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        return synced_data, event

@@ -124,12 +124,12 @@ class PolymarketBetPlacementPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
-class PolymarketSetApprovalPayload(VotingPayload):
+class PolymarketSetApprovalPayload(MultisigTxPayload):
     """Represents a transaction payload for setting approval."""
 
 
 @dataclass(frozen=True)
-class PolymarketPostSetApprovalPayload(VotingPayload):
+class PolymarketPostSetApprovalPayload(MultisigTxPayload):
     """Represents a transaction payload for post setting approval."""
 
 

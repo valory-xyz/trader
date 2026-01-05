@@ -79,6 +79,7 @@ class Event(Enum):
     BET_PLACEMENT_FAILED = "bet_placement_failed"
     BET_PLACEMENT_DONE = "bet_placement_done"
     SKIP = "skip"
+    SET_APPROVAL = "set_approval"
 
 
 class SynchronizedData(
