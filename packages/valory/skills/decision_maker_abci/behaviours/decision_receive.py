@@ -203,7 +203,12 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self,
     ) -> Optional[PredictionResponse]:
         """Get vote, win probability and confidence."""
-        if self.benchmarking_mode.enabled:
+        if True:
+            self._mech_response = MechInteractionResponse(
+                result='{"p_yes": 0.85, "p_no": 0.15, "info_utility": 0.9, "confidence": 0.8}',
+                response_data="this is mocked data",
+            )
+        elif self.benchmarking_mode.enabled:
             self._mock_response()
         else:
             self._get_response()

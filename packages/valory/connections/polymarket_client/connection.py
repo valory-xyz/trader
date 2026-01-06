@@ -288,6 +288,18 @@ class PolymarketClientConnection(BaseSyncConnection):
 
     def _place_bet(self, token_id: str, amount: float) -> None:
         """Place a bet on Polymarket."""
+        print(f"!!!!!!!!!!!! Placing bet on token_id: {token_id} with amount: {amount}")
+        return {
+            "errorMsg": "",
+            "orderID": "0x4d2b20921be939eb2eb441e646f2e88c9fac5fc7194852e380efaab987233bea",
+            "takingAmount": "33.333332",
+            "makingAmount": "0.999999",
+            "status": "matched",
+            "transactionsHashes": [
+                "0x72cbbfcfc482a0c16de2360ea1a204b866f1895a64f89def2754bbcec95abd6c"
+            ],
+            "success": True,
+        }, None
 
         mo = MarketOrderArgs(
             token_id=token_id,

@@ -8,12 +8,12 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
-  behaviours.py: bafybeiae4j35uqsubdy7pjzfhlcewcb3mfhhyny7h46wf4bquf27or4iu4
+  behaviours.py: bafybeiglptyymezkpr4gyjhjs6hq7szkd4kdcugw6dmn2pzxrkdpzhr7hi
   composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeigjdfo62wldq4rjujmrbf3aspq6edsmitmrdj2d7qkovc42bipmvu
-  handlers.py: bafybeidac7ht5n3cyy2jimhvminal46jc2hlzulp5ywo2oyw7bwk4qr2hi
-  models.py: bafybeighcpwxdqohc2wbplgd474t3q6smiavxtft64xlv3yjzwsacabyvi
+  fsm_specification.yaml: bafybeicn7eq5sw4b2jlgbfsdaikxcw3h3245h2eaw3p76uu6lbrohggrzu
+  handlers.py: bafybeifhvzcu6vi7xrapcwqyjienlr5mcwwigkblhyq6lwaljcbaaiyu6m
+  models.py: bafybeic7yv2cc5pgamruiijyyds726bbkutgsr7cs2xfouhb5u3kwuhomm
   predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   predict-ui-build/assets/index-CXmEbKlU.js: bafybeibqdpts5s3p7yzbbdah2hvuiwkwrypompr7j2pzfoz3pxehranvxi
@@ -39,9 +39,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihuxdetmcyqoqr7iatqsddufolzoebdxsxb4lxd2uiyvuwhb52ttq
 - valory/transaction_settlement_abci:0.1.0:bafybeids5bopaujr5bh2jfhvysl6fzf7zexsbdifaurf4nerp24hv5uqnm
 - valory/termination_abci:0.1.0:bafybeigysvgr5m6zj5b6ofadeddzpxxlhxzn2hyxfilcybhcpp252vdft4
-- valory/market_manager_abci:0.1.0:bafybeidbt5utmwgcdnggihgehbfmaq3cwt5wvag6die4z4tnjfyifwbsu4
-- valory/decision_maker_abci:0.1.0:bafybeihtlfuof5ljyj4jwfkt5mtbxirtwp36bjaz3p53vh5jibme42rlly
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiab54oncvqclzrdh7rtrelf5lixptgc2kggiq2guggdqud3m5p63u
+- valory/market_manager_abci:0.1.0:bafybeidmxznxxh2ors7bdmk2zv2lo3yg6ydhk6bblkhyvngnz5lcl3zhlq
+- valory/decision_maker_abci:0.1.0:bafybeihddhg2ddc3pu3duw3l6jlvpaomu4ros2gqs7knlz3seylazehopi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiehyuijteygrn5655a5erhi62swfy5vodp3uvtche742mpanseooy
 - valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
 - valory/check_stop_trading_abci:0.1.0:bafybeidpku2p6kuowfdhrinhaptsxz3xvyaxfum2izsraicoxfjhisnuem
 - valory/mech_interact_abci:0.1.0:bafybeiapma3xyf5cozepeakwidouehv3shaykmvxwsos4bgn4256q7cw24

@@ -131,6 +131,32 @@ class EGreedyPolicy:
         if not (0 <= self.eps <= 1):
             error = f"Cannot initialize the policy with an epsilon value of {self.eps}. Must be between 0 and 1."
             raise ValueError(error)
+        self.accuracy_store = {
+            "claude-prediction-offline": AccuracyInfo(
+                accuracy=0.57965, pending=-8, requests=521
+            ),
+            "claude-prediction-online": AccuracyInfo(
+                accuracy=0.58541, pending=-2, requests=521
+            ),
+            "prediction-offline": AccuracyInfo(
+                accuracy=0.60845, pending=-26, requests=521
+            ),
+            "prediction-online": AccuracyInfo(
+                accuracy=0.62188, pending=-44, requests=521
+            ),
+            "prediction-online-sme": AccuracyInfo(
+                accuracy=0.54894, pending=0, requests=521
+            ),
+            "prediction-request-rag": AccuracyInfo(
+                accuracy=0.57965, pending=-6, requests=521
+            ),
+            "prediction-request-reasoning": AccuracyInfo(
+                accuracy=0.66411, pending=-1, requests=521
+            ),
+            "superforcaster": AccuracyInfo(
+                accuracy=0.66411, pending=-1, requests=521
+            ),
+        }
         self.update_weighted_accuracy()
 
     @classmethod

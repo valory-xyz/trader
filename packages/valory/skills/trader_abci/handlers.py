@@ -83,11 +83,11 @@ SrrHandler = BaseSrrHandler
 
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
-GNOSIS_CHAIN_NAME = "gnosis"
+CHAIN_NAME = "polygon"
 XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
 WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
-GNOSIS_CHAIN_ID = 100
+USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+CHAIN_ID = 137
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 
 
@@ -304,7 +304,7 @@ class HttpHandler(BaseHttpHandler):
         """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it."""
         funds_status = copy.deepcopy(self.funds_status)
         try:
-            safe_balances = funds_status[GNOSIS_CHAIN_NAME].accounts[
+            safe_balances = funds_status[CHAIN_NAME].accounts[
                 self.synchronized_data.safe_contract_address
             ]
 
@@ -381,7 +381,7 @@ class HttpHandler(BaseHttpHandler):
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
         """Get Web3 instance for the specified chain."""
         try:
-            rpc_url = self.params.gnosis_ledger_rpc
+            rpc_url = self.params.polygon_ledger_rpc
 
             if not rpc_url:
                 self.context.logger.warning(f"No RPC URL for {chain}")
@@ -432,7 +432,7 @@ class HttpHandler(BaseHttpHandler):
     ) -> Optional[Dict]:
         """Get LiFi quote synchronously."""
         try:
-            chain_id = GNOSIS_CHAIN_ID
+            chain_id = CHAIN_ID
 
             params = {
                 "fromChain": chain_id,
@@ -568,7 +568,7 @@ class HttpHandler(BaseHttpHandler):
         """Ensure agent EOA has at sufficient funds for x402 requests payments"""
         self.context.logger.info("Checking USDC balance for x402 payments...")
         try:
-            chain = GNOSIS_CHAIN_NAME
+            chain = CHAIN_NAME
             eoa_account = self._get_eoa_account()
             if not eoa_account:
                 self.context.logger.error("Failed to get EOA account")
@@ -634,7 +634,7 @@ class HttpHandler(BaseHttpHandler):
                 "gas": tx_gas,
                 "gasPrice": gas_price,
                 "nonce": nonce,
-                "chainId": GNOSIS_CHAIN_ID,
+                "chainId": CHAIN_ID,
             }
 
             self.context.logger.info(

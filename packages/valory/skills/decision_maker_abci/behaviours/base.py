@@ -282,6 +282,34 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get the sampled bet and reset the bets list."""
         self.read_bets()
         bet_index = self.synchronized_data.sampled_bet_index
+        return Bet(
+            id="999501",
+            market="0xe6a6dd7a8654925d425b1ea24904ed8d373f8c540b9348087de684a162719ddf",
+            title="Will Elon Musk post 460-479 tweets from December 26 to January 2, 2026?",
+            collateralToken="0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",  # USDC on Polygon/Base
+            creator="0x91430CaD2d3975766499717fA0D66A78D814E5c5",
+            fee=0,
+            openingTimestamp=int(
+                datetime.fromisoformat("2025-12-23T05:10:21.214547+00:00").timestamp()
+            ),
+            outcomeSlotCount=2,
+            # assume most liquidity is sitting on NO, making YES cheap
+            outcomeTokenAmounts=[100_000, 5_000_000],  # [YES, NO]
+            outcomeTokenMarginalPrices=[0.05, 0.95],  # YES massively underpriced
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=9758.91006,
+            processed_timestamp=int(
+                datetime.fromisoformat("2026-01-02T06:27:04.704915+00:00").timestamp()
+            ),
+            # strategy fields
+            position_liquidity=250_000,  # heavy YES position
+            potential_net_profit=4_500_000,  # huge upside if YES resolves
+            investments={},
+            outcome_token_ids={
+                "Yes": "28930667176828097798361758759286792413043998985213248924800681060437857453238",
+                "No": "24602760710351040720265061714641035775749757678754561648028565512150402693009",
+            },
+        )
         return self.bets[bet_index]
 
     @property

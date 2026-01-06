@@ -318,7 +318,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self,
     ) -> Generator[None, None, None]:
         """Get the Mech's tools."""
-        if self.benchmarking_mode.enabled:
+        if True:
+            self.mech_tools = ["superforcaster", "prediction-online", "prediction-offline"]
+            return
+        elif self.benchmarking_mode.enabled:
             self._get_tools_from_benchmark_file()
             return
 
