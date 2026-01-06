@@ -48,4 +48,18 @@ class PolymarketSetApprovalRound(TxPreparationRound):
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
 
+        # Check if builder program is enabled
+        if self.context.params.polymarket_builder_program_enabled:
+            # Builder program enabled: go directly to PostSetApprovalRound
+            self.context.logger.info(
+                "Polymarket builder program enabled - transitioning to PostSetApprovalRound"
+            )
+            event = Event.DONE
+        else:
+            # Builder program disabled: use OA framework for transaction settlement
+            self.context.logger.info(
+                "Polymarket builder program disabled - using OA framework for tx settlement"
+            )
+            event = Event.PREPARE_TX
+
         return synced_data, event

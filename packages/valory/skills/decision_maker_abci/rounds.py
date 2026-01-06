@@ -89,6 +89,9 @@ from packages.valory.skills.decision_maker_abci.states.tool_selection import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
+from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    PreTxSettlementRound,
+)
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
@@ -206,6 +209,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
             Event.SET_APPROVAL: PolymarketSetApprovalRound,
+            Event.PREPARE_TX: PreTxSettlementRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs`
@@ -307,6 +311,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         PolymarketSetApprovalRound: {
             Event.DONE: PolymarketPostSetApprovalRound,
+            Event.PREPARE_TX: PreTxSettlementRound,
             # skip the bet placement tx
             Event.SKIP: BenchmarkingModeDisabledRound,
             # degenerate round on purpose, owner must refill the safe
