@@ -275,7 +275,7 @@ models:
       use_x402: ${bool:false}
       is_agent_performance_summary_enabled: ${bool:true}
       is_running_on_polymarket: ${bool:false}
-      polymarket_builder_program_enabled: ${bool:false}
+      polymarket_builder_program_enabled: ${bool:true}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -506,4 +506,4 @@ config:
   chain_id: 137
   safe_contract_addresses: ${dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
   remote_builder_url: ${str:http://localhost:5001/sign}
-  polymarket_builder_program_enabled: ${bool:false}
+  polymarket_builder_program_enabled: ${bool:true}

@@ -150,7 +150,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedSellOutcomeTokensTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
-    FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
+    # FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: RedeemRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,

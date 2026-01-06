@@ -20,30 +20,19 @@
 """This module contains the behaviour for sampling a bet."""
 
 import json
-from typing import Any, Callable, Dict, Generator, Optional, cast
-
-from aea.protocols.base import Message
-from aea.protocols.dialogue.base import Dialogue
-from hexbytes import HexBytes
+from typing import Any, Generator, cast
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.contracts.erc20.contract import ERC20
-from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.srr.dialogues import SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
-    WXDAI,
-    WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import (
-    BetPlacementPayload,
     PolymarketPostSetApprovalPayload,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
@@ -65,18 +54,74 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            print("Posting set approval for Polymarket...")
-            # yield from self.wait_for_condition_with_sleep(self.check_balance)
+            self.context.logger.info("Post set approval round - checking approvals...")
+            
+            # Check if approvals were set successfully
+            yield from self._check_approval()
 
-            # self._place_bet()
-            payload = PolymarketPostSetApprovalPayload(
+        yield from self.finish_behaviour(self.payload)
+
+    def _check_approval(self) -> Generator[None, None, None]:
+        """Check if approvals were set successfully."""
+        # Get SRR dialogues
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+
+        # Create the request payload
+        polymarket_check_approval_payload = {
+            "request_type": RequestType.CHECK_APPROVAL.value,
+            "params": {},
+        }
+
+        # Create the SRR message
+        srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(polymarket_check_approval_payload),
+        )
+
+        # Send the request and wait for response
+        response = yield from self.do_connection_request(srr_message, srr_dialogue)
+
+        if response is None or response.error:
+            error_msg = (
+                response.error if response else "No response from Polymarket client"
+            )
+            self.context.logger.error(f"Error checking approvals: {error_msg}")
+            self.payload = PolymarketPostSetApprovalPayload(
                 self.context.agent_address,
                 None,
                 None,
                 False,
             )
+            return
 
-        yield from self.finish_behaviour(payload)
+        # Parse the response
+        response_json = json.loads(response.payload)
+        self.context.logger.info(f"Approval check response: {response_json}")
+
+        # Check if all approvals are set
+        all_approvals_set = response_json.get("all_approvals_set", False)
+
+        if all_approvals_set:
+            self.context.logger.info("✅ All approvals are set successfully!")
+            self.context.logger.info(
+                f"USDC Allowances: {response_json.get('usdc_allowances', {})}"
+            )
+            self.context.logger.info(
+                f"CTF Approvals: {response_json.get('ctf_approvals', {})}"
+            )
+        else:
+            self.context.logger.warning(
+                f"⚠️  Some approvals may not be set correctly: {response_json}"
+            )
+
+        # Create the payload
+        self.payload = PolymarketPostSetApprovalPayload(
+            self.context.agent_address,
+            None,
+            None,
+            False,
+        )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

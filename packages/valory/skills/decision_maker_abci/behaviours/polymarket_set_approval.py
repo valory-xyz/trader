@@ -20,30 +20,19 @@
 """This module contains the behaviour for sampling a bet."""
 
 import json
-from typing import Any, Callable, Dict, Generator, Optional, cast
-
-from aea.protocols.base import Message
-from aea.protocols.dialogue.base import Dialogue
-from hexbytes import HexBytes
+from typing import Any, Generator, cast
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.contracts.erc20.contract import ERC20
-from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.srr.dialogues import SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
-    WXDAI,
-    WaitableConditionType,
 )
-from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import (
-    BetPlacementPayload,
     PolymarketSetApprovalPayload,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
@@ -65,18 +54,79 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            print("Setting approval for Polymarket...")
-            # yield from self.wait_for_condition_with_sleep(self.check_balance)
+            # Check if builder program is enabled
+            if self.context.params.polymarket_builder_program_enabled:
+                self.context.logger.info(
+                    "Polymarket builder program enabled - calling connection to set approvals..."
+                )
+                # Call the polymarket client to set approvals
+                yield from self._set_approval()
+            else:
+                self.context.logger.info(
+                    "Polymarket builder program disabled - skipping connection call"
+                )
+                # Create payload without calling connection
+                self.payload = PolymarketSetApprovalPayload(
+                    self.context.agent_address,
+                    None,
+                    None,
+                    False,
+                )
 
-            # self._place_bet()
-            payload = PolymarketSetApprovalPayload(
+        yield from self.finish_behaviour(self.payload)
+
+    def _set_approval(self) -> Generator[None, None, None]:
+        """Set approval for Polymarket contracts."""
+        # Get SRR dialogues
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+
+        # Create the request payload
+        polymarket_set_approval_payload = {
+            "request_type": RequestType.SET_APPROVAL.value,
+            "params": {},
+        }
+
+        # Create the SRR message
+        srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(polymarket_set_approval_payload),
+        )
+
+        # Send the request and wait for response
+        response = yield from self.do_connection_request(srr_message, srr_dialogue)
+
+        if response is None or response.error:
+            error_msg = response.error if response else "No response from Polymarket client"
+            self.context.logger.error(f"Error setting approvals: {error_msg}")
+            self.payload = PolymarketSetApprovalPayload(
                 self.context.agent_address,
                 None,
                 None,
                 False,
             )
+            return
 
-        yield from self.finish_behaviour(payload)
+        # Parse the response
+        response_json = json.loads(response.payload)
+        self.context.logger.info(f"Set approval response: {response_json}")
+
+        # Check if the approval was successful
+        success = response_json is not None and not response.error
+
+        if success:
+            self.context.logger.info("Successfully set approvals for Polymarket contracts!")
+            self.context.logger.info(f"Transaction data: {response_json}")
+        else:
+            self.context.logger.error(f"Failed to set approvals: {response_json}")
+
+        # Create the payload
+        self.payload = PolymarketSetApprovalPayload(
+            self.context.agent_address,
+            None,
+            None,
+            False,
+        )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

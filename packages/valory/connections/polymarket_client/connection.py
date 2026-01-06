@@ -29,6 +29,7 @@ from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
 from eth_abi import encode
+from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
 from py_builder_relayer_client.models import OperationType, SafeTransaction
 from py_builder_signing_sdk.config import BuilderConfig, RemoteBuilderConfig
@@ -36,6 +37,7 @@ from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import MarketOrderArgs, OrderType
 from py_clob_client.exceptions import PolyApiException
 from py_clob_client.order_builder.constants import BUY
+from web3 import Web3
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.srr.dialogues import SrrDialogue
@@ -49,6 +51,8 @@ RELAYER_URL = "https://relayer-v2.polymarket.com/"
 CONDITIONAL_TOKENS_CONTRACT = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
 PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
 CHAIN_ID = 137  # Polygon
+MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+POLYGON_RPC_URL = "https://polygon-rpc.com"
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -111,7 +115,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         host = self.configuration.config.get("host")
         chain_id = self.configuration.config.get("chain_id")
         builder_program_enabled = self.configuration.config.get(
-            "polymarket_builder_program_enabled", False
+            "polymarket_builder_program_enabled", True
         )
 
         self.dialogues = SrrDialogues(connection_id=PUBLIC_ID)
@@ -144,6 +148,26 @@ class PolymarketClientConnection(BaseSyncConnection):
             builder_config=self.builder_config,
         )
         self.client.set_api_creds(self.client.create_or_derive_api_creds())
+
+        # Load contract addresses for set approval
+        self.usdc_address = to_checksum_address(
+            self.configuration.config.get("usdc_address")
+        )
+        self.ctf_address = to_checksum_address(
+            self.configuration.config.get("ctf_address")
+        )
+        self.ctf_exchange = to_checksum_address(
+            self.configuration.config.get("ctf_exchange")
+        )
+        self.neg_risk_ctf_exchange = to_checksum_address(
+            self.configuration.config.get("neg_risk_ctf_exchange")
+        )
+        self.neg_risk_adapter = to_checksum_address(
+            self.configuration.config.get("neg_risk_adapter")
+        )
+
+        # Initialize Web3 for approval checking
+        self.w3 = Web3(Web3.HTTPProvider(POLYGON_RPC_URL))
 
     # TODO:
     @property
@@ -259,6 +283,8 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.GET_POSITIONS: self._get_positions,
             RequestType.FETCH_ALL_POSITIONS: self._fetch_all_positions,
             RequestType.REDEEM_POSITIONS: self._redeem_positions,
+            RequestType.SET_APPROVAL: self._set_approval,
+            RequestType.CHECK_APPROVAL: self._check_approval,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -474,5 +500,231 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         except Exception as e:
             error_msg = f"Error redeeming positions: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _encode_approve(self, spender: str, amount: int) -> str:
+        """Encode ERC20 approve function call.
+
+        :param spender: The address to approve
+        :param amount: The amount to approve
+        :return: Encoded calldata as hex string
+        """
+        selector = keccak(text="approve(address,uint256)")[:4]
+        encoded_args = encode(["address", "uint256"], [spender, amount])
+        return "0x" + (selector + encoded_args).hex()
+
+    def _encode_set_approval_for_all(self, operator: str, approved: bool) -> str:
+        """Encode ERC1155 setApprovalForAll function call.
+
+        :param operator: The operator address
+        :param approved: Whether to approve or revoke
+        :return: Encoded calldata as hex string
+        """
+        selector = keccak(text="setApprovalForAll(address,bool)")[:4]
+        encoded_args = encode(["address", "bool"], [operator, approved])
+        return "0x" + (selector + encoded_args).hex()
+
+    def _set_approval(self) -> Tuple[Any, Any]:
+        """Set all required approvals for Polymarket trading.
+
+        Sets approvals for:
+        - USDC for CTF Exchange
+        - CTF for CTF Exchange
+        - USDC for Neg Risk CTF Exchange
+        - CTF for Neg Risk CTF Exchange
+        - USDC for Neg Risk Adapter
+        - CTF for Neg Risk Adapter
+
+        :return: Tuple of (transaction_result, error_message)
+        """
+        try:
+            # Check if relayer client is initialized
+            if self.relayer_client is None:
+                error_msg = "Relayer client not initialized. Enable polymarket_builder_program_enabled in config."
+                self.logger.error(error_msg)
+                return None, error_msg
+
+            self.logger.info("Creating approval transactions for Polymarket contracts...")
+
+            # Create approval transactions for CTF Exchange
+            usdc_approve_ctf = SafeTransaction(
+                to=self.usdc_address,
+                operation=OperationType.Call,
+                data=self._encode_approve(self.ctf_exchange, MAX_UINT256),
+                value="0",
+            )
+
+            ctf_approve_ctf_exchange = SafeTransaction(
+                to=self.ctf_address,
+                operation=OperationType.Call,
+                data=self._encode_set_approval_for_all(self.ctf_exchange, True),
+                value="0",
+            )
+
+            # Create approval transactions for Neg Risk CTF Exchange
+            usdc_approve_neg_risk = SafeTransaction(
+                to=self.usdc_address,
+                operation=OperationType.Call,
+                data=self._encode_approve(self.neg_risk_ctf_exchange, MAX_UINT256),
+                value="0",
+            )
+
+            ctf_approve_neg_risk = SafeTransaction(
+                to=self.ctf_address,
+                operation=OperationType.Call,
+                data=self._encode_set_approval_for_all(
+                    self.neg_risk_ctf_exchange, True
+                ),
+                value="0",
+            )
+
+            # Create approval transactions for Neg Risk Adapter
+            usdc_approve_adapter = SafeTransaction(
+                to=self.usdc_address,
+                operation=OperationType.Call,
+                data=self._encode_approve(self.neg_risk_adapter, MAX_UINT256),
+                value="0",
+            )
+
+            ctf_approve_adapter = SafeTransaction(
+                to=self.ctf_address,
+                operation=OperationType.Call,
+                data=self._encode_set_approval_for_all(self.neg_risk_adapter, True),
+                value="0",
+            )
+
+            # Execute all approval transactions together
+            transactions = [
+                usdc_approve_ctf,
+                ctf_approve_ctf_exchange,
+                usdc_approve_neg_risk,
+                ctf_approve_neg_risk,
+                usdc_approve_adapter,
+                ctf_approve_adapter,
+            ]
+
+            self.logger.info("Executing all approval transactions...")
+            result = self.relayer_client.execute(
+                transactions=transactions, metadata="Set all Polymarket approvals for Safe"
+            )
+
+            transaction_data = result.get_transaction()
+            self.logger.info(
+                f"All approvals set successfully! Transaction: {transaction_data}"
+            )
+            return transaction_data, None
+
+        except Exception as e:
+            error_msg = f"Error setting approvals: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _check_erc20_allowance(
+        self, token_address: str, owner: str, spender: str
+    ) -> int:
+        """Check ERC20 allowance.
+
+        :param token_address: The ERC20 token address
+        :param owner: The owner address
+        :param spender: The spender address
+        :return: The allowance amount
+        """
+        allowance_sig = self.w3.keccak(text="allowance(address,address)")[:4].hex()
+        data = allowance_sig + encode(["address", "address"], [owner, spender]).hex()
+        result = self.w3.eth.call(
+            {"to": self.w3.to_checksum_address(token_address), "data": data}
+        )
+        allowance = int.from_bytes(result, byteorder="big")
+        return allowance
+
+    def _check_erc1155_approval(
+        self, token_address: str, owner: str, operator: str
+    ) -> bool:
+        """Check ERC1155 approval.
+
+        :param token_address: The ERC1155 token address
+        :param owner: The owner address
+        :param operator: The operator address
+        :return: True if approved, False otherwise
+        """
+        is_approved_sig = self.w3.keccak(text="isApprovedForAll(address,address)")[
+            :4
+        ].hex()
+        data = (
+            is_approved_sig + encode(["address", "address"], [owner, operator]).hex()
+        )
+        result = self.w3.eth.call(
+            {"to": self.w3.to_checksum_address(token_address), "data": data}
+        )
+        is_approved = int.from_bytes(result, byteorder="big") == 1
+        return is_approved
+
+    def _check_approval(self) -> Tuple[Any, Any]:
+        """Check all required approvals for Polymarket trading.
+
+        Checks:
+        - USDC allowances for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter
+        - CTF approvals for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter
+
+        :return: Tuple of (approval_status_dict, error_message)
+        """
+        try:
+            self.logger.info(
+                f"Checking approvals for Safe: {self.safe_address} on Polygon..."
+            )
+
+            # Check USDC allowances
+            usdc_ctf_exchange_allowance = self._check_erc20_allowance(
+                self.usdc_address, self.safe_address, self.ctf_exchange
+            )
+            usdc_neg_risk_allowance = self._check_erc20_allowance(
+                self.usdc_address, self.safe_address, self.neg_risk_ctf_exchange
+            )
+            usdc_adapter_allowance = self._check_erc20_allowance(
+                self.usdc_address, self.safe_address, self.neg_risk_adapter
+            )
+
+            # Check CTF approvals
+            ctf_ctf_exchange_approved = self._check_erc1155_approval(
+                self.ctf_address, self.safe_address, self.ctf_exchange
+            )
+            ctf_neg_risk_approved = self._check_erc1155_approval(
+                self.ctf_address, self.safe_address, self.neg_risk_ctf_exchange
+            )
+            ctf_adapter_approved = self._check_erc1155_approval(
+                self.ctf_address, self.safe_address, self.neg_risk_adapter
+            )
+
+            # Build response
+            approval_status = {
+                "safe_address": self.safe_address,
+                "usdc_allowances": {
+                    "ctf_exchange": usdc_ctf_exchange_allowance,
+                    "neg_risk_ctf_exchange": usdc_neg_risk_allowance,
+                    "neg_risk_adapter": usdc_adapter_allowance,
+                },
+                "ctf_approvals": {
+                    "ctf_exchange": ctf_ctf_exchange_approved,
+                    "neg_risk_ctf_exchange": ctf_neg_risk_approved,
+                    "neg_risk_adapter": ctf_adapter_approved,
+                },
+                "all_approvals_set": all(
+                    [
+                        usdc_ctf_exchange_allowance > 0,
+                        usdc_neg_risk_allowance > 0,
+                        usdc_adapter_allowance > 0,
+                        ctf_ctf_exchange_approved,
+                        ctf_neg_risk_approved,
+                        ctf_adapter_approved,
+                    ]
+                ),
+            }
+
+            self.logger.info(f"Approval check results: {approval_status}")
+            return approval_status, None
+
+        except Exception as e:
+            error_msg = f"Error checking approvals: {str(e)}"
             self.logger.exception(error_msg)
             return None, error_msg

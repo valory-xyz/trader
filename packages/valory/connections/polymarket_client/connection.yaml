@@ -20,7 +20,12 @@ config:
   chain_id: 137
   safe_contract_addresses: {}
   remote_builder_url: http://localhost:5001/sign
-  polymarket_builder_program_enabled: false
+  polymarket_builder_program_enabled: true
+  usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+  ctf_address: '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045'
+  ctf_exchange: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E'
+  neg_risk_ctf_exchange: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
+  neg_risk_adapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
 excluded_protocols: []
 restricted_to_protocols: []
 dependencies: {}

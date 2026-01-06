@@ -70,6 +70,11 @@ PATH_TO_VAR = {
     "models/params/args/is_running_on_polymarket": "IS_RUNNING_ON_POLYMARKET",
     "models/params/args/polymarket_builder_program_enabled": "POLYMARKET_BUILDER_PROGRAM_ENABLED",
     "config/polymarket_builder_program_enabled": "POLYMARKET_BUILDER_PROGRAM_ENABLED",
+    "config/usdc_address": "USDC_ADDRESS",
+    "config/ctf_address": "CTF_ADDRESS",
+    "config/ctf_exchange": "CTF_EXCHANGE",
+    "config/neg_risk_ctf_exchange": "NEG_RISK_CTF_EXCHANGE",
+    "config/neg_risk_adapter": "NEG_RISK_ADAPTER",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
