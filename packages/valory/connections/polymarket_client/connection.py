@@ -19,15 +19,19 @@
 # ------------------------------------------------------------------------------
 
 """Genai connection."""
-
 import json
 from typing import Any, Callable, Dict, Tuple, cast
 
+import requests
 from aea.configurations.base import PublicId
 from aea.connections.base import BaseSyncConnection
 from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
+from eth_abi import encode
+from py_builder_relayer_client.client import RelayClient
+from py_builder_relayer_client.models import OperationType, SafeTransaction
+from py_builder_signing_sdk.config import BuilderConfig, RemoteBuilderConfig
 from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import MarketOrderArgs, OrderType
 from py_clob_client.exceptions import PolyApiException
@@ -40,6 +44,11 @@ from packages.valory.protocols.srr.message import SrrMessage
 
 
 PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
+DATA_API_BASE_URL = "https://data-api.polymarket.com"
+RELAYER_URL = "https://relayer-v2.polymarket.com/"
+CONDITIONAL_TOKENS_CONTRACT = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
+PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
+CHAIN_ID = 137  # Polygon
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -101,15 +110,40 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         host = self.configuration.config.get("host")
         chain_id = self.configuration.config.get("chain_id")
+        builder_program_enabled = self.configuration.config.get(
+            "polymarket_builder_program_enabled", False
+        )
+
+        self.dialogues = SrrDialogues(connection_id=PUBLIC_ID)
+
+        # Initialize relay client if builder program is enabled
+        self.relayer_client = None
+        self.builder_config = None
+        if builder_program_enabled:
+            remote_builder_url = self.configuration.config.get("remote_builder_url")
+            print(
+                f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Initializing RelayClient with remote builder URL: {remote_builder_url}"
+            )
+            remote_builder_config = RemoteBuilderConfig(url=remote_builder_url)
+            self.builder_config = BuilderConfig(
+                remote_builder_config=remote_builder_config
+            )
+
+        self.relayer_client = RelayClient(
+            relayer_url=RELAYER_URL,
+            chain_id=chain_id,
+            private_key=self.connection_private_key,
+            builder_config=self.builder_config,
+        )
         self.client = ClobClient(
             host,
             key=self.connection_private_key,
             chain_id=chain_id,
             signature_type=2,
             funder=self.safe_address,
+            builder_config=self.builder_config,
         )
         self.client.set_api_creds(self.client.create_or_derive_api_creds())
-        self.dialogues = SrrDialogues(connection_id=PUBLIC_ID)
 
     # TODO:
     @property
@@ -222,6 +256,9 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.PLACE_BET: self._place_bet,
             RequestType.FETCH_MARKETS: self._fetch_markets,
             RequestType.FETCH_MARKET: self._fetch_market,
+            RequestType.GET_POSITIONS: self._get_positions,
+            RequestType.FETCH_ALL_POSITIONS: self._fetch_all_positions,
+            RequestType.REDEEM_POSITIONS: self._redeem_positions,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -283,3 +320,159 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _fetch_market(self, condition_id: str) -> Any:
         """Fetch a specific market from Polymarket."""
         pass
+
+    def _get_positions(
+        self,
+        size_threshold: int = 1,
+        limit: int = 100,
+        sort_by: str = "TOKENS",
+        sort_direction: str = "DESC",
+        redeemable: bool = True,
+    ) -> Tuple[Any, Any]:
+        """Get positions from Polymarket for the safe address.
+
+        :param size_threshold: Minimum position size threshold
+        :param limit: Maximum number of positions to return
+        :param sort_by: Field to sort by (e.g., TOKENS)
+        :param sort_direction: Sort direction (ASC or DESC)
+        :param redeemable: Filter for redeemable positions only
+        :return: Tuple of (positions_data, error_message)
+        """
+        try:
+            url = f"{DATA_API_BASE_URL}/positions"
+            params = {
+                "sizeThreshold": size_threshold,
+                "limit": limit,
+                "sortBy": sort_by,
+                "sortDirection": sort_direction,
+                "redeemable": redeemable,
+                "user": self.safe_address,
+            }
+
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+
+            positions = response.json()
+            self.logger.info(
+                f"Fetched {len(positions)} positions for {self.safe_address}"
+            )
+            return positions, None
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Error fetching positions: {str(e)}"
+            self.logger.error(error_msg)
+            return None, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error fetching positions: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _fetch_all_positions(
+        self,
+        size_threshold: int = 1,
+        sort_by: str = "TOKENS",
+        sort_direction: str = "DESC",
+        redeemable: bool = True,
+    ) -> Tuple[Any, Any]:
+        """Fetch all positions from Polymarket by paginating through all results for the safe address.
+
+        :param size_threshold: Minimum position size threshold
+        :param sort_by: Field to sort by (e.g., TOKENS)
+        :param sort_direction: Sort direction (ASC or DESC)
+        :param redeemable: Filter for redeemable positions only
+        :return: Tuple of (all_positions_data, error_message)
+        """
+        all_positions = []
+        limit = 100  # Max limit per request
+
+        try:
+            while True:
+                positions, error = self._get_positions(
+                    size_threshold=size_threshold,
+                    limit=limit,
+                    sort_by=sort_by,
+                    sort_direction=sort_direction,
+                    redeemable=redeemable,
+                )
+
+                if error:
+                    return None, error
+
+                if not positions or len(positions) == 0:
+                    break
+
+                all_positions.extend(positions)
+
+                # If we got fewer results than the limit, we've reached the end
+                if len(positions) < limit:
+                    break
+
+            self.logger.info(
+                f"Fetched total of {len(all_positions)} positions for {self.safe_address}"
+            )
+            return all_positions, None
+
+        except Exception as e:
+            error_msg = f"Unexpected error fetching all positions: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _redeem_positions(
+        self, condition_id: str, index_sets: list[int], collateral_token: str
+    ) -> Tuple[Any, Any]:
+        """Redeem positions on Polymarket.
+
+        :param condition_id: The condition ID (hex string with or without 0x prefix)
+        :param index_sets: List of index sets to redeem (uint256[])
+        :param collateral_token: The collateral token address
+        :return: Tuple of (transaction_result, error_message)
+        """
+        try:
+            # Check if relayer client is initialized
+            if self.relayer_client is None:
+                error_msg = "Relayer client not initialized. Enable polymarket_builder_program_enabled in config."
+                self.logger.error(error_msg)
+                return None, error_msg
+
+            # Convert condition_id to bytes
+            condition_id_clean = condition_id.removeprefix("0x")
+            condition_id_bytes = bytes.fromhex(condition_id_clean)
+
+            # Encode redeemPositions function call
+            selector = bytes.fromhex(
+                "01b7037c"
+            )  # redeemPositions(address,bytes32,bytes32,uint256[])
+            encoded_args = encode(
+                ["address", "bytes32", "bytes32", "uint256[]"],
+                [
+                    collateral_token,
+                    PARENT_COLLECTION_ID,
+                    condition_id_bytes,
+                    index_sets,
+                ],
+            )
+            calldata = selector + encoded_args
+
+            # Create SafeTransaction
+            tx = SafeTransaction(
+                to=CONDITIONAL_TOKENS_CONTRACT,
+                operation=OperationType.Call,
+                data="0x" + calldata.hex(),
+                value="0",
+            )
+
+            # Execute transaction
+            result = self.relayer_client.execute(
+                transactions=[tx], metadata="Redeem conditional tokens"
+            )
+
+            transaction_data = result.get_transaction()
+            self.logger.info(
+                f"Redeemed positions for condition {condition_id}: {transaction_data}"
+            )
+            return transaction_data, None
+
+        except Exception as e:
+            error_msg = f"Error redeeming positions: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg

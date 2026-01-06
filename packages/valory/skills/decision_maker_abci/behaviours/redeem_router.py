@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
@@ -18,17 +17,27 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Request types for Polymarket connection."""
+"""This module contains the redeem router state of the decision-making abci app."""
 
-from enum import Enum
+from typing import Generator
+
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.payloads import RedeemRouterPayload
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
 
 
-class RequestType(Enum):
-    """Enum for supported Polymarket request types."""
+class RedeemRouterBehaviour(DecisionMakerBaseBehaviour):
+    """RedeemRouterBehaviour."""
 
-    PLACE_BET = "place_bet"
-    FETCH_MARKETS = "fetch_markets"
-    FETCH_MARKET = "fetch_market"
-    GET_POSITIONS = "get_positions"
-    FETCH_ALL_POSITIONS = "fetch_all_positions"
-    REDEEM_POSITIONS = "redeem_positions"
+    matching_round = RedeemRouterRound
+
+    def async_act(self) -> Generator:
+        """Do the action."""
+
+        payload = RedeemRouterPayload(sender=self.context.agent_address, vote=True)
+
+        yield from self.finish_behaviour(payload)

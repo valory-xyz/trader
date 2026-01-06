@@ -136,3 +136,19 @@ class SellOutcomeTokensPayload(MultisigTxPayload):
 
     sell_amount: Optional[int] = None
     vote: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class RedeemRouterPayload(VotingPayload):
+    """Represents a payload for Redeem router round."""
+
+
+@dataclass(frozen=True)
+class PolymarketRedeemPayload(MultisigTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
+
+    mech_tools: str = "[]"
+    policy: Optional[str] = None
+    utilized_tools: Optional[str] = None
+    redeemed_condition_ids: Optional[str] = None
+    payout_so_far: Optional[int] = None

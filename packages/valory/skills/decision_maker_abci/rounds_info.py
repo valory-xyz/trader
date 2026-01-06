@@ -227,6 +227,16 @@ ROUNDS_INFO = {
         "description": "Retrieves the latest performance statistics for the agent.",
         "transitions": {},
     },
+    "redeem_router_round": {
+        "name": "Deciding between redeem tools",
+        "description": "A round for switching between Omen and Polymarket redeem rounds.",
+        "transitions": {},
+    },
+    "polymarket_redeem_round": {
+        "name": "Redeeming winnings from Polymarket",
+        "description": "Redeems winnings from resolved Polymarket bets.",
+        "transitions": {},
+    },
 }
 
 

@@ -19,6 +19,8 @@ config:
   host: https://clob.polymarket.com
   chain_id: 137
   safe_contract_addresses: {}
+  remote_builder_url: http://localhost:5001/sign
+  polymarket_builder_program_enabled: false
 excluded_protocols: []
 restricted_to_protocols: []
 dependencies: {}

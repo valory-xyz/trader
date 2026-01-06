@@ -483,6 +483,9 @@ class DecisionMakerParams(
         self.is_running_on_polymarket: bool = self._ensure(
             "is_running_on_polymarket", kwargs, bool
         )
+        self.polymarket_builder_program_enabled: bool = self._ensure(
+            "polymarket_builder_program_enabled", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     @property

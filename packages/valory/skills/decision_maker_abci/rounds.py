@@ -62,11 +62,17 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
     PolymarketBetPlacementRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
+    PolymarketRedeemRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -278,11 +284,11 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: ImpossibleRound,
         },
         PolymarketBetPlacementRound: {
-            Event.DONE: RedeemRound,
-            Event.BET_PLACEMENT_DONE: RedeemRound,
+            Event.DONE: RedeemRouterRound,
+            Event.BET_PLACEMENT_DONE: RedeemRouterRound,
             Event.BET_PLACEMENT_FAILED: PolymarketBetPlacementRound,
             # skip the bet placement tx
-            Event.MOCK_TX: RedeemRound,
+            Event.MOCK_TX: RedeemRouterRound,
             # degenerate round on purpose, owner must refill the safe
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
             Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
@@ -304,6 +310,18 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # this is here because of `autonomy analyse fsm-specs` falsely
             # reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
+        },
+        RedeemRouterRound: {
+            Event.DONE: RedeemRound,
+            Event.POLYMARKET_DONE: PolymarketRedeemRound,
+            Event.NO_MAJORITY: RedeemRouterRound,
+            Event.NONE: RedeemRouterRound,
+        },
+        PolymarketRedeemRound: {
+            Event.DONE: FinishedDecisionMakerRound,
+            Event.NO_MAJORITY: PolymarketRedeemRound,
+            Event.NONE: PolymarketRedeemRound,
+            Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
         },
         HandleFailedTxRound: {
             Event.BLACKLIST: BlacklistingRound,
