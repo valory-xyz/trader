@@ -20,33 +20,26 @@
 """This module contains the sampling state of the decision-making abci app."""
 
 from packages.valory.skills.abstract_round_abci.base import (
-    BaseSynchronizedData,
+    CollectSameUntilThresholdRound,
+    get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketPostSetApprovalPayload,
 )
-from enum import Enum
-from typing import Optional, Tuple, cast
 
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
-    TxPreparationRound,
 )
 
 
-class PolymarketPostSetApprovalRound(TxPreparationRound):
+class PolymarketPostSetApprovalRound(CollectSameUntilThresholdRound):
     """A round for post setting approval."""
 
     payload_class = PolymarketPostSetApprovalPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
     none_event = Event.NONE
-
-    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
-        """Process the end of the block."""
-        res = super().end_block()
-        if res is None:
-            return None
-
-        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-
-        return synced_data, event
+    no_majority_event = Event.NO_MAJORITY
+    selection_key = (get_name(SynchronizedData.participant_to_selection),)
+    collection_key = get_name(SynchronizedData.participant_to_selection)

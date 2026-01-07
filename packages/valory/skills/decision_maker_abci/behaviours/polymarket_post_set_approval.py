@@ -89,9 +89,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(f"Error checking approvals: {error_msg}")
             self.payload = PolymarketPostSetApprovalPayload(
                 self.context.agent_address,
-                None,
-                None,
-                False,
+                "error",
             )
             return
 
@@ -115,12 +113,11 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
                 f"⚠️  Some approvals may not be set correctly: {response_json}"
             )
 
-        # Create the payload
+        # Create the payload with approval check result
+        vote = "success" if all_approvals_set else "partial"
         self.payload = PolymarketPostSetApprovalPayload(
             self.context.agent_address,
-            None,
-            None,
-            False,
+            vote,
         )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:

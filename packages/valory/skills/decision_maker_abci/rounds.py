@@ -51,6 +51,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     ImpossibleRound,
@@ -201,6 +202,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound,
         DecisionReceiveRound,
         RedeemRound,
+        PolymarketPostSetApprovalRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
@@ -309,7 +311,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         PolymarketSetApprovalRound: {
             Event.DONE: PolymarketPostSetApprovalRound,
-            # Event.PREPARE_TX: PolymarketPostSetApprovalRound,
+            Event.PREPARE_TX: FinishedSetApprovalTxPreparationRound,
             # skip the bet placement tx
             Event.SKIP: BenchmarkingModeDisabledRound,
             # degenerate round on purpose, owner must refill the safe
@@ -365,6 +367,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound: {},
         BenchmarkingModeDisabledRound: {},
         FinishedDecisionRequestRound: {},
+        FinishedSetApprovalTxPreparationRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
         RefillRequiredRound: {},
@@ -399,6 +402,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound,
         BenchmarkingModeDisabledRound,
         FinishedDecisionRequestRound,
+        FinishedSetApprovalTxPreparationRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
         RefillRequiredRound,
@@ -419,6 +423,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         RandomnessRound: set(),
         CheckBenchmarkingModeRound: set(),
+        PolymarketPostSetApprovalRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
@@ -428,6 +433,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BenchmarkingModeDisabledRound: set(),
         FinishedDecisionRequestRound: set(),
+        FinishedSetApprovalTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
         FinishedWithoutRedeemingRound: set(),
         RefillRequiredRound: set(),
