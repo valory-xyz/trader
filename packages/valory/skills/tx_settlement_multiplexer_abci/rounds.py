@@ -39,6 +39,9 @@ from packages.valory.skills.decision_maker_abci.states.base import SynchronizedD
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
+    PolymarketRedeemRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
     PolymarketSetApprovalRound,
 )
@@ -112,6 +115,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
             SellOutcomeTokensRound.auto_round_id(): Event.SELL_OUTCOME_TOKENS_DONE,
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
+            PolymarketRedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
             MechPurchaseSubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
             PolymarketSetApprovalRound.auto_round_id(): Event.SET_APPROVAL_DONE,

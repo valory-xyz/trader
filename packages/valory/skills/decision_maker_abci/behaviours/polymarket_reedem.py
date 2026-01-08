@@ -21,11 +21,13 @@
 
 from typing import Generator, cast
 
+from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+    MultisendBatch,
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketRedeemPayload
@@ -100,10 +102,42 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
 
-        redeemable_positions = yield from self._fetch_redeemable_positions()
-        self.context.logger.info(
-            f"Fetched {len(redeemable_positions)} redeemable positions"
-        )
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            # Fetch redeemable positions once for both flows
+            redeemable_positions = yield from self._fetch_redeemable_positions()
+            self.context.logger.info(
+                f"Fetched {len(redeemable_positions)} redeemable positions"
+            )
+
+            # Check if builder program is enabled
+            if self.context.params.polymarket_builder_program_enabled:
+                self.context.logger.info(
+                    "Polymarket builder program enabled - calling connection to redeem positions..."
+                )
+                # Call the polymarket client to redeem positions
+                yield from self._redeem_via_builder(redeemable_positions)
+            else:
+                self.context.logger.info(
+                    "Polymarket builder program disabled - preparing redemption transaction..."
+                )
+                # Prepare Safe transaction for redemption
+                tx_submitter = self.matching_round.auto_round_id()
+                tx_hash = yield from self._prepare_redeem_tx(redeemable_positions)
+
+                self.payload = PolymarketRedeemPayload(
+                    sender=self.context.agent_address,
+                    tx_submitter=tx_submitter,
+                    tx_hash=tx_hash,
+                    mocking_mode=False,
+                )
+
+        yield from self.finish_behaviour(self.payload)
+
+    def _redeem_via_builder(self, redeemable_positions: list) -> Generator:
+        """Redeem positions via builder flow (connection request).
+
+        :param redeemable_positions: List of redeemable positions to redeem
+        """
 
         # Redeem each position
         for position in redeemable_positions:
@@ -124,8 +158,103 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
             self.context.logger.info(f"Redemption result for {condition_id}: {result}")
 
-        payload = PolymarketRedeemPayload(
+        self.payload = PolymarketRedeemPayload(
             sender=self.context.agent_address,
+            tx_submitter=None,
+            tx_hash=None,
+            mocking_mode=False,
         )
 
-        yield from self.finish_behaviour(payload)
+    def _prepare_redeem_tx(
+        self, redeemable_positions: list
+    ) -> Generator[None, None, str]:
+        """Prepare Safe transaction for redeeming positions.
+
+        :param redeemable_positions: List of redeemable positions to redeem
+        :return: Transaction hash hex string
+        """
+        if not redeemable_positions:
+            self.context.logger.info("No redeemable positions found")
+            return ""
+
+        # Get contract addresses from params
+        ctf_address = self.params.polymarket_ctf_address
+
+        # Build redemption transactions and add to multisend_batches
+        for position in redeemable_positions:
+            condition_id = position.get("conditionId")
+            outcome_index = position.get("outcomeIndex")
+            outcome = position.get("outcome")
+            size = position.get("size")
+
+            self.context.logger.info(
+                f"Preparing redeem tx for position: {condition_id} - {outcome} (size: {size})"
+            )
+
+            # Build the redemption data
+            index_sets = [outcome_index + 1]
+            redeem_data = self._build_redeem_positions_data(
+                collateral_token=COLLATERAL_TOKEN_ADDRESS,
+                condition_id=condition_id,
+                index_sets=index_sets,
+            )
+
+            # Add to multisend batch
+            redeem_batch = MultisendBatch(
+                to=ctf_address,
+                data=HexBytes(redeem_data),
+                value=0,
+            )
+            self.multisend_batches.append(redeem_batch)
+
+        # Build the multisend transaction
+        success = yield from self._build_multisend_data()
+        if not success:
+            self.context.logger.error("Failed to build multisend data for redemptions")
+            return ""
+
+        success = yield from self._build_multisend_safe_tx_hash()
+        if not success:
+            self.context.logger.error("Failed to build safe tx hash for redemptions")
+            return ""
+
+        return self.tx_hex
+
+    def _build_redeem_positions_data(
+        self, collateral_token: str, condition_id: str, index_sets: list
+    ) -> str:
+        """Build redeemPositions function data.
+
+        Function signature: redeemPositions(address,bytes32,bytes32,uint256[])
+        - collateralToken: address
+        - parentCollectionId: bytes32 (always 0x0000...0000)
+        - conditionId: bytes32
+        - indexSets: uint256[]
+        """
+        # redeemPositions(address,bytes32,bytes32,uint256[])
+        function_signature = "0x01b7037c"  # keccak256("redeemPositions(address,bytes32,bytes32,uint256[])")[:4]
+
+        # Encode parameters
+        # collateralToken (address)
+        collateral_padded = collateral_token[2:].zfill(64).lower()
+
+        # parentCollectionId (bytes32) - always zeros
+        parent_collection = "0" * 64
+
+        # conditionId (bytes32)
+        condition_id_clean = condition_id.removeprefix("0x")
+        condition_id_padded = condition_id_clean.zfill(64).lower()
+
+        # indexSets (uint256[])
+        # Array encoding: offset to array data (4 * 32 bytes from start = 0x80)
+        array_offset = (
+            "0000000000000000000000000000000000000000000000000000000000000080"
+        )
+
+        # Array length
+        array_length = hex(len(index_sets))[2:].zfill(64)
+
+        # Array elements
+        array_elements = "".join([hex(idx)[2:].zfill(64) for idx in index_sets])
+
+        return f"{function_signature}{collateral_padded}{parent_collection}{condition_id_padded}{array_offset}{array_length}{array_elements}"

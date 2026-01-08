@@ -51,6 +51,8 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedPolymarketRedeemRound,
+    FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
@@ -61,16 +63,16 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
-    PolymarketBetPlacementRound
-)
-from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
-    PolymarketSetApprovalRound
+    PolymarketBetPlacementRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
-    PolymarketPostSetApprovalRound
+    PolymarketPostSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
     PolymarketRedeemRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
+    PolymarketSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
@@ -90,7 +92,6 @@ from packages.valory.skills.decision_maker_abci.states.tool_selection import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
-
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
@@ -188,7 +189,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 19.
             - none: 17.
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedRedeemTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -354,7 +355,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: RedeemRouterRound,
         },
         PolymarketRedeemRound: {
-            Event.DONE: FinishedDecisionMakerRound,
+            Event.DONE: FinishedPolymarketRedeemRound,
+            Event.PREPARE_TX: FinishedRedeemTxPreparationRound,
             Event.NO_MAJORITY: PolymarketRedeemRound,
             Event.NONE: PolymarketRedeemRound,
             Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
@@ -367,6 +369,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound: {},
         BenchmarkingModeDisabledRound: {},
         FinishedDecisionRequestRound: {},
+        FinishedRedeemTxPreparationRound: {},
+        FinishedPolymarketRedeemRound: {},
         FinishedSetApprovalTxPreparationRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
@@ -402,6 +406,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound,
         BenchmarkingModeDisabledRound,
         FinishedDecisionRequestRound,
+        FinishedRedeemTxPreparationRound,
+        FinishedPolymarketRedeemRound,
         FinishedSetApprovalTxPreparationRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
@@ -433,6 +439,11 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BenchmarkingModeDisabledRound: set(),
         FinishedDecisionRequestRound: set(),
+        FinishedRedeemTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedPolymarketRedeemRound: set(),
         FinishedSetApprovalTxPreparationRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
