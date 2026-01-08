@@ -70,6 +70,7 @@ class PerformanceMetricsData:
     all_time_profit: Optional[float] = None
     funds_locked_in_markets: Optional[float] = None
     available_funds: Optional[float] = None
+    roi: Optional[float] = None
 
 
 @dataclass

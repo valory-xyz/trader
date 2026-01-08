@@ -80,6 +80,8 @@ class FetchPerformanceSummaryBehaviour(
         """Initialize Behaviour."""
         super().__init__(**kwargs)
         self._agent_performance_summary: Optional[AgentPerformanceSummary] = None
+        self._final_roi: Optional[float] = None
+        self._partial_roi: Optional[float] = None
         self._total_mech_requests: Optional[int] = None
         self._open_market_requests: Optional[int] = None
 
@@ -255,6 +257,8 @@ class FetchPerformanceSummaryBehaviour(
             (total_market_payout + total_olas_rewards_payout_in_usd - total_costs)
             * PERCENTAGE_FACTOR
         ) / total_costs
+        self._final_roi = final_roi
+        self._partial_roi = partial_roi
 
         return final_roi, partial_roi
 
@@ -388,11 +392,15 @@ class FetchPerformanceSummaryBehaviour(
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
         
+        # Convert from percentage (e.g., -56) to decimal (e.g., -0.56)
+        roi_decimal = round(self._partial_roi / 100, 2) if self._partial_roi is not None else None
+        
         return PerformanceMetricsData(
             all_time_funds_used=round(all_time_funds_used, 2) if all_time_funds_used else None,
             all_time_profit=round(all_time_profit, 2) if all_time_profit else None,
             funds_locked_in_markets=round(funds_locked_in_markets, 2) if funds_locked_in_markets else None,
             available_funds=round(available_funds, 2) if available_funds else None,
+            roi=roi_decimal,
         )
 
 
