@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -38,6 +38,8 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     PredictionHistory,
     PerformanceMetricsData,
     PerformanceStatsData,
+    ProfitDataPoint,
+    ProfitOverTimeData,
     SharedState,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
@@ -63,7 +65,7 @@ INVALID_ANSWER_HEX = (
 
 PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
-
+SECONDS_PER_DAY = 86400
 NA = "N/A"
 
 
@@ -469,6 +471,268 @@ class FetchPerformanceSummaryBehaviour(
                 items=[],
             )
 
+
+    def _calculate_mech_fees_for_day(self, profit_participants: list, mech_request_lookup: dict) -> float:
+        """
+        Calculate mech fees for a specific day based on profit participants using cached lookup.
+        
+        :param profit_participants: List of profit participants for the day
+        :param mech_request_lookup: Cached lookup map of question_title -> count
+        :return: Total mech fees for the day
+        """
+        if not profit_participants:
+            return 0.0
+        
+        # Extract question titles from profit participants and count mech requests
+        mech_fee_count = 0
+        for participant in profit_participants:
+            question = participant.get("question", "")
+            if question:
+                # Split by separator and take the first part (question title)
+                title = question.split(QUESTION_DATA_SEPARATOR)[0]
+                if title:
+                    # Use cached lookup instead of querying
+                    mech_fee_count += mech_request_lookup.get(title, 0)
+        
+        # Calculate fees: 0.01 xDAI per request
+        total_mech_fees = mech_fee_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+        
+        return total_mech_fees
+
+    def _build_mech_request_lookup(self, agent_safe_address: str) -> Generator[None, None, dict]:
+        """
+        Build a lookup map of question titles to mech request counts.
+        
+        :param agent_safe_address: The agent's safe address
+        :return: Dictionary mapping question titles to request counts
+        """
+        # Fetch all mech requests for this agent
+        all_mech_requests = yield from self._fetch_all_mech_requests(agent_safe_address)
+        
+        if not all_mech_requests:
+            self.context.logger.warning("No mech requests found for agent")
+            return {}
+        
+        # Build lookup map: question_title -> count
+        lookup = {}
+        for request in all_mech_requests:
+            title = request.get("questionTitle", "")
+            if title:
+                lookup[title] = lookup.get(title, 0) + 1
+        
+        self.context.logger.info(f"Built mech request lookup with {len(lookup)} unique questions, {len(all_mech_requests)} total requests")
+        return lookup
+
+    def _build_profit_over_time_data(self) -> Generator[None, None, Optional[ProfitOverTimeData]]:
+        """
+        Build profit over time data with efficient backfill and incremental update strategy.
+        
+        :return: ProfitOverTimeData or None
+        """
+        agent_safe_address = self.synchronized_data.safe_contract_address.lower()
+        current_timestamp = self.shared_state.synced_timestamp
+        
+        # Check if we have existing profit data
+        existing_summary = self.shared_state.read_existing_performance_summary()
+        existing_profit_data = existing_summary.profit_over_time
+        
+        # Determine if this is initial backfill or incremental update
+        if not existing_profit_data or not existing_profit_data.data_points:
+            # INITIAL BACKFILL - First time or no existing data
+            self.context.logger.info("Performing initial profit over time backfill...")
+            return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
+        else:
+            # INCREMENTAL UPDATE - Check if we need to add new days
+            self.context.logger.info("Checking for incremental profit over time updates...")
+            return (yield from self._perform_incremental_update(agent_safe_address, current_timestamp, existing_profit_data))
+
+    def _perform_initial_backfill(self, agent_safe_address: str, current_timestamp: int) -> Generator[None, None, Optional[ProfitOverTimeData]]:
+        """Perform initial backfill of all profit data."""
+        # Use existing agent details from the summary instead of fetching again
+        existing_summary = self.shared_state.read_existing_performance_summary()
+        if existing_summary.agent_details and existing_summary.agent_details.created_at:
+            # Parse ISO timestamp back to unix timestamp
+            created_at_iso = existing_summary.agent_details.created_at
+            creation_dt = datetime.strptime(created_at_iso, "%Y-%m-%dT%H:%M:%SZ")
+            creation_timestamp = int(creation_dt.timestamp())
+        else:
+            self.context.logger.error("Agent details not available in existing summary")
+            return ProfitOverTimeData(
+                last_updated=current_timestamp,
+                total_days=0,
+                data_points=[],
+                mech_request_lookup={}
+            )
+        
+        # Fetch ALL daily profit statistics from creation to now
+        daily_stats = yield from self._fetch_daily_profit_statistics(
+            agent_safe_address, creation_timestamp, current_timestamp
+        )
+        
+        if daily_stats is None:
+            self.context.logger.error("Failed to fetch daily profit statistics")
+            return None
+        
+        if not daily_stats:
+            self.context.logger.info("No daily profit statistics found - agent may not have any trading activity yet")
+            return ProfitOverTimeData(
+                last_updated=current_timestamp,
+                total_days=0,
+                data_points=[],
+                mech_request_lookup={}
+            )
+        
+        self.context.logger.info(f"Initial backfill: Found {len(daily_stats)} daily profit statistics")
+        
+        # Build mech request lookup ONCE for all historical data
+        mech_request_lookup = yield from self._build_mech_request_lookup(agent_safe_address)
+        
+        # Process all daily statistics
+        data_points = []
+        cumulative_profit = 0.0
+        
+        for stat in daily_stats:
+            date_timestamp = int(stat["date"])
+            date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
+            daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
+            
+            # Calculate mech fees using cached lookup
+            profit_participants = stat.get("profitParticipants", [])
+            mech_fees = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+            
+            daily_profit_net = daily_profit_raw - mech_fees
+            cumulative_profit += daily_profit_net
+            
+            data_points.append(ProfitDataPoint(
+                date=date_str,
+                timestamp=date_timestamp,
+                daily_profit=round(daily_profit_net, 3),
+                cumulative_profit=round(cumulative_profit, 3)
+            ))
+        
+        return ProfitOverTimeData(
+            last_updated=current_timestamp,
+            total_days=len(data_points),
+            data_points=data_points,
+            mech_request_lookup=mech_request_lookup
+        )
+
+    def _perform_incremental_update(self, agent_safe_address: str, current_timestamp: int, existing_data: ProfitOverTimeData) -> Generator[None, None, Optional[ProfitOverTimeData]]:
+        """Perform incremental update for new days only."""
+        # Check if we're on a new day
+        current_day = current_timestamp // SECONDS_PER_DAY
+        last_updated_day = existing_data.last_updated // SECONDS_PER_DAY
+        
+        if current_day == last_updated_day:
+            # Same day, no update needed
+            self.context.logger.info("Profit over time data is up to date (same day)")
+            return existing_data
+        
+        # Get the timestamp of the last data point to fetch only new data
+        last_data_timestamp = existing_data.data_points[-1].timestamp if existing_data.data_points else 0
+        
+        # Fetch only NEW daily profit statistics (after last timestamp)
+        new_daily_stats = yield from self._fetch_daily_profit_statistics(
+            agent_safe_address, last_data_timestamp + 1, current_timestamp
+        )
+        
+        if new_daily_stats is None:
+            self.context.logger.error("Failed to fetch new daily profit statistics")
+            return existing_data
+        
+        if not new_daily_stats:
+            self.context.logger.info("No new daily profit statistics found")
+            # Update timestamp but keep existing data
+            existing_data.last_updated = current_timestamp
+            return existing_data
+        
+        self.context.logger.info(f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics")
+        
+        # Get existing mech request lookup or build new one if missing
+        mech_request_lookup = existing_data.mech_request_lookup or {}
+        
+        # For new profit participants, we need to update the mech request lookup
+        new_question_titles = set()
+        for stat in new_daily_stats:
+            for participant in stat.get("profitParticipants", []):
+                question = participant.get("question", "")
+                if question:
+                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
+                    if title and title not in mech_request_lookup:
+                        new_question_titles.add(title)
+        
+        # Fetch mech requests only for new question titles
+        if new_question_titles:
+            self.context.logger.info(f"Fetching mech requests for {len(new_question_titles)} new question titles")
+            new_mech_requests = yield from self._fetch_mech_requests_by_titles(agent_safe_address, list(new_question_titles))
+            
+            # Update lookup with new requests
+            if new_mech_requests:
+                for request in new_mech_requests:
+                    title = request.get("questionTitle", "")
+                    if title:
+                        mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
+        
+        # Process new daily statistics
+        new_data_points = list(existing_data.data_points)  # Copy existing points
+        cumulative_profit = existing_data.data_points[-1].cumulative_profit if existing_data.data_points else 0.0
+        
+        for stat in new_daily_stats:
+            date_timestamp = int(stat["date"])
+            date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
+            daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
+            
+            # Calculate mech fees using updated lookup
+            profit_participants = stat.get("profitParticipants", [])
+            mech_fees = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+            
+            daily_profit_net = daily_profit_raw - mech_fees
+            cumulative_profit += daily_profit_net
+            
+            new_data_points.append(ProfitDataPoint(
+                date=date_str,
+                timestamp=date_timestamp,
+                daily_profit=round(daily_profit_net, 3),
+                cumulative_profit=round(cumulative_profit, 3)
+            ))
+        
+        return ProfitOverTimeData(
+            last_updated=current_timestamp,
+            total_days=len(new_data_points),
+            data_points=new_data_points,
+            mech_request_lookup=mech_request_lookup
+        )
+
+    def _update_profit_over_time_storage(self) -> Generator[None, None, None]:
+        """Update profit over time data in storage."""
+        
+        # Check if we need to update (daily check)
+        existing_summary = self.shared_state.read_existing_performance_summary()
+        current_timestamp = self.shared_state.synced_timestamp
+        
+        # Check if profit_over_time exists and is up to date
+        if existing_summary.profit_over_time:
+            last_updated = existing_summary.profit_over_time.last_updated
+            current_day = current_timestamp // 86400  # Convert to days
+            last_updated_day = last_updated // 86400
+            
+            if current_day == last_updated_day:
+                # Same day, no update needed
+                self.context.logger.info("Profit over time data is up to date")
+                return
+        
+        # Build new profit over time data
+        self.context.logger.info("Updating profit over time data...")
+        profit_data = yield from self._build_profit_over_time_data()
+        
+        if profit_data:
+            # Update the summary with new profit data
+            existing_summary.profit_over_time = profit_data
+            self.shared_state.overwrite_performance_summary(existing_summary)
+            self.context.logger.info(f"Updated profit over time data with {profit_data.total_days} days")
+        else:
+            self.context.logger.warning("Failed to build profit over time data")
+
     def _fetch_agent_performance_summary(self) -> Generator:
         """Fetch the agent performance summary"""
         self._total_mech_requests = None
@@ -504,6 +768,7 @@ class FetchPerformanceSummaryBehaviour(
         agent_details = yield from self._fetch_agent_details_data()
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
+        profit_over_time = yield from self._build_profit_over_time_data()
 
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp, 
@@ -512,6 +777,7 @@ class FetchPerformanceSummaryBehaviour(
             agent_details=agent_details,
             agent_performance=agent_performance,
             prediction_history=prediction_history,
+            profit_over_time=profit_over_time,
         )
 
     def _save_agent_performance_summary(

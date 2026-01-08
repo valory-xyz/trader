@@ -87,3 +87,6 @@ a99c107526203fcdc7dc7813d00eb87eb66d1630:packages/valory/skills/trader_abci/pred
 c06c6420d13a2f593c5105d13bb6a4f5409fcba8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-DZkNbpPR.js:generic-api-key:431
 c06c6420d13a2f593c5105d13bb6a4f5409fcba8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-DZkNbpPR.js:generic-api-key:193
 55d1a537a0de60cfaa13c89b99b556299f9d0d25:packages/valory/skills/agent_performance_summary_abci/behaviours.py:generic-api-key:302
+44fbbd4fff00449fb8d4961994fe920fbdbc5cc4:packages/valory/skills/decision_maker_abci/behaviours/base.py:generic-api-key:289
+c3574b4d2deb0419b535c45a1b696798364c99e1:packages/valory/connections/polymarket_client/connection.py:generic-api-key:49
+c3574b4d2deb0419b535c45a1b696798364c99e1:packages/valory/skills/decision_maker_abci/behaviours/polymarket_reedem.py:generic-api-key:41

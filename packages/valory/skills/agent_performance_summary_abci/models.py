@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -109,6 +109,31 @@ class PredictionHistory:
 
 
 @dataclass
+class ProfitDataPoint:
+    """Single data point for profit over time chart."""
+    
+    date: str  # YYYY-MM-DD format
+    timestamp: int  # Unix timestamp
+    daily_profit: float  # Net daily profit (after mech fees)
+    cumulative_profit: float  # Cumulative profit from start of window
+
+
+@dataclass
+class ProfitOverTimeData:
+    """Profit over time data stored in agent_performance.json."""
+    
+    last_updated: int  # Unix timestamp of last update
+    total_days: int  # Total number of days with data
+    data_points: List[ProfitDataPoint] = field(default_factory=list)
+    mech_request_lookup: Dict[str, int] = field(default_factory=dict)  # question_title -> count
+
+    def __post_init__(self):
+        """Convert dicts to dataclass instances."""
+        if self.data_points and isinstance(self.data_points[0], dict):
+            self.data_points = [ProfitDataPoint(**point) for point in self.data_points]
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -123,6 +148,7 @@ class AgentPerformanceSummary:
     agent_details: Optional[AgentDetails] = None
     agent_performance: Optional[AgentPerformanceData] = None
     prediction_history: Optional[PredictionHistory] = None
+    profit_over_time: Optional[ProfitOverTimeData] = None
 
     def __post_init__(self):
         """Convert dicts to dataclass instances."""
@@ -135,6 +161,9 @@ class AgentPerformanceSummary:
         
         if isinstance(self.prediction_history, dict):
             self.prediction_history = PredictionHistory(**self.prediction_history)
+        
+        if isinstance(self.profit_over_time, dict):
+            self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
