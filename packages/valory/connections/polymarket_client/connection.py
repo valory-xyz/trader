@@ -38,6 +38,7 @@ from py_clob_client.clob_types import MarketOrderArgs, OrderType
 from py_clob_client.exceptions import PolyApiException
 from py_clob_client.order_builder.constants import BUY
 from web3 import Web3
+from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.srr.dialogues import SrrDialogue
@@ -51,7 +52,9 @@ RELAYER_URL = "https://relayer-v2.polymarket.com/"
 CONDITIONAL_TOKENS_CONTRACT = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
 PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
 CHAIN_ID = 137  # Polygon
-MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+MAX_UINT256 = (
+    115792089237316195423570985008687907853269984665640564039457584007913129639935
+)
 POLYGON_RPC_URL = "https://polygon-rpc.com"
 
 
@@ -168,6 +171,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         # Initialize Web3 for approval checking
         self.w3 = Web3(Web3.HTTPProvider(POLYGON_RPC_URL))
+        self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
     # TODO:
     @property
@@ -545,7 +549,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 self.logger.error(error_msg)
                 return None, error_msg
 
-            self.logger.info("Creating approval transactions for Polymarket contracts...")
+            self.logger.info(
+                "Creating approval transactions for Polymarket contracts..."
+            )
 
             # Create approval transactions for CTF Exchange
             usdc_approve_ctf = SafeTransaction(
@@ -606,7 +612,8 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             self.logger.info("Executing all approval transactions...")
             result = self.relayer_client.execute(
-                transactions=transactions, metadata="Set all Polymarket approvals for Safe"
+                transactions=transactions,
+                metadata="Set all Polymarket approvals for Safe",
             )
 
             transaction_data = result.get_transaction()
@@ -651,9 +658,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         is_approved_sig = self.w3.keccak(text="isApprovedForAll(address,address)")[
             :4
         ].hex()
-        data = (
-            is_approved_sig + encode(["address", "address"], [owner, operator]).hex()
-        )
+        data = is_approved_sig + encode(["address", "address"], [owner, operator]).hex()
         result = self.w3.eth.call(
             {"to": self.w3.to_checksum_address(token_address), "data": data}
         )

@@ -67,3 +67,11 @@ class ImpossibleRound(DegenerateRound):
 
 class FinishedSetApprovalTxPreparationRound(DegenerateRound):
     """A round representing that set approval tx preparation has finished and needs to go to tx settlement."""
+
+
+class FinishedRedeemTxPreparationRound(DegenerateRound):
+    """A round representing that redeem tx preparation has finished and needs to go to tx settlement."""
+
+
+class FinishedPolymarketRedeemRound(DegenerateRound):
+    """A round representing that polymarket redeem has finished."""
