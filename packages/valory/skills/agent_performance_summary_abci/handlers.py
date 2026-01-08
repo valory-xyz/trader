@@ -417,7 +417,6 @@ class HttpHandler(BaseHttpHandler):
                 return
             
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            safe_address = "0xF69900355c458A0F6c597B1d8F3eC61CC7b2A545"
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
             
@@ -465,7 +464,6 @@ class HttpHandler(BaseHttpHandler):
                 return
             
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            safe_address = "0xF69900355c458A0F6c597B1d8F3eC61CC7b2A545"
             skip = (page - 1) * page_size
             
             # Check stored history first
@@ -575,7 +573,6 @@ class HttpHandler(BaseHttpHandler):
                 return
             
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            safe_address = "0xF69900355c458A0F6c597B1d8F3eC61CC7b2A545"
             summary = self.shared_state.read_existing_performance_summary()
             profit_data = summary.profit_over_time
             
