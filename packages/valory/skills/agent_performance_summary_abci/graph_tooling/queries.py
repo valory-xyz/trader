@@ -154,3 +154,61 @@ query GetPendingBets($id: ID!) {
   }
 }
 """
+
+GET_DAILY_PROFIT_STATISTICS_QUERY = """
+query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $endTimestamp: BigInt!) {
+  traderAgent(id: $agentId) {
+    dailyProfitStatistics(
+      where: { 
+        date_gte: $startTimestamp,
+        date_lte: $endTimestamp
+      }
+      orderBy: date
+      orderDirection: asc
+      first: 1000
+    ) {
+      id
+      date
+      totalBets
+      totalTraded
+      totalFees
+      totalPayout
+      dailyProfit
+      profitParticipants {
+        id
+        question
+      }
+    }
+  }
+}
+"""
+
+GET_ALL_MECH_REQUESTS_QUERY = """
+query GetAllMechRequests($sender: String!, $skip: Int!) {
+  requests(
+    where: { sender: $sender }
+    first: 1000
+    skip: $skip
+    orderBy: requestId
+    orderDirection: asc
+  ) {
+    id
+    requestId
+    questionTitle
+  }
+}
+"""
+
+GET_MECH_REQUESTS_BY_TITLES_QUERY = """
+query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
+  requests(
+    where: { 
+      sender: $sender,
+      questionTitle_in: $questionTitles
+    }
+  ) {
+    id
+    questionTitle
+  }
+}
+"""
