@@ -415,7 +415,7 @@ class BetsDecoder(json.JSONDecoder):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the Bets JSON decoder."""
-        super().__init__(object_hook=self.hook, *args, **kwargs)
+        super().__init__(*args, object_hook=self.hook, **kwargs)
 
     @staticmethod
     def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:
