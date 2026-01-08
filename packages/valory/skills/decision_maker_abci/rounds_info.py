@@ -37,11 +37,6 @@ ROUNDS_INFO = {
         "description": "Attempts to place a bet on a prediction market.",
         "transitions": {},
     },
-    "polymarket_bet_placement_round": {
-        "name": "Placing a bet on Polymarket",
-        "description": "Attempts to place a bet on a Polymarket prediction market.",
-        "transitions": {},
-    },
     "blacklisting_round": {
         "name": "Blacklisting the sampled bet",
         "description": "Removes the selected bet from consideration and updates the list of available bets.",
@@ -120,6 +115,21 @@ ROUNDS_INFO = {
     "mech_response_round": {
         "name": "Receiving outcome data",
         "description": "Collects outcome information from the external service.",
+        "transitions": {},
+    },
+    "polymarket_bet_placement_round": {
+        "name": "Placing a bet on Polymarket",
+        "description": "Attempts to place a bet on a Polymarket prediction market.",
+        "transitions": {},
+    },
+    "polymarket_set_approval_round": {
+        "name": "Setting approval on Polymarket",
+        "description": "Attempts to set approval on a Polymarket prediction market.",
+        "transitions": {},
+    },
+    "polymarket_post_set_approval_round": {
+        "name": "Post setting approval on Polymarket",
+        "description": "Attempts to finalize the approval setting on a Polymarket prediction market.",
         "transitions": {},
     },
     "post_tx_settlement_round": {

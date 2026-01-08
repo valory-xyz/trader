@@ -53,12 +53,16 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
+    PolymarketPostSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
@@ -113,6 +117,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedMechRequestTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
+    FinishedSetApprovalTxRound,
     FinishedStakingTxRound,
     FinishedSubscriptionTxRound,
     PostTxSettlementRound,
@@ -146,6 +151,8 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedSellOutcomeTokensTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
+    FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
+    FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: RedeemRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,

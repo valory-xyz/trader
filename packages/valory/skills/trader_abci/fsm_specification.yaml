@@ -119,14 +119,6 @@ transition_func:
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
-    (PolymarketBetPlacementRound, DONE): RedeemRouterRound
-    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
-    (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
-    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
-    (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound
-    (PolymarketBetPlacementRound, NONE): ImpossibleRound
-    (PolymarketBetPlacementRound, NO_MAJORITY): BetPlacementRound
-    (PolymarketBetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRouterRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
     (BlacklistingRound, MOCK_TX): RedeemRouterRound
@@ -143,8 +135,9 @@ transition_func:
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): UpdateBetsRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
+    (CheckBenchmarkingModeRound, SET_APPROVAL): PolymarketSetApprovalRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
@@ -209,7 +202,25 @@ transition_func:
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
-    (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, DONE): RedeemRound
+    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
+    (PolymarketBetPlacementRound, MOCK_TX): RedeemRound
+    (PolymarketBetPlacementRound, NONE): ImpossibleRound
+    (PolymarketBetPlacementRound, NO_MAJORITY): BetPlacementRound
+    (PolymarketBetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
+    (PolymarketSetApprovalRound, DONE): PolymarketPostSetApprovalRound
+    (PolymarketSetApprovalRound, SKIP): BenchmarkingModeDisabledRound
+    (PolymarketSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
+    (PolymarketSetApprovalRound, NO_MAJORITY): PolymarketSetApprovalRound
+    (PolymarketSetApprovalRound, ROUND_TIMEOUT): PolymarketSetApprovalRound
+    (PolymarketSetApprovalRound, NONE): ImpossibleRound
+    (PolymarketPostSetApprovalRound, DONE): BenchmarkingModeDisabledRound
+    (PolymarketPostSetApprovalRound, SKIP): BenchmarkingModeDisabledRound
+    (PolymarketPostSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
+    (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
+    (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
+    (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
+    (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound

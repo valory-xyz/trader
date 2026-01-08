@@ -302,7 +302,7 @@ models:
       is_agent_performance_summary_enabled: true
       store_path: data/
       is_running_on_polymarket: false
-      polymarket_builder_program_enabled: false
+      polymarket_builder_program_enabled: true
     class_name: DecisionMakerParams
   acc_info_fields:
     args:

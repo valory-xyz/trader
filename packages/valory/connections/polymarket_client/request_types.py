@@ -32,3 +32,5 @@ class RequestType(Enum):
     GET_POSITIONS = "get_positions"
     FETCH_ALL_POSITIONS = "fetch_all_positions"
     REDEEM_POSITIONS = "redeem_positions"
+    SET_APPROVAL = "set_approval"
+    CHECK_APPROVAL = "check_approval"

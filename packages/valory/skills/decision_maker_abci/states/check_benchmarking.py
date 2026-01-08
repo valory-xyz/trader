@@ -25,6 +25,11 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
+from enum import Enum
+from typing import Optional, Tuple
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+)
 
 
 class CheckBenchmarkingModeRound(VotingRound):
@@ -36,4 +41,18 @@ class CheckBenchmarkingModeRound(VotingRound):
     negative_event = Event.BENCHMARKING_DISABLED
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
+    set_approval_event = Event.SET_APPROVAL
     collection_key = get_name(SynchronizedData.participant_to_votes)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        if self.context.params.is_running_on_polymarket:
+            # If running on Polymarket, skip benchmarking check and go directly to Polymarket flow
+            self.context.logger.info(
+                "Running on Polymarket..."
+            )
+            return self.synchronized_data, Event.SET_APPROVAL
+
+        # Normal flow: check if benchmarking is enabled
+        res = super().end_block()
+        return res
