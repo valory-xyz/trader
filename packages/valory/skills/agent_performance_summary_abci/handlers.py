@@ -62,6 +62,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_FPMM_PAYOUTS_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+from packages.valory.skills.agent_performance_summary_abci.models import ProfitDataPoint
 
 
 
@@ -166,6 +167,7 @@ class HttpHandler(BaseHttpHandler):
         agent_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/details"
         agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
         agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/prediction-history"
+        agent_profit_over_time_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -182,6 +184,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     agent_predictions_url_regex,
                     self._handle_get_predictions,
+                ),
+                (
+                    agent_profit_over_time_url_regex,
+                    self._handle_get_profit_over_time,
                 ),
             ],
         }
@@ -411,6 +417,7 @@ class HttpHandler(BaseHttpHandler):
                 return
             
             safe_address = self.synchronized_data.safe_contract_address.lower()
+            safe_address = "0xF69900355c458A0F6c597B1d8F3eC61CC7b2A545"
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
             
@@ -458,6 +465,7 @@ class HttpHandler(BaseHttpHandler):
                 return
             
             safe_address = self.synchronized_data.safe_contract_address.lower()
+            safe_address = "0xF69900355c458A0F6c597B1d8F3eC61CC7b2A545"
             skip = (page - 1) * page_size
             
             # Check stored history first
@@ -539,3 +547,114 @@ class HttpHandler(BaseHttpHandler):
             items = [item for item in items if item.get("status") == status_filter]
         
         return items[skip:skip + page_size]
+
+    def _handle_get_profit_over_time(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/profit-over-time request."""
+        try:
+            # Parse query parameters
+            url_parts = http_msg.url.split('?')
+            window = "lifetime"  # Default
+            
+            if len(url_parts) > 1:
+                params = {}
+                for param in url_parts[1].split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        params[key] = value
+                window = params.get('window', 'lifetime')
+            
+            # Validate window parameter
+            valid_windows = ["7d", "30d", "90d", "lifetime"]
+            if window not in valid_windows:
+                self._send_bad_request_response(
+                    http_msg, http_dialogue,
+                    {"error": f"Invalid window parameter: {window}. Must be one of: {', '.join(valid_windows)}"}
+                )
+                return
+            
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            safe_address = "0xF69900355c458A0F6c597B1d8F3eC61CC7b2A545"
+            summary = self.shared_state.read_existing_performance_summary()
+            profit_data = summary.profit_over_time
+            
+            if not profit_data or not profit_data.data_points:
+                # Return empty response if no data
+                response = {
+                    "agent_id": safe_address,
+                    "currency": "USD",
+                    "window": window,
+                    "points": []
+                }
+                self._send_ok_response(http_msg, http_dialogue, response)
+                return
+            
+            # Filter data points based on window
+            filtered_points = self._filter_profit_data_by_window(profit_data.data_points, window)
+            
+            # Convert to API format
+            api_points = []
+            for point in filtered_points:
+                api_points.append({
+                    "timestamp": datetime.utcfromtimestamp(point.timestamp).strftime(ISO_TIMESTAMP_FORMAT),
+                    "delta_profit": point.cumulative_profit
+                })
+            
+            response = {
+                "agent_id": safe_address,
+                "currency": "USD",
+                "window": window,
+                "points": api_points
+            }
+            
+            self.context.logger.info(f"Sending profit over time data for window: {window}, points: {len(api_points)}")
+            self._send_ok_response(http_msg, http_dialogue, response)
+            
+        except Exception as e:
+            self.context.logger.error(f"Error in profit over time endpoint: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue,
+                {"error": "Failed to fetch profit over time data"}
+            )
+
+    def _filter_profit_data_by_window(self, data_points: list, window: str) -> list:
+        """Filter profit data points by time window and recalculate cumulative profit."""
+        if window == "lifetime":
+            return data_points
+        
+        # Calculate cutoff timestamp
+        current_timestamp = int(datetime.utcnow().timestamp())
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(window, 0)
+        
+        if days == 0:
+            return data_points
+        
+        cutoff_timestamp = current_timestamp - (days * 86400)  # 86400 seconds in a day
+        
+        # Filter points within the window
+        filtered_points = [
+            point for point in data_points 
+            if point.timestamp >= cutoff_timestamp
+        ]
+        
+        if not filtered_points:
+            return []
+        
+        # Recalculate cumulative profit starting from 0 for the filtered window
+        cumulative_profit = 0.0
+        recalculated_points = []
+        
+        for point in filtered_points:
+            cumulative_profit += point.daily_profit
+            # Create a new point with recalculated cumulative profit
+            recalculated_point = ProfitDataPoint(
+                date=point.date,
+                timestamp=point.timestamp,
+                daily_profit=point.daily_profit,
+                cumulative_profit=round(cumulative_profit, 3)
+            )
+            recalculated_points.append(recalculated_point)
+        
+        return recalculated_points
