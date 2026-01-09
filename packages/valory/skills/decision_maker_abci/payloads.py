@@ -162,3 +162,4 @@ class PolymarketRedeemPayload(MultisigTxPayload):
     utilized_tools: Optional[str] = None
     redeemed_condition_ids: Optional[str] = None
     payout_so_far: Optional[int] = None
+    event: Optional[str] = None

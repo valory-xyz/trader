@@ -31,6 +31,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketRedeemPayload
+from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
     PolymarketRedeemRound,
 )
@@ -109,6 +110,18 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                 f"Fetched {len(redeemable_positions)} redeemable positions"
             )
 
+            if redeemable_positions == []:
+                self.context.logger.info("No redeemable positions found.")
+                self.payload = PolymarketRedeemPayload(
+                    sender=self.context.agent_address,
+                    tx_submitter=None,
+                    tx_hash=None,
+                    mocking_mode=False,
+                    event=Event.NO_REDEEMING.value,
+                )
+                yield from self.finish_behaviour(self.payload)
+                return
+
             # Check if builder program is enabled
             if self.context.params.polymarket_builder_program_enabled:
                 self.context.logger.info(
@@ -129,6 +142,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                     tx_submitter=tx_submitter,
                     tx_hash=tx_hash,
                     mocking_mode=False,
+                    event=Event.PREPARE_TX.value,
                 )
 
         yield from self.finish_behaviour(self.payload)
@@ -163,6 +177,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
             tx_submitter=None,
             tx_hash=None,
             mocking_mode=False,
+            event=Event.DONE.value,
         )
 
     def _prepare_redeem_tx(

@@ -92,6 +92,7 @@ class PolymarketRedeemRound(TxPreparationRound):
         if res is None:
             return None
 
+        actual_event = Event(self.most_voted_payload_values[-1])
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
 
         # also update the mech tools if there is a majority, because the overridden property does not include it
@@ -107,20 +108,6 @@ class PolymarketRedeemRound(TxPreparationRound):
                 **{self.mech_tools_name: mech_tools_update},
             )
 
-            # Check if builder program is enabled
-            if self.context.params.polymarket_builder_program_enabled:
-                # Builder program enabled: skip tx settlement rounds
-                self.context.logger.info(
-                    "Polymarket builder program enabled - skipping tx settlement for redemption"
-                )
-                event = Event.DONE
-            else:
-                # Builder program disabled: use OA framework for transaction settlement
-                self.context.logger.info(
-                    "Polymarket builder program disabled - using OA framework for redemption tx settlement"
-                )
-                event = Event.PREPARE_TX
-
-            return updated_data, event
+            return updated_data, actual_event
 
         return res

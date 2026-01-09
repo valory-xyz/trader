@@ -359,6 +359,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.PREPARE_TX: FinishedRedeemTxPreparationRound,
             Event.NO_MAJORITY: PolymarketRedeemRound,
             Event.NONE: PolymarketRedeemRound,
+            Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
         },
         HandleFailedTxRound: {
