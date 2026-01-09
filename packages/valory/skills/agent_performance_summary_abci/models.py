@@ -116,6 +116,7 @@ class ProfitDataPoint:
     timestamp: int  # Unix timestamp
     daily_profit: float  # Net daily profit (after mech fees)
     cumulative_profit: float  # Cumulative profit from start of window
+    daily_mech_requests: int = 0  # Number of mech requests for this day
 
 
 @dataclass
@@ -126,6 +127,7 @@ class ProfitOverTimeData:
     total_days: int  # Total number of days with data
     data_points: List[ProfitDataPoint] = field(default_factory=list)
     mech_request_lookup: Dict[str, int] = field(default_factory=dict)  # question_title -> count
+    settled_mech_requests_count: int = 0  # Total settled mech requests
 
     def __post_init__(self):
         """Convert dicts to dataclass instances."""

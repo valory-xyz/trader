@@ -67,6 +67,7 @@ PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 SECONDS_PER_DAY = 86400
 NA = "N/A"
+UPDATE_INTERVAL = 1800 #30 mins
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -84,6 +85,18 @@ class FetchPerformanceSummaryBehaviour(
         self._partial_roi: Optional[float] = None
         self._total_mech_requests: Optional[int] = None
         self._open_market_requests: Optional[int] = None
+        self._mech_request_lookup: Optional[dict] = None 
+        self._update_interval: int = UPDATE_INTERVAL
+        self._last_update_timestamp: int = 0
+        self._settled_mech_requests_count: int = 0
+    
+    def _should_update(self) -> bool:
+        """Check if we should update."""
+        if self._last_update_timestamp == 0:
+            return True  # First run
+        
+        time_since_last = self.shared_state.synced_timestamp - self._last_update_timestamp
+        return time_since_last >= self._update_interval
 
     @property
     def shared_state(self) -> SharedState:
@@ -232,9 +245,8 @@ class FetchPerformanceSummaryBehaviour(
         if olas_in_usd_price is None:
             self.context.logger.warning("Olas in USD price data not found")
             return None, None
-
-        # Calculate settled mech requests using helper function
-        settled_mech_requests = yield from self._calculate_settled_mech_requests(agent_safe_address)
+        
+        settled_mech_requests = self._settled_mech_requests_count
 
         total_costs = (
             int(trader_agent["totalTraded"])
@@ -359,11 +371,10 @@ class FetchPerformanceSummaryBehaviour(
         total_payout = int(trader_agent.get("totalPayout", 0))
         total_bets = int(trader_agent.get("totalBets", 0))
         
-        # Get total mech requests (uses cache)
-        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
+        settled_mech_requests = self._settled_mech_requests_count
         
-        # Get settled mech requests (uses cache for total and open market requests)
-        settled_mech_requests = yield from self._calculate_settled_mech_requests(safe_address)
+        # Get total mech requests for funds_used calculation (uses cache)
+        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
         
         # Get pending bets to calculate locked amounts
         pending_bets_data = yield from self._fetch_pending_bets(safe_address)
@@ -472,16 +483,16 @@ class FetchPerformanceSummaryBehaviour(
             )
 
 
-    def _calculate_mech_fees_for_day(self, profit_participants: list, mech_request_lookup: dict) -> float:
+    def _calculate_mech_fees_for_day(self, profit_participants: list, mech_request_lookup: dict) -> tuple[float, int]:
         """
         Calculate mech fees for a specific day based on profit participants using cached lookup.
         
         :param profit_participants: List of profit participants for the day
         :param mech_request_lookup: Cached lookup map of question_title -> count
-        :return: Total mech fees for the day
+        :return: Tuple of (total_mech_fees, mech_request_count)
         """
         if not profit_participants:
-            return 0.0
+            return 0.0, 0
         
         # Extract question titles from profit participants and count mech requests
         mech_fee_count = 0
@@ -497,7 +508,7 @@ class FetchPerformanceSummaryBehaviour(
         # Calculate fees: 0.01 xDAI per request
         total_mech_fees = mech_fee_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
         
-        return total_mech_fees
+        return total_mech_fees, mech_fee_count
 
     def _build_mech_request_lookup(self, agent_safe_address: str) -> Generator[None, None, dict]:
         """
@@ -507,6 +518,10 @@ class FetchPerformanceSummaryBehaviour(
         :return: Dictionary mapping question titles to request counts
         """
         # Fetch all mech requests for this agent
+        if self._mech_request_lookup is not None:
+            self.context.logger.info(f"Using cached mech request lookup with {len(self._mech_request_lookup)} unique questions")
+            return self._mech_request_lookup
+        
         all_mech_requests = yield from self._fetch_all_mech_requests(agent_safe_address)
         
         if not all_mech_requests:
@@ -521,6 +536,7 @@ class FetchPerformanceSummaryBehaviour(
                 lookup[title] = lookup.get(title, 0) + 1
         
         self.context.logger.info(f"Built mech request lookup with {len(lookup)} unique questions, {len(all_mech_requests)} total requests")
+        self._mech_request_lookup = lookup
         return lookup
 
     def _build_profit_over_time_data(self) -> Generator[None, None, Optional[ProfitOverTimeData]]:
@@ -598,7 +614,7 @@ class FetchPerformanceSummaryBehaviour(
             
             # Calculate mech fees using cached lookup
             profit_participants = stat.get("profitParticipants", [])
-            mech_fees = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+            mech_fees, daily_mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
             
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
@@ -607,14 +623,19 @@ class FetchPerformanceSummaryBehaviour(
                 date=date_str,
                 timestamp=date_timestamp,
                 daily_profit=round(daily_profit_net, 3),
-                cumulative_profit=round(cumulative_profit, 3)
+                cumulative_profit=round(cumulative_profit, 3),
+                daily_mech_requests=daily_mech_count
             ))
+        
+        # Calculate total settled mech requests from all data points
+        self._settled_mech_requests_count = sum(point.daily_mech_requests for point in data_points)
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(data_points),
             data_points=data_points,
-            mech_request_lookup=mech_request_lookup
+            mech_request_lookup=mech_request_lookup,
+            settled_mech_requests_count=self._settled_mech_requests_count
         )
 
     def _perform_incremental_update(self, agent_safe_address: str, current_timestamp: int, existing_data: ProfitOverTimeData) -> Generator[None, None, Optional[ProfitOverTimeData]]:
@@ -672,6 +693,8 @@ class FetchPerformanceSummaryBehaviour(
                     title = request.get("questionTitle", "")
                     if title:
                         mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
+            
+            self._mech_request_lookup = mech_request_lookup
         
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
@@ -684,7 +707,7 @@ class FetchPerformanceSummaryBehaviour(
             
             # Calculate mech fees using updated lookup
             profit_participants = stat.get("profitParticipants", [])
-            mech_fees = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+            mech_fees, daily_mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
             
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
@@ -693,14 +716,19 @@ class FetchPerformanceSummaryBehaviour(
                 date=date_str,
                 timestamp=date_timestamp,
                 daily_profit=round(daily_profit_net, 3),
-                cumulative_profit=round(cumulative_profit, 3)
+                cumulative_profit=round(cumulative_profit, 3),
+                daily_mech_requests=daily_mech_count
             ))
+        
+        # Calculate updated settled mech requests count from all data points
+        self._settled_mech_requests_count = sum(point.daily_mech_requests for point in new_data_points)
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(new_data_points),
             data_points=new_data_points,
-            mech_request_lookup=mech_request_lookup
+            mech_request_lookup=mech_request_lookup,
+            settled_mech_requests_count=self._settled_mech_requests_count
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:
@@ -737,8 +765,11 @@ class FetchPerformanceSummaryBehaviour(
         """Fetch the agent performance summary"""
         self._total_mech_requests = None
         self._open_market_requests = None
+        self._mech_request_lookup = None
         
         current_timestamp = self.shared_state.synced_timestamp
+        
+        profit_over_time = yield from self._build_profit_over_time_data()
 
         final_roi, partial_roi = yield from self.calculate_roi()
 
@@ -768,7 +799,6 @@ class FetchPerformanceSummaryBehaviour(
         agent_details = yield from self._fetch_agent_details_data()
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
-        profit_over_time = yield from self._build_profit_over_time_data()
 
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp, 
@@ -800,9 +830,18 @@ class FetchPerformanceSummaryBehaviour(
             )
             yield from self.finish_behaviour(payload)
             return
+        
+        if not self._should_update():
+            self.context.logger.info("Skipping update - too soon")
+            payload = FetchPerformanceDataPayload(
+                sender=self.context.agent_address,
+                vote=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
 
-        with self.context.benchmark_tool.measure(self.behaviour_id).local():
-
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():      
+            self._last_update_timestamp = self.shared_state.synced_timestamp
             yield from self._fetch_agent_performance_summary()
 
             success = all(
