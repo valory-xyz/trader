@@ -67,6 +67,7 @@ PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 SECONDS_PER_DAY = 86400
 NA = "N/A"
+UPDATE_INTERVAL = 1800 #30 mins
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -84,6 +85,18 @@ class FetchPerformanceSummaryBehaviour(
         self._partial_roi: Optional[float] = None
         self._total_mech_requests: Optional[int] = None
         self._open_market_requests: Optional[int] = None
+        self._mech_request_lookup: Optional[dict] = None 
+        self._update_interval: int = UPDATE_INTERVAL
+        self._last_update_timestamp: int = 0
+        self._settled_mech_requests_count: int = 0
+    
+    def _should_update(self) -> bool:
+        """Check if we should update."""
+        if self._last_update_timestamp == 0:
+            return True  # First run
+        
+        time_since_last = self.shared_state.synced_timestamp - self._last_update_timestamp
+        return time_since_last >= self._update_interval
 
     @property
     def shared_state(self) -> SharedState:
@@ -817,9 +830,18 @@ class FetchPerformanceSummaryBehaviour(
             )
             yield from self.finish_behaviour(payload)
             return
+        
+        if not self._should_update():
+            self.context.logger.info("Skipping update - too soon")
+            payload = FetchPerformanceDataPayload(
+                sender=self.context.agent_address,
+                vote=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
 
-        with self.context.benchmark_tool.measure(self.behaviour_id).local():
-
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():      
+            self._last_update_timestamp = self.shared_state.synced_timestamp
             yield from self._fetch_agent_performance_summary()
 
             success = all(
