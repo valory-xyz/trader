@@ -477,8 +477,22 @@ config:
     polygon:
       address: ${str:https://1rpc.io/matic}
       chain_id: ${int:137}
-      poa_chain: ${bool:false}
+      poa_chain: ${bool:true}
       default_gas_price_strategy: ${str:eip1559}
+      gas_price_strategies:
+        gas_station:
+          gas_price_api_key: null
+          gas_price_strategy: fast
+        eip1559:
+          max_gas_fast: 3000
+          fee_history_blocks: 10
+          fee_history_percentile: 5
+          default_priority_fee: ${int:30000000000}
+          fallback_estimate:
+            maxFeePerGas: ${int:3000000000000}
+            maxPriorityFeePerGas: ${int:30000000000}
+            baseFee: null
+          priority_fee_increase_boundary: ${int:200}
 ---
 public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection

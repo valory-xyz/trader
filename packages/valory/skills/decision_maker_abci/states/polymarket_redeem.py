@@ -28,7 +28,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     MultisigTxPayload,
-    RedeemPayload,
+    PolymarketRedeemPayload,
 )
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -44,7 +44,7 @@ MECH_TOOLS_FIELD = "mech_tools"
 class PolymarketRedeemRound(TxPreparationRound):
     """."""
 
-    payload_class: Type[MultisigTxPayload] = RedeemPayload
+    payload_class: Type[MultisigTxPayload] = PolymarketRedeemPayload
     mech_tools_name = get_name(SynchronizedData.available_mech_tools)
     selection_key = TxPreparationRound.selection_key + (
         mech_tools_name,
@@ -62,7 +62,9 @@ class PolymarketRedeemRound(TxPreparationRound):
         """Get the most voted payload values in such a way to create a custom none event that ignores the mech tools."""
         most_voted_payload_values = super().most_voted_payload_values
         # sender does not matter for the init as the `data` property used below to obtain the dictionary ignores it
-        most_voted_payload = RedeemPayload(IGNORED, *most_voted_payload_values)
+        most_voted_payload = PolymarketRedeemPayload(
+            IGNORED, *most_voted_payload_values
+        )
         most_voted_payload_dict = most_voted_payload.data
         mech_tools = most_voted_payload_dict.pop(MECH_TOOLS_FIELD, None)
         if mech_tools is None:
@@ -96,12 +98,29 @@ class PolymarketRedeemRound(TxPreparationRound):
         if event != self.no_majority_event:
             most_voted_payload_values = self.payload_values_count.most_common()[0][0]
             # sender does not matter for the init as the `data` property used below to obtain the dictionary ignores it
-            most_voted_payload = RedeemPayload(IGNORED, *most_voted_payload_values)
+            most_voted_payload = PolymarketRedeemPayload(
+                IGNORED, *most_voted_payload_values
+            )
             mech_tools_update = most_voted_payload.mech_tools
             updated_data = synced_data.update(
                 self.synchronized_data_class,
                 **{self.mech_tools_name: mech_tools_update},
             )
+
+            # Check if builder program is enabled
+            if self.context.params.polymarket_builder_program_enabled:
+                # Builder program enabled: skip tx settlement rounds
+                self.context.logger.info(
+                    "Polymarket builder program enabled - skipping tx settlement for redemption"
+                )
+                event = Event.DONE
+            else:
+                # Builder program disabled: use OA framework for transaction settlement
+                self.context.logger.info(
+                    "Polymarket builder program disabled - using OA framework for redemption tx settlement"
+                )
+                event = Event.PREPARE_TX
+
             return updated_data, event
 
         return res
