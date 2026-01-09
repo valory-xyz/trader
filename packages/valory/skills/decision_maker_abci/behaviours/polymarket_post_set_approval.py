@@ -91,6 +91,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
                 self.context.agent_address,
                 "error",
             )
+            self._write_allowances_file(False)
             return
 
         # Parse the response
@@ -119,6 +120,25 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             self.context.agent_address,
             vote,
         )
+        
+        # Write the allowances file to persist the state
+        self._write_allowances_file(all_approvals_set)
+
+    def _write_allowances_file(self, allowances_set: bool) -> None:
+        """Write the allowances file to persist the approval state."""
+        allowances_path = self.params.store_path / "polymarket_allowances.json"
+        allowances_data = {"allowances_set": allowances_set}
+        
+        try:
+            with open(allowances_path, "w") as f:
+                json.dump(allowances_data, f, indent=2)
+            self.context.logger.info(
+                f"Wrote allowances file: allowances_set={allowances_set}"
+            )
+        except Exception as e:
+            self.context.logger.error(
+                f"Failed to write allowances file: {e}"
+            )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

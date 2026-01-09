@@ -19,7 +19,11 @@
 
 """This module contains the sampling state of the decision-making abci app."""
 
+from enum import Enum
+from typing import Optional, Tuple, cast
+
 from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
     CollectSameUntilThresholdRound,
     get_name,
 )
@@ -43,3 +47,23 @@ class PolymarketPostSetApprovalRound(CollectSameUntilThresholdRound):
     no_majority_event = Event.NO_MAJORITY
     selection_key = (get_name(SynchronizedData.participant_to_selection),)
     collection_key = get_name(SynchronizedData.participant_to_selection)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
+        """Process the end of the block."""
+        res = super().end_block()
+        if res is None:
+            return None
+
+        synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        # If consensus was reached but not all approvals were set, trigger APPROVAL_FAILED
+        if event == Event.DONE:
+            # Get the consensus vote from the most_voted_payload
+            most_voted_payload = self.most_voted_payload
+            if most_voted_payload in ("partial", "no", "error"):
+                self.context.logger.warning(
+                    f"Approvals not fully set (vote: {most_voted_payload}). Routing back to SET_APPROVAL."
+                )
+                return synced_data, Event.APPROVAL_FAILED
+
+        return res

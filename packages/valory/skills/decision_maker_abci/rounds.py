@@ -63,7 +63,13 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
-    PolymarketBetPlacementRound,
+    PolymarketBetPlacementRound
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
+    PolymarketSetApprovalRound
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
+    PolymarketPostSetApprovalRound
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
@@ -92,6 +98,7 @@ from packages.valory.skills.decision_maker_abci.states.tool_selection import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
+
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
@@ -306,6 +313,31 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
             Event.NO_MAJORITY: PolymarketBetPlacementRound,
             Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        PolymarketSetApprovalRound: {
+            Event.DONE: PolymarketPostSetApprovalRound,
+            Event.PREPARE_TX: FinishedSetApprovalTxPreparationRound,
+            # skip the bet placement tx
+            Event.SKIP: BenchmarkingModeDisabledRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
+            Event.NO_MAJORITY: PolymarketSetApprovalRound,
+            Event.ROUND_TIMEOUT: PolymarketSetApprovalRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        PolymarketPostSetApprovalRound: {
+            Event.DONE: BenchmarkingModeDisabledRound,
+            # skip the bet placement tx
+            Event.SKIP: BenchmarkingModeDisabledRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
+            Event.NO_MAJORITY: PolymarketPostSetApprovalRound,
+            Event.ROUND_TIMEOUT: PolymarketPostSetApprovalRound,
             # this is here because of `autonomy analyse fsm-specs`
             # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
