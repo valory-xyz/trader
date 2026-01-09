@@ -90,6 +90,8 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+USDC_POLYGON = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -294,10 +296,23 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get whether the collateral address is wxDAI."""
         return self.collateral_token.lower() == WXDAI.lower()
 
+    @property
+    def is_usdc(self) -> bool:
+        """Get whether the collateral address is USDC (Polygon)."""
+        return self.collateral_token.lower() in [
+            USDC_POLYGON.lower(),
+            USCDE_POLYGON.lower(),
+        ]
+
     @staticmethod
     def wei_to_native(wei: int) -> float:
-        """Convert WEI to native token."""
+        """Convert WEI to native token (18 decimals for MATIC/xDAI)."""
         return wei / 10**18
+
+    @staticmethod
+    def usdc_to_native(usdc_wei: int) -> float:
+        """Convert USDC wei to native token (6 decimals)."""
+        return usdc_wei / 10**6
 
     def get_active_sampled_bet(self) -> Bet:
         """Function to get the selected bet that is active without reseting self.bets."""
@@ -311,19 +326,22 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
-        is_wxdai = True if self.benchmarking_mode.enabled else self.is_wxdai
-
-        return (
-            f"{self.wei_to_native(amount)} wxDAI"
-            if is_wxdai
-            else f"{amount} WEI of the collateral token with address {self.collateral_token}"
-        )
+        if self.benchmarking_mode.enabled or self.is_wxdai:
+            return f"{self.wei_to_native(amount):.6f} wxDAI"
+        elif self.is_usdc:
+            return f"{self.usdc_to_native(amount):.6f} USDC"
+        else:
+            return f"{amount} WEI of the collateral token with address {self.collateral_token}"
 
     def _report_balance(self) -> None:
         """Report the balances of the native and the collateral tokens."""
         native = self.wei_to_native(self.wallet_balance)
+        # Determine native token name based on collateral token
+        native_token_name = "POL" if self.is_usdc else "xDAI"
         collateral = self._collateral_amount_info(self.token_balance)
-        self.context.logger.info(f"The safe has {native} native and {collateral}.")
+        self.context.logger.info(
+            f"The safe has {native:.6f} {native_token_name} and {collateral}."
+        )
 
     def _mock_balance_check(self) -> None:
         """Mock the balance of the native and the collateral tokens."""

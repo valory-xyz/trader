@@ -51,7 +51,7 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
 
         outcome = self.sampled_bet.get_outcome(self.outcome_index)
         token_id = self.sampled_bet.outcome_token_ids[outcome]
-        amount = self._collateral_amount_info(self.investment_amount)
+        amount = self.usdc_to_native(self.investment_amount)
 
         # Prepare payload data
         polymarket_bet_payload = {
