@@ -19,6 +19,9 @@
 
 """This module contains a state of the decision-making abci app which checks if the benchmarking mode is enabled."""
 
+import json
+from pathlib import Path
+
 from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
@@ -47,10 +50,33 @@ class CheckBenchmarkingModeRound(VotingRound):
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         if self.context.params.is_running_on_polymarket:
-            # If running on Polymarket, skip benchmarking check and go directly to Polymarket flow
-            self.context.logger.info(
-                "Running on Polymarket..."
-            )
+            # Check if allowances are already set
+            allowances_path = Path(self.context.params.store_path) / "polymarket_allowances.json"
+            
+            try:
+                with open(allowances_path, "r") as f:
+                    allowances_data = json.load(f)
+                    allowances_set = allowances_data.get("allowances_set", False)
+                    
+                    if allowances_set:
+                        self.context.logger.info(
+                            "Polymarket allowances already set. Skipping approval round."
+                        )
+                        return self.synchronized_data, Event.BENCHMARKING_DISABLED
+                    else:
+                        self.context.logger.info(
+                            "Polymarket allowances not set. Proceeding to SET_APPROVAL."
+                        )
+            except FileNotFoundError:
+                self.context.logger.info(
+                    "No allowances file found. Proceeding to SET_APPROVAL for first time."
+                )
+            except Exception as e:
+                self.context.logger.warning(
+                    f"Error reading allowances file: {e}. Proceeding to SET_APPROVAL."
+                )
+            
+            # If running on Polymarket and allowances not set, go to SET_APPROVAL
             return self.synchronized_data, Event.SET_APPROVAL
 
         # Normal flow: check if benchmarking is enabled
