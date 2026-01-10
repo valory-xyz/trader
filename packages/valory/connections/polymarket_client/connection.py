@@ -48,6 +48,7 @@ from packages.valory.protocols.srr.message import SrrMessage
 
 PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
+GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 RELAYER_URL = "https://relayer-v2.polymarket.com/"
 CONDITIONAL_TOKENS_CONTRACT = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
 PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
@@ -283,7 +284,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         request_function_map: Dict[RequestType, Callable] = {
             RequestType.PLACE_BET: self._place_bet,
             RequestType.FETCH_MARKETS: self._fetch_markets,
-            RequestType.FETCH_MARKET: self._fetch_market,
+            RequestType.FETCH_MARKET: self._fetch_market_by_slug,
             RequestType.GET_POSITIONS: self._get_positions,
             RequestType.FETCH_ALL_POSITIONS: self._fetch_all_positions,
             RequestType.REDEEM_POSITIONS: self._redeem_positions,
@@ -347,9 +348,30 @@ class PolymarketClientConnection(BaseSyncConnection):
         """Fetch current markets from Polymarket."""
         pass
 
-    def _fetch_market(self, condition_id: str) -> Any:
-        """Fetch a specific market from Polymarket."""
-        pass
+    def _fetch_market_by_slug(self, slug: str) -> Tuple[Any, Any]:
+        """Fetch a specific market from Polymarket by slug.
+
+        :param slug: The market slug (e.g., 'cs2-vit-vp-2026-01-14')
+        :return: Tuple of (market_data, error_message)
+        """
+        try:
+            url = f"{GAMMA_API_BASE_URL}/markets/slug/{slug}"
+
+            response = requests.get(url)
+            response.raise_for_status()
+
+            market = response.json()
+            self.logger.info(f"Fetched market with slug: {slug}")
+            return market, None
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Error fetching market by slug '{slug}': {str(e)}"
+            self.logger.error(error_msg)
+            return None, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error fetching market by slug '{slug}': {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
 
     def _get_positions(
         self,
