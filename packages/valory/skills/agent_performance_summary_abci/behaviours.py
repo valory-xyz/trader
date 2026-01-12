@@ -671,9 +671,7 @@ class FetchPerformanceSummaryBehaviour(
         
         if not new_daily_stats:
             self.context.logger.info("No new daily profit statistics found")
-            # Update timestamp but keep existing data
-            existing_data.last_updated = current_timestamp
-            return existing_data
+            return existing_data 
         
         self.context.logger.info(f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics")
         
