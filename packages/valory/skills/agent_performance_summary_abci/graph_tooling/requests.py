@@ -288,7 +288,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return int(usd_price * DECIMAL_SCALING_FACTOR)  # scale to 18 decimals
 
     def _fetch_daily_profit_statistics(
-        self, agent_safe_address: str, start_timestamp: int, end_timestamp: int
+        self, agent_safe_address: str, start_timestamp: int
     ) -> Generator[None, None, Optional[List]]:
         """Fetch daily profit statistics from the subgraph with pagination support."""
         all_statistics = []
@@ -308,7 +308,6 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 variables={
                     "agentId": agent_safe_address.lower(),
                     "startTimestamp": str(start_timestamp),
-                    "endTimestamp": str(end_timestamp)
                 },
                 subgraph=self.context.olas_agents_subgraph,
                 res_context=f"daily_profit_statistics_batch_{skip // batch_size + 1}",

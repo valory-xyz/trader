@@ -591,7 +591,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Fetch ALL daily profit statistics from creation to now
         daily_stats = yield from self._fetch_daily_profit_statistics(
-            agent_safe_address, creation_timestamp, current_timestamp
+            agent_safe_address, creation_timestamp
         )
         
         if daily_stats is None:
@@ -662,7 +662,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Fetch only NEW daily profit statistics (after last timestamp)
         new_daily_stats = yield from self._fetch_daily_profit_statistics(
-            agent_safe_address, last_data_timestamp + 1, current_timestamp
+            agent_safe_address, last_data_timestamp + 1
         )
         
         if new_daily_stats is None:
