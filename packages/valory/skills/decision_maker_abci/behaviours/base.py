@@ -32,9 +32,6 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 from hexbytes import HexBytes
 
-from packages.valory.connections.polymarket_client.connection import (
-    PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
-)
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -932,60 +929,3 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
-
-    def _do_connection_request(
-        self,
-        message: Message,
-        dialogue: Message,
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, Message]:
-        """Do a request and wait the response, asynchronously."""
-
-        self.context.outbox.put_message(message=message)
-        request_nonce = self._get_request_nonce_from_dialogue(dialogue)  # type: ignore
-        cast(Requests, self.context.requests).request_id_to_callback[
-            request_nonce
-        ] = self.get_callback_request()
-        response = yield from self.wait_for_message(timeout=timeout)
-        return response
-
-    def do_connection_request(
-        self,
-        message: Message,
-        dialogue: Message,
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, Message]:
-        """
-        Public wrapper for making a connection request and waiting for response.
-
-        Args:
-            message: The message to send
-            dialogue: The dialogue context
-            timeout: Optional timeout duration
-
-        Returns:
-            Message: The response message
-        """
-        return (yield from self._do_connection_request(message, dialogue, timeout))
-
-    def send_polymarket_connection_request(
-        self,
-        payload_data: Dict[str, Any],
-    ) -> Generator[None, None, Optional[str]]:
-
-        self.context.logger.info(f"Payload data: {payload_data}")
-
-        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
-        srr_message, srr_dialogue = srr_dialogues.create(
-            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
-            performative=SrrMessage.Performative.REQUEST,
-            payload=json.dumps(payload_data),
-        )
-
-        srr_message = cast(SrrMessage, srr_message)
-        srr_dialogue = cast(SrrDialogue, srr_dialogue)
-        response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
-
-        response_json = json.loads(response.payload)  # type: ignore
-
-        return response_json  # type: ignore

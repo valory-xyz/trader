@@ -108,6 +108,9 @@ class MarketManagerParams(BaseParams):
         self.use_multi_bets_mode: bool = self._ensure(
             "use_multi_bets_mode", kwargs, bool
         )
+        self.polymarket_market_slug_to_bet_on: str = self._ensure(
+            "polymarket_market_slug_to_bet_on", kwargs, str
+        )
         super().__init__(*args, **kwargs)
 
     @property

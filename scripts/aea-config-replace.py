@@ -76,6 +76,7 @@ PATH_TO_VAR = {
     "config/neg_risk_ctf_exchange": "NEG_RISK_CTF_EXCHANGE",
     "config/neg_risk_adapter": "NEG_RISK_ADAPTER",
     "models/params/args/bet_threshold": "BET_THRESHOLD",
+    "models/params/args/polymarket_market_slug_to_bet_on": "POLYMARKET_MARKET_SLUG_TO_BET_ON",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
