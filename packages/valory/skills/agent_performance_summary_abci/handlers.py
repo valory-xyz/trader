@@ -81,7 +81,7 @@ PREDICTION_STATUS_WON = "won"
 PREDICTION_STATUS_LOST = "lost"
 PREDICTION_STATUS_ALL = "all"
 VALID_PREDICTION_STATUSES = [PREDICTION_STATUS_PENDING, PREDICTION_STATUS_WON, PREDICTION_STATUS_LOST]
-
+SECONDS_PER_DAY = 86400
 
 class HttpMethod(Enum):
     """Http methods"""
@@ -616,7 +616,7 @@ class HttpHandler(BaseHttpHandler):
             )
 
     def _filter_profit_data_by_window(self, data_points: list, window: str) -> list:
-        """Filter profit data points by time window and recalculate cumulative profit."""
+        """Filter profit data points by time window and fill gaps with last known cumulative."""
         if window == "lifetime":
             return data_points
         
@@ -628,7 +628,7 @@ class HttpHandler(BaseHttpHandler):
         if days == 0:
             return data_points
         
-        cutoff_timestamp = current_timestamp - (days * 86400)  # 86400 seconds in a day
+        cutoff_timestamp = current_timestamp - (days * SECONDS_PER_DAY)
         
         # Filter points within the window
         filtered_points = [
@@ -637,21 +637,49 @@ class HttpHandler(BaseHttpHandler):
         ]
         
         if not filtered_points:
-            return []
+            # No data in window - return zeros for each day
+            points = []
+            for i in range(days):
+                day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
+                day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
+                
+                zero_point = ProfitDataPoint(
+                    date=day_date,
+                    timestamp=day_timestamp,
+                    daily_profit=0.0,
+                    cumulative_profit=0.0,
+                    daily_mech_requests=0
+                )
+                points.append(zero_point)
+            
+            return points
         
-        # Recalculate cumulative profit starting from 0 for the filtered window
+        # Create a complete daily timeline for the window with gap filling
+        result_points = []
         cumulative_profit = 0.0
-        recalculated_points = []
+        last_known_cumulative = 0.0
+        # Create a lookup for existing data points by timestamp
+        data_lookup = {point.date: point for point in filtered_points}
+        for i in range(days):
+            day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
+            day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
+            
+            if day_date in data_lookup:
+                # Use actual data for this day
+                actual_point = data_lookup[day_date]
+                daily_profit = actual_point.daily_profit
+                cumulative_profit += daily_profit
+                last_known_cumulative = cumulative_profit  # Update last known
+            else:
+                # No data for this day - 0 daily profit, use last known cumulative
+                daily_profit = 0.0
+                cumulative_profit = last_known_cumulative  # Maintain last known value
+            
+            result_points.append(ProfitDataPoint(
+                date=day_date,
+                timestamp=day_timestamp,
+                daily_profit=daily_profit,
+                cumulative_profit=round(cumulative_profit, 3),
+            ))
         
-        for point in filtered_points:
-            cumulative_profit += point.daily_profit
-            # Create a new point with recalculated cumulative profit
-            recalculated_point = ProfitDataPoint(
-                date=point.date,
-                timestamp=point.timestamp,
-                daily_profit=point.daily_profit,
-                cumulative_profit=round(cumulative_profit, 3)
-            )
-            recalculated_points.append(recalculated_point)
-        
-        return recalculated_points
+        return result_points
