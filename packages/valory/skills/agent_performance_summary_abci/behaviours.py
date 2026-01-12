@@ -577,7 +577,7 @@ class FetchPerformanceSummaryBehaviour(
                 last_updated=current_timestamp,
                 total_days=0,
                 data_points=[],
-                mech_request_lookup={}
+                settled_mech_requests_count=0
             )
         
         # Fetch ALL daily profit statistics from creation to now
@@ -595,7 +595,7 @@ class FetchPerformanceSummaryBehaviour(
                 last_updated=current_timestamp,
                 total_days=0,
                 data_points=[],
-                mech_request_lookup={}
+                settled_mech_requests_count=0
             )
         
         self.context.logger.info(f"Initial backfill: Found {len(daily_stats)} daily profit statistics")
@@ -634,7 +634,6 @@ class FetchPerformanceSummaryBehaviour(
             last_updated=current_timestamp,
             total_days=len(data_points),
             data_points=data_points,
-            mech_request_lookup=mech_request_lookup,
             settled_mech_requests_count=self._settled_mech_requests_count
         )
 
@@ -669,32 +668,31 @@ class FetchPerformanceSummaryBehaviour(
         
         self.context.logger.info(f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics")
         
-        # Get existing mech request lookup or build new one if missing
-        mech_request_lookup = existing_data.mech_request_lookup or {}
-        
-        # For new profit participants, we need to update the mech request lookup
+        # Build lookup ONLY for questions in NEW daily stats
         new_question_titles = set()
         for stat in new_daily_stats:
             for participant in stat.get("profitParticipants", []):
                 question = participant.get("question", "")
                 if question:
                     title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                    if title and title not in mech_request_lookup:
+                    if title:
                         new_question_titles.add(title)
         
-        # Fetch mech requests only for new question titles
-        if new_question_titles:
-            self.context.logger.info(f"Fetching mech requests for {len(new_question_titles)} new question titles")
-            new_mech_requests = yield from self._fetch_mech_requests_by_titles(agent_safe_address, list(new_question_titles))
-            
-            # Update lookup with new requests
-            if new_mech_requests:
-                for request in new_mech_requests:
-                    title = request.get("questionTitle", "")
-                    if title:
-                        mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
-            
-            self._mech_request_lookup = mech_request_lookup
+        if not new_question_titles:
+            self.context.logger.info("No new questions in incremental update")
+            # Update timestamp but keep existing data
+            existing_data.last_updated = current_timestamp
+            return existing_data
+        
+        self.context.logger.info(f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats")
+        new_mech_requests = yield from self._fetch_mech_requests_by_titles(agent_safe_address, list(new_question_titles))
+        
+        mech_request_lookup = {}
+        if new_mech_requests:
+            for request in new_mech_requests:
+                title = request.get("questionTitle", "")
+                if title:
+                    mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
         
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
@@ -705,7 +703,7 @@ class FetchPerformanceSummaryBehaviour(
             date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
             
-            # Calculate mech fees using updated lookup
+            # Calculate mech fees using lookup for this day only
             profit_participants = stat.get("profitParticipants", [])
             mech_fees, daily_mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
             
@@ -727,7 +725,6 @@ class FetchPerformanceSummaryBehaviour(
             last_updated=current_timestamp,
             total_days=len(new_data_points),
             data_points=new_data_points,
-            mech_request_lookup=mech_request_lookup,
             settled_mech_requests_count=self._settled_mech_requests_count
         )
 
