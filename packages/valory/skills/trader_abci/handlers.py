@@ -83,11 +83,21 @@ SrrHandler = BaseSrrHandler
 
 
 PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
+
+# Gnosis Chain Configuration
 GNOSIS_CHAIN_NAME = "gnosis"
-XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
-WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
+GNOSIS_NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+GNOSIS_USDC_E_ADDRESS = "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"
+
+# Polygon Chain Configuration
+POLYGON_CHAIN_NAME = "polygon"
+POLYGON_CHAIN_ID = 137
+POLYGON_NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 
 
@@ -126,6 +136,25 @@ class HttpHandler(BaseHttpHandler):
     def params(self) -> TraderParams:
         """Get the skill params."""
         return self.context.params
+
+    def _get_chain_config(self) -> Dict[str, Any]:
+        """Get chain configuration based on is_running_on_polymarket parameter."""
+        if self.params.is_running_on_polymarket:
+            return {
+                "chain_name": POLYGON_CHAIN_NAME,
+                "chain_id": POLYGON_CHAIN_ID,
+                "native_token_address": POLYGON_NATIVE_TOKEN_ADDRESS,
+                "wrapped_native_address": POLYGON_WRAPPED_NATIVE_ADDRESS,
+                "usdc_e_address": POLYGON_USDC_E_ADDRESS,
+            }
+
+        return {
+            "chain_name": GNOSIS_CHAIN_NAME,
+            "chain_id": GNOSIS_CHAIN_ID,
+            "native_token_address": GNOSIS_NATIVE_TOKEN_ADDRESS,
+            "wrapped_native_address": GNOSIS_WRAPPED_NATIVE_ADDRESS,
+            "usdc_e_address": GNOSIS_USDC_E_ADDRESS,
+        }
 
     def setup(self) -> None:
         """Setup the handler."""
@@ -381,7 +410,14 @@ class HttpHandler(BaseHttpHandler):
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
         """Get Web3 instance for the specified chain."""
         try:
-            rpc_url = self.params.gnosis_ledger_rpc
+            # Select RPC URL based on chain
+            if chain == POLYGON_CHAIN_NAME:
+                rpc_url = self.params.polygon_ledger_rpc
+            elif chain == GNOSIS_CHAIN_NAME:
+                rpc_url = self.params.gnosis_ledger_rpc
+            else:
+                self.context.logger.error(f"Unknown chain: {chain}")
+                return None
 
             if not rpc_url:
                 self.context.logger.warning(f"No RPC URL for {chain}")
@@ -428,16 +464,21 @@ class HttpHandler(BaseHttpHandler):
             return None
 
     def _get_lifi_quote_sync(
-        self, eoa_address: str, chain: str, usdc_address: str, to_amount: str
+        self,
+        eoa_address: str,
+        usdc_address: str,
+        to_amount: str,
+        chain_config: Dict[str, Any],
     ) -> Optional[Dict]:
         """Get LiFi quote synchronously."""
         try:
-            chain_id = GNOSIS_CHAIN_ID
+            chain_id = chain_config["chain_id"]
+            native_token_address = chain_config["native_token_address"]
 
             params = {
                 "fromChain": chain_id,
                 "toChain": chain_id,
-                "fromToken": XDAI_ADDRESS,
+                "fromToken": native_token_address,
                 "toToken": usdc_address,
                 "fromAddress": eoa_address,
                 "toAddress": eoa_address,
@@ -469,7 +510,7 @@ class HttpHandler(BaseHttpHandler):
 
             signed_tx = eoa_account.sign_transaction(tx_data)
 
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             return tx_hash.hex()
 
         except Exception as e:
@@ -568,14 +609,15 @@ class HttpHandler(BaseHttpHandler):
         """Ensure agent EOA has at sufficient funds for x402 requests payments"""
         self.context.logger.info("Checking USDC balance for x402 payments...")
         try:
-            chain = GNOSIS_CHAIN_NAME
+            chain_config = self._get_chain_config()
+            chain = chain_config["chain_name"]
             eoa_account = self._get_eoa_account()
             if not eoa_account:
                 self.context.logger.error("Failed to get EOA account")
                 return False
             eoa_address = eoa_account.address
 
-            usdc_address = USDC_E_ADDRESS
+            usdc_address = chain_config["usdc_e_address"]
             if not usdc_address:
                 self.context.logger.error(f"No USDC address for {chain}")
                 return False
@@ -595,13 +637,16 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return True
 
+            native_token_name = (
+                "POL" if self.params.is_running_on_polymarket else "xDAI"
+            )
             self.context.logger.info(
-                f"USDC balance ({usdc_balance}) < {threshold}, swapping xDAI to {top_up} USDC..."
+                f"USDC balance ({usdc_balance}) < {threshold}, swapping {native_token_name} to {top_up} USDC..."
             )
 
             top_up_usdc_amount = str(top_up)
             quote = self._get_lifi_quote_sync(
-                eoa_address, chain, usdc_address, top_up_usdc_amount
+                eoa_address, usdc_address, top_up_usdc_amount, chain_config
             )
             if not quote:
                 self.context.logger.error("Failed to get LiFi quote")
@@ -634,7 +679,7 @@ class HttpHandler(BaseHttpHandler):
                 "gas": tx_gas,
                 "gasPrice": gas_price,
                 "nonce": nonce,
-                "chainId": GNOSIS_CHAIN_ID,
+                "chainId": chain_config["chain_id"],
             }
 
             self.context.logger.info(
@@ -647,7 +692,12 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to submit transaction")
                 return False
 
-            self.context.logger.info(f"xDAI to USDC swap submitted: {tx_hash}")
+            native_token_name = (
+                "POL" if self.params.is_running_on_polymarket else "xDAI"
+            )
+            self.context.logger.info(
+                f"{native_token_name} to USDC swap submitted: {tx_hash}"
+            )
 
             # Check transaction status to ensure it was successful
             tx_successful = self._check_transaction_status(tx_hash, chain)
@@ -657,7 +707,7 @@ class HttpHandler(BaseHttpHandler):
                 return False
 
             self.context.logger.info(
-                f"xDAI to USDC swap completed successfully: {tx_hash}"
+                f"{native_token_name} to USDC swap completed successfully: {tx_hash}"
             )
             return True
 
