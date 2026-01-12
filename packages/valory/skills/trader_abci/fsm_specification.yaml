@@ -263,6 +263,7 @@ transition_func:
     (PolymarketRedeemRound, DONE): FinishedPolymarketRedeemRound
     (PolymarketRedeemRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketRedeemRound, NONE): PolymarketRedeemRound
+    (PolymarketRedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (PolymarketRedeemRound, NO_MAJORITY): PolymarketRedeemRound
     (PolymarketRedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
