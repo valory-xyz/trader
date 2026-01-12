@@ -156,12 +156,11 @@ query GetPendingBets($id: ID!) {
 """
 
 GET_DAILY_PROFIT_STATISTICS_QUERY = """
-query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $endTimestamp: BigInt!) {
+query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!) {
   traderAgent(id: $agentId) {
     dailyProfitStatistics(
       where: { 
         date_gte: $startTimestamp,
-        date_lte: $endTimestamp
       }
       orderBy: date
       orderDirection: asc
