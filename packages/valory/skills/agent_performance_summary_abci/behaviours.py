@@ -552,6 +552,15 @@ class FetchPerformanceSummaryBehaviour(
         existing_summary = self.shared_state.read_existing_performance_summary()
         existing_profit_data = existing_summary.profit_over_time
         
+        #load settled_mech_requests_count from existing data if available
+        if existing_profit_data:
+            if hasattr(existing_profit_data, 'settled_mech_requests_count') and existing_profit_data.settled_mech_requests_count:
+                self._settled_mech_requests_count = existing_profit_data.settled_mech_requests_count
+                self.context.logger.info(
+                    f"Loaded cache from existing data: "
+                    f"{self._settled_mech_requests_count} settled requests"
+                )
+        
         # Determine if this is initial backfill or incremental update
         if not existing_profit_data or not existing_profit_data.data_points:
             # INITIAL BACKFILL - First time or no existing data
