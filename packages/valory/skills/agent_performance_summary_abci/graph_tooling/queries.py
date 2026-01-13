@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -151,6 +151,63 @@ query GetPendingBets($id: ID!) {
       amount
       feeAmount
     }
+  }
+}
+"""
+
+GET_DAILY_PROFIT_STATISTICS_QUERY = """
+query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!) {
+  traderAgent(id: $agentId) {
+    dailyProfitStatistics(
+      where: { 
+        date_gte: $startTimestamp,
+      }
+      orderBy: date
+      orderDirection: asc
+      first: 1000
+    ) {
+      id
+      date
+      totalBets
+      totalTraded
+      totalFees
+      totalPayout
+      dailyProfit
+      profitParticipants {
+        id
+        question
+      }
+    }
+  }
+}
+"""
+
+GET_ALL_MECH_REQUESTS_QUERY = """
+query GetAllMechRequests($sender: String!, $skip: Int!) {
+  requests(
+    where: { sender: $sender }
+    first: 1000
+    skip: $skip
+    orderBy: requestId
+    orderDirection: asc
+  ) {
+    id
+    requestId
+    questionTitle
+  }
+}
+"""
+
+GET_MECH_REQUESTS_BY_TITLES_QUERY = """
+query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
+  requests(
+    where: { 
+      sender: $sender,
+      questionTitle_in: $questionTitles
+    }
+  ) {
+    id
+    questionTitle
   }
 }
 """
