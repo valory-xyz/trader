@@ -220,6 +220,8 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.bet_id_row_manager: Dict[str, List[int]] = {}
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
+        # whether the mech response round timed out
+        self.mech_timed_out: bool = False
 
     @property
     def mock_question_id(self) -> Any:
