@@ -330,23 +330,33 @@ class HttpHandler(BaseHttpHandler):
             self._send_not_found_response(http_msg, http_dialogue)
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
-        """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it."""
+        """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it (Gnosis only)."""
         funds_status = copy.deepcopy(self.funds_status)
+
+        # Only apply adjustment for Gnosis chain
+        if self.params.is_running_on_polymarket:
+            return funds_status
+
         try:
-            safe_balances = funds_status[GNOSIS_CHAIN_NAME].accounts[
+            chain_config = self._get_chain_config()
+            safe_balances = funds_status[chain_config["chain_name"]].accounts[
                 self.synchronized_data.safe_contract_address
             ]
 
-            xDAI_status = safe_balances.tokens[XDAI_ADDRESS]
-            wxDAI_status = safe_balances.tokens[WRAPPED_XDAI_ADDRESS]
+            native_status = safe_balances.tokens[chain_config["native_token_address"]]
+            wrapped_native_status = safe_balances.tokens[
+                chain_config["wrapped_native_address"]
+            ]
         except KeyError:
             self.context.logger.error(
                 "Misconfigured fund requirements data. Can't apply adjustment."
             )
             return funds_status
-        if xDAI_status.deficit != 0:
-            xDAI_status.deficit = max(
-                0, int(xDAI_status.deficit or 0) - int(wxDAI_status.balance or 0)
+        if native_status.deficit != 0:
+            native_status.deficit = max(
+                0,
+                int(native_status.deficit or 0)
+                - int(wrapped_native_status.balance or 0),
             )
 
         return funds_status
