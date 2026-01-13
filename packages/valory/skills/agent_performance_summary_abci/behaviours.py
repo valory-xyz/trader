@@ -204,7 +204,7 @@ class FetchPerformanceSummaryBehaviour(
         # Get total mech requests (uses cache if available)
         total_mech_requests = yield from self._get_total_mech_requests(agent_safe_address)
         
-        if total_mech_requests == 0:
+        if not total_mech_requests:
             return 0
         
         # Get open market requests (uses cache if available)
@@ -527,7 +527,7 @@ class FetchPerformanceSummaryBehaviour(
         
         if not all_mech_requests:
             self.context.logger.warning("No mech requests found for agent")
-            return {}
+            return None
         
         # Build lookup map: question_title -> count
         lookup = {}
@@ -567,7 +567,7 @@ class FetchPerformanceSummaryBehaviour(
         """Perform initial backfill of all profit data."""
         # Fetch ALL daily profit statistics from creation to now
         daily_stats = yield from self._fetch_daily_profit_statistics(
-            agent_safe_address, creation_timestamp
+            agent_safe_address, 0
         )
         
         if daily_stats is None:
@@ -587,6 +587,14 @@ class FetchPerformanceSummaryBehaviour(
         
         # Build mech request lookup ONCE for all historical data
         mech_request_lookup = yield from self._build_mech_request_lookup(agent_safe_address)
+        if not mech_request_lookup:
+            self.context.logger.warning("No mech requests found")
+            return ProfitOverTimeData(
+                last_updated=current_timestamp,
+                total_days=0,
+                data_points=[],
+                settled_mech_requests_count=0
+            )
         
         # Process all daily statistics
         data_points = []
