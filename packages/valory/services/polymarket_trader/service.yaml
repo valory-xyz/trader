@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicbqbpfsyddjpxn4vqimsglc3vd33gk4adbneu6kclj6lv5ezmxam
+agent: valory/trader:0.1.0:bafybeiee53po3v25s2z2m3dkywcvv4ijh4sbhsjllvig52e7d3pligfbgm
 number_of_agents: 1
 deployment:
   agent:
@@ -148,12 +148,19 @@ models:
       coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       genai_api_key: ${GENAI_API_KEY:str:""}
       x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
+      gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
-      polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:true}
+      polymarket_builder_pr`ogram_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:true}
+      polymarket_usdc_address: ${POLYMARKET_USDC_ADDRESS:str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+      polymarket_ctf_address: ${POLYMARKET_CTF_ADDRESS:str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+      polymarket_ctf_exchange_address: ${POLYMARKET_CTF_EXCHANGE_ADDRESS:str:0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E}
+      polymarket_neg_risk_ctf_exchange_address: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE_ADDRESS:str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
+      polymarket_neg_risk_adapter_address: ${POLYMARKET_NEG_RISK_ADAPTER_ADDRESS:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+      polymarket_market_slug_to_bet_on: ${POLYMARKET_MARKET_SLUG_TO_BET_ON:str:new-stranger-things-episode-released-by-december-31}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
@@ -312,11 +319,33 @@ public_id: valory/ledger:0.19.0
 type: connection
 config:
   ledger_apis:
-    POLYGON:
-      address: ${POLYGON_LEDGER_RPC:str:http://host.docker.internal:8545}
+    ethereum:
+      address: ${ETHEREUM_LEDGER_RPC:str:http://host.docker.internal:8545}
+      chain_id: ${ETHEREUM_LEDGER_CHAIN_ID:int:1337}
+      default_gas_price_strategy: ${ETHEREUM_LEDGER_PRICING:str:eip1559}
+      poa_chain: ${ETHEREUM_LEDGER_IS_POA_CHAIN:bool:false}
+    gnosis:
+      address: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
+      chain_id: ${GNOSIS_LEDGER_CHAIN_ID:int:100}
+      poa_chain: ${GNOSIS_LEDGER_IS_POA_CHAIN:bool:false}
+      default_gas_price_strategy: ${GNOSIS_LEDGER_PRICING:str:eip1559}
+    polygon:
+      address: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       chain_id: ${POLYGON_LEDGER_CHAIN_ID:int:137}
+      poa_chain: ${POLYGON_LEDGER_IS_POA_CHAIN:bool:true}
       default_gas_price_strategy: ${POLYGON_LEDGER_PRICING:str:eip1559}
-      poa_chain: ${POLYGON_LEDGER_IS_POA_CHAIN:bool:false}
+      gas_price_strategies:
+        eip1559:
+          max_gas_fast: 100
+          fee_history_blocks: 10
+          fee_history_percentile: 5
+          default_priority_fee: ${POLYGON_DEFAULT_PRIORITY_FEE:int:300000000000}
+          fallback_estimate:
+            maxFeePerGas: ${POLYGON_MAX_FEE_PER_GAS:int:1000000000000}
+            maxPriorityFeePerGas: ${POLYGON_MAX_PRIORITY_FEE_PER_GAS:int:300000000000}
+          priority_fee_increase_boundary: ${POLYGON_PRIORITY_FEE_INCREASE_BOUNDARY:int:20000}
+      is_gas_estimation_enabled: ${POLYGON_IS_GAS_ESTIMATION_ENABLED:bool:true}
+      timeout: ${POLYGON_LEDGER_TIMEOUT:int:10}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
@@ -356,5 +385,15 @@ models:
     args:
       fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000}}}}}
       rpc_urls:
+        gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
         polygon: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+---
+public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  host: ${POLYMARKET_CLIENT_HOST:str:https://clob.polymarket.com}
+  chain_id: ${POLYMARKET_CLIENT_CHAIN_ID:int:137}
+  safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+  remote_builder_url: ${POLYMARKET_REMOTE_BUILDER_URL:str:http://localhost:5001/sign}
+  polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
