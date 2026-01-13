@@ -161,7 +161,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_MECH_SENDER_QUERY,
-                variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt)},
+                variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
                 subgraph=self.context.olas_mech_subgraph,
                 res_context="mech_sender",
             )
@@ -297,17 +297,13 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         
         while True:
             
-            # Modify query to include pagination
-            query_with_pagination = GET_DAILY_PROFIT_STATISTICS_QUERY.replace(
-                "first: 1000",
-                f"first: {batch_size}, skip: {skip}"
-            )
-            
             result = yield from self._fetch_from_subgraph(
-                query=query_with_pagination,
+                query=GET_DAILY_PROFIT_STATISTICS_QUERY,
                 variables={
                     "agentId": agent_safe_address.lower(),
                     "startTimestamp": str(start_timestamp),
+                    "first": batch_size,
+                    "skip": skip
                 },
                 subgraph=self.context.olas_agents_subgraph,
                 res_context=f"daily_profit_statistics_batch_{skip // batch_size + 1}",
@@ -338,17 +334,35 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_all_mech_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[List]]:
-        """Fetch all mech requests for the agent"""
-        mech_sender_result = yield from self._fetch_mech_sender(
-            agent_safe_address=agent_safe_address,
-            timestamp_gt=0  # Get all requests from the beginning
-        )
+        """Fetch all mech requests for the agent with pagination support."""
+        all_requests = []
+        skip = 0
+        batch_size = QUERY_BATCH_SIZE
         
-        if not mech_sender_result or not mech_sender_result.get("requests"):
-            return []
+        while True:
+            result = yield from self._fetch_from_subgraph(
+                query=GET_MECH_SENDER_QUERY,
+                variables={"id": agent_safe_address, "timestamp_gt": 0, "skip": skip, "first": batch_size},
+                subgraph=self.context.olas_mech_subgraph,
+                res_context=f"all_mech_requests_batch_{skip // batch_size + 1}",
+            )
+            
+            if not result:
+                break
+            
+            batch_requests = result.get("requests", [])
+            if not batch_requests:
+                break
+            
+            all_requests.extend(batch_requests)
+            
+            # If we got less than batch_size, we've reached the end
+            if len(batch_requests) < batch_size:
+                break
+                
+            skip += batch_size
         
-        # Return all requests from the sender
-        return mech_sender_result.get("requests", [])
+        return all_requests
 
     def _fetch_mech_requests_by_titles(
         self, agent_safe_address: str, question_titles: List[str]
