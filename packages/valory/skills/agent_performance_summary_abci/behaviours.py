@@ -204,7 +204,7 @@ class FetchPerformanceSummaryBehaviour(
         # Get total mech requests (uses cache if available)
         total_mech_requests = yield from self._get_total_mech_requests(agent_safe_address)
         
-        if total_mech_requests == 0:
+        if not total_mech_requests:
             return 0
         
         # Get open market requests (uses cache if available)
@@ -412,6 +412,7 @@ class FetchPerformanceSummaryBehaviour(
             funds_locked_in_markets=round(funds_locked_in_markets, 2) if funds_locked_in_markets else None,
             available_funds=round(available_funds, 2) if available_funds else None,
             roi=roi_decimal,
+            settled_mech_request_count=self._settled_mech_requests_count
         )
 
 
@@ -526,7 +527,7 @@ class FetchPerformanceSummaryBehaviour(
         
         if not all_mech_requests:
             self.context.logger.warning("No mech requests found for agent")
-            return {}
+            return None
         
         # Build lookup map: question_title -> count
         lookup = {}
@@ -552,17 +553,9 @@ class FetchPerformanceSummaryBehaviour(
         existing_summary = self.shared_state.read_existing_performance_summary()
         existing_profit_data = existing_summary.profit_over_time
         
-        #load settled_mech_requests_count from existing data if available
-        if existing_profit_data:
-            if hasattr(existing_profit_data, 'settled_mech_requests_count') and existing_profit_data.settled_mech_requests_count:
-                self._settled_mech_requests_count = existing_profit_data.settled_mech_requests_count
-                self.context.logger.info(
-                    f"Loaded cache from existing data: "
-                    f"{self._settled_mech_requests_count} settled requests"
-                )
-        
         # Determine if this is initial backfill or incremental update
-        if not existing_profit_data or not existing_profit_data.data_points:
+        # We need to build the profit over time chart again after the hotfix so we check for settled_mech_request_count field in agent performance metrics, as it was newly added in the hotfix
+        if not existing_profit_data or not existing_profit_data.data_points or not existing_summary.agent_performance.metrics.settled_mech_request_count:
             # INITIAL BACKFILL - First time or no existing data
             self.context.logger.info("Performing initial profit over time backfill...")
             return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
@@ -573,25 +566,9 @@ class FetchPerformanceSummaryBehaviour(
 
     def _perform_initial_backfill(self, agent_safe_address: str, current_timestamp: int) -> Generator[None, None, Optional[ProfitOverTimeData]]:
         """Perform initial backfill of all profit data."""
-        # Use existing agent details from the summary instead of fetching again
-        existing_summary = self.shared_state.read_existing_performance_summary()
-        if existing_summary.agent_details and existing_summary.agent_details.created_at:
-            # Parse ISO timestamp back to unix timestamp
-            created_at_iso = existing_summary.agent_details.created_at
-            creation_dt = datetime.strptime(created_at_iso, "%Y-%m-%dT%H:%M:%SZ")
-            creation_timestamp = int(creation_dt.timestamp())
-        else:
-            self.context.logger.error("Agent details not available in existing summary")
-            return ProfitOverTimeData(
-                last_updated=current_timestamp,
-                total_days=0,
-                data_points=[],
-                settled_mech_requests_count=0
-            )
-        
         # Fetch ALL daily profit statistics from creation to now
         daily_stats = yield from self._fetch_daily_profit_statistics(
-            agent_safe_address, creation_timestamp
+            agent_safe_address, 0
         )
         
         if daily_stats is None:
@@ -611,6 +588,14 @@ class FetchPerformanceSummaryBehaviour(
         
         # Build mech request lookup ONCE for all historical data
         mech_request_lookup = yield from self._build_mech_request_lookup(agent_safe_address)
+        if not mech_request_lookup:
+            self.context.logger.warning("No mech requests found")
+            return ProfitOverTimeData(
+                last_updated=current_timestamp,
+                total_days=0,
+                data_points=[],
+                settled_mech_requests_count=0
+            )
         
         # Process all daily statistics
         data_points = []
@@ -637,13 +622,13 @@ class FetchPerformanceSummaryBehaviour(
             ))
         
         # Calculate total settled mech requests from all data points
-        self._settled_mech_requests_count = sum(point.daily_mech_requests for point in data_points)
+        settled_mech_requests_count = sum(point.daily_mech_requests for point in data_points)
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(data_points),
             data_points=data_points,
-            settled_mech_requests_count=self._settled_mech_requests_count
+            settled_mech_requests_count=settled_mech_requests_count
         )
 
     def _perform_incremental_update(self, agent_safe_address: str, current_timestamp: int, existing_data: ProfitOverTimeData) -> Generator[None, None, Optional[ProfitOverTimeData]]:
@@ -726,13 +711,13 @@ class FetchPerformanceSummaryBehaviour(
             ))
         
         # Calculate updated settled mech requests count from all data points
-        self._settled_mech_requests_count = sum(point.daily_mech_requests for point in new_data_points)
+        settled_mech_requests_count = sum(point.daily_mech_requests for point in new_data_points)
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(new_data_points),
             data_points=new_data_points,
-            settled_mech_requests_count=self._settled_mech_requests_count
+            settled_mech_requests_count=settled_mech_requests_count
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:
@@ -771,10 +756,11 @@ class FetchPerformanceSummaryBehaviour(
         self._open_market_requests = None
         self._mech_request_lookup = None
         
+        agent_safe_address = self.synchronized_data.safe_contract_address
+        self._settled_mech_requests_count = yield from self._calculate_settled_mech_requests(agent_safe_address)
+        
         current_timestamp = self.shared_state.round_sequence.last_round_transition_timestamp.timestamp()
         
-        profit_over_time = yield from self._build_profit_over_time_data()
-
         final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
@@ -803,6 +789,7 @@ class FetchPerformanceSummaryBehaviour(
         agent_details = yield from self._fetch_agent_details_data()
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
+        profit_over_time = yield from self._build_profit_over_time_data()
 
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp, 

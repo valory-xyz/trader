@@ -32,10 +32,10 @@ query GetOlasTraderAgent($id: ID!) {
 """
 
 GET_MECH_SENDER_QUERY = """
-query MechSender($id: ID!, $timestamp_gt: Int!) {
+query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
     totalRequests
-    requests(first: 1000, where: { blockTimestamp_gt: $timestamp_gt }) {
+    requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
       questionTitle
     }
   }
@@ -156,7 +156,7 @@ query GetPendingBets($id: ID!) {
 """
 
 GET_DAILY_PROFIT_STATISTICS_QUERY = """
-query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!) {
+query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
   traderAgent(id: $agentId) {
     dailyProfitStatistics(
       where: { 
@@ -164,7 +164,8 @@ query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!) {
       }
       orderBy: date
       orderDirection: asc
-      first: 1000
+      first: $first
+      skip: $skip
     ) {
       id
       date
@@ -200,14 +201,15 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
 
 GET_MECH_REQUESTS_BY_TITLES_QUERY = """
 query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
-  requests(
-    where: { 
-      sender: $sender,
-      questionTitle_in: $questionTitles
+  sender(id: $sender) {
+    requests(
+      where: { 
+        questionTitle_in: $questionTitles
+      }
+    ) {
+      id
+      questionTitle
     }
-  ) {
-    id
-    questionTitle
   }
 }
 """

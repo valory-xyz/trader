@@ -71,6 +71,7 @@ class PerformanceMetricsData:
     funds_locked_in_markets: Optional[float] = None
     available_funds: Optional[float] = None
     roi: Optional[float] = None
+    settled_mech_request_count: Optional[int] = None
 
 
 @dataclass
