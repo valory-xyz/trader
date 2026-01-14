@@ -201,14 +201,15 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
 
 GET_MECH_REQUESTS_BY_TITLES_QUERY = """
 query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
-  requests(
-    where: { 
-      sender: $sender,
-      questionTitle_in: $questionTitles
+  sender(id: $sender) {
+    requests(
+      where: { 
+        questionTitle_in: $questionTitles
+      }
+    ) {
+      id
+      questionTitle
     }
-  ) {
-    id
-    questionTitle
   }
 }
 """
