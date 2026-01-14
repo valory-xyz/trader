@@ -546,7 +546,7 @@ class FetchPerformanceSummaryBehaviour(
         :return: ProfitOverTimeData or None
         """
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
-        current_timestamp = self.shared_state.synced_timestamp
+        current_timestamp = self.shared_state.round_sequence.last_round_transition_timestamp.timestamp()
         
         # Check if we have existing profit data
         existing_summary = self.shared_state.read_existing_performance_summary()
@@ -740,7 +740,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Check if we need to update (daily check)
         existing_summary = self.shared_state.read_existing_performance_summary()
-        current_timestamp = self.shared_state.synced_timestamp
+        current_timestamp = self.shared_state.round_sequence.last_round_transition_timestamp.timestamp()
         
         # Check if profit_over_time exists and is up to date
         if existing_summary.profit_over_time:
@@ -771,7 +771,7 @@ class FetchPerformanceSummaryBehaviour(
         self._open_market_requests = None
         self._mech_request_lookup = None
         
-        current_timestamp = self.shared_state.synced_timestamp
+        current_timestamp = self.shared_state.round_sequence.last_round_transition_timestamp.timestamp()
         
         profit_over_time = yield from self._build_profit_over_time_data()
 
