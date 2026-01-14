@@ -554,7 +554,8 @@ class FetchPerformanceSummaryBehaviour(
         existing_profit_data = existing_summary.profit_over_time
         
         # Determine if this is initial backfill or incremental update
-        if not existing_profit_data or not existing_profit_data.data_points:
+        # We need to build the profit over time chart again after the hotfix so we check for settled_mech_request_count field in agent performance metrics, as it was newly added in the hotfix
+        if not existing_profit_data or not existing_profit_data.data_points or not existing_summary.agent_performance.metrics.settled_mech_request_count:
             # INITIAL BACKFILL - First time or no existing data
             self.context.logger.info("Performing initial profit over time backfill...")
             return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
