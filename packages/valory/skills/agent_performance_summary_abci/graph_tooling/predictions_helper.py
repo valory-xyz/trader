@@ -41,6 +41,23 @@ PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
+class BET_STATUS(enum.Enum):
+    """BetStatus"""
+    WON = "won"
+    LOST = "lost"
+    PENDING = "pending"
+
+class TradingStrategy(enum.Enum):
+    """TradingStrategy"""
+
+    KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
+    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
+
+class TradingStrategyUI(enum.Enum):
+    """Trading strategy for the Agent's UI."""
+
+    RISKY = "risky"
+    BALANCED = "balanced"
 
 class PredictionsFetcher:
     """Shared logic for fetching and formatting predictions."""
@@ -649,11 +666,11 @@ class PredictionsFetcher:
         
         # Market not resolved
         if current_answer is None:
-            return "pending"
+            return BET_STATUS.PENDING.value
         
         # Check for invalid market
         if current_answer == INVALID_ANSWER_HEX:
-            return "lost"
+            return BET_STATUS.LOST.value
         
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
@@ -665,10 +682,10 @@ class PredictionsFetcher:
                 total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
                 if total_payout == 0:
                     # Won but not redeemed yet - treat as pending
-                    return "pending"
-            return "won"
+                    return BET_STATUS.PENDING.value
+            return BET_STATUS.WON.value
         
-        return "lost"
+        return BET_STATUS.LOST.value
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
@@ -688,3 +705,17 @@ class PredictionsFetcher:
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
             return None
+        
+    def _get_ui_trading_strategy(
+        self, selected_value: Optional[str]
+    ) -> str:
+        """Get the UI trading strategy."""
+        if selected_value is None:
+            return TradingStrategyUI.BALANCED.value
+
+        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
+            return TradingStrategyUI.BALANCED.value
+        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
+            return TradingStrategyUI.RISKY.value
+        else:
+            return TradingStrategyUI.RISKY.value
