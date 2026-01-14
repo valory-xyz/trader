@@ -27,6 +27,8 @@ import requests
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_PREDICTION_HISTORY_QUERY,
+    GET_MECH_TOOL_FOR_QUESTION_QUERY,
+    GET_SPECIFIC_MARKET_BETS_QUERY
 )
 
 
