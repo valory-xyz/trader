@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -220,6 +220,8 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.bet_id_row_manager: Dict[str, List[int]] = {}
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
+        # whether the mech response round timed out
+        self.mech_timed_out: bool = False
 
     @property
     def mock_question_id(self) -> Any:
