@@ -495,7 +495,7 @@ class PredictionsFetcher:
         # Calculate aggregated values
         total_bet_amount = self._calculate_total_bet_amount(market_bet_list)
         total_net_profit = self._calculate_market_net_profit(
-            market_bet_list, market_participant, safe_address
+            market_bet_list, market_participant
         )
         earliest_timestamp = self._get_earliest_timestamp(market_bet_list)
         
@@ -515,7 +515,8 @@ class PredictionsFetcher:
             "status": prediction_status,
             "net_profit": round(total_net_profit, 3) if total_net_profit is not None else None,
             "created_at": self._format_timestamp(str(earliest_timestamp)),
-            "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if prediction_status != "pending" else None
+            "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if prediction_status != "pending" else None,
+            "total_payout": float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
         }
 
     def _calculate_total_bet_amount(self, market_bet_list: List[Dict]) -> float:
@@ -537,8 +538,7 @@ class PredictionsFetcher:
     def _calculate_market_net_profit(
         self, 
         market_bets: List[Dict],
-        market_participant: Optional[Dict],
-        safe_address: str
+        market_participant: Optional[Dict]
     ) -> Optional[float]:
         """
         Calculate net profit for all bets on a market.
