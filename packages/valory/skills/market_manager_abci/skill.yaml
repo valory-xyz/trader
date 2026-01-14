@@ -224,4 +224,6 @@ models:
 dependencies:
   web3:
     version: <8,>=7.0.0
+  python-dateutil:
+    version: <4,>=2
 is_abstract: true
