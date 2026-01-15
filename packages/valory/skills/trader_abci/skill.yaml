@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeibuprpyqych43fcetzj5w4ztrexoeujn2gaxlkhrq7ce5fsuniksa
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeigjdfo62wldq4rjujmrbf3aspq6edsmitmrdj2d7qkovc42bipmvu
-  handlers.py: bafybeidac7ht5n3cyy2jimhvminal46jc2hlzulp5ywo2oyw7bwk4qr2hi
+  handlers.py: bafybeihsqqy3ki2rns5h53a2abvhtece2qxmzxw6miuq5lym5lgquzlaoe
   models.py: bafybeighcpwxdqohc2wbplgd474t3q6smiavxtft64xlv3yjzwsacabyvi
   predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
@@ -40,12 +40,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeids5bopaujr5bh2jfhvysl6fzf7zexsbdifaurf4nerp24hv5uqnm
 - valory/termination_abci:0.1.0:bafybeigysvgr5m6zj5b6ofadeddzpxxlhxzn2hyxfilcybhcpp252vdft4
 - valory/market_manager_abci:0.1.0:bafybeidbt5utmwgcdnggihgehbfmaq3cwt5wvag6die4z4tnjfyifwbsu4
-- valory/decision_maker_abci:0.1.0:bafybeihtlfuof5ljyj4jwfkt5mtbxirtwp36bjaz3p53vh5jibme42rlly
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiab54oncvqclzrdh7rtrelf5lixptgc2kggiq2guggdqud3m5p63u
+- valory/decision_maker_abci:0.1.0:bafybeict7crvwge6557qsj2gqrteoe6gejq4ghwj233gt3rccbbpbj5fgi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiceudeg3zbzdjasdip7qliqam63ijfsg6mnuvhpbsivc7cchtjqdu
 - valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
 - valory/check_stop_trading_abci:0.1.0:bafybeidpku2p6kuowfdhrinhaptsxz3xvyaxfum2izsraicoxfjhisnuem
 - valory/mech_interact_abci:0.1.0:bafybeiapma3xyf5cozepeakwidouehv3shaykmvxwsos4bgn4256q7cw24
-- valory/chatui_abci:0.1.0:bafybeies4u7bxfxfk6wlvuayei3qokyxfshha7ypvl5uzlo3errgv2wydq
+- valory/chatui_abci:0.1.0:bafybeih5nd5bpmbcfmbr4injugbi3rbqdxycqh6csz324sbmxg7hlqfzku
 - valory/agent_performance_summary_abci:0.1.0:bafybeib4umxilj7l2x7fr6ef5myyf76zz3suwj4ozlst6xvspfkpxnu2ee
 - valory/funds_manager:0.1.0:bafybeihcvkhm46u6zenf5hf3ktkktc5t7cnttekkxzpxoslmfi7iwngpau
 behaviours:
