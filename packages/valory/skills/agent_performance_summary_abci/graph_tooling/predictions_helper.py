@@ -40,6 +40,7 @@ INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+DEFAULT_CURRENCY = "USD"
 
 class BET_STATUS(enum.Enum):
     """BetStatus"""
@@ -219,7 +220,7 @@ class PredictionsFetcher:
                 return {
                     "id": bet_id,
                     "question": market_info.get("title", ""),
-                    "currency": "USD",
+                    "currency": DEFAULT_CURRENCY,
                     "total_bet": 0.0,
                     "to_win": 0.0,
                     "status": "pending",
@@ -261,7 +262,7 @@ class PredictionsFetcher:
             return {
                 "id": bet_id,
                 "question": market_info.get("title", ""),
-                "currency": "USD",
+                "currency": DEFAULT_CURRENCY,
                 "total_bet": round(total_bet, 3),
                 "to_win": round(to_win, 3),
                 "remaining_seconds": remaining_seconds,
