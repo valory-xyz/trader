@@ -32,10 +32,12 @@ fingerprint:
   tests/test_rounds.py: bafybeidahkavof43y3o4omnihh6yxdx7gqofio7kzukdydymxbebylempu
   tests/test_utils.py: bafybeia77p5nsp6txhvcdh4kyzjjujbwd2gnoi7fnpwxheeezeqebbufqq
 fingerprint_ignore_patterns: []
-connections: []
+connections:
+- valory/polymarket_client:0.1.0:bafybeierljto2or2h3xwfyqjoswqvcui7if2tjqrilszqdki2kpmuiexgy
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
+- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib4xpcpuiryyfnkuyhypdvqi5ebbl7ugavv6ig6yp4nzk3fxosntm
 behaviours:
@@ -224,4 +226,6 @@ models:
 dependencies:
   web3:
     version: <8,>=7.0.0
+  python-dateutil:
+    version: <4,>=2
 is_abstract: true
