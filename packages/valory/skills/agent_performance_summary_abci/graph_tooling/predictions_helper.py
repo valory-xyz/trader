@@ -223,16 +223,7 @@ class PredictionsFetcher:
             
             if not bet:
                 # Market exists but no bet found
-                return {
-                    "id": bet_id,
-                    "question": market_info.get("title", ""),
-                    "currency": DEFAULT_CURRENCY,
-                    "total_bet": 0.0,
-                    "to_win": 0.0,
-                    "status": "",
-                    "net_profit": 0.0,
-                    "bets": []
-                }
+                return None
             
             # Calculate totals and status
             total_bet = bet.get("bet_amount", 0)
