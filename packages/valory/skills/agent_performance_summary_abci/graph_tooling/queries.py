@@ -225,9 +225,9 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
 """
 
 GET_SPECIFIC_MARKET_BETS_QUERY = """
-query GetSpecificMarketBets($id: ID!, $marketId: ID!) {
+query GetSpecificMarketBets($id: ID!, $betId: ID!) {
           traderAgent(id: $id) {
-            bets(where: { fixedProductMarketMaker: $marketId }, orderBy: timestamp, orderDirection: desc) {
+            bets(where: { id: $betId }, orderBy: timestamp, orderDirection: desc) {
               id
               timestamp
               amount

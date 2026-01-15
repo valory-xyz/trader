@@ -186,12 +186,12 @@ class PredictionsFetcher:
             return None
 
     def fetch_position_details(
-        self, market_id: str, safe_address: str, store_path: str
+        self, bet_id: str, safe_address: str, store_path: str
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch complete position details for a specific market.
         
-        :param market_id: The market ID to fetch details for
+        :param bet_id: The bet ID to fetch details for
         :param safe_address: The agent's safe address
         :param store_path: Path to the data store directory
         :return: Complete position details or None if not found
@@ -199,24 +199,25 @@ class PredictionsFetcher:
         try:
             # Load multi_bets.json to get market info and prediction response
             multi_bets_data = self._load_multi_bets_data(store_path)
+            # Load agent_performance.json to get bet history
+            agent_performance_data = self._load_agent_performance_data(store_path)
+            bet = self._find_bet(agent_performance_data, bet_id)
+            
+            # If no bet found in agent_performance.json, fetch from subgraph
+            if not bet:
+                self.logger.info(f"No bets found in agent_performance.json for bet {bet_id}, fetching from subgraph")
+                bet = self._fetch_specific_bet_from_subgraph(bet_id, safe_address)
+
+            market_id = bet.get("market",{}).get("id","")
             market_info = self._find_market_in_multi_bets(multi_bets_data, market_id)
             
             if not market_info:
                 return None
             
-            # Load agent_performance.json to get bet history
-            agent_performance_data = self._load_agent_performance_data(store_path)
-            bet = self._find_bet_for_market(agent_performance_data, market_id)
-            
-            # If no bet found in agent_performance.json, fetch from subgraph
-            if not bet:
-                self.logger.info(f"No bets found in agent_performance.json for market {market_id}, fetching from subgraph")
-                bet = self._fetch_specific_market_bet_from_subgraph(market_id, safe_address)
-            
             if not bet:
                 # Market exists but no bet found
                 return {
-                    "id": market_id,
+                    "id": bet_id,
                     "question": market_info.get("title", ""),
                     "currency": "USD",
                     "total_bet": 0.0,
@@ -242,7 +243,7 @@ class PredictionsFetcher:
             
             if status == BET_STATUS.WON.value:
                 to_win = total_payout
-            elif status in [BET_STATUS.PENDING.value, BET_STATUS.LOST.value] :
+            elif status == BET_STATUS.LOST.value:
                 to_win = 0
 
             # Get prediction tool from mech subgraph
@@ -258,7 +259,7 @@ class PredictionsFetcher:
             
             # Build response
             return {
-                "id": market_id,
+                "id": bet_id,
                 "question": market_info.get("title", ""),
                 "currency": "USD",
                 "total_bet": round(total_bet, 3),
@@ -270,7 +271,7 @@ class PredictionsFetcher:
             }
             
         except Exception as e:
-            self.logger.error(f"Error fetching position details for market {market_id}: {str(e)}")
+            self.logger.error(f"Error fetching position details for bet {bet_id}: {str(e)}")
             return None
 
     def _load_multi_bets_data(self, store_path: str) -> List[Dict]:
@@ -302,14 +303,13 @@ class PredictionsFetcher:
                 return market
         return None
 
-    def _find_bet_for_market(self, agent_performance_data: Dict, market_id: str) -> Optional[Dict]:
-        """Find bet for a specific market ID in agent performance data."""
+    def _find_bet(self, agent_performance_data: Dict, bet_id: str) -> Optional[Dict]:
+        """Find bet for a specific bet ID in agent performance data."""
         prediction_history = agent_performance_data.get("prediction_history", {})
         items = prediction_history.get("items", [])
         
         for item in items:
-            market = item.get("market", {})
-            if market.get("id") == market_id:
+            if item.get("id") == bet_id:
                 return item
         
         return {}
@@ -350,23 +350,23 @@ class PredictionsFetcher:
         
         return formatted_bet
 
-    def _fetch_specific_market_bet_from_subgraph(
-        self, market_id: str, safe_address: str
+    def _fetch_specific_bet_from_subgraph(
+        self, bet_id: str, safe_address: str
     ) -> Optional[Dict]:
         """
         Fetch bet for a specific market from the subgraph.
         
-        :param market_id: The market ID to fetch bets for
+        :param bet_id: The bet ID to fetch
         :param safe_address: The agent's safe address
         :return: formatted bet
         """
-        # Query to get all bets for this agent and filter for specific market
+        # Query to get all bets for this agent
         
         query_payload = {
             "query": GET_SPECIFIC_MARKET_BETS_QUERY,
             "variables": {
                 "id": safe_address,
-                "marketId": market_id
+                "betId": bet_id
             }
         }
         
