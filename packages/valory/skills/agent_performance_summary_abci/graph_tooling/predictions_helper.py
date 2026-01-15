@@ -42,7 +42,7 @@ GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DEFAULT_CURRENCY = "USD"
 
-class BET_STATUS(enum.Enum):
+class BetStatus(enum.Enum):
     """BetStatus"""
     WON = "won"
     LOST = "lost"
@@ -248,9 +248,9 @@ class PredictionsFetcher:
             potential_profit = market_info.get("potential_net_profit", 0)
             to_win = total_bet + (potential_profit / WEI_TO_NATIVE) if potential_profit > 0 else total_bet
             
-            if status == BET_STATUS.WON.value:
+            if status == BetStatus.WON.value:
                 to_win = total_payout
-            elif status == BET_STATUS.LOST.value:
+            elif status == BetStatus.LOST.value:
                 to_win = 0
 
             # Get prediction tool from mech subgraph
@@ -673,11 +673,11 @@ class PredictionsFetcher:
         
         # Market not resolved
         if current_answer is None:
-            return BET_STATUS.PENDING.value
+            return BetStatus.PENDING.value
         
         # Check for invalid market
         if current_answer == INVALID_ANSWER_HEX:
-            return BET_STATUS.LOST.value
+            return BetStatus.LOST.value
         
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
@@ -689,10 +689,10 @@ class PredictionsFetcher:
                 total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
                 if total_payout == 0:
                     # Won but not redeemed yet - treat as pending
-                    return BET_STATUS.PENDING.value
-            return BET_STATUS.WON.value
+                    return BetStatus.PENDING.value
+            return BetStatus.WON.value
         
-        return BET_STATUS.LOST.value
+        return BetStatus.LOST.value
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
