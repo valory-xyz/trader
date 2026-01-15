@@ -627,7 +627,7 @@ class HttpHandler(BaseHttpHandler):
             return data_points
         
         # Calculate cutoff timestamp
-        current_timestamp = self.shared_state.round_sequence.last_round_transition_timestamp.timestamp()
+        current_timestamp = int(datetime.utcnow().timestamp())
         days_map = {"7d": 7, "30d": 30, "90d": 90}
         days = days_map.get(window, 0)
         
@@ -706,21 +706,21 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return
             
-            market_id = match.group(1)
-            self.context.logger.info(f"Fetching position details for market ID: {market_id}")
+            bet_id = match.group(1)
+            self.context.logger.info(f"Fetching position details for bet ID: {bet_id}")
             
             # Use PredictionsFetcher to get all position details
             fetcher = PredictionsFetcher(self.context, self.context.logger)
             safe_address = "0xf69900355c458a0f6c597b1d8f3ec61cc7b2a545"
             store_path = str(self.context.params.store_path)
             
-            response = fetcher.fetch_position_details(market_id, safe_address, store_path)
+            response = fetcher.fetch_position_details(bet_id, safe_address, store_path)
             
             if not response:
                 self._send_not_found_response(http_msg, http_dialogue)
                 return
             
-            self.context.logger.info(f"Sending position details for market: {market_id}")
+            self.context.logger.info(f"Sending position details for market: {bet_id}")
             self._send_ok_response(http_msg, http_dialogue, response)
             
         except Exception as e:

@@ -711,11 +711,11 @@ class PredictionsFetcher:
     ) -> str:
         """Get the UI trading strategy."""
         if selected_value is None:
-            return TradingStrategyUI.BALANCED.value
+            return None
 
         if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
             return TradingStrategyUI.BALANCED.value
         elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
             return TradingStrategyUI.RISKY.value
         else:
-            return TradingStrategyUI.RISKY.value
+            return None
