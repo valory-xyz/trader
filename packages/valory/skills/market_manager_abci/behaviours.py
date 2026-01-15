@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -251,6 +251,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             return
 
         for raw_bet in chunk:
+            # Get current trading strategy and map to risky/balanced
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
