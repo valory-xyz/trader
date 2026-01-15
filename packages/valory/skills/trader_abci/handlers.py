@@ -254,7 +254,7 @@ class HttpHandler(BaseHttpHandler):
             trading_strategy = self.shared_state.chatui_config.trading_strategy
             trading_type = self._get_ui_trading_strategy(trading_strategy).value
             trading_strategy_explanation = TRADING_STRATEGY_EXPLANATION.get(
-                trading_strategy, ""
+                trading_type, ""
             )
 
             # Format response
