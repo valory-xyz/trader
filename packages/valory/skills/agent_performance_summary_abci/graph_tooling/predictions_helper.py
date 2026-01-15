@@ -229,7 +229,7 @@ class PredictionsFetcher:
                     "currency": DEFAULT_CURRENCY,
                     "total_bet": 0.0,
                     "to_win": 0.0,
-                    "status": "pending",
+                    "status": "",
                     "net_profit": 0.0,
                     "bets": []
                 }
