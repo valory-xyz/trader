@@ -252,16 +252,12 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         for raw_bet in chunk:
             # Get current trading strategy and map to risky/balanced
-            current_strategy = self.shared_state.chatui_config.trading_strategy
-            bet = Bet(**raw_bet, market=self._current_market, strategy=current_strategy)
+            bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
                 self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
-                # Update strategy if it's not set
-                if self.bets[index].strategy is None:
-                    self.bets[index].strategy = current_strategy
 
     def _update_bets(
         self,
