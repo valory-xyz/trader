@@ -60,6 +60,12 @@ class TradingStrategyUI(enum.Enum):
     RISKY = "risky"
     BALANCED = "balanced"
 
+class BetSide(enum.Enum):
+    """Bet Side"""
+
+    YES = "yes"
+    NO = "no"
+
 class PredictionsFetcher:
     """Shared logic for fetching and formatting predictions."""
 
@@ -327,7 +333,7 @@ class PredictionsFetcher:
         
         # Determine implied probability based on bet side
         bet_side = bets.get("prediction_side", "").lower()
-        if bet_side == "yes":
+        if bet_side == BetSide.YES.value:
             implied_probability = prediction_response.get("p_yes",0) * 100
         else:
             implied_probability = prediction_response.get("p_no",0) * 100
