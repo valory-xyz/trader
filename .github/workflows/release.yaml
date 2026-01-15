@@ -19,7 +19,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:0.21.3
+            image: valory/open-autonomy-user:0.21.6
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Pushing Packages"
@@ -46,7 +46,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-            image: valory/open-autonomy-user:0.21.3
+            image: valory/open-autonomy-user:0.21.6
             options: -v ${{ github.workspace }}:/work
             run: |
               echo "Setting Tag Images"
@@ -69,7 +69,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
-            image: valory/open-autonomy-user:0.21.3
+            image: valory/open-autonomy-user:0.21.6
             options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
             shell: bash
             run: |
@@ -86,8 +86,8 @@ jobs:
               cd $SERVICE || exit 1
               echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
               docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.3 --push || exit 1
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.3 --version $VERSION --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.6 --push || exit 1
+              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.6 --version $VERSION --push || exit 1
 
   deploy-service-on-propel:
     name: Deploy service on propel

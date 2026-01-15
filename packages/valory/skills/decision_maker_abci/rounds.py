@@ -51,6 +51,9 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedPolymarketRedeemRound,
+    FinishedRedeemTxPreparationRound,
+    FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     ImpossibleRound,
@@ -59,11 +62,26 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
+    PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
+    PolymarketRedeemRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
+    PolymarketSetApprovalRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -171,7 +189,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 19.
             - none: 17.
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedRedeemTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -185,11 +203,14 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound,
         DecisionReceiveRound,
         RedeemRound,
+        PolymarketPostSetApprovalRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
             Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
+            Event.SET_APPROVAL: PolymarketSetApprovalRound,
+            Event.PREPARE_TX: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs`
@@ -240,6 +261,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
+            Event.POLYMARKET_DONE: PolymarketBetPlacementRound,
             Event.DONE_NO_SELL: FinishedDecisionMakerRound,
             Event.DONE_SELL: SellOutcomeTokensRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
@@ -273,6 +295,46 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
+        PolymarketBetPlacementRound: {
+            Event.DONE: RedeemRouterRound,
+            Event.BET_PLACEMENT_DONE: RedeemRouterRound,
+            Event.BET_PLACEMENT_FAILED: PolymarketBetPlacementRound,
+            # skip the bet placement tx
+            Event.MOCK_TX: RedeemRouterRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
+            Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
+            Event.NO_MAJORITY: PolymarketBetPlacementRound,
+            Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        PolymarketSetApprovalRound: {
+            Event.DONE: PolymarketPostSetApprovalRound,
+            Event.PREPARE_TX: FinishedSetApprovalTxPreparationRound,
+            # skip the bet placement tx
+            Event.SKIP: BenchmarkingModeDisabledRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
+            Event.NO_MAJORITY: PolymarketSetApprovalRound,
+            Event.ROUND_TIMEOUT: PolymarketSetApprovalRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        PolymarketPostSetApprovalRound: {
+            Event.DONE: BenchmarkingModeDisabledRound,
+            # skip the bet placement tx
+            Event.SKIP: BenchmarkingModeDisabledRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
+            Event.NO_MAJORITY: PolymarketPostSetApprovalRound,
+            Event.ROUND_TIMEOUT: PolymarketPostSetApprovalRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
         RedeemRound: {
             Event.DONE: FinishedDecisionMakerRound,
             Event.MOCK_TX: SamplingRound,
@@ -286,6 +348,20 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
+        RedeemRouterRound: {
+            Event.DONE: RedeemRound,
+            Event.POLYMARKET_DONE: PolymarketRedeemRound,
+            Event.NO_MAJORITY: RedeemRouterRound,
+            Event.NONE: RedeemRouterRound,
+        },
+        PolymarketRedeemRound: {
+            Event.DONE: FinishedPolymarketRedeemRound,
+            Event.PREPARE_TX: FinishedRedeemTxPreparationRound,
+            Event.NO_MAJORITY: PolymarketRedeemRound,
+            Event.NONE: PolymarketRedeemRound,
+            Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
+            Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
+        },
         HandleFailedTxRound: {
             Event.BLACKLIST: BlacklistingRound,
             Event.NO_OP: RedeemRound,
@@ -294,6 +370,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound: {},
         BenchmarkingModeDisabledRound: {},
         FinishedDecisionRequestRound: {},
+        FinishedRedeemTxPreparationRound: {},
+        FinishedPolymarketRedeemRound: {},
+        FinishedSetApprovalTxPreparationRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
         RefillRequiredRound: {},
@@ -328,6 +407,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound,
         BenchmarkingModeDisabledRound,
         FinishedDecisionRequestRound,
+        FinishedRedeemTxPreparationRound,
+        FinishedPolymarketRedeemRound,
+        FinishedSetApprovalTxPreparationRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
         RefillRequiredRound,
@@ -348,6 +430,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         RandomnessRound: set(),
         CheckBenchmarkingModeRound: set(),
+        PolymarketPostSetApprovalRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
@@ -357,6 +440,15 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BenchmarkingModeDisabledRound: set(),
         FinishedDecisionRequestRound: set(),
+        FinishedRedeemTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedPolymarketRedeemRound: set(),
+        FinishedSetApprovalTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
         FinishedWithoutRedeemingRound: set(),
         RefillRequiredRound: set(),

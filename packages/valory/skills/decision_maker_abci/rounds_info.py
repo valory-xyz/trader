@@ -117,6 +117,21 @@ ROUNDS_INFO = {
         "description": "Collects outcome information from the external service.",
         "transitions": {},
     },
+    "polymarket_bet_placement_round": {
+        "name": "Placing a bet on Polymarket",
+        "description": "Attempts to place a bet on a Polymarket prediction market.",
+        "transitions": {},
+    },
+    "polymarket_set_approval_round": {
+        "name": "Setting approval on Polymarket",
+        "description": "Attempts to set approval on a Polymarket prediction market.",
+        "transitions": {},
+    },
+    "polymarket_post_set_approval_round": {
+        "name": "Post setting approval on Polymarket",
+        "description": "Attempts to finalize the approval setting on a Polymarket prediction market.",
+        "transitions": {},
+    },
     "post_tx_settlement_round": {
         "name": "Finalizing transaction settlement",
         "description": "Finalizes the transaction settlement",
@@ -220,6 +235,16 @@ ROUNDS_INFO = {
     "fetch_performance_data_round": {
         "name": "Fetching agent performance data",
         "description": "Retrieves the latest performance statistics for the agent.",
+        "transitions": {},
+    },
+    "redeem_router_round": {
+        "name": "Deciding between redeem tools",
+        "description": "A round for switching between Omen and Polymarket redeem rounds.",
+        "transitions": {},
+    },
+    "polymarket_redeem_round": {
+        "name": "Redeeming winnings from Polymarket",
+        "description": "Redeems winnings from resolved Polymarket bets.",
         "transitions": {},
     },
 }

@@ -9,14 +9,15 @@ fingerprint:
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
 fingerprint_ignore_patterns: []
 connections:
-- valory/abci:0.1.0:bafybeihoh3pe47zoouuudqlidspvmqpuc62a7qszhznieqdkdjpzl4vsaq
-- valory/http_client:0.23.0:bafybeib34a2ukancj5524tz64smczju2q2njscgufmtml6dcjb3bjyaocy
-- valory/ipfs:0.1.0:bafybeif7exoq2viwhfgfcjplxq73hnxvgpsx7pwshhntx6aekza25mdwli
-- valory/ledger:0.19.0:bafybeifdsep5suryfufmto4j5fyvjhmlgypyg6zvvwqsm4edlwfbfsav5y
-- valory/p2p_libp2p_client:0.1.0:bafybeihezztwiiismlbblbv67i4zibp7w6xzpqadt67mcdjaoauibjqii4
-- valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
-- dvilela/genai:0.1.0:bafybeiabp64cyd3m7pjbgeivcprijw7qqviycsu7l24useqttgjeif4vbi
-- valory/x402:0.1.0:bafybeibbmbx72zriokyed4rl7us6hjvxoxoqku737eqctsqjcncg3jlnku
+- valory/abci:0.1.0:bafybeidutel5jdlqyt2tygyvfxrqwgljpxq23bu3eyfndbcwm2t4y7jbee
+- valory/http_client:0.23.0:bafybeid5ffvg76ejjoese7brj5ji3lx66cu7p2ixfwflpo6rgofkypfd7y
+- valory/ipfs:0.1.0:bafybeiamz23olgtow4wqf7zpsfnfzf7pxiognrxl2mhn5kvqutlwhgukxa
+- valory/ledger:0.19.0:bafybeibdsjmy4w2eyilbqc7yzutopl65qpeyspxwz7mjvirr52twhjlf5y
+- valory/p2p_libp2p_client:0.1.0:bafybeic6ayusdwy4dks75njwk32ac7ur7salgllwf4fdc34ue5z2k5iz4q
+- valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
+- dvilela/genai:0.1.0:bafybeif42dgcucrs7sv5ajme6n7hoa44hbglj47zhbodyqmrtimw2hf5mu
+- valory/x402:0.1.0:bafybeif7fjrjtsqdyzxfn3cx4ffcmsnzaz3yhcnylmgbxp5baiy4qgwqwm
+- valory/polymarket_client:0.1.0:bafybeicpgdi76dwicduhanbfy5uaosd6z6uoldxb3w3kb4w7oufcxjsssi
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia4h7w5xcslzwphyupvqoijhf3wru4cswnztm24zwafyv5eliwm4a
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeifbty6k7cpi3srl56wjrrefwqteuomqarq4fd55vdrmnomk6cwdhu
@@ -114,11 +115,11 @@ logging_config:
       propagate: true
 dependencies:
   open-aea-ledger-cosmos:
-    version: ==2.0.6
+    version: ==2.0.7
   open-aea-ledger-ethereum:
-    version: ==2.0.6
+    version: ==2.0.7
   open-aea-test-autonomy:
-    version: ==0.21.3
+    version: ==0.21.6
   typing_extensions:
     version: ==4.13.2
 skill_exception_policy: stop_and_exit
@@ -210,7 +211,7 @@ models:
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_chain_id: ${str:gnosis}
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
-      mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
+      mech_wrapped_native_token_address: ${str:0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion_no_conf}
       use_fallback_strategy: ${bool:true}
@@ -269,9 +270,18 @@ models:
       genai_api_key: ${str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
+      polygon_ledger_rpc: ${str:https://1rpc.io/matic}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${bool:false}
       is_agent_performance_summary_enabled: ${bool:true}
+      is_running_on_polymarket: ${bool:false}
+      polymarket_builder_program_enabled: ${bool:true}
+      polymarket_usdc_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+      polymarket_ctf_address: ${str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+      polymarket_ctf_exchange_address: ${str:0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E}
+      polymarket_neg_risk_ctf_exchange_address: ${str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
+      polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+      polymarket_market_slug_to_bet_on: ${str:slug}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -465,6 +475,23 @@ config:
       chain_id: ${int:100}
       poa_chain: ${bool:false}
       default_gas_price_strategy: ${str:eip1559}
+    polygon:
+      address: ${str:https://1rpc.io/matic}
+      chain_id: ${int:137}
+      poa_chain: ${bool:true}
+      default_gas_price_strategy: ${str:eip1559}
+      gas_price_strategies:
+        eip1559:
+          max_gas_fast: 100
+          fee_history_blocks: 10
+          fee_history_percentile: 5
+          default_priority_fee: ${int:300000000000}
+          fallback_estimate:
+            maxFeePerGas: ${int:1000000000000}
+            maxPriorityFeePerGas: ${int:300000000000}
+          priority_fee_increase_boundary: ${int:20000}
+      is_gas_estimation_enabled: true
+      timeout: 10
 ---
 public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
@@ -487,5 +514,14 @@ models:
   params:
     args:
       fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
-      rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
+      rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com","polygon":"https://1rpc.io/matic"}}
       safe_contract_addresses: ${dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+---
+public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  host: https://clob.polymarket.com
+  chain_id: 137
+  safe_contract_addresses: ${dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+  remote_builder_url: ${str:http://localhost:5001/sign}
+  polymarket_builder_program_enabled: ${bool:true}

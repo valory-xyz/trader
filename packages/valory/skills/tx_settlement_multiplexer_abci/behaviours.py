@@ -22,6 +22,7 @@
 from typing import Generator, Optional, Set, Type, cast
 
 from aea.exceptions import AEAEnforceError
+from web3 import Web3
 
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -57,11 +58,13 @@ class PreTxSettlementBehaviour(BaseBehaviour):
 
     def _get_balance(self, agent: str) -> Generator[None, None, Optional[int]]:
         """Get the given agent's balance."""
-        self.context.logger.info(f"Checking balance for agent with address {agent}...")
+        # Checksum the address to ensure Web3 compatibility
+        checksummed_agent = Web3.to_checksum_address(agent)
+        self.context.logger.info(f"Checking balance for agent with address {checksummed_agent}...")
         ledger_api_response = yield from self.get_ledger_api_response(
             performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
             ledger_callable="get_balance",
-            account=agent,
+            account=checksummed_agent,
             chain_id=self.params.mech_chain_id,
         )
 
@@ -71,23 +74,25 @@ class PreTxSettlementBehaviour(BaseBehaviour):
             balance = None
 
         if balance is None:
-            log_msg = f"Failed to get the balance for agent with address {agent}."
+            log_msg = f"Failed to get the balance for agent with address {checksummed_agent}."
             self.context.logger.error(f"{log_msg}: {ledger_api_response}")
             return None
 
-        self.context.logger.info(f"The agent with address {agent} has {balance} WEI.")
+        self.context.logger.info(f"The agent with address {checksummed_agent} has {balance} WEI.")
         return balance
 
     def _check_balance(self, agent: str) -> Generator[None, None, bool]:
         """Check if the given agent's balance is sufficient."""
+        # Checksum the address
+        checksummed_agent = Web3.to_checksum_address(agent)
         balance = None
         while balance is None:
-            balance = yield from self._get_balance(agent)
+            balance = yield from self._get_balance(checksummed_agent)
 
         threshold = self.params.agent_balance_threshold
         refill_required = balance < threshold
         if refill_required:
-            msg = f"Please refill agent with address {agent}. Balance is below {threshold}."
+            msg = f"Please refill agent with address {checksummed_agent}. Balance is below {threshold}."
             self.context.logger.warning(msg)
 
         return refill_required

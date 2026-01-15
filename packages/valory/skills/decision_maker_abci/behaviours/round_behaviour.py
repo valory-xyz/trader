@@ -43,9 +43,24 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
+    PolymarketBetPlacementBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
+    PolymarketRedeemBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (
+    PolymarketPostSetApprovalBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
+    PolymarketSetApprovalBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.redeem_router import (
+    RedeemRouterBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
@@ -78,4 +93,9 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         RandomnessBehaviour,  # type: ignore
         BenchmarkingRandomnessBehaviour,  # type: ignore
         CheckBenchmarkingModeBehaviour,  # type: ignore
+        PolymarketBetPlacementBehaviour,  # type: ignore
+        PolymarketRedeemBehaviour,  # type: ignore
+        RedeemRouterBehaviour,  # type: ignore
+        PolymarketSetApprovalBehaviour,  # type: ignore
+        PolymarketPostSetApprovalBehaviour,  # type: ignore
     }
