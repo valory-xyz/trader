@@ -92,10 +92,12 @@ class FetchPerformanceSummaryBehaviour(
     
     def _should_update(self) -> bool:
         """Check if we should update."""
-        if self._last_update_timestamp == 0:
+        existing_summary = self.shared_state.read_existing_performance_summary()
+        
+        if not existing_summary or self.synchronized_data.period_count == 0:
             return True  # First run
         
-        time_since_last = self.shared_state.synced_timestamp - self._last_update_timestamp
+        time_since_last = self.shared_state.synced_timestamp - existing_summary.timestamp
         return time_since_last >= self._update_interval
 
     @property
@@ -547,7 +549,7 @@ class FetchPerformanceSummaryBehaviour(
         :return: ProfitOverTimeData or None
         """
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         # Check if we have existing profit data
         existing_summary = self.shared_state.read_existing_performance_summary()
@@ -731,7 +733,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Check if we need to update (daily check)
         existing_summary = self.shared_state.read_existing_performance_summary()
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         # Check if profit_over_time exists and is up to date
         if existing_summary.profit_over_time:
@@ -765,7 +767,7 @@ class FetchPerformanceSummaryBehaviour(
         agent_safe_address = self.synchronized_data.safe_contract_address
         self._settled_mech_requests_count = yield from self._calculate_settled_mech_requests(agent_safe_address)
         
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         final_roi, partial_roi = yield from self.calculate_roi()
 

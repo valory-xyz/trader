@@ -634,7 +634,7 @@ class HttpHandler(BaseHttpHandler):
         if days == 0:
             return data_points
         
-        cutoff_timestamp = current_timestamp - (days * SECONDS_PER_DAY)
+        cutoff_timestamp = current_timestamp - ((days-1) * SECONDS_PER_DAY)
         
         # Filter points within the window
         filtered_points = [

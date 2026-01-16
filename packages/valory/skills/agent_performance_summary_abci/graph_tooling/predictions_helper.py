@@ -378,13 +378,13 @@ class PredictionsFetcher:
             
             if response.status_code != 200:
                 self.logger.error(f"Failed to fetch specific market bets: {response.status_code}")
-                return []
+                return {}
             
             response_data = response.json()
             trader_agent = response_data.get("data", {}).get("traderAgent")
             
             if not trader_agent or not trader_agent.get("bets"):
-                return []
+                return {}
             
             # Convert subgraph format to agent_performance.json format
             bets = trader_agent["bets"]
@@ -426,7 +426,7 @@ class PredictionsFetcher:
             return formatted_bet
             
         except Exception as e:
-            self.logger.error(f"Error fetching specific market bets for {market_id}: {str(e)}")
+            self.logger.error(f"Error fetching specific market bets for {bet_id}: {str(e)}")
             return {}
 
     def _format_predictions(
