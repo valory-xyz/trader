@@ -103,8 +103,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
 - valory/mech_interact_abci:0.1.0:bafybeifig7i427sbpovlhpyybrii3i2hx4kre24i6xaz6wixi236tr6yne
 - valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
-- valory/agent_performance_summary_abci:0.1.0:bafybeih3uxzgc3kyj4qqh53fuas3v26or56hb5mmfa7kysquwufet2k23e
-- valory/chatui_abci:0.1.0:bafybeidza4mqohi3cmv2y3wacbd5cv4sbwebycelfa4o7beaamqsezpsla
+- valory/agent_performance_summary_abci:0.1.0:bafybeiftp32yonfmnaezsh7ttrclsodwv3mi3nleph25sttqnesybtl7vi
+- valory/chatui_abci:0.1.0:bafybeidv6ugd7tzy6cozokjupfkdsom2x2o56ujqi4frn7tibgbprixrpq
 behaviours:
   main:
     args: {}
