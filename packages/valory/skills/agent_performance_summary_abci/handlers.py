@@ -627,7 +627,7 @@ class HttpHandler(BaseHttpHandler):
             return data_points
         
         # Calculate cutoff timestamp
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         days_map = {"7d": 7, "30d": 30, "90d": 90}
         days = days_map.get(window, 0)
         

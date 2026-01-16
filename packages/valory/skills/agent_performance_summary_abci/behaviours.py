@@ -549,7 +549,7 @@ class FetchPerformanceSummaryBehaviour(
         :return: ProfitOverTimeData or None
         """
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         # Check if we have existing profit data
         existing_summary = self.shared_state.read_existing_performance_summary()
@@ -733,7 +733,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Check if we need to update (daily check)
         existing_summary = self.shared_state.read_existing_performance_summary()
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         # Check if profit_over_time exists and is up to date
         if existing_summary.profit_over_time:
@@ -767,7 +767,7 @@ class FetchPerformanceSummaryBehaviour(
         agent_safe_address = self.synchronized_data.safe_contract_address
         self._settled_mech_requests_count = yield from self._calculate_settled_mech_requests(agent_safe_address)
         
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         final_roi, partial_roi = yield from self.calculate_roi()
 
