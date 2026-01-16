@@ -153,7 +153,7 @@ models:
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
-      polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:true}
+      polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
@@ -312,11 +312,23 @@ public_id: valory/ledger:0.19.0
 type: connection
 config:
   ledger_apis:
-    POLYGON:
-      address: ${POLYGON_LEDGER_RPC:str:http://host.docker.internal:8545}
+    polygon:
+      address: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       chain_id: ${POLYGON_LEDGER_CHAIN_ID:int:137}
+      poa_chain: ${POLYGON_LEDGER_IS_POA_CHAIN:bool:true}
       default_gas_price_strategy: ${POLYGON_LEDGER_PRICING:str:eip1559}
-      poa_chain: ${POLYGON_LEDGER_IS_POA_CHAIN:bool:false}
+      gas_price_strategies:
+        eip1559:
+          max_gas_fast: ${POLYGON_MAX_GAS_FAST:int:100}
+          fee_history_blocks: ${POLYGON_FEE_HISTORY_BLOCKS:int:10}
+          fee_history_percentile: ${POLYGON_FEE_HISTORY_PERCENTILE:int:5}
+          default_priority_fee: ${POLYGON_DEFAULT_PRIORITY_FEE:int:300000000000}
+          fallback_estimate:
+            maxFeePerGas: ${POLYGON_FALLBACK_MAX_FEE_PER_GAS:int:1000000000000}
+            maxPriorityFeePerGas: ${POLYGON_FALLBACK_MAX_PRIORITY_FEE_PER_GAS:int:300000000000}
+          priority_fee_increase_boundary: ${POLYGON_PRIORITY_FEE_INCREASE_BOUNDARY:int:20000}
+      is_gas_estimation_enabled: ${POLYGON_IS_GAS_ESTIMATION_ENABLED:bool:true}
+      timeout: ${POLYGON_LEDGER_TIMEOUT:int:10}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
