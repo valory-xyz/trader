@@ -29,7 +29,6 @@ packages/valory/contracts/multisend/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/
 packages/valory/contracts/agent_registry/
-packages/valory/contracts/complementary_service_metadata/
 packages/valory/contracts/mech_mm
 packages/valory/contracts/ierc1155
 packages/valory/contracts/nvm_balance_tracker_native

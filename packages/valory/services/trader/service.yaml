@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiejlcmvigetbqoqlbidl63cldx7uczgyepa73amajyqvyzuoofvpy
+agent: valory/trader:0.1.0:bafybeihswkb4sv7rnszyguvmdnd76gxhwxwmwjd3th7gfini3oz4zj7vna
 number_of_agents: 4
 deployment:
   agent:
@@ -63,7 +63,6 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
-        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -152,6 +151,8 @@ type: skill
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
         is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+        ignored_mechs: ${IGNORED_MECHS:list:[]}
+        penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
     benchmark_tool: &id003
       args:
         log_dir: ${LOG_DIR:str:/benchmarks}
@@ -306,6 +307,26 @@ type: skill
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
         url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
+    mech_tools: &id017
+      args:
+        headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+        method: ${MECH_TOOLS_API_METHOD:str:GET}
+        response_key: ${MECH_TOOLS_API_RESPONSE_KEY:str:tools}
+        response_type: ${MECH_TOOLS_API_RESPONSE_TYPE:str:list}
+        retries: ${MECH_TOOLS_API_RETRIES:int:5}
+        url: ${MECH_TOOLS_API_URL:str:''}
+    mechs_subgraph: &id018
+      args:
+        headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+        method: ${MECHS_SUBGRAPH_METHOD:str:POST}
+        response_key: ${MECHS_SUBGRAPH_RESPONSE_KEY:str:data:meches}
+        response_type: ${MECHS_SUBGRAPH_RESPONSE_TYPE:str:list}
+        error_key: ${MECHSPH_ERROR_KEY:str:errors}
+        error_index: ${MECHSPH_ERROR_INDEX:int:0}
+        error_type: ${MECHSPH_ERROR_TYPE:str:dict}
+        retries: ${MECHS_SUBGRAPH_RETRIES:int:5}
+        url: ${MECHS_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
+        delivery_rate_cap: ${DELIVERY_RATE_CAP:int:10000000000000000}
 1:
   models:
     params:
@@ -334,7 +355,6 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
-        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -421,6 +441,8 @@ type: skill
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
         is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+        ignored_mechs: ${IGNORED_MECHS:list:[]}
+        penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -435,6 +457,8 @@ type: skill
     olas_agents_subgraph: *id014
     olas_mech_subgraph: *id015
     gnosis_staking_subgraph: *id016
+    mech_tools: *id017
+    mechs_subgraph: *id018
 2:
   models:
     params:
@@ -463,7 +487,6 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
-        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -550,6 +573,8 @@ type: skill
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
         is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+        ignored_mechs: ${IGNORED_MECHS:list:[]}
+        penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -564,6 +589,8 @@ type: skill
     olas_agents_subgraph: *id014
     olas_mech_subgraph: *id015
     gnosis_staking_subgraph: *id016
+    mech_tools: *id017
+    mechs_subgraph: *id018
 3:
   models:
     params:
@@ -592,7 +619,6 @@ type: skill
         service_id: ${SERVICE_ID:str:trader}
         service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
         agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
-        complementary_service_metadata_address: ${METADATA_ADDRESS:str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
         use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
         share_tm_config_on_startup: ${USE_ACN:bool:false}
         sleep_time: ${SLEEP_TIME:int:1}
@@ -680,6 +706,8 @@ type: skill
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
         use_x402: ${USE_X402:bool:false}
         is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+        ignored_mechs: ${IGNORED_MECHS:list:[]}
+        penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
     benchmark_tool: *id003
     acc_info_fields: *id004
     network_subgraph: *id005
@@ -694,6 +722,8 @@ type: skill
     olas_agents_subgraph: *id014
     olas_mech_subgraph: *id015
     gnosis_staking_subgraph: *id016
+    mech_tools: *id017
+    mechs_subgraph: *id018
 ---
 public_id: valory/ledger:0.19.0
 type: connection

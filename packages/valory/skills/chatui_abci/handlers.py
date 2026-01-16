@@ -21,7 +21,7 @@
 
 import copy
 import json
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -254,7 +254,7 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> Optional[List[str]]:
+    ) -> Optional[Set[str]]:
         """Get available mech tools, handle errors if not available."""
         try:
             return self.synchronized_data.available_mech_tools
