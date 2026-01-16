@@ -21,6 +21,7 @@
 """This module contains the handlers for the 'agent_performance_summary' skill."""
 
 import json
+import re
 from datetime import datetime
 from dataclasses import asdict
 from enum import Enum
@@ -168,6 +169,7 @@ class HttpHandler(BaseHttpHandler):
         agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
         agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/prediction-history"
         agent_profit_over_time_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
+        position_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -188,6 +190,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     agent_profit_over_time_url_regex,
                     self._handle_get_profit_over_time,
+                ),
+                (
+                    position_details_url_regex,
+                    self._handle_get_position_details,
                 ),
             ],
         }
@@ -683,3 +689,43 @@ class HttpHandler(BaseHttpHandler):
             ))
         
         return result_points
+
+    def _handle_get_position_details(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/position-details/{id} request."""
+        try:
+            # Extract market ID from URL
+            url_pattern = r"\/api\/v1\/agent\/position-details\/([^\/\?]+)"
+            match = re.search(url_pattern, http_msg.url)
+            
+            if not match:
+                self._send_bad_request_response(
+                    http_msg, http_dialogue,
+                    {"error": "Invalid URL format. Expected /api/v1/agent/position-details/{id}"}
+                )
+                return
+            
+            bet_id = match.group(1)
+            self.context.logger.info(f"Fetching position details for bet ID: {bet_id}")
+            
+            # Use PredictionsFetcher to get all position details
+            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            safe_address = "0xf69900355c458a0f6c597b1d8f3ec61cc7b2a545"
+            store_path = str(self.context.params.store_path)
+            
+            response = fetcher.fetch_position_details(bet_id, safe_address, store_path)
+            
+            if not response:
+                self._send_not_found_response(http_msg, http_dialogue)
+                return
+            
+            self.context.logger.info(f"Sending position details for market: {bet_id}")
+            self._send_ok_response(http_msg, http_dialogue, response)
+            
+        except Exception as e:
+            self.context.logger.error(f"Error in position details endpoint: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue,
+                {"error": "Failed to fetch position details"}
+            )
