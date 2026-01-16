@@ -138,6 +138,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 "params": {
                     "args": {
                         "use_acn_for_delivers": True,
+                        "penalize_mech_time_window": 0,
+                        "irrelevant_tools": [],
+                        "ignored_mechs": [],
                     }
                 }
             }

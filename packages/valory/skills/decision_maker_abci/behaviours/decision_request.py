@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -91,6 +91,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            self.shared_state.mech_timed_out = False
             payload_content = None
             mocking_mode: Optional[bool] = self.benchmarking_mode.enabled
             if self._metadata and self.n_slots_supported:
