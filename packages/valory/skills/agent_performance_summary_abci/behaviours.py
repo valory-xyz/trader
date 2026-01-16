@@ -92,10 +92,12 @@ class FetchPerformanceSummaryBehaviour(
     
     def _should_update(self) -> bool:
         """Check if we should update."""
-        if self._last_update_timestamp == 0:
+        existing_summary = self.shared_state.read_existing_performance_summary()
+        
+        if not existing_summary or self.synchronized_data.period_count == 0:
             return True  # First run
         
-        time_since_last = self.shared_state.synced_timestamp - self._last_update_timestamp
+        time_since_last = self.shared_state.synced_timestamp - existing_summary.timestamp
         return time_since_last >= self._update_interval
 
     @property
