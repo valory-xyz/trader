@@ -58,6 +58,8 @@ class ChatuiConfig:
     trading_strategy: Optional[str] = None
     initial_trading_strategy: Optional[str] = None
     mech_tool: Optional[str] = None
+    fixed_bet_size: Optional[int] = None
+    max_bet_size: Optional[int] = None
 
 
 class SharedState(BaseSharedState):
