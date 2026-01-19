@@ -23,6 +23,7 @@ alphabet_in:
 - SLOTS_UNSUPPORTED_ERROR
 - TIE
 - UNPROFITABLE
+- POLYMARKET_FETCH_MARKETS
 default_start_state: CheckBenchmarkingModeRound
 final_states:
 - BenchmarkingDoneRound
@@ -63,6 +64,8 @@ states:
 - SamplingRound
 - SellOutcomeTokensRound
 - ToolSelectionRound
+- FetchMarketsRouterRound
+- PolymarketFetchMarketRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound

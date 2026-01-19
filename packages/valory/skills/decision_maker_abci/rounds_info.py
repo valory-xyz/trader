@@ -247,6 +247,16 @@ ROUNDS_INFO = {
         "description": "Redeems winnings from resolved Polymarket bets.",
         "transitions": {},
     },
+    "fetch_markets_router_round": {
+        "name": "Routing to market fetching logic",
+        "description": "Routes between Omen and Polymarket market fetching based on configuration.",
+        "transitions": {},
+    },
+    "polymarket_fetch_market_round": {
+        "name": "Fetching Polymarket markets",
+        "description": "Fetches multiple markets from Polymarket using category tags with filtering.",
+        "transitions": {},
+    },
 }
 
 

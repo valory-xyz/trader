@@ -56,6 +56,8 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
+    FinishedFetchMarketsRouterRound,
+    FinishedPolymarketFetchMarketRound,
     ImpossibleRound,
     RefillRequiredRound,
 )
@@ -81,6 +83,12 @@ from packages.valory.skills.decision_maker_abci.states.randomness import (
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
+)
+from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
+    FetchMarketsRouterRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
@@ -204,6 +212,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         DecisionReceiveRound,
         RedeemRound,
         PolymarketPostSetApprovalRound,
+        FetchMarketsRouterRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
@@ -362,6 +371,18 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
         },
+        FetchMarketsRouterRound: {
+            Event.DONE: FinishedFetchMarketsRouterRound,  # Routes to UpdateBetsRound via composition
+            Event.POLYMARKET_FETCH_MARKETS: PolymarketFetchMarketRound,  # Routes internally to PolymarketFetchMarketRound
+            Event.NO_MAJORITY: FetchMarketsRouterRound,
+            Event.NONE: FetchMarketsRouterRound,
+        },
+        PolymarketFetchMarketRound: {
+            Event.DONE: FinishedPolymarketFetchMarketRound,
+            Event.FETCH_ERROR: ImpossibleRound,
+            Event.NO_MAJORITY: PolymarketFetchMarketRound,
+            Event.ROUND_TIMEOUT: PolymarketFetchMarketRound,
+        },
         HandleFailedTxRound: {
             Event.BLACKLIST: BlacklistingRound,
             Event.NO_OP: RedeemRound,
@@ -372,6 +393,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionRequestRound: {},
         FinishedRedeemTxPreparationRound: {},
         FinishedPolymarketRedeemRound: {},
+        FinishedFetchMarketsRouterRound: {},
+        FinishedPolymarketFetchMarketRound: {},
         FinishedSetApprovalTxPreparationRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
@@ -412,6 +435,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedSetApprovalTxPreparationRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
+        FinishedFetchMarketsRouterRound,
+        FinishedPolymarketFetchMarketRound,
         RefillRequiredRound,
         ImpossibleRound,
         BenchmarkingDoneRound,
@@ -422,6 +447,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRound: set(),
+        FetchMarketsRouterRound: set(),
         DecisionReceiveRound: {
             get_name(SynchronizedData.final_tx_hash),
         },
@@ -445,6 +471,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         FinishedPolymarketRedeemRound: set(),
+        FinishedFetchMarketsRouterRound: set(),
+        FinishedPolymarketFetchMarketRound: set(),
         FinishedSetApprovalTxPreparationRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),

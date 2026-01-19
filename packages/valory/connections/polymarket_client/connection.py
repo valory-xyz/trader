@@ -57,6 +57,11 @@ MAX_UINT256 = (
     115792089237316195423570985008687907853269984665640564039457584007913129639935
 )
 POLYGON_RPC_URL = "https://polygon-rpc.com"
+POLYMARKET_CATEGORY_TAGS = [
+    'business', 'politics', 'science', 'technology', 'health', 
+    'travel', 'entertainment', 'weather', 'finance', 'international'
+]
+MARKETS_LIMIT = 300
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -344,9 +349,150 @@ class PolymarketClientConnection(BaseSyncConnection):
             resp.get("transactionHash") or resp.get("transactionsHashes"),
         )
 
-    def _fetch_markets(self, next_cursor="MA==") -> Any:
-        """Fetch current markets from Polymarket."""
-        pass
+    def _fetch_markets(self) -> Tuple[Any, Any]:
+        """Fetch current markets from Polymarket with category-based filtering.
+        
+        Fetches markets from multiple categories, filters for Yes/No outcomes,
+        and excludes markets with extreme prices (resolved/over markets).
+        
+        :return: Tuple of (filtered_markets_dict, error_message)
+        """
+        try:
+            from datetime import datetime, timedelta, timezone
+            
+            # Calculate time window (now to 4 days from now)
+            end_date_min = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            end_date_max = (datetime.now(timezone.utc) + timedelta(days=4)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            
+            filtered_markets_by_category = {}
+            tag_id_cache = {}
+            
+            self.logger.info(f"Fetching markets for {len(POLYMARKET_CATEGORY_TAGS)} categories")
+            self.logger.info(f"Time window: {end_date_min} to {end_date_max}")
+            
+            for category in POLYMARKET_CATEGORY_TAGS:
+                self.logger.info(f"Processing category: {category}")
+                
+                # Step 1: Fetch tag ID by slug
+                tag_slug = category.lower()
+                
+                if tag_slug in tag_id_cache:
+                    tag_id = tag_id_cache[tag_slug]
+                    self.logger.info(f"  Using cached tag_id: {tag_id}")
+                else:
+                    tag_url = f"{GAMMA_API_BASE_URL}/tags/slug/{tag_slug}"
+                    try:
+                        tag_response = requests.get(tag_url, timeout=10)
+                        tag_response.raise_for_status()
+                        tag_data = tag_response.json()
+                        tag_id = tag_data.get("id")
+                        
+                        if not tag_id:
+                            self.logger.warning(f"  No tag ID found for slug '{tag_slug}'. Skipping.")
+                            continue
+                        
+                        tag_id_cache[tag_slug] = tag_id
+                        self.logger.info(f"  Found tag_id: {tag_id}")
+                    except requests.exceptions.RequestException as e:
+                        self.logger.error(f"  Error fetching tag for '{category}': {e}")
+                        continue
+                
+                # Step 2: Fetch markets with pagination
+                offset = 0
+                category_markets = []
+                
+                while True:
+                    params = {
+                        "tag_id": tag_id,
+                        "end_date_max": end_date_max,
+                        "end_date_min": end_date_min,
+                        "closed": "false",
+                        "limit": MARKETS_LIMIT,
+                        "offset": offset
+                    }
+                    
+                    try:
+                        markets_response = requests.get(
+                            f"{GAMMA_API_BASE_URL}/markets", 
+                            params=params, 
+                            timeout=10
+                        )
+                        markets_response.raise_for_status()
+                        markets = markets_response.json()
+                        
+                        if not markets:
+                            break
+                        
+                        category_markets.extend(markets)
+                        self.logger.info(f"  Fetched {len(markets)} markets (total: {len(category_markets)})")
+                        
+                        if len(markets) < MARKETS_LIMIT:
+                            break
+                        
+                        offset += len(markets)
+                    except requests.exceptions.RequestException as e:
+                        self.logger.error(f"  Error fetching markets for '{category}': {e}")
+                        break
+                
+                # Step 3: Filter for Yes/No outcomes only
+                yes_no_markets = []
+                for market in category_markets:
+                    outcomes_str = market.get("outcomes")
+                    if outcomes_str:
+                        try:
+                            outcomes = json.loads(outcomes_str)
+                            if isinstance(outcomes, list) and len(outcomes) == 2:
+                                outcomes_lower = [str(o).lower() for o in outcomes]
+                                if set(outcomes_lower) == {"yes", "no"}:
+                                    yes_no_markets.append(market)
+                        except (json.JSONDecodeError, TypeError):
+                            continue
+                
+                self.logger.info(f"  Filtered to {len(yes_no_markets)} Yes/No markets")
+                
+                # Step 4: Filter out markets with extreme prices (resolved/over)
+                active_markets = []
+                for market in yes_no_markets:
+                    outcome_prices_str = market.get("outcomePrices")
+                    if outcome_prices_str:
+                        try:
+                            outcome_prices = json.loads(outcome_prices_str)
+                            if isinstance(outcome_prices, list) and len(outcome_prices) == 2:
+                                # Normalize prices to strings for comparison
+                                prices_normalized = [str(float(p)) for p in outcome_prices]
+                                prices_set = set(prices_normalized)
+                                if prices_set == {"0.0005", "0.9995"}:
+                                    continue  # Skip resolved/over markets
+                            active_markets.append(market)
+                        except (json.JSONDecodeError, TypeError, ValueError):
+                            # If parsing fails, include the market
+                            active_markets.append(market)
+                    else:
+                        # If no outcomePrices, include the market
+                        active_markets.append(market)
+                
+                # Remove duplicates within category based on market ID
+                seen_ids = set()
+                unique_markets = []
+                for market in active_markets:
+                    market_id = market.get("id")
+                    if market_id and market_id not in seen_ids:
+                        seen_ids.add(market_id)
+                        unique_markets.append(market)
+                
+                filtered_markets_by_category[category] = unique_markets
+                self.logger.info(f"  Final count for '{category}': {len(unique_markets)} active markets")
+            
+            # Calculate total markets
+            total_markets = sum(len(markets) for markets in filtered_markets_by_category.values())
+            self.logger.info(f"Total markets fetched across all categories: {total_markets}")
+            
+            return filtered_markets_by_category, None
+            
+        except Exception as e:
+            error_msg = f"Unexpected error fetching markets: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
 
     def _fetch_market_by_slug(self, slug: str) -> Tuple[Any, Any]:
         """Fetch a specific market from Polymarket by slug.

@@ -54,6 +54,7 @@ alphabet_in:
     - UNRECOGNIZED
     - VALIDATE_TIMEOUT
     - POLYMARKET_DONE
+    - POLYMARKET_FETCH_MARKETS
     - BET_PLACEMENT_FAILED
     - BET_PLACEMENT_DONE
 default_start_state: RegistrationStartupRound
@@ -113,6 +114,8 @@ states:
     - SynchronizeLateMessagesRound
     - ToolSelectionRound
     - UpdateBetsRound
+    - FetchMarketsRouterRound
+    - PolymarketFetchMarketRound
     - ValidateTransactionRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
@@ -314,6 +317,13 @@ transition_func:
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
     (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound
+    (FetchMarketsRouterRound, DONE): UpdateBetsRound
+    (FetchMarketsRouterRound, POLYMARKET_FETCH_MARKETS): PolymarketFetchMarketRound
+    (FetchMarketsRouterRound, NO_MAJORITY): FetchMarketsRouterRound
+    (PolymarketFetchMarketRound, DONE): CheckStopTradingRound
+    (PolymarketFetchMarketRound, FETCH_ERROR): ResetAndPauseRound
+    (PolymarketFetchMarketRound, NO_MAJORITY): PolymarketFetchMarketRound
+    (PolymarketFetchMarketRound, ROUND_TIMEOUT): PolymarketFetchMarketRound
     (ValidateTransactionRound, DONE): PostTxSettlementRound
     (ValidateTransactionRound, NEGATIVE): CheckTransactionHistoryRound
     (ValidateTransactionRound, NONE): SelectKeeperTransactionSubmissionBRound
