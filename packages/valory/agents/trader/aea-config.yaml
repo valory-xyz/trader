@@ -482,14 +482,8 @@ config:
       default_gas_price_strategy: ${str:eip1559}
       gas_price_strategies:
         eip1559:
-          max_gas_fast: ${int:100}
-          fee_history_blocks: ${int:10}
-          fee_history_percentile: ${int:5}
-          default_priority_fee: ${int:300000000000}
-          fallback_estimate:
-            maxFeePerGas: ${int:1000000000000}
-            maxPriorityFeePerGas: ${int:300000000000}
-          priority_fee_increase_boundary: ${int:20000}
+          max_gas_fast: ${int:1500}
+          default_priority_fee: ${int:null}
       is_gas_estimation_enabled: ${bool:true}
       timeout: ${int:10}
 ---
