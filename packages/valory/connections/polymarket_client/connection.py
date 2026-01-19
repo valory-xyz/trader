@@ -20,6 +20,7 @@
 
 """Genai connection."""
 import json
+import time
 from typing import Any, Callable, Dict, Tuple, cast
 
 import requests
@@ -28,6 +29,7 @@ from aea.connections.base import BaseSyncConnection
 from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
+from datetime import datetime, timedelta, timezone
 from eth_abi import encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
@@ -62,6 +64,10 @@ POLYMARKET_CATEGORY_TAGS = [
     'travel', 'entertainment', 'weather', 'finance', 'international'
 ]
 MARKETS_LIMIT = 300
+MARKETS_TIME_WINDOW_DAYS = 4
+API_REQUEST_TIMEOUT = 10
+MAX_API_RETRIES = 3
+RETRY_DELAY = 10
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -349,6 +355,182 @@ class PolymarketClientConnection(BaseSyncConnection):
             resp.get("transactionHash") or resp.get("transactionsHashes"),
         )
 
+    def _request_with_retries(
+        self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES
+    ) -> Tuple[Any, str]:
+        """Make an API request with retry logic.
+        
+        :param url: The URL to request
+        :param params: Optional query parameters
+        :param max_retries: Maximum number of retry attempts
+        :return: Tuple of (response_data, error_message)
+        """
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
+                response.raise_for_status()
+                return response.json(), None
+            except requests.exceptions.RequestException as e:
+                last_error = str(e)
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        f"API request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
+                    )
+                    time.sleep(RETRY_DELAY * (attempt + 1))  # Exponential backoff
+                else:
+                    self.logger.error(f"API request failed after {max_retries} attempts: {e}")
+        
+        return None, last_error
+
+    def _fetch_tag_id(self, category: str, tag_id_cache: Dict[str, str]) -> Tuple[str, str]:
+        """Fetch tag ID for a category slug.
+        
+        :param category: The category name
+        :param tag_id_cache: Cache dictionary for tag IDs
+        :return: Tuple of (tag_id, error_message)
+        """
+        tag_slug = category.lower()
+        
+        # Check cache first
+        if tag_slug in tag_id_cache:
+            self.logger.info(f"  Using cached tag_id: {tag_id_cache[tag_slug]}")
+            return tag_id_cache[tag_slug], None
+        
+        # Fetch from API
+        tag_url = f"{GAMMA_API_BASE_URL}/tags/slug/{tag_slug}"
+        tag_data, error = self._request_with_retries(tag_url)
+        
+        if error:
+            return None, f"Error fetching tag for '{category}': {error}"
+        
+        tag_id = tag_data.get("id")
+        if not tag_id:
+            return None, f"No tag ID found for slug '{tag_slug}'"
+        
+        tag_id_cache[tag_slug] = tag_id
+        self.logger.info(f"  Found tag_id: {tag_id}")
+        return tag_id, None
+
+    def _fetch_markets_by_tag(
+        self, tag_id: str, end_date_min: str, end_date_max: str
+    ) -> Tuple[list, str]:
+        """Fetch all markets for a given tag ID with pagination.
+        
+        :param tag_id: The tag ID to filter markets by
+        :param end_date_min: Minimum end date filter
+        :param end_date_max: Maximum end date filter
+        :return: Tuple of (markets_list, error_message)
+        """
+        offset = 0
+        all_markets = []
+        
+        while True:
+            params = {
+                "tag_id": tag_id,
+                "end_date_max": end_date_max,
+                "end_date_min": end_date_min,
+                "closed": "false",
+                "limit": MARKETS_LIMIT,
+                "offset": offset
+            }
+            
+            markets_data, error = self._request_with_retries(
+                f"{GAMMA_API_BASE_URL}/markets", params=params
+            )
+            
+            if error:
+                return None, error
+            
+            if not markets_data:
+                break
+            
+            all_markets.extend(markets_data)
+            self.logger.info(f"  Fetched {len(markets_data)} markets (total: {len(all_markets)})")
+            
+            if len(markets_data) < MARKETS_LIMIT:
+                break
+            
+            offset += len(markets_data)
+        
+        return all_markets, None
+
+    def _filter_yes_no_markets(self, markets: list) -> list:
+        """Filter markets to only include those with Yes/No outcomes.
+        
+        :param markets: List of market dictionaries
+        :return: Filtered list of markets with Yes/No outcomes
+        """
+        yes_no_markets = []
+        for market in markets:
+            outcomes_str = market.get("outcomes")
+            if not outcomes_str:
+                continue
+            
+            try:
+                outcomes = json.loads(outcomes_str)
+                if isinstance(outcomes, list) and len(outcomes) == 2:
+                    outcomes_lower = [str(o).lower() for o in outcomes]
+                    if set(outcomes_lower) == {"yes", "no"}:
+                        yes_no_markets.append(market)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        
+        return yes_no_markets
+
+    def _filter_active_markets(self, markets: list) -> list:
+        """Filter out markets with extreme prices (resolved/over markets).
+        
+        Markets with prices exactly ["0.0005", "0.9995"] or ["0.9995", "0.0005"]
+        are considered resolved and excluded.
+        
+        :param markets: List of market dictionaries
+        :return: Filtered list of active markets
+        """
+        active_markets = []
+        for market in markets:
+            outcome_prices_str = market.get("outcomePrices")
+            
+            if not outcome_prices_str:
+                # No prices means include the market
+                active_markets.append(market)
+                continue
+            
+            try:
+                outcome_prices = json.loads(outcome_prices_str)
+                if isinstance(outcome_prices, list) and len(outcome_prices) == 2:
+                    # Normalize prices to strings for comparison
+                    prices_normalized = [str(float(p)) for p in outcome_prices]
+                    prices_set = set(prices_normalized)
+                    
+                    # Skip markets with extreme prices (resolved/over)
+                    if prices_set == {"0.0005", "0.9995"}:
+                        continue
+                
+                active_markets.append(market)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                # If parsing fails, include the market
+                active_markets.append(market)
+        
+        return active_markets
+
+    def _remove_duplicate_markets(self, markets: list) -> list:
+        """Remove duplicate markets based on market ID.
+        
+        :param markets: List of market dictionaries
+        :return: List of unique markets
+        """
+        seen_ids = set()
+        unique_markets = []
+        
+        for market in markets:
+            market_id = market.get("id")
+            if market_id and market_id not in seen_ids:
+                seen_ids.add(market_id)
+                unique_markets.append(market)
+        
+        return unique_markets
+
     def _fetch_markets(self) -> Tuple[Any, Any]:
         """Fetch current markets from Polymarket with category-based filtering.
         
@@ -358,11 +540,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         :return: Tuple of (filtered_markets_dict, error_message)
         """
         try:
-            from datetime import datetime, timedelta, timezone
-            
-            # Calculate time window (now to 4 days from now)
+            # Calculate time window
             end_date_min = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            end_date_max = (datetime.now(timezone.utc) + timedelta(days=4)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            end_date_max = (
+                datetime.now(timezone.utc) + timedelta(days=MARKETS_TIME_WINDOW_DAYS)
+            ).strftime("%Y-%m-%dT%H:%M:%SZ")
             
             filtered_markets_by_category = {}
             tag_id_cache = {}
@@ -373,112 +555,29 @@ class PolymarketClientConnection(BaseSyncConnection):
             for category in POLYMARKET_CATEGORY_TAGS:
                 self.logger.info(f"Processing category: {category}")
                 
-                # Step 1: Fetch tag ID by slug
-                tag_slug = category.lower()
-                
-                if tag_slug in tag_id_cache:
-                    tag_id = tag_id_cache[tag_slug]
-                    self.logger.info(f"  Using cached tag_id: {tag_id}")
-                else:
-                    tag_url = f"{GAMMA_API_BASE_URL}/tags/slug/{tag_slug}"
-                    try:
-                        tag_response = requests.get(tag_url, timeout=10)
-                        tag_response.raise_for_status()
-                        tag_data = tag_response.json()
-                        tag_id = tag_data.get("id")
-                        
-                        if not tag_id:
-                            self.logger.warning(f"  No tag ID found for slug '{tag_slug}'. Skipping.")
-                            continue
-                        
-                        tag_id_cache[tag_slug] = tag_id
-                        self.logger.info(f"  Found tag_id: {tag_id}")
-                    except requests.exceptions.RequestException as e:
-                        self.logger.error(f"  Error fetching tag for '{category}': {e}")
-                        continue
+                # Step 1: Fetch tag ID
+                tag_id, error = self._fetch_tag_id(category, tag_id_cache)
+                if error:
+                    self.logger.warning(f"  {error}. Skipping.")
+                    continue
                 
                 # Step 2: Fetch markets with pagination
-                offset = 0
-                category_markets = []
-                
-                while True:
-                    params = {
-                        "tag_id": tag_id,
-                        "end_date_max": end_date_max,
-                        "end_date_min": end_date_min,
-                        "closed": "false",
-                        "limit": MARKETS_LIMIT,
-                        "offset": offset
-                    }
-                    
-                    try:
-                        markets_response = requests.get(
-                            f"{GAMMA_API_BASE_URL}/markets", 
-                            params=params, 
-                            timeout=10
-                        )
-                        markets_response.raise_for_status()
-                        markets = markets_response.json()
-                        
-                        if not markets:
-                            break
-                        
-                        category_markets.extend(markets)
-                        self.logger.info(f"  Fetched {len(markets)} markets (total: {len(category_markets)})")
-                        
-                        if len(markets) < MARKETS_LIMIT:
-                            break
-                        
-                        offset += len(markets)
-                    except requests.exceptions.RequestException as e:
-                        self.logger.error(f"  Error fetching markets for '{category}': {e}")
-                        break
+                category_markets, error = self._fetch_markets_by_tag(
+                    tag_id, end_date_min, end_date_max
+                )
+                if error:
+                    self.logger.error(f"  Error fetching markets for '{category}': {error}")
+                    continue
                 
                 # Step 3: Filter for Yes/No outcomes only
-                yes_no_markets = []
-                for market in category_markets:
-                    outcomes_str = market.get("outcomes")
-                    if outcomes_str:
-                        try:
-                            outcomes = json.loads(outcomes_str)
-                            if isinstance(outcomes, list) and len(outcomes) == 2:
-                                outcomes_lower = [str(o).lower() for o in outcomes]
-                                if set(outcomes_lower) == {"yes", "no"}:
-                                    yes_no_markets.append(market)
-                        except (json.JSONDecodeError, TypeError):
-                            continue
-                
+                yes_no_markets = self._filter_yes_no_markets(category_markets)
                 self.logger.info(f"  Filtered to {len(yes_no_markets)} Yes/No markets")
                 
                 # Step 4: Filter out markets with extreme prices (resolved/over)
-                active_markets = []
-                for market in yes_no_markets:
-                    outcome_prices_str = market.get("outcomePrices")
-                    if outcome_prices_str:
-                        try:
-                            outcome_prices = json.loads(outcome_prices_str)
-                            if isinstance(outcome_prices, list) and len(outcome_prices) == 2:
-                                # Normalize prices to strings for comparison
-                                prices_normalized = [str(float(p)) for p in outcome_prices]
-                                prices_set = set(prices_normalized)
-                                if prices_set == {"0.0005", "0.9995"}:
-                                    continue  # Skip resolved/over markets
-                            active_markets.append(market)
-                        except (json.JSONDecodeError, TypeError, ValueError):
-                            # If parsing fails, include the market
-                            active_markets.append(market)
-                    else:
-                        # If no outcomePrices, include the market
-                        active_markets.append(market)
+                active_markets = self._filter_active_markets(yes_no_markets)
                 
-                # Remove duplicates within category based on market ID
-                seen_ids = set()
-                unique_markets = []
-                for market in active_markets:
-                    market_id = market.get("id")
-                    if market_id and market_id not in seen_ids:
-                        seen_ids.add(market_id)
-                        unique_markets.append(market)
+                # Step 5: Remove duplicates
+                unique_markets = self._remove_duplicate_markets(active_markets)
                 
                 filtered_markets_by_category[category] = unique_markets
                 self.logger.info(f"  Final count for '{category}': {len(unique_markets)} active markets")
