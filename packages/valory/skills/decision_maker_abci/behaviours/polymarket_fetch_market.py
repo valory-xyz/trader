@@ -305,7 +305,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
 
-            if self.review_bets_for_selling():
+            if self.review_bets_for_selling:
                 self._requeue_bets_for_selling()
 
             # if trader is run after a long time, there is a possibility that
