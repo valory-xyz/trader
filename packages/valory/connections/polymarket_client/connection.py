@@ -636,17 +636,30 @@ class PolymarketClientConnection(BaseSyncConnection):
                 # Step 4: Filter out markets with extreme prices (resolved/over)
                 active_markets = self._filter_active_markets(yes_no_markets)
                 
-                # Step 5: Remove duplicates
-                unique_markets = self._remove_duplicate_markets(active_markets)
+                filtered_markets_by_category[category] = active_markets
+                self.logger.info(f"  Found {len(active_markets)} active markets for '{category}'")
+            
+            # Step 5: Remove duplicates across all categories
+            # Keep first occurrence of each market (preserves first category it appears in)
+            seen_market_ids = set()
+            deduplicated_by_category = {}
+            
+            for category, markets in filtered_markets_by_category.items():
+                unique_markets_in_category = []
+                for market in markets:
+                    market_id = market.get("id")
+                    if market_id and market_id not in seen_market_ids:
+                        seen_market_ids.add(market_id)
+                        unique_markets_in_category.append(market)
                 
-                filtered_markets_by_category[category] = unique_markets
-                self.logger.info(f"  Final count for '{category}': {len(unique_markets)} active markets")
+                # Only include category if it has markets after deduplication
+                if unique_markets_in_category:
+                    deduplicated_by_category[category] = unique_markets_in_category
             
-            # Calculate total markets
-            total_markets = sum(len(markets) for markets in filtered_markets_by_category.values())
-            self.logger.info(f"Total markets fetched across all categories: {total_markets}")
+            total_unique = sum(len(markets) for markets in deduplicated_by_category.values())
+            self.logger.info(f"After deduplication: {total_unique} unique markets across {len(deduplicated_by_category)} categories")
             
-            return filtered_markets_by_category, None
+            return deduplicated_by_category, None
             
         except Exception as e:
             error_msg = f"Unexpected error fetching markets: {str(e)}"
