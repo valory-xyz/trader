@@ -40,6 +40,20 @@ Configuration details:
 - Mech tool: "{current_mech_tool}"
     -- Available tools: {available_tools}
     -- Can be deselected to let the agent choose the best tool based on its policy if the user says to remove the tool.
+- Fixed bet size: "{current_fixed_bet_size}"
+    -- Used with the "bet_amount_per_threshold" (Balanced) strategy only.
+    -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
+    -- Value should be specified in USDC base units (e.g., 50000000 for 50 USDC, since USDC has 6 decimals).
+    -- Cannot be less than 1 USDC (1000000 in base units).
+    -- Can be deselected to fall back to the default value if the user says to remove it.
+- Max bet size: "{current_max_bet_size}"
+    -- Used with the "kelly_criterion_no_conf" (Risky) strategy only.
+    -- When set, this caps the maximum bet amount calculated by the Kelly Criterion formula.
+    -- Value should be specified in USDC base units (e.g., 100000000 for 100 USDC, since USDC has 6 decimals).
+    -- Cannot be less than 1 USDC (1000000 in base units).
+    -- Can be deselected to fall back to the default value if the user says to remove it.
+
+Note: The fixed_bet_size parameter only applies when using the Balanced strategy, and max_bet_size only applies when using the Risky strategy. Setting one does not affect the other strategy.
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
 
@@ -62,6 +76,8 @@ class FieldsThatCanBeRemoved(enum.Enum):
     """FieldsThatCanBeRemoved"""
 
     MECH_TOOL = "mech_tool"
+    FIXED_BET_SIZE = "fixed_bet_size"
+    MAX_BET_SIZE = "max_bet_size"
 
 
 class UpdatedAgentConfig(BaseModel):
@@ -69,6 +85,8 @@ class UpdatedAgentConfig(BaseModel):
 
     trading_strategy: typing.Optional[TradingStrategy]
     mech_tool: typing.Optional[str]
+    fixed_bet_size: typing.Optional[int]
+    max_bet_size: typing.Optional[int]
     removed_config_fields: typing.List[FieldsThatCanBeRemoved]
     behavior: typing.Optional[str]
 

@@ -20,9 +20,9 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
-import json
 import os
 from abc import ABC
+from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
@@ -471,6 +471,26 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             self.download_next_strategy()
             yield from self.sleep(self.params.sleep_time)
 
+    def _update_with_values_from_chatui(
+        self, strategies_kwargs: Dict[str, Any]
+    ) -> Dict:
+        """Set the chatui values in the strategies kwargs."""
+        strategies_kwargs = deepcopy(strategies_kwargs)
+        chatui_config = self.shared_state.chatui_config
+
+        # For kelly criterion strategy
+        if chatui_config.max_bet_size is not None:
+            strategies_kwargs["max_bet"] = chatui_config.max_bet_size
+
+        # For bet amount per threshold strategy
+        if chatui_config.fixed_bet_size is not None:
+            for key in strategies_kwargs["bet_amount_per_threshold"]:
+                strategies_kwargs["bet_amount_per_threshold"][
+                    key
+                ] = chatui_config.fixed_bet_size
+
+        return strategies_kwargs
+
     def get_bet_amount(
         self,
         win_probability: float,
@@ -491,7 +511,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         while True:
             self.context.logger.info(f"Used trading strategy: {next_strategy}")
             # the following are always passed to a strategy script, which may choose to ignore any
-            kwargs: Dict[str, Any] = self.params.strategies_kwargs
+            kwargs: Dict[str, Any] = self._update_with_values_from_chatui(
+                self.params.strategies_kwargs
+            )
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
