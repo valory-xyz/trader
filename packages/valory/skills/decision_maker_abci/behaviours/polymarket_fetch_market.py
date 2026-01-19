@@ -125,9 +125,12 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _fetch_markets_from_polymarket(self) -> Generator:
         """Fetch the markets from Polymarket using category-based filtering."""
         # Prepare payload data for FETCH_MARKETS request
+        cache_file_path = str(self.params.store_path / "polymarket.json")
         polymarket_fetch_markets_payload = {
             "request_type": RequestType.FETCH_MARKETS.value,
-            "params": {},
+            "params": {
+                "cache_file_path": cache_file_path,
+            },
         }
         
         response = yield from self.send_polymarket_connection_request(

@@ -126,7 +126,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
 
     def _write_allowances_file(self, allowances_set: bool) -> None:
         """Write the allowances file to persist the approval state."""
-        allowances_path = self.params.store_path / "polymarket_allowances.json"
+        allowances_path = self.params.store_path / "polymarket.json"
         allowances_data = {"allowances_set": allowances_set}
         
         try:

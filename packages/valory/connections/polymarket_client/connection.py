@@ -21,6 +21,8 @@
 """Genai connection."""
 import json
 import time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable, Dict, Tuple, cast
 
 import requests
@@ -29,7 +31,6 @@ from aea.connections.base import BaseSyncConnection
 from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
-from datetime import datetime, timedelta, timezone
 from eth_abi import encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
@@ -355,6 +356,35 @@ class PolymarketClientConnection(BaseSyncConnection):
             resp.get("transactionHash") or resp.get("transactionsHashes"),
         )
 
+    def _load_cache_file(self, cache_file_path: str) -> Dict:
+        """Load the cache file from disk.
+        
+        :param cache_file_path: Path to the cache file
+        :return: Cache data dictionary
+        """
+        try:
+            with open(cache_file_path, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            self.logger.warning(f"Could not load cache file: {e}. Using empty cache.")
+            return {"allowances_set": False, "tag_id_cache": {}}
+    
+    def _save_cache_file(self, cache_file_path: str, cache_data: Dict) -> None:
+        """Save the cache file to disk.
+        
+        :param cache_file_path: Path to the cache file
+        :param cache_data: Cache data dictionary to save
+        """
+        try:
+            # Ensure directory exists
+            cache_path = Path(cache_file_path)
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(cache_file_path, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+        except Exception as e:
+            self.logger.error(f"Could not save cache file: {e}")
+
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES
     ) -> Tuple[Any, str]:
@@ -383,16 +413,21 @@ class PolymarketClientConnection(BaseSyncConnection):
         
         return None, last_error
 
-    def _fetch_tag_id(self, category: str, tag_id_cache: Dict[str, str]) -> Tuple[str, str]:
+    def _fetch_tag_id(
+        self, category: str, tag_id_cache: Dict[str, str], 
+        cache_file_path: str = None, cache_data: Dict = None
+    ) -> Tuple[str, str]:
         """Fetch tag ID for a category slug.
         
         :param category: The category name
-        :param tag_id_cache: Cache dictionary for tag IDs
+        :param tag_id_cache: In-memory cache dictionary for tag IDs
+        :param cache_file_path: Optional path to persistent cache file
+        :param cache_data: Optional cache data dict to update
         :return: Tuple of (tag_id, error_message)
         """
         tag_slug = category.lower()
         
-        # Check cache first
+        # Check in-memory cache first
         if tag_slug in tag_id_cache:
             self.logger.info(f"  Using cached tag_id: {tag_id_cache[tag_slug]}")
             return tag_id_cache[tag_slug], None
@@ -408,7 +443,17 @@ class PolymarketClientConnection(BaseSyncConnection):
         if not tag_id:
             return None, f"No tag ID found for slug '{tag_slug}'"
         
+        # Update in-memory cache
         tag_id_cache[tag_slug] = tag_id
+        
+        # Update persistent cache if provided
+        if cache_file_path and cache_data is not None:
+            # Ensure tag_id_cache dict exists
+            if "tag_id_cache" not in cache_data or not isinstance(cache_data["tag_id_cache"], dict):
+                cache_data["tag_id_cache"] = {}
+            cache_data["tag_id_cache"][tag_slug] = tag_id
+            self._save_cache_file(cache_file_path, cache_data)
+        
         self.logger.info(f"  Found tag_id: {tag_id}")
         return tag_id, None
 
@@ -531,12 +576,13 @@ class PolymarketClientConnection(BaseSyncConnection):
         
         return unique_markets
 
-    def _fetch_markets(self) -> Tuple[Any, Any]:
+    def _fetch_markets(self, cache_file_path: str = None) -> Tuple[Any, Any]:
         """Fetch current markets from Polymarket with category-based filtering.
         
         Fetches markets from multiple categories, filters for Yes/No outcomes,
         and excludes markets with extreme prices (resolved/over markets).
         
+        :param cache_file_path: Optional path to persistent cache file for tag IDs
         :return: Tuple of (filtered_markets_dict, error_message)
         """
         try:
@@ -547,7 +593,19 @@ class PolymarketClientConnection(BaseSyncConnection):
             ).strftime("%Y-%m-%dT%H:%M:%SZ")
             
             filtered_markets_by_category = {}
-            tag_id_cache = {}
+            
+            # Load persistent cache if path provided
+            cache_data = None
+            if cache_file_path:
+                cache_data = self._load_cache_file(cache_file_path)
+                # Handle case where tag_id_cache key is missing or None
+                tag_id_cache = cache_data.get("tag_id_cache") or {}
+                # Ensure tag_id_cache exists in cache_data for saving later
+                if "tag_id_cache" not in cache_data or cache_data["tag_id_cache"] is None:
+                    cache_data["tag_id_cache"] = {}
+                self.logger.info(f"Loaded {len(tag_id_cache)} cached tag IDs")
+            else:
+                tag_id_cache = {}
             
             self.logger.info(f"Fetching markets for {len(POLYMARKET_CATEGORY_TAGS)} categories")
             self.logger.info(f"Time window: {end_date_min} to {end_date_max}")
@@ -556,7 +614,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 self.logger.info(f"Processing category: {category}")
                 
                 # Step 1: Fetch tag ID
-                tag_id, error = self._fetch_tag_id(category, tag_id_cache)
+                tag_id, error = self._fetch_tag_id(
+                    category, tag_id_cache, cache_file_path, cache_data
+                )
                 if error:
                     self.logger.warning(f"  {error}. Skipping.")
                     continue
