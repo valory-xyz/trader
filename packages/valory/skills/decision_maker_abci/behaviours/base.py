@@ -515,6 +515,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 self.params.strategies_kwargs
             )
             kwargs["token_decimals"] = 6 if self.is_usdc else 18
+            kwargs["min_bet"] = self.params.strategies_kwargs["absolute_min_bet_size"]
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
