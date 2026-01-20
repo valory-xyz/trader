@@ -44,13 +44,15 @@ Configuration details:
     -- Used with the "bet_amount_per_threshold" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
     -- Value should be specified in USDC base units (e.g., 50000000 for 50 USDC, since USDC has 6 decimals).
-    -- Cannot be less than 1 USDC (1000000 in base units).
+    -- Cannot be less than {absolute_min_bet_size} in base units.
+    -- Cannot exceed {absolute_max_bet_size} in base units.
     -- Can be deselected to fall back to the default value if the user says to remove it.
 - Max bet size: "{current_max_bet_size}"
     -- Used with the "kelly_criterion_no_conf" (Risky) strategy only.
     -- When set, this caps the maximum bet amount calculated by the Kelly Criterion formula.
     -- Value should be specified in USDC base units (e.g., 100000000 for 100 USDC, since USDC has 6 decimals).
-    -- Cannot be less than 1 USDC (1000000 in base units).
+    -- Cannot be less than {absolute_min_bet_size} in base units.
+    -- Cannot exceed {absolute_max_bet_size} in base units.
     -- Can be deselected to fall back to the default value if the user says to remove it.
 
 Note: The fixed_bet_size parameter only applies when using the Balanced strategy, and max_bet_size only applies when using the Risky strategy. Setting one does not affect the other strategy.
