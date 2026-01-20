@@ -51,7 +51,7 @@ class CheckBenchmarkingModeRound(VotingRound):
         """Process the end of the block."""
         if self.context.params.is_running_on_polymarket:
             # Check if allowances are already set
-            allowances_path = Path(self.context.params.store_path) / "polymarket_allowances.json"
+            allowances_path = Path(self.context.params.store_path) / "polymarket.json"
             
             try:
                 with open(allowances_path, "r") as f:

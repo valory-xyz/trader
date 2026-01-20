@@ -58,6 +58,8 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
+    FinishedFetchMarketsRouterRound,
+    FinishedPolymarketFetchMarketRound,
     RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
@@ -68,6 +70,12 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_appro
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
+    FetchMarketsRouterRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
     FinishedMarketManagerRound,
@@ -132,7 +140,9 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
     FinishedChatuiLoadRound: CheckBenchmarkingModeRound,
-    BenchmarkingModeDisabledRound: UpdateBetsRound,
+    BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
+    FinishedFetchMarketsRouterRound: UpdateBetsRound,
+    FinishedPolymarketFetchMarketRound: CheckStopTradingRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,
     FinishedWithSkipTradingRound: RedeemRound,
