@@ -130,8 +130,8 @@ models:
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
       strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"default_max_bet_size":5000000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":10000000,"bet_amount_per_threshold":{"0.0":25000000000000000,"0.1":25000000000000000,"0.2":25000000000000000,"0.3":25000000000000000,"0.4":25000000000000000,"0.5":25000000000000000,"0.6":25000000000000000,"0.7":25000000000000000,"0.8":25000000000000000,"0.9":25000000000000000,"1.0":25000000000000000}}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
-      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
-      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x4554fE75c1f5576c1d7F765B2A036c199Adae329","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x998dEFafD094817EF329f6dc79c703f1CF18bC90","priority_mech_service_id":975,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}
+      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x343F2B005cF6D70bA610CD9F1F1927049414B582","priority_mech_address":"0x1DCbC9368327776F8B20Dc041D40b8076C8AC173","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":21,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
       service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
       rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
       safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
