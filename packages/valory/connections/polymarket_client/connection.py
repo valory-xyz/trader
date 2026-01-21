@@ -69,6 +69,8 @@ MARKETS_TIME_WINDOW_DAYS = 4
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
 RETRY_DELAY = 10
+# Subgraph indexes markets created after this date; exclude older markets
+MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -491,9 +493,22 @@ class PolymarketClientConnection(BaseSyncConnection):
         
         return all_markets, None
 
+    def _filter_markets_by_created_at(self, markets: list) -> list:
+        """Filter markets to only include those created after MARKETS_MIN_CREATED_AT.
+
+        Subgraph indexes markets created after this date.
+
+        :param markets: List of market dictionaries
+        :return: Filtered list of markets with createdAt > MARKETS_MIN_CREATED_AT
+        """
+        return [
+            m for m in markets
+            if (m.get("createdAt") or "") > MARKETS_MIN_CREATED_AT
+        ]
+
     def _filter_yes_no_markets(self, markets: list) -> list:
         """Filter markets to only include those with Yes/No outcomes.
-        
+
         :param markets: List of market dictionaries
         :return: Filtered list of markets with Yes/No outcomes
         """
@@ -585,8 +600,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                     self.logger.error(f"  Error fetching markets for '{category}': {error}")
                     continue
                 
-                # Step 3: Filter for Yes/No outcomes only
-                yes_no_markets = self._filter_yes_no_markets(category_markets)
+                # Step 3: Filter by createdAt (subgraph indexes markets after MARKETS_MIN_CREATED_AT),
+                # then filter for Yes/No outcomes only
+                markets_after_cutoff = self._filter_markets_by_created_at(category_markets)
+                self.logger.info(
+                    f"  Filtered to {len(markets_after_cutoff)} markets with createdAt > {MARKETS_MIN_CREATED_AT}"
+                )
+                yes_no_markets = self._filter_yes_no_markets(markets_after_cutoff)
                 self.logger.info(f"  Filtered to {len(yes_no_markets)} Yes/No markets")
                 
                 filtered_markets_by_category[category] = yes_no_markets
