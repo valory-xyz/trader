@@ -65,12 +65,21 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             polymarket_bet_payload
         )
 
+        # Handle error case where response is None
+        success = False
+        if response is not None:
+            success = bool(response.get("success") or response.get("transactionHash"))
+        else:
+            self.context.logger.error(
+                "Failed to place bet: No response from connection"
+            )
+
         payload = PolymarketBetPlacementPayload(
             self.context.agent_address,
             None,
             None,
             False,
-            success=response.get("success", False),
+            success=success,
         )
 
         yield from self.finish_behaviour(payload)
