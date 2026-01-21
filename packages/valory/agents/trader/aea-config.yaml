@@ -190,7 +190,6 @@ models:
       drand_public_key: ${str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
       service_registry_address: ${str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
       agent_registry_address: ${str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
-      complementary_service_metadata_address: ${str:0x0598081D48FB80B0A7E52FAD2905AE9beCd6fC69}
       use_acn_for_delivers: ${bool:false}
       share_tm_config_on_startup: ${bool:false}
       sleep_time: ${int:10}
@@ -282,6 +281,8 @@ models:
       polymarket_neg_risk_ctf_exchange_address: ${str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
       polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
       polymarket_market_slug_to_bet_on: ${str:slug}
+      ignored_mechs: ${list:[]}
+      penalize_mech_time_window: ${int:1800}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -444,6 +445,28 @@ models:
       error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://staking-gnosis.subgraph.autonolas.tech}
+  mech_tools:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:GET}
+      response_key: ${str:tools}
+      response_type: ${str:list}
+      retries: ${int:5}
+      url: ${str:''}
+  mechs_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+      method: ${str:POST}
+      response_key: ${str:data:meches}
+      response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
+      delivery_rate_cap: ${int:10000000000000000}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

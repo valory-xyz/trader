@@ -48,34 +48,34 @@ from packages.valory.skills.decision_maker_abci.states.check_benchmarking import
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
+from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
+    FetchMarketsRouterRound,
+)
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedFetchMarketsRouterRound,
+    FinishedPolymarketFetchMarketRound,
     FinishedPolymarketRedeemRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
-    FinishedFetchMarketsRouterRound,
-    FinishedPolymarketFetchMarketRound,
     RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
-from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
-    FetchMarketsRouterRound,
-)
-from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
-    PolymarketFetchMarketRound,
-)
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
     FinishedMarketManagerRound,
@@ -84,11 +84,18 @@ from packages.valory.skills.market_manager_abci.rounds import (
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FailedMechInformationRound,
+    FinishedMarketplaceLegacyDetectedRound,
+    FinishedMechInformationRound,
+    FinishedMechLegacyDetectedRound,
     FinishedMechPurchaseSubscriptionRound,
     FinishedMechRequestRound,
     FinishedMechRequestSkipRound,
     FinishedMechResponseRound,
     FinishedMechResponseTimeoutRound,
+)
+from packages.valory.skills.mech_interact_abci.states.mech_version import (
+    MechVersionDetectionRound,
 )
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
@@ -139,7 +146,11 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
-    FinishedChatuiLoadRound: CheckBenchmarkingModeRound,
+    FinishedChatuiLoadRound: MechVersionDetectionRound,
+    FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,
+    FinishedMechLegacyDetectedRound: CheckBenchmarkingModeRound,
+    FinishedMechInformationRound: CheckBenchmarkingModeRound,
+    FailedMechInformationRound: MechVersionDetectionRound,
     BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
     FinishedFetchMarketsRouterRound: UpdateBetsRound,
     FinishedPolymarketFetchMarketRound: CheckStopTradingRound,

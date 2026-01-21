@@ -30,6 +30,7 @@ alphabet_in:
     - NEXT_CHECKPOINT_NOT_REACHED_YET
     - NONE
     - NO_MAJORITY
+    - NO_MARKETPLACE
     - NO_OP
     - NO_REDEEMING
     - PREPARE_TX
@@ -52,6 +53,8 @@ alphabet_in:
     - TIE
     - UNPROFITABLE
     - UNRECOGNIZED
+    - V1
+    - V2
     - VALIDATE_TIMEOUT
     - POLYMARKET_DONE
     - POLYMARKET_FETCH_MARKETS
@@ -89,10 +92,12 @@ states:
     - FinalizationRound
     - HandleFailedTxRound
     - ImpossibleRound
+    - MechInformationRound
     - MechPurchaseSubscriptionRound
     - MechRequestRound
     - MechResponseRound
     - PolymarketPostSetApprovalRound
+    - MechVersionDetectionRound
     - PostTxSettlementRound
     - PreTxSettlementRound
     - RandomnessRound
@@ -141,7 +146,7 @@ transition_func:
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
-    (ChatuiLoadRound, DONE): CheckBenchmarkingModeRound
+    (ChatuiLoadRound, DONE): MechVersionDetectionRound
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
@@ -200,6 +205,10 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRouterRound
+    (MechInformationRound, DONE): CheckBenchmarkingModeRound
+    (MechInformationRound, NONE): MechVersionDetectionRound
+    (MechInformationRound, NO_MAJORITY): MechInformationRound
+    (MechInformationRound, ROUND_TIMEOUT): MechInformationRound
     (MechPurchaseSubscriptionRound, DONE): PreTxSettlementRound
     (MechPurchaseSubscriptionRound, NONE): MechPurchaseSubscriptionRound
     (MechPurchaseSubscriptionRound, NO_MAJORITY): MechPurchaseSubscriptionRound
@@ -231,6 +240,11 @@ transition_func:
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
+    (MechVersionDetectionRound, NO_MAJORITY): MechVersionDetectionRound
+    (MechVersionDetectionRound, NO_MARKETPLACE): CheckBenchmarkingModeRound
+    (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
+    (MechVersionDetectionRound, V1): CheckBenchmarkingModeRound
+    (MechVersionDetectionRound, V2): MechInformationRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound

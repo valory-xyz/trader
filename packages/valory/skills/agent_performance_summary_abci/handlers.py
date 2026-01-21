@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_FPMM_PAYOUTS_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+from packages.valory.skills.agent_performance_summary_abci.models import ProfitDataPoint
 
 
 
@@ -80,7 +81,7 @@ PREDICTION_STATUS_WON = "won"
 PREDICTION_STATUS_LOST = "lost"
 PREDICTION_STATUS_ALL = "all"
 VALID_PREDICTION_STATUSES = [PREDICTION_STATUS_PENDING, PREDICTION_STATUS_WON, PREDICTION_STATUS_LOST]
-
+SECONDS_PER_DAY = 86400
 
 class HttpMethod(Enum):
     """Http methods"""
@@ -166,6 +167,7 @@ class HttpHandler(BaseHttpHandler):
         agent_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/details"
         agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
         agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/prediction-history"
+        agent_profit_over_time_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -182,6 +184,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     agent_predictions_url_regex,
                     self._handle_get_predictions,
+                ),
+                (
+                    agent_profit_over_time_url_regex,
+                    self._handle_get_profit_over_time,
                 ),
             ],
         }
@@ -539,3 +545,141 @@ class HttpHandler(BaseHttpHandler):
             items = [item for item in items if item.get("status") == status_filter]
         
         return items[skip:skip + page_size]
+
+    def _handle_get_profit_over_time(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/profit-over-time request."""
+        try:
+            # Parse query parameters
+            url_parts = http_msg.url.split('?')
+            window = "lifetime"  # Default
+            
+            if len(url_parts) > 1:
+                params = {}
+                for param in url_parts[1].split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        params[key] = value
+                window = params.get('window', 'lifetime')
+            
+            # Validate window parameter
+            valid_windows = ["7d", "30d", "90d", "lifetime"]
+            if window not in valid_windows:
+                self._send_bad_request_response(
+                    http_msg, http_dialogue,
+                    {"error": f"Invalid window parameter: {window}. Must be one of: {', '.join(valid_windows)}"}
+                )
+                return
+            
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            summary = self.shared_state.read_existing_performance_summary()
+            profit_data = summary.profit_over_time
+            
+            if not profit_data or not profit_data.data_points:
+                # Return empty response if no data
+                response = {
+                    "agent_id": safe_address,
+                    "currency": "USD",
+                    "window": window,
+                    "points": []
+                }
+                self._send_ok_response(http_msg, http_dialogue, response)
+                return
+            
+            # Filter data points based on window
+            filtered_points = self._filter_profit_data_by_window(profit_data.data_points, window)
+            
+            # Convert to API format
+            api_points = []
+            for point in filtered_points:
+                api_points.append({
+                    "timestamp": datetime.utcfromtimestamp(point.timestamp).strftime(ISO_TIMESTAMP_FORMAT),
+                    "delta_profit": point.cumulative_profit
+                })
+            
+            response = {
+                "agent_id": safe_address,
+                "currency": "USD",
+                "window": window,
+                "points": api_points
+            }
+            
+            self.context.logger.info(f"Sending profit over time data for window: {window}, points: {len(api_points)}")
+            self._send_ok_response(http_msg, http_dialogue, response)
+            
+        except Exception as e:
+            self.context.logger.error(f"Error in profit over time endpoint: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue,
+                {"error": "Failed to fetch profit over time data"}
+            )
+
+    def _filter_profit_data_by_window(self, data_points: list, window: str) -> list:
+        """Filter profit data points by time window and fill gaps with last known cumulative."""
+        if window == "lifetime":
+            return data_points
+        
+        # Calculate cutoff timestamp
+        current_timestamp = int(datetime.utcnow().timestamp())
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(window, 0)
+        
+        if days == 0:
+            return data_points
+        
+        cutoff_timestamp = current_timestamp - (days * SECONDS_PER_DAY)
+        
+        # Filter points within the window
+        filtered_points = [
+            point for point in data_points 
+            if point.timestamp >= cutoff_timestamp
+        ]
+        
+        if not filtered_points:
+            # No data in window - return zeros for each day
+            points = []
+            for i in range(days):
+                day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
+                day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
+                
+                zero_point = ProfitDataPoint(
+                    date=day_date,
+                    timestamp=day_timestamp,
+                    daily_profit=0.0,
+                    cumulative_profit=0.0,
+                    daily_mech_requests=0
+                )
+                points.append(zero_point)
+            
+            return points
+        
+        # Create a complete daily timeline for the window with gap filling
+        result_points = []
+        cumulative_profit = 0.0
+        last_known_cumulative = 0.0
+        # Create a lookup for existing data points by timestamp
+        data_lookup = {point.date: point for point in filtered_points}
+        for i in range(days):
+            day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
+            day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
+            
+            if day_date in data_lookup:
+                # Use actual data for this day
+                actual_point = data_lookup[day_date]
+                daily_profit = actual_point.daily_profit
+                cumulative_profit += daily_profit
+                last_known_cumulative = cumulative_profit  # Update last known
+            else:
+                # No data for this day - 0 daily profit, use last known cumulative
+                daily_profit = 0.0
+                cumulative_profit = last_known_cumulative  # Maintain last known value
+            
+            result_points.append(ProfitDataPoint(
+                date=day_date,
+                timestamp=day_timestamp,
+                daily_profit=daily_profit,
+                cumulative_profit=round(cumulative_profit, 3),
+            ))
+        
+        return result_points

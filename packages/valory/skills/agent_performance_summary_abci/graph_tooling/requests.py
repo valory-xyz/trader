@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -28,6 +28,9 @@ from typing import Any, Dict, Generator, List, Optional, cast
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
+    GET_ALL_MECH_REQUESTS_QUERY,
+    GET_DAILY_PROFIT_STATISTICS_QUERY,
+    GET_MECH_REQUESTS_BY_TITLES_QUERY,
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
@@ -158,7 +161,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_MECH_SENDER_QUERY,
-                variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt)},
+                variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
                 subgraph=self.context.olas_mech_subgraph,
                 res_context="mech_sender",
             )
@@ -283,3 +286,102 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             )
             return None
         return int(usd_price * DECIMAL_SCALING_FACTOR)  # scale to 18 decimals
+
+    def _fetch_daily_profit_statistics(
+        self, agent_safe_address: str, start_timestamp: int
+    ) -> Generator[None, None, Optional[List]]:
+        """Fetch daily profit statistics from the subgraph with pagination support."""
+        all_statistics = []
+        skip = 0
+        batch_size = QUERY_BATCH_SIZE
+        
+        while True:
+            
+            result = yield from self._fetch_from_subgraph(
+                query=GET_DAILY_PROFIT_STATISTICS_QUERY,
+                variables={
+                    "agentId": agent_safe_address.lower(),
+                    "startTimestamp": str(start_timestamp),
+                    "first": batch_size,
+                    "skip": skip
+                },
+                subgraph=self.context.olas_agents_subgraph,
+                res_context=f"daily_profit_statistics_batch_{skip // batch_size + 1}",
+            )
+            
+            # Handle null traderAgent response
+            if not result:
+                break
+            
+            # Get dailyProfitStatistics from the result
+            if not result.get("dailyProfitStatistics"):
+                break
+                
+            batch_statistics = result.get("dailyProfitStatistics", [])
+            if not batch_statistics:
+                break
+                
+            all_statistics.extend(batch_statistics)
+            
+            # If we got less than batch_size, we've reached the end
+            if len(batch_statistics) < batch_size:
+                break
+                
+            skip += batch_size
+        
+        return all_statistics
+
+    def _fetch_all_mech_requests(
+        self, agent_safe_address: str
+    ) -> Generator[None, None, Optional[List]]:
+        """Fetch all mech requests for the agent with pagination support."""
+        all_requests = []
+        skip = 0
+        batch_size = QUERY_BATCH_SIZE
+        
+        while True:
+            result = yield from self._fetch_from_subgraph(
+                query=GET_MECH_SENDER_QUERY,
+                variables={"id": agent_safe_address, "timestamp_gt": 0, "skip": skip, "first": batch_size},
+                subgraph=self.context.olas_mech_subgraph,
+                res_context=f"all_mech_requests_batch_{skip // batch_size + 1}",
+            )
+            
+            if not result:
+                break
+            
+            batch_requests = result.get("requests", [])
+            if not batch_requests:
+                break
+            
+            all_requests.extend(batch_requests)
+            
+            # If we got less than batch_size, we've reached the end
+            if len(batch_requests) < batch_size:
+                break
+                
+            skip += batch_size
+        
+        return all_requests
+
+    def _fetch_mech_requests_by_titles(
+        self, agent_safe_address: str, question_titles: List[str]
+    ) -> Generator[None, None, Optional[List]]:
+        """Fetch mech requests by question titles"""
+        if not question_titles:
+            return []
+        
+        result = yield from self._fetch_from_subgraph(
+            query=GET_MECH_REQUESTS_BY_TITLES_QUERY,
+            variables={
+                "sender": agent_safe_address.lower(),
+                "questionTitles": question_titles
+            },
+            subgraph=self.context.olas_mech_subgraph,
+            res_context="mech_requests_by_titles",
+        )
+        
+        if result:
+            return result.get("requests", []) if isinstance(result, dict) else []
+        return []
+        
