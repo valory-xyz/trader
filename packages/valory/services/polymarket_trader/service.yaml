@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeich2q7f5473zygozccnnnbtz7ltofv6d4lebnzchyuokpbgbndbxm
+agent: valory/trader:0.1.0:bafybeiglhcxylkbuwdrtw5jjr3cuw3btayhwambtuqy6hmyejrw3nqgnay
 number_of_agents: 1
 deployment:
   agent:
@@ -65,7 +65,6 @@ models:
       service_id: ${SERVICE_ID:str:trader}
       service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
       agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
-      complementary_service_metadata_address: ${METADATA_ADDRESS:str:0xDC175E77d11246c79B23D7088750eb59160DD6b7}
       use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
       share_tm_config_on_startup: ${USE_ACN:bool:false}
       sleep_time: ${SLEEP_TIME:int:1}

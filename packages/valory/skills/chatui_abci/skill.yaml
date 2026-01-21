@@ -23,7 +23,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeib4apybhtx3gx6o4x5b2nwqjkbdqi7dx7rxyrb5r3zztcdjiezvh4
-- valory/agent_performance_summary_abci:0.1.0:bafybeidsmya7kr7htf4j2anwercmpc7aipbzwtfkhd7cb6x7hee6g2qrie
+- valory/agent_performance_summary_abci:0.1.0:bafybeib7echxr5mwyuvw3l3jh3jvxnnyx5gffiokuoxbj3ihyeqj64mnzm
 handlers:
   abci:
     args: {}
