@@ -77,7 +77,7 @@ PATH_TO_VAR = {
     "config/neg_risk_adapter": "NEG_RISK_ADAPTER",
     "models/params/args/bet_threshold": "BET_THRESHOLD",
     "models/params/args/polymarket_market_slug_to_bet_on": "POLYMARKET_MARKET_SLUG_TO_BET_ON",
-    "models/params/args/complementary_service_metadata_address": "COMPLEMENTARY_SERVICE_METADATA_ADDRESS",
+    "models/mechs_subgraph/args/url": "MECHS_SUBGRAPH_URL",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
