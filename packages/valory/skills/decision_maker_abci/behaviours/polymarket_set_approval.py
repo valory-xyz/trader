@@ -143,7 +143,8 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         neg_risk_ctf_exchange_address = self.params.polymarket_neg_risk_ctf_exchange_address
         neg_risk_adapter_address = self.params.polymarket_neg_risk_adapter_address
         
-        # Build approval transactions and add to multisend_batches
+        # Build approval transactions and add to multisend_batches (must match
+        # polymarket_client _check_approval: 3 USDC allowances + 3 CTF setApprovalForAll)
         # 1. USDC approve for CTF Exchange
         usdc_approve_batch = MultisendBatch(
             to=usdc_address,
@@ -160,7 +161,15 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         )
         self.multisend_batches.append(ctf_approve1_batch)
         
-        # 3. CTF setApprovalForAll for NegRisk CTF Exchange
+        # 3. USDC approve for NegRisk CTF Exchange (required for usdc_allowances.neg_risk_ctf_exchange)
+        usdc_approve_neg_risk_ctf_batch = MultisendBatch(
+            to=usdc_address,
+            data=HexBytes(self._build_erc20_approve_data(neg_risk_ctf_exchange_address, 2**256 - 1)),
+            value=0,
+        )
+        self.multisend_batches.append(usdc_approve_neg_risk_ctf_batch)
+        
+        # 4. CTF setApprovalForAll for NegRisk CTF Exchange
         ctf_approve2_batch = MultisendBatch(
             to=ctf_address,
             data=HexBytes(self._build_set_approval_for_all_data(neg_risk_ctf_exchange_address, True)),
@@ -168,7 +177,15 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         )
         self.multisend_batches.append(ctf_approve2_batch)
         
-        # 4. CTF setApprovalForAll for NegRisk Adapter
+        # 5. USDC approve for NegRisk Adapter (required for usdc_allowances.neg_risk_adapter)
+        usdc_approve_neg_risk_adapter_batch = MultisendBatch(
+            to=usdc_address,
+            data=HexBytes(self._build_erc20_approve_data(neg_risk_adapter_address, 2**256 - 1)),
+            value=0,
+        )
+        self.multisend_batches.append(usdc_approve_neg_risk_adapter_batch)
+        
+        # 6. CTF setApprovalForAll for NegRisk Adapter
         ctf_approve3_batch = MultisendBatch(
             to=ctf_address,
             data=HexBytes(self._build_set_approval_for_all_data(neg_risk_adapter_address, True)),
