@@ -61,6 +61,7 @@ models:
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       store_path: /data/
       is_agent_performance_summary_enabled: true
+      is_running_on_polymarket: false
     class_name: AgentPerformanceSummaryParams
   olas_agents_subgraph:
     args:
@@ -122,6 +123,36 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: TradesSubgraph
+  polymarket_agents_subgraph:
+    args:
+      api_id: polymarket_agents
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:traderAgent
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.6
+    class_name: PolymarketAgentsSubgraph
+  polygon_mech_subgraph:
+    args:
+      api_id: polygon_mech
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:sender
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: ''
+    class_name: PolygonMechSubgraph
 dependencies:
   requests:
     version: '>=2.28.1, <2.31.2'

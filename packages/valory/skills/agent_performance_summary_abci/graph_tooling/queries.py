@@ -213,3 +213,57 @@ query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
   }
 }
 """
+
+# Polymarket-specific queries
+GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY = """
+query GetPolymarketTraderAgentDetails($id: ID!) {
+  traderAgent(id: $id) {
+    id
+    blockTimestamp
+    lastActive
+  }
+}
+"""
+
+GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY = """
+query GetPolymarketTraderAgentPerformance($id: ID!) {
+  traderAgent(id: $id) {
+    totalBets
+    totalPayout
+    totalTraded
+    totalTradedSettled
+  }
+}
+"""
+
+GET_POLYMARKET_PREDICTION_HISTORY_QUERY = """
+query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
+  marketParticipants(
+    where: {traderAgent: $id}
+    first: $first
+    skip: $skip
+    orderBy: blockTimestamp
+    orderDirection: desc
+  ) {
+    traderAgent {
+      bets {
+        amount
+        outcomeIndex
+        shares
+        question {
+          questionId
+          metadata {
+            outcomes
+            rawAncillaryData
+            title
+          }
+          resolution {
+            settledPrice
+            winningIndex
+          }
+        }
+      }
+    }
+  }
+}
+"""

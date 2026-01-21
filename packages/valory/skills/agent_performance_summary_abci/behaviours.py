@@ -456,11 +456,17 @@ class FetchPerformanceSummaryBehaviour(
         )
 
     def _fetch_prediction_history(self):
-        """Fetch latest 200 predictions."""
+        """Fetch latest 200 predictions - platform-aware."""
         safe_address = self.synchronized_data.safe_contract_address.lower()
         
         try:
-            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            # Use platform-specific fetcher
+            if self.params.is_running_on_polymarket:
+                from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import PolymarketPredictionsFetcher
+                fetcher = PolymarketPredictionsFetcher(self.context, self.context.logger)
+            else:
+                fetcher = PredictionsFetcher(self.context, self.context.logger)
+            
             result = fetcher.fetch_predictions(
                 safe_address=safe_address,
                 first=200,

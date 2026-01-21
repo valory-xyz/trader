@@ -180,6 +180,9 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool
         )
+        self.is_running_on_polymarket: bool = self._ensure(
+            "is_running_on_polymarket", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     def get_store_path(self, kwargs: Dict) -> Path:
@@ -281,3 +284,11 @@ class OpenMarketsSubgraph(Subgraph):
 
 class TradesSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
+
+
+class PolymarketAgentsSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polymarket Agent's subgraph specifications."""
+
+
+class PolygonMechSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polygon Mech's subgraph specifications."""
