@@ -41,6 +41,9 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
+# Outcome prices that indicate a resolved/over binary market (one outcome ~0, one ~1)
+RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
+
 
 class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets from Polymarket."""
@@ -73,10 +76,16 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 bet.queue_status = bet.queue_status.move_to_fresh()
 
     def _blacklist_expired_bets(self) -> None:
-        """Blacklist bets that are older than the opening margin."""
+        """Blacklist bets that are older than the opening margin or have resolved/over outcome prices."""
         for bet in self.bets:
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
+                continue
+            # Blacklist binary markets whose outcome prices indicate resolved/over (0.0005, 0.9995)
+            if len(bet.outcomeTokenMarginalPrices) == 2:
+                prices_str = {str(float(p)) for p in bet.outcomeTokenMarginalPrices}
+                if prices_str == RESOLVED_OUTCOME_PRICES:
+                    bet.blacklist_forever()
 
     @property
     def review_bets_for_selling(self) -> bool:
@@ -273,6 +282,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             return
         
         self._process_chunk(bets_market_chunk)
+        self._blacklist_expired_bets()
 
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
