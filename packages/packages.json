@@ -28,7 +28,7 @@
         "service/valory/polymarket_trader/0.1.0": "bafybeicwja5b5pgjwi6lybcmb4qvv2mkj2tembpt3r4ca2r7jdcml7hd2a"
     },
     "third_party": {
-        "protocol/valory/acn_data_share/0.1.0": "bafybeih5ydonnvrwvy2ygfqgfabkr47s4yw3uqxztmwyfprulwfsoe7ipq",
+        "protocol/valory/acn_data_share/0.1.0": "bafybeic7infync56c4b5qzmgomcfkh3au5bpsd53rlfq4hzyjelb3w2u74",
         "protocol/open_aea/signing/1.0.0": "bafybeib7p5as3obcdzseiwg5umj2piiqaodkxkto7qh7b552l5emwsmdzm",
         "protocol/valory/acn/1.1.0": "bafybeicztpzulro64brsms6qmlav3dz635eykpb7ihtchu2eke2hr52efa",
         "protocol/valory/http/1.0.0": "bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi",
@@ -42,23 +42,22 @@
         "contract/valory/service_registry/0.1.0": "bafybeia2ojsye42jngihatprxcz4cpp2mysyidnmy5zehpshwt4zjf6xha",
         "contract/valory/gnosis_safe/0.1.0": "bafybeift6zq32brismk6c7csidcveeijyalrlpnefnqv2jrwrxnfmyu7li",
         "contract/valory/multisend/0.1.0": "bafybeidjdgi2kyexajirj3cnpzgse4y5u664b2blztt4flv6i7knlecyr4",
-        "contract/valory/agent_registry/0.1.0": "bafybeigdrl2f6isuvtm3st5b4uypkabwazusaftxwvgfsk5r76gk2dmlhy",
-        "contract/valory/mech_marketplace_legacy/0.1.0": "bafybeidpm6d5cjvri3wszqkj3j5pqb2rzacjrzlngfdj4cxveu5r2fq6lu",
-        "contract/valory/mech_marketplace/0.1.0": "bafybeiavi2j6nwq5zod7yd7hc66u74bilk6ahkfez7tshqutpf6wl3iuwy",
-        "contract/valory/mech/0.1.0": "bafybeia2fumjlopm6cblkwjiirxhaa2bmyrtgshgcbblmd63mo5ohmh36a",
-        "contract/valory/mech_mm/0.1.0": "bafybeibqichh4abdqovx3t5mv6lb6alwtmrpsxckem6qkxg5ferv52vkn4",
-        "contract/valory/erc20/0.1.0": "bafybeicmz6z2bzjky52jty5kv33vp25xn3xsttgqtgqyn4r3khnprqpo44",
         "contract/valory/ierc1155/0.1.0": "bafybeihxvb6mkoqslafg764bevcybarjpge5oswc3qdpz4fomokvgjpsvm",
         "contract/valory/nvm_balance_tracker_token/0.1.0": "bafybeibugdgkfnvgjjovmsbp5wjoh56p27ceb75b6wzrmb3dx5wllrodme",
         "contract/valory/nvm_balance_tracker_native/0.1.0": "bafybeigcdeezxeh3qxhadwonnnuujyo22btbenzxm5bgdwqyh65wiutrhy",
         "contract/valory/escrow_payment_condition/0.1.0": "bafybeigtnhahgma5akvdqvrmw5cwcmrp52xsgcdddl4qhreugn2lacsore",
         "contract/valory/did_registry/0.1.0": "bafybeid3xrla6geglzw2wzzdquslklykpajrdhhxnjva3bmmtq7axcldyi",
-        "contract/valory/complementary_service_metadata/0.1.0": "bafybeibjk5gdgc54wx5bz4fl2666urmfj6mx3ocqxyumqpj7wq5fdg4diu",
         "contract/valory/nft_sales/0.1.0": "bafybeicxu4wamktup2othub7gnzl7w32h33ripie6qfloptsbrkc4al6wa",
         "contract/valory/lock_payment_condition/0.1.0": "bafybeiffgc2r3pljfj5oq7otmyolrwtsdkt5euu4m2ecb5oxsfp6nzh76i",
         "contract/valory/agreement_store_manager/0.1.0": "bafybeihjuc7ldrq4lj5lizkr2jvol6urzdn2il5zwksuqi57z6usahhexy",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeihzjrhrjicszzfqz5f3au3alrbalb7utvse7pbr4eli6reofnoxw4",
         "contract/valory/subscription_provider/0.1.0": "bafybeihqlpc2c7srd6tho6xkjjrnpowlax55e5xexcoohyot7du5oxz3vi",
+        "contract/valory/agent_registry/0.1.0": "bafybeiae5aef7ajxurgpnjueqaxf5rpkmnkqk2jlkdsfmgj36o7ob57jmi",
+        "contract/valory/mech_marketplace_legacy/0.1.0": "bafybeiasxhp7c3dbhwfshkruetkpc6jdfegefc37sp4b3xfq3fig4tqvdq",
+        "contract/valory/mech_marketplace/0.1.0": "bafybeicq25dhltrvi63i7hg6jhme4ciiygb3t4thrqwdkvxwpesz3aixuq",
+        "contract/valory/mech/0.1.0": "bafybeiatnbhhzhsocqfdcsjrr7zyj3v5kdhkbe5xtebioodmik4v3zfeea",
+        "contract/valory/mech_mm/0.1.0": "bafybeiff3rrjp57ku3jzciqcfvg2r75k2gz6ta53zrgtqydieln7plyu7m",
+        "contract/valory/erc20/0.1.0": "bafybeibqqlr2c3dbn4zsnc75y5nesxf3j6wm7zadwz42gkt4u4outscfwm",
         "connection/valory/http_server/0.22.0": "bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm",
         "connection/valory/http_client/0.23.0": "bafybeib34a2ukancj5524tz64smczju2q2njscgufmtml6dcjb3bjyaocy",
         "connection/valory/ledger/0.19.0": "bafybeifdsep5suryfufmto4j5fyvjhmlgypyg6zvvwqsm4edlwfbfsav5y",
@@ -74,6 +73,6 @@
         "skill/valory/registration_abci/0.1.0": "bafybeigqusergxx4zwnaxccl7gs2gu5sva4uz2dosdppfmwjihlpebywkq",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeibbgedhxkf44obw7mdcczz2hxkjnvfnifnsk6txq7z64v372bbgpa",
         "skill/valory/termination_abci/0.1.0": "bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeif25jf4soq32kj5h5luhinnrq7hzyswejursfaqqqmf6hi5tb75qy"
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeih55gn4uftfosr3s7tz735nqnilwjozwe4kt6gqyokhsvb7vnlxbe"
     }
 }
