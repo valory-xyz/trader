@@ -514,42 +514,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         
         return yes_no_markets
 
-    def _filter_active_markets(self, markets: list) -> list:
-        """Filter out markets with extreme prices (resolved/over markets).
-        
-        Markets with prices exactly ["0.0005", "0.9995"] or ["0.9995", "0.0005"]
-        are considered resolved and excluded.
-        
-        :param markets: List of market dictionaries
-        :return: Filtered list of active markets
-        """
-        active_markets = []
-        for market in markets:
-            outcome_prices_str = market.get("outcomePrices")
-            
-            if not outcome_prices_str:
-                # No prices means include the market
-                active_markets.append(market)
-                continue
-            
-            try:
-                outcome_prices = json.loads(outcome_prices_str)
-                if isinstance(outcome_prices, list) and len(outcome_prices) == 2:
-                    # Normalize prices to strings for comparison
-                    prices_normalized = [str(float(p)) for p in outcome_prices]
-                    prices_set = set(prices_normalized)
-                    
-                    # Skip markets with extreme prices (resolved/over)
-                    if prices_set == {"0.0005", "0.9995"}:
-                        continue
-                
-                active_markets.append(market)
-            except (json.JSONDecodeError, TypeError, ValueError):
-                # If parsing fails, include the market
-                active_markets.append(market)
-        
-        return active_markets
-
     def _remove_duplicate_markets(self, markets: list) -> list:
         """Remove duplicate markets based on market ID.
         
@@ -570,8 +534,9 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _fetch_markets(self, cache_file_path: str = None) -> Tuple[Any, Any]:
         """Fetch current markets from Polymarket with category-based filtering.
         
-        Fetches markets from multiple categories, filters for Yes/No outcomes,
-        and excludes markets with extreme prices (resolved/over markets).
+        Fetches markets from multiple categories and filters for Yes/No outcomes.
+        Resolved/over markets (extreme outcome prices) are blacklisted in the
+        PolymarketFetchMarketBehaviour._blacklist_expired_bets logic.
         
         :param cache_file_path: Optional path to persistent cache file for tag IDs
         :return: Tuple of (filtered_markets_dict, error_message)
@@ -624,11 +589,8 @@ class PolymarketClientConnection(BaseSyncConnection):
                 yes_no_markets = self._filter_yes_no_markets(category_markets)
                 self.logger.info(f"  Filtered to {len(yes_no_markets)} Yes/No markets")
                 
-                # Step 4: Filter out markets with extreme prices (resolved/over)
-                active_markets = self._filter_active_markets(yes_no_markets)
-                
-                filtered_markets_by_category[category] = active_markets
-                self.logger.info(f"  Found {len(active_markets)} active markets for '{category}'")
+                filtered_markets_by_category[category] = yes_no_markets
+                self.logger.info(f"  Found {len(yes_no_markets)} markets for '{category}'")
             
             # Step 5: Remove duplicates across all categories
             # Keep first occurrence of each market (preserves first category it appears in)
