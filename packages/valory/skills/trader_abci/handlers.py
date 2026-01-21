@@ -97,6 +97,7 @@ POLYGON_CHAIN_ID = 137
 POLYGON_NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
 POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 
@@ -146,6 +147,7 @@ class HttpHandler(BaseHttpHandler):
                 "native_token_address": POLYGON_NATIVE_TOKEN_ADDRESS,
                 "wrapped_native_address": POLYGON_WRAPPED_NATIVE_ADDRESS,
                 "usdc_e_address": POLYGON_USDC_E_ADDRESS,
+                "usdc_address": POLYGON_USDC_ADDRESS,
             }
 
         return {
@@ -330,12 +332,12 @@ class HttpHandler(BaseHttpHandler):
             self._send_not_found_response(http_msg, http_dialogue)
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
-        """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it (Gnosis only)."""
+        """
+        Adjusts fund status based on chain:
+        - Gnosis (Omen): wxDAI balance considered as xDAI
+        - Polygon (Polymarket): USDC balance considered as POL (with decimal conversion)
+        """
         funds_status = copy.deepcopy(self.funds_status)
-
-        # Only apply adjustment for Gnosis chain
-        if self.params.is_running_on_polymarket:
-            return funds_status
 
         try:
             chain_config = self._get_chain_config()
@@ -344,19 +346,34 @@ class HttpHandler(BaseHttpHandler):
             ]
 
             native_status = safe_balances.tokens[chain_config["native_token_address"]]
-            wrapped_native_status = safe_balances.tokens[
-                chain_config["wrapped_native_address"]
-            ]
+
+            if self.params.is_running_on_polymarket:
+                # On Polygon: USDC balance considered as POL
+                # Convert USDC to POL equivalent using their decimal places
+                usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
+                usdc_balance = int(usdc_status.balance or 0)
+                usdc_decimals = usdc_status.decimals
+                native_decimals = native_status.decimals
+                # Convert from USDC decimals to native token decimals
+                decimal_diff = native_decimals - usdc_decimals
+                adjustment_balance = usdc_balance * (10**decimal_diff)
+            else:
+                # On Gnosis: wxDAI balance considered as xDAI (both same decimals)
+                wrapped_native_status = safe_balances.tokens[
+                    chain_config["wrapped_native_address"]
+                ]
+                adjustment_balance = int(wrapped_native_status.balance or 0)
+
         except KeyError:
             self.context.logger.error(
                 "Misconfigured fund requirements data. Can't apply adjustment."
             )
             return funds_status
+
         if native_status.deficit != 0:
             native_status.deficit = max(
                 0,
-                int(native_status.deficit or 0)
-                - int(wrapped_native_status.balance or 0),
+                int(native_status.deficit or 0) - adjustment_balance,
             )
 
         return funds_status
