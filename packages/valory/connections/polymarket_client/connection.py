@@ -329,7 +329,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.error(f"Polymarket connection test failed: {e}")
             return False
 
-    def _place_bet(self, token_id: str, amount: float) -> None:
+    def _place_bet(self, token_id: str, amount: float) -> Tuple[Any, Any]:
         """Place a bet on Polymarket."""
 
         mo = MarketOrderArgs(
@@ -343,18 +343,9 @@ class PolymarketClientConnection(BaseSyncConnection):
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
             return resp, None
         except PolyApiException as e:
-            self.logger.error(f"Error placing bet: {e}")
-            return None, "Error placing bet: {e}"
-        self.logger.info(f"Placed bet response: {resp}")
-        if resp.get("errorMsg"):
-            self.logger.error(f"Error placing bet: {resp['errorMsg']}")
-            return None, resp["errorMsg"]
-
-        return (
-            resp["orderID"],
-            resp["status"],
-            resp.get("transactionHash") or resp.get("transactionsHashes"),
-        )
+            error_msg = f"Error placing bet: {e}"
+            self.logger.error(error_msg)
+            return None, error_msg
 
     def _load_cache_file(self, cache_file_path: str) -> Dict:
         """Load the cache file from disk.

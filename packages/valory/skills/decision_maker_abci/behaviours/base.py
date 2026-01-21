@@ -311,6 +311,24 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Convert USDC wei to native token (6 decimals)."""
         return usdc_wei / 10**6
 
+    def get_token_precision(self) -> int:
+        """Get the token precision based on the collateral token type."""
+        if self.is_usdc:
+            return 10**6
+        return 10**18
+
+    def convert_to_native(self, amount: int) -> float:
+        """Convert token amount to native representation based on collateral token type."""
+        if self.is_usdc:
+            return self.usdc_to_native(amount)
+        return self.wei_to_native(amount)
+
+    def get_token_name(self) -> str:
+        """Get the token name based on the collateral token type."""
+        if self.is_usdc:
+            return "USDC"
+        return "xDAI"
+
     def get_active_sampled_bet(self) -> Bet:
         """Function to get the selected bet that is active without reseting self.bets."""
         bet_index = self.synchronized_data.sampled_bet_index
@@ -326,7 +344,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if self.benchmarking_mode.enabled or self.is_wxdai:
             return f"{self.wei_to_native(amount):.6f} wxDAI"
         elif self.is_usdc:
-            return f"{self.usdc_to_native(amount):.6f} USDC"
+            return f"{self.usdc_to_native(amount):.6f} USDC.e"
         else:
             return f"{amount} WEI of the collateral token with address {self.collateral_token}"
 
