@@ -59,7 +59,6 @@ from packages.valory.skills.mech_interact_abci.states.base import (
 SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
-TOKEN_PRECISION = 10**18
 
 
 class DecisionReceiveBehaviour(StorageManagerBehaviour):
@@ -376,9 +375,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self, token_amounts: List[int], token_prices: List[float]
     ) -> float:
         """Function to compute the scaled liquidity measure from token amounts and prices."""
+        token_precision = self.get_token_precision()
         return (
             sum(amount * price for amount, price in zip(token_amounts, token_prices))
-            / TOKEN_PRECISION
+            / token_precision
         )
 
     def _update_liquidity_info(self, net_bet_amount: int, vote: int) -> LiquidityInfo:
@@ -468,7 +468,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
-        net_bet_amount = remove_fraction_wei(bet_amount, self.wei_to_native(bet.fee))
+        net_bet_amount = remove_fraction_wei(
+            bet_amount, self.convert_to_native(bet.fee)
+        )
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
 
         num_shares, available_shares = self._calc_binary_shares(
@@ -492,10 +494,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         potential_net_profit = num_shares - net_bet_amount - bet_threshold
         is_profitable = potential_net_profit >= 0
 
+        token_name = self.get_token_name()
         self.context.logger.info(
-            f"The current liquidity of the market is {bet.scaledLiquidityMeasure} xDAI. "
-            f"The potential net profit is {self.wei_to_native(potential_net_profit)} xDAI "
-            f"from buying {self.wei_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
+            f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
+            f"The potential net profit is {self.convert_to_native(potential_net_profit)} {token_name} "
+            f"from buying {self.convert_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
         if is_profitable:
