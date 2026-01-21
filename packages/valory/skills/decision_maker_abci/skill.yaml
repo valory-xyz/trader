@@ -303,6 +303,7 @@ models:
       store_path: data/
       is_running_on_polymarket: false
       polymarket_builder_program_enabled: true
+      pol_threshold_for_swap: 2000000000000000000
     class_name: DecisionMakerParams
   acc_info_fields:
     args:

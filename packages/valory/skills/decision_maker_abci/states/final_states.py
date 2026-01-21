@@ -83,3 +83,7 @@ class FinishedFetchMarketsRouterRound(DegenerateRound):
 
 class FinishedPolymarketFetchMarketRound(DegenerateRound):
     """A round representing that Polymarket fetch market has finished."""
+
+
+class FinishedPolymarketSwapTxPreparationRound(DegenerateRound):
+    """A round representing that Polymarket swap has finished and needs to go to tx settlement."""

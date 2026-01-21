@@ -257,6 +257,11 @@ ROUNDS_INFO = {
         "description": "Fetches multiple markets from Polymarket using category tags with filtering.",
         "transitions": {},
     },
+    "polymarket_swap_usdc_round": {
+        "name": "Swapping POL to USDC for placing mech requests",
+        "description": "Swaps POL tokens to USDC tokens",
+        "transitions": {},
+    },
 }
 
 

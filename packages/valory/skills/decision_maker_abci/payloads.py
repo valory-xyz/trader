@@ -168,3 +168,10 @@ class PolymarketRedeemPayload(MultisigTxPayload):
     redeemed_condition_ids: Optional[str] = None
     payout_so_far: Optional[int] = None
     event: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PolymarketSwapPayload(MultisigTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction for swapping."""
+
+    should_swap: Optional[bool] = None

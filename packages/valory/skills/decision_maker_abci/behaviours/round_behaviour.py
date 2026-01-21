@@ -75,6 +75,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
 from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
     SellOutcomeTokensBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
+    PolymarketSwapUsdcBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,
 )
@@ -106,4 +109,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketFetchMarketBehaviour,  # type: ignore
         PolymarketSetApprovalBehaviour,  # type: ignore
         PolymarketPostSetApprovalBehaviour,  # type: ignore
+        PolymarketSwapUsdcBehaviour,  # type: ignore
     }

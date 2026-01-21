@@ -501,6 +501,9 @@ class DecisionMakerParams(
         self.polymarket_neg_risk_adapter_address: str = self._ensure(
             "polymarket_neg_risk_adapter_address", kwargs, str
         )
+        self.pol_threshold_for_swap: int = self._ensure(
+            "pol_threshold_for_swap", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

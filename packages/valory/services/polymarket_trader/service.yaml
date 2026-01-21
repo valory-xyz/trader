@@ -154,6 +154,7 @@ models:
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+      pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
