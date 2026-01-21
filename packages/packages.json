@@ -53,11 +53,11 @@
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeihzjrhrjicszzfqz5f3au3alrbalb7utvse7pbr4eli6reofnoxw4",
         "contract/valory/subscription_provider/0.1.0": "bafybeihqlpc2c7srd6tho6xkjjrnpowlax55e5xexcoohyot7du5oxz3vi",
         "contract/valory/agent_registry/0.1.0": "bafybeiae5aef7ajxurgpnjueqaxf5rpkmnkqk2jlkdsfmgj36o7ob57jmi",
-        "contract/valory/mech_marketplace_legacy/0.1.0": "bafybeiasxhp7c3dbhwfshkruetkpc6jdfegefc37sp4b3xfq3fig4tqvdq",
         "contract/valory/mech_marketplace/0.1.0": "bafybeicq25dhltrvi63i7hg6jhme4ciiygb3t4thrqwdkvxwpesz3aixuq",
-        "contract/valory/mech/0.1.0": "bafybeiatnbhhzhsocqfdcsjrr7zyj3v5kdhkbe5xtebioodmik4v3zfeea",
-        "contract/valory/mech_mm/0.1.0": "bafybeiff3rrjp57ku3jzciqcfvg2r75k2gz6ta53zrgtqydieln7plyu7m",
         "contract/valory/erc20/0.1.0": "bafybeibqqlr2c3dbn4zsnc75y5nesxf3j6wm7zadwz42gkt4u4outscfwm",
+        "contract/valory/mech_marketplace_legacy/0.1.0": "bafybeibzt5nxlwoyf52kp4u2cbzgvdivki7gigc7vwxhklmamtyz3nappu",
+        "contract/valory/mech/0.1.0": "bafybeih3wba4i4vy6iixos2ky462vnydlj4b4zzhaou6zy3ws7ma66c7eu",
+        "contract/valory/mech_mm/0.1.0": "bafybeiclvgdaib3cgclswxgplgd65wecdhnwenimqh34vtyzqcmtmabag4",
         "connection/valory/http_server/0.22.0": "bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm",
         "connection/valory/http_client/0.23.0": "bafybeib34a2ukancj5524tz64smczju2q2njscgufmtml6dcjb3bjyaocy",
         "connection/valory/ledger/0.19.0": "bafybeifdsep5suryfufmto4j5fyvjhmlgypyg6zvvwqsm4edlwfbfsav5y",
@@ -73,6 +73,6 @@
         "skill/valory/registration_abci/0.1.0": "bafybeigqusergxx4zwnaxccl7gs2gu5sva4uz2dosdppfmwjihlpebywkq",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeibbgedhxkf44obw7mdcczz2hxkjnvfnifnsk6txq7z64v372bbgpa",
         "skill/valory/termination_abci/0.1.0": "bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeih55gn4uftfosr3s7tz735nqnilwjozwe4kt6gqyokhsvb7vnlxbe"
+        "skill/valory/mech_interact_abci/0.1.0":"bafybeidppjxk6znyilclyiexe7hjfnrzaowvxvfh6hkwn7gwdfcx5gcwdq"
     }
 }
