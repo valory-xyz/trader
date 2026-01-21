@@ -18,7 +18,8 @@ class_name: PolymarketClientConnection
 config:
   host: https://clob.polymarket.com
   chain_id: 137
-  safe_contract_addresses: {}
+  safe_contract_addresses:
+    polygon: 0x
   remote_builder_url: http://localhost:5001/sign
   polymarket_builder_program_enabled: true
   usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'

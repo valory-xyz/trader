@@ -66,7 +66,7 @@ PATH_TO_VAR = {
     "models/params/args/mech_chain_id": "MECH_CHAIN_ID",
     "config/genai_x402_server_base_url": "GENAI_X402_SERVER_BASE_URL",
     "models/params/args/fund_requirements": "FUND_REQUIREMENTS",
-    "config/safe_contract_addresses": "SAFE_CONTRACT_ADDRESSES",
+    "config/safe_contract_addresses/polygon": "SAFE_CONTRACT_ADDRESS",
     "models/params/args/is_running_on_polymarket": "IS_RUNNING_ON_POLYMARKET",
     "models/params/args/polymarket_builder_program_enabled": "POLYMARKET_BUILDER_PROGRAM_ENABLED",
     "config/polymarket_builder_program_enabled": "POLYMARKET_BUILDER_PROGRAM_ENABLED",
