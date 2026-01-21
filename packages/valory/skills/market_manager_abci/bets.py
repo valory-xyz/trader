@@ -160,8 +160,6 @@ class Bet:
     queue_status: QueueStatus = QueueStatus.FRESH
     # a mapping from vote to investment amounts
     investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
-    # strategy used when placing the bet
-    strategy: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

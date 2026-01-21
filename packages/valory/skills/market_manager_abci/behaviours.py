@@ -251,7 +251,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             return
 
         for raw_bet in chunk:
-            # Get current trading strategy and map to risky/balanced
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:

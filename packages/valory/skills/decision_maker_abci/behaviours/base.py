@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2026 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -40,7 +40,6 @@ from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
 )
 from packages.valory.contracts.mech.contract import Mech
-from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
@@ -370,9 +369,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if not updated:
             self.context.logger.error("Could not update the investments!")
 
-        # Update strategy for the bet that was just placed
-        self._update_bet_strategy(sampled_bet)
-
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
@@ -589,21 +585,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.mech_contract_address,
             contract_public_id=Mech.contract_id,
-            contract_callable=contract_callable,
-            data_key=data_key,
-            placeholder=placeholder,
-            **kwargs,
-        )
-        return status
-
-    def _mech_mm_contract_interact(
-        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
-    ) -> WaitableConditionType:
-        """Interact with the mech mm contract."""
-        status = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.mech_marketplace_config.priority_mech_address,
-            contract_public_id=MechMM.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
             placeholder=placeholder,
@@ -910,19 +891,3 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
-
-    def _update_bet_strategy(self, bet: Bet) -> None:
-        """Update the strategy for the bet that was just placed."""
-        try:
-            # Get current trading strategy and store it directly
-            trading_strategy = self.shared_state.chatui_config.trading_strategy
-
-            # Update strategy for the bet
-            bet.strategy = trading_strategy
-
-            self.context.logger.info(
-                f"Updated strategy for bet {bet.id}: {trading_strategy}"
-            )
-
-        except Exception as e:
-            self.context.logger.warning(f"Could not update bet strategy: {e}")
