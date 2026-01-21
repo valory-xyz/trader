@@ -547,7 +547,7 @@ class FetchPerformanceSummaryBehaviour(
         :return: ProfitOverTimeData or None
         """
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         # Check if we have existing profit data
         existing_summary = self.shared_state.read_existing_performance_summary()
@@ -555,15 +555,9 @@ class FetchPerformanceSummaryBehaviour(
         
         # Determine if this is initial backfill or incremental update
         # We need to build the profit over time chart again after the hotfix so we check for settled_mech_request_count field in agent performance metrics, as it was newly added in the hotfix
-        if not existing_profit_data or not existing_profit_data.data_points:
+        if not existing_profit_data or not existing_profit_data.data_points or not existing_summary.agent_performance.metrics.settled_mech_request_count:
             # INITIAL BACKFILL - First time or no existing data
             self.context.logger.info("Performing initial profit over time backfill...")
-            return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
-        elif (existing_summary.agent_performance and 
-              existing_summary.agent_performance.metrics and 
-              not getattr(existing_summary.agent_performance.metrics, 'settled_mech_request_count', None)):
-            # INITIAL BACKFILL - Missing settled_mech_request_count field (hotfix)
-            self.context.logger.info("Performing initial profit over time backfill due to missing settled_mech_request_count...")
             return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
@@ -731,7 +725,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Check if we need to update (daily check)
         existing_summary = self.shared_state.read_existing_performance_summary()
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         # Check if profit_over_time exists and is up to date
         if existing_summary.profit_over_time:
@@ -765,7 +759,7 @@ class FetchPerformanceSummaryBehaviour(
         agent_safe_address = self.synchronized_data.safe_contract_address
         self._settled_mech_requests_count = yield from self._calculate_settled_mech_requests(agent_safe_address)
         
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = self.shared_state.synced_timestamp
         
         final_roi, partial_roi = yield from self.calculate_roi()
 
