@@ -48,34 +48,38 @@ from packages.valory.skills.decision_maker_abci.states.check_benchmarking import
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
+from packages.valory.skills.decision_maker_abci.states.decision_request import (
+    DecisionRequestRound,
+)
+from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
+    FetchMarketsRouterRound,
+)
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedFetchMarketsRouterRound,
+    FinishedPolymarketFetchMarketRound,
     FinishedPolymarketRedeemRound,
+    FinishedPolymarketSwapTxPreparationRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
-    FinishedFetchMarketsRouterRound,
-    FinishedPolymarketFetchMarketRound,
     RefillRequiredRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
-from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
-    FetchMarketsRouterRound,
-)
-from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
-    PolymarketFetchMarketRound,
-)
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
     FinishedMarketManagerRound,
@@ -125,6 +129,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
+    FinishedPolymarketSwapTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
     FinishedSetApprovalTxRound,
@@ -163,6 +168,8 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedBetPlacementTxRound: RedeemRound,
     FinishedSellOutcomeTokensTxRound: RedeemRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
+    FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketSwapTxRound: DecisionRequestRound,
     FinishedPolymarketRedeemRound: CallCheckpointRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,

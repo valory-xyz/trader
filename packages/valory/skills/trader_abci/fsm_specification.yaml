@@ -65,6 +65,7 @@ final_states:
     - ImpossibleRound
     - ServiceEvictedRound
     - FinishedPolymarketRedeemRound
+    - FinishedPolymarketSwapTxPreparationRound
 label: TraderAbciApp
 start_states:
     - RegistrationRound
@@ -117,6 +118,7 @@ states:
     - FetchMarketsRouterRound
     - PolymarketFetchMarketRound
     - ValidateTransactionRound
+    - PolymarketSwapUsdcRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -309,10 +311,15 @@ transition_func:
     (SynchronizeLateMessagesRound, NONE): SelectKeeperTransactionSubmissionBRound
     (SynchronizeLateMessagesRound, ROUND_TIMEOUT): SynchronizeLateMessagesRound
     (SynchronizeLateMessagesRound, SUSPICIOUS_ACTIVITY): HandleFailedTxRound
-    (ToolSelectionRound, DONE): DecisionRequestRound
+    (ToolSelectionRound, DONE): PolymarketSwapUsdcRound
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
     (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
+    (PolymarketSwapUsdcRound, DONE): DecisionRequestRound
+    (PolymarketSwapUsdcRound, NONE): DecisionRequestRound
+    (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
+    (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
+    (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
     (UpdateBetsRound, DONE): CheckStopTradingRound
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
