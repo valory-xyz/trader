@@ -88,6 +88,7 @@ httpx = "<1,>=0.23.0"
 py-clob-client = "==0.34.5"
 py-builder-relayer-client = "==0.0.1"
 py-builder-signing-sdk = { git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git", branch = "fix/remote-signing" }
+filelock = ">=3.20.1"
 
 [tool.poetry.dependencies.tomte]
 version = "==0.4.0"
