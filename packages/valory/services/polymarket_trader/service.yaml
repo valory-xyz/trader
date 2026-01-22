@@ -151,7 +151,7 @@ models:
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
-      is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+      is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
