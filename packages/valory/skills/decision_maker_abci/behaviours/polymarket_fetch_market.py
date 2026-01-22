@@ -25,9 +25,6 @@ from typing import Any, Dict, Generator, List, Optional
 from dateutil import parser as date_parser
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
     PolymarketFetchMarketRound,
 )
