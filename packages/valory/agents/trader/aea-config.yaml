@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
 - dvilela/genai:0.1.0:bafybeiabp64cyd3m7pjbgeivcprijw7qqviycsu7l24useqttgjeif4vbi
 - valory/x402:0.1.0:bafybeibbmbx72zriokyed4rl7us6hjvxoxoqku737eqctsqjcncg3jlnku
-- valory/polymarket_client:0.1.0:bafybeidy7a2nebdy6t6spnk3ir4pt3kowsy2qiqtu5zkgs2b5gkgtwc6si
+- valory/polymarket_client:0.1.0:bafybeiaz2dv65y2k2hhribf4oi5vxrzy62drdr7jf7lu7a62pb55e5yzs4
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeift6zq32brismk6c7csidcveeijyalrlpnefnqv2jrwrxnfmyu7li
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeie6blajrnottahgi2zpmzp2hfsobp3m3zfqplg2ocn63ed6cr4o74
@@ -66,10 +66,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibbgedhxkf44obw7mdcczz2hxkjnvfnifnsk6txq7z64v372bbgpa
 - valory/termination_abci:0.1.0:bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha
 - valory/transaction_settlement_abci:0.1.0:bafybeifw2sem532gwdcyujknhsgdcgubpwsrrjtve4ztzxlkpmporjp4rq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiduxeddavdyshc3nqhcvgn35z2r4ykutvsygtocgdfegux2em7eze
-- valory/market_manager_abci:0.1.0:bafybeifavbhmdgeiw6ausuvyadvf5bdijedjpx63ntblfmk3aryaeebj4i
-- valory/decision_maker_abci:0.1.0:bafybeicepzznvxacqiv5idhy6t6percsad5qazn7qwfh2klxwqhjjor6ya
-- valory/trader_abci:0.1.0:bafybeiabf4bdf4ff5aghljiarpspc3g6m5gk6neczzczoug425jaeanpxy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaod7gogg4c7kixs7o2rfdnw6s6eql5jxpn5ldfb7gxv3v4wadus4
+- valory/market_manager_abci:0.1.0:bafybeig6a7fepjway6arq76ykj42c6gz4y6wyxamcqzslwkanw4hvnyqkm
+- valory/decision_maker_abci:0.1.0:bafybeiep3ew6np5jjpslfvljr2b5qiaaw5cwbqa2k37kmrp3goitgj4vz4
+- valory/trader_abci:0.1.0:bafybeic5aic2yifpfeglcmjfrso6vy2pieo24bryrbp6da7sljxzefaqce
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 - valory/check_stop_trading_abci:0.1.0:bafybeia6faypdoaa6bqdsqnpp52mecoo5jf5reg7gnjpvnhgtiwkopqbdu
 - valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
