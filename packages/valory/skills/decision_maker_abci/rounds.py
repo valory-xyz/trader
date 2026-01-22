@@ -293,7 +293,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: DecisionReceiveRound,
         },
         BlacklistingRound: {
-            Event.DONE: FinishedWithoutDecisionRound,
+            Event.DONE: RedeemRouterRound,
             Event.MOCK_TX: FinishedWithoutDecisionRound,
             # degenerate round on purpose, should never have reached here
             Event.NONE: ImpossibleRound,
