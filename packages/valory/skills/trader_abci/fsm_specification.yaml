@@ -49,7 +49,6 @@ alphabet_in:
 - SERVICE_NOT_STAKED
 - SET_APPROVAL
 - SET_APPROVAL_DONE
-- SKIP
 - SKIP_REQUEST
 - SKIP_TRADING
 - SLOTS_UNSUPPORTED_ERROR
@@ -220,7 +219,6 @@ transition_func:
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
-    (PolymarketBetPlacementRound, CALC_BUY_AMOUNT_FAILED): HandleFailedTxRound
     (PolymarketBetPlacementRound, DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
     (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound
@@ -236,21 +234,21 @@ transition_func:
     (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
-    (PolymarketPostSetApprovalRound, SKIP): FetchMarketsRouterRound
     (PolymarketRedeemRound, DONE): CallCheckpointRound
+    (PolymarketRedeemRound, MOCK_TX): CallCheckpointRound
     (PolymarketRedeemRound, NONE): PolymarketRedeemRound
     (PolymarketRedeemRound, NO_MAJORITY): PolymarketRedeemRound
     (PolymarketRedeemRound, NO_REDEEMING): CallCheckpointRound
     (PolymarketRedeemRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketRedeemRound, REDEEM_ROUND_TIMEOUT): PreTxSettlementRound
-    (PolymarketSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
     (PolymarketSetApprovalRound, DONE): PolymarketPostSetApprovalRound
+    (PolymarketSetApprovalRound, MOCK_TX): PolymarketPostSetApprovalRound
     (PolymarketSetApprovalRound, NONE): ImpossibleRound
     (PolymarketSetApprovalRound, NO_MAJORITY): PolymarketSetApprovalRound
     (PolymarketSetApprovalRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketSetApprovalRound, ROUND_TIMEOUT): PolymarketSetApprovalRound
-    (PolymarketSetApprovalRound, SKIP): FetchMarketsRouterRound
     (PolymarketSwapUsdcRound, DONE): DecisionRequestRound
+    (PolymarketSwapUsdcRound, MOCK_TX): DecisionRequestRound
     (PolymarketSwapUsdcRound, NONE): DecisionRequestRound
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound

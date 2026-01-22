@@ -27,7 +27,6 @@ alphabet_in:
 - REDEEM_ROUND_TIMEOUT
 - ROUND_TIMEOUT
 - SET_APPROVAL
-- SKIP
 - SLOTS_UNSUPPORTED_ERROR
 - TIE
 - UNPROFITABLE
@@ -140,7 +139,6 @@ transition_func:
     (HandleFailedTxRound, NO_OP): RedeemRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
-    (PolymarketBetPlacementRound, CALC_BUY_AMOUNT_FAILED): HandleFailedTxRound
     (PolymarketBetPlacementRound, DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound
@@ -156,21 +154,21 @@ transition_func:
     (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
-    (PolymarketPostSetApprovalRound, SKIP): BenchmarkingModeDisabledRound
     (PolymarketRedeemRound, DONE): FinishedPolymarketRedeemRound
+    (PolymarketRedeemRound, MOCK_TX): FinishedPolymarketRedeemRound
     (PolymarketRedeemRound, NONE): PolymarketRedeemRound
     (PolymarketRedeemRound, NO_MAJORITY): PolymarketRedeemRound
     (PolymarketRedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (PolymarketRedeemRound, PREPARE_TX): FinishedRedeemTxPreparationRound
     (PolymarketRedeemRound, REDEEM_ROUND_TIMEOUT): FinishedDecisionMakerRound
-    (PolymarketSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
     (PolymarketSetApprovalRound, DONE): PolymarketPostSetApprovalRound
+    (PolymarketSetApprovalRound, MOCK_TX): PolymarketPostSetApprovalRound
     (PolymarketSetApprovalRound, NONE): ImpossibleRound
     (PolymarketSetApprovalRound, NO_MAJORITY): PolymarketSetApprovalRound
     (PolymarketSetApprovalRound, PREPARE_TX): FinishedSetApprovalTxPreparationRound
     (PolymarketSetApprovalRound, ROUND_TIMEOUT): PolymarketSetApprovalRound
-    (PolymarketSetApprovalRound, SKIP): BenchmarkingModeDisabledRound
     (PolymarketSwapUsdcRound, DONE): DecisionRequestRound
+    (PolymarketSwapUsdcRound, MOCK_TX): DecisionRequestRound
     (PolymarketSwapUsdcRound, NONE): DecisionRequestRound
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): FinishedPolymarketSwapTxPreparationRound

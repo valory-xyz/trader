@@ -152,6 +152,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - prepare tx: 26.
             - no majority: 5.
             - round timeout: 5.
+            - mock tx: 6.
         6. DecisionRequestRound
             - done: 21.
             - mock mech request: 7.
@@ -189,21 +190,18 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - bet placement failed: 10.
             - mock tx: 14.
             - insufficient balance: 30.
-            - calc buy amount failed: 18.
             - no majority: 10.
             - round timeout: 10.
             - none: 31.
         11. PolymarketSetApprovalRound
             - done: 12.
             - prepare tx: 27.
-            - skip: 20.
-            - approval failed: 11.
             - no majority: 11.
             - round timeout: 11.
             - none: 31.
+            - mock tx: 12.
         12. PolymarketPostSetApprovalRound
             - done: 20.
-            - skip: 20.
             - approval failed: 11.
             - no majority: 12.
             - round timeout: 12.
@@ -227,6 +225,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 15.
             - no redeeming: 29.
             - redeem round timeout: 19.
+            - mock tx: 23.
         16. FetchMarketsRouterRound
             - done: 24.
             - polymarket fetch markets: 17.
@@ -333,6 +332,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.PREPARE_TX: FinishedPolymarketSwapTxPreparationRound,
             Event.NO_MAJORITY: PolymarketSwapUsdcRound,
             Event.ROUND_TIMEOUT: PolymarketSwapUsdcRound,
+            Event.MOCK_TX: DecisionRequestRound,
         },
         DecisionRequestRound: {
             Event.DONE: FinishedDecisionRequestRound,
@@ -386,7 +386,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.MOCK_TX: RedeemRouterRound,
             # degenerate round on purpose, owner must refill the safe
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
-            Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
             Event.NO_MAJORITY: PolymarketBetPlacementRound,
             Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
             # this is here because of `autonomy analyse fsm-specs`
@@ -396,20 +395,16 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         PolymarketSetApprovalRound: {
             Event.DONE: PolymarketPostSetApprovalRound,
             Event.PREPARE_TX: FinishedSetApprovalTxPreparationRound,
-            # skip the bet placement tx
-            Event.SKIP: BenchmarkingModeDisabledRound,
             # degenerate round on purpose, owner must refill the safe
-            Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: PolymarketSetApprovalRound,
             Event.ROUND_TIMEOUT: PolymarketSetApprovalRound,
             # this is here because of `autonomy analyse fsm-specs`
             # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
+            Event.MOCK_TX: PolymarketPostSetApprovalRound,
         },
         PolymarketPostSetApprovalRound: {
             Event.DONE: BenchmarkingModeDisabledRound,
-            # skip the bet placement tx
-            Event.SKIP: BenchmarkingModeDisabledRound,
             # degenerate round on purpose, owner must refill the safe
             Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: PolymarketPostSetApprovalRound,
@@ -444,6 +439,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: PolymarketRedeemRound,
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
+            Event.MOCK_TX: FinishedPolymarketRedeemRound,
         },
         FetchMarketsRouterRound: {
             Event.DONE: FinishedFetchMarketsRouterRound,  # Routes to UpdateBetsRound via composition

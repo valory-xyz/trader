@@ -48,6 +48,9 @@ class CheckBenchmarkingModeRound(VotingRound):
     set_approval_event = Event.SET_APPROVAL
     collection_key = get_name(SynchronizedData.participant_to_votes)
 
+    # This needs to be mentioned for static checkers
+    # Event.PREPARE_TX
+
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         if self.context.params.is_running_on_polymarket:
