@@ -656,7 +656,12 @@ class HttpHandler(BaseHttpHandler):
                 return False
             eoa_address = eoa_account.address
 
-            usdc_address = chain_config["usdc_e_address"]
+            # For Polygon use USDC (native), for Gnosis use USDC.e (bridged)
+            usdc_address = (
+                chain_config["usdc_address"]
+                if self.params.is_running_on_polymarket
+                else chain_config["usdc_e_address"]
+            )
             if not usdc_address:
                 self.context.logger.error(f"No USDC address for {chain}")
                 return False
