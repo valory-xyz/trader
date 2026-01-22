@@ -104,3 +104,6 @@ fcd7ebf4b4cd206e60fc72d3fbc419924c73d0b8:packages/valory/skills/trader_abci/pred
 fcd7ebf4b4cd206e60fc72d3fbc419924c73d0b8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-tGEQFWUW.js:generic-api-key:583
 fcd7ebf4b4cd206e60fc72d3fbc419924c73d0b8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-tGEQFWUW.js:generic-api-key:583
 fcd7ebf4b4cd206e60fc72d3fbc419924c73d0b8:packages/valory/skills/trader_abci/predict-ui-build/assets/index-tGEQFWUW.js:generic-api-key:583
+c3574b4d2deb0419b535c45a1b696798364c99e1:packages/valory/connections/polymarket_client/connection.py:generic-api-key:49
+c3574b4d2deb0419b535c45a1b696798364c99e1:packages/valory/skills/decision_maker_abci/behaviours/polymarket_reedem.py:generic-api-key:41
+d7e2f8d463decedecb6ba571a93a7fccd37263fb:packages/valory/skills/decision_maker_abci/behaviours/polymarket_reedem.py:generic-api-key:44
