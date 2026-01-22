@@ -31,8 +31,6 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market i
 from packages.valory.skills.market_manager_abci.behaviours import (
     BetsManagerBehaviour,
     MULTI_BETS_FILENAME,
-    USCDE_POLYGON,
-    ZERO_ADDRESS,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -40,6 +38,10 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+
+
+USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 # Outcome prices that indicate a resolved/over binary market (one outcome ~0, one ~1)
