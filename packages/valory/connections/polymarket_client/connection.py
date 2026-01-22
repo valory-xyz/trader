@@ -679,7 +679,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         try:
             url = f"{GAMMA_API_BASE_URL}/markets/slug/{slug}"
 
-            response = requests.get(url)
+            response = requests.get(url, timeout=API_REQUEST_TIMEOUT)
             response.raise_for_status()
 
             market = response.json()
@@ -723,7 +723,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "user": self.safe_address,
             }
 
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
             response.raise_for_status()
 
             positions = response.json()
