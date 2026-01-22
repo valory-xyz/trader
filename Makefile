@@ -66,7 +66,7 @@ code-checks:
 .PHONY: security
 security:
 	tomte check-security
-	gitleaks detect --report-format json --report-path leak_report
+	gitleaks detect --report-format json --report-path leak_report --log-opts="HEAD"
 
 # generate abci docstrings
 # update copyright headers
@@ -216,7 +216,7 @@ check-agent-runner:
 
 .PHONY: ci-linter-checks
 ci-linter-checks:
-	gitleaks detect --report-format json --report-path leak_report
+	gitleaks detect --report-format json --report-path leak_report --log-opts="HEAD"
 	tox -e copyright-check
 	tox -e liccheck
 	tox -e check-dependencies
