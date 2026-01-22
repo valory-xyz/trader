@@ -16,14 +16,14 @@ fingerprint:
   rounds.py: bafybeiadqnbddcjxjouo4wn3mzeduesuosog6cx4aypygpkk747njgetzy
 fingerprint_ignore_patterns: []
 connections:
-- dvilela/genai:0.1.0:bafybeif42dgcucrs7sv5ajme6n7hoa44hbglj47zhbodyqmrtimw2hf5mu
+- dvilela/genai:0.1.0:bafybeibopgvwqvqvyru7n2o2ddryujl6jhknjg5na4675of2eui5i3xube
 protocols:
 - valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
-- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
+- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiazxdhf7ls5krsmrcyfndt5pxxky2tfrlaahvbbpbe637nqual6ke
-- valory/agent_performance_summary_abci:0.1.0:bafybeihqyexm3yvoed2qd4ffji6tq3ptq2cqlpubta243a7vkd5b45zmny
+- valory/agent_performance_summary_abci:0.1.0:bafybeihaz64gbwzhluc4hozxndg6yeta3epgolmzx2zesf2uq6qir23qsy
 handlers:
   abci:
     args: {}

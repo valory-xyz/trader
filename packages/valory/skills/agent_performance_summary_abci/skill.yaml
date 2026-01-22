@@ -20,7 +20,7 @@ fingerprint:
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeidw7l6kttsnyskar5i5lmue3kgigtgrusszy6i3e4aqzbxoy5xiyi
+- valory/erc20:0.1.0:bafybeiggqkajyy3shkcdfzvwvrf2eepbhemy4urbuozodqyq5laghmwfpq
 protocols:
 - valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
 - valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
