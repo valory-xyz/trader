@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -32,10 +32,10 @@ query GetOlasTraderAgent($id: ID!) {
 """
 
 GET_MECH_SENDER_QUERY = """
-query MechSender($id: ID!, $timestamp_gt: Int!) {
+query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
     totalRequests
-    requests(first: 1000, where: { blockTimestamp_gt: $timestamp_gt }) {
+    requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
       questionTitle
     }
   }
@@ -150,6 +150,65 @@ query GetPendingBets($id: ID!) {
     bets(where: { fixedProductMarketMaker_: { currentAnswer: null } }) {
       amount
       feeAmount
+    }
+  }
+}
+"""
+
+GET_DAILY_PROFIT_STATISTICS_QUERY = """
+query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
+  traderAgent(id: $agentId) {
+    dailyProfitStatistics(
+      where: { 
+        date_gte: $startTimestamp,
+      }
+      orderBy: date
+      orderDirection: asc
+      first: $first
+      skip: $skip
+    ) {
+      id
+      date
+      totalBets
+      totalTraded
+      totalFees
+      totalPayout
+      dailyProfit
+      profitParticipants {
+        id
+        question
+      }
+    }
+  }
+}
+"""
+
+GET_ALL_MECH_REQUESTS_QUERY = """
+query GetAllMechRequests($sender: String!, $skip: Int!) {
+  requests(
+    where: { sender: $sender }
+    first: 1000
+    skip: $skip
+    orderBy: requestId
+    orderDirection: asc
+  ) {
+    id
+    requestId
+    questionTitle
+  }
+}
+"""
+
+GET_MECH_REQUESTS_BY_TITLES_QUERY = """
+query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
+  sender(id: $sender) {
+    requests(
+      where: { 
+        questionTitle_in: $questionTitles
+      }
+    ) {
+      id
+      questionTitle
     }
   }
 }

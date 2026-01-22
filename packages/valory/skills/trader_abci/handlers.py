@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -158,6 +158,9 @@ class HttpHandler(BaseHttpHandler):
         agent_predictions_url_regex = (
             rf"{hostname_regex}\/api\/v1\/agent\/prediction-history"
         )
+        agent_profit_over_time_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
+        )
         trading_details_url_regex = (
             rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
         )
@@ -181,6 +184,7 @@ class HttpHandler(BaseHttpHandler):
                 (agent_predictions_url_regex, self._handle_get_predictions),
                 (trading_details_url_regex, self._handle_get_trading_details),
                 (is_enabled_url, self._handle_get_features),
+                (agent_profit_over_time_url_regex, self._handle_get_profit_over_time),
                 (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
