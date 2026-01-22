@@ -8,12 +8,12 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeiegcjg2wjrsqhrmvyulioch3d67rnbzkx5af3ztkaw7kxathjreda
   __init__.py: bafybeide6k22zk4f3hyzhpapaoddsnxpw5elqcfvrxxj4nfvpzctv6jqhu
-  behaviours.py: bafybeib7vkjvvnz4locp6dyoxaiuublq3uzqyjktfpezzer7ui2ybak4nq
+  behaviours.py: bafybeigeyw2xqizwncplct7e5e5chgbgc3ga2xfkcuckp4jinsxti2a7im
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
-  fsm_specification.yaml: bafybeibcbbqr64wx4cmxv34ri725y2cyvrnfnkpurprydawtwkfkn6hv7a
+  fsm_specification.yaml: bafybeialt32i4a6mf4epi2io5klwwna5xx7eilbqsp5l2zrthpix64mgty
   handlers.py: bafybeiafbqr7ojfcbwohvee7x4zzswad3ymfrrbjlfz7uuuttmn3qdfs6q
   models.py: bafybeigqtix2o5as7neqkw26useule5rlmbe3qpeztydehc2i3fgkss3d4
-  rounds.py: bafybeigbudlc47ym2prh2hey34mwlhj7sk6cvwtb6hezwrj325kg75af3q
+  rounds.py: bafybeia5mkayhmtv4reycd2jjwwwhriy6qa56jlheelhhzhb3yocl6btgy
   tests/__init__.py: bafybeiat74pbtmxvylsz7karp57qp2v7y6wtrsz572jkrghbcssoudgjay
   tests/test_handlers.py: bafybeiayuktfupylm3p3ygufjb66swzxhpbmioqoffwuauakfgbkwrv7ma
 fingerprint_ignore_patterns: []
@@ -22,10 +22,10 @@ contracts: []
 protocols:
 - valory/ledger_api:1.0.0:bafybeiga6gdd3ccdt5jgrov474koz524f3pfbhprwxfjj7wextkl7wozsa
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib4xpcpuiryyfnkuyhypdvqi5ebbl7ugavv6ig6yp4nzk3fxosntm
-- valory/decision_maker_abci:0.1.0:bafybeihtlfuof5ljyj4jwfkt5mtbxirtwp36bjaz3p53vh5jibme42rlly
-- valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
-- valory/mech_interact_abci:0.1.0:bafybeiapma3xyf5cozepeakwidouehv3shaykmvxwsos4bgn4256q7cw24
+- valory/abstract_round_abci:0.1.0:bafybeib4apybhtx3gx6o4x5b2nwqjkbdqi7dx7rxyrb5r3zztcdjiezvh4
+- valory/decision_maker_abci:0.1.0:bafybeicepzznvxacqiv5idhy6t6percsad5qazn7qwfh2klxwqhjjor6ya
+- valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
+- valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
 behaviours:
   main:
     args: {}
