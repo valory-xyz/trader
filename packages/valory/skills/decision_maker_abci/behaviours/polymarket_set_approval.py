@@ -20,7 +20,7 @@
 """This module contains the behaviour for sampling a bet."""
 
 import json
-from typing import Any, Generator, cast
+from typing import Any, Generator, Optional, cast
 
 from hexbytes import HexBytes
 
@@ -138,7 +138,7 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             False,
         )
 
-    def _prepare_approval_tx(self) -> Generator[None, None, str]:
+    def _prepare_approval_tx(self) -> Generator[None, None, Optional[str]]:
         """Prepare Safe transaction for setting approvals."""
         # Get contract addresses from params
         usdc_address = self.params.polymarket_usdc_address

@@ -182,7 +182,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def send_polymarket_connection_request(
         self,
         payload_data: Dict[str, Any],
-    ) -> Generator[None, None, Optional[str]]:
+    ) -> Generator[None, None, Any]:
         """Send a request to the Polymarket connection and wait for the response."""
 
         self.context.logger.info(f"Payload data: {payload_data}")
@@ -200,7 +200,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         response_json = json.loads(response.payload)  # type: ignore
 
-        return response_json  # type: ignore
+        return response_json
 
     def strategy_exec(self, strategy: str) -> Optional[Tuple[str, str]]:
         """Get the executable strategy file's content."""

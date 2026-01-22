@@ -19,7 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
-from typing import Generator, cast
+from typing import Generator, cast, Optional
 
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
@@ -54,7 +54,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         """Return the params."""
         return cast(DecisionMakerParams, self.context.params)
 
-    def _fetch_redeemable_positions(self) -> Generator:
+    def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
         """Fetch redeemable positions from Polymarket."""
         # Prepare payload data
         polymarket_bet_payload = {
@@ -71,7 +71,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
     def _redeem_position(
         self, condition_id: str, outcome_index: int, collateral_token: str
-    ) -> Generator:
+    ) -> Generator[None, None, dict]:
         """Redeem a single position."""
         # Prepare redemption payload
         # index_sets should be calculated as 1 << outcome_index
@@ -171,7 +171,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
     def _prepare_redeem_tx(
         self, redeemable_positions: list
-    ) -> Generator[None, None, str]:
+    ) -> Generator[None, None, Optional[str]]:
         """Prepare Safe transaction for redeeming positions."""
         if not redeemable_positions:
             self.context.logger.info("No redeemable positions found")

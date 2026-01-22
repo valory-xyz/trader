@@ -43,7 +43,7 @@ class RedeemRouterRound(VotingRound):
     collection_key = get_name(SynchronizedData.participant_to_selection)
 
     @property
-    def params(self):
+    def params(self) -> DecisionMakerParams:
         """Return the shared state."""
         return cast(DecisionMakerParams, self.context.params)
 
@@ -60,4 +60,4 @@ class RedeemRouterRound(VotingRound):
         else:
             event = Event.DONE
 
-        return synchronized_data, event
+        return cast(SynchronizedData, synchronized_data), event
