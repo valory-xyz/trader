@@ -281,7 +281,6 @@ models:
       polymarket_ctf_exchange_address: ${str:0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E}
       polymarket_neg_risk_ctf_exchange_address: ${str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
       polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-      polymarket_market_slug_to_bet_on: ${str:slug}
       pol_threshold_for_swap: ${int:2000000000000000000}
   benchmarking_mode:
     args:
