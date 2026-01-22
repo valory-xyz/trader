@@ -72,9 +72,6 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
-    PolymarketFetchMarketRound,
-)
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
 )

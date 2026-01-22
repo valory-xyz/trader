@@ -185,6 +185,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         self,
         payload_data: Dict[str, Any],
     ) -> Generator[None, None, Optional[str]]:
+        """Send a request to the Polymarket connection and wait for the response."""
 
         self.context.logger.info(f"Payload data: {payload_data}")
 
@@ -392,9 +393,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         # Fetching bets from the prediction markets
         while True:
-            # can_proceed = self._prepare_fetching()
-            # if not can_proceed:
-            #     break
 
             # Deleting all current markets. To be removed
             with open(self.context.params.store_path / MULTI_BETS_FILENAME, "w") as f:
@@ -404,11 +402,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             bets_market_chunk = yield from self._fetch_markets_from_polymarket()
             self._process_chunk(bets_market_chunk)
             break
-
-        # TODO: Uncomment
-        # if self._fetch_status != FetchStatus.SUCCESS:
-        #     # this won't wipe the bets as the `store_bets` of the `BetsManagerBehaviour` takes this into consideration
-        #     self.bets = []
 
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]

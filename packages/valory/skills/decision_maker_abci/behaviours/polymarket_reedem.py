@@ -81,9 +81,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         """
         # Prepare redemption payload
         # index_sets should be calculated as 1 << outcome_index
-        # index_sets = [1 << outcome_index]
         index_sets = [outcome_index + 1]
-        # index_sets = [outcome_index]
 
         polymarket_redeem_payload = {
             "request_type": RequestType.REDEEM_POSITIONS.value,
@@ -250,13 +248,11 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         function_signature = "0x01b7037c"  # keccak256("redeemPositions(address,bytes32,bytes32,uint256[])")[:4]
 
         # Encode parameters
-        # collateralToken (address)
         collateral_padded = collateral_token[2:].zfill(64).lower()
 
         # parentCollectionId (bytes32) - always zeros
         parent_collection = "0" * 64
 
-        # conditionId (bytes32)
         condition_id_clean = condition_id.removeprefix("0x")
         condition_id_padded = condition_id_clean.zfill(64).lower()
 

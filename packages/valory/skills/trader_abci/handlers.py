@@ -336,10 +336,10 @@ class HttpHandler(BaseHttpHandler):
             self._send_not_found_response(http_msg, http_dialogue)
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
-        """
-        Adjusts fund status based on chain:
-        - Gnosis (Omen): wxDAI balance considered as xDAI
-        - Polygon (Polymarket): USDC balance considered as POL (with decimal conversion)
+        """Adjust fund status based on chain-specific token equivalence:
+
+        - Gnosis (Omen): treat wxDAI as xDAI
+        - Polygon (Polymarket): treat USDC as POL with decimal conversion
         """
         funds_status = copy.deepcopy(self.funds_status)
 

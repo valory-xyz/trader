@@ -23,6 +23,7 @@ from enum import Enum
 from typing import Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
+from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.payloads import RedeemRouterPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -43,10 +44,6 @@ class RedeemRouterRound(VotingRound):
 
     @property
     def params(self):
-        from packages.valory.skills.decision_maker_abci.models import (
-            DecisionMakerParams,
-        )
-
         """Return the shared state."""
         return cast(DecisionMakerParams, self.context.params)
 
