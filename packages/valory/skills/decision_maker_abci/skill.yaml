@@ -124,7 +124,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 - valory/agent_performance_summary_abci:0.1.0:bafybeihusrpuvgk4g7jtsqximrt5ay6vg4dpseszc6vpzsxslm5xzm7jlu
-- valory/chatui_abci:0.1.0:bafybeieqmsmqo2l54puoarp3rca6usetx2of63trywneipg6h4ge7ygvqa
+- valory/chatui_abci:0.1.0:bafybeibyoa5jjjrjd7t2v7e2w6oo3dh5icqec73tywheaykzjphcp6r2tm
 behaviours:
   main:
     args: {}

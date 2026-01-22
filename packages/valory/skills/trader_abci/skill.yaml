@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeibjqfnfm2l7pybhrrocinf7ahsznbuehatqugifvc6hpm4r6y4b3q
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeih7afsp32lrlotuqg7vxctmx7el4a66lxfku3jdzocmtft7deryya
-  handlers.py: bafybeignq2wp2xshvz3vzngrc726udqk5qz6itck3ygxjio2ie3rt25uoq
+  handlers.py: bafybeicul5uuunkhuj7pcipbaoqpv6qwyzp6zkrezz3k2b4v6mdi66cwtu
   models.py: bafybeidoehmmau2emyawg7swblvp4cl3cg3p4mb2lyahux2n4ftf2wqary
   predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
@@ -40,12 +40,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifw2sem532gwdcyujknhsgdcgubpwsrrjtve4ztzxlkpmporjp4rq
 - valory/termination_abci:0.1.0:bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha
 - valory/market_manager_abci:0.1.0:bafybeig6a7fepjway6arq76ykj42c6gz4y6wyxamcqzslwkanw4hvnyqkm
-- valory/decision_maker_abci:0.1.0:bafybeiep3ew6np5jjpslfvljr2b5qiaaw5cwbqa2k37kmrp3goitgj4vz4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaod7gogg4c7kixs7o2rfdnw6s6eql5jxpn5ldfb7gxv3v4wadus4
+- valory/decision_maker_abci:0.1.0:bafybeiaibwpfopuikm2oqgwx6gv7ymztmfepohzhp455givrjhwfpa3wfy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiefys4t25cyxwzlatysgpu2dgp7uwkr4im7wxwc3cch6r2s5ikp3u
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 - valory/check_stop_trading_abci:0.1.0:bafybeia6faypdoaa6bqdsqnpp52mecoo5jf5reg7gnjpvnhgtiwkopqbdu
 - valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
-- valory/chatui_abci:0.1.0:bafybeieqmsmqo2l54puoarp3rca6usetx2of63trywneipg6h4ge7ygvqa
+- valory/chatui_abci:0.1.0:bafybeibyoa5jjjrjd7t2v7e2w6oo3dh5icqec73tywheaykzjphcp6r2tm
 - valory/agent_performance_summary_abci:0.1.0:bafybeihusrpuvgk4g7jtsqximrt5ay6vg4dpseszc6vpzsxslm5xzm7jlu
 - valory/funds_manager:0.1.0:bafybeiarjrgtot7gbqmwnu6ljfczf7gur6q35f3esgxzlw4hwwijbzrxgi
 behaviours:
