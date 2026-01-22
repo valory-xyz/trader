@@ -18,12 +18,12 @@ fingerprint_ignore_patterns: []
 connections:
 - dvilela/genai:0.1.0:bafybeif42dgcucrs7sv5ajme6n7hoa44hbglj47zhbodyqmrtimw2hf5mu
 protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
 - valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
-- valory/agent_performance_summary_abci:0.1.0:bafybeiblv72brd6ds6rxh7jrsy2axyynigm6eubibqtlzexvxvztttpn6e
+- valory/abstract_round_abci:0.1.0:bafybeiazxdhf7ls5krsmrcyfndt5pxxky2tfrlaahvbbpbe637nqual6ke
+- valory/agent_performance_summary_abci:0.1.0:bafybeihqyexm3yvoed2qd4ffji6tq3ptq2cqlpubta243a7vkd5b45zmny
 handlers:
   abci:
     args: {}
