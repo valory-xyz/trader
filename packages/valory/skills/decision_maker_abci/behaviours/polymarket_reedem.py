@@ -19,7 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
-from typing import Generator, cast, Optional
+from typing import Generator, Optional, cast
 
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
