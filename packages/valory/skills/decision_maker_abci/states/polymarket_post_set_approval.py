@@ -59,7 +59,7 @@ class PolymarketPostSetApprovalRound(CollectSameUntilThresholdRound):
         if event == Event.DONE:
             # Get the consensus vote from the most_voted_payload
             most_voted_payload = self.most_voted_payload
-            if most_voted_payload in ("partial", "no", "error"):
+            if most_voted_payload is False:
                 self.context.logger.warning(
                     f"Approvals not fully set (vote: {most_voted_payload}). Routing back to SET_APPROVAL."
                 )

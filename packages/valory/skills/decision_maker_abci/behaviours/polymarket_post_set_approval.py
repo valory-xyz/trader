@@ -89,7 +89,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error(f"Error checking approvals: {error_msg}")
             self.payload = PolymarketPostSetApprovalPayload(
                 self.context.agent_address,
-                "error",
+                False,
             )
             self._write_allowances_file(False)
             return
@@ -115,7 +115,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             )
 
         # Create the payload with approval check result
-        vote = "success" if all_approvals_set else "partial"
+        vote = bool(all_approvals_set)
         self.payload = PolymarketPostSetApprovalPayload(
             self.context.agent_address,
             vote,
