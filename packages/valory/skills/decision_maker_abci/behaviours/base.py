@@ -20,7 +20,6 @@
 """This module contains the base behaviour for the 'decision_maker_abci' skill."""
 
 import dataclasses
-import json
 import os
 from abc import ABC
 from copy import deepcopy
@@ -33,9 +32,6 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 from hexbytes import HexBytes
 
-from packages.valory.connections.polymarket_client.connection import (
-    PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
-)
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -49,11 +45,8 @@ from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
-from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
-from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
-from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
@@ -153,54 +146,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def outcome_index(self) -> int:
         """Get the index of the outcome that the service is going to place a bet on."""
         return cast(int, self.synchronized_data.vote)
-
-    def _do_connection_request(
-        self,
-        message: Message,
-        dialogue: Message,
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, Message]:
-        """Do a request and wait the response, asynchronously."""
-
-        self.context.outbox.put_message(message=message)
-        request_nonce = self._get_request_nonce_from_dialogue(dialogue)  # type: ignore
-        cast(Requests, self.context.requests).request_id_to_callback[
-            request_nonce
-        ] = self.get_callback_request()
-        response = yield from self.wait_for_message(timeout=timeout)
-        return response
-
-    def do_connection_request(
-        self,
-        message: Message,
-        dialogue: Message,
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, Message]:
-        """Public wrapper for making a connection request and waiting for response."""
-        return (yield from self._do_connection_request(message, dialogue, timeout))
-
-    def send_polymarket_connection_request(
-        self,
-        payload_data: Dict[str, Any],
-    ) -> Generator[None, None, Any]:
-        """Send a request to the Polymarket connection and wait for the response."""
-
-        self.context.logger.info(f"Payload data: {payload_data}")
-
-        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
-        srr_message, srr_dialogue = srr_dialogues.create(
-            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
-            performative=SrrMessage.Performative.REQUEST,
-            payload=json.dumps(payload_data),
-        )
-
-        srr_message = cast(SrrMessage, srr_message)
-        srr_dialogue = cast(SrrDialogue, srr_dialogue)
-        response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
-
-        response_json = json.loads(response.payload)  # type: ignore
-
-        return response_json
 
     def strategy_exec(self, strategy: str) -> Optional[Tuple[str, str]]:
         """Get the executable strategy file's content."""

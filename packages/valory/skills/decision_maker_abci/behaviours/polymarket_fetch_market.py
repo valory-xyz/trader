@@ -52,7 +52,8 @@ RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
 
 
 class PolymarketFetchMarketBehaviour(
-    BetsManagerBehaviour, QueryingBehaviour, DecisionMakerBaseBehaviour
+    BetsManagerBehaviour,
+    QueryingBehaviour,
 ):
     """Behaviour that fetches and updates the bets from Polymarket."""
 

@@ -20,6 +20,7 @@
 """This module contains the behaviours for the MarketManager skill."""
 
 import json
+import os
 import os.path
 import time
 from abc import ABC
@@ -27,9 +28,16 @@ from json import JSONDecodeError
 from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
 from aea.helpers.ipfs.base import IPFSHashOnly
+from aea.protocols.base import Message
 
+from packages.valory.connections.polymarket_client.connection import (
+    PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
+)
+from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
+from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
+from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
@@ -80,6 +88,54 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def benchmarking_mode(self) -> BenchmarkingMode:
         """Return the benchmarking mode configurations."""
         return cast(BenchmarkingMode, self.context.benchmarking_mode)
+
+    def _do_connection_request(
+        self,
+        message: Message,
+        dialogue: Message,
+        timeout: Optional[float] = None,
+    ) -> Generator[None, None, Message]:
+        """Do a request and wait the response, asynchronously."""
+
+        self.context.outbox.put_message(message=message)
+        request_nonce = self._get_request_nonce_from_dialogue(dialogue)  # type: ignore
+        cast(Requests, self.context.requests).request_id_to_callback[
+            request_nonce
+        ] = self.get_callback_request()
+        response = yield from self.wait_for_message(timeout=timeout)
+        return response
+
+    def do_connection_request(
+        self,
+        message: Message,
+        dialogue: Message,
+        timeout: Optional[float] = None,
+    ) -> Generator[None, None, Message]:
+        """Public wrapper for making a connection request and waiting for response."""
+        return (yield from self._do_connection_request(message, dialogue, timeout))
+
+    def send_polymarket_connection_request(
+        self,
+        payload_data: Dict[str, Any],
+    ) -> Generator[None, None, Any]:
+        """Send a request to the Polymarket connection and wait for the response."""
+
+        self.context.logger.info(f"Payload data: {payload_data}")
+
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+        srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(payload_data),
+        )
+
+        srr_message = cast(SrrMessage, srr_message)
+        srr_dialogue = cast(SrrDialogue, srr_dialogue)
+        response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
+
+        response_json = json.loads(response.payload)  # type: ignore
+
+        return response_json
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""

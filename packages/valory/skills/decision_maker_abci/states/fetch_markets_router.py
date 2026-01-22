@@ -23,7 +23,6 @@ from enum import Enum
 from typing import Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
-from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.payloads import (
     FetchMarketsRouterPayload,
 )
@@ -44,11 +43,6 @@ class FetchMarketsRouterRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_selection)
 
-    @property
-    def params(self) -> DecisionMakerParams:
-        """Return the shared state."""
-        return cast(DecisionMakerParams, self.context.params)
-
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -57,7 +51,7 @@ class FetchMarketsRouterRound(VotingRound):
             return None
         synchronized_data, event = res
 
-        if self.params.is_running_on_polymarket:
+        if self.context.params.is_running_on_polymarket:
             event = Event.POLYMARKET_FETCH_MARKETS
         else:
             event = Event.DONE
