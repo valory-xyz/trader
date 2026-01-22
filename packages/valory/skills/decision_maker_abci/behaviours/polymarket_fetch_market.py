@@ -137,7 +137,7 @@ class PolymarketFetchMarketBehaviour(
             else:
                 self.bets[index].update_market_info(bet)
 
-    def _fetch_markets_from_polymarket(self) -> Generator:
+    def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
         """Fetch the markets from Polymarket using category-based filtering."""
         # Prepare payload data for FETCH_MARKETS request
         cache_file_path = str(self.params.store_path / "polymarket.json")

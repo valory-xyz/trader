@@ -50,6 +50,18 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             yield from self.wait_for_condition_with_sleep(self.check_balance)
 
         outcome = self.sampled_bet.get_outcome(self.outcome_index)
+        if self.sampled_bet.outcome_token_ids is None:
+            self.context.logger.error("Failed to place bet: outcome_token_ids is None")
+            payload = PolymarketBetPlacementPayload(
+                self.context.agent_address,
+                None,
+                None,
+                False,
+                success=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
+
         token_id = self.sampled_bet.outcome_token_ids[outcome]
         amount = self.usdc_to_native(self.investment_amount)
 

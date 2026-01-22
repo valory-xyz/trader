@@ -362,6 +362,11 @@ class HttpHandler(BaseHttpHandler):
                 usdc_decimals = usdc_status.decimals
                 native_decimals = native_status.decimals
                 # Convert from USDC decimals to native token decimals
+                if usdc_decimals is None or native_decimals is None:
+                    self.context.logger.error(
+                        "Missing decimal information for USDC or native token. Can't apply adjustment."
+                    )
+                    return funds_status
                 decimal_diff = native_decimals - usdc_decimals
                 adjustment_balance = usdc_balance * (10**decimal_diff)
             else:
