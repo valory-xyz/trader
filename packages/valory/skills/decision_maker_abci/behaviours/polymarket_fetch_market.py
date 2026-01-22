@@ -25,6 +25,9 @@ from typing import Any, Dict, Generator, List, Optional
 from dateutil import parser as date_parser
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    DecisionMakerBaseBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
     PolymarketFetchMarketRound,
 )
@@ -48,7 +51,9 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
 
 
-class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
+class PolymarketFetchMarketBehaviour(
+    BetsManagerBehaviour, QueryingBehaviour, DecisionMakerBaseBehaviour
+):
     """Behaviour that fetches and updates the bets from Polymarket."""
 
     matching_round = PolymarketFetchMarketRound
