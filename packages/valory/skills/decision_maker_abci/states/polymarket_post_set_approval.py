@@ -30,7 +30,6 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketPostSetApprovalPayload,
 )
-
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,

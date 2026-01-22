@@ -20,18 +20,19 @@
 """This module contains a state of the decision-making abci app which checks if the benchmarking mode is enabled."""
 
 import json
+from enum import Enum
 from pathlib import Path
+from typing import Optional, Tuple
 
-from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    VotingRound,
+    get_name,
+)
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
-)
-from enum import Enum
-from typing import Optional, Tuple
-from packages.valory.skills.abstract_round_abci.base import (
-    BaseSynchronizedData,
 )
 
 
@@ -52,12 +53,12 @@ class CheckBenchmarkingModeRound(VotingRound):
         if self.context.params.is_running_on_polymarket:
             # Check if allowances are already set
             allowances_path = Path(self.context.params.store_path) / "polymarket.json"
-            
+
             try:
                 with open(allowances_path, "r") as f:
                     allowances_data = json.load(f)
                     allowances_set = allowances_data.get("allowances_set", False)
-                    
+
                     if allowances_set:
                         self.context.logger.info(
                             "Polymarket allowances already set. Skipping approval round."
@@ -75,7 +76,7 @@ class CheckBenchmarkingModeRound(VotingRound):
                 self.context.logger.warning(
                     f"Error reading allowances file: {e}. Proceeding to SET_APPROVAL."
                 )
-            
+
             # If running on Polymarket and allowances not set, go to SET_APPROVAL
             return self.synchronized_data, Event.SET_APPROVAL
 

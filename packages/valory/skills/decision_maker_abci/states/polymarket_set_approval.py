@@ -19,20 +19,19 @@
 
 """This module contains the sampling state of the decision-making abci app."""
 
-from packages.valory.skills.abstract_round_abci.base import (
-    BaseSynchronizedData,
-)
-from packages.valory.skills.decision_maker_abci.payloads import (
-    PolymarketSetApprovalPayload,
-)
 from enum import Enum
 from typing import Optional, Tuple, cast
 
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
+from packages.valory.skills.decision_maker_abci.payloads import (
+    PolymarketSetApprovalPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
     TxPreparationRound,
 )
+
 
 class PolymarketSetApprovalRound(TxPreparationRound):
     """A round for setting approval."""

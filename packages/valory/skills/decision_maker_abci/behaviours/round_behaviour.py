@@ -40,20 +40,29 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_receive impo
 from packages.valory.skills.decision_maker_abci.behaviours.decision_request import (
     DecisionRequestBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.fetch_markets_router import (
+    FetchMarketsRouterBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
-    PolymarketRedeemBehaviour,
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_fetch_market import (
+    PolymarketFetchMarketBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (
     PolymarketPostSetApprovalBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
+    PolymarketRedeemBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
+    PolymarketSwapUsdcBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
@@ -62,21 +71,12 @@ from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
 from packages.valory.skills.decision_maker_abci.behaviours.redeem_router import (
     RedeemRouterBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.fetch_markets_router import (
-    FetchMarketsRouterBehaviour,
-)
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_fetch_market import (
-    PolymarketFetchMarketBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
     SellOutcomeTokensBehaviour,
-)
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
-    PolymarketSwapUsdcBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,

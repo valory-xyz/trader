@@ -60,7 +60,9 @@ class PreTxSettlementBehaviour(BaseBehaviour):
         """Get the given agent's balance."""
         # Checksum the address to ensure Web3 compatibility
         checksummed_agent = Web3.to_checksum_address(agent)
-        self.context.logger.info(f"Checking balance for agent with address {checksummed_agent}...")
+        self.context.logger.info(
+            f"Checking balance for agent with address {checksummed_agent}..."
+        )
         ledger_api_response = yield from self.get_ledger_api_response(
             performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
             ledger_callable="get_balance",
@@ -74,11 +76,15 @@ class PreTxSettlementBehaviour(BaseBehaviour):
             balance = None
 
         if balance is None:
-            log_msg = f"Failed to get the balance for agent with address {checksummed_agent}."
+            log_msg = (
+                f"Failed to get the balance for agent with address {checksummed_agent}."
+            )
             self.context.logger.error(f"{log_msg}: {ledger_api_response}")
             return None
 
-        self.context.logger.info(f"The agent with address {checksummed_agent} has {balance} WEI.")
+        self.context.logger.info(
+            f"The agent with address {checksummed_agent} has {balance} WEI."
+        )
         return balance
 
     def _check_balance(self, agent: str) -> Generator[None, None, bool]:

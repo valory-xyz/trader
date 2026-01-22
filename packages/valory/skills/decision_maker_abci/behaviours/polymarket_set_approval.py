@@ -71,7 +71,7 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
                 # Prepare Safe transaction for approvals
                 tx_submitter = self.matching_round.auto_round_id()
                 tx_hash = yield from self._prepare_approval_tx()
-                
+
                 self.payload = PolymarketSetApprovalPayload(
                     self.context.agent_address,
                     tx_submitter,
@@ -103,7 +103,9 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         response = yield from self.do_connection_request(srr_message, srr_dialogue)
 
         if response is None or response.error:
-            error_msg = response.error if response else "No response from Polymarket client"
+            error_msg = (
+                response.error if response else "No response from Polymarket client"
+            )
             self.context.logger.error(f"Error setting approvals: {error_msg}")
             self.payload = PolymarketSetApprovalPayload(
                 self.context.agent_address,
@@ -121,7 +123,9 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         success = response_json is not None and not response.error
 
         if success:
-            self.context.logger.info("Successfully set approvals for Polymarket contracts!")
+            self.context.logger.info(
+                "Successfully set approvals for Polymarket contracts!"
+            )
             self.context.logger.info(f"Transaction data: {response_json}")
         else:
             self.context.logger.error(f"Failed to set approvals: {response_json}")
@@ -140,72 +144,90 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         usdc_address = self.params.polymarket_usdc_address
         ctf_address = self.params.polymarket_ctf_address
         ctf_exchange_address = self.params.polymarket_ctf_exchange_address
-        neg_risk_ctf_exchange_address = self.params.polymarket_neg_risk_ctf_exchange_address
+        neg_risk_ctf_exchange_address = (
+            self.params.polymarket_neg_risk_ctf_exchange_address
+        )
         neg_risk_adapter_address = self.params.polymarket_neg_risk_adapter_address
-        
+
         # Build approval transactions and add to multisend_batches (must match
         # polymarket_client _check_approval: 3 USDC allowances + 3 CTF setApprovalForAll)
         # 1. USDC approve for CTF Exchange
         usdc_approve_batch = MultisendBatch(
             to=usdc_address,
-            data=HexBytes(self._build_erc20_approve_data(ctf_exchange_address, 2**256 - 1)),
+            data=HexBytes(
+                self._build_erc20_approve_data(ctf_exchange_address, 2**256 - 1)
+            ),
             value=0,
         )
         self.multisend_batches.append(usdc_approve_batch)
-        
+
         # 2. CTF setApprovalForAll for CTF Exchange
         ctf_approve1_batch = MultisendBatch(
             to=ctf_address,
-            data=HexBytes(self._build_set_approval_for_all_data(ctf_exchange_address, True)),
+            data=HexBytes(
+                self._build_set_approval_for_all_data(ctf_exchange_address, True)
+            ),
             value=0,
         )
         self.multisend_batches.append(ctf_approve1_batch)
-        
+
         # 3. USDC approve for NegRisk CTF Exchange (required for usdc_allowances.neg_risk_ctf_exchange)
         usdc_approve_neg_risk_ctf_batch = MultisendBatch(
             to=usdc_address,
-            data=HexBytes(self._build_erc20_approve_data(neg_risk_ctf_exchange_address, 2**256 - 1)),
+            data=HexBytes(
+                self._build_erc20_approve_data(
+                    neg_risk_ctf_exchange_address, 2**256 - 1
+                )
+            ),
             value=0,
         )
         self.multisend_batches.append(usdc_approve_neg_risk_ctf_batch)
-        
+
         # 4. CTF setApprovalForAll for NegRisk CTF Exchange
         ctf_approve2_batch = MultisendBatch(
             to=ctf_address,
-            data=HexBytes(self._build_set_approval_for_all_data(neg_risk_ctf_exchange_address, True)),
+            data=HexBytes(
+                self._build_set_approval_for_all_data(
+                    neg_risk_ctf_exchange_address, True
+                )
+            ),
             value=0,
         )
         self.multisend_batches.append(ctf_approve2_batch)
-        
+
         # 5. USDC approve for NegRisk Adapter (required for usdc_allowances.neg_risk_adapter)
         usdc_approve_neg_risk_adapter_batch = MultisendBatch(
             to=usdc_address,
-            data=HexBytes(self._build_erc20_approve_data(neg_risk_adapter_address, 2**256 - 1)),
+            data=HexBytes(
+                self._build_erc20_approve_data(neg_risk_adapter_address, 2**256 - 1)
+            ),
             value=0,
         )
         self.multisend_batches.append(usdc_approve_neg_risk_adapter_batch)
-        
+
         # 6. CTF setApprovalForAll for NegRisk Adapter
         ctf_approve3_batch = MultisendBatch(
             to=ctf_address,
-            data=HexBytes(self._build_set_approval_for_all_data(neg_risk_adapter_address, True)),
+            data=HexBytes(
+                self._build_set_approval_for_all_data(neg_risk_adapter_address, True)
+            ),
             value=0,
         )
         self.multisend_batches.append(ctf_approve3_batch)
-        
+
         # Build the multisend transaction directly (no balance check needed for approvals)
         success = yield from self._build_multisend_data()
         if not success:
             self.context.logger.error("Failed to build multisend data for approvals")
             return ""
-        
+
         success = yield from self._build_multisend_safe_tx_hash()
         if not success:
             self.context.logger.error("Failed to build safe tx hash for approvals")
             return ""
-            
+
         return self.tx_hex
-    
+
     def _build_erc20_approve_data(self, spender: str, amount: int) -> str:
         """Build ERC20 approve function data."""
         # approve(address spender, uint256 amount)
@@ -213,11 +235,13 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         spender_padded = spender[2:].zfill(64).lower()  # Remove 0x and pad to 32 bytes
         amount_hex = hex(amount)[2:].zfill(64)  # Convert to hex and pad
         return f"{function_signature}{spender_padded}{amount_hex}"
-    
+
     def _build_set_approval_for_all_data(self, operator: str, approved: bool) -> str:
         """Build ERC1155 setApprovalForAll function data."""
         # setApprovalForAll(address operator, bool approved)
-        function_signature = "0xa22cb465"  # keccak256("setApprovalForAll(address,bool)")[:4]
+        function_signature = (
+            "0xa22cb465"  # keccak256("setApprovalForAll(address,bool)")[:4]
+        )
         operator_padded = operator[2:].zfill(64).lower()
         approved_value = "1" if approved else "0"
         approved_padded = approved_value.zfill(64)
