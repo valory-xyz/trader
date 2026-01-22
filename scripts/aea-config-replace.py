@@ -78,6 +78,7 @@ PATH_TO_VAR = {
     "models/params/args/bet_threshold": "BET_THRESHOLD",
     "models/params/args/polymarket_market_slug_to_bet_on": "POLYMARKET_MARKET_SLUG_TO_BET_ON",
     "models/params/args/complementary_service_metadata_address": "COMPLEMENTARY_SERVICE_METADATA_ADDRESS",
+    "models/params/args/staking_contract_address": "STAKING_CONTRACT_ADDRESS",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
