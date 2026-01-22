@@ -168,17 +168,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         dialogue: Message,
         timeout: Optional[float] = None,
     ) -> Generator[None, None, Message]:
-        """
-        Public wrapper for making a connection request and waiting for response.
-
-        Args:
-            message: The message to send
-            dialogue: The dialogue context
-            timeout: Optional timeout duration
-
-        Returns:
-            Message: The response message
-        """
+        """Public wrapper for making a connection request and waiting for response."""
         return (yield from self._do_connection_request(message, dialogue, timeout))
 
     def send_polymarket_connection_request(
