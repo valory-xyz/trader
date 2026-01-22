@@ -151,8 +151,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         self.builder_config = None
         if builder_program_enabled:
             remote_builder_url = self.configuration.config.get("remote_builder_url")
-            print(
-                f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Initializing RelayClient with remote builder URL: {remote_builder_url}"
+            self.logger.info(
+                f"Builder program enabled. Initializing RelayClient with remote builder URL: {remote_builder_url}"
             )
             remote_builder_config = RemoteBuilderConfig(url=remote_builder_url)
             self.builder_config = BuilderConfig(
