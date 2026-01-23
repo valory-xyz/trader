@@ -37,7 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"

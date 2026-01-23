@@ -19,7 +19,6 @@
 
 """This module contains the fetch markets router round for the MarketManager ABCI app."""
 
-from enum import Enum
 from typing import Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name

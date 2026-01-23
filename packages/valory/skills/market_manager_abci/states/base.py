@@ -21,16 +21,14 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Tuple, cast
+from typing import Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     BaseSynchronizedData,
     CollectionRound,
     DeserializedCollection,
-    get_name,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 class Event(Enum):

@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type, cast
+from typing import Dict, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -29,16 +29,10 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     AppState,
     BaseSynchronizedData,
-    CollectSameUntilThresholdRound,
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
-    VotingRound,
     get_name,
-)
-from packages.valory.skills.market_manager_abci.payloads import (
-    FetchMarketsRouterPayload,
-    UpdateBetsPayload,
 )
 from packages.valory.skills.market_manager_abci.states.fetch_markets_router import (
     FetchMarketsRouterRound,

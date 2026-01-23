@@ -81,7 +81,6 @@ from packages.valory.skills.market_manager_abci.rounds import (
     FinishedMarketManagerRound,
     FinishedPolymarketFetchMarketRound,
     MarketManagerAbciApp,
-    PolymarketFetchMarketRound,
     UpdateBetsRound,
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp

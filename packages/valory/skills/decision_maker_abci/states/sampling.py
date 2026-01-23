@@ -48,7 +48,7 @@ class SamplingRound(UpdateBetsRound):
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),
     )
-    synchronized_data_class = SynchronizedData
+    synchronized_data_class = SynchronizedData  # type: ignore[assignment]
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
