@@ -516,6 +516,21 @@ models:
       url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0
       delivery_rate_cap: 10000000000000000
     class_name: MechsSubgraph
+  polymarket_agents_subgraph:
+    args:
+      api_id: polymarket_agents
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:traderAgent
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.6
+    class_name: PolymarketAgentsSubgraph
   requests:
     args: {}
     class_name: Requests
