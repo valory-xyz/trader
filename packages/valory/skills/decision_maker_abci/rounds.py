@@ -103,7 +103,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, FetchMarketsRouterRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, RandomnessRound, RedeemRouterRound}
+    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, RandomnessRound, RedeemRouterRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
