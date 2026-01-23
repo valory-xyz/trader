@@ -20,7 +20,6 @@
 """This module contains the rounds for the MarketManager ABCI application."""
 
 from abc import ABC
-from enum import Enum
 from typing import Dict, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -34,6 +33,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     DeserializedCollection,
     get_name,
 )
+from packages.valory.skills.market_manager_abci.states.base import Event
 from packages.valory.skills.market_manager_abci.states.fetch_markets_router import (
     FetchMarketsRouterRound,
 )
@@ -43,17 +43,6 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
 from packages.valory.skills.market_manager_abci.states.update_bets import (
     UpdateBetsRound,
 )
-
-
-class Event(Enum):
-    """Event enumeration for the MarketManager demo."""
-
-    DONE = "done"
-    NO_MAJORITY = "no_majority"
-    ROUND_TIMEOUT = "round_timeout"
-    FETCH_ERROR = "fetch_error"
-    POLYMARKET_FETCH_MARKETS = "polymarket_fetch_markets"
-    NONE = "none"
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -121,10 +110,6 @@ class FailedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents that the period failed"""
 
 
-class FinishedFetchMarketsRouterRound(DegenerateRound, ABC):
-    """A round representing that fetch markets router has finished."""
-
-
 class FinishedPolymarketFetchMarketRound(DegenerateRound, ABC):
     """A round representing that Polymarket fetch market has finished."""
 
@@ -138,7 +123,7 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
 
     Transition states:
         0. FetchMarketsRouterRound
-            - done: 5.
+            - done: 1.
             - polymarket fetch markets: 2.
             - no majority: 0.
             - none: 0.
@@ -148,16 +133,15 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
             - round timeout: 1.
             - no majority: 1.
         2. PolymarketFetchMarketRound
-            - done: 6.
+            - done: 5.
             - fetch error: 4.
             - no majority: 2.
             - round timeout: 2.
         3. FinishedMarketManagerRound
         4. FailedMarketManagerRound
-        5. FinishedFetchMarketsRouterRound
-        6. FinishedPolymarketFetchMarketRound
+        5. FinishedPolymarketFetchMarketRound
 
-    Final states: {FailedMarketManagerRound, FinishedFetchMarketsRouterRound, FinishedMarketManagerRound, FinishedPolymarketFetchMarketRound}
+    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound, FinishedPolymarketFetchMarketRound}
 
     Timeouts:
         round timeout: 30.0
@@ -170,8 +154,8 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
     }
     transition_function: AbciAppTransitionFunction = {
         FetchMarketsRouterRound: {
-            Event.DONE: FinishedFetchMarketsRouterRound,  # Routes to UpdateBetsRound via composition
-            Event.POLYMARKET_FETCH_MARKETS: PolymarketFetchMarketRound,  # Routes internally to PolymarketFetchMarketRound
+            Event.DONE: UpdateBetsRound,
+            Event.POLYMARKET_FETCH_MARKETS: PolymarketFetchMarketRound,
             Event.NO_MAJORITY: FetchMarketsRouterRound,
             Event.NONE: FetchMarketsRouterRound,
         },
@@ -189,7 +173,6 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
         },
         FinishedMarketManagerRound: {},
         FailedMarketManagerRound: {},
-        FinishedFetchMarketsRouterRound: {},
         FinishedPolymarketFetchMarketRound: {},
     }
     cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets_hash)})
@@ -197,7 +180,6 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
         FinishedMarketManagerRound,
         FailedMarketManagerRound,
         FinishedPolymarketFetchMarketRound,
-        FinishedFetchMarketsRouterRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -209,6 +191,5 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},
         FailedMarketManagerRound: set(),
-        FinishedFetchMarketsRouterRound: set(),
         FinishedPolymarketFetchMarketRound: set(),
     }

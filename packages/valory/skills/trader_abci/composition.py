@@ -77,11 +77,9 @@ from packages.valory.skills.decision_maker_abci.states.redeem_router import (
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
     FetchMarketsRouterRound,
-    FinishedFetchMarketsRouterRound,
     FinishedMarketManagerRound,
     FinishedPolymarketFetchMarketRound,
     MarketManagerAbciApp,
-    UpdateBetsRound,
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
@@ -143,7 +141,6 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
     FinishedChatuiLoadRound: CheckBenchmarkingModeRound,
     BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
-    FinishedFetchMarketsRouterRound: UpdateBetsRound,
     FinishedPolymarketFetchMarketRound: CheckStopTradingRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,

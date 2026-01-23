@@ -8,7 +8,6 @@ alphabet_in:
 default_start_state: FetchMarketsRouterRound
 final_states:
 - FailedMarketManagerRound
-- FinishedFetchMarketsRouterRound
 - FinishedMarketManagerRound
 - FinishedPolymarketFetchMarketRound
 label: MarketManagerAbciApp
@@ -18,13 +17,12 @@ start_states:
 states:
 - FailedMarketManagerRound
 - FetchMarketsRouterRound
-- FinishedFetchMarketsRouterRound
 - FinishedMarketManagerRound
 - FinishedPolymarketFetchMarketRound
 - PolymarketFetchMarketRound
 - UpdateBetsRound
 transition_func:
-    (FetchMarketsRouterRound, DONE): FinishedFetchMarketsRouterRound
+    (FetchMarketsRouterRound, DONE): UpdateBetsRound
     (FetchMarketsRouterRound, NONE): FetchMarketsRouterRound
     (FetchMarketsRouterRound, NO_MAJORITY): FetchMarketsRouterRound
     (FetchMarketsRouterRound, POLYMARKET_FETCH_MARKETS): PolymarketFetchMarketRound

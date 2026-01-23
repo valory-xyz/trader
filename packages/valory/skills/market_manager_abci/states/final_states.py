@@ -32,9 +32,5 @@ class FailedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents that the period failed"""
 
 
-class FinishedFetchMarketsRouterRound(DegenerateRound, ABC):
-    """A round representing that fetch markets router has finished."""
-
-
 class FinishedPolymarketFetchMarketRound(DegenerateRound, ABC):
     """A round representing that Polymarket fetch market has finished."""
