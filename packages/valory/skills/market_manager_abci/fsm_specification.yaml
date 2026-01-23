@@ -1,8 +1,8 @@
 alphabet_in:
 - DONE
 - FETCH_ERROR
-- NO_MAJORITY
 - NONE
+- NO_MAJORITY
 - POLYMARKET_FETCH_MARKETS
 - ROUND_TIMEOUT
 default_start_state: FetchMarketsRouterRound

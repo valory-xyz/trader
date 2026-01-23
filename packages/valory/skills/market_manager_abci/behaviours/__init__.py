@@ -38,9 +38,7 @@ from packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_mark
 from packages.valory.skills.market_manager_abci.behaviours.update_bets import (
     UpdateBetsBehaviour,
 )
-from packages.valory.skills.market_manager_abci.rounds import (
-    MarketManagerAbciApp,
-)
+from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciApp
 
 
 class MarketManagerRoundBehaviour(AbstractRoundBehaviour):

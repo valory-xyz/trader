@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -39,6 +39,15 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.market_manager_abci.payloads import (
     FetchMarketsRouterPayload,
     UpdateBetsPayload,
+)
+from packages.valory.skills.market_manager_abci.states.fetch_markets_router import (
+    FetchMarketsRouterRound,
+)
+from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
+)
+from packages.valory.skills.market_manager_abci.states.update_bets import (
+    UpdateBetsRound,
 )
 
 
@@ -110,63 +119,12 @@ class MarketManagerAbstractRound(AbstractRound[Event], ABC):
         return self.synchronized_data, Event.NO_MAJORITY
 
 
-class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
-    """A round for the bets fetching & updating."""
-
-    payload_class = UpdateBetsPayload
-    done_event: Enum = Event.DONE
-    none_event: Enum = Event.FETCH_ERROR
-    no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.bets_hash)
-    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
-    synchronized_data_class = SynchronizedData
-
-
 class FinishedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents MarketManager has finished"""
 
 
 class FailedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents that the period failed"""
-
-
-class FetchMarketsRouterRound(VotingRound, MarketManagerAbstractRound):
-    """A round for switching between Omen and Polymarket market fetching rounds."""
-
-    payload_class = FetchMarketsRouterPayload
-    synchronized_data_class = SynchronizedData
-    done_event = Event.DONE
-    none_event = Event.NONE
-    negative_event = Event.NONE
-    no_majority_event = Event.NO_MAJORITY
-    collection_key = get_name(SynchronizedData.participant_to_selection)
-
-    def end_block(self) -> Optional[Tuple[SynchronizedData, Event]]:
-        """Process the end of the block."""
-        res = super().end_block()
-
-        if res is None:
-            return None
-        synchronized_data, event = res
-
-        if self.context.params.is_running_on_polymarket:
-            event = Event.POLYMARKET_FETCH_MARKETS
-        else:
-            event = Event.DONE
-
-        return cast(SynchronizedData, synchronized_data), event
-
-
-class PolymarketFetchMarketRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
-    """A round for fetching and updating bets from Polymarket."""
-
-    payload_class = UpdateBetsPayload
-    done_event: Enum = Event.DONE
-    none_event: Enum = Event.FETCH_ERROR
-    no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.bets_hash)
-    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
-    synchronized_data_class = SynchronizedData
 
 
 class FinishedFetchMarketsRouterRound(DegenerateRound, ABC):
@@ -186,7 +144,7 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
 
     Transition states:
         0. FetchMarketsRouterRound
-            - done: 1.
+            - done: 5.
             - polymarket fetch markets: 2.
             - no majority: 0.
             - none: 0.
@@ -196,16 +154,16 @@ class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-me
             - round timeout: 1.
             - no majority: 1.
         2. PolymarketFetchMarketRound
-            - done: 5.
+            - done: 6.
             - fetch error: 4.
             - no majority: 2.
             - round timeout: 2.
         3. FinishedMarketManagerRound
         4. FailedMarketManagerRound
-        5. FinishedPolymarketFetchMarketRound
-        6. FinishedFetchMarketsRouterRound
+        5. FinishedFetchMarketsRouterRound
+        6. FinishedPolymarketFetchMarketRound
 
-    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound, FinishedPolymarketFetchMarketRound, FinishedFetchMarketsRouterRound}
+    Final states: {FailedMarketManagerRound, FinishedFetchMarketsRouterRound, FinishedMarketManagerRound, FinishedPolymarketFetchMarketRound}
 
     Timeouts:
         round timeout: 30.0

@@ -33,7 +33,9 @@ from packages.valory.skills.market_manager_abci.states.base import (
 )
 
 
-class PolymarketFetchMarketRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
+class PolymarketFetchMarketRound(
+    CollectSameUntilThresholdRound, MarketManagerAbstractRound
+):
     """A round for fetching and updating bets from Polymarket."""
 
     payload_class = UpdateBetsPayload

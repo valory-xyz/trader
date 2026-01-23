@@ -22,7 +22,9 @@
 from typing import Generator
 
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
-from packages.valory.skills.market_manager_abci.payloads import FetchMarketsRouterPayload
+from packages.valory.skills.market_manager_abci.payloads import (
+    FetchMarketsRouterPayload,
+)
 from packages.valory.skills.market_manager_abci.states.fetch_markets_router import (
     FetchMarketsRouterRound,
 )

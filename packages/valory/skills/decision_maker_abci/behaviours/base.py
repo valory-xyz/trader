@@ -62,7 +62,9 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
-from packages.valory.skills.market_manager_abci.behaviours.base import BetsManagerBehaviour
+from packages.valory.skills.market_manager_abci.behaviours.base import (
+    BetsManagerBehaviour,
+)
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     CONFIDENCE_FIELD,

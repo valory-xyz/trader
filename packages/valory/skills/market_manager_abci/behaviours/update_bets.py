@@ -22,10 +22,10 @@
 import time
 from typing import Any, Dict, Generator, List, Optional
 
-from packages.valory.skills.market_manager_abci.bets import Bet, BinaryOutcome
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
 )
+from packages.valory.skills.market_manager_abci.bets import Bet, BinaryOutcome
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,

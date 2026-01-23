@@ -20,14 +20,16 @@
 """This module contains the Polymarket fetch market behaviour for the MarketManager ABCI app."""
 
 import json
-from dateutil import parser as date_parser
 from typing import Any, Dict, Generator, List, Optional
+
+from dateutil import parser as date_parser
+
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
     MULTI_BETS_FILENAME,
 )
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QueryingBehaviour,
@@ -40,6 +42,7 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
 
 USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
 
 
 class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
@@ -81,7 +84,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             # Blacklist binary markets whose outcome prices indicate resolved/over (0.0005, 0.9995)
             if len(bet.outcomeTokenMarginalPrices) == 2:
                 prices_str = {str(float(p)) for p in bet.outcomeTokenMarginalPrices}
-                if prices_str == {"0.0005", "0.9995"}:
+                if prices_str == RESOLVED_OUTCOME_PRICES:
                     bet.blacklist_forever()
 
     @property
