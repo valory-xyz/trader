@@ -66,10 +66,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibbgedhxkf44obw7mdcczz2hxkjnvfnifnsk6txq7z64v372bbgpa
 - valory/termination_abci:0.1.0:bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha
 - valory/transaction_settlement_abci:0.1.0:bafybeifw2sem532gwdcyujknhsgdcgubpwsrrjtve4ztzxlkpmporjp4rq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia45fwpfvjwpa2upszxknh2zfdlwcql4bz4tbxobjizvphvxqlzsu
-- valory/market_manager_abci:0.1.0:bafybeig6a7fepjway6arq76ykj42c6gz4y6wyxamcqzslwkanw4hvnyqkm
-- valory/decision_maker_abci:0.1.0:bafybeibcqcyckdtsugsvzosouve3drqphaasm33ufv7rq6kpmotud5tgom
-- valory/trader_abci:0.1.0:bafybeifbebp6cszvrrg7qvrlux6zr36tztewu763kgp7hcassnrc4vtqvi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiez5axjmqayztcup5bsdeozkfwlcw2ejnj3iorzzxbzoiegilblay
+- valory/market_manager_abci:0.1.0:bafybeibopp7ohdqi2iuzhyzaovvrvnlgtuszspa46z6iev7bgr725pvwym
+- valory/decision_maker_abci:0.1.0:bafybeiabydt2mpkyrcmjsdu3kjbmavp5oqvzfqd3n5nkl5jonijwsvvhcq
+- valory/trader_abci:0.1.0:bafybeif56uidkldox7r4q52zbef5o6zdkvae5zd4rfq2t5r6fp77uwhsui
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 - valory/check_stop_trading_abci:0.1.0:bafybeia6faypdoaa6bqdsqnpp52mecoo5jf5reg7gnjpvnhgtiwkopqbdu
 - valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
