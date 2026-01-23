@@ -35,7 +35,7 @@ from packages.valory.skills.check_stop_trading_abci.behaviours import (
 from packages.valory.skills.decision_maker_abci.behaviours.round_behaviour import (
     AgentDecisionMakerRoundBehaviour,
 )
-from packages.valory.skills.market_manager_abci.behaviours import (
+from packages.valory.skills.market_manager_abci.behaviours.round_behaviour import (
     MarketManagerRoundBehaviour,
 )
 from packages.valory.skills.mech_interact_abci.behaviours.round_behaviour import (
