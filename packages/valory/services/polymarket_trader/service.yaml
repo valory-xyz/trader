@@ -154,6 +154,7 @@ models:
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
+      ignored_mechs: ${IGNORED_MECHS:list:["0x1DCbC9368327776F8B20Dc041D40b8076C8AC173"]}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
