@@ -38,6 +38,12 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 from packages.valory.skills.agent_performance_summary_abci.models import (
     OpenMarketsSubgraph as APTOpenMarketsSubgraph,
 )
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonMechSubgraph as APTPolygonMechSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolymarketAgentsSubgraph as APTPolymarketAgentsSubgraph,
+)
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     Event as AgentPerformanceSummaryEvent,
 )
@@ -132,6 +138,8 @@ OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph
 MechToolsSpecs = InteractMechToolsSpecs
 MechsSubgraph = InteractMechsSubgraph
+PolygonMechSubgraph = APTPolygonMechSubgraph
+PolymarketAgentsSubgraph = APTPolymarketAgentsSubgraph
 
 MARGIN = 5
 
