@@ -55,7 +55,7 @@ start_states:
 - HandleFailedTxRound
 - PolymarketPostSetApprovalRound
 - RandomnessRound
-- RedeemRound
+- RedeemRouterRound
 states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
