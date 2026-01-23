@@ -2754,8 +2754,8 @@ requests = "*"
 [package.source]
 type = "git"
 url = "https://github.com/LOCKhart07/py-builder-signing-sdk.git"
-reference = "fix/remote-signing"
-resolved_reference = "a446dd3157b58f6c2b881366aceeb6897c62bd9d"
+reference = "487579780479676d20867ead63db968bf460ea38"
+resolved_reference = "487579780479676d20867ead63db968bf460ea38"
 
 [[package]]
 name = "py-clob-client"
@@ -4335,4 +4335,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.10"
-content-hash = "09dbabd747e0fb37f565a0c121c31a0df89bd7dc9be6005546305ab68c87a5c4"
+content-hash = "81ab74216b0cec49d6a7d1c438bed9a70b3e0b451b5d60a858bacc6230c04663"

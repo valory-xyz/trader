@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025-2026 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,4 +17,20 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Polymarket connection."""
+"""This module contains the final states of the MarketManager ABCI app."""
+
+from abc import ABC
+
+from packages.valory.skills.abstract_round_abci.base import DegenerateRound
+
+
+class FinishedMarketManagerRound(DegenerateRound, ABC):
+    """A round that represents MarketManager has finished"""
+
+
+class FailedMarketManagerRound(DegenerateRound, ABC):
+    """A round that represents that the period failed"""
+
+
+class FinishedPolymarketFetchMarketRound(DegenerateRound, ABC):
+    """A round representing that Polymarket fetch market has finished."""

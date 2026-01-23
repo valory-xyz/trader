@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
-from typing import Generator, cast
+from typing import Generator, Optional, cast
 
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
@@ -41,7 +41,7 @@ ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_NUMBER_KEY = "number"
 DEFAULT_TO_BLOCK = "latest"
-COLLATERAL_TOKEN_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+COLLATERAL_TOKEN_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # nosec: B105
 
 
 class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
@@ -54,7 +54,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         """Return the params."""
         return cast(DecisionMakerParams, self.context.params)
 
-    def _fetch_redeemable_positions(self) -> Generator:
+    def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
         """Fetch redeemable positions from Polymarket."""
         # Prepare payload data
         polymarket_bet_payload = {
@@ -71,19 +71,11 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
     def _redeem_position(
         self, condition_id: str, outcome_index: int, collateral_token: str
-    ) -> Generator:
-        """Redeem a single position.
-
-        :param condition_id: The condition ID to redeem
-        :param outcome_index: The outcome index (0 or 1)
-        :param collateral_token: The collateral token address
-        :return: Generator yielding the redemption result
-        """
+    ) -> Generator[None, None, dict]:
+        """Redeem a single position."""
         # Prepare redemption payload
         # index_sets should be calculated as 1 << outcome_index
-        # index_sets = [1 << outcome_index]
         index_sets = [outcome_index + 1]
-        # index_sets = [outcome_index]
 
         polymarket_redeem_payload = {
             "request_type": RequestType.REDEEM_POSITIONS.value,
@@ -148,10 +140,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         yield from self.finish_behaviour(self.payload)
 
     def _redeem_via_builder(self, redeemable_positions: list) -> Generator:
-        """Redeem positions via builder flow (connection request).
-
-        :param redeemable_positions: List of redeemable positions to redeem
-        """
+        """Redeem positions via builder flow (connection request)."""
 
         # Redeem each position
         for position in redeemable_positions:
@@ -182,12 +171,8 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
     def _prepare_redeem_tx(
         self, redeemable_positions: list
-    ) -> Generator[None, None, str]:
-        """Prepare Safe transaction for redeeming positions.
-
-        :param redeemable_positions: List of redeemable positions to redeem
-        :return: Transaction hash hex string
-        """
+    ) -> Generator[None, None, Optional[str]]:
+        """Prepare Safe transaction for redeeming positions."""
         if not redeemable_positions:
             self.context.logger.info("No redeemable positions found")
             return ""
@@ -238,25 +223,16 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
     def _build_redeem_positions_data(
         self, collateral_token: str, condition_id: str, index_sets: list
     ) -> str:
-        """Build redeemPositions function data.
-
-        Function signature: redeemPositions(address,bytes32,bytes32,uint256[])
-        - collateralToken: address
-        - parentCollectionId: bytes32 (always 0x0000...0000)
-        - conditionId: bytes32
-        - indexSets: uint256[]
-        """
+        """Build redeemPositions function data."""
         # redeemPositions(address,bytes32,bytes32,uint256[])
         function_signature = "0x01b7037c"  # keccak256("redeemPositions(address,bytes32,bytes32,uint256[])")[:4]
 
         # Encode parameters
-        # collateralToken (address)
         collateral_padded = collateral_token[2:].zfill(64).lower()
 
         # parentCollectionId (bytes32) - always zeros
         parent_collection = "0" * 64
 
-        # conditionId (bytes32)
         condition_id_clean = condition_id.removeprefix("0x")
         condition_id_padded = condition_id_clean.zfill(64).lower()
 

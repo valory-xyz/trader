@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -265,6 +265,11 @@ ROUNDS_INFO = {
     "mech_version_detection_round": {
         "name": "Detecting the priority mech's version.",
         "description": "Detect the version of the priority mech (Legacy, Legacy Mech Marketplace, Mech Marketplace)",
+        "transitions": {},
+    },
+    "polymarket_swap_usdc_round": {
+        "name": "Swapping POL to USDC for placing mech requests",
+        "description": "Swaps POL tokens to USDC tokens",
         "transitions": {},
     },
 }

@@ -7,8 +7,10 @@ alphabet_in:
 - REFILL_REQUIRED
 - ROUND_TIMEOUT
 - SELL_OUTCOME_TOKENS_DONE
+- SET_APPROVAL_DONE
 - STAKING_DONE
 - SUBSCRIPTION_DONE
+- SWAP_DONE
 - UNRECOGNIZED
 default_start_state: PreTxSettlementRound
 final_states:
@@ -16,8 +18,10 @@ final_states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
+- FinishedPolymarketSwapTxRound
 - FinishedRedeemingTxRound
 - FinishedSellOutcomeTokensTxRound
+- FinishedSetApprovalTxRound
 - FinishedStakingTxRound
 - FinishedSubscriptionTxRound
 label: TxSettlementMultiplexerAbciApp
@@ -29,8 +33,10 @@ states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
+- FinishedPolymarketSwapTxRound
 - FinishedRedeemingTxRound
 - FinishedSellOutcomeTokensTxRound
+- FinishedSetApprovalTxRound
 - FinishedStakingTxRound
 - FinishedSubscriptionTxRound
 - PostTxSettlementRound
@@ -41,8 +47,10 @@ transition_func:
     (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): FinishedSellOutcomeTokensTxRound
+    (PostTxSettlementRound, SET_APPROVAL_DONE): FinishedSetApprovalTxRound
     (PostTxSettlementRound, STAKING_DONE): FinishedStakingTxRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): FinishedSubscriptionTxRound
+    (PostTxSettlementRound, SWAP_DONE): FinishedPolymarketSwapTxRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
     (PreTxSettlementRound, CHECKS_PASSED): ChecksPassedRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound

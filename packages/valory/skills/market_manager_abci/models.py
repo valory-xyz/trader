@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -108,9 +108,17 @@ class MarketManagerParams(BaseParams):
         self.use_multi_bets_mode: bool = self._ensure(
             "use_multi_bets_mode", kwargs, bool
         )
-        self.polymarket_market_slug_to_bet_on: str = self._ensure(
-            "polymarket_market_slug_to_bet_on", kwargs, str
-        )
+        # Note: is_running_on_polymarket is handled by DecisionMakerParams if inherited
+        # Only set it here if not already set by a subclass
+        if not hasattr(self, "is_running_on_polymarket"):
+            # Use get() instead of pop() to avoid consuming the key if it was already
+            # processed by a subclass's _ensure() method
+            self.is_running_on_polymarket: bool = kwargs.get(
+                "is_running_on_polymarket", False
+            )
+            # Remove from kwargs to prevent it from being processed by parent classes
+            if "is_running_on_polymarket" in kwargs:
+                kwargs.pop("is_running_on_polymarket")
         super().__init__(*args, **kwargs)
 
     @property

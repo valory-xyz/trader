@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025-2026 Valory AG
+#   Copyright 2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,15 +17,13 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the polymarket bet placement state of the decision-making abci app."""
+"""This module contains the PolymarketSwapUsdcRound of the 'DecisionMakerAbci' skill."""
 
 from enum import Enum
 from typing import Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
-from packages.valory.skills.decision_maker_abci.payloads import (
-    PolymarketBetPlacementPayload,
-)
+from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
@@ -33,11 +31,11 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 )
 
 
-class PolymarketBetPlacementRound(TxPreparationRound):
-    """A round for placing a bet."""
+class PolymarketSwapUsdcRound(TxPreparationRound):
+    """A round for swapping POL to USDC."""
 
-    payload_class = PolymarketBetPlacementPayload
-    none_event = Event.INSUFFICIENT_BALANCE
+    payload_class = PolymarketSwapPayload
+    none_event = Event.NONE
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
@@ -46,7 +44,7 @@ class PolymarketBetPlacementRound(TxPreparationRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        success = self.most_voted_payload_values[-1]
-        event = Event.BET_PLACEMENT_DONE if success else Event.BET_PLACEMENT_FAILED
+        should_swap = self.most_voted_payload_values[-1]
+        event = Event.PREPARE_TX if should_swap else Event.DONE
 
         return synced_data, event

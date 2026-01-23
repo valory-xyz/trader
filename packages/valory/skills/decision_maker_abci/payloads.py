@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -154,11 +154,6 @@ class RedeemRouterPayload(VotingPayload):
 
 
 @dataclass(frozen=True)
-class FetchMarketsRouterPayload(VotingPayload):
-    """Represents a payload for Fetch Markets router round."""
-
-
-@dataclass(frozen=True)
 class PolymarketRedeemPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
 
@@ -168,3 +163,10 @@ class PolymarketRedeemPayload(MultisigTxPayload):
     redeemed_condition_ids: Optional[str] = None
     payout_so_far: Optional[int] = None
     event: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PolymarketSwapPayload(MultisigTxPayload):
+    """Represents a transaction payload for preparing an on-chain transaction for swapping."""
+
+    should_swap: Optional[bool] = None
