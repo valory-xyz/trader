@@ -51,16 +51,11 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
-from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
-    FetchMarketsRouterRound,
-)
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
-    FinishedFetchMarketsRouterRound,
-    FinishedPolymarketFetchMarketRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
     FinishedRedeemTxPreparationRound,
@@ -79,8 +74,12 @@ from packages.valory.skills.decision_maker_abci.states.randomness import Randomn
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
+    FetchMarketsRouterRound,
+    FinishedFetchMarketsRouterRound,
     FinishedMarketManagerRound,
+    FinishedPolymarketFetchMarketRound,
     MarketManagerAbciApp,
+    PolymarketFetchMarketRound,
     UpdateBetsRound,
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp

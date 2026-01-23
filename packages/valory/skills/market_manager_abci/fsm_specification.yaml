@@ -2,19 +2,36 @@ alphabet_in:
 - DONE
 - FETCH_ERROR
 - NO_MAJORITY
+- NONE
+- POLYMARKET_FETCH_MARKETS
 - ROUND_TIMEOUT
-default_start_state: UpdateBetsRound
+default_start_state: FetchMarketsRouterRound
 final_states:
 - FailedMarketManagerRound
+- FinishedFetchMarketsRouterRound
 - FinishedMarketManagerRound
+- FinishedPolymarketFetchMarketRound
 label: MarketManagerAbciApp
 start_states:
+- FetchMarketsRouterRound
 - UpdateBetsRound
 states:
 - FailedMarketManagerRound
+- FetchMarketsRouterRound
+- FinishedFetchMarketsRouterRound
 - FinishedMarketManagerRound
+- FinishedPolymarketFetchMarketRound
+- PolymarketFetchMarketRound
 - UpdateBetsRound
 transition_func:
+    (FetchMarketsRouterRound, DONE): FinishedFetchMarketsRouterRound
+    (FetchMarketsRouterRound, NONE): FetchMarketsRouterRound
+    (FetchMarketsRouterRound, NO_MAJORITY): FetchMarketsRouterRound
+    (FetchMarketsRouterRound, POLYMARKET_FETCH_MARKETS): PolymarketFetchMarketRound
+    (PolymarketFetchMarketRound, DONE): FinishedPolymarketFetchMarketRound
+    (PolymarketFetchMarketRound, FETCH_ERROR): FailedMarketManagerRound
+    (PolymarketFetchMarketRound, NO_MAJORITY): PolymarketFetchMarketRound
+    (PolymarketFetchMarketRound, ROUND_TIMEOUT): PolymarketFetchMarketRound
     (UpdateBetsRound, DONE): FinishedMarketManagerRound
     (UpdateBetsRound, FETCH_ERROR): FailedMarketManagerRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound

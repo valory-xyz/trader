@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2026 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,26 +17,26 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the Polymarket fetch market round for the decision-making abci app."""
+"""This module contains the Polymarket fetch market round for the MarketManager ABCI app."""
 
 from enum import Enum
-from typing import Type
 
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.states.base import (
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.states.base import (
     Event,
+    MarketManagerAbstractRound,
     SynchronizedData,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
-class PolymarketFetchMarketRound(CollectSameUntilThresholdRound):
+class PolymarketFetchMarketRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
     """A round for fetching and updating bets from Polymarket."""
 
-    payload_class: Type[UpdateBetsPayload] = UpdateBetsPayload
+    payload_class = UpdateBetsPayload
     done_event: Enum = Event.DONE
     none_event: Enum = Event.FETCH_ERROR
     no_majority_event: Enum = Event.NO_MAJORITY

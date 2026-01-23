@@ -21,7 +21,7 @@
 
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Tuple, Type, cast
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -33,9 +33,13 @@ from packages.valory.skills.abstract_round_abci.base import (
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
+    VotingRound,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import (
+    FetchMarketsRouterPayload,
+    UpdateBetsPayload,
+)
 
 
 class Event(Enum):
@@ -45,6 +49,8 @@ class Event(Enum):
     NO_MAJORITY = "no_majority"
     ROUND_TIMEOUT = "round_timeout"
     FETCH_ERROR = "fetch_error"
+    POLYMARKET_FETCH_MARKETS = "polymarket_fetch_markets"
+    NONE = "none"
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -80,6 +86,11 @@ class SynchronizedData(BaseSynchronizedData):
         if not isinstance(db_value, bool):
             return False
         return bool(db_value)
+
+    @property
+    def participant_to_selection(self) -> DeserializedCollection:
+        """Get the participants to selection."""
+        return self._get_deserialized("participant_to_selection")
 
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
@@ -119,46 +130,133 @@ class FailedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents that the period failed"""
 
 
+class FetchMarketsRouterRound(VotingRound, MarketManagerAbstractRound):
+    """A round for switching between Omen and Polymarket market fetching rounds."""
+
+    payload_class = FetchMarketsRouterPayload
+    synchronized_data_class = SynchronizedData
+    done_event = Event.DONE
+    none_event = Event.NONE
+    negative_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(SynchronizedData.participant_to_selection)
+
+    def end_block(self) -> Optional[Tuple[SynchronizedData, Event]]:
+        """Process the end of the block."""
+        res = super().end_block()
+
+        if res is None:
+            return None
+        synchronized_data, event = res
+
+        if self.context.params.is_running_on_polymarket:
+            event = Event.POLYMARKET_FETCH_MARKETS
+        else:
+            event = Event.DONE
+
+        return cast(SynchronizedData, synchronized_data), event
+
+
+class PolymarketFetchMarketRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
+    """A round for fetching and updating bets from Polymarket."""
+
+    payload_class = UpdateBetsPayload
+    done_event: Enum = Event.DONE
+    none_event: Enum = Event.FETCH_ERROR
+    no_majority_event: Enum = Event.NO_MAJORITY
+    selection_key = get_name(SynchronizedData.bets_hash)
+    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
+    synchronized_data_class = SynchronizedData
+
+
+class FinishedFetchMarketsRouterRound(DegenerateRound, ABC):
+    """A round representing that fetch markets router has finished."""
+
+
+class FinishedPolymarketFetchMarketRound(DegenerateRound, ABC):
+    """A round representing that Polymarket fetch market has finished."""
+
+
 class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """MarketManagerAbciApp
 
-    Initial round: UpdateBetsRound
+    Initial round: FetchMarketsRouterRound
 
-    Initial states: {UpdateBetsRound}
+    Initial states: {FetchMarketsRouterRound, UpdateBetsRound}
 
     Transition states:
-        0. UpdateBetsRound
+        0. FetchMarketsRouterRound
             - done: 1.
-            - fetch error: 2.
-            - round timeout: 0.
+            - polymarket fetch markets: 2.
             - no majority: 0.
-        1. FinishedMarketManagerRound
-        2. FailedMarketManagerRound
+            - none: 0.
+        1. UpdateBetsRound
+            - done: 3.
+            - fetch error: 4.
+            - round timeout: 1.
+            - no majority: 1.
+        2. PolymarketFetchMarketRound
+            - done: 5.
+            - fetch error: 4.
+            - no majority: 2.
+            - round timeout: 2.
+        3. FinishedMarketManagerRound
+        4. FailedMarketManagerRound
+        5. FinishedPolymarketFetchMarketRound
+        6. FinishedFetchMarketsRouterRound
 
-    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound}
+    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound, FinishedPolymarketFetchMarketRound, FinishedFetchMarketsRouterRound}
 
     Timeouts:
         round timeout: 30.0
     """
 
-    initial_round_cls: Type[AbstractRound] = UpdateBetsRound
+    initial_round_cls: Type[AbstractRound] = FetchMarketsRouterRound
+    initial_states: Set[AppState] = {
+        FetchMarketsRouterRound,
+        UpdateBetsRound,
+    }
     transition_function: AbciAppTransitionFunction = {
+        FetchMarketsRouterRound: {
+            Event.DONE: FinishedFetchMarketsRouterRound,  # Routes to UpdateBetsRound via composition
+            Event.POLYMARKET_FETCH_MARKETS: PolymarketFetchMarketRound,  # Routes internally to PolymarketFetchMarketRound
+            Event.NO_MAJORITY: FetchMarketsRouterRound,
+            Event.NONE: FetchMarketsRouterRound,
+        },
         UpdateBetsRound: {
             Event.DONE: FinishedMarketManagerRound,
             Event.FETCH_ERROR: FailedMarketManagerRound,
             Event.ROUND_TIMEOUT: UpdateBetsRound,
             Event.NO_MAJORITY: UpdateBetsRound,
         },
+        PolymarketFetchMarketRound: {
+            Event.DONE: FinishedPolymarketFetchMarketRound,
+            Event.FETCH_ERROR: FailedMarketManagerRound,
+            Event.NO_MAJORITY: PolymarketFetchMarketRound,
+            Event.ROUND_TIMEOUT: PolymarketFetchMarketRound,
+        },
         FinishedMarketManagerRound: {},
         FailedMarketManagerRound: {},
+        FinishedFetchMarketsRouterRound: {},
+        FinishedPolymarketFetchMarketRound: {},
     }
     cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets_hash)})
-    final_states: Set[AppState] = {FinishedMarketManagerRound, FailedMarketManagerRound}
+    final_states: Set[AppState] = {
+        FinishedMarketManagerRound,
+        FailedMarketManagerRound,
+        FinishedPolymarketFetchMarketRound,
+        FinishedFetchMarketsRouterRound,
+    }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
     }
-    db_pre_conditions: Dict[AppState, Set[str]] = {UpdateBetsRound: set()}
+    db_pre_conditions: Dict[AppState, Set[str]] = {
+        UpdateBetsRound: set(),
+        FetchMarketsRouterRound: set(),
+    }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},
         FailedMarketManagerRound: set(),
+        FinishedFetchMarketsRouterRound: set(),
+        FinishedPolymarketFetchMarketRound: set(),
     }

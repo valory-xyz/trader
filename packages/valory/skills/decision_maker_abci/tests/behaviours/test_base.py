@@ -43,7 +43,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
-from packages.valory.skills.market_manager_abci.behaviours import READ_MODE
+from packages.valory.skills.market_manager_abci.behaviours.base import READ_MODE
 
 
 settings.load_profile(profile_name)

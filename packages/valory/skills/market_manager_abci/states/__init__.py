@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,28 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the MarketManager."""
-
-from dataclasses import dataclass
-from typing import Optional
-
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-
-
-@dataclass(frozen=True)
-class UpdateBetsPayload(BaseTxPayload):
-    """A transaction payload for the updated bets."""
-
-    bets_hash: Optional[str]
-
-
-@dataclass(frozen=True)
-class VotingPayload(BaseTxPayload):
-    """Represents a transaction payload for voting."""
-
-    vote: bool
-
-
-@dataclass(frozen=True)
-class FetchMarketsRouterPayload(VotingPayload):
-    """Represents a payload for Fetch Markets router round."""
+"""This module contains the states for the MarketManager ABCI application."""

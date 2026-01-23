@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2026 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,41 +17,32 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the behaviour for fetching markets from Polymarket."""
+"""This module contains the Polymarket fetch market behaviour for the MarketManager ABCI app."""
 
 import json
-from typing import Any, Dict, Generator, List, Optional
-
 from dateutil import parser as date_parser
-
+from typing import Any, Dict, Generator, List, Optional
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
-    PolymarketFetchMarketRound,
-)
-from packages.valory.skills.market_manager_abci.behaviours import (
+from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
     MULTI_BETS_FILENAME,
 )
-from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
+)
 
 
 USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-# Outcome prices that indicate a resolved/over binary market (one outcome ~0, one ~1)
-RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
-
-
-class PolymarketFetchMarketBehaviour(
-    BetsManagerBehaviour,
-    QueryingBehaviour,
-):
+class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets from Polymarket."""
 
     matching_round = PolymarketFetchMarketRound
@@ -90,7 +81,7 @@ class PolymarketFetchMarketBehaviour(
             # Blacklist binary markets whose outcome prices indicate resolved/over (0.0005, 0.9995)
             if len(bet.outcomeTokenMarginalPrices) == 2:
                 prices_str = {str(float(p)) for p in bet.outcomeTokenMarginalPrices}
-                if prices_str == RESOLVED_OUTCOME_PRICES:
+                if prices_str == {"0.0005", "0.9995"}:
                     bet.blacklist_forever()
 
     @property
