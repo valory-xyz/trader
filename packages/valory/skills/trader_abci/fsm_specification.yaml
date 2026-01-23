@@ -1,126 +1,68 @@
 alphabet_in:
-    - BENCHMARKING_DISABLED
-    - BENCHMARKING_ENABLED
-    - BENCHMARKING_FINISHED
-    - BET_PLACEMENT_DONE
-    - BLACKLIST
-    - BUY_SUBSCRIPTION
-    - CALC_BUY_AMOUNT_FAILED
-    - CALC_SELL_AMOUNT_FAILED
-    - CHECKS_PASSED
-    - CHECK_HISTORY
-    - CHECK_LATE_ARRIVING_MESSAGE
-    - CHECK_TIMEOUT
-    - DONE
-    - DONE_NO_SELL
-    - DONE_SELL
-    - FAIL
-    - FETCH_ERROR
-    - FINALIZATION_FAILED
-    - FINALIZE_TIMEOUT
-    - INCORRECT_SERIALIZATION
-    - INSUFFICIENT_BALANCE
-    - INSUFFICIENT_FUNDS
-    - MECH_REQUESTING_DONE
-    - MECH_RESPONSE_ERROR
-    - MOCK_MECH_REQUEST
-    - MOCK_TX
-    - NEGATIVE
-    - NEW_SIMULATED_RESAMPLE
-    - NEXT_CHECKPOINT_NOT_REACHED_YET
-    - NONE
-    - NO_MAJORITY
-    - NO_MARKETPLACE
-    - NO_OP
-    - NO_REDEEMING
-    - PREPARE_TX
-    - REDEEMING_DONE
-    - REDEEM_ROUND_TIMEOUT
-    - REFILL_REQUIRED
-    - RESET_AND_PAUSE_TIMEOUT
-    - RESET_TIMEOUT
-    - REVIEW_BETS
-    - ROUND_TIMEOUT
-    - SELL_OUTCOME_TOKENS_DONE
-    - SERVICE_EVICTED
-    - SERVICE_NOT_STAKED
-    - SKIP_REQUEST
-    - SKIP_TRADING
-    - SLOTS_UNSUPPORTED_ERROR
-    - STAKING_DONE
-    - SUBSCRIPTION_DONE
-    - SUSPICIOUS_ACTIVITY
-    - TIE
-    - UNPROFITABLE
-    - UNRECOGNIZED
-    - V1
-    - V2
-    - VALIDATE_TIMEOUT
-    - POLYMARKET_DONE
-    - POLYMARKET_FETCH_MARKETS
-    - BET_PLACEMENT_FAILED
-    - BET_PLACEMENT_DONE
-    - APPROVAL_FAILED
-    - BENCHMARKING_DISABLED
-    - BENCHMARKING_ENABLED
-    - BENCHMARKING_FINISHED
-    - BET_PLACEMENT_DONE
-    - BET_PLACEMENT_FAILED
-    - BLACKLIST
-    - BUY_SUBSCRIPTION
-    - CALC_BUY_AMOUNT_FAILED
-    - CALC_SELL_AMOUNT_FAILED
-    - CHECKS_PASSED
-    - CHECK_HISTORY
-    - CHECK_LATE_ARRIVING_MESSAGE
-    - CHECK_TIMEOUT
-    - DONE
-    - DONE_NO_SELL
-    - DONE_SELL
-    - FAIL
-    - FETCH_ERROR
-    - FINALIZATION_FAILED
-    - FINALIZE_TIMEOUT
-    - INCORRECT_SERIALIZATION
-    - INSUFFICIENT_BALANCE
-    - INSUFFICIENT_FUNDS
-    - MECH_REQUESTING_DONE
-    - MECH_RESPONSE_ERROR
-    - MOCK_MECH_REQUEST
-    - MOCK_TX
-    - NEGATIVE
-    - NEW_SIMULATED_RESAMPLE
-    - NEXT_CHECKPOINT_NOT_REACHED_YET
-    - NONE
-    - NO_MAJORITY
-    - NO_OP
-    - NO_REDEEMING
-    - POLYMARKET_DONE
-    - POLYMARKET_FETCH_MARKETS
-    - PREPARE_TX
-    - REDEEMING_DONE
-    - REDEEM_ROUND_TIMEOUT
-    - REFILL_REQUIRED
-    - RESET_AND_PAUSE_TIMEOUT
-    - RESET_TIMEOUT
-    - REVIEW_BETS
-    - ROUND_TIMEOUT
-    - SELL_OUTCOME_TOKENS_DONE
-    - SERVICE_EVICTED
-    - SERVICE_NOT_STAKED
-    - SET_APPROVAL
-    - SET_APPROVAL_DONE
-    - SKIP_REQUEST
-    - SKIP_TRADING
-    - SLOTS_UNSUPPORTED_ERROR
-    - STAKING_DONE
-    - SUBSCRIPTION_DONE
-    - SUSPICIOUS_ACTIVITY
-    - SWAP_DONE
-    - TIE
-    - UNPROFITABLE
-    - UNRECOGNIZED
-    - VALIDATE_TIMEOUT
+- APPROVAL_FAILED
+- BENCHMARKING_DISABLED
+- BENCHMARKING_ENABLED
+- BENCHMARKING_FINISHED
+- BET_PLACEMENT_DONE
+- BET_PLACEMENT_FAILED
+- BLACKLIST
+- BUY_SUBSCRIPTION
+- CALC_BUY_AMOUNT_FAILED
+- CALC_SELL_AMOUNT_FAILED
+- CHECKS_PASSED
+- CHECK_HISTORY
+- CHECK_LATE_ARRIVING_MESSAGE
+- CHECK_TIMEOUT
+- DONE
+- DONE_NO_SELL
+- DONE_SELL
+- FAIL
+- FETCH_ERROR
+- FINALIZATION_FAILED
+- FINALIZE_TIMEOUT
+- INCORRECT_SERIALIZATION
+- INSUFFICIENT_BALANCE
+- INSUFFICIENT_FUNDS
+- MECH_REQUESTING_DONE
+- MECH_RESPONSE_ERROR
+- MOCK_MECH_REQUEST
+- MOCK_TX
+- NEGATIVE
+- NEW_SIMULATED_RESAMPLE
+- NEXT_CHECKPOINT_NOT_REACHED_YET
+- NONE
+- NO_MAJORITY
+- NO_MARKETPLACE
+- NO_OP
+- NO_REDEEMING
+- POLYMARKET_DONE
+- POLYMARKET_FETCH_MARKETS
+- PREPARE_TX
+- REDEEMING_DONE
+- REDEEM_ROUND_TIMEOUT
+- REFILL_REQUIRED
+- RESET_AND_PAUSE_TIMEOUT
+- RESET_TIMEOUT
+- REVIEW_BETS
+- ROUND_TIMEOUT
+- SELL_OUTCOME_TOKENS_DONE
+- SERVICE_EVICTED
+- SERVICE_NOT_STAKED
+- SET_APPROVAL
+- SET_APPROVAL_DONE
+- SKIP_REQUEST
+- SKIP_TRADING
+- SLOTS_UNSUPPORTED_ERROR
+- STAKING_DONE
+- SUBSCRIPTION_DONE
+- SUSPICIOUS_ACTIVITY
+- SWAP_DONE
+- TIE
+- UNPROFITABLE
+- UNRECOGNIZED
+- V1
+- V2
+- VALIDATE_TIMEOUT
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
@@ -131,102 +73,55 @@ start_states:
 - RegistrationRound
 - RegistrationStartupRound
 states:
-    - BenchmarkingModeDisabledRound
-    - BenchmarkingRandomnessRound
-    - BetPlacementRound
-    - PolymarketBetPlacementRound
-    - BlacklistingRound
-    - CallCheckpointRound
-    - ChatuiLoadRound
-    - CheckBenchmarkingModeRound
-    - CheckLateTxHashesRound
-    - CheckStopTradingRound
-    - CheckTransactionHistoryRound
-    - CollectSignatureRound
-    - DecisionReceiveRound
-    - DecisionRequestRound
-    - FailedMultiplexerRound
-    - FetchPerformanceDataRound
-    - FinalizationRound
-    - HandleFailedTxRound
-    - ImpossibleRound
-    - MechInformationRound
-    - MechPurchaseSubscriptionRound
-    - MechRequestRound
-    - MechResponseRound
-    - PolymarketPostSetApprovalRound
-    - MechVersionDetectionRound
-    - PostTxSettlementRound
-    - PreTxSettlementRound
-    - RandomnessRound
-    - RandomnessTransactionSubmissionRound
-    - RedeemRound
-    - PolymarketRedeemRound
-    - RedeemRouterRound
-    - RefillRequiredRound
-    - RegistrationRound
-    - RegistrationStartupRound
-    - ResetAndPauseRound
-    - ResetRound
-    - SamplingRound
-    - SelectKeeperTransactionSubmissionARound
-    - SelectKeeperTransactionSubmissionBAfterTimeoutRound
-    - SelectKeeperTransactionSubmissionBRound
-    - SellOutcomeTokensRound
-    - ServiceEvictedRound
-    - SynchronizeLateMessagesRound
-    - ToolSelectionRound
-    - UpdateBetsRound
-    - FetchMarketsRouterRound
-    - PolymarketFetchMarketRound
-    - ValidateTransactionRound
-    - BenchmarkingRandomnessRound
-    - BetPlacementRound
-    - BlacklistingRound
-    - CallCheckpointRound
-    - ChatuiLoadRound
-    - CheckBenchmarkingModeRound
-    - CheckLateTxHashesRound
-    - CheckStopTradingRound
-    - CheckTransactionHistoryRound
-    - CollectSignatureRound
-    - DecisionReceiveRound
-    - DecisionRequestRound
-    - FailedMultiplexerRound
-    - FetchMarketsRouterRound
-    - FetchPerformanceDataRound
-    - FinalizationRound
-    - HandleFailedTxRound
-    - ImpossibleRound
-    - MechPurchaseSubscriptionRound
-    - MechRequestRound
-    - MechResponseRound
-    - PolymarketBetPlacementRound
-    - PolymarketFetchMarketRound
-    - PolymarketPostSetApprovalRound
-    - PolymarketRedeemRound
-    - PolymarketSetApprovalRound
-    - PolymarketSwapUsdcRound
-    - PostTxSettlementRound
-    - PreTxSettlementRound
-    - RandomnessRound
-    - RandomnessTransactionSubmissionRound
-    - RedeemRound
-    - RedeemRouterRound
-    - RegistrationRound
-    - RegistrationStartupRound
-    - ResetAndPauseRound
-    - ResetRound
-    - SamplingRound
-    - SelectKeeperTransactionSubmissionARound
-    - SelectKeeperTransactionSubmissionBAfterTimeoutRound
-    - SelectKeeperTransactionSubmissionBRound
-    - SellOutcomeTokensRound
-    - ServiceEvictedRound
-    - SynchronizeLateMessagesRound
-    - ToolSelectionRound
-    - UpdateBetsRound
-    - ValidateTransactionRound
+- BenchmarkingRandomnessRound
+- BetPlacementRound
+- BlacklistingRound
+- CallCheckpointRound
+- ChatuiLoadRound
+- CheckBenchmarkingModeRound
+- CheckLateTxHashesRound
+- CheckStopTradingRound
+- CheckTransactionHistoryRound
+- CollectSignatureRound
+- DecisionReceiveRound
+- DecisionRequestRound
+- FailedMultiplexerRound
+- FetchMarketsRouterRound
+- FetchPerformanceDataRound
+- FinalizationRound
+- HandleFailedTxRound
+- ImpossibleRound
+- MechInformationRound
+- MechPurchaseSubscriptionRound
+- MechRequestRound
+- MechResponseRound
+- MechVersionDetectionRound
+- PolymarketBetPlacementRound
+- PolymarketFetchMarketRound
+- PolymarketPostSetApprovalRound
+- PolymarketRedeemRound
+- PolymarketSetApprovalRound
+- PolymarketSwapUsdcRound
+- PostTxSettlementRound
+- PreTxSettlementRound
+- RandomnessRound
+- RandomnessTransactionSubmissionRound
+- RedeemRound
+- RedeemRouterRound
+- RegistrationRound
+- RegistrationStartupRound
+- ResetAndPauseRound
+- ResetRound
+- SamplingRound
+- SelectKeeperTransactionSubmissionARound
+- SelectKeeperTransactionSubmissionBAfterTimeoutRound
+- SelectKeeperTransactionSubmissionBRound
+- SellOutcomeTokensRound
+- ServiceEvictedRound
+- SynchronizeLateMessagesRound
+- ToolSelectionRound
+- UpdateBetsRound
+- ValidateTransactionRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -314,7 +209,7 @@ transition_func:
     (FinalizationRound, INSUFFICIENT_FUNDS): SelectKeeperTransactionSubmissionBRound
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
-    (HandleFailedTxRound, NO_OP): RedeemRouterRound
+    (HandleFailedTxRound, NO_OP): RedeemRound
     (MechInformationRound, DONE): CheckBenchmarkingModeRound
     (MechInformationRound, NONE): MechVersionDetectionRound
     (MechInformationRound, NO_MAJORITY): MechInformationRound
@@ -331,6 +226,11 @@ transition_func:
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
+    (MechVersionDetectionRound, NO_MAJORITY): MechVersionDetectionRound
+    (MechVersionDetectionRound, NO_MARKETPLACE): CheckBenchmarkingModeRound
+    (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
+    (MechVersionDetectionRound, V1): CheckBenchmarkingModeRound
+    (MechVersionDetectionRound, V2): MechInformationRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, DONE): RedeemRouterRound
@@ -348,13 +248,6 @@ transition_func:
     (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
-    (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
-    (MechVersionDetectionRound, NO_MAJORITY): MechVersionDetectionRound
-    (MechVersionDetectionRound, NO_MARKETPLACE): CheckBenchmarkingModeRound
-    (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
-    (MechVersionDetectionRound, V1): CheckBenchmarkingModeRound
-    (MechVersionDetectionRound, V2): MechInformationRound
-    (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PolymarketRedeemRound, DONE): CallCheckpointRound
     (PolymarketRedeemRound, MOCK_TX): CallCheckpointRound
     (PolymarketRedeemRound, NONE): PolymarketRedeemRound
