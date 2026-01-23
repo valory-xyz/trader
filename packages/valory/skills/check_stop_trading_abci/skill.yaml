@@ -12,7 +12,7 @@ fingerprint:
   dialogues.py: bafybeifurggab64rdwdsvvvigqwctr67w2gv7zlo7lsejovsjol56dlt3y
   fsm_specification.yaml: bafybeiegu65yhpob736fjlt75r23ag7u6y5p36kwurqi7hk5ycwlmcpuby
   handlers.py: bafybeihphydx4llyft3cycgc5e4eyjp7ccpgwegn2jbsnqi4tcblsr7xsa
-  models.py: bafybeicrdy62hmxlfabnhpjxjrbp3ec55upetsrcnidngibknhlo26lglm
+  models.py: bafybeig5it6nbwbrvnwrwxkkaxtnwne6evhyz7hz2g4k6km6hy3ms2apli
   payloads.py: bafybeicoiu2eadu2dithddz2u22ygdo3gj3dodxvbjenol23esn4nj3zz4
   rounds.py: bafybeiahsxwq6uusydsjpdc4yvl3gyb3qd765zrlt7jxgaoulauwxyxgg4
   tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
@@ -23,13 +23,13 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/mech:0.1.0:bafybeifwg3m375sv6i4grdj676qyaqw4hbwzblstahbepia27wwu6pu574
-- valory/mech_marketplace:0.1.0:bafybeidnldvmalvqr2pui2hga3ydmp7nnlb4rtvtstuo5y3py6tuewv43e
+- valory/mech:0.1.0:bafybeihjahxy7o3wy4cyvizvailx2ozfu632zsc34ckzdz3qrprahpwbxm
+- valory/mech_marketplace:0.1.0:bafybeia56nnaumslyx2h34bhw6njluzw6grao7msjc7r76ae77aq5witcq
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib4xpcpuiryyfnkuyhypdvqi5ebbl7ugavv6ig6yp4nzk3fxosntm
-- valory/mech_interact_abci:0.1.0:bafybeiapma3xyf5cozepeakwidouehv3shaykmvxwsos4bgn4256q7cw24
-- valory/staking_abci:0.1.0:bafybeiagiknu254j5a5sabwf3t73yhiawx422mhuyf2vsezmc756l2qh3e
+- valory/abstract_round_abci:0.1.0:bafybeib4apybhtx3gx6o4x5b2nwqjkbdqi7dx7rxyrb5r3zztcdjiezvh4
+- valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
+- valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 behaviours:
   main:
     args: {}

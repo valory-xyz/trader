@@ -8,8 +8,8 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeiadndkoa5ymxf2t5tzftgr5psznrmuf4dchzjxowemou42wh7uiwe
-  bets.py: bafybeicwrokag7v6gq6ko7huszmxm2gd3a7jteuku45w4lpe4qmsbqku34
+  behaviours.py: bafybeid2jbcqlordm5otldr75bkb5cyblda3neonektceanx7xvtsm4opu
+  bets.py: bafybeib5ye6om4irkh4gxflgzyk47otobzqgg3qifuuz6z3syprvilnbz4
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -22,7 +22,7 @@ fingerprint:
   graph_tooling/requests.py: bafybeif24qiwqjwvfbutbolodnctanzobipma636emrbv3eamafzxndgze
   graph_tooling/utils.py: bafybeihhxfifc5y3fjnxnan2zomsgr47h6u3khfeymi4p2x6txkkxmjq3e
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeibipxtzxa2ta2ezsqead7qs2fsaxkyrrwcgsthjpkw5nroctsqytu
+  models.py: bafybeihakfij5auqsnvotv6yt6yogs35uv47fd4tvzgiybaeel4bi32q6m
   payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
   rounds.py: bafybeiabpch7kwuuaxnp6okbz6s74mylkh5qw7zxcjhzcd7vrwxkmxyvpq
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
@@ -33,13 +33,13 @@ fingerprint:
   tests/test_utils.py: bafybeia77p5nsp6txhvcdh4kyzjjujbwd2gnoi7fnpwxheeezeqebbufqq
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeierljto2or2h3xwfyqjoswqvcui7if2tjqrilszqdki2kpmuiexgy
+- valory/polymarket_client:0.1.0:bafybeiaz2dv65y2k2hhribf4oi5vxrzy62drdr7jf7lu7a62pb55e5yzs4
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib4xpcpuiryyfnkuyhypdvqi5ebbl7ugavv6ig6yp4nzk3fxosntm
+- valory/abstract_round_abci:0.1.0:bafybeib4apybhtx3gx6o4x5b2nwqjkbdqi7dx7rxyrb5r3zztcdjiezvh4
 behaviours:
   main:
     args: {}
