@@ -28,24 +28,30 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
     PolymarketFetchMarketRound,
 )
-from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.behaviours import (
     BetsManagerBehaviour,
     MULTI_BETS_FILENAME,
-    USCDE_POLYGON,
-    ZERO_ADDRESS,
 )
+from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QueryingBehaviour,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
+
+USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+
 # Outcome prices that indicate a resolved/over binary market (one outcome ~0, one ~1)
 RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
 
 
-class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
+class PolymarketFetchMarketBehaviour(
+    BetsManagerBehaviour,
+    QueryingBehaviour,
+):
     """Behaviour that fetches and updates the bets from Polymarket."""
 
     matching_round = PolymarketFetchMarketRound
@@ -131,7 +137,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             else:
                 self.bets[index].update_market_info(bet)
 
-    def _fetch_markets_from_polymarket(self) -> Generator:
+    def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
         """Fetch the markets from Polymarket using category-based filtering."""
         # Prepare payload data for FETCH_MARKETS request
         cache_file_path = str(self.params.store_path / "polymarket.json")
@@ -141,81 +147,92 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 "cache_file_path": cache_file_path,
             },
         }
-        
+
         response = yield from self.send_polymarket_connection_request(
             polymarket_fetch_markets_payload
         )
-        
+
         if response is None:
-            self.context.logger.error("Failed to fetch markets from Polymarket - API call failed")
+            self.context.logger.error(
+                "Failed to fetch markets from Polymarket - API call failed"
+            )
             return None
-        
-        self.context.logger.info(f"Received markets from Polymarket: {len(response)} categories")
-        
+
+        self.context.logger.info(
+            f"Received markets from Polymarket: {len(response)} categories"
+        )
+
         # Process all markets from all categories
         all_bets = []
         total_markets = 0
         total_skipped = 0
-        
+
         for category, markets in response.items():
             category_count = len(markets)
             total_markets += category_count
-            self.context.logger.info(f"Processing {category_count} markets from category: {category}")
+            self.context.logger.info(
+                f"Processing {category_count} markets from category: {category}"
+            )
             skipped_in_category = 0
-            
+
             for market in markets:
                 market_id = market.get("id", "unknown")
-                
+
                 try:
                     # Parse JSON fields from response
                     outcomes = json.loads(market.get("outcomes", "[]"))
                     outcome_prices = json.loads(market.get("outcomePrices", "[]"))
                     clob_token_ids = json.loads(market.get("clobTokenIds", "[]"))
-                    
+
                     # Validate that we have the required data
                     if not outcomes or not outcome_prices or not clob_token_ids:
-                        raise ValueError("Missing required fields (outcomes, prices, or token IDs)")
-                    
-                    if len(outcomes) != len(outcome_prices) or len(outcomes) != len(clob_token_ids):
+                        raise ValueError(
+                            "Missing required fields (outcomes, prices, or token IDs)"
+                        )
+
+                    if len(outcomes) != len(outcome_prices) or len(outcomes) != len(
+                        clob_token_ids
+                    ):
                         raise ValueError(
                             f"Mismatched lengths - outcomes: {len(outcomes)}, "
                             f"prices: {len(outcome_prices)}, token_ids: {len(clob_token_ids)}"
                         )
-                    
+
                     # Parse end_date and opening_timestamp
                     end_date = market.get("endDate", "")
                     if not end_date:
                         raise ValueError("Missing endDate")
-                    
+
                     opening_timestamp = int(date_parser.isoparse(end_date).timestamp())
-                    
+
                     # Parse liquidity and validate
                     liquidity = float(market.get("liquidity", "0"))
                     if liquidity < 0:
                         raise ValueError(f"Negative liquidity: {liquidity}")
-                    
+
                     # Parse and validate outcome prices
                     parsed_prices = [float(price) for price in outcome_prices]
                     if any(price < 0 or price > 1 for price in parsed_prices):
                         raise ValueError(f"Invalid price range: {parsed_prices}")
-                    
+
                     # Calculate outcome token amounts
                     outcome_token_amounts = [
                         int(liquidity * price * 10**6) for price in parsed_prices
                     ]
-                    
+
                     # Create outcome_token_ids mapping
                     outcome_token_ids_map = {
-                        outcome: token_id for outcome, token_id in zip(outcomes, clob_token_ids)
+                        outcome: token_id
+                        for outcome, token_id in zip(outcomes, clob_token_ids)
                     }
-                    
+
                     # Validate required fields
                     if not market.get("conditionId"):
                         raise ValueError("Missing conditionId")
-                    
+
                     if not market.get("question"):
                         raise ValueError("Missing question")
-                    
+
                     bet_dict = {
                         "id": market_id,
                         "condition_id": market.get("conditionId"),
@@ -236,7 +253,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "outcome_token_ids": outcome_token_ids_map,
                     }
                     all_bets.append(bet_dict)
-                    
+
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
                     self.context.logger.warning(
                         f"Skipping market {market_id}: Invalid or missing required fields - {e}"
@@ -245,11 +262,12 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     continue
                 except Exception as e:
                     self.context.logger.error(
-                        f"Unexpected error processing market {market_id}: {e}", exc_info=True
+                        f"Unexpected error processing market {market_id}: {e}",
+                        exc_info=True,
                     )
                     skipped_in_category += 1
                     continue
-            
+
             # Log summary for this category
             processed_in_category = category_count - skipped_in_category
             if skipped_in_category > 0:
@@ -258,7 +276,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     f"({skipped_in_category} skipped due to invalid data)"
                 )
             total_skipped += skipped_in_category
-        
+
         # Log overall summary
         self.context.logger.info(
             f"Constructed {len(all_bets)} bet_dicts from {total_markets} total markets "
@@ -274,13 +292,15 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         # Fetch markets from Polymarket
         bets_market_chunk = yield from self._fetch_markets_from_polymarket()
-        
+
         # If fetch failed, clear bets to trigger FETCH_ERROR event
         if bets_market_chunk is None:
-            self.context.logger.error("Market fetch failed, clearing bets to trigger error event")
+            self.context.logger.error(
+                "Market fetch failed, clearing bets to trigger error event"
+            )
             self.bets = []
             return
-        
+
         self._process_chunk(bets_market_chunk)
         self._blacklist_expired_bets()
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -203,21 +203,25 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             - mech requesting done: 3.
             - bet placement done: 4.
             - sell outcome tokens done: 5.
-            - redeeming done: 7.
-            - staking done: 8.
+            - redeeming done: 8.
+            - swap done: 9.
+            - staking done: 10.
             - subscription done: 6.
+            - set approval done: 7.
             - round timeout: 1.
-            - unrecognized: 9.
+            - unrecognized: 11.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
         5. FinishedSellOutcomeTokensTxRound
         6. FinishedSubscriptionTxRound
-        7. FinishedRedeemingTxRound
-        8. FinishedStakingTxRound
-        9. FailedMultiplexerRound
+        7. FinishedSetApprovalTxRound
+        8. FinishedRedeemingTxRound
+        9. FinishedPolymarketSwapTxRound
+        10. FinishedStakingTxRound
+        11. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedPolymarketSwapTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0

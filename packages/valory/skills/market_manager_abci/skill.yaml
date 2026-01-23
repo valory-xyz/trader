@@ -153,7 +153,6 @@ models:
       the_graph_error_message_key: message
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
-      polymarket_market_slug_to_bet_on: ''
     class_name: MarketManagerParams
   benchmarking_mode:
     args:

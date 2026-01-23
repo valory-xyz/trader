@@ -119,8 +119,8 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
     ) -> Generator[None, None, Optional[str]]:
         """Prepares and returns the safe tx hash."""
         response = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_STATE,
-            contract_address=self.synchronized_data.safe_contract_address,  # the safe contract address
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.synchronized_data.safe_contract_address,
             contract_id=str(GnosisSafeContract.contract_id),
             contract_callable="get_raw_safe_transaction_hash",
             to_address=to_address,  # the contract the safe will invoke
@@ -133,7 +133,7 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
         if response.performative != ContractApiMessage.Performative.STATE:
             self.context.logger.error(
                 f"Couldn't get safe hash. "
-                f"Expected response performative {ContractApiMessage.Performative.STATE.value}, "
+                f"Expected response performative {ContractApiMessage.Performative.STATE.value}, "  # type: ignore
                 f"received {response.performative.value}."
             )
             return None
@@ -267,7 +267,7 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
 
         if response.status_code not in HTTP_OK:
             self.context.logger.error(
-                f"[SwapPOLBehaviour] LiFi API returned status {response.status_code}: {response.body}"
+                f"[SwapPOLBehaviour] LiFi API returned status {response.status_code}: {response.body!r}"
             )
             return None
 

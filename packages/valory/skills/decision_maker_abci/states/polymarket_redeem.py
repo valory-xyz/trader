@@ -42,7 +42,7 @@ MECH_TOOLS_FIELD = "mech_tools"
 
 
 class PolymarketRedeemRound(TxPreparationRound):
-    """."""
+    """PolymarketRedeemRound"""
 
     payload_class: Type[MultisigTxPayload] = PolymarketRedeemPayload
     mech_tools_name = get_name(SynchronizedData.available_mech_tools)
@@ -54,6 +54,9 @@ class PolymarketRedeemRound(TxPreparationRound):
         get_name(SynchronizedData.payout_so_far),
     )
     none_event = Event.NO_REDEEMING
+
+    # This needs to be mentioned for static checkers
+    # Event.PREPARE_TX
 
     @property
     def most_voted_payload_values(

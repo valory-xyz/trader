@@ -24,7 +24,9 @@ from typing import Generator
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.payloads import FetchMarketsRouterPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    FetchMarketsRouterPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
     FetchMarketsRouterRound,
 )
@@ -38,6 +40,8 @@ class FetchMarketsRouterBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
 
-        payload = FetchMarketsRouterPayload(sender=self.context.agent_address, vote=True)
+        payload = FetchMarketsRouterPayload(
+            sender=self.context.agent_address, vote=True
+        )
 
         yield from self.finish_behaviour(payload)

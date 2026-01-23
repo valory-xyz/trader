@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -87,14 +87,18 @@ PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
 # Gnosis Chain Configuration
 GNOSIS_CHAIN_NAME = "gnosis"
 GNOSIS_CHAIN_ID = 100
-GNOSIS_NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+GNOSIS_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000000000"  # nosec: B105
+)
 GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GNOSIS_USDC_E_ADDRESS = "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"
 
 # Polygon Chain Configuration
 POLYGON_CHAIN_NAME = "polygon"
 POLYGON_CHAIN_ID = 137
-POLYGON_NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+POLYGON_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000000000"  # nosec: B105
+)
 POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
@@ -333,9 +337,12 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
         """
-        Adjusts fund status based on chain:
-        - Gnosis (Omen): wxDAI balance considered as xDAI
-        - Polygon (Polymarket): USDC balance considered as POL (with decimal conversion)
+        Adjust fund status based on chain-specific token equivalence:
+
+        - Gnosis (Omen): treat wxDAI as xDAI
+        - Polygon (Polymarket): treat USDC as POL with decimal conversion
+
+        :return: The adjusted fund requirements.
         """
         funds_status = copy.deepcopy(self.funds_status)
 
@@ -355,6 +362,11 @@ class HttpHandler(BaseHttpHandler):
                 usdc_decimals = usdc_status.decimals
                 native_decimals = native_status.decimals
                 # Convert from USDC decimals to native token decimals
+                if usdc_decimals is None or native_decimals is None:
+                    self.context.logger.error(
+                        "Missing decimal information for USDC or native token. Can't apply adjustment."
+                    )
+                    return funds_status
                 decimal_diff = native_decimals - usdc_decimals
                 adjustment_balance = usdc_balance * (10**decimal_diff)
             else:

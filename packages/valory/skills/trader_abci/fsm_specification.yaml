@@ -1,124 +1,122 @@
 alphabet_in:
-    - BENCHMARKING_DISABLED
-    - BENCHMARKING_ENABLED
-    - BENCHMARKING_FINISHED
-    - BET_PLACEMENT_DONE
-    - BLACKLIST
-    - BUY_SUBSCRIPTION
-    - CALC_BUY_AMOUNT_FAILED
-    - CALC_SELL_AMOUNT_FAILED
-    - CHECKS_PASSED
-    - CHECK_HISTORY
-    - CHECK_LATE_ARRIVING_MESSAGE
-    - CHECK_TIMEOUT
-    - DONE
-    - DONE_NO_SELL
-    - DONE_SELL
-    - FAIL
-    - FETCH_ERROR
-    - FINALIZATION_FAILED
-    - FINALIZE_TIMEOUT
-    - INCORRECT_SERIALIZATION
-    - INSUFFICIENT_BALANCE
-    - INSUFFICIENT_FUNDS
-    - MECH_REQUESTING_DONE
-    - MECH_RESPONSE_ERROR
-    - MOCK_MECH_REQUEST
-    - MOCK_TX
-    - NEGATIVE
-    - NEW_SIMULATED_RESAMPLE
-    - NEXT_CHECKPOINT_NOT_REACHED_YET
-    - NONE
-    - NO_MAJORITY
-    - NO_OP
-    - NO_REDEEMING
-    - PREPARE_TX
-    - REDEEMING_DONE
-    - REDEEM_ROUND_TIMEOUT
-    - REFILL_REQUIRED
-    - RESET_AND_PAUSE_TIMEOUT
-    - RESET_TIMEOUT
-    - REVIEW_BETS
-    - ROUND_TIMEOUT
-    - SELL_OUTCOME_TOKENS_DONE
-    - SERVICE_EVICTED
-    - SERVICE_NOT_STAKED
-    - SKIP_REQUEST
-    - SKIP_TRADING
-    - SLOTS_UNSUPPORTED_ERROR
-    - STAKING_DONE
-    - SUBSCRIPTION_DONE
-    - SUSPICIOUS_ACTIVITY
-    - TIE
-    - UNPROFITABLE
-    - UNRECOGNIZED
-    - VALIDATE_TIMEOUT
-    - POLYMARKET_DONE
-    - POLYMARKET_FETCH_MARKETS
-    - BET_PLACEMENT_FAILED
-    - BET_PLACEMENT_DONE
+- APPROVAL_FAILED
+- BENCHMARKING_DISABLED
+- BENCHMARKING_ENABLED
+- BENCHMARKING_FINISHED
+- BET_PLACEMENT_DONE
+- BET_PLACEMENT_FAILED
+- BLACKLIST
+- BUY_SUBSCRIPTION
+- CALC_BUY_AMOUNT_FAILED
+- CALC_SELL_AMOUNT_FAILED
+- CHECKS_PASSED
+- CHECK_HISTORY
+- CHECK_LATE_ARRIVING_MESSAGE
+- CHECK_TIMEOUT
+- DONE
+- DONE_NO_SELL
+- DONE_SELL
+- FAIL
+- FETCH_ERROR
+- FINALIZATION_FAILED
+- FINALIZE_TIMEOUT
+- INCORRECT_SERIALIZATION
+- INSUFFICIENT_BALANCE
+- INSUFFICIENT_FUNDS
+- MECH_REQUESTING_DONE
+- MECH_RESPONSE_ERROR
+- MOCK_MECH_REQUEST
+- MOCK_TX
+- NEGATIVE
+- NEW_SIMULATED_RESAMPLE
+- NEXT_CHECKPOINT_NOT_REACHED_YET
+- NONE
+- NO_MAJORITY
+- NO_OP
+- NO_REDEEMING
+- POLYMARKET_DONE
+- POLYMARKET_FETCH_MARKETS
+- PREPARE_TX
+- REDEEMING_DONE
+- REDEEM_ROUND_TIMEOUT
+- REFILL_REQUIRED
+- RESET_AND_PAUSE_TIMEOUT
+- RESET_TIMEOUT
+- REVIEW_BETS
+- ROUND_TIMEOUT
+- SELL_OUTCOME_TOKENS_DONE
+- SERVICE_EVICTED
+- SERVICE_NOT_STAKED
+- SET_APPROVAL
+- SET_APPROVAL_DONE
+- SKIP_REQUEST
+- SKIP_TRADING
+- SLOTS_UNSUPPORTED_ERROR
+- STAKING_DONE
+- SUBSCRIPTION_DONE
+- SUSPICIOUS_ACTIVITY
+- SWAP_DONE
+- TIE
+- UNPROFITABLE
+- UNRECOGNIZED
+- VALIDATE_TIMEOUT
 default_start_state: RegistrationStartupRound
 final_states:
-    - FailedMultiplexerRound
-    - FinishedRedeemTxPreparationRound
-    - FinishedSetApprovalTxPreparationRound
-    - ImpossibleRound
-    - ServiceEvictedRound
-    - FinishedPolymarketRedeemRound
-    - FinishedPolymarketSwapTxPreparationRound
+- FailedMultiplexerRound
+- ImpossibleRound
+- ServiceEvictedRound
 label: TraderAbciApp
 start_states:
-    - RegistrationRound
-    - RegistrationStartupRound
+- RegistrationRound
+- RegistrationStartupRound
 states:
-    - BenchmarkingModeDisabledRound
-    - BenchmarkingRandomnessRound
-    - BetPlacementRound
-    - PolymarketBetPlacementRound
-    - BlacklistingRound
-    - CallCheckpointRound
-    - ChatuiLoadRound
-    - CheckBenchmarkingModeRound
-    - CheckLateTxHashesRound
-    - CheckStopTradingRound
-    - CheckTransactionHistoryRound
-    - CollectSignatureRound
-    - DecisionReceiveRound
-    - DecisionRequestRound
-    - FailedMultiplexerRound
-    - FetchPerformanceDataRound
-    - FinalizationRound
-    - HandleFailedTxRound
-    - ImpossibleRound
-    - MechPurchaseSubscriptionRound
-    - MechRequestRound
-    - MechResponseRound
-    - PolymarketPostSetApprovalRound
-    - PostTxSettlementRound
-    - PreTxSettlementRound
-    - RandomnessRound
-    - RandomnessTransactionSubmissionRound
-    - RedeemRound
-    - PolymarketRedeemRound
-    - RedeemRouterRound
-    - RefillRequiredRound
-    - RegistrationRound
-    - RegistrationStartupRound
-    - ResetAndPauseRound
-    - ResetRound
-    - SamplingRound
-    - SelectKeeperTransactionSubmissionARound
-    - SelectKeeperTransactionSubmissionBAfterTimeoutRound
-    - SelectKeeperTransactionSubmissionBRound
-    - SellOutcomeTokensRound
-    - ServiceEvictedRound
-    - SynchronizeLateMessagesRound
-    - ToolSelectionRound
-    - UpdateBetsRound
-    - FetchMarketsRouterRound
-    - PolymarketFetchMarketRound
-    - ValidateTransactionRound
-    - PolymarketSwapUsdcRound
+- BenchmarkingRandomnessRound
+- BetPlacementRound
+- BlacklistingRound
+- CallCheckpointRound
+- ChatuiLoadRound
+- CheckBenchmarkingModeRound
+- CheckLateTxHashesRound
+- CheckStopTradingRound
+- CheckTransactionHistoryRound
+- CollectSignatureRound
+- DecisionReceiveRound
+- DecisionRequestRound
+- FailedMultiplexerRound
+- FetchMarketsRouterRound
+- FetchPerformanceDataRound
+- FinalizationRound
+- HandleFailedTxRound
+- ImpossibleRound
+- MechPurchaseSubscriptionRound
+- MechRequestRound
+- MechResponseRound
+- PolymarketBetPlacementRound
+- PolymarketFetchMarketRound
+- PolymarketPostSetApprovalRound
+- PolymarketRedeemRound
+- PolymarketSetApprovalRound
+- PolymarketSwapUsdcRound
+- PostTxSettlementRound
+- PreTxSettlementRound
+- RandomnessRound
+- RandomnessTransactionSubmissionRound
+- RedeemRound
+- RedeemRouterRound
+- RegistrationRound
+- RegistrationStartupRound
+- ResetAndPauseRound
+- ResetRound
+- SamplingRound
+- SelectKeeperTransactionSubmissionARound
+- SelectKeeperTransactionSubmissionBAfterTimeoutRound
+- SelectKeeperTransactionSubmissionBRound
+- SellOutcomeTokensRound
+- ServiceEvictedRound
+- SynchronizeLateMessagesRound
+- ToolSelectionRound
+- UpdateBetsRound
+- ValidateTransactionRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -127,13 +125,13 @@ transition_func:
     (BetPlacementRound, CALC_BUY_AMOUNT_FAILED): HandleFailedTxRound
     (BetPlacementRound, DONE): PreTxSettlementRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
-    (BetPlacementRound, MOCK_TX): RedeemRouterRound
+    (BetPlacementRound, MOCK_TX): RedeemRound
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRouterRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): RedeemRouterRound
+    (BlacklistingRound, MOCK_TX): RedeemRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -147,12 +145,13 @@ transition_func:
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): FetchMarketsRouterRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
-    (CheckBenchmarkingModeRound, SET_APPROVAL): PolymarketSetApprovalRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, PREPARE_TX): PolymarketSetApprovalRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
+    (CheckBenchmarkingModeRound, SET_APPROVAL): PolymarketSetApprovalRound
     (CheckLateTxHashesRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckLateTxHashesRound, CHECK_TIMEOUT): CheckLateTxHashesRound
     (CheckLateTxHashesRound, DONE): PostTxSettlementRound
@@ -164,7 +163,7 @@ transition_func:
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
     (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
-    (CheckStopTradingRound, SKIP_TRADING): RedeemRouterRound
+    (CheckStopTradingRound, SKIP_TRADING): RedeemRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
     (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
@@ -175,11 +174,11 @@ transition_func:
     (CollectSignatureRound, NO_MAJORITY): ResetRound
     (CollectSignatureRound, ROUND_TIMEOUT): CollectSignatureRound
     (DecisionReceiveRound, DONE): BetPlacementRound
-    (DecisionReceiveRound, POLYMARKET_DONE): PolymarketBetPlacementRound
     (DecisionReceiveRound, DONE_NO_SELL): PreTxSettlementRound
     (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
+    (DecisionReceiveRound, POLYMARKET_DONE): PolymarketBetPlacementRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
@@ -188,6 +187,10 @@ transition_func:
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (FetchMarketsRouterRound, DONE): UpdateBetsRound
+    (FetchMarketsRouterRound, NONE): FetchMarketsRouterRound
+    (FetchMarketsRouterRound, NO_MAJORITY): FetchMarketsRouterRound
+    (FetchMarketsRouterRound, POLYMARKET_FETCH_MARKETS): PolymarketFetchMarketRound
     (FetchPerformanceDataRound, DONE): ChatuiLoadRound
     (FetchPerformanceDataRound, FAIL): ChatuiLoadRound
     (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
@@ -201,7 +204,7 @@ transition_func:
     (FinalizationRound, INSUFFICIENT_FUNDS): SelectKeeperTransactionSubmissionBRound
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
-    (HandleFailedTxRound, NO_OP): RedeemRouterRound
+    (HandleFailedTxRound, NO_OP): RedeemRound
     (MechPurchaseSubscriptionRound, DONE): PreTxSettlementRound
     (MechPurchaseSubscriptionRound, NONE): MechPurchaseSubscriptionRound
     (MechPurchaseSubscriptionRound, NO_MAJORITY): MechPurchaseSubscriptionRound
@@ -210,37 +213,55 @@ transition_func:
     (MechRequestRound, DONE): PreTxSettlementRound
     (MechRequestRound, NO_MAJORITY): MechRequestRound
     (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
-    (MechRequestRound, SKIP_REQUEST): RedeemRouterRound
+    (MechRequestRound, SKIP_REQUEST): RedeemRound
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
-    (PolymarketBetPlacementRound, DONE): RedeemRound
-    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
-    (PolymarketBetPlacementRound, MOCK_TX): RedeemRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
+    (PolymarketBetPlacementRound, DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): ResetAndPauseRound
+    (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound
     (PolymarketBetPlacementRound, NONE): ImpossibleRound
-    (PolymarketBetPlacementRound, NO_MAJORITY): BetPlacementRound
-    (PolymarketBetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
-    (PolymarketSetApprovalRound, DONE): PolymarketPostSetApprovalRound
-    (PolymarketSetApprovalRound, PREPARE_TX): PreTxSettlementRound
-    (PolymarketSetApprovalRound, SKIP): BenchmarkingModeDisabledRound
-    (PolymarketSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
-    (PolymarketSetApprovalRound, NO_MAJORITY): PolymarketSetApprovalRound
-    (PolymarketSetApprovalRound, ROUND_TIMEOUT): PolymarketSetApprovalRound
-    (PolymarketSetApprovalRound, NONE): ImpossibleRound
-    (PolymarketPostSetApprovalRound, DONE): BenchmarkingModeDisabledRound
-    (PolymarketPostSetApprovalRound, SKIP): BenchmarkingModeDisabledRound
+    (PolymarketBetPlacementRound, NO_MAJORITY): PolymarketBetPlacementRound
+    (PolymarketBetPlacementRound, ROUND_TIMEOUT): PolymarketBetPlacementRound
+    (PolymarketFetchMarketRound, DONE): CheckStopTradingRound
+    (PolymarketFetchMarketRound, FETCH_ERROR): ImpossibleRound
+    (PolymarketFetchMarketRound, NO_MAJORITY): PolymarketFetchMarketRound
+    (PolymarketFetchMarketRound, ROUND_TIMEOUT): PolymarketFetchMarketRound
     (PolymarketPostSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
+    (PolymarketPostSetApprovalRound, DONE): FetchMarketsRouterRound
+    (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
-    (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
+    (PolymarketRedeemRound, DONE): CallCheckpointRound
+    (PolymarketRedeemRound, MOCK_TX): CallCheckpointRound
+    (PolymarketRedeemRound, NONE): PolymarketRedeemRound
+    (PolymarketRedeemRound, NO_MAJORITY): PolymarketRedeemRound
+    (PolymarketRedeemRound, NO_REDEEMING): CallCheckpointRound
+    (PolymarketRedeemRound, PREPARE_TX): PreTxSettlementRound
+    (PolymarketRedeemRound, REDEEM_ROUND_TIMEOUT): PreTxSettlementRound
+    (PolymarketSetApprovalRound, DONE): PolymarketPostSetApprovalRound
+    (PolymarketSetApprovalRound, MOCK_TX): PolymarketPostSetApprovalRound
+    (PolymarketSetApprovalRound, NONE): ImpossibleRound
+    (PolymarketSetApprovalRound, NO_MAJORITY): PolymarketSetApprovalRound
+    (PolymarketSetApprovalRound, PREPARE_TX): PreTxSettlementRound
+    (PolymarketSetApprovalRound, ROUND_TIMEOUT): PolymarketSetApprovalRound
+    (PolymarketSwapUsdcRound, DONE): DecisionRequestRound
+    (PolymarketSwapUsdcRound, MOCK_TX): DecisionRequestRound
+    (PolymarketSwapUsdcRound, NONE): DecisionRequestRound
+    (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
+    (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
+    (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRouterRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRound
     (PostTxSettlementRound, SET_APPROVAL_DONE): PolymarketPostSetApprovalRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): RandomnessRound
+    (PostTxSettlementRound, SWAP_DONE): DecisionRequestRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
     (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
@@ -261,16 +282,10 @@ transition_func:
     (RedeemRound, NO_REDEEMING): CallCheckpointRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
     (RedeemRouterRound, DONE): RedeemRound
-    (RedeemRouterRound, POLYMARKET_DONE): PolymarketRedeemRound
-    (RedeemRouterRound, NO_MAJORITY): RedeemRouterRound
     (RedeemRouterRound, NONE): RedeemRouterRound
+    (RedeemRouterRound, NO_MAJORITY): RedeemRouterRound
+    (RedeemRouterRound, POLYMARKET_DONE): PolymarketRedeemRound
     (RegistrationRound, DONE): FetchPerformanceDataRound
-    (PolymarketRedeemRound, DONE): FinishedPolymarketRedeemRound
-    (PolymarketRedeemRound, PREPARE_TX): PreTxSettlementRound
-    (PolymarketRedeemRound, NONE): PolymarketRedeemRound
-    (PolymarketRedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
-    (PolymarketRedeemRound, NO_MAJORITY): PolymarketRedeemRound
-    (PolymarketRedeemRound, REDEEM_ROUND_TIMEOUT): CallCheckpointRound
     (RegistrationRound, NO_MAJORITY): RegistrationRound
     (RegistrationStartupRound, DONE): FetchPerformanceDataRound
     (ResetAndPauseRound, DONE): FetchPerformanceDataRound
@@ -284,7 +299,7 @@ transition_func:
     (SamplingRound, DONE): ToolSelectionRound
     (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
-    (SamplingRound, NONE): RedeemRouterRound
+    (SamplingRound, NONE): RedeemRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound
@@ -315,22 +330,10 @@ transition_func:
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
     (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
-    (PolymarketSwapUsdcRound, DONE): DecisionRequestRound
-    (PolymarketSwapUsdcRound, NONE): DecisionRequestRound
-    (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
-    (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
-    (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
     (UpdateBetsRound, DONE): CheckStopTradingRound
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound
     (UpdateBetsRound, ROUND_TIMEOUT): UpdateBetsRound
-    (FetchMarketsRouterRound, DONE): UpdateBetsRound
-    (FetchMarketsRouterRound, POLYMARKET_FETCH_MARKETS): PolymarketFetchMarketRound
-    (FetchMarketsRouterRound, NO_MAJORITY): FetchMarketsRouterRound
-    (PolymarketFetchMarketRound, DONE): CheckStopTradingRound
-    (PolymarketFetchMarketRound, FETCH_ERROR): ResetAndPauseRound
-    (PolymarketFetchMarketRound, NO_MAJORITY): PolymarketFetchMarketRound
-    (PolymarketFetchMarketRound, ROUND_TIMEOUT): PolymarketFetchMarketRound
     (ValidateTransactionRound, DONE): PostTxSettlementRound
     (ValidateTransactionRound, NEGATIVE): CheckTransactionHistoryRound
     (ValidateTransactionRound, NONE): SelectKeeperTransactionSubmissionBRound

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 """This module contains the behaviours for the MarketManager skill."""
 
 import json
+import os
 import os.path
 import time
 from abc import ABC
@@ -28,12 +29,10 @@ from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
 from aea.helpers.ipfs.base import IPFSHashOnly
 from aea.protocols.base import Message
-from dateutil import parser as date_parser
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
@@ -46,6 +45,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    FetchStatus,
     MAX_LOG_SIZE,
     QueryingBehaviour,
 )
@@ -69,10 +69,6 @@ READ_MODE = "r"
 WRITE_MODE = "w"
 
 
-USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
-
 class BetsManagerBehaviour(BaseBehaviour, ABC):
     """Abstract behaviour responsible for bets management, such as storing, hashing, reading."""
 
@@ -92,6 +88,54 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def benchmarking_mode(self) -> BenchmarkingMode:
         """Return the benchmarking mode configurations."""
         return cast(BenchmarkingMode, self.context.benchmarking_mode)
+
+    def _do_connection_request(
+        self,
+        message: Message,
+        dialogue: Message,
+        timeout: Optional[float] = None,
+    ) -> Generator[None, None, Message]:
+        """Do a request and wait the response, asynchronously."""
+
+        self.context.outbox.put_message(message=message)
+        request_nonce = self._get_request_nonce_from_dialogue(dialogue)  # type: ignore
+        cast(Requests, self.context.requests).request_id_to_callback[
+            request_nonce
+        ] = self.get_callback_request()
+        response = yield from self.wait_for_message(timeout=timeout)
+        return response
+
+    def do_connection_request(
+        self,
+        message: Message,
+        dialogue: Message,
+        timeout: Optional[float] = None,
+    ) -> Generator[None, None, Message]:
+        """Public wrapper for making a connection request and waiting for response."""
+        return (yield from self._do_connection_request(message, dialogue, timeout))
+
+    def send_polymarket_connection_request(
+        self,
+        payload_data: Dict[str, Any],
+    ) -> Generator[None, None, Any]:
+        """Send a request to the Polymarket connection and wait for the response."""
+
+        self.context.logger.info(f"Payload data: {payload_data}")
+
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+        srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(payload_data),
+        )
+
+        srr_message = cast(SrrMessage, srr_message)
+        srr_dialogue = cast(SrrDialogue, srr_dialogue)
+        response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
+
+        response_json = json.loads(response.payload)  # type: ignore
+
+        return response_json
 
     def store_bets(self) -> None:
         """Store the bets to the agent's data dir as JSON."""
@@ -145,63 +189,6 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def hash_stored_bets(self) -> str:
         """Get the hash of the stored bets' file."""
         return IPFSHashOnly.hash_file(self.multi_bets_filepath)
-
-    def _do_connection_request(
-        self,
-        message: Message,
-        dialogue: Message,
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, Message]:
-        """Do a request and wait the response, asynchronously."""
-
-        self.context.outbox.put_message(message=message)
-        request_nonce = self._get_request_nonce_from_dialogue(dialogue)  # type: ignore
-        cast(Requests, self.context.requests).request_id_to_callback[
-            request_nonce
-        ] = self.get_callback_request()
-        response = yield from self.wait_for_message(timeout=timeout)
-        return response
-
-    def do_connection_request(
-        self,
-        message: Message,
-        dialogue: Message,
-        timeout: Optional[float] = None,
-    ) -> Generator[None, None, Message]:
-        """
-        Public wrapper for making a connection request and waiting for response.
-
-        Args:
-            message: The message to send
-            dialogue: The dialogue context
-            timeout: Optional timeout duration
-
-        Returns:
-            Message: The response message
-        """
-        return (yield from self._do_connection_request(message, dialogue, timeout))
-
-    def send_polymarket_connection_request(
-        self,
-        payload_data: Dict[str, Any],
-    ) -> Generator[None, None, Optional[str]]:
-
-        self.context.logger.info(f"Payload data: {payload_data}")
-
-        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
-        srr_message, srr_dialogue = srr_dialogues.create(
-            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
-            performative=SrrMessage.Performative.REQUEST,
-            payload=json.dumps(payload_data),
-        )
-
-        srr_message = cast(SrrMessage, srr_message)
-        srr_dialogue = cast(SrrDialogue, srr_dialogue)
-        response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
-
-        response_json = json.loads(response.payload)  # type: ignore
-
-        return response_json  # type: ignore
 
 
 class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
@@ -327,64 +314,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             else:
                 self.bets[index].update_market_info(bet)
 
-    def _fetch_markets_from_polymarket(self) -> Generator:
-        """Fetch the markets from Polymarket."""
-        # TODO:
-        # Prepare payload data
-        polymarket_fetch_market_payload = {
-            "request_type": RequestType.FETCH_MARKET.value,
-            "params": {
-                "slug": self.params.polymarket_market_slug_to_bet_on,
-            },
-        }
-        response = yield from self.send_polymarket_connection_request(
-            polymarket_fetch_market_payload
-        )
-        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! fetched market response: {response}")
-
-        # Parse JSON fields from response
-        outcomes = json.loads(response.get("outcomes", "[]"))
-        outcome_prices = json.loads(response.get("outcomePrices", "[]"))
-        clob_token_ids = json.loads(response.get("clobTokenIds", "[]"))
-
-        end_date = response.get("endDate", "")
-        opening_timestamp = (
-            int(date_parser.isoparse(end_date).timestamp()) if end_date else 0
-        )
-
-        # Calculate outcomeTokenAmounts from liquidity and prices
-        liquidity = float(response.get("liquidity", "0"))
-        outcome_token_amounts = [
-            int(liquidity * float(price) * 10**6) for price in outcome_prices
-        ]
-
-        # Create outcome_token_ids mapping
-        outcome_token_ids = {
-            outcome: token_id for outcome, token_id in zip(outcomes, clob_token_ids)
-        }
-
-        bet_dict = {
-            "id": response.get("id"),
-            "condition_id": response.get("conditionId"),
-            "title": response.get("question"),
-            "collateralToken": USCDE_POLYGON,  # Polymarket uses USDC.e on Polygon
-            "creator": response.get("submitted_by", ZERO_ADDRESS),
-            "fee": 0,  # Polymarket fee is typically 0 or handled differently
-            "openingTimestamp": opening_timestamp,
-            "outcomeSlotCount": len(outcomes),
-            "outcomeTokenAmounts": outcome_token_amounts,
-            "outcomeTokenMarginalPrices": [float(price) for price in outcome_prices],
-            "outcomes": outcomes,
-            "scaledLiquidityMeasure": liquidity,
-            "processed_timestamp": 0,
-            "position_liquidity": 0,
-            "potential_net_profit": 0,
-            "investments": {},
-            "outcome_token_ids": outcome_token_ids,
-        }
-        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! constructed bet_dict: {bet_dict}")
-        return [bet_dict]
-
     def _update_bets(
         self,
     ) -> Generator:
@@ -392,23 +321,16 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         # Fetching bets from the prediction markets
         while True:
-            # can_proceed = self._prepare_fetching()
-            # if not can_proceed:
-            #     break
+            can_proceed = self._prepare_fetching()
+            if not can_proceed:
+                break
 
-            # Deleting all current markets. To be removed
-            with open(self.context.params.store_path / MULTI_BETS_FILENAME, "w") as f:
-                f.write("")
-
-            # bets_market_chunk = yield from self._fetch_bets()
-            bets_market_chunk = yield from self._fetch_markets_from_polymarket()
+            bets_market_chunk = yield from self._fetch_bets()
             self._process_chunk(bets_market_chunk)
-            break
 
-        # TODO: Uncomment
-        # if self._fetch_status != FetchStatus.SUCCESS:
-        #     # this won't wipe the bets as the `store_bets` of the `BetsManagerBehaviour` takes this into consideration
-        #     self.bets = []
+        if self._fetch_status != FetchStatus.SUCCESS:
+            # this won't wipe the bets as the `store_bets` of the `BetsManagerBehaviour` takes this into consideration
+            self.bets = []
 
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
@@ -440,8 +362,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
-            # TODO: Uncomment when investment tracking is ready
-            # yield from self.update_bets_investments()
+            yield from self.update_bets_investments()
 
             if self.review_bets_for_selling():
                 self._requeue_bets_for_selling()

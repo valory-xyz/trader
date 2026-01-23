@@ -41,15 +41,6 @@ class RedeemRouterRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_selection)
 
-    @property
-    def params(self):
-        from packages.valory.skills.decision_maker_abci.models import (
-            DecisionMakerParams,
-        )
-
-        """Return the shared state."""
-        return cast(DecisionMakerParams, self.context.params)
-
     def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -58,9 +49,9 @@ class RedeemRouterRound(VotingRound):
             return None
         synchronized_data, event = res
 
-        if self.params.is_running_on_polymarket:
+        if self.context.params.is_running_on_polymarket:
             event = Event.POLYMARKET_DONE
         else:
             event = Event.DONE
 
-        return synchronized_data, event
+        return cast(SynchronizedData, synchronized_data), event

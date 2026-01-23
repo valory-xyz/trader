@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketPostSetApprovalPayload,
 )
-
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
@@ -60,7 +59,7 @@ class PolymarketPostSetApprovalRound(CollectSameUntilThresholdRound):
         if event == Event.DONE:
             # Get the consensus vote from the most_voted_payload
             most_voted_payload = self.most_voted_payload
-            if most_voted_payload in ("partial", "no", "error"):
+            if most_voted_payload is False:
                 self.context.logger.warning(
                     f"Approvals not fully set (vote: {most_voted_payload}). Routing back to SET_APPROVAL."
                 )
