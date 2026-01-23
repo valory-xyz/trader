@@ -84,7 +84,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 continue
             # Blacklist binary markets with extreme outcome prices (>= 0.99) indicating resolved/over markets
             if len(bet.outcomeTokenMarginalPrices) == 2:
-                if any(float(price) >= EXTREME_PRICE_THRESHOLD for price in bet.outcomeTokenMarginalPrices):
+                if any(
+                    float(price) >= EXTREME_PRICE_THRESHOLD
+                    for price in bet.outcomeTokenMarginalPrices
+                ):
                     bet.blacklist_forever()
 
     @property
