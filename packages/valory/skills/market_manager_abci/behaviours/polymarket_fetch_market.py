@@ -42,7 +42,8 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
 
 USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-RESOLVED_OUTCOME_PRICES = {"0.0005", "0.9995"}
+# Threshold for extreme outcome prices indicating resolved/over markets
+EXTREME_PRICE_THRESHOLD = 0.99
 
 
 class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
@@ -81,10 +82,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
                 continue
-            # Blacklist binary markets whose outcome prices indicate resolved/over (0.0005, 0.9995)
+            # Blacklist binary markets with extreme outcome prices (>= 0.99) indicating resolved/over markets
             if len(bet.outcomeTokenMarginalPrices) == 2:
-                prices_str = {str(float(p)) for p in bet.outcomeTokenMarginalPrices}
-                if prices_str == RESOLVED_OUTCOME_PRICES:
+                if any(float(price) >= EXTREME_PRICE_THRESHOLD for price in bet.outcomeTokenMarginalPrices):
                     bet.blacklist_forever()
 
     @property
