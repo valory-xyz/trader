@@ -8,10 +8,11 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours/__init__.py: bafybeicpqzdf22w7g4ivjwtl6ggp6g7ejrr6h6zs73rfbk3qfurqi2xwmq
+  behaviours/__init__.py: bafybeiemmuvhbsh2laur3ide7v5jsdwk2zkd3srvfnd35473fgbocwaknq
   behaviours/base.py: bafybeieulreqvriemtsyw4c7tcwuv5a537w3qmnktmunasvkve3wujjioy
   behaviours/fetch_markets_router.py: bafybeiezt27o6u5tstmopzyyc5g7goyzsremai36ldxn7n2qjvhimbiyha
   behaviours/polymarket_fetch_market.py: bafybeibq34vesb7522fr5nb3htszwdowqyukjbho4ny2hnksy4rtpbokou
+  behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
   behaviours/update_bets.py: bafybeihealdlbwmqdgb7fww4nv7tjz4k72mzhacudfytc52fccnnyzg6di
   bets.py: bafybeib5ye6om4irkh4gxflgzyk47otobzqgg3qifuuz6z3syprvilnbz4
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
