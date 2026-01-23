@@ -131,7 +131,7 @@ transition_func:
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): RedeemRouterRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
-    (BlacklistingRound, MOCK_TX): RedeemRound
+    (BlacklistingRound, MOCK_TX): RedeemRouterRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
@@ -163,7 +163,7 @@ transition_func:
     (CheckStopTradingRound, NO_MAJORITY): CheckStopTradingRound
     (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
-    (CheckStopTradingRound, SKIP_TRADING): RedeemRound
+    (CheckStopTradingRound, SKIP_TRADING): RedeemRouterRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
     (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
@@ -213,7 +213,7 @@ transition_func:
     (MechRequestRound, DONE): PreTxSettlementRound
     (MechRequestRound, NO_MAJORITY): MechRequestRound
     (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
-    (MechRequestRound, SKIP_REQUEST): RedeemRound
+    (MechRequestRound, SKIP_REQUEST): RedeemRouterRound
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
@@ -253,11 +253,11 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
-    (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRound
+    (PostTxSettlementRound, BET_PLACEMENT_DONE): RedeemRouterRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CallCheckpointRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): RedeemRouterRound
     (PostTxSettlementRound, SET_APPROVAL_DONE): PolymarketPostSetApprovalRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): RandomnessRound
@@ -299,7 +299,7 @@ transition_func:
     (SamplingRound, DONE): ToolSelectionRound
     (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
-    (SamplingRound, NONE): RedeemRound
+    (SamplingRound, NONE): RedeemRouterRound
     (SamplingRound, NO_MAJORITY): SamplingRound
     (SamplingRound, ROUND_TIMEOUT): SamplingRound
     (SelectKeeperTransactionSubmissionARound, DONE): CollectSignatureRound

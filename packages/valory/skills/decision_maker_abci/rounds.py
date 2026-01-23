@@ -103,7 +103,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, RandomnessRound, RedeemRound}
+    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, FetchMarketsRouterRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, RandomnessRound, RedeemRouterRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
@@ -255,7 +255,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         RandomnessRound,
         HandleFailedTxRound,
         DecisionReceiveRound,
-        RedeemRound,
+        RedeemRouterRound,
         PolymarketPostSetApprovalRound,
         DecisionRequestRound,
     }
@@ -481,7 +481,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         Event.REDEEM_ROUND_TIMEOUT: 3600.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
-        RedeemRound: set(),
+        RedeemRouterRound: set(),
         DecisionReceiveRound: {
             get_name(SynchronizedData.final_tx_hash),
         },
