@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.rounds import UpdateBetsPayload
+from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"

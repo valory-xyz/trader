@@ -102,7 +102,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         all_approvals_set = response_json.get("all_approvals_set", False)
 
         if all_approvals_set:
-            self.context.logger.info("✅ All approvals are set successfully!")
+            self.context.logger.info("All approvals are set successfully!")
             self.context.logger.info(
                 f"USDC Allowances: {response_json.get('usdc_allowances', {})}"
             )
@@ -111,7 +111,7 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             )
         else:
             self.context.logger.warning(
-                f"⚠️  Some approvals may not be set correctly: {response_json}"
+                f"Some approvals may not be set correctly: {response_json}"
             )
 
         # Create the payload with approval check result

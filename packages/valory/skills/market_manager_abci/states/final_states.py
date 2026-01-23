@@ -17,28 +17,20 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the MarketManager."""
+"""This module contains the final states of the MarketManager ABCI app."""
 
-from dataclasses import dataclass
-from typing import Optional
+from abc import ABC
 
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-
-
-@dataclass(frozen=True)
-class UpdateBetsPayload(BaseTxPayload):
-    """A transaction payload for the updated bets."""
-
-    bets_hash: Optional[str]
+from packages.valory.skills.abstract_round_abci.base import DegenerateRound
 
 
-@dataclass(frozen=True)
-class VotingPayload(BaseTxPayload):
-    """Represents a transaction payload for voting."""
-
-    vote: bool
+class FinishedMarketManagerRound(DegenerateRound, ABC):
+    """A round that represents MarketManager has finished"""
 
 
-@dataclass(frozen=True)
-class FetchMarketsRouterPayload(VotingPayload):
-    """Represents a payload for Fetch Markets router round."""
+class FailedMarketManagerRound(DegenerateRound, ABC):
+    """A round that represents that the period failed"""
+
+
+class FinishedPolymarketFetchMarketRound(DegenerateRound, ABC):
+    """A round representing that Polymarket fetch market has finished."""

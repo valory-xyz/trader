@@ -154,11 +154,6 @@ class RedeemRouterPayload(VotingPayload):
 
 
 @dataclass(frozen=True)
-class FetchMarketsRouterPayload(VotingPayload):
-    """Represents a payload for Fetch Markets router round."""
-
-
-@dataclass(frozen=True)
 class PolymarketRedeemPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
 

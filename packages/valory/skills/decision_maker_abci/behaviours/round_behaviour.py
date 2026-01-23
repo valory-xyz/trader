@@ -40,17 +40,11 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_receive impo
 from packages.valory.skills.decision_maker_abci.behaviours.decision_request import (
     DecisionRequestBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.fetch_markets_router import (
-    FetchMarketsRouterBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
-)
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_fetch_market import (
-    PolymarketFetchMarketBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (
     PolymarketPostSetApprovalBehaviour,
@@ -105,8 +99,6 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketBetPlacementBehaviour,  # type: ignore
         PolymarketRedeemBehaviour,  # type: ignore
         RedeemRouterBehaviour,  # type: ignore
-        FetchMarketsRouterBehaviour,  # type: ignore
-        PolymarketFetchMarketBehaviour,  # type: ignore
         PolymarketSetApprovalBehaviour,  # type: ignore
         PolymarketPostSetApprovalBehaviour,  # type: ignore
         PolymarketSwapUsdcBehaviour,  # type: ignore

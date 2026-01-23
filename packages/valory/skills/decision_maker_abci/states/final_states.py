@@ -77,13 +77,5 @@ class FinishedPolymarketRedeemRound(DegenerateRound):
     """A round representing that polymarket redeem has finished."""
 
 
-class FinishedFetchMarketsRouterRound(DegenerateRound):
-    """A round representing that fetch markets router has finished."""
-
-
-class FinishedPolymarketFetchMarketRound(DegenerateRound):
-    """A round representing that Polymarket fetch market has finished."""
-
-
 class FinishedPolymarketSwapTxPreparationRound(DegenerateRound):
     """A round representing that Polymarket swap has finished and needs to go to tx settlement."""

@@ -226,7 +226,7 @@ transition_func:
     (PolymarketBetPlacementRound, NO_MAJORITY): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, ROUND_TIMEOUT): PolymarketBetPlacementRound
     (PolymarketFetchMarketRound, DONE): CheckStopTradingRound
-    (PolymarketFetchMarketRound, FETCH_ERROR): ImpossibleRound
+    (PolymarketFetchMarketRound, FETCH_ERROR): ResetAndPauseRound
     (PolymarketFetchMarketRound, NO_MAJORITY): PolymarketFetchMarketRound
     (PolymarketFetchMarketRound, ROUND_TIMEOUT): PolymarketFetchMarketRound
     (PolymarketPostSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
