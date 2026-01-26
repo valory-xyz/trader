@@ -4,28 +4,28 @@ description: Agent Performance summary skill for Predict agent
 author: valory
 type: skill
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
   behaviours.py: bafybeie7efxvjbb5ujfiusmpjbh4evnvkjtz2xk6yqktblqwwlahd3rkv4
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/predictions_helper.py: bafybeie6ghlgbolhu3gwm4l7aupmxoamfljcjmw2vnxxetk2g6muzrvuya
-  graph_tooling/queries.py: bafybeih35iyfnvhe7gr77edgjfouf3hd2gism4rhc4ita66mlfjdnfnfla
+  graph_tooling/predictions_helper.py: bafybeihh6zf3odcmrli4fhuvrzytx4qqtvl7cs5kf6g5z2plqdmxbxmsvq
+  graph_tooling/queries.py: bafybeick4bzu4jamzva6stzgjwpi4ucoupiuiksbjqh6vc442bjn6uej44
   graph_tooling/requests.py: bafybeih3kvxu6ghoxwuiy6v2h6fdouzexdoulmqjvxr4ma7jbg2vrfnfv4
-  handlers.py: bafybeih56l5cjfulscpysrbrsky6fnbyqeostxoyhrabcpszv77pllgnve
+  handlers.py: bafybeicr6jgfxbu6tdixzdq4dulvc3sfdbhwn3e2yobsp7dkfkgmt72hu4
   models.py: bafybeigsnbcsypzwy4pq2ebzrxrzpjjyv5dqwplclihwtgikl6vwbbgxxy
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeifaep43unfegellngvqln7v5tsbmpb6vvkzc7k7ta7b5yyym3rr74
+- valory/erc20:0.1.0:bafybeidrjq5rf6ay2okyy3eoseeafzl7bmngcbs7nhohbifdephc77tbke
 protocols:
-- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
+- valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 handlers:
   abci:
     args: {}

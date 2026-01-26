@@ -20,17 +20,13 @@
 
 """Shared helper for fetching and formatting predictions data."""
 
-import json
-import enum
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_PREDICTION_HISTORY_QUERY,
-    GET_MECH_TOOL_FOR_QUESTION_QUERY,
-    GET_SPECIFIC_MARKET_BETS_QUERY
 )
 
 
@@ -40,31 +36,7 @@ INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-DEFAULT_CURRENCY = "USD"
 
-class BetStatus(enum.Enum):
-    """BetStatus"""
-    WON = "won"
-    LOST = "lost"
-    PENDING = "pending"
-
-class TradingStrategy(enum.Enum):
-    """TradingStrategy"""
-
-    KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
-    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
-
-class TradingStrategyUI(enum.Enum):
-    """Trading strategy for the Agent's UI."""
-
-    RISKY = "risky"
-    BALANCED = "balanced"
-
-class BetSide(enum.Enum):
-    """Bet Side"""
-
-    YES = "yes"
-    NO = "no"
 
 class PredictionsFetcher:
     """Shared logic for fetching and formatting predictions."""
@@ -79,7 +51,6 @@ class PredictionsFetcher:
         self.context = context
         self.logger = logger
         self.predict_url = context.olas_agents_subgraph.url
-        self.mech_url = context.olas_mech_subgraph.url
 
     def fetch_predictions(
         self,
@@ -437,222 +408,136 @@ class PredictionsFetcher:
     ) -> List[Dict]:
         """
         Format raw bets into prediction objects.
-        
-        Groups bets by market and aggregates multiple bets on the same market.
+
+        Emits one item per bet (no aggregation), while still using market-level
+        participant totals to distribute payouts proportionally.
         """
-        market_bets = self._group_bets_by_market(bets)
-        
-        items = []
-        for fpmm_id, market_bet_list in market_bets.items():
-            prediction = self._format_single_prediction(
-                market_bet_list, safe_address, status_filter
-            )
+        market_ctx = self._build_market_context(bets)
+
+        items: List[Dict] = []
+        for bet in bets:  # already ordered desc by timestamp in the query
+            fpmm = bet.get("fixedProductMarketMaker", {}) or {}
+            ctx = market_ctx.get(fpmm.get("id"))
+            prediction = self._format_single_bet(bet, fpmm, ctx, status_filter)
             if prediction:
                 items.append(prediction)
-        
+
         return items
 
-    def _group_bets_by_market(self, bets: List[Dict]) -> Dict[str, List[Dict]]:
-        """Group bets by market (FPMM) ID."""
-        market_bets = {}
-        
+    def _build_market_context(self, bets: List[Dict]) -> Dict[str, Dict[str, Any]]:
+        """Precompute per-market aggregates needed to distribute payouts per bet."""
+        ctx: Dict[str, Dict[str, Any]] = {}
+
         for bet in bets:
-            fpmm = bet.get("fixedProductMarketMaker", {})
+            fpmm = bet.get("fixedProductMarketMaker", {}) or {}
             fpmm_id = fpmm.get("id")
-            
             if not fpmm_id:
                 continue
-            
-            if fpmm_id not in market_bets:
-                market_bets[fpmm_id] = []
-            market_bets[fpmm_id].append(bet)
-        
-        return market_bets
 
-    def _format_single_prediction(
+            entry = ctx.setdefault(
+                fpmm_id,
+                {
+                    "current_answer": fpmm.get("currentAnswer"),
+                    "current_answer_ts": fpmm.get("currentAnswerTimestamp"),
+                    "outcomes": fpmm.get("outcomes") or [],
+                    "participant": (fpmm.get("participants") or [None])[0],
+                    "total_payout": None,
+                    "total_traded": None,
+                    "winning_total_amount": 0.0,
+                },
+            )
+
+            participant = entry["participant"] or {}
+            if entry["total_payout"] is None:
+                entry["total_payout"] = float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+            if entry["total_traded"] is None:
+                entry["total_traded"] = float(participant.get("totalTraded", 0)) / WEI_TO_NATIVE
+
+            amount_native = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            current_answer = entry["current_answer"]
+            if current_answer not in (None, INVALID_ANSWER_HEX):
+                correct = int(current_answer, 0)
+                if int(bet.get("outcomeIndex", 0)) == correct:
+                    entry["winning_total_amount"] += amount_native
+
+        return ctx
+
+    def _format_single_bet(
         self,
-        market_bet_list: List[Dict],
-        safe_address: str,
-        status_filter: Optional[str]
+        bet: Dict,
+        fpmm: Dict,
+        market_ctx: Optional[Dict[str, Any]],
+        status_filter: Optional[str],
     ) -> Optional[Dict]:
-        """Format a single prediction (aggregated from potentially multiple bets on same market)."""
-        first_bet = market_bet_list[0]
-        fpmm = first_bet.get("fixedProductMarketMaker", {})
-        
-        # Get market participant data
-        participants = fpmm.get("participants", [])
-        market_participant = participants[0] if participants else None
-        
-        # Get basic prediction info
-        prediction_status = self._get_prediction_status(first_bet, market_participant)
-        
-        # Apply status filter
+        """Format a single bet into the public prediction object."""
+
+        participant = market_ctx.get("participant") if market_ctx else None
+        prediction_status = self._get_prediction_status(bet, participant)
+
         if status_filter and prediction_status != status_filter:
             return None
-        
-        # Calculate aggregated values
-        total_bet_amount = self._calculate_total_bet_amount(market_bet_list)
-        total_net_profit = self._calculate_market_net_profit(
-            market_bet_list, market_participant
-        )
-        earliest_timestamp = self._get_earliest_timestamp(market_bet_list)
-        
-        # Get prediction side
-        outcome_index = int(first_bet.get("outcomeIndex", 0))
+
+        bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+        net_profit = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+
+        outcome_index = int(bet.get("outcomeIndex", 0))
         outcomes = fpmm.get("outcomes", [])
-        
+
         return {
-            "id": first_bet.get("id"),
+            "id": bet.get("id"),
             "market": {
                 "id": fpmm.get("id"),
                 "title": fpmm.get("question", ""),
                 "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
             },
             "prediction_side": self._get_prediction_side(outcome_index, outcomes),
-            "bet_amount": round(total_bet_amount, 3),
+            "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
-            "net_profit": round(total_net_profit, 3) if total_net_profit is not None else None,
-            "created_at": self._format_timestamp(str(earliest_timestamp)),
-            "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if prediction_status != "pending" else None,
-            "total_payout": float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+            "net_profit": round(net_profit, 3) if net_profit is not None else None,
+            "created_at": self._format_timestamp(bet.get("timestamp")),
+            "settled_at": self._format_timestamp(market_ctx.get("current_answer_ts")) if market_ctx and prediction_status != "pending" else None
         }
 
-    def _calculate_total_bet_amount(self, market_bet_list: List[Dict]) -> float:
-        """Calculate total bet amount across all bets on a market."""
-        return sum(
-            float(bet.get("amount", 0)) / WEI_TO_NATIVE 
-            for bet in market_bet_list
-        )
-
-    def _get_earliest_timestamp(self, market_bet_list: List[Dict]) -> int:
-        """Get the earliest timestamp from a list of bets."""
-        timestamps = [
-            int(bet.get("timestamp", 0)) 
-            for bet in market_bet_list 
-            if bet.get("timestamp")
-        ]
-        return min(timestamps) if timestamps else 0
-
-    def _calculate_market_net_profit(
-        self, 
-        market_bets: List[Dict],
-        market_participant: Optional[Dict]
+    def _calculate_bet_net_profit(
+        self,
+        bet: Dict,
+        market_ctx: Optional[Dict[str, Any]],
+        bet_amount: float,
     ) -> Optional[float]:
-        """
-        Calculate net profit for all bets on a market.
-        Net profit = payout - bet amount (no fees included)
-        
-        For multi-bet scenarios, uses MarketParticipant data with proportional distribution.
-        """
-        first_bet = market_bets[0]
-        fpmm = first_bet.get("fixedProductMarketMaker", {})
-        current_answer = fpmm.get("currentAnswer")
-        
-        # Pending market
+        """Calculate net profit for a single bet using market-level payout data."""
+        if not market_ctx:
+            return 0.0
+
+        current_answer = market_ctx.get("current_answer")
+        total_payout = market_ctx.get("total_payout") or 0.0
+        total_traded = market_ctx.get("total_traded") or 0.0
+        winning_total = market_ctx.get("winning_total_amount") or 0.0
+        outcome_index = int(bet.get("outcomeIndex", 0))
+
+        # Unresolved market
         if current_answer is None:
             return 0.0
-        
-        # No market participant data available
-        if not market_participant:
-            return 0.0
-        
-        total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-        
-        # Invalid market - participants get refunds (use payout data)
+
+        # Invalid market refund path
         if current_answer == INVALID_ANSWER_HEX:
-            # Only calculate if payout is actually received
-            if total_payout == 0:
+            if total_payout == 0 or total_traded == 0:
                 return 0.0
-            total_bet_amount = self._calculate_total_loss(market_bets)
-            # Net profit = refund - original bet
-            return total_payout - total_bet_amount
-        
-        # Parse correct answer
+            refund_share = total_payout * (bet_amount / total_traded)
+            return refund_share - bet_amount
+
         correct_answer = int(current_answer, 0)
-        
-        # Separate winning and losing bets
-        winning_bets, losing_bets = self._separate_winning_losing_bets(
-            market_bets, correct_answer
-        )
-        
-        # Check if payout is redeemed
-        # If there are winning bets but payout is 0, treat as unredeemed (pending)
-        if winning_bets and total_payout == 0:
-            return 0.0
-        
-        total_loss = self._calculate_total_loss(losing_bets)
-        
-        # If no winning bets, return total loss
-        if not winning_bets:
-            return -total_loss
-        
-        # Calculate winning profit (payout - bet amount)
-        winning_profit = self._calculate_winning_profit(
-            winning_bets, market_participant
-        )
-        
-        if winning_profit is None:
-            return None
-        
-        # Subtract losses from winning profit
-        return winning_profit - total_loss
-        
-    def _separate_winning_losing_bets(
-        self, 
-        market_bets: List[Dict], 
-        correct_answer: int
-    ) -> Tuple[List[Dict], List[Dict]]:
-        """Separate bets into winning and losing based on outcome."""
-        winning_bets = []
-        losing_bets = []
-        
-        for bet in market_bets:
-            outcome_index = int(bet.get("outcomeIndex", 0))
-            if outcome_index == correct_answer:
-                winning_bets.append(bet)
-            else:
-                losing_bets.append(bet)
-        
-        return winning_bets, losing_bets
 
-    def _calculate_total_loss(self, losing_bets: List[Dict]) -> float:
-        """Calculate total loss from losing bets."""
-        return sum(
-            float(bet.get("amount", 0)) / WEI_TO_NATIVE 
-            for bet in losing_bets
-        )
+        # Losing bet
+        if outcome_index != correct_answer:
+            return -bet_amount
 
-    def _calculate_winning_profit(
-        self,
-        winning_bets: List[Dict],
-        market_participant: Optional[Dict]
-    ) -> Optional[float]:
-        """Calculate profit from winning bets using proportional distribution (payout - bet amount only)."""
-        if not market_participant:
-            return None
-        
-        total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-        
-        total_winning_amount = sum(
-            float(bet.get("amount", 0)) / WEI_TO_NATIVE 
-            for bet in winning_bets
-        )
-        
-        if total_winning_amount == 0:
+        # Winning bet
+        if total_payout == 0 or winning_total == 0:
+            # Won but not redeemed yet
             return 0.0
-        
-        # Distribute payout proportionally among winning bets
-        # Profit = payout - bet amount
-        winning_profit = 0.0
-        for bet in winning_bets:
-            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            bet_proportion = bet_amount / total_winning_amount
-            
-            bet_payout = total_payout * bet_proportion
-            bet_profit = bet_payout - bet_amount
-            winning_profit += bet_profit
-        
-        return winning_profit
+
+        payout_share = total_payout * (bet_amount / winning_total)
+        return payout_share - bet_amount
 
     def _get_prediction_status(self, bet: Dict, market_participant: Optional[Dict]) -> str:
         """
@@ -664,11 +549,11 @@ class PredictionsFetcher:
         
         # Market not resolved
         if current_answer is None:
-            return BetStatus.PENDING.value
+            return "pending"
         
         # Check for invalid market
         if current_answer == INVALID_ANSWER_HEX:
-            return BetStatus.LOST.value
+            return "lost"
         
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
@@ -680,10 +565,10 @@ class PredictionsFetcher:
                 total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
                 if total_payout == 0:
                     # Won but not redeemed yet - treat as pending
-                    return BetStatus.PENDING.value
-            return BetStatus.WON.value
+                    return "pending"
+            return "won"
         
-        return BetStatus.LOST.value
+        return "lost"
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
@@ -702,18 +587,4 @@ class PredictionsFetcher:
             return dt.strftime(ISO_TIMESTAMP_FORMAT)
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
-            return None
-        
-    def _get_ui_trading_strategy(
-        self, selected_value: Optional[str]
-    ) -> str:
-        """Get the UI trading strategy."""
-        if selected_value is None:
-            return None
-
-        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
-            return TradingStrategyUI.BALANCED.value
-        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
-            return TradingStrategyUI.RISKY.value
-        else:
             return None

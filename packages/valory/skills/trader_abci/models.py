@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -195,9 +195,9 @@ class SharedState(BaseSharedState):
         round_timeout_overrides = {
             cast(EventType, event).ROUND_TIMEOUT: round_timeout for event in events
         }
-        round_timeout_overrides[
-            MechInteractEvent.ROUND_TIMEOUT
-        ] = params.mech_interact_round_timeout_seconds
+        round_timeout_overrides[MechInteractEvent.ROUND_TIMEOUT] = (
+            params.mech_interact_round_timeout_seconds
+        )
         reset_pause_timeout = params.reset_pause_duration + MARGIN
         event_to_timeout_overrides: EventToTimeoutMappingType = {
             **round_timeout_overrides,

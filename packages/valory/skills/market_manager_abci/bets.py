@@ -160,8 +160,6 @@ class Bet:
     queue_status: QueueStatus = QueueStatus.FRESH
     # a mapping from vote to investment amounts
     investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
-    # strategy used when placing the bet
-    strategy: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -417,7 +415,7 @@ class BetsDecoder(json.JSONDecoder):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the Bets JSON decoder."""
-        super().__init__(object_hook=self.hook, *args, **kwargs)
+        super().__init__(*args, object_hook=self.hook, **kwargs)
 
     @staticmethod
     def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:
