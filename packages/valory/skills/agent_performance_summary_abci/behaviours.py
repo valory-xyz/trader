@@ -142,11 +142,11 @@ class FetchPerformanceSummaryBehaviour(
             timestamp_gt=self.market_open_timestamp,
         )
         
-        if not mech_sender or mech_sender.get("totalRequests") is None:
+        if not mech_sender or mech_sender.get("totalMarketplaceRequests") is None:
             self._total_mech_requests = 0
             return 0
         
-        self._total_mech_requests = int(mech_sender["totalRequests"])
+        self._total_mech_requests = int(mech_sender["totalMarketplaceRequests"])
         self.context.logger.info(f"{self._total_mech_requests=}")
         return self._total_mech_requests
 

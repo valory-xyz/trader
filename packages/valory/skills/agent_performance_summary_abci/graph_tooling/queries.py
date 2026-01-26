@@ -36,7 +36,7 @@ query GetOlasTraderAgent($id: ID!) {
 GET_MECH_SENDER_QUERY = """
 query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
-    totalRequests
+    totalMarketplaceRequests
     requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
       parsedRequest {
         questionTitle
