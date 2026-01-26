@@ -49,11 +49,17 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedDecisionRequestRound,
     FinishedWithoutDecisionRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
+    PolymarketSwapUsdcRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -130,7 +136,7 @@ def test_tool_selection_round_transition(setup_app: DecisionMakerAbciApp) -> Non
     transition_function = app.transition_function[ToolSelectionRound]
 
     # Test transition on done
-    assert transition_function[Event.DONE] == DecisionRequestRound
+    assert transition_function[Event.DONE] == PolymarketSwapUsdcRound
 
 
 def test_decision_request_round_transition(setup_app: DecisionMakerAbciApp) -> None:
@@ -160,7 +166,7 @@ def test_blacklisting_round_transition(setup_app: DecisionMakerAbciApp) -> None:
     transition_function = app.transition_function[BlacklistingRound]
 
     # Test transition on done
-    assert transition_function[Event.DONE] == FinishedWithoutDecisionRound
+    assert transition_function[Event.DONE] == RedeemRouterRound
 
 
 def test_bet_placement_round_transition(setup_app: DecisionMakerAbciApp) -> None:
