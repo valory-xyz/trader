@@ -158,14 +158,16 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         self, agent_safe_address, timestamp_gt
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch mech sender details."""
-        return (
-            yield from self._fetch_from_subgraph(
-                query=GET_MECH_SENDER_QUERY,
-                variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
-                subgraph=self.context.olas_mech_subgraph,
-                res_context="mech_sender",
-            )
+        result = yield from self._fetch_from_subgraph(
+            query=GET_MECH_SENDER_QUERY,
+            variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
+            subgraph=self.context.olas_mech_subgraph,
+            res_context="mech_sender",
         )
+
+        if result and isinstance(result, dict) and "sender" in result:
+            return result.get("sender")
+        return result
 
     def _fetch_trader_agent(
         self, agent_safe_address
@@ -349,6 +351,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             
             if not result:
                 break
+
+            if isinstance(result, dict) and "sender" in result:
+                result = result.get("sender") or {}
             
             batch_requests = result.get("requests", [])
             if not batch_requests:
@@ -382,6 +387,8 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
         
         if result:
+            if isinstance(result, dict) and "sender" in result:
+                result = result.get("sender") or {}
             return result.get("requests", []) if isinstance(result, dict) else []
         return []
         
