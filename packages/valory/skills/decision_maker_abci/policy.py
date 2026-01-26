@@ -41,7 +41,7 @@ class DataclassEncoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:
         """The default JSON encoder."""
         if is_dataclass(o):
-            return asdict(o)
+            return asdict(o)  # type: ignore[arg-type]
         return super().default(o)
 
 
@@ -92,7 +92,7 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the custom JSON decoder."""
-        super().__init__(object_hook=self.hook, *args, **kwargs)
+        super().__init__(*args, object_hook=self.hook, **kwargs)
 
     @staticmethod
     def hook(

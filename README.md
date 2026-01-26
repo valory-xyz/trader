@@ -11,7 +11,7 @@ Trader is an autonomous service that performs **bets on existing prediction mark
 5. In case the bet is deemed unprofitable, the market will be blacklisted for a configurable duration.
 6. Repeat these steps continuously.
 
-The Trader service is an [agent service](https://docs.autonolas.network/open-autonomy/get_started/what_is_an_agent_service/) (or autonomous service) based on the [Open Autonomy framework](https://docs.autonolas.network/open-autonomy/). Below we show you how to prepare your environment, how to prepare the agent keys, and how to configure and run the service.
+The Trader service is an [agent service](https://stack.olas.network/open-autonomy/get_started/what_is_an_agent_service/) (or autonomous service) based on the [Open Autonomy framework](https://stack.olas.network/open-autonomy/). Below we show you how to prepare your environment, how to prepare the agent keys, and how to configure and run the service.
 
 ## Prepare the environment
 
@@ -54,8 +54,8 @@ First, prepare the `keys.json` file with the Gnosis keypair of your agent. (Repl
     EOF
 
 Next, prepare the [Safe](https://safe.global/). The trader agent runs as part of a **trader service**, 
-which is an [autonomous service](https://docs.autonolas.network/open-autonomy/get_started/what_is_an_agent_service/) 
-represented on-chain in the [Autonolas Protocol](https://docs.autonolas.network/protocol/) by a [Safe](https://safe.global/) multisig. Follow the next steps to obtain a **Safe address** corresponding to your agent address:
+which is an [autonomous service](https://stack.olas.network/open-autonomy/get_started/what_is_an_agent_service/) 
+represented on-chain in the [Autonolas Protocol](https://stack.olas.network/protocol/) by a [Safe](https://safe.global/) multisig. Follow the next steps to obtain a **Safe address** corresponding to your agent address:
 
 1. Visit https://marketplace.olas.network/gnosis/ai-agents/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
 2. Fill in the following fields:
@@ -182,7 +182,7 @@ you need, for the case of 4 agents:
 
 You can also explore the [`service.yaml`](./packages/valory/services/trader/service.yaml) file, which contains all the possible configuration variables for the service.
 
-Finally, if you are experienced with the [Open Autonomy](https://docs.autonolas.network/) framework, you can also modify the internal business logic of the service yourself.
+Finally, if you are experienced with the [Open Autonomy](https://stack.olas.network/) framework, you can also modify the internal business logic of the service yourself.
 
 ## Included strategies
 

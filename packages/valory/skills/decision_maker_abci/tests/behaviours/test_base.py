@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2021-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -239,7 +239,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
         with mock.patch.object(behaviour, "read_bets"):
             collateral_token = WXDAI if is_wxdai else "unknown"
-            behaviour.bets = [(mock.MagicMock(collateralToken=collateral_token))]
+            behaviour.bets = [mock.MagicMock(collateralToken=collateral_token)]
             result = behaviour._collateral_amount_info(amount)
 
         if benchmarking_mode_enabled or is_wxdai:
