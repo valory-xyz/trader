@@ -63,10 +63,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def _multi_bets_allowed(self) -> bool:
-        return self.params.use_multi_bets_mode or (
-            self.params.enable_multi_bets_fallback and not self.kpi_is_met
-        )
+    def _multi_bets_fallback_allowed(self) -> bool:
+        return self.params.enable_multi_bets_fallback and not self.kpi_is_met
 
     def processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool = False
@@ -217,21 +215,23 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         available_bets = list(
             filter(
                 lambda bet: self.processable_bet(
-                    bet, now=now, multi_bets_active=self._multi_bets_allowed()
+                    bet, now=now, multi_bets_active=self.params.use_multi_bets_mode
                 ),
                 self.bets,
             )
         )
 
         # If no bets available and fallback is enabled, try again with fallback
-        if len(available_bets) <= 0 and self._multi_bets_allowed():
+        if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
             self.context.logger.info(
                 "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
             )
             available_bets = list(
                 filter(
                     lambda bet: self.processable_bet(
-                        bet, now=now, multi_bets_active=True
+                        bet,
+                        now=now,
+                        multi_bets_active=True,
                     ),
                     self.bets,
                 )
