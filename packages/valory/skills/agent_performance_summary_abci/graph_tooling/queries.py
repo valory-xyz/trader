@@ -263,6 +263,7 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       amount
       shares
       blockTimestamp
+      transactionHash
     }
   }
 }

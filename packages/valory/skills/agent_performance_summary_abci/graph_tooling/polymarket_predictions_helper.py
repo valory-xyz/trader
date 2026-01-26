@@ -181,6 +181,7 @@ class PolymarketPredictionsFetcher:
         bet_id = bet.get("id", "")
         question_id = question.get("questionId", "")
         market_title = metadata.get("title", "")
+        transaction_hash = bet.get("transactionHash", "")
         
         # Get timestamps
         bet_timestamp = bet.get("blockTimestamp")
@@ -198,7 +199,8 @@ class PolymarketPredictionsFetcher:
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
             "created_at": self._format_timestamp(str(bet_timestamp)) if bet_timestamp else None,
-            "settled_at": self._format_timestamp(str(resolution_timestamp)) if resolution_timestamp else None
+            "settled_at": self._format_timestamp(str(resolution_timestamp)) if resolution_timestamp else None,
+            "transaction_hash": transaction_hash
         }
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
