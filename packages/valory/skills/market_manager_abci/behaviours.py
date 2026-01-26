@@ -221,7 +221,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     @property
     def kpi_is_met(self) -> bool:
         """Whether the kpi is met."""
-        return self.synchronized_data.is_staking_kpi_met
+        return self.synchronized_data.is_staking_kpi_met  # type: ignore[attr-defined]
 
     def setup(self) -> None:
         """Set up the behaviour."""
