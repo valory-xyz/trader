@@ -19,7 +19,8 @@
 # ------------------------------------------------------------------------------
 
 """Shared helper for fetching and formatting predictions data."""
-
+import json
+import enum
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -27,6 +28,8 @@ import requests
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_PREDICTION_HISTORY_QUERY,
+    GET_MECH_TOOL_FOR_QUESTION_QUERY,
+    GET_SPECIFIC_MARKET_BETS_QUERY
 )
 
 
@@ -36,7 +39,31 @@ INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+DEFAULT_CURRENCY = "USD"
 
+class BetStatus(enum.Enum):
+    """BetStatus"""
+    WON = "won"
+    LOST = "lost"
+    PENDING = "pending"
+
+class TradingStrategy(enum.Enum):
+    """TradingStrategy"""
+
+    KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
+    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
+
+class TradingStrategyUI(enum.Enum):
+    """Trading strategy for the Agent's UI."""
+
+    RISKY = "risky"
+    BALANCED = "balanced"
+
+class BetSide(enum.Enum):
+    """Bet Side"""
+
+    YES = "yes"
+    NO = "no"
 
 class PredictionsFetcher:
     """Shared logic for fetching and formatting predictions."""
@@ -51,6 +78,7 @@ class PredictionsFetcher:
         self.context = context
         self.logger = logger
         self.predict_url = context.olas_agents_subgraph.url
+        self.mech_url = context.olas_mech_subgraph.url
 
     def fetch_predictions(
         self,
@@ -364,22 +392,27 @@ class PredictionsFetcher:
             if not bets:
                 return {}
             
-            bet = bets[0]
-            fpmm = bet.get("fixedProductMarketMaker", {})
-            participants = fpmm.get("participants", [])
-            market_participant = participants[0] if participants else None
-            
-            # Calculate net profit for this specific bet
-            net_profit = self._calculate_market_net_profit(bets, market_participant)
-            
-            # Determine status
-            status = self._get_prediction_status(bet, market_participant)
-            
-            # Get prediction side
+            # Pick the requested bet (fallback to first if not found)
+            bet = next((b for b in bets if b.get("id") == bet_id), bets[0])
+            fpmm = bet.get("fixedProductMarketMaker") or {}
+
+            # Build per-market context from the returned bets (one item per bet)
+            market_ctx = self._build_market_context(bets).get(fpmm.get("id"))
+            participant = market_ctx.get("participant") if market_ctx else None
+
+            status = self._get_prediction_status(bet, participant)
+
+            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            net_profit_val = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+
+            net_profit = round(net_profit_val, 3) if net_profit_val is not None else None
+
             outcome_index = int(bet.get("outcomeIndex", 0))
             outcomes = fpmm.get("outcomes", [])
             prediction_side = self._get_prediction_side(outcome_index, outcomes)
-            
+
+            participant_total_payout = float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE if participant else 0.0
+
             formatted_bet = {
                 "id": bet.get("id"),
                 "market": {
@@ -388,10 +421,10 @@ class PredictionsFetcher:
                     "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
                 },
                 "prediction_side": prediction_side,
-                "bet_amount": round(float(bet.get("amount", 0)) / WEI_TO_NATIVE, 3),
+                "bet_amount": round(bet_amount, 3),
                 "status": status,
-                "net_profit": round(net_profit, 3) if net_profit is not None else 0.0,
-                "total_payout": float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE,
+                "net_profit": net_profit,
+                "total_payout": participant_total_payout,
                 "created_at": self._format_timestamp(bet.get("timestamp")),
                 "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if status != "pending" else None
             }
@@ -551,11 +584,11 @@ class PredictionsFetcher:
         
         # Market not resolved
         if current_answer is None:
-            return "pending"
+            return BetStatus.PENDING.value
         
         # Check for invalid market
         if current_answer == INVALID_ANSWER_HEX:
-            return "lost"
+            return BetStatus.LOST.value
         
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
@@ -567,10 +600,10 @@ class PredictionsFetcher:
                 total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
                 if total_payout == 0:
                     # Won but not redeemed yet - treat as pending
-                    return "pending"
-            return "won"
+                    return BetStatus.PENDING.value
+            return BetStatus.WON.value
         
-        return "lost"
+        return BetStatus.LOST.value
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
@@ -589,4 +622,18 @@ class PredictionsFetcher:
             return dt.strftime(ISO_TIMESTAMP_FORMAT)
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
+            return None
+        
+    def _get_ui_trading_strategy(
+        self, selected_value: Optional[str]
+    ) -> str:
+        """Get the UI trading strategy."""
+        if selected_value is None:
+            return None
+
+        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
+            return TradingStrategyUI.BALANCED.value
+        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
+            return TradingStrategyUI.RISKY.value
+        else:
             return None
