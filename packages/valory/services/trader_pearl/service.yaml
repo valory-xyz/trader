@@ -144,6 +144,7 @@ models:
       default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
       mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
       use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:false}
+      enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
       coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       genai_api_key: ${GENAI_API_KEY:str:""}
       x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}

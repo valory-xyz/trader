@@ -282,6 +282,7 @@ models:
       mech_consecutive_failures_threshold: 2
       tool_quarantine_duration: 18000
       use_multi_bets_mode: true
+      enable_multi_bets_fallback: false
       enable_position_review: false
       review_period_seconds: 86400
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd

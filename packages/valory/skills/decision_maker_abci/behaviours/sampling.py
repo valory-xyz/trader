@@ -63,6 +63,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
+    def _multi_bets_allowed(self) -> bool:
+        return self.params.use_multi_bets_mode or (
+            self.params.enable_multi_bets_fallback and not self.kpi_is_met
+        )
+
     def processable_bet(self, bet: Bet, now: int) -> bool:
         """Whether we can process the given bet."""
 
@@ -78,7 +83,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             return False
 
         bet_mode_allowable = (
-            self.params.use_multi_bets_mode or not bets_placed or selling_specific
+            self._multi_bets_allowed() or not bets_placed or selling_specific
         )
 
         within_opening_range = bet.openingTimestamp <= (

@@ -179,6 +179,7 @@ models:
       randomness: benchmarking_randomness
       nr_mech_calls: 60
       use_multi_bets_mode: true
+      enable_multi_bets_fallback: false
     class_name: BenchmarkingMode
   network_subgraph:
     args:

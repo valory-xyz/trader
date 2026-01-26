@@ -108,6 +108,9 @@ class MarketManagerParams(BaseParams):
         self.use_multi_bets_mode: bool = self._ensure(
             "use_multi_bets_mode", kwargs, bool
         )
+        self.enable_multi_bets_fallback: bool = self._ensure(
+            "enable_multi_bets_fallback", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     @property
