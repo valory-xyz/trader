@@ -359,6 +359,10 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             # Handle null traderAgent response
             if not result:
                 break
+
+            # Unwrap traderAgent if present
+            if isinstance(result, dict) and "traderAgent" in result:
+                result = result.get("traderAgent") or {}
             
             # Get dailyProfitStatistics from the result
             if not result.get("dailyProfitStatistics"):
