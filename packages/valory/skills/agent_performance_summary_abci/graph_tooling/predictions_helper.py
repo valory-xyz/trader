@@ -142,9 +142,31 @@ class PredictionsFetcher:
                 return None
             
             response_data = response.json()
-            data = response_data.get("data", {}) or {}
-            trader_agent = data.get("traderAgent")
-            return trader_agent
+            participants = response_data.get("data", {}).get("marketParticipants") or []
+            if not participants:
+                return None
+
+            bets: List[Dict[str, Any]] = []
+            for participant in participants:
+                fpmm = participant.get("fixedProductMarketMaker") or {}
+                participant_totals = {
+                    "totalPayout": float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE,
+                    "totalTraded": float(participant.get("totalTraded", 0)) / WEI_TO_NATIVE,
+                    "totalFees": float(participant.get("totalFees", 0)) / WEI_TO_NATIVE,
+                    "totalBets": participant.get("totalBets", 0),
+                }
+                for bet in participant.get("bets", []) or []:
+                    bet_copy = dict(bet)
+                    bet_copy["fixedProductMarketMaker"] = {
+                        **fpmm,
+                        "participants": [participant_totals],
+                    }
+                    bets.append(bet_copy)
+
+            return {
+                "totalBets": sum(p.get("totalBets", 0) for p in participants),
+                "bets": bets,
+            }
             
         except Exception as e:
             self.logger.error(f"Error fetching trader agent bets: {str(e)}")

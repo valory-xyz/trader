@@ -107,30 +107,33 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
 
 GET_PREDICTION_HISTORY_QUERY = """
 query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
-  traderAgent(id: $id) {
+  marketParticipants(
+    where: { traderAgent_: { id: $id } }
+    orderBy: blockTimestamp
+    orderDirection: desc
+    first: $first
+    skip: $skip
+  ) {
+    id
     totalBets
-    totalTraded
     totalPayout
+    totalTraded
     totalFees
-    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+    totalTradedSettled
+    totalFeesSettled
+    fixedProductMarketMaker {
+      id
+      question
+      outcomes
+      currentAnswer
+      currentAnswerTimestamp
+    }
+    bets {
       id
       timestamp
       amount
       feeAmount
       outcomeIndex
-      fixedProductMarketMaker {
-        id
-        question
-        outcomes
-        currentAnswer
-        currentAnswerTimestamp
-        participants(where: { traderAgent: $id }) {
-          totalBets
-          totalTraded
-          totalPayout
-          totalFees
-        }
-      }
     }
   }
 }
