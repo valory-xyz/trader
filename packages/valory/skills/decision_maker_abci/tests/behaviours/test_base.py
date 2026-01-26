@@ -243,7 +243,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             result = behaviour._collateral_amount_info(amount)
 
         if benchmarking_mode_enabled or is_wxdai:
-            assert result == f"{behaviour.wei_to_native(amount)} wxDAI"
+            assert result == f"{behaviour.wei_to_native(amount):6f} wxDAI"
         else:
             assert (
                 result
@@ -292,6 +292,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             0,
             0,
             0,
+            "0x000000000000000000000000000000000000000",
         )
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls
