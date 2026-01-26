@@ -143,6 +143,26 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
 }
 """
 
+GET_RESOLVED_MARKETS_QUERY = """
+query GetResolvedMarkets($timestamp_gt: BigInt!, $timestamp_lte: BigInt) {
+  fixedProductMarketMakers(
+    where: {
+      currentAnswerTimestamp_gt: $timestamp_gt
+      currentAnswerTimestamp_lte: $timestamp_lte
+    }
+    orderBy: currentAnswerTimestamp
+    orderDirection: asc
+    first: $first
+    skip: $skip
+  ) {
+    id
+    question
+    currentAnswer
+    currentAnswerTimestamp
+  }
+}
+"""
+
 GET_FPMM_PAYOUTS_QUERY = """
 query GetFPMMPayouts($fpmmIds: [ID!]!) {
   fixedProductMarketMakers(where: { id_in: $fpmmIds }, first: 1000) {

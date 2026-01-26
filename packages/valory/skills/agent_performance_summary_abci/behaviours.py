@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Generator, Optional, Set, Type, cast
+from typing import Any, Generator, Optional, Set, Type, cast, Dict, Tuple
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -505,6 +505,54 @@ class FetchPerformanceSummaryBehaviour(
         
         return total_mech_fees, mech_fee_count
 
+    @staticmethod
+    def _collect_placed_titles(daily_stats: list) -> Set[str]:
+        """Collect all question titles that have bets (profit participants) in given stats."""
+        placed_titles: Set[str] = set()
+        for stat in daily_stats:
+            for participant in stat.get("profitParticipants", []):
+                question = participant.get("question", "")
+                if question:
+                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
+                    if title:
+                        placed_titles.add(title)
+        return placed_titles
+
+    @staticmethod
+    def _build_unplaced_resolution_buckets(resolved_markets: list, unplaced_requests: Dict[str, int]) -> Dict[int, int]:
+        """
+        Map titles without bets to resolution-day mech fee counts.
+
+        :return: dict keyed by day timestamp -> mech request count
+        """
+        buckets: Dict[int, int] = {}
+        for market in resolved_markets:
+            question = market.get("question", "")
+            title = question.split(QUESTION_DATA_SEPARATOR)[0] if question else ""
+            if not title or title not in unplaced_requests:
+                continue
+            ts = market.get("currentAnswerTimestamp")
+            if ts is None:
+                continue
+            day_ts = (int(ts) // SECONDS_PER_DAY) * SECONDS_PER_DAY
+            buckets[day_ts] = buckets.get(day_ts, 0) + unplaced_requests[title]
+        return buckets
+
+    def _apply_mech_fees(
+        self,
+        profit_participants: list,
+        mech_request_lookup: Dict[str, int],
+        unplaced_fees_by_day: Dict[int, int],
+        date_timestamp: int,
+    ) -> Tuple[float, int]:
+        """Calculate mech fees combining placed and unplaced requests for a given day."""
+        mech_fees, mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+        extra_unplaced_count = unplaced_fees_by_day.get(date_timestamp, 0)
+        if extra_unplaced_count:
+            mech_fees += extra_unplaced_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            mech_count += extra_unplaced_count
+        return mech_fees, mech_count
+
     def _build_mech_request_lookup(self, agent_safe_address: str) -> Generator[None, None, dict]:
         """
         Build a lookup map of question titles to mech request counts.
@@ -548,7 +596,7 @@ class FetchPerformanceSummaryBehaviour(
         existing_profit_data = existing_summary.profit_over_time
         
         # Determine if this is initial backfill or incremental update
-        # We need to build the profit over time chart again after the hotfix so we check for settled_mech_request_count field in agent performance metrics, as it was newly added in the hotfix
+        # Rebuild if missing data, or when new fields (settled mech count / unplaced mech fees) are absent
         if not existing_profit_data or not existing_profit_data.data_points:
             # INITIAL BACKFILL - First time or no existing data
             self.context.logger.info("Performing initial profit over time backfill...")
@@ -558,6 +606,10 @@ class FetchPerformanceSummaryBehaviour(
               not getattr(existing_summary.agent_performance.metrics, 'settled_mech_request_count', None)):
             # INITIAL BACKFILL - Missing settled_mech_request_count field (hotfix)
             self.context.logger.info("Performing initial profit over time backfill due to missing settled_mech_request_count...")
+            return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
+        elif not hasattr(existing_profit_data, "unplaced_mech_requests_count"):
+            # INITIAL BACKFILL - Apply new non-placed mech fees logic and track counts
+            self.context.logger.info("Performing initial profit over time backfill to include unplaced mech fees and counts...")
             return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
@@ -600,15 +652,32 @@ class FetchPerformanceSummaryBehaviour(
         # Process all daily statistics
         data_points = []
         cumulative_profit = 0.0
+
+        placed_titles = self._collect_placed_titles(daily_stats)
+
+        # Titles with mech requests but NO bets
+        unplaced_requests = {
+            title: count
+            for title, count in (mech_request_lookup or {}).items()
+            if title not in placed_titles
+        }
+
+        resolved_markets = yield from self._fetch_all_resolved_markets(timestamp_gt=0, timestamp_lte=current_timestamp)
+        unplaced_fees_by_day = self._build_unplaced_resolution_buckets(resolved_markets, unplaced_requests)
         
         for stat in daily_stats:
             date_timestamp = int(stat["date"])
             date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
             
-            # Calculate mech fees using cached lookup
+            # Calculate mech fees (placed + unplaced) using cached lookup
             profit_participants = stat.get("profitParticipants", [])
-            mech_fees, daily_mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+            mech_fees, daily_mech_count = self._apply_mech_fees(
+                profit_participants,
+                mech_request_lookup,
+                unplaced_fees_by_day,
+                date_timestamp,
+            )
             
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
@@ -623,12 +692,14 @@ class FetchPerformanceSummaryBehaviour(
         
         # Calculate total settled mech requests from all data points
         settled_mech_requests_count = sum(point.daily_mech_requests for point in data_points)
+        unplaced_mech_requests_count = sum(unplaced_fees_by_day.values())
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(data_points),
             data_points=data_points,
-            settled_mech_requests_count=settled_mech_requests_count
+            settled_mech_requests_count=settled_mech_requests_count,
+            unplaced_mech_requests_count=unplaced_mech_requests_count,
         )
 
     def _perform_incremental_update(self, agent_safe_address: str, current_timestamp: int, existing_data: ProfitOverTimeData) -> Generator[None, None, Optional[ProfitOverTimeData]]:
@@ -659,32 +730,22 @@ class FetchPerformanceSummaryBehaviour(
             return existing_data 
         
         self.context.logger.info(f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics")
-        
-        # Build lookup ONLY for questions in NEW daily stats
-        new_question_titles = set()
-        for stat in new_daily_stats:
-            for participant in stat.get("profitParticipants", []):
-                question = participant.get("question", "")
-                if question:
-                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                    if title:
-                        new_question_titles.add(title)
-        
-        if not new_question_titles:
-            self.context.logger.info("No new questions in incremental update")
-            # Update timestamp but keep existing data
-            existing_data.last_updated = current_timestamp
-            return existing_data
-        
-        self.context.logger.info(f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats")
-        new_mech_requests = yield from self._fetch_mech_requests_by_titles(agent_safe_address, list(new_question_titles))
-        
-        mech_request_lookup = {}
-        if new_mech_requests:
-            for request in new_mech_requests:
-                title = (request.get("parsedRequest", {}) or {}).get("questionTitle", "")
-                if title:
-                    mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
+
+        placed_titles = self._collect_placed_titles(new_daily_stats)
+
+        # Mech requests lookup (use cached full lookup if available, else fetch all)
+        if self._mech_request_lookup is None:
+            self.context.logger.info("Building mech request lookup (incremental, full)")
+            self._mech_request_lookup = yield from self._build_mech_request_lookup(agent_safe_address)
+        mech_request_lookup = self._mech_request_lookup or {}
+
+        unplaced_requests = {title: count for title, count in mech_request_lookup.items() if title not in placed_titles}
+
+        resolved_markets = yield from self._fetch_all_resolved_markets(
+            timestamp_gt=last_data_timestamp,
+            timestamp_lte=current_timestamp,
+        )
+        unplaced_fees_by_day = self._build_unplaced_resolution_buckets(resolved_markets, unplaced_requests)
         
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
@@ -697,7 +758,12 @@ class FetchPerformanceSummaryBehaviour(
             
             # Calculate mech fees using lookup for this day only
             profit_participants = stat.get("profitParticipants", [])
-            mech_fees, daily_mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+            mech_fees, daily_mech_count = self._apply_mech_fees(
+                profit_participants,
+                mech_request_lookup,
+                unplaced_fees_by_day,
+                date_timestamp,
+            )
             
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
@@ -712,12 +778,14 @@ class FetchPerformanceSummaryBehaviour(
         
         # Calculate updated settled mech requests count from all data points
         settled_mech_requests_count = sum(point.daily_mech_requests for point in new_data_points)
+        unplaced_mech_requests_count = sum(unplaced_fees_by_day.values())
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(new_data_points),
             data_points=new_data_points,
-            settled_mech_requests_count=settled_mech_requests_count
+            settled_mech_requests_count=settled_mech_requests_count,
+            unplaced_mech_requests_count=unplaced_mech_requests_count,
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:

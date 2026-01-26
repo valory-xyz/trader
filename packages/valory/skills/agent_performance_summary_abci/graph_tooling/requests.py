@@ -39,6 +39,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_TRADER_AGENT_QUERY,
+    GET_RESOLVED_MARKETS_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
@@ -264,6 +265,45 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         if result and isinstance(result, dict) and "traderAgent" in result:
             return result.get("traderAgent")
         return result
+
+    def _fetch_all_resolved_markets(
+        self, timestamp_gt: int, timestamp_lte: Optional[int] = None
+    ) -> Generator[None, None, List]:
+        """
+        Fetch all resolved markets in a timestamp window with pagination.
+        """
+        all_markets: List = []
+        skip = 0
+        batch_size = QUERY_BATCH_SIZE
+
+        while True:
+            variables: Dict[str, Any] = {
+                "timestamp_gt": int(timestamp_gt),
+                "timestamp_lte": int(timestamp_lte) if timestamp_lte is not None else None,
+                "first": batch_size,
+                "skip": skip,
+            }
+            result = yield from self._fetch_from_subgraph(
+                query=GET_RESOLVED_MARKETS_QUERY,
+                variables=variables,
+                subgraph=self.context.olas_agents_subgraph,
+                res_context=f"resolved_markets_batch_{skip // batch_size + 1}",
+            )
+
+            if not result:
+                break
+
+            batch = result if isinstance(result, list) else result.get("fixedProductMarketMakers", [])
+            if not batch:
+                break
+
+            all_markets.extend(batch)
+
+            if len(batch) < batch_size:
+                break
+            skip += batch_size
+
+        return all_markets
 
     def _fetch_olas_in_usd_price(
         self,

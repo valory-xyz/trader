@@ -128,6 +128,7 @@ class ProfitOverTimeData:
     total_days: int  # Total number of days with data
     data_points: List[ProfitDataPoint] = field(default_factory=list)
     settled_mech_requests_count: int = 0  # Total settled mech requests
+    unplaced_mech_requests_count: int = 0  # Total mech requests with no bets placed
 
     def __post_init__(self):
         """Convert dicts to dataclass instances."""
