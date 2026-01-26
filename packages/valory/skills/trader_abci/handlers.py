@@ -90,8 +90,8 @@ USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 TRADING_STRATEGY_EXPLANATION = {
-    "risky": "Dynamic bet sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex betting strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
-    "balanced": "A steady, conservative fixed bet size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
+    "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
+    "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
 }
 
 
