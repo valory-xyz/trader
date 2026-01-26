@@ -127,39 +127,61 @@ class PredictionsFetcher:
     ) -> List[Dict]:
         """
         Format raw bets into prediction objects.
-        
-        Groups bets by market and aggregates multiple bets on the same market.
+
+        Emits one item per bet (no aggregation), while still using market-level
+        participant totals to distribute payouts proportionally.
         """
-        market_bets = self._group_bets_by_market(bets)
-        
-        items = []
-        for fpmm_id, market_bet_list in market_bets.items():
-            prediction = self._format_single_prediction(
-                market_bet_list, safe_address, status_filter
-            )
+        market_ctx = self._build_market_context(bets)
+
+        items: List[Dict] = []
+        for bet in bets:  # already ordered desc by timestamp in the query
+            fpmm = bet.get("fixedProductMarketMaker", {}) or {}
+            ctx = market_ctx.get(fpmm.get("id"))
+            prediction = self._format_single_bet(bet, fpmm, ctx, status_filter)
             if prediction:
                 items.append(prediction)
-        
+
         return items
 
-    def _group_bets_by_market(self, bets: List[Dict]) -> Dict[str, List[Dict]]:
-        """Group bets by market (FPMM) ID."""
-        market_bets = {}
-        
+    def _build_market_context(self, bets: List[Dict]) -> Dict[str, Dict[str, Any]]:
+        """Precompute per-market aggregates needed to distribute payouts per bet."""
+        ctx: Dict[str, Dict[str, Any]] = {}
+
         for bet in bets:
-            fpmm = bet.get("fixedProductMarketMaker", {})
+            fpmm = bet.get("fixedProductMarketMaker", {}) or {}
             fpmm_id = fpmm.get("id")
-            
             if not fpmm_id:
                 continue
-            
-            if fpmm_id not in market_bets:
-                market_bets[fpmm_id] = []
-            market_bets[fpmm_id].append(bet)
-        
-        return market_bets
 
-    def _format_single_prediction(
+            entry = ctx.setdefault(
+                fpmm_id,
+                {
+                    "current_answer": fpmm.get("currentAnswer"),
+                    "current_answer_ts": fpmm.get("currentAnswerTimestamp"),
+                    "outcomes": fpmm.get("outcomes") or [],
+                    "participant": (fpmm.get("participants") or [None])[0],
+                    "total_payout": None,
+                    "total_traded": None,
+                    "winning_total_amount": 0.0,
+                },
+            )
+
+            participant = entry["participant"] or {}
+            if entry["total_payout"] is None:
+                entry["total_payout"] = float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+            if entry["total_traded"] is None:
+                entry["total_traded"] = float(participant.get("totalTraded", 0)) / WEI_TO_NATIVE
+
+            amount_native = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            current_answer = entry["current_answer"]
+            if current_answer not in (None, INVALID_ANSWER_HEX):
+                correct = int(current_answer, 0)
+                if int(bet.get("outcomeIndex", 0)) == correct:
+                    entry["winning_total_amount"] += amount_native
+
+        return ctx
+
+    def _format_single_bet(
         self,
         market_bet_list: List[Dict],
         safe_address: str,
