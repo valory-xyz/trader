@@ -217,143 +217,46 @@ class PredictionsFetcher:
             "settled_at": self._format_timestamp(market_ctx.get("current_answer_ts")) if market_ctx and prediction_status != "pending" else None
         }
 
-    def _calculate_total_bet_amount(self, market_bet_list: List[Dict]) -> float:
-        """Calculate total bet amount across all bets on a market."""
-        return sum(
-            float(bet.get("amount", 0)) / WEI_TO_NATIVE 
-            for bet in market_bet_list
-        )
-
-    def _get_earliest_timestamp(self, market_bet_list: List[Dict]) -> int:
-        """Get the earliest timestamp from a list of bets."""
-        timestamps = [
-            int(bet.get("timestamp", 0)) 
-            for bet in market_bet_list 
-            if bet.get("timestamp")
-        ]
-        return min(timestamps) if timestamps else 0
-
-    def _calculate_market_net_profit(
-        self, 
-        market_bets: List[Dict],
-        market_participant: Optional[Dict],
-        safe_address: str
+    def _calculate_bet_net_profit(
+        self,
+        bet: Dict,
+        market_ctx: Optional[Dict[str, Any]],
+        bet_amount: float,
     ) -> Optional[float]:
-        """
-        Calculate net profit for all bets on a market.
-        Net profit = payout - bet amount (no fees included)
-        
-        For multi-bet scenarios, uses MarketParticipant data with proportional distribution.
-        """
-        first_bet = market_bets[0]
-        fpmm = first_bet.get("fixedProductMarketMaker", {})
-        current_answer = fpmm.get("currentAnswer")
-        
-        # Pending market
+        """Calculate net profit for a single bet using market-level payout data."""
+        if not market_ctx:
+            return 0.0
+
+        current_answer = market_ctx.get("current_answer")
+        total_payout = market_ctx.get("total_payout") or 0.0
+        total_traded = market_ctx.get("total_traded") or 0.0
+        winning_total = market_ctx.get("winning_total_amount") or 0.0
+        outcome_index = int(bet.get("outcomeIndex", 0))
+
+        # Unresolved market
         if current_answer is None:
             return 0.0
-        
-        # No market participant data available
-        if not market_participant:
-            return 0.0
-        
-        total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-        
-        # Invalid market - participants get refunds (use payout data)
+
+        # Invalid market refund path
         if current_answer == INVALID_ANSWER_HEX:
-            # Only calculate if payout is actually received
-            if total_payout == 0:
+            if total_payout == 0 or total_traded == 0:
                 return 0.0
-            total_bet_amount = self._calculate_total_loss(market_bets)
-            # Net profit = refund - original bet
-            return total_payout - total_bet_amount
-        
-        # Parse correct answer
+            refund_share = total_payout * (bet_amount / total_traded)
+            return refund_share - bet_amount
+
         correct_answer = int(current_answer, 0)
-        
-        # Separate winning and losing bets
-        winning_bets, losing_bets = self._separate_winning_losing_bets(
-            market_bets, correct_answer
-        )
-        
-        # Check if payout is redeemed
-        # If there are winning bets but payout is 0, treat as unredeemed (pending)
-        if winning_bets and total_payout == 0:
-            return 0.0
-        
-        total_loss = self._calculate_total_loss(losing_bets)
-        
-        # If no winning bets, return total loss
-        if not winning_bets:
-            return -total_loss
-        
-        # Calculate winning profit (payout - bet amount)
-        winning_profit = self._calculate_winning_profit(
-            winning_bets, market_participant
-        )
-        
-        if winning_profit is None:
-            return None
-        
-        # Subtract losses from winning profit
-        return winning_profit - total_loss
-        
-    def _separate_winning_losing_bets(
-        self, 
-        market_bets: List[Dict], 
-        correct_answer: int
-    ) -> Tuple[List[Dict], List[Dict]]:
-        """Separate bets into winning and losing based on outcome."""
-        winning_bets = []
-        losing_bets = []
-        
-        for bet in market_bets:
-            outcome_index = int(bet.get("outcomeIndex", 0))
-            if outcome_index == correct_answer:
-                winning_bets.append(bet)
-            else:
-                losing_bets.append(bet)
-        
-        return winning_bets, losing_bets
 
-    def _calculate_total_loss(self, losing_bets: List[Dict]) -> float:
-        """Calculate total loss from losing bets."""
-        return sum(
-            float(bet.get("amount", 0)) / WEI_TO_NATIVE 
-            for bet in losing_bets
-        )
+        # Losing bet
+        if outcome_index != correct_answer:
+            return -bet_amount
 
-    def _calculate_winning_profit(
-        self,
-        winning_bets: List[Dict],
-        market_participant: Optional[Dict]
-    ) -> Optional[float]:
-        """Calculate profit from winning bets using proportional distribution (payout - bet amount only)."""
-        if not market_participant:
-            return None
-        
-        total_payout = float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-        
-        total_winning_amount = sum(
-            float(bet.get("amount", 0)) / WEI_TO_NATIVE 
-            for bet in winning_bets
-        )
-        
-        if total_winning_amount == 0:
+        # Winning bet
+        if total_payout == 0 or winning_total == 0:
+            # Won but not redeemed yet
             return 0.0
-        
-        # Distribute payout proportionally among winning bets
-        # Profit = payout - bet amount
-        winning_profit = 0.0
-        for bet in winning_bets:
-            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            bet_proportion = bet_amount / total_winning_amount
-            
-            bet_payout = total_payout * bet_proportion
-            bet_profit = bet_payout - bet_amount
-            winning_profit += bet_profit
-        
-        return winning_profit
+
+        payout_share = total_payout * (bet_amount / winning_total)
+        return payout_share - bet_amount
 
     def _get_prediction_status(self, bet: Dict, market_participant: Optional[Dict]) -> str:
         """
