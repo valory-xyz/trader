@@ -238,6 +238,25 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
 }
 """
 
+GET_MECH_RESPONSE_QUERY = """
+query GetMechResponse($sender: String!, $questionTitle: String!) {
+  requests(
+    where: { sender: $sender, parsedRequest_: { questionTitle: $questionTitle } }
+    first: 1
+    orderBy: requestId
+    orderDirection: desc
+  ) {
+    parsedRequest {
+      questionTitle
+    }
+    deliveries(first: 1, orderBy: deliveryId, orderDirection: desc) {
+      toolResponse
+      model
+    }
+  }
+}
+"""
+
 GET_SPECIFIC_MARKET_BETS_QUERY = """
 query GetSpecificMarketBets($id: ID!, $betId: ID!) {
           traderAgent(id: $id) {

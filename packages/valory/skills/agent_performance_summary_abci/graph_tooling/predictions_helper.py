@@ -29,6 +29,7 @@ import requests
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_PREDICTION_HISTORY_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
+    GET_MECH_RESPONSE_QUERY,
     GET_SPECIFIC_MARKET_BETS_QUERY
 )
 
@@ -193,6 +194,58 @@ class PredictionsFetcher:
             self.logger.error(f"Error fetching mech tool for question '{question_title}': {str(e)}")
             return None
 
+    def _fetch_prediction_response_from_mech(
+        self, question_title: str, sender_address: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch prediction response (p_yes, p_no, etc.) from mech subgraph
+        """
+        if not question_title:
+            return None
+
+        query_payload = {
+            "query": GET_MECH_RESPONSE_QUERY,
+            "variables": {
+                "sender": sender_address.lower(),
+                "questionTitle": question_title,
+            },
+        }
+
+        try:
+            response = requests.post(
+                self.mech_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                self.logger.error(f"Failed to fetch mech market data: {response.status_code}")
+                return None
+
+            response_data = response.json()
+            requests_list = (response_data.get("data", {}) or {}).get("requests", []) or []
+            if not requests_list:
+                return None
+
+            deliveries = requests_list[0].get("deliveries", []) or []
+            if not deliveries:
+                return None
+
+            tool_response_raw = deliveries[0].get("toolResponse")
+            if not tool_response_raw:
+                return None
+
+            try:
+                return json.loads(tool_response_raw)
+            except json.JSONDecodeError:
+                self.logger.error("Unable to parse mech toolResponse JSON")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"Error fetching prediction response from mech for '{question_title}': {str(e)}")
+            return None
+
     def fetch_position_details(
         self, bet_id: str, safe_address: str, store_path: str
     ) -> Optional[Dict[str, Any]]:
@@ -214,17 +267,30 @@ class PredictionsFetcher:
             # If no bet found in agent_performance.json, fetch from subgraph
             if not bet:
                 self.logger.info(f"No bets found in agent_performance.json for bet {bet_id}, fetching from subgraph")
-                bet = self._fetch_specific_bet_from_subgraph(bet_id, safe_address)
+                bet = self._fetch_bet_from_subgraph(bet_id, safe_address)
 
-            market_id = bet.get("market",{}).get("id","")
-            market_info = self._find_market_in_multi_bets(multi_bets_data, market_id)
-            
-            if not market_info:
-                return None
-            
             if not bet:
                 # Market exists but no bet found
                 return None
+
+            market_id = bet.get("market",{}).get("id","")
+            market_info = self._find_market_entry(multi_bets_data, market_id)
+            if not market_info:
+                # Fall back to minimal market info from bet data
+                market_info = bet.get("market", {}) or {}
+                market_info.setdefault("id", market_id)
+
+            # Ensure prediction_response exists
+            prediction_response = market_info.get("prediction_response")
+            if not prediction_response:
+                question_title = market_info.get("title") or bet.get("market", {}).get("title", "")
+                fetched_prediction_response = self._fetch_prediction_response_from_mech(
+                    question_title,
+                    safe_address,
+                )
+                if fetched_prediction_response:
+                    prediction_response = fetched_prediction_response
+                    market_info["prediction_response"] = prediction_response
             
             # Calculate totals and status
             total_bet = bet.get("bet_amount", 0)
@@ -295,7 +361,7 @@ class PredictionsFetcher:
             self.logger.error(f"Error loading agent_performance.json: {e}")
             return {}
 
-    def _find_market_in_multi_bets(self, multi_bets_data: List[Dict], market_id: str) -> Optional[Dict]:
+    def _find_market_entry(self, multi_bets_data: List[Dict], market_id: str) -> Optional[Dict]:
         """Find market information in multi_bets data by market ID."""
         for market in multi_bets_data:
             if market.get("id") == market_id:
@@ -318,7 +384,7 @@ class PredictionsFetcher:
         """Format bets into the required API format for position details."""
         
         # Get prediction response from market_info
-        prediction_response = market_info.get("prediction_response", {})
+        prediction_response = market_info.get("prediction_response") or {}
         strategy = market_info.get("strategy")
         trading_strategy_ui = self._get_ui_trading_strategy(strategy)
 
@@ -351,7 +417,7 @@ class PredictionsFetcher:
         
         return formatted_bet
 
-    def _fetch_specific_bet_from_subgraph(
+    def _fetch_bet_from_subgraph(
         self, bet_id: str, safe_address: str
     ) -> Optional[Dict]:
         """
