@@ -398,7 +398,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
   olas_agents_subgraph:
     args:
       headers:
@@ -410,7 +410,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
   olas_mech_subgraph:
     args:
       headers:
@@ -422,7 +422,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/mech}
+      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v4_0_0}
   gnosis_staking_subgraph:
     args:
       headers:
