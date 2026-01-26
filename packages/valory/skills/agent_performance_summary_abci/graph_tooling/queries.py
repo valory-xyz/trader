@@ -159,7 +159,7 @@ GET_DAILY_PROFIT_STATISTICS_QUERY = """
 query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
   traderAgent(id: $agentId) {
     dailyProfitStatistics(
-      where: { 
+      where: {
         date_gte: $startTimestamp,
       }
       orderBy: date
@@ -203,7 +203,7 @@ GET_MECH_REQUESTS_BY_TITLES_QUERY = """
 query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
   sender(id: $sender) {
     requests(
-      where: { 
+      where: {
         questionTitle_in: $questionTitles
       }
     ) {
@@ -239,30 +239,30 @@ query GetPolymarketTraderAgentPerformance($id: ID!) {
 GET_POLYMARKET_PREDICTION_HISTORY_QUERY = """
 query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
   marketParticipants(
-    where: {traderAgent: $id}
-    first: $first
-    skip: $skip
     orderBy: blockTimestamp
     orderDirection: desc
+    where: {traderAgent_: {id: $id}}
+    first: $first
+    skip: $skip
   ) {
-    traderAgent {
-      bets {
-        amount
-        outcomeIndex
-        shares
-        question {
-          questionId
-          metadata {
-            outcomes
-            rawAncillaryData
-            title
-          }
-          resolution {
-            settledPrice
-            winningIndex
-          }
-        }
+    question {
+      questionId
+      metadata {
+        outcomes
+        title
       }
+      resolution {
+        winningIndex
+        settledPrice
+        timestamp
+      }
+    }
+    bets {
+      id
+      outcomeIndex
+      amount
+      shares
+      blockTimestamp
     }
   }
 }

@@ -73,21 +73,24 @@ class PolymarketPredictionsFetcher:
             self.logger.warning(f"No market participants found for {safe_address}")
             return {"total_predictions": 0, "items": []}
         
-        # Extract all bets from all market participants
-        all_bets = []
+        # Extract all bets from all market participants with their associated question
+        all_bets_with_questions = []
         for participant in market_participants:
-            trader_agent = participant.get("traderAgent", {})
-            bets = trader_agent.get("bets", [])
-            all_bets.extend(bets)
+            question = participant.get("question", {})
+            bets = participant.get("bets", [])
+            # Attach the question to each bet for processing
+            for bet in bets:
+                bet_with_question = {**bet, "question": question}
+                all_bets_with_questions.append(bet_with_question)
         
-        if not all_bets:
+        if not all_bets_with_questions:
             return {"total_predictions": 0, "items": []}
         
         # Format individual bets (not grouped by market)
-        items = self._format_predictions(all_bets, safe_address, status_filter)
+        items = self._format_predictions(all_bets_with_questions, safe_address, status_filter)
         
         return {
-            "total_predictions": len(all_bets),
+            "total_predictions": len(all_bets_with_questions),
             "items": items
         }
 
@@ -174,24 +177,28 @@ class PolymarketPredictionsFetcher:
         outcomes = metadata.get("outcomes", [])
         prediction_side = self._get_prediction_side(outcome_index, outcomes)
         
+        # Get IDs
+        bet_id = bet.get("id", "")
+        question_id = question.get("questionId", "")
+        market_title = metadata.get("title", "")
+        
         # Get timestamps
-        settled_timestamp = None
-        if resolution:
-            settled_timestamp = resolution.get("timestamp")
+        bet_timestamp = bet.get("blockTimestamp")
+        resolution_timestamp = resolution.get("timestamp") if resolution else None
         
         return {
-            "id": f"{question.get('questionId', '')}_{outcome_index}",
+            "id": bet_id,
             "market": {
-                "id": question.get("questionId", ""),
-                "title": metadata.get("title", ""),
-                "external_url": f"{POLYMARKET_BASE_URL}/event/{question.get('questionId', '')}"
+                "id": question_id,
+                "title": market_title,
+                "external_url": f"{POLYMARKET_BASE_URL}/event/{question_id}" if question_id else f"{POLYMARKET_BASE_URL}/"
             },
             "prediction_side": prediction_side,
             "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
-            "created_at": None,  # Not available in Polymarket query
-            "settled_at": self._format_timestamp(str(settled_timestamp)) if settled_timestamp else None
+            "created_at": self._format_timestamp(str(bet_timestamp)) if bet_timestamp else None,
+            "settled_at": self._format_timestamp(str(resolution_timestamp)) if resolution_timestamp else None
         }
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
