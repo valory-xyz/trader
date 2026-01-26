@@ -183,49 +183,38 @@ class PredictionsFetcher:
 
     def _format_single_bet(
         self,
-        market_bet_list: List[Dict],
-        safe_address: str,
-        status_filter: Optional[str]
+        bet: Dict,
+        fpmm: Dict,
+        market_ctx: Optional[Dict[str, Any]],
+        status_filter: Optional[str],
     ) -> Optional[Dict]:
-        """Format a single prediction (aggregated from potentially multiple bets on same market)."""
-        first_bet = market_bet_list[0]
-        fpmm = first_bet.get("fixedProductMarketMaker", {})
-        
-        # Get market participant data
-        participants = fpmm.get("participants", [])
-        market_participant = participants[0] if participants else None
-        
-        # Get basic prediction info
-        prediction_status = self._get_prediction_status(first_bet, market_participant)
-        
-        # Apply status filter
+        """Format a single bet into the public prediction object."""
+
+        participant = market_ctx.get("participant") if market_ctx else None
+        prediction_status = self._get_prediction_status(bet, participant)
+
         if status_filter and prediction_status != status_filter:
             return None
-        
-        # Calculate aggregated values
-        total_bet_amount = self._calculate_total_bet_amount(market_bet_list)
-        total_net_profit = self._calculate_market_net_profit(
-            market_bet_list, market_participant, safe_address
-        )
-        earliest_timestamp = self._get_earliest_timestamp(market_bet_list)
-        
-        # Get prediction side
-        outcome_index = int(first_bet.get("outcomeIndex", 0))
+
+        bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+        net_profit = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+
+        outcome_index = int(bet.get("outcomeIndex", 0))
         outcomes = fpmm.get("outcomes", [])
-        
+
         return {
-            "id": first_bet.get("id"),
+            "id": bet.get("id"),
             "market": {
                 "id": fpmm.get("id"),
                 "title": fpmm.get("question", ""),
                 "external_url": f"{PREDICT_BASE_URL}/{fpmm.get('id')}"
             },
             "prediction_side": self._get_prediction_side(outcome_index, outcomes),
-            "bet_amount": round(total_bet_amount, 3),
+            "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
-            "net_profit": round(total_net_profit, 3) if total_net_profit is not None else None,
-            "created_at": self._format_timestamp(str(earliest_timestamp)),
-            "settled_at": self._format_timestamp(fpmm.get("currentAnswerTimestamp")) if prediction_status != "pending" else None
+            "net_profit": round(net_profit, 3) if net_profit is not None else None,
+            "created_at": self._format_timestamp(bet.get("timestamp")),
+            "settled_at": self._format_timestamp(market_ctx.get("current_answer_ts")) if market_ctx and prediction_status != "pending" else None
         }
 
     def _calculate_total_bet_amount(self, market_bet_list: List[Dict]) -> float:
