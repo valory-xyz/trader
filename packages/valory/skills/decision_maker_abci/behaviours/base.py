@@ -536,33 +536,21 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
         yield from self.wait_for_condition_with_sleep(self.check_balance)
-        print(
-            f"11111111111111111111111111111111111111111111111111111111111111111111111111"
-        )
 
         # accessing `self.shared_state.chatui_config` calls `self._ensure_chatui_store()` which ensures `trading_strategy` can never be `None`
         next_strategy: str = self.shared_state.chatui_config.trading_strategy  # type: ignore[assignment]
 
-        print(
-            f"2222222222222222222222222222222222222222222222222222222222222222222222222222"
-        )
-
         tried_strategies: Set[str] = set()
         while True:
             self.context.logger.info(f"Used trading strategy: {next_strategy}")
-            print(
-                f"333333333333333333333333333333333333333333333333333333333333333333333333333333"
-            )
+
             # the following are always passed to a strategy script, which may choose to ignore any
             kwargs: Dict[str, Any] = self._update_with_values_from_chatui(
                 self.params.strategies_kwargs
             )
-            print(
-                "333333333333333333333333................................................................333333"
-            )
+
             kwargs["token_decimals"] = 6 if self._is_usdc(collateral_token) else 18
             kwargs["min_bet"] = self.params.strategies_kwargs["absolute_min_bet_size"]
-            print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {next_strategy}")
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
@@ -575,9 +563,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     "weighted_accuracy": weighted_accuracy,
                 }
             )
-            print("3.4.4.4.4.4.4..4.4")
             results = self.execute_strategy(**kwargs)
-            print(f"44444444444444444444444444444444444444444444444444444444444444")
             for level in SUPPORTED_STRATEGY_LOG_LEVELS:
                 logger = getattr(self.context.logger, level, None)
                 if logger is not None:
