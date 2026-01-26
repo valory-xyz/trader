@@ -12,18 +12,19 @@ fingerprint:
   composition.py: bafybeighy7x6nyi77q7a6fkgp5wkdivs5xax5bjpne6oaerlj667nevzgi
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeidd5wzcmemuzm6uu2z336hbmco5wnv5rxizpbfa7u4mu4rlpnlfo4
-  handlers.py: bafybeia6c37ulxgc7ljj3pkc46arcccqwovb2hh4bqozhsnxx2jlfv34oy
+  handlers.py: bafybeiepmx5paayuvuwf7qwtcc7otluzouwb5kbrrrnvs6hijjz2k2qcga
   models.py: bafybeidwv66gexftimle2vgfwxhg3bfgsb4bnrcwgayc4bz65sjk2jasmm
-  predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
+  predict-ui-build/README.md: bafybeie3ruor44v45nybbtend773u7m7rrxurzp5cypch7347lk4gvbugq
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  predict-ui-build/assets/index-D_Quo8RT.js: bafybeidzbmwomgtegwvmfzbhxv2lkiaoehyo5uvrrvhvq5oxrlii77fvaq
+  predict-ui-build/assets/index-Cnqz3yFc.js: bafybeiav6m2ybopgb2ofydxqwi2ramyj7tdupx7bzlnhhxverocrewezge
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
+  predict-ui-build/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
-  predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
+  predict-ui-build/assets/polystrat-chat-DlTWIQ8U.png: bafybeihz3bue6cuvvfadkzcjzhim5atgrgeew6pmzy6ignkjvkymofjfeu
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeicrx67muvyy2udjudraukb2aspqea2pkx4pl42vv3sdryx7a46sle
+  predict-ui-build/index.html: bafybeidf356hqsakc3usorasb7xwuytnezk27abannr6prz3f6bdvrvwpm
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
 fingerprint_ignore_patterns: []
@@ -40,13 +41,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/market_manager_abci:0.1.0:bafybeielbx7mn3wmvmypmkbgnzqhxx5gil7lzlma6xhvw4emb6ik7uqw3i
-- valory/decision_maker_abci:0.1.0:bafybeidrpg2v4z6lq2kpl3fphhd4vba3cfq66txmfi7wtxs3o4mwb5tv2m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiexvdxiiw56glcq4ppxo7q3ybhicnvna4u6avhhbg7wquhuacotze
+- valory/decision_maker_abci:0.1.0:bafybeihuytyzooo6enaxt4mnnuffibvak7suygminvdbmpy7wlprrukosi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibug5mnuvvpil3ik6ik2tuj6otoqcan3aczf5u5oltkhhv7jhr7te
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeid4hgdbz5bgnm2bu5hmqa3aab5sogvpoq2rsssk4js266in6ny57y
 - valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
-- valory/chatui_abci:0.1.0:bafybeid5zaqoutobrhh7da34wudnb4phkhtffi7lrcjcv3goh3ms5kahxi
-- valory/agent_performance_summary_abci:0.1.0:bafybeif3fe2bvhfwnglycbhm2n7habhpc2j7oicquyiww6fe3pnbdd4r3m
+- valory/chatui_abci:0.1.0:bafybeihnmddyk33yuqa5ohndm3dqnbaajhhiaidfzzvednor3z473jwqym
+- valory/agent_performance_summary_abci:0.1.0:bafybeie5vroxwufdf2u7tawbkr3bl4kxiqlnrgtkjbqpnyxhzbd4j5hjka
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:

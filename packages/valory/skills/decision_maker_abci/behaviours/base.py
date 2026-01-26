@@ -368,7 +368,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         updated = sampled_bet.update_investments(self.synchronized_data.bet_amount)
         if not updated:
             self.context.logger.error("Could not update the investments!")
-        
+
         # Update strategy for the bet that was just placed
         self._update_bet_strategy(sampled_bet)
 
@@ -894,7 +894,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
-    
+
     def _update_bet_strategy(self, bet: Bet) -> None:
         """Update the strategy for the bet that was just placed."""
         try:
