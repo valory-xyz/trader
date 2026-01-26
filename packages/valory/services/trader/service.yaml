@@ -2,12 +2,12 @@ name: trader
 author: valory
 version: 0.1.0
 description: A set of agents placing bets
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihmqhrfni24lhnjzie6z2blw3ignydnm73odletllbjeciizf6c5e
+agent: valory/trader:0.1.0:bafybeidhoxdjeoqrbprkxqcyqqrhjsgzhaufyted2wasq5qi73ucmxi634
 number_of_agents: 4
 deployment:
   agent:

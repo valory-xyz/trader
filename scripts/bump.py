@@ -119,8 +119,11 @@ def make_git_request(url: str) -> requests.Response:
     """Make git request"""
     auth = os.getenv("GITHUB_AUTH")  # pylint: disable=E1101
     if auth is None:
-        return requests.get(url=url)
-    return requests.get(url=url, headers={"Authorization": f"Bearer {auth}"})
+        return requests.get(url=url)  # nosec[B113] pylint: disable=W3101
+    # pylint: disable=W3101
+    return requests.get(
+        url=url, headers={"Authorization": f"Bearer {auth}"}
+    )  # nosec[B113]
 
 
 def get_latest_tag(repo: str) -> str:

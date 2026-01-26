@@ -113,7 +113,8 @@ class Agent:
         )
 
         try:
-            response = requests.get(healthcheck_url, verify=False)  # nosec
+            # pylint: disable=W3101
+            response = requests.get(healthcheck_url, verify=False)  # nosec B501 B113
             if response.status_code != HTTP_OK:
                 return False, {}
             response_json = response.json()
@@ -208,7 +209,7 @@ class Propel:
         """Logout"""
         self.client.logout()
 
-    def deploy(  # pylint: disable=too-many-arguments,too-many-locals
+    def deploy(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         service_name: str,
         variables: List[str],
