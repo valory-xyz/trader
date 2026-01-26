@@ -36,7 +36,9 @@ query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
     totalRequests
     requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
-      questionTitle
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }
@@ -194,7 +196,9 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
   ) {
     id
     requestId
-    questionTitle
+    parsedRequest {
+      questionTitle
+    }
   }
 }
 """
@@ -204,11 +208,13 @@ query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
   sender(id: $sender) {
     requests(
       where: { 
-        questionTitle_in: $questionTitles
+        parsedRequest_: { questionTitle_in: $questionTitles }
       }
     ) {
       id
-      questionTitle
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }
@@ -217,7 +223,15 @@ query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
 GET_MECH_TOOL_FOR_QUESTION_QUERY = """
 query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
   sender(id: $sender) {
-    requests(where: {questionTitle: $questionTitle}) {
+    requests(
+      where: { parsedRequest_: { questionTitle: $questionTitle } }
+      first: 1
+      orderBy: requestId
+      orderDirection: desc
+    ) {
+      parsedRequest {
+        questionTitle
+      }
       tool
     }
   }

@@ -187,7 +187,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Count requests for still-open markets
         open_market_requests = sum(
-            r.get("questionTitle", None) in open_market_titles
+            (r.get("parsedRequest", {}) or {}).get("questionTitle") in open_market_titles
             for r in last_four_days_requests
         )
         
@@ -534,7 +534,7 @@ class FetchPerformanceSummaryBehaviour(
         # Build lookup map: question_title -> count
         lookup = {}
         for request in all_mech_requests:
-            title = request.get("questionTitle", "")
+            title = (request.get("parsedRequest", {}) or {}).get("questionTitle", "")
             if title:
                 lookup[title] = lookup.get(title, 0) + 1
         
@@ -690,7 +690,7 @@ class FetchPerformanceSummaryBehaviour(
         mech_request_lookup = {}
         if new_mech_requests:
             for request in new_mech_requests:
-                title = request.get("questionTitle", "")
+                title = (request.get("parsedRequest", {}) or {}).get("questionTitle", "")
                 if title:
                     mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
         

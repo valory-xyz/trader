@@ -182,8 +182,10 @@ class PredictionsFetcher:
             
             if sender_data and sender_data.get("requests"):
                 requests_list = sender_data["requests"]
-                if requests_list and len(requests_list) > 0:
-                    return requests_list[0].get("tool")
+                for req in requests_list:
+                    parsed_request = req.get("parsedRequest", {}) or {}
+                    if parsed_request.get("questionTitle") == question_title:
+                        return req.get("tool")
             
             return None
             
