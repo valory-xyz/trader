@@ -25,8 +25,10 @@ query GetOlasTraderAgent($id: ID!) {
     id
     serviceId
     totalTraded
+    totalTradedSettled
     totalPayout
     totalFees
+    totalFeesSettled
   }
 }
 """
@@ -91,8 +93,10 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
   traderAgent(id: $id) {
     id
     totalTraded
+    totalTradedSettled
     totalPayout
     totalFees
+    totalFeesSettled
     totalBets
     bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
       amount

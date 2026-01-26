@@ -250,16 +250,15 @@ class FetchPerformanceSummaryBehaviour(
         
         settled_mech_requests = self._settled_mech_requests_count
 
-        total_costs = (
-            int(trader_agent["totalTraded"])
-            + int(trader_agent["totalFees"])
-            + settled_mech_requests * DEFAULT_MECH_FEE
-        )
+        total_traded_settled = int(trader_agent.get("totalTradedSettled"))
+        total_fees_settled = int(trader_agent.get("totalFeesSettled"))
+
+        total_costs = total_traded_settled + total_fees_settled + (settled_mech_requests * DEFAULT_MECH_FEE)
 
         if total_costs == 0:
             return None, None
 
-        total_market_payout = int(trader_agent["totalPayout"])
+        total_market_payout = int(trader_agent.get("totalPayout", 0))
         total_olas_rewards_payout_in_usd = (
             int(staking_service.get("olasRewardsEarned", 0)) * olas_in_usd_price
         ) / WEI_IN_ETH
@@ -370,37 +369,30 @@ class FetchPerformanceSummaryBehaviour(
         
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
+        total_traded_settled = int(trader_agent.get("totalTradedSettled"))
+        total_fees_settled = int(trader_agent.get("totalFeesSettled"))
         total_payout = int(trader_agent.get("totalPayout", 0))
-        total_bets = int(trader_agent.get("totalBets", 0))
         
         settled_mech_requests = self._settled_mech_requests_count
         
         # Get total mech requests for funds_used calculation (uses cache)
-        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
-        
-        # Get pending bets to calculate locked amounts
-        pending_bets_data = yield from self._fetch_pending_bets(safe_address)
-        pending_bets = pending_bets_data.get("bets", []) if pending_bets_data else []
-        
-        # Calculate pending bet amounts
-        pending_bet_amounts = sum(int(bet.get("amount", 0)) for bet in pending_bets)
-        
+        total_mech_requests = yield from self._get_total_mech_requests(safe_address)       
         # Calculate ALL mech costs (for all requests, not just settled)
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
         
-        # All-time funds used: traded + fees + ALL mech costs + locked funds
+        # All-time funds used: traded + fees + ALL mech costs
         all_time_funds_used = (
-            total_traded + total_fees + all_mech_costs + pending_bet_amounts
+            total_traded + total_fees + all_mech_costs
         ) / WEI_IN_ETH
         
-        # All-time profit: uses only SETTLED mech costs
+        # All-time profit: uses settled traded/fees and settled mech costs
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         all_time_profit = (
-            total_payout - total_traded - total_fees - settled_mech_costs
+            total_payout - total_traded_settled - total_fees_settled - settled_mech_costs
         ) / WEI_IN_ETH
         
         # Calculate locked funds
-        funds_locked_in_markets = pending_bet_amounts / WEI_IN_ETH
+        funds_locked_in_markets = (total_traded - total_traded_settled) / WEI_IN_ETH
         
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
