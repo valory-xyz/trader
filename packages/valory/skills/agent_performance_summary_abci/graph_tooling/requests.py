@@ -173,14 +173,15 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         self, agent_safe_address
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
-        return (
-            yield from self._fetch_from_subgraph(
-                query=GET_TRADER_AGENT_QUERY,
-                variables={"id": agent_safe_address},
-                subgraph=self.context.olas_agents_subgraph,
-                res_context="trader_agent",
-            )
+        result = yield from self._fetch_from_subgraph(
+            query=GET_TRADER_AGENT_QUERY,
+            variables={"id": agent_safe_address},
+            subgraph=self.context.olas_agents_subgraph,
+            res_context="trader_agent",
         )
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_staking_service(
         self, service_id
@@ -212,53 +213,57 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         self, agent_safe_address
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
-        return (
-            yield from self._fetch_from_subgraph(
-                query=GET_TRADER_AGENT_BETS_QUERY,
-                variables={"id": agent_safe_address},
-                subgraph=self.context.olas_agents_subgraph,
-                res_context="trader_agent_bets",
-            )
+        result = yield from self._fetch_from_subgraph(
+            query=GET_TRADER_AGENT_BETS_QUERY,
+            variables={"id": agent_safe_address},
+            subgraph=self.context.olas_agents_subgraph,
+            res_context="trader_agent_bets",
         )
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_agent_details(
         self, agent_safe_address
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch agent metadata (id, created_at, last_active_at)."""
-        return (
-            yield from self._fetch_from_subgraph(
-                query=GET_TRADER_AGENT_DETAILS_QUERY,
-                variables={"id": agent_safe_address},
-                subgraph=self.context.olas_agents_subgraph,
-                res_context="agent_details",
-            )
+        result = yield from self._fetch_from_subgraph(
+            query=GET_TRADER_AGENT_DETAILS_QUERY,
+            variables={"id": agent_safe_address},
+            subgraph=self.context.olas_agents_subgraph,
+            res_context="agent_details",
         )
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_trader_agent_performance(
         self, agent_safe_address, first: int = 200, skip: int = 0
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent performance with bets (includes totalBets, totalTraded, etc)."""
-        return (
-            yield from self._fetch_from_subgraph(
-                query=GET_TRADER_AGENT_PERFORMANCE_QUERY,
-                variables={"id": agent_safe_address, "first": first, "skip": skip},
-                subgraph=self.context.olas_agents_subgraph,
-                res_context="trader_agent_performance",
-            )
+        result = yield from self._fetch_from_subgraph(
+            query=GET_TRADER_AGENT_PERFORMANCE_QUERY,
+            variables={"id": agent_safe_address, "first": first, "skip": skip},
+            subgraph=self.context.olas_agents_subgraph,
+            res_context="trader_agent_performance",
         )
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_pending_bets(
         self, agent_safe_address
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch all pending bets (markets not yet resolved)."""
-        return (
-            yield from self._fetch_from_subgraph(
-                query=GET_PENDING_BETS_QUERY,
-                variables={"id": agent_safe_address},
-                subgraph=self.context.olas_agents_subgraph,
-                res_context="pending_bets",
-            )
+        result = yield from self._fetch_from_subgraph(
+            query=GET_PENDING_BETS_QUERY,
+            variables={"id": agent_safe_address},
+            subgraph=self.context.olas_agents_subgraph,
+            res_context="pending_bets",
         )
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_olas_in_usd_price(
         self,

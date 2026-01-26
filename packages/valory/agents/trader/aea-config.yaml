@@ -404,7 +404,7 @@ models:
       headers:
         Content-Type: ${str:application/json}
       method: ${str:POST}
-      response_key: ${str:data:traderAgent}
+      response_key: ${str:data}
       response_type: ${str:dict}
       error_key: ${str:errors}
       error_index: ${int:0}

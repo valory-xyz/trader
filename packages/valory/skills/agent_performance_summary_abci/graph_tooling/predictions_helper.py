@@ -142,7 +142,9 @@ class PredictionsFetcher:
                 return None
             
             response_data = response.json()
-            return response_data.get("data", {}).get("traderAgent")
+            data = response_data.get("data", {}) or {}
+            trader_agent = data.get("traderAgent")
+            return trader_agent
             
         except Exception as e:
             self.logger.error(f"Error fetching trader agent bets: {str(e)}")
@@ -450,7 +452,8 @@ class PredictionsFetcher:
                 return {}
             
             response_data = response.json()
-            trader_agent = response_data.get("data", {}).get("traderAgent")
+            data = response_data.get("data", {}) or {}
+            trader_agent = data.get("traderAgent")
             
             if not trader_agent or not trader_agent.get("bets"):
                 return {}
