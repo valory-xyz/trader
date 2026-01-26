@@ -250,14 +250,12 @@ class FetchPerformanceSummaryBehaviour(
             return None, None
         
         settled_mech_requests = self._settled_mech_requests_count
-        nonplaced_mech_requests = self._unplaced_mech_requests_count
 
         total_traded_settled = int(trader_agent.get("totalTradedSettled"))
         total_fees_settled = int(trader_agent.get("totalFeesSettled"))
 
-        nonplaced_mech_costs = nonplaced_mech_requests * DEFAULT_MECH_FEE
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
-        total_costs = total_traded_settled + total_fees_settled + settled_mech_costs + nonplaced_mech_costs
+        total_costs = total_traded_settled + total_fees_settled + settled_mech_costs
 
         if total_costs == 0:
             return None, None
@@ -382,9 +380,7 @@ class FetchPerformanceSummaryBehaviour(
         
         # Get total mech requests for funds_used calculation (uses cache)
         total_mech_requests = yield from self._get_total_mech_requests(safe_address)       
-        # Calculate ALL mech costs (for all requests, not just settled)
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
-        nonplaced_mech_costs = nonplaced_mech_requests * DEFAULT_MECH_FEE
         
         # All-time funds used: traded + fees + ALL mech costs
         all_time_funds_used = (
@@ -394,7 +390,7 @@ class FetchPerformanceSummaryBehaviour(
         # All-time profit: uses settled traded/fees and settled mech costs
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         all_time_profit = (
-            total_payout - total_traded_settled - total_fees_settled - settled_mech_costs - nonplaced_mech_costs
+            total_payout - total_traded_settled - total_fees_settled - settled_mech_costs
         ) / WEI_IN_ETH
         
         # Calculate locked funds
@@ -523,91 +519,15 @@ class FetchPerformanceSummaryBehaviour(
                         placed_titles.add(title)
         return placed_titles
 
-    def _build_unplaced_resolution_buckets(
-        self, resolved_markets: list, unplaced_requests: Dict[str, int]
-    ) -> Dict[int, int]:
-        """
-        Map titles without bets to resolution-day mech fee counts.
-        """
-        buckets: Dict[int, int] = {}
-        for market in resolved_markets:
-            question = market.get("question", "")
-            title = question.split(QUESTION_DATA_SEPARATOR)[0] if question else ""
-            if not title or title not in unplaced_requests:
-                continue
-            ts = market.get("currentAnswerTimestamp")
-            if ts is None:
-                continue
-            day_ts = (int(ts) // SECONDS_PER_DAY) * SECONDS_PER_DAY
-            buckets[day_ts] = buckets.get(day_ts, 0) + unplaced_requests[title]
-        return buckets
-
-    def _allocate_mech_requests_across_bets(
-        self, market_participants: list, mech_request_lookup: Dict[str, int]
-    ) -> Dict[int, int]:
-        """
-        Evenly split mech requests across bets per market, bucketed by bet settlement day.
-        Returns dict day_ts -> mech_request_count.
-        """
-        buckets: Dict[int, int] = {}
-        # Group bets by market id and keep their settlement day
-        markets: Dict[str, list] = {}
-        for bet in market_participants:
-            fpmm = bet.get("fixedProductMarketMaker", {}) or {}
-            market_id = fpmm.get("id")
-            if not market_id:
-                continue
-            question = fpmm.get("question", "")
-            title = question.split(QUESTION_DATA_SEPARATOR)[0] if question else ""
-            if not title:
-                continue
-
-            settlement_ts = fpmm.get("currentAnswerTimestamp")
-            if settlement_ts is None:
-                continue  # unresolved
-            settlement_day = (int(settlement_ts) // SECONDS_PER_DAY) * SECONDS_PER_DAY
-
-            markets.setdefault(market_id, []).append((settlement_day, title))
-
-        for market_id, bets in markets.items():
-            if not bets:
-                continue
-            # assume all bets same title
-            title = bets[0][1]
-            total_requests = mech_request_lookup.get(title, 0)
-            if total_requests == 0:
-                continue
-            bet_count = len(bets)
-            base = total_requests // bet_count
-            rem = total_requests % bet_count
-            # sort by settlement day to allocate remainder deterministically
-            bets_sorted = sorted(bets, key=lambda x: x[0])
-            for idx, (day_ts, _) in enumerate(bets_sorted):
-                alloc = base + (1 if idx < rem else 0)
-                if alloc > 0:
-                    buckets[day_ts] = buckets.get(day_ts, 0) + alloc
-
-        return buckets
-
     def _apply_mech_fees(
         self,
         profit_participants: list,
         mech_request_lookup: Dict[str, int],
         extra_fees_by_day: Dict[int, int],
         date_timestamp: int,
-        skip_lookup_fees: bool = False,
     ) -> Tuple[float, int]:
-        """
-        Calculate mech fees for a day.
-
-        - If skip_lookup_fees is True, we only apply extra_fees_by_day (used when
-          allocations were already derived to avoid double counting lookup-based counts).
-        - Otherwise, we apply lookup-based counts plus any extra_fees_by_day bucket.
-        """
-        if skip_lookup_fees:
-            mech_fees, mech_count = 0.0, 0
-        else:
-            mech_fees, mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
+        """Calculate mech fees for a day: lookup-based fees plus any precomputed extra buckets."""
+        mech_fees, mech_count = self._calculate_mech_fees_for_day(profit_participants, mech_request_lookup)
 
         extra_count = extra_fees_by_day.get(date_timestamp, 0)
         if extra_count:
@@ -615,37 +535,53 @@ class FetchPerformanceSummaryBehaviour(
             mech_count += extra_count
         return mech_fees, mech_count
 
-    def _prepare_mech_fee_maps(
-        self,
-        mech_request_lookup: Dict[str, int],
-        placed_titles: Set[str],
-        resolved_markets: list,
-        bets_for_allocation: list,
-    ) -> Tuple[Dict[int, int], bool, int]:
+    def _evenly_distribute_requests(self, total_requests: int, days: list[int]) -> Dict[int, int]:
+        """Evenly distribute request count across given day timestamps."""
+        if total_requests <= 0 or not days:
+            return {}
+        per_day = total_requests // len(days)
+        remainder = total_requests % len(days)
+        buckets: Dict[int, int] = {}
+        for idx, day_ts in enumerate(sorted(days)):
+            alloc = per_day + (1 if idx < remainder else 0)
+            if alloc:
+                buckets[day_ts] = alloc
+        return buckets
+
+    def _build_multi_bet_allocations(
+        self, daily_stats: list, mech_request_lookup: Dict[str, int]
+    ) -> Tuple[Dict[int, int], Set[str]]:
         """
-        Build mech-fee maps and flags for a computation window.
-
-        Returns:
-            combined_extra_fees_by_day: merged buckets (unplaced + allocated across bets)
-            skip_lookup_fees: True when allocations exist (avoid double counting lookup)
-            unplaced_count: total unplaced mech requests mapped to resolved markets
+        For markets appearing on multiple days, split mech requests evenly across those days.
+        Returns (allocations_by_day, titles_allocated).
         """
-        # Requests where the agent never placed a bet
-        unplaced_requests = {
-            title: count for title, count in mech_request_lookup.items() if title not in placed_titles
-        }
-        unplaced_fees_by_day = self._build_unplaced_resolution_buckets(resolved_markets, unplaced_requests)
-        unplaced_count = sum(unplaced_fees_by_day.values())
+        title_days: Dict[str, list] = {}
+        for stat in daily_stats:
+            day_ts = int(stat["date"])
+            titles = {
+                participant.get("question", "").split(QUESTION_DATA_SEPARATOR)[0]
+                for participant in stat.get("profitParticipants", [])
+                if participant.get("question", "")
+            }
+            for title in titles:
+                if title:
+                    title_days.setdefault(title, []).append(day_ts)
 
-        # Requests for markets with multiple bets, split across their settlement days
-        allocated_mech_by_day = self._allocate_mech_requests_across_bets(
-            bets_for_allocation,
-            mech_request_lookup,
-        )
+        allocations: Dict[int, int] = {}
+        titles_allocated: Set[str] = set()
 
-        combined_extra = {**unplaced_fees_by_day, **allocated_mech_by_day}
-        skip_lookup_fees = bool(allocated_mech_by_day)
-        return combined_extra, skip_lookup_fees, unplaced_count
+        for title, days in title_days.items():
+            if len(days) <= 1:
+                continue
+            total_requests = mech_request_lookup.get(title, 0)
+            if total_requests <= 0:
+                continue
+            titles_allocated.add(title)
+            allocations_for_title = self._evenly_distribute_requests(total_requests, days)
+            for day_ts, count in allocations_for_title.items():
+                allocations[day_ts] = allocations.get(day_ts, 0) + count
+
+        return allocations, titles_allocated
 
     def _build_mech_request_lookup(self, agent_safe_address: str) -> Generator[None, None, dict]:
         """
@@ -743,30 +679,34 @@ class FetchPerformanceSummaryBehaviour(
                 settled_mech_requests_count=0
             )
 
-        # Fetch prediction history to allocate mech requests across multiple bets per market
-        prediction_history = self._fetch_prediction_history()
-        bets_for_allocation = prediction_history.items if prediction_history else []
-        
         # Process all daily statistics
         data_points = []
         cumulative_profit = 0.0
 
         placed_titles = self._collect_placed_titles(daily_stats)
-
-        # Titles with mech requests but NO bets
-        unplaced_requests = {
-            title: count
-            for title, count in (mech_request_lookup or {}).items()
-            if title not in placed_titles
-        }
-
-        resolved_markets = yield from self._fetch_all_resolved_markets(timestamp_gt=0, timestamp_lte=current_timestamp)
-        combined_extra_fees_by_day, skip_lookup_fees, unplaced_count = self._prepare_mech_fee_maps(
-            mech_request_lookup or {},
-            placed_titles,
-            resolved_markets,
-            bets_for_allocation,
+        placed_requests_count = sum((mech_request_lookup or {}).get(title, 0) for title in placed_titles)
+        remaining_unplaced = max(
+            self._total_mech_requests - (self._open_market_requests or 0) - placed_requests_count,
+            0,
         )
+
+        combined_extra_fees_by_day: Dict[int, int] = {}
+        if daily_stats and remaining_unplaced > 0:
+            days = [int(stat["date"]) for stat in daily_stats]
+            combined_extra_fees_by_day = self._evenly_distribute_requests(remaining_unplaced, days)
+
+        # Allocate mech requests for markets with multiple bet appearances
+        multi_allocations, allocated_titles = self._build_multi_bet_allocations(daily_stats, mech_request_lookup)
+
+        # Exclude allocated titles from lookup to avoid double counting
+        filtered_lookup = {k: v for k, v in (mech_request_lookup or {}).items() if k not in allocated_titles}
+
+        # Merge buckets: unplaced spread + multi-bet allocations
+        merged_extra_fees_by_day = {**combined_extra_fees_by_day}
+        for day_ts, count in multi_allocations.items():
+            merged_extra_fees_by_day[day_ts] = merged_extra_fees_by_day.get(day_ts, 0) + count
+
+        unplaced_count = sum(combined_extra_fees_by_day.values())
         
         for stat in daily_stats:
             date_timestamp = int(stat["date"])
@@ -777,10 +717,9 @@ class FetchPerformanceSummaryBehaviour(
             profit_participants = stat.get("profitParticipants", [])
             mech_fees, daily_mech_count = self._apply_mech_fees(
                 profit_participants,
-                mech_request_lookup,
-                combined_extra_fees_by_day,
+                filtered_lookup,
+                merged_extra_fees_by_day,
                 date_timestamp,
-                skip_lookup_fees=skip_lookup_fees,
             )
             
             daily_profit_net = daily_profit_raw - mech_fees
@@ -843,18 +782,29 @@ class FetchPerformanceSummaryBehaviour(
             self._mech_request_lookup = yield from self._build_mech_request_lookup(agent_safe_address)
         mech_request_lookup = self._mech_request_lookup or {}
 
-        unplaced_requests = {title: count for title, count in mech_request_lookup.items() if title not in placed_titles}
+        placed_requests_count = sum((mech_request_lookup or {}).get(title, 0) for title in placed_titles)
+        already_counted = existing_data.unplaced_mech_requests_count if hasattr(existing_data, "unplaced_mech_requests_count") else 0
+        remaining_unplaced = max(
+            self._total_mech_requests - (self._open_market_requests or 0) - placed_requests_count - already_counted,
+            0,
+        )
 
-        resolved_markets = yield from self._fetch_all_resolved_markets(
-            timestamp_gt=last_data_timestamp,
-            timestamp_lte=current_timestamp,
-        )
-        combined_extra_fees_by_day, skip_lookup_fees, unplaced_count = self._prepare_mech_fee_maps(
-            mech_request_lookup,
-            placed_titles,
-            resolved_markets,
-            prediction_history.items if prediction_history else [],
-        )
+        combined_extra_fees_by_day: Dict[int, int] = {}
+        if new_daily_stats:
+            # Unplaced requests evenly over new days
+            if remaining_unplaced > 0:
+                days = [int(stat["date"]) for stat in new_daily_stats]
+                combined_extra_fees_by_day = self._evenly_distribute_requests(remaining_unplaced, days)
+
+            # Multi-bet allocations across days present in new stats
+            multi_allocations, allocated_titles = self._build_multi_bet_allocations(new_daily_stats, mech_request_lookup)
+            for day_ts, count in multi_allocations.items():
+                combined_extra_fees_by_day[day_ts] = combined_extra_fees_by_day.get(day_ts, 0) + count
+
+            # Exclude allocated titles from lookup for this slice
+            mech_request_lookup = {k: v for k, v in (mech_request_lookup or {}).items() if k not in allocated_titles}
+
+        unplaced_count = sum(combined_extra_fees_by_day.values())
         
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
@@ -872,7 +822,6 @@ class FetchPerformanceSummaryBehaviour(
                 mech_request_lookup,
                 combined_extra_fees_by_day,
                 date_timestamp,
-                skip_lookup_fees=skip_lookup_fees,
             )
             
             daily_profit_net = daily_profit_raw - mech_fees
