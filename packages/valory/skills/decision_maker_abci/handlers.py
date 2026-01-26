@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2021-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ from packages.valory.skills.decision_maker_abci.rounds_info import (
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
+from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
 
 
 ABCIHandler = BaseABCIRoundHandler
@@ -308,7 +309,9 @@ class HttpHandler(BaseHttpHandler):
     @property
     def waiting_for_a_mech_response(self) -> bool:
         """Whether the agent is currently waiting for a mech response."""
-        return self.round_sequence.current_round_id == DecisionReceiveRound
+        return self.round_sequence.current_round_id in set(
+            [DecisionReceiveRound.auto_round_id(), MechResponseRound.auto_round_id()]
+        )
 
     def _handle_get_health(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
