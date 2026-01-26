@@ -89,6 +89,7 @@ class FetchPerformanceSummaryBehaviour(
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
         self._settled_mech_requests_count: int = 0
+        self._unplaced_mech_requests_count: int = 0
     
     def _should_update(self) -> bool:
         """Check if we should update."""
@@ -249,11 +250,14 @@ class FetchPerformanceSummaryBehaviour(
             return None, None
         
         settled_mech_requests = self._settled_mech_requests_count
+        nonplaced_mech_requests = self._unplaced_mech_requests_count
 
         total_traded_settled = int(trader_agent.get("totalTradedSettled"))
         total_fees_settled = int(trader_agent.get("totalFeesSettled"))
 
-        total_costs = total_traded_settled + total_fees_settled + (settled_mech_requests * DEFAULT_MECH_FEE)
+        nonplaced_mech_costs = nonplaced_mech_requests * DEFAULT_MECH_FEE
+        settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
+        total_costs = total_traded_settled + total_fees_settled + settled_mech_costs + nonplaced_mech_costs
 
         if total_costs == 0:
             return None, None
@@ -374,11 +378,13 @@ class FetchPerformanceSummaryBehaviour(
         total_payout = int(trader_agent.get("totalPayout", 0))
         
         settled_mech_requests = self._settled_mech_requests_count
+        nonplaced_mech_requests = self._unplaced_mech_requests_count
         
         # Get total mech requests for funds_used calculation (uses cache)
         total_mech_requests = yield from self._get_total_mech_requests(safe_address)       
         # Calculate ALL mech costs (for all requests, not just settled)
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
+        nonplaced_mech_costs = nonplaced_mech_requests * DEFAULT_MECH_FEE
         
         # All-time funds used: traded + fees + ALL mech costs
         all_time_funds_used = (
@@ -388,7 +394,7 @@ class FetchPerformanceSummaryBehaviour(
         # All-time profit: uses settled traded/fees and settled mech costs
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         all_time_profit = (
-            total_payout - total_traded_settled - total_fees_settled - settled_mech_costs
+            total_payout - total_traded_settled - total_fees_settled - settled_mech_costs - nonplaced_mech_costs
         ) / WEI_IN_ETH
         
         # Calculate locked funds
@@ -778,7 +784,9 @@ class FetchPerformanceSummaryBehaviour(
         
         # Calculate updated settled mech requests count from all data points
         settled_mech_requests_count = sum(point.daily_mech_requests for point in new_data_points)
-        unplaced_mech_requests_count = sum(unplaced_fees_by_day.values())
+        unplaced_mech_requests_count = sum(unplaced_fees_by_day.values()) + (
+            existing_data.unplaced_mech_requests_count if hasattr(existing_data, "unplaced_mech_requests_count") else 0
+        )
         
         return ProfitOverTimeData(
             last_updated=current_timestamp,
@@ -828,7 +836,17 @@ class FetchPerformanceSummaryBehaviour(
         self._settled_mech_requests_count = yield from self._calculate_settled_mech_requests(agent_safe_address)
         
         current_timestamp = self.shared_state.synced_timestamp
+        profit_over_time = yield from self._build_profit_over_time_data()
+        if profit_over_time and hasattr(profit_over_time, "unplaced_mech_requests_count"):
+            self._unplaced_mech_requests_count = profit_over_time.unplaced_mech_requests_count
+        else:
+            self._unplaced_mech_requests_count = 0
         
+        if self._unplaced_mech_requests_count == 0:
+            existing_summary = self.shared_state.read_existing_performance_summary()
+            if existing_summary and existing_summary.profit_over_time and hasattr(existing_summary.profit_over_time, "unplaced_mech_requests_count"):
+                self._unplaced_mech_requests_count = existing_summary.profit_over_time.unplaced_mech_requests_count or 0
+
         final_roi, partial_roi = yield from self.calculate_roi()
 
         metrics = []
@@ -857,7 +875,6 @@ class FetchPerformanceSummaryBehaviour(
         agent_details = yield from self._fetch_agent_details_data()
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
-        profit_over_time = yield from self._build_profit_over_time_data()
 
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp, 
