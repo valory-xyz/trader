@@ -300,12 +300,14 @@ class PredictionsFetcher:
         else:
             implied_probability = prediction_response.get("p_no",0) * 100
 
+        external_url = bets.get("market", {}).get("external_url", "")
+
         formatted_bet = {
             "id": bets.get("id", ""),
+            "external_url": external_url,
             "bet": {
                 "amount": round(bets.get("bet_amount", 0), 3),
                 "side": bet_side,
-                "external_url": bets.get("market", {}).get("external_url", ""),
                 "placed_at": bets.get("created_at", "")
             },
             "intelligence": {
