@@ -902,10 +902,12 @@ class UpdateAchievementsBehaviour(
             achievements = Achievements()
             agent_performance_summary.achievements = achievements
 
-        achievements_updated = self.polymarket_payout_checker.update_achievements(
-            achievements=agent_performance_summary.achievements,
-            prediction_history=agent_performance_summary.prediction_history
-        )
+        achievements_updated = False
+        if self.params.is_running_on_polymarket:
+            achievements_updated = self.polymarket_payout_checker.update_achievements(
+                achievements=agent_performance_summary.achievements,
+                prediction_history=agent_performance_summary.prediction_history
+            )
 
         if achievements_updated:
             self.shared_state.overwrite_performance_summary(agent_performance_summary)
