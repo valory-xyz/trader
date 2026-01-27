@@ -72,7 +72,7 @@ class BetPayoutChecker(AchievementsChecker):
 
             achievement = Achievement(
                 achievement_id=achievement_id,
-                type=self.type,
+                achievement_type=self.achievement_type(),
                 title="High ROI on bet!",
                 description=f"My agent bet on \"{bet['market']['title']}\" won a {roi:.2f}% ROI.",
                 timestamp=int(datetime.fromisoformat(bet["settled_at"].replace("Z", "+00:00")).timestamp()),
