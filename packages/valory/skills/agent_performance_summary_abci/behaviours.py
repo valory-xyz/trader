@@ -98,9 +98,32 @@ class FetchPerformanceSummaryBehaviour(
         
         if not existing_summary or self.synchronized_data.period_count == 0:
             return True  # First run
+
+        # Refresh immediately if post_tx_settlement_round observed since last update
+        # which indicates a tx was executed last period meaning either a bet was placed, a bet was redeemed, or a mech request was placeed
+        # in that case we update the metrics
+        if self._post_tx_round_detected():
+            return True
         
         time_since_last = self.shared_state.synced_timestamp - existing_summary.timestamp
         return time_since_last >= self._update_interval
+
+    def _post_tx_round_detected(self) -> bool:
+        """
+        Detect whether post_tx_settlement_round occurred since last update.
+        post_tx_settlement_round is reached after every settled transaction.
+        """
+        try:
+            abci_app = self.context.state.round_sequence.abci_app  # type: ignore
+            previous_rounds = getattr(abci_app, "_previous_rounds", [])
+            for rnd in reversed(previous_rounds[-TX_HISTORY_DEPTH:]):
+                rnd_id = getattr(rnd, "round_id", None)
+                if rnd_id == "post_tx_settlement_round":
+                    return True
+            return False
+        except Exception as e:
+            self.context.logger.debug(f"post-tx detection via round history skipped: {e}")
+            return False
 
     @property
     def shared_state(self) -> SharedState:
