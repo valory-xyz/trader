@@ -22,7 +22,7 @@
 import enum
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -208,14 +208,17 @@ class PredictionsFetcher:
                 return None
 
             response_data = response.json()
-            sender_data = response_data.get("data", {}).get("sender")
+            sender_data = (response_data.get("data", {}) or {}).get("sender") or {}
 
-            if sender_data and sender_data.get("requests"):
-                requests_list = sender_data["requests"]
-                for req in requests_list:
-                    parsed_request = req.get("parsedRequest", {}) or {}
-                    if parsed_request.get("questionTitle") == question_title:
-                        return req.get("tool")
+            requests_list = sender_data.get("requests") or []
+            if not requests_list:
+                return None
+
+            deliveries = (requests_list[0] or {}).get("deliveries") or []
+            if not deliveries:
+                return None
+
+            return deliveries[0].get("model")
 
             return None
 
