@@ -48,7 +48,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
-OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"
+OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"  # nosec
 DECIMAL_SCALING_FACTOR = 10**18
 USD_PRICE_FIELD = "usd"
 
