@@ -303,6 +303,9 @@ class PredictionsFetcher:
                 # Fall back to minimal market info from bet data
                 market_info = bet.get("market", {}) or {}
                 market_info.setdefault("id", market_id)
+            
+            bet_market_url = bet.get("market", {}).get("external_url")
+            market_info["external_url"] = bet_market_url
 
             # Ensure prediction_response exists
             prediction_response = market_info.get("prediction_response")
@@ -350,6 +353,7 @@ class PredictionsFetcher:
             return {
                 "id": bet_id,
                 "question": market_info.get("title", ""),
+                "external_url": market_info.get("external_url", ""),
                 "currency": DEFAULT_CURRENCY,
                 "total_bet": round(total_bet, 3),
                 "to_win": round(to_win, 3),
@@ -420,11 +424,8 @@ class PredictionsFetcher:
         else:
             implied_probability = prediction_response.get("p_no",0) * 100
 
-        external_url = bets.get("market", {}).get("external_url", "")
-
         formatted_bet = {
             "id": bets.get("id", ""),
-            "external_url": external_url,
             "bet": {
                 "amount": round(bets.get("bet_amount", 0), 3),
                 "side": bet_side,
