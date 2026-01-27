@@ -55,7 +55,7 @@ from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import AchievementsChecker
-from valory.skills.agent_performance_summary_abci.achievements_checker.polystrat_payout_checker import PolymarketPayoutChecker
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.polystrat_payout_checker import PolymarketPayoutChecker
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -903,6 +903,15 @@ class UpdateAchievementsBehaviour(
             sender=self.context.agent_address,
             vote=True,
         )
+
+        achievements_updated = self.polymarket_payout_checker.update_achievements(
+            achievements=self._agent_performance_summary.achievements,
+            prediction_history=self._agent_performance_summary.prediction_history
+        )
+
+        if achievements_updated:
+            self._save_agent_performance_summary(self._agent_performance_summary)
+
         yield from self.finish_behaviour(payload)
         return
 
@@ -913,6 +922,14 @@ class UpdateAchievementsBehaviour(
             yield from self.wait_until_round_end()
 
         self.set_done()
+
+    def _save_agent_performance_summary(
+        self, agent_performance_summary: AgentPerformanceSummary
+    ) -> None:
+        """Save the agent performance summary to a file."""
+        existing_data = self.shared_state.read_existing_performance_summary()
+        agent_performance_summary.agent_behavior = existing_data.agent_behavior
+        self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
 
 class AgentPerformanceSummaryRoundBehaviour(AbstractRoundBehaviour):
