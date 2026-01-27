@@ -35,6 +35,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
+    UpdateAchievementsPayload,
 )
 
 
@@ -52,6 +53,18 @@ class FetchPerformanceDataRound(VotingRound):
     """A round for fetching and saving Agent Performance summary."""
 
     payload_class = FetchPerformanceDataPayload
+    synchronized_data_class = BaseSynchronizedData
+    done_event = Event.DONE
+    negative_event = Event.FAIL
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(BaseSynchronizedData.participant_to_votes)
+
+
+class UpdateAchievementsRound(VotingRound):
+    """A round for updating the agent achievements database."""
+
+    payload_class = UpdateAchievementsPayload
     synchronized_data_class = BaseSynchronizedData
     done_event = Event.DONE
     negative_event = Event.FAIL
@@ -89,6 +102,13 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
     initial_round_cls: Type[AbstractRound] = FetchPerformanceDataRound
     transition_function: AbciAppTransitionFunction = {
         FetchPerformanceDataRound: {
+            Event.DONE: UpdateAchievementsRound,
+            Event.NONE: UpdateAchievementsRound,
+            Event.FAIL: UpdateAchievementsRound,
+            Event.ROUND_TIMEOUT: UpdateAchievementsRound,
+            Event.NO_MAJORITY: UpdateAchievementsRound,
+        },
+        UpdateAchievementsRound: {
             Event.DONE: FinishedFetchPerformanceDataRound,
             Event.NONE: FetchPerformanceDataRound,
             Event.FAIL: FinishedFetchPerformanceDataRound,

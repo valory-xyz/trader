@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Generator, Optional, Set, Type, cast
+from typing import Any, Generator, List, Optional, Set, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -44,14 +44,18 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
+    UpdateAchievementsPayload,
 )
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     FetchPerformanceDataRound,
+    UpdateAchievementsRound,
 )
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import AchievementsChecker
+from valory.skills.agent_performance_summary_abci.achievements_checker.polystrat_payout_checker import PolymarketPayoutChecker
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -872,9 +876,48 @@ class FetchPerformanceSummaryBehaviour(
         self.set_done()
 
 
+class UpdateAchievementsBehaviour(
+    APTQueryingBehaviour,
+):
+    """A behaviour for updating the agent achievements database."""
+
+    matching_round = UpdateAchievementsRound
+    polymarket_payout_checker = PolymarketPayoutChecker()
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize Behaviour."""
+        super().__init__(**kwargs)
+        self._agent_performance_summary: Optional[AgentPerformanceSummary] = None
+        self._final_roi: Optional[float] = None
+        self._partial_roi: Optional[float] = None
+        self._total_mech_requests: Optional[int] = None
+        self._open_market_requests: Optional[int] = None
+        self._mech_request_lookup: Optional[dict] = None 
+        self._update_interval: int = UPDATE_INTERVAL
+        self._last_update_timestamp: int = 0
+        self._settled_mech_requests_count: int = 0
+
+    def async_act(self) -> Generator:
+        """Do the action."""
+        payload = UpdateAchievementsPayload(
+            sender=self.context.agent_address,
+            vote=True,
+        )
+        yield from self.finish_behaviour(payload)
+        return
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
+            yield from self.send_a2a_transaction(payload)
+            yield from self.wait_until_round_end()
+
+        self.set_done()
+
+
 class AgentPerformanceSummaryRoundBehaviour(AbstractRoundBehaviour):
     """This behaviour manages the consensus stages for the AgentPerformanceSummary behaviour."""
 
     initial_behaviour_cls = FetchPerformanceSummaryBehaviour
     abci_app_cls = AgentPerformanceSummaryAbciApp
-    behaviours: Set[Type[BaseBehaviour]] = {FetchPerformanceSummaryBehaviour}  # type: ignore
+    behaviours: Set[Type[BaseBehaviour]] = {FetchPerformanceSummaryBehaviour, UpdateAchievementsBehaviour}  # type: ignore

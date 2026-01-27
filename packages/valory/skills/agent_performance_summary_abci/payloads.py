@@ -29,3 +29,10 @@ class FetchPerformanceDataPayload(BaseTxPayload):
     """Represents a transaction payload for the performance summary."""
 
     vote: bool
+
+
+@dataclass(frozen=True)
+class UpdateAchievementsPayload(BaseTxPayload):
+    """Represents a transaction payload for the update achievements round."""
+
+    vote: bool
