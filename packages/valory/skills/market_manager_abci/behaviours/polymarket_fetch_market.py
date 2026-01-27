@@ -27,7 +27,6 @@ from dateutil import parser as date_parser
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
-    MULTI_BETS_FILENAME,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -283,10 +282,6 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _update_bets(self) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
-        # Deleting all current markets
-        with open(self.context.params.store_path / MULTI_BETS_FILENAME, "w") as f:
-            f.write("")
-
         # Fetch markets from Polymarket
         bets_market_chunk = yield from self._fetch_markets_from_polymarket()
 
