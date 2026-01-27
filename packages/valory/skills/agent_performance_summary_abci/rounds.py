@@ -49,7 +49,11 @@ class Event(Enum):
 
 
 class FetchPerformanceDataRound(VotingRound):
-    """A round for fetching and saving Agent Performance summary."""
+    """
+    A round for fetching and saving Agent Performance summary.
+
+    This round collects votes from agents on whether performance data was successfully fetched.
+    """
 
     payload_class = FetchPerformanceDataPayload
     synchronized_data_class = BaseSynchronizedData
@@ -61,7 +65,11 @@ class FetchPerformanceDataRound(VotingRound):
 
 
 class FinishedFetchPerformanceDataRound(DegenerateRound, ABC):
-    """A terminal round indicating that performance data collection is complete."""
+    """
+    A terminal round indicating that performance data collection is complete.
+
+    This is the final state of the agent performance summary ABCI application.
+    """
 
 
 class AgentPerformanceSummaryAbciApp(
