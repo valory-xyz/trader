@@ -536,21 +536,14 @@ class PredictionsFetcher:
             status = self._get_prediction_status(bet, participant)
 
             bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            net_profit_val = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+            net_profit_val, payout_amount = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
 
-            net_profit = (
-                round(net_profit_val, 3) if net_profit_val is not None else None
-            )
+            net_profit = round(net_profit_val, 3) if net_profit_val is not None else None
+            payout_rounded = round(payout_amount, 3) if payout_amount is not None else None
 
             outcome_index = int(bet.get("outcomeIndex", 0))
             outcomes = fpmm.get("outcomes", [])
             prediction_side = self._get_prediction_side(outcome_index, outcomes)
-
-            participant_total_payout = (
-                float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-                if participant
-                else 0.0
-            )
 
             formatted_bet = {
                 "id": bet.get("id"),
@@ -563,7 +556,7 @@ class PredictionsFetcher:
                 "bet_amount": round(bet_amount, 3),
                 "status": status,
                 "net_profit": net_profit,
-                "total_payout": participant_total_payout,
+                "total_payout": payout_rounded,
                 "created_at": self._format_timestamp(bet.get("timestamp")),
                 "settled_at": (
                     self._format_timestamp(fpmm.get("currentAnswerTimestamp"))
@@ -627,20 +620,16 @@ class PredictionsFetcher:
 
             participant = entry["participant"] or {}
             if entry["total_payout"] is None:
-                entry["total_payout"] = (
-                    float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE
-                )
+                entry["total_payout"] = float(participant.get("totalPayout", 0))
             if entry["total_traded"] is None:
-                entry["total_traded"] = (
-                    float(participant.get("totalTraded", 0)) / WEI_TO_NATIVE
-                )
+                entry["total_traded"] = float(participant.get("totalTraded", 0))
 
-            amount_native = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            amount = (float(bet.get("amount", 0))/WEI_TO_NATIVE)
             current_answer = entry["current_answer"]
             if current_answer not in (None, INVALID_ANSWER_HEX):
                 correct = int(current_answer, 0)
                 if int(bet.get("outcomeIndex", 0)) == correct:
-                    entry["winning_total_amount"] += amount_native
+                    entry["winning_total_amount"] += amount
 
         return ctx
 
@@ -652,7 +641,6 @@ class PredictionsFetcher:
         status_filter: Optional[str],
     ) -> Optional[Dict]:
         """Format a single bet into the public prediction object."""
-
         participant = market_ctx.get("participant") if market_ctx else None
         prediction_status = self._get_prediction_status(bet, participant)
 
@@ -660,7 +648,7 @@ class PredictionsFetcher:
             return None
 
         bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-        net_profit = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+        net_profit, payout_amount = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
 
         outcome_index = int(bet.get("outcomeIndex", 0))
         outcomes = fpmm.get("outcomes", [])
@@ -676,6 +664,7 @@ class PredictionsFetcher:
             "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
+            "total_payout": round(payout_amount, 3) if payout_amount is not None else None,
             "created_at": self._format_timestamp(bet.get("timestamp")),
             "settled_at": (
                 self._format_timestamp(market_ctx.get("current_answer_ts"))
@@ -689,10 +678,10 @@ class PredictionsFetcher:
         bet: Dict,
         market_ctx: Optional[Dict[str, Any]],
         bet_amount: float,
-    ) -> Optional[float]:
-        """Calculate net profit for a single bet using market-level payout data."""
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """Calculate net profit and actual payout for a single bet using market-level payout data."""
         if not market_ctx:
-            return 0.0
+            return 0.0, None
 
         current_answer = market_ctx.get("current_answer")
         total_payout = market_ctx.get("total_payout") or 0.0
@@ -702,28 +691,28 @@ class PredictionsFetcher:
 
         # Unresolved market
         if current_answer is None:
-            return 0.0
+            return 0.0, None
 
         # Invalid market refund path
         if current_answer == INVALID_ANSWER_HEX:
             if total_payout == 0 or total_traded == 0:
-                return 0.0
+                return 0.0, None
             refund_share = total_payout * (bet_amount / total_traded)
-            return refund_share - bet_amount
+            return refund_share - bet_amount, refund_share
 
         correct_answer = int(current_answer, 0)
 
         # Losing bet
         if outcome_index != correct_answer:
-            return -bet_amount
+            return -bet_amount, 0.0
 
         # Winning bet
         if total_payout == 0 or winning_total == 0:
             # Won but not redeemed yet
-            return 0.0
+            return 0.0, None
 
         payout_share = total_payout * (bet_amount / winning_total)
-        return payout_share - bet_amount
+        return payout_share - bet_amount, payout_share
 
     def _get_prediction_status(
         self, bet: Dict, market_participant: Optional[Dict]
