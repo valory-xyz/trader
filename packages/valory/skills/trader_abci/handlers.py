@@ -105,6 +105,10 @@ POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
 
+FIXED_USDC_TO_POL_RATE = (
+    8.5  # Will need to be changed if POL price changes significantly
+)
+
 
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
@@ -343,8 +347,8 @@ class HttpHandler(BaseHttpHandler):
         """
         Adjust fund status based on chain-specific token equivalence:
 
-        - Gnosis (Omen): treat wxDAI as xDAI
-        - Polygon (Polymarket): treat USDC as POL with decimal conversion
+        - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
+        - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
 
         :return: The adjusted fund requirements.
         """
@@ -359,22 +363,31 @@ class HttpHandler(BaseHttpHandler):
             native_status = safe_balances.tokens[chain_config["native_token_address"]]
 
             if self.params.is_running_on_polymarket:
-                # On Polygon: USDC balance considered as POL
-                # Convert USDC to POL equivalent using their decimal places
+                # On Polygon: USDC balance needs to be converted to POL equivalent
+                # Using exchange rates since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
                 usdc_balance = int(usdc_status.balance or 0)
                 usdc_decimals = usdc_status.decimals
-                native_decimals = native_status.decimals
-                # Convert from USDC decimals to native token decimals
-                if usdc_decimals is None or native_decimals is None:
+                pol_decimals = native_status.decimals
+
+                if usdc_decimals is None or pol_decimals is None:
                     self.context.logger.error(
                         "Missing decimal information for USDC or native token. Can't apply adjustment."
                     )
                     return funds_status
-                decimal_diff = native_decimals - usdc_decimals
-                adjustment_balance = usdc_balance * (10**decimal_diff)
+
+                # Convert USDC balance to actual token amount (e.g., 1000000 -> 1.0 USDC)
+                usdc_amount = usdc_balance / (10**usdc_decimals)
+
+                # Apply fixed exchange rate: 1 USDC = FIXED_USDC_TO_POL_RATE POL.
+                # To prevent extra api calls as this endpoint would be called heavily
+                # TODO: Make API call using Lifi/coingecko and cache the result for some time
+                pol_equivalent = usdc_amount * FIXED_USDC_TO_POL_RATE
+
+                # Convert POL amount back to wei units
+                adjustment_balance = int(pol_equivalent * (10**pol_decimals))
             else:
-                # On Gnosis: wxDAI balance considered as xDAI (both same decimals)
+                # On Gnosis: wxDAI balance considered as xDAI (both same decimals, 1:1 rate)
                 wrapped_native_status = safe_balances.tokens[
                     chain_config["wrapped_native_address"]
                 ]
