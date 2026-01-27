@@ -55,7 +55,7 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
-from valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import BetPayoutChecker
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import BetPayoutChecker
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -907,7 +907,7 @@ class UpdateAchievementsBehaviour(
             agent_performance_summary.achievements = achievements
 
         achievements_updated = False
-        achievements_updated = self.bet_payout_checker.update_achievements(
+        achievements_updated = self._bet_payout_checker.update_achievements(
             achievements=agent_performance_summary.achievements,
             prediction_history=agent_performance_summary.prediction_history
         )
