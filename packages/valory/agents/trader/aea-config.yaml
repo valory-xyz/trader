@@ -64,15 +64,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictmzmnaglx75turz6ua7akm2st47b5uhjaeylcfe76on2ta4ho2u
-- valory/market_manager_abci:0.1.0:bafybeibidyermlzha53qyzon44ozf6deswwqjbozh2jqsnssg4vcaorngy
-- valory/decision_maker_abci:0.1.0:bafybeig6dnpux4rnmtjhygpjk3m3vc6pe4eplofqqa2e7akyqi2kkurex4
-- valory/trader_abci:0.1.0:bafybeid2nmcw7asix3uezkmqmkjlkv6s6xj7qepbqviwtwszgyvrfymul4
-- valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/check_stop_trading_abci:0.1.0:bafybeid4hgdbz5bgnm2bu5hmqa3aab5sogvpoq2rsssk4js266in6ny57y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidjp2leyohmkr2mstnm447kwxkm5gj6w4jaso3qnp4j244sooafwu
+- valory/market_manager_abci:0.1.0:bafybeib43oxshxfcsrc27wq2ffzrencwhgsmkzp6hkq5pqytjm665ygmv4
+- valory/decision_maker_abci:0.1.0:bafybeicc5jhn6lwnoazf3mhjy54zdef272suws6unymk2ls5jkv37tgyv4
+- valory/trader_abci:0.1.0:bafybeic7gsp7s6nivdc22jsrzs5alssn6zulnljnyxrq34lolbmdn6jy6a
+- valory/staking_abci:0.1.0:bafybeic3gn32qa4bhlml5wot54dpxnupadlmxzzqdtxlzcllgijy4cmuna
+- valory/check_stop_trading_abci:0.1.0:bafybeiccharntc262f6crr2oeaaxo4xoqcfx3ecplbcqbq36wfauefhdba
 - valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
-- valory/chatui_abci:0.1.0:bafybeihnmddyk33yuqa5ohndm3dqnbaajhhiaidfzzvednor3z473jwqym
-- valory/agent_performance_summary_abci:0.1.0:bafybeie5vroxwufdf2u7tawbkr3bl4kxiqlnrgtkjbqpnyxhzbd4j5hjka
+- valory/chatui_abci:0.1.0:bafybeiak6mxfprdosirzidwqwornuhg4mppth2a5unybmv5jly75yvdav4
+- valory/agent_performance_summary_abci:0.1.0:bafybeic7u5zdgs7wst37ktthnxmtaqif65uhj5vjhn57qouej6qjfzuabe
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -422,7 +422,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v4_0_0}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
       headers:

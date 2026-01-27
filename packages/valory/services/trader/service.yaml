@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeieejvwnwdze2rzcj7zfnrt5fldevfg7ffewipzg3z7ahlnga3ewqy
+agent: valory/trader:0.1.0:bafybeif45bi54lcpljznq32s2rksspspmycra3ncakagw7gomhelkqb67m
 number_of_agents: 4
 deployment:
   agent:
@@ -296,7 +296,7 @@ type: skill
         error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
-        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v4_0_0}
+        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
     gnosis_staking_subgraph: &id016
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
