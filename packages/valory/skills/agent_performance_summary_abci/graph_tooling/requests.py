@@ -155,7 +155,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_mech_sender(
-        self, agent_safe_address, timestamp_gt
+        self, agent_safe_address: str, timestamp_gt: int
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch mech sender details."""
         result = yield from self._fetch_from_subgraph(
@@ -175,7 +175,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_trader_agent(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         result = yield from self._fetch_from_subgraph(
@@ -189,7 +189,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_staking_service(
-        self, service_id
+        self, service_id: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         return (
@@ -202,7 +202,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
 
     def _fetch_open_markets(
-        self, timestamp_gt
+        self, timestamp_gt: int
     ) -> Generator[None, None, Optional[List]]:
         """Fetch Open markets."""
         return (
@@ -215,7 +215,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
 
     def _fetch_trader_agent_bets(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         result = yield from self._fetch_from_subgraph(
@@ -229,7 +229,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_agent_details(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch agent metadata (id, created_at, last_active_at)."""
         result = yield from self._fetch_from_subgraph(
@@ -243,7 +243,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_trader_agent_performance(
-        self, agent_safe_address, first: int = 200, skip: int = 0
+        self, agent_safe_address: str, first: int = 200, skip: int = 0
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent performance with bets (includes totalBets, totalTraded, etc)."""
         result = yield from self._fetch_from_subgraph(
@@ -257,7 +257,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_pending_bets(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch all pending bets (markets not yet resolved)."""
         result = yield from self._fetch_from_subgraph(

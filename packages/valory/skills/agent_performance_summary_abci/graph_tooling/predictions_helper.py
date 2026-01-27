@@ -77,7 +77,7 @@ class BetSide(enum.Enum):
 class PredictionsFetcher:
     """Shared logic for fetching and formatting predictions."""
 
-    def __init__(self, context, logger):
+    def __init__(self, context: Any, logger: Any) -> None:
         """
         Initialize the predictions fetcher.
 
@@ -304,7 +304,7 @@ class PredictionsFetcher:
                 self.logger.info(
                     f"No bets found in agent_performance.json for bet {bet_id}, fetching from subgraph"
                 )
-                bet = self._fetch_bet_from_subgraph(bet_id, safe_address)
+                bet = self._fetch_bet_from_subgraph(bet_id, safe_address) or {}
 
             if not bet:
                 # Market exists but no bet found
@@ -425,7 +425,7 @@ class PredictionsFetcher:
                 return market
         return None
 
-    def _find_bet(self, agent_performance_data: Dict, bet_id: str) -> Optional[Dict]:
+    def _find_bet(self, agent_performance_data: Dict, bet_id: str) -> Dict:
         """Find bet for a specific bet ID in agent performance data."""
         prediction_history = agent_performance_data.get("prediction_history", {})
         items = prediction_history.get("items", [])
@@ -504,26 +504,30 @@ class PredictionsFetcher:
                 self.logger.error(
                     f"Failed to fetch specific market bets: {response.status_code}"
                 )
-                return {}
+                return None
 
             response_data = response.json()
             data = response_data.get("data", {}) or {}
             trader_agent = data.get("traderAgent")
 
             if not trader_agent or not trader_agent.get("bets"):
-                return {}
+                return None
 
             # Convert subgraph format to agent_performance.json format
             bets = trader_agent["bets"]
             if not bets:
-                return {}
+                return None
 
             # Pick the requested bet (fallback to first if not found)
             bet = next((b for b in bets if b.get("id") == bet_id), bets[0])
             fpmm = bet.get("fixedProductMarketMaker") or {}
 
             # Build per-market context from the returned bets (one item per bet)
-            market_ctx = self._build_market_context(bets).get(fpmm.get("id"))
+            market_ctx_dict = self._build_market_context(bets)
+            fpmm_id = fpmm.get("id")
+            market_ctx = (
+                market_ctx_dict.get(str(fpmm_id), {}) if fpmm_id is not None else {}
+            )
             participant = market_ctx.get("participant") if market_ctx else None
 
             status = self._get_prediction_status(bet, participant)
@@ -571,7 +575,7 @@ class PredictionsFetcher:
             self.logger.error(
                 f"Error fetching specific market bets for {bet_id}: {str(e)}"
             )
-            return {}
+            return None
 
     def _format_predictions(
         self, bets: List[Dict], safe_address: str, status_filter: Optional[str] = None
@@ -587,7 +591,8 @@ class PredictionsFetcher:
         items: List[Dict] = []
         for bet in bets:  # already ordered desc by timestamp in the query
             fpmm = bet.get("fixedProductMarketMaker", {}) or {}
-            ctx = market_ctx.get(fpmm.get("id"))
+            fpmm_id = fpmm.get("id")
+            ctx = market_ctx.get(fpmm_id) if fpmm_id is not None else None
             prediction = self._format_single_bet(bet, fpmm, ctx, status_filter)
             if prediction:
                 items.append(prediction)
@@ -772,7 +777,7 @@ class PredictionsFetcher:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
             return None
 
-    def _get_ui_trading_strategy(self, selected_value: Optional[str]) -> str:
+    def _get_ui_trading_strategy(self, selected_value: Optional[str]) -> Optional[str]:
         """Get the UI trading strategy."""
         if selected_value is None:
             return None

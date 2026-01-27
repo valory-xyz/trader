@@ -95,7 +95,7 @@ class AgentPerformanceData:
     metrics: Optional[PerformanceMetricsData] = None
     stats: Optional[PerformanceStatsData] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Convert nested dicts to dataclass instances."""
         if isinstance(self.metrics, dict):
             self.metrics = PerformanceMetricsData(**self.metrics)
@@ -137,10 +137,18 @@ class ProfitOverTimeData:
         False  # Whether unplaced mech fees logic was applied
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
-        if self.data_points and isinstance(self.data_points[0], dict):
-            self.data_points = [ProfitDataPoint(**point) for point in self.data_points]
+        if (
+            self.data_points
+            and self.data_points
+            and isinstance(self.data_points[0], dict)
+        ):
+            self.data_points = [
+                ProfitDataPoint(**point)
+                for point in self.data_points
+                if isinstance(point, dict)
+            ]
 
 
 @dataclass
@@ -160,7 +168,7 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
         if isinstance(self.agent_details, dict):
             self.agent_details = AgentDetails(**self.agent_details)

@@ -108,8 +108,8 @@ class FetchPerformanceSummaryBehaviour(
         if self._post_tx_round_detected():
             return True
 
-        time_since_last = (
-            self.shared_state.synced_timestamp - existing_summary.timestamp
+        time_since_last = self.shared_state.synced_timestamp - (
+            existing_summary.timestamp or 0
         )
         return time_since_last >= self._update_interval
 
@@ -260,7 +260,9 @@ class FetchPerformanceSummaryBehaviour(
         # where settled = Total - Open
         return total_mech_requests - open_market_requests
 
-    def calculate_roi(self):
+    def calculate_roi(
+        self,
+    ) -> Generator[None, None, Tuple[Optional[float], Optional[float]]]:
         """Calculate the ROI."""
         agent_safe_address = self.synchronized_data.safe_contract_address
 
@@ -295,8 +297,8 @@ class FetchPerformanceSummaryBehaviour(
 
         settled_mech_requests = self._settled_mech_requests_count
 
-        total_traded_settled = int(trader_agent.get("totalTradedSettled"))
-        total_fees_settled = int(trader_agent.get("totalFeesSettled"))
+        total_traded_settled = int(trader_agent.get("totalTradedSettled", 0))
+        total_fees_settled = int(trader_agent.get("totalFeesSettled", 0))
 
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         total_costs = total_traded_settled + total_fees_settled + settled_mech_costs
@@ -321,7 +323,7 @@ class FetchPerformanceSummaryBehaviour(
 
         return final_roi, partial_roi
 
-    def _get_prediction_accuracy(self):
+    def _get_prediction_accuracy(self) -> Generator[None, None, Optional[float]]:
         """Get the prediction accuracy."""
         agent_safe_address = self.synchronized_data.safe_contract_address
 
@@ -371,7 +373,9 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
             return None
 
-    def _fetch_agent_details_data(self) -> Generator:
+    def _fetch_agent_details_data(
+        self,
+    ) -> Generator[None, None, Optional[AgentDetails]]:
         """Fetch agent details"""
 
         safe_address = self.synchronized_data.safe_contract_address.lower()
@@ -390,7 +394,9 @@ class FetchPerformanceSummaryBehaviour(
             last_active_at=self._format_timestamp(agent_details_raw.get("lastActive")),
         )
 
-    def _fetch_agent_performance_data(self) -> Generator:
+    def _fetch_agent_performance_data(
+        self,
+    ) -> Generator[None, None, Optional[AgentPerformanceData]]:
         """Fetch agent performance data"""
 
         safe_address = self.synchronized_data.safe_contract_address.lower()
@@ -415,14 +421,16 @@ class FetchPerformanceSummaryBehaviour(
             stats=stats,
         )
 
-    def _calculate_performance_metrics(self, trader_agent: dict) -> Generator:
+    def _calculate_performance_metrics(
+        self, trader_agent: dict
+    ) -> Generator[None, None, PerformanceMetricsData]:
         """Calculate performance metrics from trader agent data."""
         safe_address = self.synchronized_data.safe_contract_address.lower()
 
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
-        total_traded_settled = int(trader_agent.get("totalTradedSettled"))
-        total_fees_settled = int(trader_agent.get("totalFeesSettled"))
+        total_traded_settled = int(trader_agent.get("totalTradedSettled", 0))
+        total_fees_settled = int(trader_agent.get("totalFeesSettled", 0))
         total_payout = int(trader_agent.get("totalPayout", 0))
 
         settled_mech_requests = self._settled_mech_requests_count
@@ -514,7 +522,9 @@ class FetchPerformanceSummaryBehaviour(
         available_funds = token_balance + wallet_balance
         return available_funds
 
-    def _calculate_performance_stats(self, trader_agent: dict) -> Generator:
+    def _calculate_performance_stats(
+        self, trader_agent: dict
+    ) -> Generator[None, None, PerformanceStatsData]:
         """Calculate performance statistics."""
         total_bets = int(trader_agent.get("totalBets", 0))
         accuracy = yield from self._get_prediction_accuracy()
@@ -526,7 +536,7 @@ class FetchPerformanceSummaryBehaviour(
             ),
         )
 
-    def _fetch_prediction_history(self):
+    def _fetch_prediction_history(self) -> PredictionHistory:
         """Fetch latest 200 predictions."""
         safe_address = self.synchronized_data.safe_contract_address.lower()
 
@@ -737,10 +747,10 @@ class FetchPerformanceSummaryBehaviour(
 
         if not all_mech_requests:
             self.context.logger.warning("No mech requests found for agent")
-            return None
+            return {}
 
         # Build lookup map: question_title -> count
-        lookup = {}
+        lookup: Dict[str, int] = {}
         for request in all_mech_requests:
             title = (request.get("parsedRequest", {}) or {}).get("questionTitle", "")
             if title:
@@ -1067,7 +1077,7 @@ class FetchPerformanceSummaryBehaviour(
         else:
             self.context.logger.warning("Failed to build profit over time data")
 
-    def _fetch_agent_performance_summary(self) -> Generator:
+    def _fetch_agent_performance_summary(self) -> Generator[None, None, None]:
         """Fetch the agent performance summary"""
         self._total_mech_requests = None
         self._open_market_requests = None
@@ -1176,14 +1186,19 @@ class FetchPerformanceSummaryBehaviour(
             self._last_update_timestamp = self.shared_state.synced_timestamp
             yield from self._fetch_agent_performance_summary()
 
-            success = all(
-                metric.value != NA for metric in self._agent_performance_summary.metrics
-            )
-            if not success:
-                self.context.logger.warning(
-                    "Agent performance summary could not be fetched. Saving default values"
+            if self._agent_performance_summary is not None:
+                success = all(
+                    metric.value != NA
+                    for metric in self._agent_performance_summary.metrics
                 )
-            self._save_agent_performance_summary(self._agent_performance_summary)
+                if not success:
+                    self.context.logger.warning(
+                        "Agent performance summary could not be fetched. Saving default values"
+                    )
+                self._save_agent_performance_summary(self._agent_performance_summary)
+            else:
+                success = False
+                self.context.logger.error("Agent performance summary is None")
 
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,

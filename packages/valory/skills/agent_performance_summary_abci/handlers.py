@@ -57,7 +57,10 @@ from packages.valory.skills.agent_performance_summary_abci.dialogues import Http
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
 )
-from packages.valory.skills.agent_performance_summary_abci.models import ProfitDataPoint
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    ProfitDataPoint,
+    SharedState,
+)
 
 
 # Constants
@@ -139,12 +142,8 @@ class HttpHandler(BaseHttpHandler):
         )
 
     @property
-    def shared_state(self):
+    def shared_state(self) -> SharedState:
         """Get the shared state."""
-        from packages.valory.skills.agent_performance_summary_abci.models import (
-            SharedState,
-        )
-
         return cast(SharedState, self.context.state)
 
     @property
@@ -620,13 +619,13 @@ class HttpHandler(BaseHttpHandler):
 
             if not profit_data or not profit_data.data_points:
                 # Return empty response if no data
-                response = {
+                empty_response = {
                     "agent_id": safe_address,
                     "currency": "USD",
                     "window": window,
                     "points": [],
                 }
-                self._send_ok_response(http_msg, http_dialogue, response)
+                self._send_ok_response(http_msg, http_dialogue, empty_response)
                 return
 
             # Filter data points based on window
@@ -646,7 +645,7 @@ class HttpHandler(BaseHttpHandler):
                     }
                 )
 
-            response = {
+            response: Dict[str, Any] = {
                 "agent_id": safe_address,
                 "currency": "USD",
                 "window": window,
@@ -709,7 +708,9 @@ class HttpHandler(BaseHttpHandler):
         cumulative_profit = 0.0
         last_known_cumulative = 0.0
         # Create a lookup for existing data points by timestamp
-        data_lookup = {point.date: point for point in filtered_points}
+        data_lookup: Dict[str, ProfitDataPoint] = {
+            point.date: point for point in filtered_points
+        }
         for i in range(days):
             day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
             day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
