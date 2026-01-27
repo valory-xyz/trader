@@ -27,7 +27,6 @@ from dateutil import parser as date_parser
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
-    MULTI_BETS_FILENAME,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
