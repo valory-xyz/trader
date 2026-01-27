@@ -44,6 +44,71 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 # Threshold for extreme outcome prices indicating resolved/over markets
 EXTREME_PRICE_THRESHOLD = 0.99
 
+# Polymarket category keywords for validation
+POLYMARKET_CATEGORY_KEYWORDS = {
+    "business": [
+        'business', 'corp', 'corporate', 'merger', 'acquisition', 'startup', 'ceo', 
+        'cfo', 'layoff', 'hiring', 'strike', 'labor union', 'trade union', 'bankruptcy', 
+        'ipo', 'company', 'brand', 'retail', 'supply chain', 'logistics', 'management', 
+        'industry', 'commercial', 'monopoly', 'antitrust', 'executive', 'stellantis', 
+        'byd', 'tesla', 'revenue', 'profit'
+    ],
+    "politics": [
+        'politics', 'political', 'election', 'vote', 'poll', 'ballot', 'democrat', 
+        'republican', 'congress', 'senate', 'parliament', 'president', 'prime minister', 
+        'biden', 'trump', 'harris', 'campaign', 'legislation', 'bill', 'law', 
+        'supreme court', 'governor', 'mayor', 'tory', 'labour', 'party', 'impeachment', 
+        'regulatory', 'uscis', 'federal court'
+    ],
+    "science": [
+        'science', 'physics', 'chemistry', 'biology', 'astronomy', 'nasa', 'space', 
+        'rocket', 'spacex', 'laboratory', 'experiment', 'discovery', 'research', 
+        'scientist', 'nobel prize', 'atom', 'molecule', 'dna', 'genetics', 'telescope', 
+        'quantum', 'fusion', 'superconductor', 'study', 'peer-reviewed', 'comet', 
+        'asteroid'
+    ],
+    "technology": [
+        'technology', 'tech', 'ai', 'artificial intelligence', 'gpt', 'llm', 'software', 
+        'hardware', 'app', 'google', 'apple', 'microsoft', 'meta', 'server', 'cloud', 
+        'algorithm', 'robot', 'cyber', 'silicon', 'chip', 'semiconductor', 'nvidia', 
+        'virtual reality', 'metaverse', 'device', 'smartphone', 'adobe', 'semrush'
+    ],
+    "health": [
+        'health', 'medicine', 'medical', 'doctor', 'hospital', 'virus', 'disease', 
+        'cancer', 'vaccine', 'drug', 'pharmaceutical', 'fda', 'covid', 'pandemic', 
+        'therapy', 'surgery', 'mental health', 'diet', 'nutrition', 'obesity', 'who', 
+        'treatment'
+    ],
+    "travel": [
+        'travel', 'tourism', 'airline', 'flight', 'airport', 'plane', 'boeing', 
+        'airbus', 'hotel', 'resort', 'visa', 'passport', 'destination', 'cruise', 
+        'vacation', 'booking', 'airbnb', 'expedia', 'trip', 'passenger', 'transportation', 
+        'tour', 'bus', 'ntsb'
+    ],
+    "entertainment": [
+        'entertainment', 'movie', 'film', 'cinema', 'hollywood', 'actor', 'actress', 
+        'netflix', 'disney', 'hbo', 'box office', 'oscar', 'tv', 'series', 'streaming', 
+        'show', 'theater', 'gambling', 'betting', 'poker', 'casino', 'lottery'
+    ],
+    "weather": [
+        'weather', 'forecast', 'hurricane', 'storm', 'tornado', 'temperature', 'rain', 
+        'snow', 'heatwave', 'drought', 'flood', 'meteorology', 'climate', 'monsoon', 
+        'el nino', 'tropical', 'depression', 'dissipate', 'noaa'
+    ],
+    "finance": [
+        'finance', 'financial', 'stock', 'share', 'market', 'wall street', 'sp500', 
+        'nasdaq', 'dow jones', 'trade', 'investor', 'dividend', 'portfolio', 
+        'hedge fund', 'equity', 'bond', 'earnings', 'bloomberg', 'etf', 'short', 
+        'long', 'robinhood', 'close'
+    ],
+    "international": [
+        'international', 'global', 'war', 'conflict', 'ukraine', 'russia', 'israel', 
+        'gaza', 'china', 'un', 'united nations', 'nato', 'treaty', 'diplomacy', 
+        'foreign', 'border', 'geopolitics', 'summit', 'sanction', 'ambassador', 
+        'territory'
+    ],
+}
+
 
 class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     """Behaviour that fetches and updates the bets from Polymarket."""
@@ -88,6 +153,121 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     for price in bet.outcomeTokenMarginalPrices
                 ):
                     bet.blacklist_forever()
+
+    @staticmethod
+    def _validate_market_category(market_title: str, category: str) -> bool:
+        """
+        Validate that a market title matches its assigned category keywords.
+        
+        :param market_title: The market question/title
+        :param category: The assigned category
+        :return: True if market matches category keywords, False otherwise
+        """
+        import re
+        
+        if not isinstance(market_title, str) or category not in POLYMARKET_CATEGORY_KEYWORDS:
+            return False
+        
+        title_lower = market_title.lower()
+        keywords = POLYMARKET_CATEGORY_KEYWORDS[category]
+        
+        # Check if any keyword matches
+        for keyword in keywords:
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, title_lower):
+                return True
+        
+        return False
+
+    def _validate_markets_by_category(
+        self, markets_by_category: Dict[str, List[Dict]]
+    ) -> Dict[str, List[Dict]]:
+        """
+        Validate markets against their assigned category keywords.
+        
+        :param markets_by_category: Dictionary mapping category to list of markets
+        :return: Dictionary with only validated markets per category
+        """
+        validated_markets_by_category = {}
+        total_validated = 0
+        total_invalid = 0
+
+        for category, markets in markets_by_category.items():
+            validated_markets = []
+            invalid_count = 0
+            
+            for market in markets:
+                market_title = market.get("question", "")
+                if self._validate_market_category(market_title, category):
+                    validated_markets.append(market)
+                else:
+                    invalid_count += 1
+            
+            if validated_markets:
+                validated_markets_by_category[category] = validated_markets
+            
+            total_validated += len(validated_markets)
+            total_invalid += invalid_count
+            
+            self.context.logger.info(
+                f"Category '{category}': {len(validated_markets)}/{len(markets)} validated "
+                f"({invalid_count} failed)"
+            )
+
+        self.context.logger.info(
+            f"Total validated: {total_validated} markets, {total_invalid} failed validation"
+        )
+        
+        return validated_markets_by_category
+
+    def _deduplicate_validated_markets(
+        self, validated_markets_by_category: Dict[str, List[Dict]]
+    ) -> Dict[str, List[Dict]]:
+        """
+        Remove duplicate markets across categories, keeping first validated occurrence.
+        
+        :param validated_markets_by_category: Dictionary with validated markets per category
+        :return: Dictionary with deduplicated markets per category
+        """
+        # Track all occurrences of each market across categories
+        market_occurrences = {}  # market_id -> [(category, market_dict), ...]
+
+        for category, markets in validated_markets_by_category.items():
+            for market in markets:
+                market_id = market.get("id")
+                if market_id:
+                    if market_id not in market_occurrences:
+                        market_occurrences[market_id] = []
+                    market_occurrences[market_id].append((category, market))
+
+        # Deduplicate: keep first validated occurrence
+        deduplicated_by_category = {}
+        selected_markets = {}  # market_id -> (category, market_dict)
+        duplicate_count = 0
+
+        for market_id, occurrences in market_occurrences.items():
+            if len(occurrences) == 1:
+                # No duplicate - keep it
+                category, market = occurrences[0]
+                selected_markets[market_id] = (category, market)
+            else:
+                # Duplicate found - keep first validated occurrence
+                duplicate_count += len(occurrences) - 1
+                category, market = occurrences[0]
+                selected_markets[market_id] = (category, market)
+
+        # Organize back by category
+        for market_id, (category, market) in selected_markets.items():
+            if category not in deduplicated_by_category:
+                deduplicated_by_category[category] = []
+            deduplicated_by_category[category].append(market)
+
+        self.context.logger.info(
+            f"After deduplication: {len(selected_markets)} unique markets "
+            f"({duplicate_count} duplicates removed) across {len(deduplicated_by_category)} categories"
+        )
+        
+        return deduplicated_by_category
 
     @property
     def review_bets_for_selling(self) -> bool:
@@ -158,12 +338,20 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"Received markets from Polymarket: {len(response)} categories"
         )
 
+        # Validate markets against category keywords
+        validated_markets_by_category = self._validate_markets_by_category(response)
+
+        # Deduplicate markets across categories
+        deduplicated_by_category = self._deduplicate_validated_markets(
+            validated_markets_by_category
+        )
+
         # Process all markets from all categories
         all_bets = []
         total_markets = 0
         total_skipped = 0
 
-        for category, markets in response.items():
+        for category, markets in deduplicated_by_category.items():
             category_count = len(markets)
             total_markets += category_count
             self.context.logger.info(
@@ -233,6 +421,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "id": market_id,
                         "condition_id": market.get("conditionId"),
                         "title": market.get("question"),
+                        "category": category,
                         "collateralToken": USCDE_POLYGON,  # Polymarket uses USDC.e on Polygon
                         "creator": market.get("submitted_by", ZERO_ADDRESS),
                         "fee": 0,  # Polymarket fee is typically 0 or handled differently
