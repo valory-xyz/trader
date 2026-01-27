@@ -90,6 +90,7 @@ class FetchPerformanceSummaryBehaviour(
         self._last_update_timestamp: int = 0
         self._settled_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
+        self._placed_titles: Set[str] = set()
     
     def _should_update(self) -> bool:
         """Check if we should update."""
@@ -376,10 +377,18 @@ class FetchPerformanceSummaryBehaviour(
         total_payout = int(trader_agent.get("totalPayout", 0))
         
         settled_mech_requests = self._settled_mech_requests_count
-        nonplaced_mech_requests = self._unplaced_mech_requests_count
         
-        # Get total mech requests for funds_used calculation (uses cache)
-        total_mech_requests = yield from self._get_total_mech_requests(safe_address)       
+        # Get mech request counts (uses caches populated earlier)
+        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
+        open_mech_requests = self._open_market_requests or 0
+        placed_mech_requests = sum(
+            (self._mech_request_lookup or {}).get(title, 0) for title in self._placed_titles
+        )
+        unplaced_mech_requests = max(
+            (total_mech_requests or 0) - open_mech_requests - placed_mech_requests,
+            0,
+        )
+
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
         
         # All-time funds used: traded + fees + ALL mech costs
@@ -388,6 +397,7 @@ class FetchPerformanceSummaryBehaviour(
         ) / WEI_IN_ETH
         
         # All-time profit: uses settled traded/fees and settled mech costs
+        # Settled mech requests include both placed and unplaced mech calls (excluding open markets).
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         all_time_profit = (
             total_payout - total_traded_settled - total_fees_settled - settled_mech_costs
@@ -408,7 +418,12 @@ class FetchPerformanceSummaryBehaviour(
             funds_locked_in_markets=round(funds_locked_in_markets, 2) if funds_locked_in_markets else None,
             available_funds=round(available_funds, 2) if available_funds else None,
             roi=roi_decimal,
-            settled_mech_request_count=self._settled_mech_requests_count
+            # Settled mech requests cover placed + unplaced, excluding open markets.
+            settled_mech_request_count=self._settled_mech_requests_count,
+            total_mech_request_count=total_mech_requests,
+            open_mech_request_count=open_mech_requests,
+            placed_mech_request_count=placed_mech_requests,
+            unplaced_mech_request_count=unplaced_mech_requests,
         )
 
 
@@ -606,9 +621,11 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         extra_fees_by_day: Dict[int, int] = {}
+        unplaced_buckets: Dict[int, int] = {}
         if daily_stats and remaining_unplaced > 0:
             days = [int(stat["date"]) for stat in daily_stats]
-            extra_fees_by_day = self._evenly_distribute_requests(remaining_unplaced, days)
+            unplaced_buckets = self._evenly_distribute_requests(remaining_unplaced, days)
+            extra_fees_by_day.update(unplaced_buckets)
 
         # Multi-bet allocations (split across days) and exclude from lookup to avoid double count
         multi_allocations, allocated_titles = self._build_multi_bet_allocations(daily_stats, mech_request_lookup)
@@ -616,7 +633,7 @@ class FetchPerformanceSummaryBehaviour(
             extra_fees_by_day[day_ts] = extra_fees_by_day.get(day_ts, 0) + count
 
         filtered_lookup = {k: v for k, v in (mech_request_lookup or {}).items() if k not in allocated_titles}
-        unplaced_allocated = sum(extra_fees_by_day.values())
+        unplaced_allocated = sum(unplaced_buckets.values())
         return extra_fees_by_day, filtered_lookup, unplaced_allocated
 
     def _build_multi_bet_allocations(
@@ -708,7 +725,7 @@ class FetchPerformanceSummaryBehaviour(
             # INITIAL BACKFILL - Missing settled_mech_request_count field (hotfix)
             self.context.logger.info("Performing initial profit over time backfill due to missing settled_mech_request_count...")
             return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
-        elif not hasattr(existing_profit_data, "unplaced_mech_requests_count"):
+        elif not getattr(existing_profit_data, "includes_unplaced_mech_fees", False):
             # INITIAL BACKFILL - Apply new non-placed mech fees logic and track counts
             self.context.logger.info("Performing initial profit over time backfill to include unplaced mech fees and counts...")
             return (yield from self._perform_initial_backfill(agent_safe_address, current_timestamp))
@@ -734,7 +751,8 @@ class FetchPerformanceSummaryBehaviour(
                 last_updated=current_timestamp,
                 total_days=0,
                 data_points=[],
-                settled_mech_requests_count=0
+                settled_mech_requests_count=0,
+                includes_unplaced_mech_fees=True,
             )
         
         self.context.logger.info(f"Initial backfill: Found {len(daily_stats)} daily profit statistics")
@@ -747,11 +765,13 @@ class FetchPerformanceSummaryBehaviour(
                 last_updated=current_timestamp,
                 total_days=0,
                 data_points=[],
-                settled_mech_requests_count=0
+                settled_mech_requests_count=0,
+                includes_unplaced_mech_fees=True,
             )
 
         # Build mech fee buckets (unplaced + multi-bet) and filtered lookup
         placed_titles = self._collect_placed_titles(daily_stats)
+        self._placed_titles = set(placed_titles)
         merged_extra_fees_by_day, filtered_lookup, unplaced_count = self._compute_mech_fee_buckets(
             daily_stats,
             mech_request_lookup,
@@ -798,6 +818,7 @@ class FetchPerformanceSummaryBehaviour(
             data_points=data_points,
             settled_mech_requests_count=settled_mech_requests_count,
             unplaced_mech_requests_count=unplaced_mech_requests_count,
+            includes_unplaced_mech_fees=True,
         )
 
     def _perform_incremental_update(self, agent_safe_address: str, current_timestamp: int, existing_data: ProfitOverTimeData) -> Generator[None, None, Optional[ProfitOverTimeData]]:
@@ -830,6 +851,8 @@ class FetchPerformanceSummaryBehaviour(
         self.context.logger.info(f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics")
 
         placed_titles = self._collect_placed_titles(new_daily_stats)
+        # Track all titles that have had bets so metrics can report placed mech requests.
+        self._placed_titles.update(placed_titles)
 
         # Mech requests lookup (use cached full lookup if available, else fetch all)
         if self._mech_request_lookup is None:
@@ -886,6 +909,7 @@ class FetchPerformanceSummaryBehaviour(
             data_points=new_data_points,
             settled_mech_requests_count=settled_mech_requests_count,
             unplaced_mech_requests_count=unplaced_mech_requests_count,
+            includes_unplaced_mech_fees=True,
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:
@@ -923,6 +947,7 @@ class FetchPerformanceSummaryBehaviour(
         self._total_mech_requests = None
         self._open_market_requests = None
         self._mech_request_lookup = None
+        self._placed_titles = set()
         
         agent_safe_address = self.synchronized_data.safe_contract_address
         self._settled_mech_requests_count = yield from self._calculate_settled_mech_requests(agent_safe_address)

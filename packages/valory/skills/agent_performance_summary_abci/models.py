@@ -72,6 +72,10 @@ class PerformanceMetricsData:
     available_funds: Optional[float] = None
     roi: Optional[float] = None
     settled_mech_request_count: Optional[int] = None
+    total_mech_request_count: Optional[int] = None
+    open_mech_request_count: Optional[int] = None
+    placed_mech_request_count: Optional[int] = None
+    unplaced_mech_request_count: Optional[int] = None
 
 
 @dataclass
@@ -129,7 +133,8 @@ class ProfitOverTimeData:
     data_points: List[ProfitDataPoint] = field(default_factory=list)
     settled_mech_requests_count: int = 0  # Total settled mech requests
     unplaced_mech_requests_count: int = 0  # Total mech requests with no bets placed
-
+    includes_unplaced_mech_fees: bool = False  # Whether unplaced mech fees logic was applied
+    
     def __post_init__(self):
         """Convert dicts to dataclass instances."""
         if self.data_points and isinstance(self.data_points[0], dict):
