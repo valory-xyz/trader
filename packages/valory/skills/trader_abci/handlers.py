@@ -404,7 +404,7 @@ class HttpHandler(BaseHttpHandler):
             )
             return funds_status
 
-        actual_considered_balance = native_status.balance + adjustment_balance
+        actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
 
         if native_status.deficit != 0:
             native_status.deficit = max(
@@ -423,8 +423,6 @@ class HttpHandler(BaseHttpHandler):
         Get the POL equivalent for a given USDC balance using LiFi quote.
 
         :param usdc_balance: USDC balance in wei
-        :param usdc_decimals: USDC decimal places
-        :param pol_decimals: POL decimal places
         :param chain_config: Chain configuration dictionary
         :return: POL equivalent amount in wei, or None if failed
         """
