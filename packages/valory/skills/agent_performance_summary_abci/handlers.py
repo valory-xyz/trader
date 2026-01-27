@@ -57,12 +57,6 @@ from packages.valory.skills.agent_performance_summary_abci.dialogues import Http
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
 )
-from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
-    GET_FPMM_PAYOUTS_QUERY,
-    GET_PREDICTION_HISTORY_QUERY,
-    GET_TRADER_AGENT_DETAILS_QUERY,
-    GET_TRADER_AGENT_PERFORMANCE_QUERY,
-)
 from packages.valory.skills.agent_performance_summary_abci.models import ProfitDataPoint
 
 

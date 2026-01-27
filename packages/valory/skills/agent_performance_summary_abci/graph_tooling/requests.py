@@ -28,7 +28,6 @@ from typing import Any, Dict, Generator, List, Optional, cast
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
-    GET_ALL_MECH_REQUESTS_QUERY,
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_MECH_REQUESTS_BY_TITLES_QUERY,
     GET_MECH_SENDER_QUERY,
@@ -274,9 +273,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_all_resolved_markets(
         self, timestamp_gt: int, timestamp_lte: Optional[int] = None
     ) -> Generator[None, None, List]:
-        """
-        Fetch all resolved markets in a timestamp window with pagination.
-        """
+        """Fetch all resolved markets in a timestamp window with pagination."""
         all_markets: List = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE

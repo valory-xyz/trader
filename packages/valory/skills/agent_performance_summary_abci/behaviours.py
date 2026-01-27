@@ -116,6 +116,7 @@ class FetchPerformanceSummaryBehaviour(
     def _post_tx_round_detected(self) -> bool:
         """
         Detect whether post_tx_settlement_round occurred since last update.
+
         post_tx_settlement_round is reached after every settled transaction.
         """
         try:
@@ -237,6 +238,7 @@ class FetchPerformanceSummaryBehaviour(
     ) -> Generator[None, None, int]:
         """
         Calculate the number of settled mech requests.
+
         Excludes mech requests for markets that are still open.
 
         :param agent_safe_address: The agent's safe address
@@ -255,7 +257,7 @@ class FetchPerformanceSummaryBehaviour(
             agent_safe_address
         )
 
-        # Settled = Total - Open
+        # where settled = Total - Open
         return total_mech_requests - open_market_requests
 
     def calculate_roi(self):
@@ -398,7 +400,7 @@ class FetchPerformanceSummaryBehaviour(
 
         if not trader_agent:
             self.context.logger.warning(
-                f"Could not fetch trader agent for performance data"
+                "Could not fetch trader agent for performance data"
             )
             return None
 
@@ -628,6 +630,7 @@ class FetchPerformanceSummaryBehaviour(
     ) -> Tuple[Dict[int, int], Set[str]]:
         """
         For markets appearing on multiple days, split mech requests evenly across those days.
+
         Returns (allocations_by_day, titles_allocated).
         """
         title_days: Dict[str, list] = {}
@@ -669,6 +672,7 @@ class FetchPerformanceSummaryBehaviour(
     ) -> Tuple[Dict[int, int], Dict[str, int], int]:
         """
         Build per-day mech fee buckets for:
+
         - unplaced requests (evenly spread)
         - multi-bet markets (evenly split across appearances)
         Returns: (extra_fees_by_day, filtered_lookup, unplaced_allocated)
@@ -712,43 +716,6 @@ class FetchPerformanceSummaryBehaviour(
         }
         unplaced_allocated = sum(unplaced_buckets.values())
         return extra_fees_by_day, filtered_lookup, unplaced_allocated
-
-    def _build_multi_bet_allocations(
-        self, daily_stats: list, mech_request_lookup: Dict[str, int]
-    ) -> Tuple[Dict[int, int], Set[str]]:
-        """
-        For markets appearing on multiple days, split mech requests evenly across those days.
-        Returns (allocations_by_day, titles_allocated).
-        """
-        title_days: Dict[str, list] = {}
-        for stat in daily_stats:
-            day_ts = int(stat["date"])
-            titles = {
-                participant.get("question", "").split(QUESTION_DATA_SEPARATOR)[0]
-                for participant in stat.get("profitParticipants", [])
-                if participant.get("question", "")
-            }
-            for title in titles:
-                if title:
-                    title_days.setdefault(title, []).append(day_ts)
-
-        allocations: Dict[int, int] = {}
-        titles_allocated: Set[str] = set()
-
-        for title, days in title_days.items():
-            if len(days) <= 1:
-                continue
-            total_requests = mech_request_lookup.get(title, 0)
-            if total_requests <= 0:
-                continue
-            titles_allocated.add(title)
-            allocations_for_title = self._evenly_distribute_requests(
-                total_requests, days
-            )
-            for day_ts, count in allocations_for_title.items():
-                allocations[day_ts] = allocations.get(day_ts, 0) + count
-
-        return allocations, titles_allocated
 
     def _build_mech_request_lookup(
         self, agent_safe_address: str

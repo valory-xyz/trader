@@ -228,9 +228,7 @@ class PredictionsFetcher:
     def _fetch_prediction_response_from_mech(
         self, question_title: str, sender_address: str
     ) -> Optional[Dict[str, Any]]:
-        """
-        Fetch prediction response (p_yes, p_no, etc.) from mech subgraph
-        """
+        """Fetch prediction response (p_yes, p_no, etc.) from mech subgraph"""
         if not question_title:
             return None
 
@@ -724,6 +722,7 @@ class PredictionsFetcher:
     ) -> str:
         """
         Determine the status of a prediction (pending, won, lost).
+
         If won but no payout (unredeemed), treat as pending.
         """
         fpmm = bet.get("fixedProductMarketMaker", {})
