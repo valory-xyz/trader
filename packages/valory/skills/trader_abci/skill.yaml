@@ -45,7 +45,7 @@ skills:
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 - valory/check_stop_trading_abci:0.1.0:bafybeic7qqrvqmgd32uggrxx4ejsanlhzb6hjpykbdxg3czdetlaayn6eq
 - valory/mech_interact_abci:0.1.0:bafybeidppjxk6znyilclyiexe7hjfnrzaowvxvfh6hkwn7gwdfcx5gcwdq
-- valory/chatui_abci:0.1.0:bafybeihlt7tvwkejqi6z2u22kpzpyfzhsubr4yu774h4oa7e5pp22dkqae
+- valory/chatui_abci:0.1.0:bafybeidfjxs4p55bhb56wrl4wwgiu5ncv77qpq5srqvnkb6q3sw4ntxzzy
 - valory/agent_performance_summary_abci:0.1.0:bafybeib6n6o6czdzq47e36yvqmqqdqfik2lni3qklooraq47g2xd77yfku
 - valory/funds_manager:0.1.0:bafybeiarjrgtot7gbqmwnu6ljfczf7gur6q35f3esgxzlw4hwwijbzrxgi
 behaviours:
