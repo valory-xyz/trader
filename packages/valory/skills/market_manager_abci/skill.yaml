@@ -11,7 +11,7 @@ fingerprint:
   behaviours/__init__.py: bafybeiemmuvhbsh2laur3ide7v5jsdwk2zkd3srvfnd35473fgbocwaknq
   behaviours/base.py: bafybeieulreqvriemtsyw4c7tcwuv5a537w3qmnktmunasvkve3wujjioy
   behaviours/fetch_markets_router.py: bafybeiezt27o6u5tstmopzyyc5g7goyzsremai36ldxn7n2qjvhimbiyha
-  behaviours/polymarket_fetch_market.py: bafybeiatdprpc7tqojwgikzb7yosbqopt32wzb6ygvqpdv3z6efhm7w7ji
+  behaviours/polymarket_fetch_market.py: bafybeia2hc76klwp4xw3haxdl4qxk3ycrer5yfkhq3nxvqhtm2ge26bp5y
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
   behaviours/update_bets.py: bafybeihealdlbwmqdgb7fww4nv7tjz4k72mzhacudfytc52fccnnyzg6di
   bets.py: bafybeihyr2eimiaotbjxvlqqo74uhh5ao6qpwrnxt466kw7acodcbkrmbq
