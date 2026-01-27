@@ -223,8 +223,8 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "mech_information_round": {
-        "name": "Fetching mechs' information",
-        "description": "Fetches the mechs' information",
+        "name": "Fetching mech's information",
+        "description": "Fetches the mech's information",
         "transitions": {},
     },
     "mech_version_detection_round": {
