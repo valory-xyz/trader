@@ -72,9 +72,8 @@ class FinishedFetchPerformanceDataRound(DegenerateRound, ABC):
     """
 
 
-class AgentPerformanceSummaryAbciApp(
-    AbciApp[Event]
-):  # pylint: disable=too-few-public-methods
+# fmt: off
+class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """AgentPerformanceSummaryAbciApp
 
     Initial round: FetchPerformanceDataRound
@@ -117,3 +116,4 @@ class AgentPerformanceSummaryAbciApp(
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedFetchPerformanceDataRound: set(),
     }
+# fmt: on
