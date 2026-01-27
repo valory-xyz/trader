@@ -34,12 +34,12 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_RESOLVED_MARKETS_QUERY,
     GET_STAKING_SERVICE_QUERY,
     GET_TRADER_AGENT_BETS_QUERY,
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_TRADER_AGENT_QUERY,
-    GET_RESOLVED_MARKETS_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
@@ -161,7 +161,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         """Fetch mech sender details."""
         result = yield from self._fetch_from_subgraph(
             query=GET_MECH_SENDER_QUERY,
-            variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
+            variables={
+                "id": agent_safe_address,
+                "timestamp_gt": int(timestamp_gt),
+                "skip": 0,
+                "first": QUERY_BATCH_SIZE,
+            },
             subgraph=self.context.olas_mech_subgraph,
             res_context="mech_sender",
         )
@@ -279,7 +284,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         while True:
             variables: Dict[str, Any] = {
                 "timestamp_gt": int(timestamp_gt),
-                "timestamp_lte": int(timestamp_lte) if timestamp_lte is not None else None,
+                "timestamp_lte": (
+                    int(timestamp_lte) if timestamp_lte is not None else None
+                ),
                 "first": batch_size,
                 "skip": skip,
             }
@@ -293,7 +300,11 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             if not result:
                 break
 
-            batch = result if isinstance(result, list) else result.get("fixedProductMarketMakers", [])
+            batch = (
+                result
+                if isinstance(result, list)
+                else result.get("fixedProductMarketMakers", [])
+            )
             if not batch:
                 break
 
@@ -341,21 +352,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         all_statistics = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
-        
+
         while True:
-            
+
             result = yield from self._fetch_from_subgraph(
                 query=GET_DAILY_PROFIT_STATISTICS_QUERY,
                 variables={
                     "agentId": agent_safe_address.lower(),
                     "startTimestamp": str(start_timestamp),
                     "first": batch_size,
-                    "skip": skip
+                    "skip": skip,
                 },
                 subgraph=self.context.olas_agents_subgraph,
                 res_context=f"daily_profit_statistics_batch_{skip // batch_size + 1}",
             )
-            
+
             # Handle null traderAgent response
             if not result:
                 break
@@ -363,23 +374,23 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             # Unwrap traderAgent if present
             if isinstance(result, dict) and "traderAgent" in result:
                 result = result.get("traderAgent") or {}
-            
+
             # Get dailyProfitStatistics from the result
             if not result.get("dailyProfitStatistics"):
                 break
-                
+
             batch_statistics = result.get("dailyProfitStatistics", [])
             if not batch_statistics:
                 break
-                
+
             all_statistics.extend(batch_statistics)
-            
+
             # If we got less than batch_size, we've reached the end
             if len(batch_statistics) < batch_size:
                 break
-                
+
             skip += batch_size
-        
+
         return all_statistics
 
     def _fetch_all_mech_requests(
@@ -389,33 +400,38 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         all_requests = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
-        
+
         while True:
             result = yield from self._fetch_from_subgraph(
                 query=GET_MECH_SENDER_QUERY,
-                variables={"id": agent_safe_address, "timestamp_gt": 0, "skip": skip, "first": batch_size},
+                variables={
+                    "id": agent_safe_address,
+                    "timestamp_gt": 0,
+                    "skip": skip,
+                    "first": batch_size,
+                },
                 subgraph=self.context.olas_mech_subgraph,
                 res_context=f"all_mech_requests_batch_{skip // batch_size + 1}",
             )
-            
+
             if not result:
                 break
 
             if isinstance(result, dict) and "sender" in result:
                 result = result.get("sender") or {}
-            
+
             batch_requests = result.get("requests", [])
             if not batch_requests:
                 break
-            
+
             all_requests.extend(batch_requests)
-            
+
             # If we got less than batch_size, we've reached the end
             if len(batch_requests) < batch_size:
                 break
-                
+
             skip += batch_size
-        
+
         return all_requests
 
     def _fetch_mech_requests_by_titles(
@@ -424,20 +440,19 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         """Fetch mech requests by question titles"""
         if not question_titles:
             return []
-        
+
         result = yield from self._fetch_from_subgraph(
             query=GET_MECH_REQUESTS_BY_TITLES_QUERY,
             variables={
                 "sender": agent_safe_address.lower(),
-                "questionTitles": question_titles
+                "questionTitles": question_titles,
             },
             subgraph=self.context.olas_mech_subgraph,
             res_context="mech_requests_by_titles",
         )
-        
+
         if result:
             if isinstance(result, dict) and "sender" in result:
                 result = result.get("sender") or {}
             return result.get("requests", []) if isinstance(result, dict) else []
         return []
-        

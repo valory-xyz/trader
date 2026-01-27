@@ -64,7 +64,9 @@ class FinishedFetchPerformanceDataRound(DegenerateRound, ABC):
     """A terminal round indicating that performance data collection is complete."""
 
 
-class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
+class AgentPerformanceSummaryAbciApp(
+    AbciApp[Event]
+):  # pylint: disable=too-few-public-methods
     """AgentPerformanceSummaryAbciApp
 
     Initial round: FetchPerformanceDataRound
