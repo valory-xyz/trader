@@ -150,7 +150,7 @@ class Achievement:
 class Achievements:
     """Achievements dictionary."""
 
-    items: Dict[str, Achievement]
+    items: Dict[str, Achievement] = field(default_factory=dict)
 
 
 @dataclass

@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    Achievements,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
     AgentDetails,
@@ -93,6 +94,9 @@ class FetchPerformanceSummaryBehaviour(
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
         self._settled_mech_requests_count: int = 0
+
+        print("------------------------------------------------")
+        print(self._agent_performance_summary)
     
     def _should_update(self) -> bool:
         """Check if we should update."""
@@ -884,19 +888,6 @@ class UpdateAchievementsBehaviour(
     matching_round = UpdateAchievementsRound
     polymarket_payout_checker = PolymarketPayoutChecker()
 
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize Behaviour."""
-        super().__init__(**kwargs)
-        self._agent_performance_summary: Optional[AgentPerformanceSummary] = None
-        self._final_roi: Optional[float] = None
-        self._partial_roi: Optional[float] = None
-        self._total_mech_requests: Optional[int] = None
-        self._open_market_requests: Optional[int] = None
-        self._mech_request_lookup: Optional[dict] = None 
-        self._update_interval: int = UPDATE_INTERVAL
-        self._last_update_timestamp: int = 0
-        self._settled_mech_requests_count: int = 0
-
     def async_act(self) -> Generator:
         """Do the action."""
         payload = UpdateAchievementsPayload(
@@ -904,13 +895,20 @@ class UpdateAchievementsBehaviour(
             vote=True,
         )
 
+        agent_performance_summary = self.shared_state.read_existing_performance_summary()
+
+        achievements = agent_performance_summary.achievements
+        if achievements is None:
+            achievements = Achievements()
+            agent_performance_summary.achievements = achievements
+
         achievements_updated = self.polymarket_payout_checker.update_achievements(
-            achievements=self._agent_performance_summary.achievements,
-            prediction_history=self._agent_performance_summary.prediction_history
+            achievements=agent_performance_summary.achievements,
+            prediction_history=agent_performance_summary.prediction_history
         )
 
         if achievements_updated:
-            self._save_agent_performance_summary(self._agent_performance_summary)
+            self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
         yield from self.finish_behaviour(payload)
         return
@@ -922,14 +920,6 @@ class UpdateAchievementsBehaviour(
             yield from self.wait_until_round_end()
 
         self.set_done()
-
-    def _save_agent_performance_summary(
-        self, agent_performance_summary: AgentPerformanceSummary
-    ) -> None:
-        """Save the agent performance summary to a file."""
-        existing_data = self.shared_state.read_existing_performance_summary()
-        agent_performance_summary.agent_behavior = existing_data.agent_behavior
-        self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
 
 class AgentPerformanceSummaryRoundBehaviour(AbstractRoundBehaviour):
