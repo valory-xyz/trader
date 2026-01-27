@@ -31,13 +31,14 @@ ACHIEVEMENTS_CHECKER_NS = uuid5(OLAS_NETWORK_NS, "skill/valory/agent_performance
 class AchievementsChecker:
     """Base class for all achievements checkers"""
 
-    type: str = "base"
-
-    @classmethod
-    def generate_achievement_id(cls, seed: str) -> str:
+    def generate_achievement_id(self, seed: str) -> str:
         """Generate a deterministic achievement type ID"""
-        return str(uuid5(ACHIEVEMENTS_CHECKER_NS, f"{cls.type}/{seed}"))
+        return str(uuid5(ACHIEVEMENTS_CHECKER_NS, f"{self.achievement_type()}/{seed}"))
 
     def update_achievements(self, achievements: Dict[str, Dict], **kwargs) -> bool:
         """Check if an achievement has been reached and populate `achievements`. Returns `True` if the achievements dictionary has been updated."""
+        raise NotImplementedError()
+
+    def achievement_type(self) -> str:
+        """Returns a string representing the achievement type"""
         raise NotImplementedError()

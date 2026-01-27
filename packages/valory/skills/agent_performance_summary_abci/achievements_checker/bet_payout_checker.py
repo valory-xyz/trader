@@ -17,25 +17,29 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Achievement checker for Polymarket bets with payouts ROI above a threshold"""
+"""Achievement checker for bets with payouts ROI above a threshold"""
 
 
 from datetime import datetime
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import AchievementsChecker
-from packages.valory.skills.agent_performance_summary_abci.models import Achievement, Achievements, AgentPerformanceSummary, PredictionHistory
+from packages.valory.skills.agent_performance_summary_abci.models import Achievement, Achievements, PredictionHistory
 
 
-class PolymarketPayoutChecker(AchievementsChecker):
-    """Achievement checker for Polymarket bets with payouts ROI above a threshold"""
-
-    type = "polymarket_payout"
+class BetPayoutChecker(AchievementsChecker):
+    """Achievement checker for bets with payouts ROI above a threshold"""
 
     def __init__(
         self,
+        achievement_type: str,
         roi_threshold: float = 2.0,
     ) -> None:
         """Initialize the achievement checker."""
+        self._achievement_type = achievement_type
         self._roi_threshold = roi_threshold
+
+    def achievement_type(self) -> str:
+        """Returns a string representing the achievement type"""
+        return self._achievement_type
 
     def update_achievements(self, achievements: Achievements, **kwargs) -> None:
         """Check if an achievement has been reached and populate `achievements`. Returns `True` if the achievements dictionary has been updated."""
@@ -68,14 +72,15 @@ class PolymarketPayoutChecker(AchievementsChecker):
 
             achievement = Achievement(
                 achievement_id=achievement_id,
-                title="High ROI on Polymarket bet!",
-                description=f"My agent bet on Polymarket \"{bet['market']['title']}\" won a {roi:.2f}% ROI.",
+                type=self.type,
+                title="High ROI on bet!",
+                description=f"My agent bet on \"{bet['market']['title']}\" won a {roi:.2f}% ROI.",
                 timestamp=int(datetime.fromisoformat(bet["settled_at"].replace("Z", "+00:00")).timestamp()),
                 data=bet,
             )
 
             achievements.items[achievement_id] = achievement
             achievements_updated = True
-        
+
         return achievements_updated
 

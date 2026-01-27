@@ -140,6 +140,7 @@ class Achievement:
     """Achievement."""
 
     achievement_id: str
+    type: str
     title: str
     description: str
     timestamp: int

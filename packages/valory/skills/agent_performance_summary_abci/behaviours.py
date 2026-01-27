@@ -55,8 +55,7 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
-from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import AchievementsChecker
-from packages.valory.skills.agent_performance_summary_abci.achievements_checker.polystrat_payout_checker import PolymarketPayoutChecker
+from valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import BetPayoutChecker
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -883,7 +882,15 @@ class UpdateAchievementsBehaviour(
     """A behaviour for updating the agent achievements database."""
 
     matching_round = UpdateAchievementsRound
-    polymarket_payout_checker = PolymarketPayoutChecker()
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize Behaviour."""
+        super().__init__(**kwargs)
+
+        if self.params.is_running_on_polymarket:
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="payout_polymarket")
+        else:
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="payout_omen")
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -900,11 +907,10 @@ class UpdateAchievementsBehaviour(
             agent_performance_summary.achievements = achievements
 
         achievements_updated = False
-        if self.params.is_running_on_polymarket:
-            achievements_updated = self.polymarket_payout_checker.update_achievements(
-                achievements=agent_performance_summary.achievements,
-                prediction_history=agent_performance_summary.prediction_history
-            )
+        achievements_updated = self.bet_payout_checker.update_achievements(
+            achievements=agent_performance_summary.achievements,
+            prediction_history=agent_performance_summary.prediction_history
+        )
 
         if achievements_updated:
             self.shared_state.overwrite_performance_summary(agent_performance_summary)
