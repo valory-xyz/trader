@@ -536,10 +536,16 @@ class PredictionsFetcher:
             status = self._get_prediction_status(bet, participant)
 
             bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            net_profit_val, payout_amount = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+            net_profit_val, payout_amount = self._calculate_bet_net_profit(
+                bet, market_ctx, bet_amount
+            )
 
-            net_profit = round(net_profit_val, 3) if net_profit_val is not None else None
-            payout_rounded = round(payout_amount, 3) if payout_amount is not None else None
+            net_profit = (
+                round(net_profit_val, 3) if net_profit_val is not None else None
+            )
+            payout_rounded = (
+                round(payout_amount, 3) if payout_amount is not None else None
+            )
 
             outcome_index = int(bet.get("outcomeIndex", 0))
             outcomes = fpmm.get("outcomes", [])
@@ -624,7 +630,7 @@ class PredictionsFetcher:
             if entry["total_traded"] is None:
                 entry["total_traded"] = float(participant.get("totalTraded", 0))
 
-            amount = (float(bet.get("amount", 0))/WEI_TO_NATIVE)
+            amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
             current_answer = entry["current_answer"]
             if current_answer not in (None, INVALID_ANSWER_HEX):
                 correct = int(current_answer, 0)
@@ -648,7 +654,9 @@ class PredictionsFetcher:
             return None
 
         bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-        net_profit, payout_amount = self._calculate_bet_net_profit(bet, market_ctx, bet_amount)
+        net_profit, payout_amount = self._calculate_bet_net_profit(
+            bet, market_ctx, bet_amount
+        )
 
         outcome_index = int(bet.get("outcomeIndex", 0))
         outcomes = fpmm.get("outcomes", [])
@@ -664,7 +672,9 @@ class PredictionsFetcher:
             "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
-            "total_payout": round(payout_amount, 3) if payout_amount is not None else None,
+            "total_payout": (
+                round(payout_amount, 3) if payout_amount is not None else None
+            ),
             "created_at": self._format_timestamp(bet.get("timestamp")),
             "settled_at": (
                 self._format_timestamp(market_ctx.get("current_answer_ts"))
