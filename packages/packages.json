@@ -16,16 +16,16 @@
         "connection/valory/polymarket_client/0.1.0": "bafybeiaz2dv65y2k2hhribf4oi5vxrzy62drdr7jf7lu7a62pb55e5yzs4",
         "skill/valory/market_manager_abci/0.1.0": "bafybeic5sqglz3qm4gfrtugeavoc7cx7rmtm7vsdp2zwl52ufmpjpk57ga",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeiec5qple3pxvakcm2x2gavyfl3lneu2w3xodyvqvqdtffsweaxrkq",
-        "skill/valory/trader_abci/0.1.0": "bafybeidqajp4hwtqpgi7d44iv4qr7xvdyockflf3kkioazbykk4dmujk2e",
+        "skill/valory/trader_abci/0.1.0": "bafybeiemmxutu5icitrfvskp4w3xhfvod4qhqmrml4h5trqdkn22m5624i",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidutgzaowuohctswu4sakbd67kx4op3f7y4tlslcbagzb3drvu7y4",
         "skill/valory/staking_abci/0.1.0": "bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeib6n6o6czdzq47e36yvqmqqdqfik2lni3qklooraq47g2xd77yfku",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeidhihbbxmvdqzshbobqt2osttviyu7v3m4xvnhh5bgnt7iglrivhm",
         "skill/valory/chatui_abci/0.1.0": "bafybeidfjxs4p55bhb56wrl4wwgiu5ncv77qpq5srqvnkb6q3sw4ntxzzy",
-        "agent/valory/trader/0.1.0": "bafybeiditpa4zou2kirvf6nweke66dzpshhua6s3a4gmvo2encos72ctpq",
-        "service/valory/trader/0.1.0": "bafybeieqdawbwcgdfo4wfbgxvif5kpffrbgr2asdgv3cjbxnihxg5n26fm",
-        "service/valory/trader_pearl/0.1.0": "bafybeicze5ppnl66cevzq5dbjyobkju7p7226elvihcxp2flr5nwnivfqu",
-        "service/valory/polymarket_trader/0.1.0": "bafybeigfw4h2t6yts6tbe25ontiefn6utbslrezsczzu3wlwxjxlg4nx4y"
+        "agent/valory/trader/0.1.0": "bafybeicmtkiwnp6cxu3zgbanbwvppcaecll3ayxxp2oct6fhmamkv4gzru",
+        "service/valory/trader/0.1.0": "bafybeic65ifrgn7wqdi3iqz2m4f7rd64xqmtlwrbrsyrdfbhf7s6aqbe5q",
+        "service/valory/trader_pearl/0.1.0": "bafybeic5lfybvwf4uqqmwnjuiigb3u5ale55vfbuycmqyfg3jegpfm7bzm",
+        "service/valory/polymarket_trader/0.1.0": "bafybeicbbslziyeohyyu7xdvgd5llzaprsamyqbih4h777esn3oxittyvu"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeic7infync56c4b5qzmgomcfkh3au5bpsd53rlfq4hzyjelb3w2u74",
