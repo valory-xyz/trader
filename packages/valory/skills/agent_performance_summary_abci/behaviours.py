@@ -94,9 +94,6 @@ class FetchPerformanceSummaryBehaviour(
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
         self._settled_mech_requests_count: int = 0
-
-        print("------------------------------------------------")
-        print(self._agent_performance_summary)
     
     def _should_update(self) -> bool:
         """Check if we should update."""
