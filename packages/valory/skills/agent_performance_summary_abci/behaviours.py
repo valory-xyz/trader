@@ -53,7 +53,6 @@ from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
 
-
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
@@ -68,6 +67,7 @@ WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 SECONDS_PER_DAY = 86400
 NA = "N/A"
 UPDATE_INTERVAL = 1800 #30 mins
+TX_HISTORY_DEPTH = 25  # match healthcheck slice length
 
 
 class FetchPerformanceSummaryBehaviour(
