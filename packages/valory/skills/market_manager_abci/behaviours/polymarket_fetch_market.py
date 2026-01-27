@@ -20,6 +20,7 @@
 """This module contains the Polymarket fetch market behaviour for the MarketManager ABCI app."""
 
 import json
+import sys
 from typing import Any, Dict, Generator, List, Optional
 
 from dateutil import parser as date_parser
@@ -28,7 +29,7 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
 )
-from packages.valory.skills.market_manager_abci.bets import Bet
+from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QueryingBehaviour,
@@ -43,6 +44,67 @@ USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 # Threshold for extreme outcome prices indicating resolved/over markets
 EXTREME_PRICE_THRESHOLD = 0.99
+
+# Polymarket category keywords for validation
+# fmt: off
+POLYMARKET_CATEGORY_KEYWORDS = {
+    "business": [
+        "business", "corp", "corporate", "merger", "acquisition", "startup", "ceo", "cfo",
+        "layoff", "hiring", "strike", "labor union", "trade union", "bankruptcy", "ipo",
+        "company", "brand", "retail", "supply chain", "logistics", "management", "industry",
+        "commercial", "monopoly", "antitrust", "executive", "stellantis", "byd", "tesla",
+        "revenue", "profit",
+    ],
+    "politics": [
+        "politics", "political", "election", "vote", "poll", "ballot", "democrat", "republican",
+        "congress", "senate", "parliament", "president", "prime minister", "biden", "trump",
+        "harris", "campaign", "legislation", "bill", "law", "supreme court", "governor", "mayor",
+        "tory", "labour", "party", "impeachment", "regulatory", "uscis", "federal court",
+    ],
+    "science": [
+        "science", "physics", "chemistry", "biology", "astronomy", "nasa", "space", "rocket",
+        "spacex", "laboratory", "experiment", "discovery", "research", "scientist", "nobel prize",
+        "atom", "molecule", "dna", "genetics", "telescope", "quantum", "fusion", "superconductor",
+        "study", "peer-reviewed", "comet", "asteroid",
+    ],
+    "technology": [
+        "technology", "tech", "ai", "artificial intelligence", "gpt", "llm", "software", "hardware",
+        "app", "google", "apple", "microsoft", "meta", "server", "cloud", "algorithm", "robot",
+        "cyber", "silicon", "chip", "semiconductor", "nvidia", "virtual reality", "metaverse",
+        "device", "smartphone", "adobe", "semrush",
+    ],
+    "health": [
+        "health", "medicine", "medical", "doctor", "hospital", "virus", "disease", "cancer",
+        "vaccine", "drug", "pharmaceutical", "fda", "covid", "pandemic", "therapy", "surgery",
+        "mental health", "diet", "nutrition", "obesity", "who", "treatment",
+    ],
+    "travel": [
+        "travel", "tourism", "airline", "flight", "airport", "plane", "boeing", "airbus",
+        "hotel", "resort", "visa", "passport", "destination", "cruise", "vacation", "booking",
+        "airbnb", "expedia", "trip", "passenger", "transportation", "tour", "bus", "ntsb",
+    ],
+    "entertainment": [
+        "entertainment", "movie", "film", "cinema", "hollywood", "actor", "actress", "netflix",
+        "disney", "hbo", "box office", "oscar", "tv", "series", "streaming", "show", "theater",
+        "gambling", "betting", "poker", "casino", "lottery",
+    ],
+    "weather": [
+        "weather", "forecast", "hurricane", "storm", "tornado", "temperature", "rain", "snow",
+        "heatwave", "drought", "flood", "meteorology", "climate", "monsoon", "el nino", "tropical",
+        "depression", "dissipate", "noaa",
+    ],
+    "finance": [
+        "finance", "financial", "stock", "share", "market", "wall street", "sp500", "nasdaq",
+        "dow jones", "trade", "investor", "dividend", "portfolio", "hedge fund", "equity", "bond",
+        "earnings", "bloomberg", "etf", "short", "long", "robinhood", "close",
+    ],
+    "international": [
+        "international", "global", "war", "conflict", "ukraine", "russia", "israel", "gaza",
+        "china", "un", "united nations", "nato", "treaty", "diplomacy", "foreign", "border",
+        "geopolitics", "summit", "sanction", "ambassador", "territory",
+    ],
+}
+# fmt: on
 
 
 class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
@@ -88,6 +150,144 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     for price in bet.outcomeTokenMarginalPrices
                 ):
                     bet.blacklist_forever()
+
+    @staticmethod
+    def _validate_market_category(market_title: str, category: str) -> bool:
+        """
+        Validate that a market title matches its assigned category keywords.
+
+        :param market_title: The market question/title
+        :param category: The assigned category
+        :return: True if market matches category keywords, False otherwise
+        """
+        import re
+
+        if (
+            not isinstance(market_title, str)
+            or category not in POLYMARKET_CATEGORY_KEYWORDS
+        ):
+            return False
+
+        title_lower = market_title.lower()
+        keywords = POLYMARKET_CATEGORY_KEYWORDS[category]
+
+        # Check if any keyword matches
+        for keyword in keywords:
+            pattern = r"\b" + re.escape(keyword) + r"\b"
+            if re.search(pattern, title_lower):
+                return True
+
+        return False
+
+    def _validate_markets_by_category(
+        self, markets_by_category: Dict[str, List[Dict]]
+    ) -> Dict[str, List[Dict]]:
+        """
+        Validate markets against their assigned category keywords and mark them.
+
+        :param markets_by_category: Dictionary mapping category to list of markets
+        :return: Dictionary with all markets marked with 'category_valid' flag
+        """
+        marked_markets_by_category = {}
+        total_validated = 0
+        total_invalid = 0
+
+        for category, markets in markets_by_category.items():
+            marked_markets = []
+            valid_count = 0
+            invalid_count = 0
+
+            for market in markets:
+                market_title = market.get("question", "")
+                is_valid = self._validate_market_category(market_title, category)
+
+                # Add validation flag to market
+                market["category_valid"] = is_valid
+                marked_markets.append(market)
+
+                if is_valid:
+                    valid_count += 1
+                else:
+                    invalid_count += 1
+
+            marked_markets_by_category[category] = marked_markets
+            total_validated += valid_count
+            total_invalid += invalid_count
+
+            self.context.logger.info(
+                f"Category '{category}': {valid_count}/{len(markets)} validated "
+                f"({invalid_count} failed)"
+            )
+
+        self.context.logger.info(
+            f"Total validated: {total_validated} markets, {total_invalid} failed validation"
+        )
+
+        return marked_markets_by_category
+
+    def _deduplicate_markets(
+        self, markets_by_category: Dict[str, List[Dict]]
+    ) -> Dict[str, List[Dict]]:
+        """
+        Remove duplicate markets across categories, preferring category-valid ones.
+
+        :param markets_by_category: Dictionary with all markets (valid and invalid)
+        :return: Dictionary with deduplicated markets per category
+        """
+        # Track all occurrences of each market across categories
+        market_occurrences: Dict[str, List[tuple[str, Dict[str, Any]]]] = (
+            {}
+        )  # market_id -> [(category, market_dict), ...]
+
+        for category, markets in markets_by_category.items():
+            for market in markets:
+                market_id = market.get("id")
+                if market_id:
+                    if market_id not in market_occurrences:
+                        market_occurrences[market_id] = []
+                    market_occurrences[market_id].append((category, market))
+
+        # Deduplicate: prefer category-valid markets, then first occurrence
+        deduplicated_by_category: Dict[str, List[Dict[str, Any]]] = {}
+        selected_markets = {}  # market_id -> (category, market_dict)
+        duplicate_count = 0
+
+        for market_id, occurrences in market_occurrences.items():
+            if len(occurrences) == 1:
+                # No duplicate - keep it
+                category, market = occurrences[0]
+                selected_markets[market_id] = (category, market)
+            else:
+                # Duplicate found - prefer category-valid markets
+                duplicate_count += len(occurrences) - 1
+                # Try to find a valid one first
+                valid_occurrence = next(
+                    (
+                        (cat, mkt)
+                        for cat, mkt in occurrences
+                        if mkt.get("category_valid", False)
+                    ),
+                    None,
+                )
+                if valid_occurrence:
+                    category, market = valid_occurrence
+                else:
+                    # All invalid, just keep first
+                    category, market = occurrences[0]
+                selected_markets[market_id] = (category, market)
+
+        # Organize back by category
+        for _market_id, (category, market) in selected_markets.items():
+            if category not in deduplicated_by_category:
+                deduplicated_by_category[category] = []
+            deduplicated_by_category[category].append(market)
+
+        self.context.logger.info(
+            f"After deduplication: {len(selected_markets)} unique markets "
+            f"({duplicate_count} duplicates removed) across {len(deduplicated_by_category)} categories"
+        )
+
+        return deduplicated_by_category
 
     @property
     def review_bets_for_selling(self) -> bool:
@@ -158,12 +358,19 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"Received markets from Polymarket: {len(response)} categories"
         )
 
+        # Validate markets against category keywords (marks each with 'category_valid' flag)
+        marked_markets_by_category = self._validate_markets_by_category(response)
+
+        # Deduplicate ALL markets across categories (preferring valid ones)
+        deduplicated_by_category = self._deduplicate_markets(marked_markets_by_category)
+
         # Process all markets from all categories
-        all_bets = []
+        all_bets: List[Dict[str, Any]] = []
         total_markets = 0
         total_skipped = 0
+        blacklisted_count = 0
 
-        for category, markets in response.items():
+        for category, markets in deduplicated_by_category.items():
             category_count = len(markets)
             total_markets += category_count
             self.context.logger.info(
@@ -173,6 +380,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
             for market in markets:
                 market_id = market.get("id", "unknown")
+                is_category_valid = market.get("category_valid", False)
 
                 try:
                     # Parse JSON fields from response
@@ -231,8 +439,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
                     bet_dict = {
                         "id": market_id,
-                        "condition_id": market.get("conditionId"),
                         "title": market.get("question"),
+                        "category": category,
+                        "condition_id": market.get("conditionId"),
                         "collateralToken": USCDE_POLYGON,  # Polymarket uses USDC.e on Polygon
                         "creator": market.get("submitted_by", ZERO_ADDRESS),
                         "fee": 0,  # Polymarket fee is typically 0 or handled differently
@@ -240,15 +449,36 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "outcomeSlotCount": len(outcomes),
                         "outcomeTokenAmounts": outcome_token_amounts,
                         "outcomeTokenMarginalPrices": parsed_prices,
-                        "outcomes": outcomes,
+                        "outcomes": (
+                            None if not is_category_valid else outcomes
+                        ),  # None = blacklist
                         "scaledLiquidityMeasure": liquidity,
-                        "processed_timestamp": 0,
+                        "processed_timestamp": (
+                            sys.maxsize if not is_category_valid else 0
+                        ),
                         "position_liquidity": 0,
                         "potential_net_profit": 0,
+                        "queue_status": (
+                            QueueStatus.EXPIRED
+                            if not is_category_valid
+                            else QueueStatus.FRESH
+                        ),
                         "investments": {},
                         "outcome_token_ids": outcome_token_ids_map,
                     }
+
+                    # Debug: Log category for first few bets
+                    if len(all_bets) < 5:
+                        self.context.logger.info(
+                            f"Creating bet_dict for market {market_id}: category={category}, "
+                            f"is_valid={is_category_valid}"
+                        )
+
                     all_bets.append(bet_dict)
+
+                    # Track blacklisted markets
+                    if not is_category_valid:
+                        blacklisted_count += 1
 
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
                     self.context.logger.warning(
@@ -276,8 +506,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # Log overall summary
         self.context.logger.info(
             f"Constructed {len(all_bets)} bet_dicts from {total_markets} total markets "
-            f"({total_skipped} skipped)"
+            f"({total_skipped} skipped, {blacklisted_count} blacklisted due to category validation)"
         )
+
         return all_bets
 
     def _update_bets(self) -> Generator:

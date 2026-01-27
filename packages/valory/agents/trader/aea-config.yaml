@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeicmy3phyy3ckvlfumioiadwlmlt5dijkp3mhezkxgx7kigigwe3rm
 - dvilela/genai:0.1.0:bafybeibopgvwqvqvyru7n2o2ddryujl6jhknjg5na4675of2eui5i3xube
 - valory/x402:0.1.0:bafybeihnu3yxblyqey7wm5cwwimz5qnznjfhyh5xk5h5v6rk673l5q63le
-- valory/polymarket_client:0.1.0:bafybeiaz2dv65y2k2hhribf4oi5vxrzy62drdr7jf7lu7a62pb55e5yzs4
+- valory/polymarket_client:0.1.0:bafybeihejljsobtmfc24y6edh7th2xg5psfkhglvzcwm6i5ligqxuedzs4
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeift6zq32brismk6c7csidcveeijyalrlpnefnqv2jrwrxnfmyu7li
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeie6blajrnottahgi2zpmzp2hfsobp3m3zfqplg2ocn63ed6cr4o74
@@ -65,10 +65,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibbgedhxkf44obw7mdcczz2hxkjnvfnifnsk6txq7z64v372bbgpa
 - valory/termination_abci:0.1.0:bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha
 - valory/transaction_settlement_abci:0.1.0:bafybeifw2sem532gwdcyujknhsgdcgubpwsrrjtve4ztzxlkpmporjp4rq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieks44rfs75jnlzgskpglmsdaanugy5zfm6wnrr6k2rffoomqmkie
-- valory/market_manager_abci:0.1.0:bafybeic5sqglz3qm4gfrtugeavoc7cx7rmtm7vsdp2zwl52ufmpjpk57ga
-- valory/decision_maker_abci:0.1.0:bafybeidynbr2mnjcbplmlo6hxr4ibvv4huuhcnyd3enx7nienidcktb3ua
-- valory/trader_abci:0.1.0:bafybeib32q6qeojfgzbvjuhm5yxbxaa6ckgbj2u352qtcxetszns4smftu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibl2rv6lm7ew6bp7mplfoopk5axy3iwm3nf7xzbr2pruzikohdlbe
+- valory/market_manager_abci:0.1.0:bafybeib3ynx2jj4vuscq5lkqs4zg6bpytyqicoot2aezeboh4vyaflnoiq
+- valory/decision_maker_abci:0.1.0:bafybeidupszetrustwgc4ct7daimjqebgbuczrov5qv6tez46pcoe3ppwq
+- valory/trader_abci:0.1.0:bafybeiatg4vx6lmpk7w2ffcv2tqqjrzgf7edyjzikfvqfosawpxe65afmq
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
 - valory/check_stop_trading_abci:0.1.0:bafybeic7qqrvqmgd32uggrxx4ejsanlhzb6hjpykbdxg3czdetlaayn6eq
 - valory/mech_interact_abci:0.1.0:bafybeidppjxk6znyilclyiexe7hjfnrzaowvxvfh6hkwn7gwdfcx5gcwdq
