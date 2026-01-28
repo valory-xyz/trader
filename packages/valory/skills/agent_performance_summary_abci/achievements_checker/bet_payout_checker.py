@@ -21,8 +21,15 @@
 
 
 from datetime import datetime
-from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import AchievementsChecker
-from packages.valory.skills.agent_performance_summary_abci.models import Achievement, Achievements, PredictionHistory
+
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import (
+    AchievementsChecker,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    Achievement,
+    Achievements,
+    PredictionHistory,
+)
 
 
 class BetPayoutChecker(AchievementsChecker):
@@ -76,7 +83,11 @@ class BetPayoutChecker(AchievementsChecker):
                 achievement_type=self.achievement_type,
                 title="High ROI on bet!",
                 description=f"My agent bet on \"{bet['market']['title']}\" won a {roi:.2f}% ROI.",
-                timestamp=int(datetime.fromisoformat(bet["settled_at"].replace("Z", "+00:00")).timestamp()),
+                timestamp=int(
+                    datetime.fromisoformat(
+                        bet["settled_at"].replace("Z", "+00:00")
+                    ).timestamp()
+                ),
                 data=bet,
             )
 
@@ -84,4 +95,3 @@ class BetPayoutChecker(AchievementsChecker):
             achievements_updated = True
 
         return achievements_updated
-

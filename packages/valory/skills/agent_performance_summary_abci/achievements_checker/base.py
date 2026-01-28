@@ -20,12 +20,14 @@
 """Base class for all achievements checkers."""
 
 
-from uuid import uuid5, NAMESPACE_DNS
-from typing import Dict, Any
+from typing import Dict
+from uuid import NAMESPACE_DNS, uuid5
 
 
 OLAS_NETWORK_NS = uuid5(NAMESPACE_DNS, "olas.network")
-ACHIEVEMENTS_CHECKER_NS = uuid5(OLAS_NETWORK_NS, "skill/valory/agent_performance_summary_abci/achievements_checker")
+ACHIEVEMENTS_CHECKER_NS = uuid5(
+    OLAS_NETWORK_NS, "skill/valory/agent_performance_summary_abci/achievements_checker"
+)
 
 
 class AchievementsChecker:

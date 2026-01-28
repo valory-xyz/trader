@@ -33,14 +33,14 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
+    GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_RESOLVED_MARKETS_QUERY,
     GET_STAKING_SERVICE_QUERY,
     GET_TRADER_AGENT_BETS_QUERY,
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_TRADER_AGENT_QUERY,
-    GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
-    GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
@@ -164,7 +164,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             return (
                 yield from self._fetch_from_subgraph(
                     query=GET_MECH_SENDER_QUERY,
-                    variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
+                    variables={
+                        "id": agent_safe_address,
+                        "timestamp_gt": int(timestamp_gt),
+                        "skip": 0,
+                        "first": QUERY_BATCH_SIZE,
+                    },
                     subgraph=self.context.polygon_mech_subgraph,
                     res_context="polygon_mech_sender",
                 )
@@ -173,7 +178,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             return (
                 yield from self._fetch_from_subgraph(
                     query=GET_MECH_SENDER_QUERY,
-                    variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
+                    variables={
+                        "id": agent_safe_address,
+                        "timestamp_gt": int(timestamp_gt),
+                        "skip": 0,
+                        "first": QUERY_BATCH_SIZE,
+                    },
                     subgraph=self.context.olas_mech_subgraph,
                     res_context="mech_sender",
                 )
