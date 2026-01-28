@@ -113,7 +113,7 @@ protocols:
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/market_manager_abci:0.1.0:bafybeihzno4yvhbbjutk3dhngjdh7lqin5pjgrxvruwvyskgnupqktzona
+- valory/market_manager_abci:0.1.0:bafybeictnpfo6ac7j2kgazzpdx6o2j2sgeov6puhj7fluvon2pk24comym
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
