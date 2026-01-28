@@ -42,7 +42,7 @@ fingerprint:
   policy.py: bafybeigckodvrynyokprhaqca6nqtgny4duddo3gwldyvj44maedw2xvbi
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
   rounds.py: bafybeifwonwycypz3u6xekmwhfyveuzekce5cf76i66qoyefqqjjhndivy
-  rounds_info.py: bafybeicio226nvdc733crixhfayst4m4qjnscitnpoiigqtljjc2ccpscu
+  rounds_info.py: bafybeifqe6gewf56mfgheh27dzepkqpbuweyc65u56hpxxslgtdfvbheem
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeiffm7if6nqnmnrsg7lxxynsrp2mrarxqeweeex3udx5xflqpujuue
   states/bet_placement.py: bafybeidd3k6bbnjkznwbv43l44wexaci7k7axz6mfrgca76mjljp5o2344
@@ -309,6 +309,7 @@ models:
       polymarket_neg_risk_ctf_exchange_address: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
       polymarket_neg_risk_adapter_address: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
       pol_threshold_for_swap: 2000000000000000000
+      is_running_on_polymarket: false
     class_name: DecisionMakerParams
   acc_info_fields:
     args:
