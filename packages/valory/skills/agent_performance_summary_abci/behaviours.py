@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -1037,14 +1037,8 @@ class FetchPerformanceSummaryBehaviour(
             new_mech_requests = yield from self._fetch_mech_requests_by_titles(
                 agent_safe_address, list(new_question_titles)
             )
-            # Normalize response: can be dict with sender->requests or a bare list
-            if isinstance(new_mech_requests, list):
-                requests_list = new_mech_requests
-            else:
-                requests_list = ((new_mech_requests or {}).get("sender", {}) or {}).get(
-                    "requests", []
-                )
-            for request in requests_list:
+            new_mech_requests = new_mech_requests if new_mech_requests else []
+            for request in new_mech_requests:
                 parsed = request.get("parsedRequest", {}) or {}
                 title = parsed.get("questionTitle", "")
                 if title:
