@@ -82,7 +82,10 @@ AcnHandler = BaseAcnHandler
 SrrHandler = BaseSrrHandler
 
 
-PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
+# UI Build Configuration
+UI_BUILD_BASE_DIR = "ui-build"
+OMENSTRAT_UI_SUBDIR = "omenstrat"
+POLYSTRAT_UI_SUBDIR = "polystrat"
 
 # Gnosis Chain Configuration
 GNOSIS_CHAIN_NAME = "gnosis"
@@ -238,7 +241,13 @@ class HttpHandler(BaseHttpHandler):
             ],
         }
 
-        self.agent_profile_path = PREDICT_AGENT_PROFILE_PATH
+        # Determine UI build path based on trading platform
+        ui_build_subdir = (
+            POLYSTRAT_UI_SUBDIR
+            if self.params.is_running_on_polymarket
+            else OMENSTRAT_UI_SUBDIR
+        )
+        self.agent_profile_path = f"{UI_BUILD_BASE_DIR}/{ui_build_subdir}"
 
     def _get_content_type(self, file_path: Path) -> str:
         """Get the appropriate content type header based on file extension."""
