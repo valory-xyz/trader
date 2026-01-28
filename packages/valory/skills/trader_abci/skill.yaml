@@ -41,13 +41,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/market_manager_abci:0.1.0:bafybeihzno4yvhbbjutk3dhngjdh7lqin5pjgrxvruwvyskgnupqktzona
-- valory/decision_maker_abci:0.1.0:bafybeidbpd6ctrrabgbsl6n3xe7wbksqu5brsctbpmbp6dknkvlrx5ocdu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaj5ou4tes46mcux24ts5kyds67kjcr4sgydw4kugderzbdmrnggu
+- valory/decision_maker_abci:0.1.0:bafybeie3fbgek5oxzbkzrqhucydpobrn54sqiqkdobw27juptpfd6ntp4e
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiepmboivexetkhiaimmhkpi2vv6p7zuenifuafzibgmjpz5qsuqa4
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeihiiuvjeoe52pxxrbutpksfztvgybi3ncwkbe6wv7xbkopaxllqby
-- valory/agent_performance_summary_abci:0.1.0:bafybeigxojgh3gpvmvf4culq5d77nzug7tlf5ajhcyka7pr6ff32lsop6i
+- valory/chatui_abci:0.1.0:bafybeiavnrq2uyt6yw6rgbv4blcfe75vc6nvigg6kdjmwpvgb2wkqrzumu
+- valory/agent_performance_summary_abci:0.1.0:bafybeibdcnnjndqyozb5qjxumkkw3uhze3ncrodzpq2uwmcwlnfcrb45qy
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
