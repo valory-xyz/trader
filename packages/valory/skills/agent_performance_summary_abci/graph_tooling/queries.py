@@ -214,17 +214,18 @@ query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: 
 
 GET_ALL_MECH_REQUESTS_QUERY = """
 query GetAllMechRequests($sender: String!, $skip: Int!) {
-  requests(
-    where: { sender: $sender }
-    first: 1000
-    skip: $skip
-    orderBy: requestId
-    orderDirection: asc
-  ) {
-    id
-    requestId
-    parsedRequest {
-      questionTitle
+  sender(id: $sender) {
+    requests(
+      first: 1000
+      skip: $skip
+      orderBy: requestId
+      orderDirection: asc
+    ) {
+      id
+      requestId
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }
@@ -247,6 +248,17 @@ query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
 }
 """
 
+# Polymarket-specific queries
+GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY = """
+query GetPolymarketTraderAgentDetails($id: ID!) {
+  traderAgent(id: $id) {
+    id
+    blockTimestamp
+    lastActive
+  }
+}
+"""
+
 GET_MECH_TOOL_FOR_QUESTION_QUERY = """
 query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
   sender(id: $sender) {
@@ -258,6 +270,50 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
       deliveries {
         model
       }
+    }
+  }
+}
+"""
+
+GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY = """
+query GetPolymarketTraderAgentPerformance($id: ID!) {
+  traderAgent(id: $id) {
+    totalBets
+    totalPayout
+    totalTraded
+    totalTradedSettled
+  }
+}
+"""
+
+GET_POLYMARKET_PREDICTION_HISTORY_QUERY = """
+query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
+  marketParticipants(
+    orderBy: blockTimestamp
+    orderDirection: desc
+    where: {traderAgent_: {id: $id}}
+    first: $first
+    skip: $skip
+  ) {
+    question {
+      questionId
+      metadata {
+        outcomes
+        title
+      }
+      resolution {
+        winningIndex
+        settledPrice
+        timestamp
+      }
+    }
+    bets {
+      id
+      outcomeIndex
+      amount
+      shares
+      blockTimestamp
+      transactionHash
     }
   }
 }

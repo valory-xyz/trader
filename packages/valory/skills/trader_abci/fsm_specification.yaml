@@ -120,6 +120,7 @@ states:
 - ServiceEvictedRound
 - SynchronizeLateMessagesRound
 - ToolSelectionRound
+- UpdateAchievementsRound
 - UpdateBetsRound
 - ValidateTransactionRound
 transition_func:
@@ -196,11 +197,11 @@ transition_func:
     (FetchMarketsRouterRound, NONE): FetchMarketsRouterRound
     (FetchMarketsRouterRound, NO_MAJORITY): FetchMarketsRouterRound
     (FetchMarketsRouterRound, POLYMARKET_FETCH_MARKETS): PolymarketFetchMarketRound
-    (FetchPerformanceDataRound, DONE): ChatuiLoadRound
-    (FetchPerformanceDataRound, FAIL): ChatuiLoadRound
+    (FetchPerformanceDataRound, DONE): UpdateAchievementsRound
+    (FetchPerformanceDataRound, FAIL): UpdateAchievementsRound
     (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
     (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
-    (FetchPerformanceDataRound, ROUND_TIMEOUT): ChatuiLoadRound
+    (FetchPerformanceDataRound, ROUND_TIMEOUT): UpdateAchievementsRound
     (FinalizationRound, CHECK_HISTORY): CheckTransactionHistoryRound
     (FinalizationRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (FinalizationRound, DONE): ValidateTransactionRound
@@ -344,6 +345,11 @@ transition_func:
     (ToolSelectionRound, NONE): ToolSelectionRound
     (ToolSelectionRound, NO_MAJORITY): ToolSelectionRound
     (ToolSelectionRound, ROUND_TIMEOUT): ToolSelectionRound
+    (UpdateAchievementsRound, DONE): ChatuiLoadRound
+    (UpdateAchievementsRound, FAIL): ChatuiLoadRound
+    (UpdateAchievementsRound, NONE): FetchPerformanceDataRound
+    (UpdateAchievementsRound, NO_MAJORITY): FetchPerformanceDataRound
+    (UpdateAchievementsRound, ROUND_TIMEOUT): ChatuiLoadRound
     (UpdateBetsRound, DONE): CheckStopTradingRound
     (UpdateBetsRound, FETCH_ERROR): ResetAndPauseRound
     (UpdateBetsRound, NO_MAJORITY): UpdateBetsRound

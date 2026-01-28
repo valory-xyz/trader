@@ -26,6 +26,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
+    PredictionsFetcher as BasePredictionsFetcher,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_RESPONSE_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
@@ -74,7 +77,7 @@ class BetSide(enum.Enum):
     NO = "no"
 
 
-class PredictionsFetcher:
+class PredictionsFetcher(BasePredictionsFetcher):
     """Shared logic for fetching and formatting predictions."""
 
     def __init__(self, context: Any, logger: Any) -> None:
