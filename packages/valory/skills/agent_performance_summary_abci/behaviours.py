@@ -1257,8 +1257,7 @@ class UpdateAchievementsBehaviour(
 
         if self.params.is_running_on_polymarket:
             self._bet_payout_checker = BetPayoutChecker(
-                achievement_type="polystrat/payout",
-                roi_threshold=1.7
+                achievement_type="polystrat/payout", roi_threshold=1.7
             )
         else:
             self._bet_payout_checker = BetPayoutChecker(achievement_type="omen/payout")
