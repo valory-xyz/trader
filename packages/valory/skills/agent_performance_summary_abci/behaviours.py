@@ -92,6 +92,7 @@ class FetchPerformanceSummaryBehaviour(
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
         self._settled_mech_requests_count: int = 0
+        self._placed_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
         self._placed_titles: Set[str] = set()
 
@@ -245,20 +246,20 @@ class FetchPerformanceSummaryBehaviour(
         :return: Number of settled mech requests
         """
         # Get total mech requests (uses cache if available)
-        total_mech_requests = yield from self._get_total_mech_requests(
+        self._total_mech_requests = yield from self._get_total_mech_requests(
             agent_safe_address
         )
 
-        if not total_mech_requests:
+        if not self._total_mech_requests:
             return 0
 
         # Get open market requests (uses cache if available)
-        open_market_requests = yield from self._get_open_market_requests(
+        self._open_market_requests = yield from self._get_open_market_requests(
             agent_safe_address
         )
 
         # where settled = Total - Open
-        return total_mech_requests - open_market_requests
+        return self._total_mech_requests - self._open_market_requests
 
     def calculate_roi(
         self,
@@ -436,7 +437,7 @@ class FetchPerformanceSummaryBehaviour(
         settled_mech_requests = self._settled_mech_requests_count
 
         # Get mech request counts (uses caches populated earlier)
-        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
+        total_mech_requests = self._total_mech_requests or 0
         open_mech_requests = self._open_market_requests or 0
         placed_mech_requests = sum(
             (self._mech_request_lookup or {}).get(title, 0)
@@ -446,6 +447,8 @@ class FetchPerformanceSummaryBehaviour(
             (total_mech_requests or 0) - open_mech_requests - placed_mech_requests,
             0,
         )
+        self._placed_mech_requests_count = placed_mech_requests
+        self._unplaced_mech_requests_count = unplaced_mech_requests
 
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
 
