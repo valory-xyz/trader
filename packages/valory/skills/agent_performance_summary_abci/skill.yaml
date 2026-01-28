@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
   achievements_checker/bet_payout_checker.py: bafybeidgaht5nqjf4r5wuayjnsywt4fqdcymahkyn3yc3epwsd3ipdclxe
-  behaviours.py: bafybeidn2o3v7anocdq53w22tduvz5j3vf37ibhhvha2eijgyv5l655f3a
+  behaviours.py: bafybeifputtwar7wcaaza3al3u4xoovtxvfzhi7qtlwzu6avhgcghsj2fy
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries.py: bafybeifi2qofwwsz5dzuw3ubhenepvqrazv7bf2zovsvmempjah6yzfpki
   graph_tooling/requests.py: bafybeidepe2krnj2gb4fwmx3v6wbow2ebaobfjwze7d6rrvcqwq4nxefue
   handlers.py: bafybeib2ye3phzqi5yknt57xshtagxh3xncsh4d3cbiygo76nbo7yreoai
-  models.py: bafybeif7zp4ff2hc3mbfjuinygyvnaqumsdpqjk7rxhxrrbvvxkawanunm
+  models.py: bafybeie4vtwlp2h3afeze7fb4nm4byj4vanksllooefcouya4azdi6ppwq
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
 fingerprint_ignore_patterns: []
