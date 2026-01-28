@@ -272,6 +272,11 @@ ROUNDS_INFO = {
         "description": "Swaps POL tokens to USDC tokens",
         "transitions": {},
     },
+    "update_achievements_round": {
+        "name": "Updating agent achievements",
+        "description": "Updates the achievements earned by the agent based on its performance.",
+        "transitions": {},
+    },
 }
 
 
