@@ -29,6 +29,9 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
+    BetPayoutChecker,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
 )
@@ -37,10 +40,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     Achievements,
-    AgentPerformanceMetrics,
-    AgentPerformanceSummary,
     AgentDetails,
     AgentPerformanceData,
+    AgentPerformanceMetrics,
+    AgentPerformanceSummary,
     PerformanceMetricsData,
     PerformanceStatsData,
     PredictionHistory,
@@ -57,7 +60,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     FetchPerformanceDataRound,
     UpdateAchievementsRound,
 )
-from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import BetPayoutChecker
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -387,7 +389,12 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning(
                 f"Could not fetch agent details for {safe_address}"
             )
-            return None
+            # Return empty structure instead of None
+            return AgentDetails(
+                id=None,
+                created_at=None,
+                last_active_at=None,
+            )
 
         return AgentDetails(
             id=agent_details_raw.get("id", safe_address),
@@ -409,7 +416,13 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning(
                 "Could not fetch trader agent for performance data"
             )
-            return None
+            # Return empty structure instead of None
+            return AgentPerformanceData(
+                window=None,
+                currency=None,
+                metrics=PerformanceMetricsData(),
+                stats=PerformanceStatsData(),
+            )
 
         # Calculate metrics
         metrics = yield from self._calculate_performance_metrics(trader_agent)
@@ -1237,14 +1250,18 @@ class UpdateAchievementsBehaviour(
         super().__init__(**kwargs)
 
         if self.params.is_running_on_polymarket:
-            self._bet_payout_checker = BetPayoutChecker(achievement_type="polystrat/payout")
+            self._bet_payout_checker = BetPayoutChecker(
+                achievement_type="polystrat/payout"
+            )
         else:
             self._bet_payout_checker = BetPayoutChecker(achievement_type="omen/payout")
 
     def async_act(self) -> Generator:
         """Do the action."""
 
-        agent_performance_summary = self.shared_state.read_existing_performance_summary()
+        agent_performance_summary = (
+            self.shared_state.read_existing_performance_summary()
+        )
 
         achievements = agent_performance_summary.achievements
         if achievements is None:
@@ -1254,18 +1271,14 @@ class UpdateAchievementsBehaviour(
         achievements_updated = False
         achievements_updated = self._bet_payout_checker.update_achievements(
             achievements=agent_performance_summary.achievements,
-            prediction_history=agent_performance_summary.prediction_history
+            prediction_history=agent_performance_summary.prediction_history,
         )
 
         if achievements_updated:
-            self.context.logger.info(
-                "Agent achievements updated."
-            )
+            self.context.logger.info("Agent achievements updated.")
             self.shared_state.overwrite_performance_summary(agent_performance_summary)
         else:
-            self.context.logger.info(
-                "Agent achievements not updated."
-            )
+            self.context.logger.info("Agent achievements not updated.")
 
         success = True  # Left to handle error conditions on future achievement checkers
         payload = UpdateAchievementsPayload(
