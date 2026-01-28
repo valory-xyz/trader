@@ -92,6 +92,7 @@ class FetchPerformanceSummaryBehaviour(
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
         self._settled_mech_requests_count: int = 0
+        self._placed_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
         self._placed_titles: Set[str] = set()
 
@@ -245,20 +246,20 @@ class FetchPerformanceSummaryBehaviour(
         :return: Number of settled mech requests
         """
         # Get total mech requests (uses cache if available)
-        total_mech_requests = yield from self._get_total_mech_requests(
+        self._total_mech_requests = yield from self._get_total_mech_requests(
             agent_safe_address
         )
 
-        if not total_mech_requests:
+        if not self._total_mech_requests:
             return 0
 
         # Get open market requests (uses cache if available)
-        open_market_requests = yield from self._get_open_market_requests(
+        self._open_market_requests = yield from self._get_open_market_requests(
             agent_safe_address
         )
 
         # where settled = Total - Open
-        return total_mech_requests - open_market_requests
+        return self._total_mech_requests - self._open_market_requests
 
     def calculate_roi(
         self,
@@ -425,7 +426,6 @@ class FetchPerformanceSummaryBehaviour(
         self, trader_agent: dict
     ) -> Generator[None, None, PerformanceMetricsData]:
         """Calculate performance metrics from trader agent data."""
-        safe_address = self.synchronized_data.safe_contract_address.lower()
 
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
@@ -436,7 +436,7 @@ class FetchPerformanceSummaryBehaviour(
         settled_mech_requests = self._settled_mech_requests_count
 
         # Get mech request counts (uses caches populated earlier)
-        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
+        total_mech_requests = self._total_mech_requests or 0
         open_mech_requests = self._open_market_requests or 0
         placed_mech_requests = sum(
             (self._mech_request_lookup or {}).get(title, 0)
@@ -446,6 +446,8 @@ class FetchPerformanceSummaryBehaviour(
             (total_mech_requests or 0) - open_mech_requests - placed_mech_requests,
             0,
         )
+        self._placed_mech_requests_count = placed_mech_requests
+        self._unplaced_mech_requests_count = unplaced_mech_requests
 
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
 
@@ -487,8 +489,6 @@ class FetchPerformanceSummaryBehaviour(
             settled_mech_request_count=self._settled_mech_requests_count,
             total_mech_request_count=total_mech_requests,
             open_mech_request_count=open_mech_requests,
-            placed_mech_request_count=placed_mech_requests,
-            unplaced_mech_request_count=unplaced_mech_requests,
         )
 
     def _fetch_available_funds(self) -> Generator[None, None, Optional[float]]:
@@ -679,6 +679,7 @@ class FetchPerformanceSummaryBehaviour(
         mech_request_lookup: Dict[str, int],
         placed_titles: Set[str],
         existing_unplaced_count: int,
+        existing_placed_count: int = 0,
     ) -> Tuple[Dict[int, int], Dict[str, int], int]:
         """
         Build per-day mech fee buckets for:
@@ -699,6 +700,7 @@ class FetchPerformanceSummaryBehaviour(
             total_mech_requests
             - open_requests
             - placed_requests_count
+            - existing_placed_count
             - existing_unplaced_count,
             0,
         )
@@ -777,11 +779,28 @@ class FetchPerformanceSummaryBehaviour(
         existing_summary = self.shared_state.read_existing_performance_summary()
         existing_profit_data = existing_summary.profit_over_time
 
+        settled_reference = self._settled_mech_requests_count
+
         # Determine if this is initial backfill or incremental update
         # Rebuild if missing data, or when new fields (settled mech count / unplaced mech fees) are absent
         if not existing_profit_data or not existing_profit_data.data_points:
             # INITIAL BACKFILL - First time or no existing data
             self.context.logger.info("Performing initial profit over time backfill...")
+            return (
+                yield from self._perform_initial_backfill(
+                    agent_safe_address, current_timestamp
+                )
+            )
+        elif (
+            settled_reference is not None
+            and existing_profit_data.settled_mech_requests_count
+            and existing_profit_data.settled_mech_requests_count != settled_reference
+        ):
+            # Mech subgraph corrected; rebuild to realign counts with total-open.
+            self.context.logger.warning(
+                f"Settled mech mismatch detected (stored={existing_profit_data.settled_mech_requests_count}, "
+                f"expected={settled_reference}); performing full backfill."
+            )
             return (
                 yield from self._perform_initial_backfill(
                     agent_safe_address, current_timestamp
@@ -872,6 +891,9 @@ class FetchPerformanceSummaryBehaviour(
         # Build mech fee buckets (unplaced + multi-bet) and filtered lookup
         placed_titles = self._collect_placed_titles(daily_stats)
         self._placed_titles = set(placed_titles)
+        placed_requests_total = sum(
+            mech_request_lookup.get(title, 0) for title in placed_titles
+        )
         merged_extra_fees_by_day, filtered_lookup, unplaced_count = (
             self._compute_mech_fee_buckets(
                 daily_stats,
@@ -880,6 +902,7 @@ class FetchPerformanceSummaryBehaviour(
                 existing_unplaced_count=0,
             )
         )
+        self._placed_mech_requests_count = placed_requests_total
 
         # Process all daily statistics
         data_points = []
@@ -906,6 +929,7 @@ class FetchPerformanceSummaryBehaviour(
                 ProfitDataPoint(
                     date=date_str,
                     timestamp=date_timestamp,
+                    daily_profit_raw=round(daily_profit_raw, 3),
                     daily_profit=round(daily_profit_net, 3),
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
@@ -916,14 +940,15 @@ class FetchPerformanceSummaryBehaviour(
         settled_mech_requests_count = sum(
             point.daily_mech_requests for point in data_points
         )
-        unplaced_mech_requests_count = unplaced_count
+        self._unplaced_mech_requests_count = unplaced_count
 
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(data_points),
             data_points=data_points,
             settled_mech_requests_count=settled_mech_requests_count,
-            unplaced_mech_requests_count=unplaced_mech_requests_count,
+            unplaced_mech_requests_count=self._unplaced_mech_requests_count,
+            placed_mech_requests_count=self._placed_mech_requests_count,
             includes_unplaced_mech_fees=True,
         )
 
@@ -938,19 +963,26 @@ class FetchPerformanceSummaryBehaviour(
         current_day = current_timestamp // SECONDS_PER_DAY
         last_updated_day = existing_data.last_updated // SECONDS_PER_DAY
 
-        if current_day == last_updated_day:
-            # Same day, no update needed
-            self.context.logger.info("Profit over time data is up to date (same day)")
-            return existing_data
-
-        # Get the timestamp of the last data point to fetch only new data
+        # Get the timestamp of the last data point
         last_data_timestamp = (
             existing_data.data_points[-1].timestamp if existing_data.data_points else 0
         )
+        prev_last_point = (
+            existing_data.data_points[-1] if existing_data.data_points else None
+        )
+        prev_len = len(existing_data.data_points) if existing_data.data_points else 0
+        prev_settled_total = existing_data.settled_mech_requests_count
 
-        # Fetch only NEW daily profit statistics (after last timestamp)
+        # Same-day refresh: refetch today's stats and replace the last point; otherwise fetch only new days.
+        replace_last = False
+        # Always include last day in the query to detect updates
+        start_ts = last_data_timestamp
+        if current_day == last_updated_day:
+            self.context.logger.info("Refreshing same-day profit statistics.")
+            replace_last = True
+
         new_daily_stats = yield from self._fetch_daily_profit_statistics(
-            agent_safe_address, last_data_timestamp + 1
+            agent_safe_address, start_ts
         )
 
         if new_daily_stats is None:
@@ -965,41 +997,90 @@ class FetchPerformanceSummaryBehaviour(
             f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics"
         )
 
-        placed_titles = self._collect_placed_titles(new_daily_stats)
-        # Track all titles that have had bets so metrics can report placed mech requests.
-        self._placed_titles.update(placed_titles)
-
-        # Mech requests lookup (use cached full lookup if available, else fetch all)
-        if self._mech_request_lookup is None:
-            self.context.logger.info("Building mech request lookup (incremental, full)")
-            self._mech_request_lookup = yield from self._build_mech_request_lookup(
-                agent_safe_address
+        # Keep stats on/after the last stored timestamp; same-day is allowed so we can detect changes
+        filtered_daily_stats = [
+            stat for stat in new_daily_stats if int(stat["date"]) >= last_data_timestamp
+        ]
+        if not filtered_daily_stats:
+            self.context.logger.info(
+                "No newer days or changes to the last stored day; skipping incremental append."
             )
-        mech_request_lookup = self._mech_request_lookup or {}
+            return existing_data
 
-        already_counted = (
-            existing_data.unplaced_mech_requests_count
-            if hasattr(existing_data, "unplaced_mech_requests_count")
-            else 0
+        # Decide if we really should replace last point: only if incoming stats contain that same day
+        last_point_day = (
+            last_data_timestamp // SECONDS_PER_DAY if last_data_timestamp else None
         )
-        combined_extra_fees_by_day, filtered_lookup, unplaced_count = (
+        incoming_days = {
+            int(s["date"]) // SECONDS_PER_DAY for s in filtered_daily_stats
+        }
+        if last_point_day is not None and last_point_day in incoming_days:
+            replace_last = True
+        elif replace_last and (last_point_day not in incoming_days):
+            replace_last = False
+
+        # Build lookup ONLY for questions present in the new stats
+        new_question_titles = set()
+        for stat in filtered_daily_stats:
+            for participant in stat.get("profitParticipants", []):
+                question = participant.get("question", "")
+                if question:
+                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
+                    if title:
+                        new_question_titles.add(title)
+
+        mech_request_lookup: Dict[str, int] = {}
+        if new_question_titles:
+            self.context.logger.info(
+                f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats"
+            )
+            new_mech_requests = yield from self._fetch_mech_requests_by_titles(
+                agent_safe_address, list(new_question_titles)
+            )
+            new_mech_requests = new_mech_requests if new_mech_requests else []
+            for request in new_mech_requests:
+                parsed = request.get("parsedRequest", {}) or {}
+                title = parsed.get("questionTitle", "")
+                if title:
+                    mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
+        total_requests_in_lookup = sum(mech_request_lookup.values())
+        self.context.logger.info(
+            f"Incremental mech lookup size={len(mech_request_lookup)}, total_requests_in_lookup={total_requests_in_lookup}"
+        )
+
+        placed_titles = self._collect_placed_titles(filtered_daily_stats)
+        # Use persisted placed count as base (self._placed_titles may be empty after restart)
+        prev_placed = getattr(existing_data, "placed_mech_requests_count", 0)
+        placed_delta = sum(mech_request_lookup.get(title, 0) for title in placed_titles)
+
+        already_counted = getattr(existing_data, "unplaced_mech_requests_count", 0)
+        combined_extra_fees_by_day, filtered_lookup, unplaced_allocated = (
             self._compute_mech_fee_buckets(
-                new_daily_stats,
+                filtered_daily_stats,
                 mech_request_lookup,
                 placed_titles,
                 existing_unplaced_count=already_counted,
+                existing_placed_count=prev_placed,
             )
         )
 
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
+        prev_settled = existing_data.settled_mech_requests_count or sum(
+            dp.daily_mech_requests for dp in new_data_points
+        )
+        if replace_last and new_data_points:
+            last_dp = new_data_points[-1]
+            last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
+            if last_dp_day in incoming_days:
+                new_data_points.pop()
+                prev_settled -= last_dp.daily_mech_requests
         cumulative_profit = (
-            existing_data.data_points[-1].cumulative_profit
-            if existing_data.data_points
-            else 0.0
+            new_data_points[-1].cumulative_profit if new_data_points else 0.0
         )
 
-        for stat in new_daily_stats:
+        new_mech_sum = 0
+        for stat in filtered_daily_stats:
             date_timestamp = int(stat["date"])
             date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
@@ -1015,26 +1096,84 @@ class FetchPerformanceSummaryBehaviour(
 
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
+            new_mech_sum += daily_mech_count
 
             new_data_points.append(
                 ProfitDataPoint(
                     date=date_str,
                     timestamp=date_timestamp,
+                    daily_profit_raw=round(daily_profit_raw, 3),
                     daily_profit=round(daily_profit_net, 3),
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
                 )
             )
 
-        # Calculate updated settled mech requests count from all data points
-        settled_mech_requests_count = sum(
-            point.daily_mech_requests for point in new_data_points
+        # Calculate updated settled mech requests count incrementally (monotonic, bounded by total-open)
+        settled_mech_requests_count = prev_settled + new_mech_sum
+        total_mech_requests = (
+            self._total_mech_requests
+            if self._total_mech_requests is not None
+            else (yield from self._get_total_mech_requests(agent_safe_address))
         )
-        unplaced_mech_requests_count = unplaced_count + (
-            existing_data.unplaced_mech_requests_count
-            if hasattr(existing_data, "unplaced_mech_requests_count")
-            else 0
+        max_settled = (
+            max((total_mech_requests or 0) - (self._open_market_requests or 0), 0)
+            if total_mech_requests is not None
+            else None
         )
+        pre_bounds = settled_mech_requests_count
+        if max_settled is not None:
+            settled_mech_requests_count = min(settled_mech_requests_count, max_settled)
+        settled_mech_requests_count = max(prev_settled, settled_mech_requests_count)
+        self.context.logger.info(
+            f"Incremental settled counts: prev={prev_settled}, delta={new_mech_sum}, pre_bounds={pre_bounds}, "
+            f"bounded_settled={settled_mech_requests_count}, max_settled={max_settled}"
+        )
+        # Recompute placed/unplaced totals using persisted counts + deltas
+        placed_total = prev_placed + placed_delta
+        prev_unplaced = getattr(existing_data, "unplaced_mech_requests_count", 0)
+        # Add newly allocated unplaced (compute_mech_fee_buckets subtracts already_counted)
+        unplaced_mech_requests_count = prev_unplaced + unplaced_allocated
+        # Safety clamp to settled - placed if somehow over
+        unplaced_mech_requests_count = min(
+            unplaced_mech_requests_count,
+            max(settled_mech_requests_count - placed_total, 0),
+        )
+        self._placed_mech_requests_count = placed_total
+        self._unplaced_mech_requests_count = unplaced_mech_requests_count
+        self.context.logger.info(
+            f"Incremental totals => placed_total={placed_total}, unplaced_total={unplaced_mech_requests_count}, "
+            f"settled_total={settled_mech_requests_count}"
+        )
+        self.context.logger.info(
+            f"Incremental end snapshot: settled={settled_mech_requests_count}, placed={placed_total}, "
+            f"unplaced={unplaced_mech_requests_count}, days={len(new_data_points)}"
+        )
+
+        # If we only reprocessed the last day and nothing changed (profits AND mech counts), skip writing.
+        # But if there is any mech delta/unplaced delta, always persist.
+        if (
+            new_mech_sum == 0
+            and unplaced_allocated == 0
+            and placed_delta == 0
+            and replace_last
+            and prev_last_point
+            and len(new_data_points) == prev_len
+            and new_data_points
+        ):
+            new_last = new_data_points[-1]
+            if (
+                new_last.timestamp == prev_last_point.timestamp
+                and round(new_last.daily_profit_raw or 0.0, 3)
+                == round(getattr(prev_last_point, "daily_profit_raw", 0.0) or 0.0, 3)
+                and new_last.daily_profit == prev_last_point.daily_profit
+                and new_last.daily_mech_requests == prev_last_point.daily_mech_requests
+                and settled_mech_requests_count == prev_settled_total
+            ):
+                self.context.logger.info(
+                    "Last day unchanged (profit/mech/settled); skipping update."
+                )
+                return existing_data
 
         return ProfitOverTimeData(
             last_updated=current_timestamp,
@@ -1042,6 +1181,7 @@ class FetchPerformanceSummaryBehaviour(
             data_points=new_data_points,
             settled_mech_requests_count=settled_mech_requests_count,
             unplaced_mech_requests_count=unplaced_mech_requests_count,
+            placed_mech_requests_count=self._placed_mech_requests_count,
             includes_unplaced_mech_fees=True,
         )
 
@@ -1050,18 +1190,6 @@ class FetchPerformanceSummaryBehaviour(
 
         # Check if we need to update (daily check)
         existing_summary = self.shared_state.read_existing_performance_summary()
-        current_timestamp = self.shared_state.synced_timestamp
-
-        # Check if profit_over_time exists and is up to date
-        if existing_summary.profit_over_time:
-            last_updated = existing_summary.profit_over_time.last_updated
-            current_day = current_timestamp // 86400  # Convert to days
-            last_updated_day = last_updated // 86400
-
-            if current_day == last_updated_day:
-                # Same day, no update needed
-                self.context.logger.info("Profit over time data is up to date")
-                return
 
         # Build new profit over time data
         self.context.logger.info("Updating profit over time data...")
@@ -1079,10 +1207,6 @@ class FetchPerformanceSummaryBehaviour(
 
     def _fetch_agent_performance_summary(self) -> Generator[None, None, None]:
         """Fetch the agent performance summary"""
-        self._total_mech_requests = None
-        self._open_market_requests = None
-        self._mech_request_lookup = None
-        self._placed_titles = set()
 
         agent_safe_address = self.synchronized_data.safe_contract_address
         self._settled_mech_requests_count = (
@@ -1091,27 +1215,15 @@ class FetchPerformanceSummaryBehaviour(
 
         current_timestamp = self.shared_state.synced_timestamp
         profit_over_time = yield from self._build_profit_over_time_data()
-        if profit_over_time and hasattr(
-            profit_over_time, "unplaced_mech_requests_count"
-        ):
-            self._unplaced_mech_requests_count = (
-                profit_over_time.unplaced_mech_requests_count
-            )
-        else:
-            self._unplaced_mech_requests_count = 0
-
-        if self._unplaced_mech_requests_count == 0:
-            existing_summary = self.shared_state.read_existing_performance_summary()
-            if (
-                existing_summary
-                and existing_summary.profit_over_time
-                and hasattr(
-                    existing_summary.profit_over_time, "unplaced_mech_requests_count"
-                )
-            ):
-                self._unplaced_mech_requests_count = (
-                    existing_summary.profit_over_time.unplaced_mech_requests_count or 0
-                )
+        self._unplaced_mech_requests_count = (
+            profit_over_time.unplaced_mech_requests_count if profit_over_time else 0
+        )
+        self._placed_mech_requests_count = (
+            profit_over_time.placed_mech_requests_count
+            if profit_over_time
+            and hasattr(profit_over_time, "placed_mech_requests_count")
+            else 0
+        )
 
         final_roi, partial_roi = yield from self.calculate_roi()
 

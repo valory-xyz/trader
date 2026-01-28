@@ -74,8 +74,6 @@ class PerformanceMetricsData:
     settled_mech_request_count: Optional[int] = None
     total_mech_request_count: Optional[int] = None
     open_mech_request_count: Optional[int] = None
-    placed_mech_request_count: Optional[int] = None
-    unplaced_mech_request_count: Optional[int] = None
 
 
 @dataclass
@@ -122,6 +120,9 @@ class ProfitDataPoint:
     daily_profit: float  # Net daily profit (after mech fees)
     cumulative_profit: float  # Cumulative profit from start of window
     daily_mech_requests: int = 0  # Number of mech requests for this day
+    daily_profit_raw: Optional[float] = (
+        None  # Gross daily profit from subgraph (before fees)
+    )
 
 
 @dataclass
@@ -133,6 +134,7 @@ class ProfitOverTimeData:
     data_points: List[ProfitDataPoint] = field(default_factory=list)
     settled_mech_requests_count: int = 0  # Total settled mech requests
     unplaced_mech_requests_count: int = 0  # Total mech requests with no bets placed
+    placed_mech_requests_count: int = 0  # Total mech requests tied to placed bets
     includes_unplaced_mech_fees: bool = (
         False  # Whether unplaced mech fees logic was applied
     )
