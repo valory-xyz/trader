@@ -478,7 +478,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.6
+      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.7
   polygon_mech_subgraph:
     args:
       headers:
@@ -490,7 +490,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ''
+      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection

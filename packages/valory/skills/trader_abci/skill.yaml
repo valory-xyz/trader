@@ -531,7 +531,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.6
+      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.7
     class_name: PolymarketAgentsSubgraph
   polygon_mech_subgraph:
     args:
