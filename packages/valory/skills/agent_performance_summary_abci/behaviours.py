@@ -888,9 +888,9 @@ class UpdateAchievementsBehaviour(
         super().__init__(**kwargs)
 
         if self.params.is_running_on_polymarket:
-            self._bet_payout_checker = BetPayoutChecker(achievement_type="payout_polymarket")
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="polystrat/payout")
         else:
-            self._bet_payout_checker = BetPayoutChecker(achievement_type="payout_omen")
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="omen/payout")
 
     def async_act(self) -> Generator:
         """Do the action."""
