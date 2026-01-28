@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -50,7 +50,11 @@ class Event(Enum):
 
 
 class FetchPerformanceDataRound(VotingRound):
-    """A round for fetching and saving Agent Performance summary."""
+    """
+    A round for fetching and saving Agent Performance summary.
+
+    This round collects votes from agents on whether performance data was successfully fetched.
+    """
 
     payload_class = FetchPerformanceDataPayload
     synchronized_data_class = BaseSynchronizedData
@@ -74,9 +78,14 @@ class UpdateAchievementsRound(VotingRound):
 
 
 class FinishedFetchPerformanceDataRound(DegenerateRound, ABC):
-    """A terminal round indicating that performance data collection is complete."""
+    """
+    A terminal round indicating that performance data collection is complete.
+
+    This is the final state of the agent performance summary ABCI application.
+    """
 
 
+# fmt: off
 class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """AgentPerformanceSummaryAbciApp
 
@@ -127,3 +136,4 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedFetchPerformanceDataRound: set(),
     }
+# fmt: on

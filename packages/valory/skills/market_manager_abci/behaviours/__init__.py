@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,15 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Add ignores to gitleaksignore"""
-
-
-import json
-
-
-with open("leak_report", "r", encoding="utf-8") as report_file:
-    report = json.load(report_file)
-    fps = [leak["Fingerprint"] + "\n" for leak in report]
-
-with open(".gitleaksignore", "a", encoding="utf-8") as ignore_file:
-    ignore_file.writelines(fps)
+"""This package contains the behaviours for the 'market_manager_abci' skill."""

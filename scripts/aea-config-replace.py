@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -76,8 +76,11 @@ PATH_TO_VAR = {
     "config/neg_risk_ctf_exchange": "NEG_RISK_CTF_EXCHANGE",
     "config/neg_risk_adapter": "NEG_RISK_ADAPTER",
     "models/params/args/bet_threshold": "BET_THRESHOLD",
-    "models/params/args/polymarket_market_slug_to_bet_on": "POLYMARKET_MARKET_SLUG_TO_BET_ON",
     "models/mechs_subgraph/args/url": "MECHS_SUBGRAPH_URL",
+    "models/params/args/staking_contract_address": "STAKING_CONTRACT_ADDRESS",
+    "models/params/args/ignored_mechs": "IGNORED_MECHS",
+    "models/params/args/rpc_urls": "RPC_URLS",
+    "models/params/args/enable_multi_bets_fallback": "ENABLE_MULTI_BETS_FALLBACK",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"

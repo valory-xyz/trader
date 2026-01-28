@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -46,14 +46,17 @@ from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx impo
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
-    PolymarketRedeemBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (
     PolymarketPostSetApprovalBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
+    PolymarketRedeemBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
+    PolymarketSwapUsdcBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
@@ -61,12 +64,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
 )
 from packages.valory.skills.decision_maker_abci.behaviours.redeem_router import (
     RedeemRouterBehaviour,
-)
-from packages.valory.skills.decision_maker_abci.behaviours.fetch_markets_router import (
-    FetchMarketsRouterBehaviour,
-)
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_fetch_market import (
-    PolymarketFetchMarketBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import RedeemBehaviour
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
@@ -102,8 +99,7 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketBetPlacementBehaviour,  # type: ignore
         PolymarketRedeemBehaviour,  # type: ignore
         RedeemRouterBehaviour,  # type: ignore
-        FetchMarketsRouterBehaviour,  # type: ignore
-        PolymarketFetchMarketBehaviour,  # type: ignore
         PolymarketSetApprovalBehaviour,  # type: ignore
         PolymarketPostSetApprovalBehaviour,  # type: ignore
+        PolymarketSwapUsdcBehaviour,  # type: ignore
     }

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -48,17 +48,16 @@ from packages.valory.skills.decision_maker_abci.states.check_benchmarking import
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.decision_maker_abci.states.fetch_markets_router import (
-    FetchMarketsRouterRound,
+from packages.valory.skills.decision_maker_abci.states.decision_request import (
+    DecisionRequestRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
-    FinishedFetchMarketsRouterRound,
-    FinishedPolymarketFetchMarketRound,
     FinishedPolymarketRedeemRound,
+    FinishedPolymarketSwapTxPreparationRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
@@ -68,19 +67,19 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.decision_maker_abci.states.polymarket_fetch_market import (
-    PolymarketFetchMarketRound,
-)
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
-from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
+    FetchMarketsRouterRound,
     FinishedMarketManagerRound,
+    FinishedPolymarketFetchMarketRound,
     MarketManagerAbciApp,
-    UpdateBetsRound,
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
@@ -132,6 +131,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
+    FinishedPolymarketSwapTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
     FinishedSetApprovalTxRound,
@@ -152,11 +152,10 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechInformationRound: CheckBenchmarkingModeRound,
     FailedMechInformationRound: MechVersionDetectionRound,
     BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
-    FinishedFetchMarketsRouterRound: UpdateBetsRound,
     FinishedPolymarketFetchMarketRound: CheckStopTradingRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,
-    FinishedWithSkipTradingRound: RedeemRound,
+    FinishedWithSkipTradingRound: RedeemRouterRound,
     FinishedWithReviewBetsRound: RandomnessRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
@@ -170,15 +169,17 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechRequestTxRound: MechResponseRound,
     FinishedMechResponseRound: DecisionReceiveRound,
     FinishedMechResponseTimeoutRound: HandleFailedTxRound,
-    FinishedMechRequestSkipRound: RedeemRound,
-    FinishedBetPlacementTxRound: RedeemRound,
-    FinishedSellOutcomeTokensTxRound: RedeemRound,
+    FinishedMechRequestSkipRound: RedeemRouterRound,
+    FinishedBetPlacementTxRound: RedeemRouterRound,
+    FinishedSellOutcomeTokensTxRound: RedeemRouterRound,
     FinishedRedeemingTxRound: CallCheckpointRound,
+    FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketSwapTxRound: DecisionRequestRound,
     FinishedPolymarketRedeemRound: CallCheckpointRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
-    FinishedWithoutDecisionRound: RedeemRound,
+    FinishedWithoutDecisionRound: RedeemRouterRound,
     FinishedWithoutRedeemingRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,

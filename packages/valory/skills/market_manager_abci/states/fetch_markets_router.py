@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2026 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,20 +17,22 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the fetch markets router state of the decision-making abci app."""
+"""This module contains the fetch markets router round for the MarketManager ABCI app."""
 
-from enum import Enum
 from typing import Optional, Tuple, cast
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound, get_name
-from packages.valory.skills.decision_maker_abci.payloads import FetchMarketsRouterPayload
-from packages.valory.skills.decision_maker_abci.states.base import (
+from packages.valory.skills.market_manager_abci.payloads import (
+    FetchMarketsRouterPayload,
+)
+from packages.valory.skills.market_manager_abci.states.base import (
     Event,
+    MarketManagerAbstractRound,
     SynchronizedData,
 )
 
 
-class FetchMarketsRouterRound(VotingRound):
+class FetchMarketsRouterRound(VotingRound, MarketManagerAbstractRound):
     """A round for switching between Omen and Polymarket market fetching rounds."""
 
     payload_class = FetchMarketsRouterPayload
@@ -41,16 +43,7 @@ class FetchMarketsRouterRound(VotingRound):
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_selection)
 
-    @property
-    def params(self):
-        from packages.valory.skills.decision_maker_abci.models import (
-            DecisionMakerParams,
-        )
-
-        """Return the shared state."""
-        return cast(DecisionMakerParams, self.context.params)
-
-    def end_block(self) -> Optional[Tuple[SynchronizedData, Enum]]:
+    def end_block(self) -> Optional[Tuple[SynchronizedData, Event]]:
         """Process the end of the block."""
         res = super().end_block()
 
@@ -58,9 +51,9 @@ class FetchMarketsRouterRound(VotingRound):
             return None
         synchronized_data, event = res
 
-        if self.params.is_running_on_polymarket:
+        if self.context.params.is_running_on_polymarket:
             event = Event.POLYMARKET_FETCH_MARKETS
         else:
             event = Event.DONE
 
-        return synchronized_data, event
+        return cast(SynchronizedData, synchronized_data), event
