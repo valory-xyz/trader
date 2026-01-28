@@ -216,9 +216,17 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool
         )
-        self.is_running_on_polymarket: bool = self._ensure(
-            "is_running_on_polymarket", kwargs, bool
-        )
+        # Handle is_running_on_polymarket which may be shared with MarketManagerParams
+        # If already set by a parent class (MarketManagerParams), use that value
+        # Otherwise, pop it from kwargs ourselves
+        if hasattr(self, "is_running_on_polymarket"):
+            # Already set by MarketManagerParams in the inheritance chain
+            pass
+        else:
+            # Standalone usage or not yet set - pop it from kwargs
+            self.is_running_on_polymarket: bool = self._ensure(
+                "is_running_on_polymarket", kwargs, bool
+            )
         super().__init__(*args, **kwargs)
 
     def get_store_path(self, kwargs: Dict) -> Path:
