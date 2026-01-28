@@ -64,15 +64,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeied3lxwkbo5vjejdumqv6ihbudhe5argrzdsaeeqwtkqnmgawr4b4
-- valory/market_manager_abci:0.1.0:bafybeihklftdrkgxnrzwltjm2vdcccsqyp7mxkulgrcx7ditsryvu2m26i
-- valory/decision_maker_abci:0.1.0:bafybeigiv27mbbqtuj6i2lllzetoj5mlsvndpvzidkxclzvj66and5ps7a
-- valory/trader_abci:0.1.0:bafybeierq2l2s7wk7wdh5txkq6h4potiv6azezz2u4iqlin6j5dxhpdvrq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig4n7myj35lp4xlevocm6cfdoluy23qsq4j5lvcl7huauemlq6b2u
+- valory/market_manager_abci:0.1.0:bafybeieqeutpxfr56yl4d2ik6kvnjuljrv5jtushqhhbp65gml6jyplyky
+- valory/decision_maker_abci:0.1.0:bafybeig34aizjelfj6l4amlwivqeughb5ccu2lu7xg3nihv4hyvyitlv74
+- valory/trader_abci:0.1.0:bafybeibwdusmt7gvvnpesw47j77fuif5mulra7ytkswzzxf4sfkwat3tra
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/check_stop_trading_abci:0.1.0:bafybeid4hgdbz5bgnm2bu5hmqa3aab5sogvpoq2rsssk4js266in6ny57y
+- valory/check_stop_trading_abci:0.1.0:bafybeidxgatkrxdrgmmzkeitqy4mu42d3e6p7w7wfasmh722yzqgnn3zyy
 - valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
-- valory/chatui_abci:0.1.0:bafybeihsybxi6bwm52hetfjmaudrrkdqb76wpyaou7ac6ftome3g5x3634
-- valory/agent_performance_summary_abci:0.1.0:bafybeic3l5wypicj6rhm2bxka5bp22i3p5z4vphdnuz52273no22aroybi
+- valory/chatui_abci:0.1.0:bafybeiarlbhxbewkhrnuuy7pn5icn6kaaensjs3lqsydikpm3jcb5ztlim
+- valory/agent_performance_summary_abci:0.1.0:bafybeigxojgh3gpvmvf4culq5d77nzug7tlf5ajhcyka7pr6ff32lsop6i
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -398,31 +398,31 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
   olas_agents_subgraph:
     args:
       headers:
         Content-Type: ${str:application/json}
       method: ${str:POST}
-      response_key: ${str:data:traderAgent}
+      response_key: ${str:data}
       response_type: ${str:dict}
       error_key: ${str:errors}
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
   olas_mech_subgraph:
     args:
       headers:
         Content-Type: ${str:application/json}
       method: ${str:POST}
-      response_key: ${str:data:sender}
+      response_key: ${str:data}
       response_type: ${str:dict}
       error_key: ${str:errors}
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/mech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
       headers:
