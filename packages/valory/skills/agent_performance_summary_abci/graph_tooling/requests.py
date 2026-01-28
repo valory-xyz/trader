@@ -28,18 +28,17 @@ from typing import Any, Dict, Generator, List, Optional, cast
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
-    GET_ALL_MECH_REQUESTS_QUERY,
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_MECH_REQUESTS_BY_TITLES_QUERY,
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_RESOLVED_MARKETS_QUERY,
     GET_STAKING_SERVICE_QUERY,
     GET_TRADER_AGENT_BETS_QUERY,
     GET_TRADER_AGENT_DETAILS_QUERY,
     GET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_TRADER_AGENT_QUERY,
-    GET_RESOLVED_MARKETS_QUERY,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
@@ -49,7 +48,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
-OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"
+OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"  # nosec
 DECIMAL_SCALING_FACTOR = 10**18
 USD_PRICE_FIELD = "usd"
 
@@ -156,12 +155,17 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_mech_sender(
-        self, agent_safe_address, timestamp_gt
+        self, agent_safe_address: str, timestamp_gt: int
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch mech sender details."""
         result = yield from self._fetch_from_subgraph(
             query=GET_MECH_SENDER_QUERY,
-            variables={"id": agent_safe_address, "timestamp_gt": int(timestamp_gt), "skip": 0, "first": QUERY_BATCH_SIZE},
+            variables={
+                "id": agent_safe_address,
+                "timestamp_gt": int(timestamp_gt),
+                "skip": 0,
+                "first": QUERY_BATCH_SIZE,
+            },
             subgraph=self.context.olas_mech_subgraph,
             res_context="mech_sender",
         )
@@ -171,7 +175,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_trader_agent(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         result = yield from self._fetch_from_subgraph(
@@ -185,7 +189,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_staking_service(
-        self, service_id
+        self, service_id: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         return (
@@ -198,7 +202,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
 
     def _fetch_open_markets(
-        self, timestamp_gt
+        self, timestamp_gt: int
     ) -> Generator[None, None, Optional[List]]:
         """Fetch Open markets."""
         return (
@@ -211,7 +215,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
 
     def _fetch_trader_agent_bets(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details."""
         result = yield from self._fetch_from_subgraph(
@@ -225,7 +229,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_agent_details(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch agent metadata (id, created_at, last_active_at)."""
         result = yield from self._fetch_from_subgraph(
@@ -239,7 +243,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_trader_agent_performance(
-        self, agent_safe_address, first: int = 200, skip: int = 0
+        self, agent_safe_address: str, first: int = 200, skip: int = 0
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent performance with bets (includes totalBets, totalTraded, etc)."""
         result = yield from self._fetch_from_subgraph(
@@ -253,7 +257,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return result
 
     def _fetch_pending_bets(
-        self, agent_safe_address
+        self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch all pending bets (markets not yet resolved)."""
         result = yield from self._fetch_from_subgraph(
@@ -269,9 +273,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_all_resolved_markets(
         self, timestamp_gt: int, timestamp_lte: Optional[int] = None
     ) -> Generator[None, None, List]:
-        """
-        Fetch all resolved markets in a timestamp window with pagination.
-        """
+        """Fetch all resolved markets in a timestamp window with pagination."""
         all_markets: List = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
@@ -279,7 +281,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         while True:
             variables: Dict[str, Any] = {
                 "timestamp_gt": int(timestamp_gt),
-                "timestamp_lte": int(timestamp_lte) if timestamp_lte is not None else None,
+                "timestamp_lte": (
+                    int(timestamp_lte) if timestamp_lte is not None else None
+                ),
                 "first": batch_size,
                 "skip": skip,
             }
@@ -293,7 +297,11 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             if not result:
                 break
 
-            batch = result if isinstance(result, list) else result.get("fixedProductMarketMakers", [])
+            batch = (
+                result
+                if isinstance(result, list)
+                else result.get("fixedProductMarketMakers", [])
+            )
             if not batch:
                 break
 
@@ -341,21 +349,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         all_statistics = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
-        
+
         while True:
-            
+
             result = yield from self._fetch_from_subgraph(
                 query=GET_DAILY_PROFIT_STATISTICS_QUERY,
                 variables={
                     "agentId": agent_safe_address.lower(),
                     "startTimestamp": str(start_timestamp),
                     "first": batch_size,
-                    "skip": skip
+                    "skip": skip,
                 },
                 subgraph=self.context.olas_agents_subgraph,
                 res_context=f"daily_profit_statistics_batch_{skip // batch_size + 1}",
             )
-            
+
             # Handle null traderAgent response
             if not result:
                 break
@@ -363,23 +371,23 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             # Unwrap traderAgent if present
             if isinstance(result, dict) and "traderAgent" in result:
                 result = result.get("traderAgent") or {}
-            
+
             # Get dailyProfitStatistics from the result
             if not result.get("dailyProfitStatistics"):
                 break
-                
+
             batch_statistics = result.get("dailyProfitStatistics", [])
             if not batch_statistics:
                 break
-                
+
             all_statistics.extend(batch_statistics)
-            
+
             # If we got less than batch_size, we've reached the end
             if len(batch_statistics) < batch_size:
                 break
-                
+
             skip += batch_size
-        
+
         return all_statistics
 
     def _fetch_all_mech_requests(
@@ -389,33 +397,38 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         all_requests = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
-        
+
         while True:
             result = yield from self._fetch_from_subgraph(
                 query=GET_MECH_SENDER_QUERY,
-                variables={"id": agent_safe_address, "timestamp_gt": 0, "skip": skip, "first": batch_size},
+                variables={
+                    "id": agent_safe_address,
+                    "timestamp_gt": 0,
+                    "skip": skip,
+                    "first": batch_size,
+                },
                 subgraph=self.context.olas_mech_subgraph,
                 res_context=f"all_mech_requests_batch_{skip // batch_size + 1}",
             )
-            
+
             if not result:
                 break
 
             if isinstance(result, dict) and "sender" in result:
                 result = result.get("sender") or {}
-            
+
             batch_requests = result.get("requests", [])
             if not batch_requests:
                 break
-            
+
             all_requests.extend(batch_requests)
-            
+
             # If we got less than batch_size, we've reached the end
             if len(batch_requests) < batch_size:
                 break
-                
+
             skip += batch_size
-        
+
         return all_requests
 
     def _fetch_mech_requests_by_titles(
@@ -424,20 +437,19 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         """Fetch mech requests by question titles"""
         if not question_titles:
             return []
-        
+
         result = yield from self._fetch_from_subgraph(
             query=GET_MECH_REQUESTS_BY_TITLES_QUERY,
             variables={
                 "sender": agent_safe_address.lower(),
-                "questionTitles": question_titles
+                "questionTitles": question_titles,
             },
             subgraph=self.context.olas_mech_subgraph,
             res_context="mech_requests_by_titles",
         )
-        
+
         if result:
             if isinstance(result, dict) and "sender" in result:
                 result = result.get("sender") or {}
             return result.get("requests", []) if isinstance(result, dict) else []
         return []
-        

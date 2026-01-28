@@ -64,15 +64,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib3hnkk7oc5us4pgwovmwyskjvcyqyz33w6wrhxqlki3mzw4auwre
-- valory/market_manager_abci:0.1.0:bafybeibidyermlzha53qyzon44ozf6deswwqjbozh2jqsnssg4vcaorngy
-- valory/decision_maker_abci:0.1.0:bafybeigrmmz2iigdlj2roxexkm2sys5lksywlyw7xmtxoh3qjv7lx7al3e
-- valory/trader_abci:0.1.0:bafybeiar53dgrrswtbkhyfp4plmuh7wjlhh4no7trb5izhzuspkj5cfycm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig4n7myj35lp4xlevocm6cfdoluy23qsq4j5lvcl7huauemlq6b2u
+- valory/market_manager_abci:0.1.0:bafybeieqeutpxfr56yl4d2ik6kvnjuljrv5jtushqhhbp65gml6jyplyky
+- valory/decision_maker_abci:0.1.0:bafybeig34aizjelfj6l4amlwivqeughb5ccu2lu7xg3nihv4hyvyitlv74
+- valory/trader_abci:0.1.0:bafybeibwdusmt7gvvnpesw47j77fuif5mulra7ytkswzzxf4sfkwat3tra
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/check_stop_trading_abci:0.1.0:bafybeid4hgdbz5bgnm2bu5hmqa3aab5sogvpoq2rsssk4js266in6ny57y
+- valory/check_stop_trading_abci:0.1.0:bafybeidxgatkrxdrgmmzkeitqy4mu42d3e6p7w7wfasmh722yzqgnn3zyy
 - valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
-- valory/chatui_abci:0.1.0:bafybeidpmtexritaxlpahyuagvvybv766v2tpnw7gh33sm6ke7t55iybq4
-- valory/agent_performance_summary_abci:0.1.0:bafybeigwu7ho7x2vujnjobferlkzpeaaljio4qpuqnco5rdx3s4sbikglm
+- valory/chatui_abci:0.1.0:bafybeiarlbhxbewkhrnuuy7pn5icn6kaaensjs3lqsydikpm3jcb5ztlim
+- valory/agent_performance_summary_abci:0.1.0:bafybeigxojgh3gpvmvf4culq5d77nzug7tlf5ajhcyka7pr6ff32lsop6i
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu

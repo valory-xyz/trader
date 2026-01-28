@@ -22,8 +22,8 @@
 
 import json
 import re
-from datetime import datetime
 from dataclasses import asdict
+from datetime import datetime
 from enum import Enum
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -33,6 +33,7 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 
 from packages.valory.protocols.http.message import HttpMessage
+from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
 from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
@@ -52,19 +53,14 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
-from packages.valory.skills.agent_performance_summary_abci.dialogues import (
-    HttpDialogue,
+from packages.valory.skills.agent_performance_summary_abci.dialogues import HttpDialogue
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
+    PredictionsFetcher,
 )
-from packages.valory.skills.abstract_round_abci.base import BaseSynchronizedData
-from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
-    GET_TRADER_AGENT_DETAILS_QUERY,
-    GET_TRADER_AGENT_PERFORMANCE_QUERY,
-    GET_PREDICTION_HISTORY_QUERY,
-    GET_FPMM_PAYOUTS_QUERY,
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    ProfitDataPoint,
+    SharedState,
 )
-from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
-from packages.valory.skills.agent_performance_summary_abci.models import ProfitDataPoint
-
 
 
 # Constants
@@ -72,7 +68,9 @@ DEFAULT_MECH_FEE = 10000000000000000  # 0.01 xDAI in wei (1e16)
 WEI_TO_NATIVE = 10**18
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GRAPHQL_BATCH_SIZE = 1000  # Max items per GraphQL query
-INVALID_ANSWER_HEX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+INVALID_ANSWER_HEX = (
+    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+)
 PREDICT_BASE_URL = "https://predict.olas.network/questions"
 DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 100
@@ -81,8 +79,13 @@ PREDICTION_STATUS_PENDING = "pending"
 PREDICTION_STATUS_WON = "won"
 PREDICTION_STATUS_LOST = "lost"
 PREDICTION_STATUS_ALL = "all"
-VALID_PREDICTION_STATUSES = [PREDICTION_STATUS_PENDING, PREDICTION_STATUS_WON, PREDICTION_STATUS_LOST]
+VALID_PREDICTION_STATUSES = [
+    PREDICTION_STATUS_PENDING,
+    PREDICTION_STATUS_WON,
+    PREDICTION_STATUS_LOST,
+]
 SECONDS_PER_DAY = 86400
+
 
 class HttpMethod(Enum):
     """Http methods"""
@@ -139,9 +142,8 @@ class HttpHandler(BaseHttpHandler):
         )
 
     @property
-    def shared_state(self):
+    def shared_state(self) -> SharedState:
         """Get the shared state."""
-        from packages.valory.skills.agent_performance_summary_abci.models import SharedState
         return cast(SharedState, self.context.state)
 
     @property
@@ -164,17 +166,28 @@ class HttpHandler(BaseHttpHandler):
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
-        
+
         agent_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/details"
-        agent_performance_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
-        agent_predictions_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/prediction-history"
-        agent_profit_over_time_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
-        position_details_url_regex = rf"{self.hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
+        agent_performance_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/performance"
+        )
+        agent_predictions_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/prediction-history"
+        )
+        agent_profit_over_time_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
+        )
+        position_details_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
+        )
 
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value, HttpMethod.HEAD.value): [
-                *(self.routes.get((HttpMethod.GET.value, HttpMethod.HEAD.value), []) or []),
+                *(
+                    self.routes.get((HttpMethod.GET.value, HttpMethod.HEAD.value), [])
+                    or []
+                ),
                 (
                     agent_details_url_regex,
                     self._handle_get_agent_details,
@@ -204,21 +217,23 @@ class HttpHandler(BaseHttpHandler):
         """Handle GET /api/v1/agent/details request."""
         summary = self.shared_state.read_existing_performance_summary()
         details = summary.agent_details
-        
+
         if not details:
             self._send_internal_server_error_response(
-                http_msg, 
+                http_msg,
                 http_dialogue,
-                {"error": "Agent details not available. Data may not have been fetched yet or there was an error retrieving it."}
+                {
+                    "error": "Agent details not available. Data may not have been fetched yet or there was an error retrieving it."
+                },
             )
             return
-            
+
         formatted_response = {
             "id": details.id,
             "created_at": details.created_at,
             "last_active_at": details.last_active_at,
         }
-        
+
         self.context.logger.info(f"Responding with agent details: {formatted_response}")
         self._send_ok_response(http_msg, http_dialogue, formatted_response)
 
@@ -401,56 +416,61 @@ class HttpHandler(BaseHttpHandler):
         """Handle GET /api/v1/agent/performance request."""
         try:
             # Parse query parameters
-            url_parts = http_msg.url.split('?')
+            url_parts = http_msg.url.split("?")
             window = "lifetime"  # Default
             currency = "USD"  # Default
-            
+
             if len(url_parts) > 1:
                 params = {}
-                for param in url_parts[1].split('&'):
-                    if '=' in param:
-                        key, value = param.split('=', 1)
+                for param in url_parts[1].split("&"):
+                    if "=" in param:
+                        key, value = param.split("=", 1)
                         params[key] = value
-                window = params.get('window', 'lifetime')
-                currency = params.get('currency', 'USD')
-            
+                window = params.get("window", "lifetime")
+                currency = params.get("currency", "USD")
+
             # Validate window parameter
             if window not in ["lifetime", "7d", "30d", "90d"]:
                 self._send_bad_request_response(
-                    http_msg, http_dialogue,
-                    {"error": f"Invalid window parameter: {window}. Must be one of: lifetime, 7d, 30d, 90d"}
+                    http_msg,
+                    http_dialogue,
+                    {
+                        "error": f"Invalid window parameter: {window}. Must be one of: lifetime, 7d, 30d, 90d"
+                    },
                 )
                 return
-            
+
             safe_address = self.synchronized_data.safe_contract_address.lower()
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
-            
+
             if not performance:
                 self._send_internal_server_error_response(
-                    http_msg, 
+                    http_msg,
                     http_dialogue,
-                    {"error": "Performance data not available. Data may not have been fetched yet or there was an error retrieving it."}
+                    {
+                        "error": "Performance data not available. Data may not have been fetched yet or there was an error retrieving it."
+                    },
                 )
                 return
-            
 
             formatted_response = {
                 "agent_id": safe_address,
                 "window": window,
                 "currency": currency,
                 "metrics": asdict(performance.metrics) if performance.metrics else {},
-                "stats": asdict(performance.stats) if performance.stats else {}
+                "stats": asdict(performance.stats) if performance.stats else {},
             }
-            
-            self.context.logger.info(f"Sending performance data for agent: {safe_address}")
+
+            self.context.logger.info(
+                f"Sending performance data for agent: {safe_address}"
+            )
             self._send_ok_response(http_msg, http_dialogue, formatted_response)
-            
+
         except Exception as e:
             self.context.logger.error(f"Error in performance endpoint: {str(e)}")
             self._send_internal_server_error_response(
-                http_msg, http_dialogue,
-                {"error": "Failed to fetch performance data"}
+                http_msg, http_dialogue, {"error": "Failed to fetch performance data"}
             )
 
     def _handle_get_predictions(
@@ -460,38 +480,45 @@ class HttpHandler(BaseHttpHandler):
         try:
             # Parse query parameters
             page, page_size, status_filter = self._parse_query_params(http_msg)
-            
+
             # Validate status filter
             if status_filter and status_filter not in VALID_PREDICTION_STATUSES:
                 self._send_bad_request_response(
-                    http_msg, http_dialogue,
-                    {"error": f"Invalid status parameter. Must be one of: {', '.join(VALID_PREDICTION_STATUSES)}"}
+                    http_msg,
+                    http_dialogue,
+                    {
+                        "error": f"Invalid status parameter. Must be one of: {', '.join(VALID_PREDICTION_STATUSES)}"
+                    },
                 )
                 return
-            
+
             safe_address = self.synchronized_data.safe_contract_address.lower()
             skip = (page - 1) * page_size
-            
+
             # Check stored history first
             summary = self.shared_state.read_existing_performance_summary()
             history = summary.prediction_history
-            
+
             if history and history.stored_count > 0 and skip < history.stored_count:
                 # Serve from stored history
-                self.context.logger.info(f"Serving predictions from stored history (page {page})")
-                items = self._filter_and_paginate(history.items, status_filter, skip, page_size)
-                
+                self.context.logger.info(
+                    f"Serving predictions from stored history (page {page})"
+                )
+                items = self._filter_and_paginate(
+                    history.items, status_filter, skip, page_size
+                )
+
                 response = {
                     "agent_id": safe_address,
                     "currency": "USD",
                     "page": page,
                     "page_size": page_size,
                     "total": history.total_predictions,
-                    "items": items
+                    "items": items,
                 }
                 self._send_ok_response(http_msg, http_dialogue, response)
                 return
-            
+
             # Fetch from subgraph
             self.context.logger.info(f"Querying subgraph (page {page})")
             fetcher = PredictionsFetcher(self.context, self.context.logger)
@@ -499,58 +526,63 @@ class HttpHandler(BaseHttpHandler):
                 safe_address=safe_address,
                 first=page_size,
                 skip=skip,
-                status_filter=status_filter if status_filter != PREDICTION_STATUS_ALL else None
+                status_filter=(
+                    status_filter if status_filter != PREDICTION_STATUS_ALL else None
+                ),
             )
-            
+
             response = {
                 "agent_id": safe_address,
                 "currency": "USD",
                 "page": page,
                 "page_size": page_size,
                 "total": result["total_predictions"],
-                "items": result["items"]
+                "items": result["items"],
             }
-            
+
             self.context.logger.info(f"Sending {len(result['items'])} predictions")
             self._send_ok_response(http_msg, http_dialogue, response)
-            
+
         except Exception as e:
             self.context.logger.error(f"Error in predictions endpoint: {e}")
             self._send_internal_server_error_response(
-                http_msg, http_dialogue,
-                {"error": "Failed to fetch predictions"}
+                http_msg, http_dialogue, {"error": "Failed to fetch predictions"}
             )
-    
+
     def _parse_query_params(self, http_msg: HttpMessage) -> tuple:
         """Parse page, page_size, and status_filter from query string."""
         page = 1
         page_size = DEFAULT_PAGE_SIZE
         status_filter = None
-        
-        url_parts = http_msg.url.split('?')
+
+        url_parts = http_msg.url.split("?")
         if len(url_parts) > 1:
             params = {}
-            for param in url_parts[1].split('&'):
-                if '=' in param:
-                    key, value = param.split('=', 1)
+            for param in url_parts[1].split("&"):
+                if "=" in param:
+                    key, value = param.split("=", 1)
                     params[key] = value
-            
+
             try:
-                page = int(params.get('page', 1))
-                page_size = min(int(params.get('page_size', DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
+                page = int(params.get("page", 1))
+                page_size = min(
+                    int(params.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE
+                )
             except ValueError:
                 pass
-            
-            status_filter = params.get('status')
-        
+
+            status_filter = params.get("status")
+
         return page, page_size, status_filter
 
-    def _filter_and_paginate(self, items: list, status_filter: Optional[str], skip: int, page_size: int) -> list:
+    def _filter_and_paginate(
+        self, items: list, status_filter: Optional[str], skip: int, page_size: int
+    ) -> list:
         """Filter items by status and paginate."""
         if status_filter and status_filter != PREDICTION_STATUS_ALL:
             items = [item for item in items if item.get("status") == status_filter]
-        
-        return items[skip:skip + page_size]
+
+        return items[skip : skip + page_size]
 
     def _handle_get_profit_over_time(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -558,118 +590,131 @@ class HttpHandler(BaseHttpHandler):
         """Handle GET /api/v1/agent/profit-over-time request."""
         try:
             # Parse query parameters
-            url_parts = http_msg.url.split('?')
+            url_parts = http_msg.url.split("?")
             window = "lifetime"  # Default
-            
+
             if len(url_parts) > 1:
                 params = {}
-                for param in url_parts[1].split('&'):
-                    if '=' in param:
-                        key, value = param.split('=', 1)
+                for param in url_parts[1].split("&"):
+                    if "=" in param:
+                        key, value = param.split("=", 1)
                         params[key] = value
-                window = params.get('window', 'lifetime')
-            
+                window = params.get("window", "lifetime")
+
             # Validate window parameter
             valid_windows = ["7d", "30d", "90d", "lifetime"]
             if window not in valid_windows:
                 self._send_bad_request_response(
-                    http_msg, http_dialogue,
-                    {"error": f"Invalid window parameter: {window}. Must be one of: {', '.join(valid_windows)}"}
+                    http_msg,
+                    http_dialogue,
+                    {
+                        "error": f"Invalid window parameter: {window}. Must be one of: {', '.join(valid_windows)}"
+                    },
                 )
                 return
-            
+
             safe_address = self.synchronized_data.safe_contract_address.lower()
             summary = self.shared_state.read_existing_performance_summary()
             profit_data = summary.profit_over_time
-            
+
             if not profit_data or not profit_data.data_points:
                 # Return empty response if no data
-                response = {
+                empty_response = {
                     "agent_id": safe_address,
                     "currency": "USD",
                     "window": window,
-                    "points": []
+                    "points": [],
                 }
-                self._send_ok_response(http_msg, http_dialogue, response)
+                self._send_ok_response(http_msg, http_dialogue, empty_response)
                 return
-            
+
             # Filter data points based on window
-            filtered_points = self._filter_profit_data_by_window(profit_data.data_points, window)
-            
+            filtered_points = self._filter_profit_data_by_window(
+                profit_data.data_points, window
+            )
+
             # Convert to API format
             api_points = []
             for point in filtered_points:
-                api_points.append({
-                    "timestamp": datetime.utcfromtimestamp(point.timestamp).strftime(ISO_TIMESTAMP_FORMAT),
-                    "delta_profit": point.cumulative_profit
-                })
-            
-            response = {
+                api_points.append(
+                    {
+                        "timestamp": datetime.utcfromtimestamp(
+                            point.timestamp
+                        ).strftime(ISO_TIMESTAMP_FORMAT),
+                        "delta_profit": point.cumulative_profit,
+                    }
+                )
+
+            response: Dict[str, Any] = {
                 "agent_id": safe_address,
                 "currency": "USD",
                 "window": window,
-                "points": api_points
+                "points": api_points,
             }
-            
-            self.context.logger.info(f"Sending profit over time data for window: {window}, points: {len(api_points)}")
+
+            self.context.logger.info(
+                f"Sending profit over time data for window: {window}, points: {len(api_points)}"
+            )
             self._send_ok_response(http_msg, http_dialogue, response)
-            
+
         except Exception as e:
             self.context.logger.error(f"Error in profit over time endpoint: {str(e)}")
             self._send_internal_server_error_response(
-                http_msg, http_dialogue,
-                {"error": "Failed to fetch profit over time data"}
+                http_msg,
+                http_dialogue,
+                {"error": "Failed to fetch profit over time data"},
             )
 
     def _filter_profit_data_by_window(self, data_points: list, window: str) -> list:
         """Filter profit data points by time window and fill gaps with last known cumulative."""
         if window == "lifetime":
             return data_points
-        
+
         # Calculate cutoff timestamp
         current_timestamp = int(datetime.utcnow().timestamp())
         days_map = {"7d": 7, "30d": 30, "90d": 90}
         days = days_map.get(window, 0)
-        
+
         if days == 0:
             return data_points
-        
-        cutoff_timestamp = current_timestamp - ((days-1) * SECONDS_PER_DAY)
-        
+
+        cutoff_timestamp = current_timestamp - ((days - 1) * SECONDS_PER_DAY)
+
         # Filter points within the window
         filtered_points = [
-            point for point in data_points 
-            if point.timestamp >= cutoff_timestamp
+            point for point in data_points if point.timestamp >= cutoff_timestamp
         ]
-        
+
         if not filtered_points:
             # No data in window - return zeros for each day
             points = []
             for i in range(days):
                 day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
                 day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
-                
+
                 zero_point = ProfitDataPoint(
                     date=day_date,
                     timestamp=day_timestamp,
                     daily_profit=0.0,
                     cumulative_profit=0.0,
-                    daily_mech_requests=0
+                    daily_mech_requests=0,
                 )
                 points.append(zero_point)
-            
+
             return points
-        
+
         # Create a complete daily timeline for the window with gap filling
         result_points = []
         cumulative_profit = 0.0
         last_known_cumulative = 0.0
         # Create a lookup for existing data points by timestamp
-        data_lookup = {point.date: point for point in filtered_points}
+        data_lookup: Dict[str, ProfitDataPoint] = {
+            point.date: point for point in filtered_points
+        }
         for i in range(days):
             day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
             day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
-            
+
             if day_date in data_lookup:
                 # Use actual data for this day
                 actual_point = data_lookup[day_date]
@@ -680,16 +725,18 @@ class HttpHandler(BaseHttpHandler):
                 # No data for this day - 0 daily profit, use last known cumulative
                 daily_profit = 0.0
                 cumulative_profit = last_known_cumulative  # Maintain last known value
-            
-            result_points.append(ProfitDataPoint(
-                date=day_date,
-                timestamp=day_timestamp,
-                daily_profit=daily_profit,
-                cumulative_profit=round(cumulative_profit, 3),
-            ))
-        
+
+            result_points.append(
+                ProfitDataPoint(
+                    date=day_date,
+                    timestamp=day_timestamp,
+                    daily_profit=daily_profit,
+                    cumulative_profit=round(cumulative_profit, 3),
+                )
+            )
+
         return result_points
-    
+
     def _handle_get_position_details(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -698,35 +745,37 @@ class HttpHandler(BaseHttpHandler):
             # Extract market ID from URL
             url_pattern = r"\/api\/v1\/agent\/position-details\/([^\/\?]+)"
             match = re.search(url_pattern, http_msg.url)
-            
+
             if not match:
                 self._send_bad_request_response(
-                    http_msg, http_dialogue,
-                    {"error": "Invalid URL format. Expected /api/v1/agent/position-details/{id}"}
+                    http_msg,
+                    http_dialogue,
+                    {
+                        "error": "Invalid URL format. Expected /api/v1/agent/position-details/{id}"
+                    },
                 )
                 return
-            
+
             bet_id = match.group(1)
             self.context.logger.info(f"Fetching position details for bet ID: {bet_id}")
-            
+
             # Use PredictionsFetcher to get all position details
             fetcher = PredictionsFetcher(self.context, self.context.logger)
             safe_address = self.synchronized_data.safe_contract_address.lower()
 
             store_path = str(self.context.params.store_path)
-            
+
             response = fetcher.fetch_position_details(bet_id, safe_address, store_path)
-            
+
             if not response:
                 self._send_not_found_response(http_msg, http_dialogue)
                 return
-            
+
             self.context.logger.info(f"Sending position details for market: {bet_id}")
             self._send_ok_response(http_msg, http_dialogue, response)
-            
+
         except Exception as e:
             self.context.logger.error(f"Error in position details endpoint: {str(e)}")
             self._send_internal_server_error_response(
-                http_msg, http_dialogue,
-                {"error": "Failed to fetch position details"}
+                http_msg, http_dialogue, {"error": "Failed to fetch position details"}
             )

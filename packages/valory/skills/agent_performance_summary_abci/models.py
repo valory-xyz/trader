@@ -56,7 +56,7 @@ class AgentPerformanceMetrics:
 @dataclass
 class AgentDetails:
     """Agent metadata for /api/v1/agent/details endpoint."""
-    
+
     id: Optional[str] = None
     created_at: Optional[str] = None  # ISO 8601 format
     last_active_at: Optional[str] = None  # ISO 8601 format
@@ -65,7 +65,7 @@ class AgentDetails:
 @dataclass
 class PerformanceMetricsData:
     """Performance metrics for /api/v1/agent/performance endpoint."""
-    
+
     all_time_funds_used: Optional[float] = None
     all_time_profit: Optional[float] = None
     funds_locked_in_markets: Optional[float] = None
@@ -81,7 +81,7 @@ class PerformanceMetricsData:
 @dataclass
 class PerformanceStatsData:
     """Performance stats for /api/v1/agent/performance endpoint."""
-    
+
     predictions_made: Optional[int] = None
     prediction_accuracy: Optional[float] = None
 
@@ -89,13 +89,13 @@ class PerformanceStatsData:
 @dataclass
 class AgentPerformanceData:
     """Complete performance data for /api/v1/agent/performance endpoint."""
-    
+
     window: str = "lifetime"
     currency: str = "USD"
     metrics: Optional[PerformanceMetricsData] = None
     stats: Optional[PerformanceStatsData] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Convert nested dicts to dataclass instances."""
         if isinstance(self.metrics, dict):
             self.metrics = PerformanceMetricsData(**self.metrics)
@@ -106,7 +106,7 @@ class AgentPerformanceData:
 @dataclass
 class PredictionHistory:
     """Prediction history stored for faster API responses."""
-    
+
     total_predictions: int = 0
     stored_count: int = 0
     last_updated: Optional[int] = None
@@ -116,7 +116,7 @@ class PredictionHistory:
 @dataclass
 class ProfitDataPoint:
     """Single data point for profit over time chart."""
-    
+
     date: str  # YYYY-MM-DD format
     timestamp: int  # Unix timestamp
     daily_profit: float  # Net daily profit (after mech fees)
@@ -127,18 +127,28 @@ class ProfitDataPoint:
 @dataclass
 class ProfitOverTimeData:
     """Profit over time data stored in agent_performance.json."""
-    
+
     last_updated: int  # Unix timestamp of last update
     total_days: int  # Total number of days with data
     data_points: List[ProfitDataPoint] = field(default_factory=list)
     settled_mech_requests_count: int = 0  # Total settled mech requests
     unplaced_mech_requests_count: int = 0  # Total mech requests with no bets placed
-    includes_unplaced_mech_fees: bool = False  # Whether unplaced mech fees logic was applied
-    
-    def __post_init__(self):
+    includes_unplaced_mech_fees: bool = (
+        False  # Whether unplaced mech fees logic was applied
+    )
+
+    def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
-        if self.data_points and isinstance(self.data_points[0], dict):
-            self.data_points = [ProfitDataPoint(**point) for point in self.data_points]
+        if (
+            self.data_points
+            and self.data_points
+            and isinstance(self.data_points[0], dict)
+        ):
+            self.data_points = [
+                ProfitDataPoint(**point)
+                for point in self.data_points
+                if isinstance(point, dict)
+            ]
 
 
 @dataclass
@@ -158,18 +168,18 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
         if isinstance(self.agent_details, dict):
             self.agent_details = AgentDetails(**self.agent_details)
-        
+
         # Similarly for other nested dataclasses
         if isinstance(self.agent_performance, dict):
             self.agent_performance = AgentPerformanceData(**self.agent_performance)
-        
+
         if isinstance(self.prediction_history, dict):
             self.prediction_history = PredictionHistory(**self.prediction_history)
-        
+
         if isinstance(self.profit_over_time, dict):
             self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
 

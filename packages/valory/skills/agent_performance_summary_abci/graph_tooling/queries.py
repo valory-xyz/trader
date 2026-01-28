@@ -188,7 +188,7 @@ GET_DAILY_PROFIT_STATISTICS_QUERY = """
 query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
   traderAgent(id: $agentId) {
     dailyProfitStatistics(
-      where: { 
+      where: {
         date_gte: $startTimestamp,
       }
       orderBy: date
@@ -234,7 +234,7 @@ GET_MECH_REQUESTS_BY_TITLES_QUERY = """
 query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
   sender(id: $sender) {
     requests(
-      where: { 
+      where: {
         parsedRequest_: { questionTitle_in: $questionTitles }
       }
     ) {
@@ -253,13 +253,11 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
     requests(
       where: { parsedRequest_: { questionTitle: $questionTitle } }
       first: 1
-      orderBy: requestId
       orderDirection: desc
     ) {
-      parsedRequest {
-        questionTitle
+      deliveries {
+        model
       }
-      tool
     }
   }
 }
