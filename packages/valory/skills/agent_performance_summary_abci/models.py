@@ -65,7 +65,7 @@ class AgentDetails:
 @dataclass
 class PerformanceMetricsData:
     """Performance metrics for /api/v1/agent/performance endpoint."""
-    
+
     all_time_funds_used: Optional[float] = None
     all_time_profit: Optional[float] = None
     funds_locked_in_markets: Optional[float] = None
@@ -120,7 +120,9 @@ class ProfitDataPoint:
     daily_profit: float  # Net daily profit (after mech fees)
     cumulative_profit: float  # Cumulative profit from start of window
     daily_mech_requests: int = 0  # Number of mech requests for this day
-    daily_profit_raw: Optional[float] = None  # Gross daily profit from subgraph (before fees)
+    daily_profit_raw: Optional[float] = (
+        None  # Gross daily profit from subgraph (before fees)
+    )
 
 
 @dataclass

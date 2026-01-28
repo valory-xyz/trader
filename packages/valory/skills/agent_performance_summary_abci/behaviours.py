@@ -426,7 +426,6 @@ class FetchPerformanceSummaryBehaviour(
         self, trader_agent: dict
     ) -> Generator[None, None, PerformanceMetricsData]:
         """Calculate performance metrics from trader agent data."""
-        safe_address = self.synchronized_data.safe_contract_address.lower()
 
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
@@ -1009,8 +1008,12 @@ class FetchPerformanceSummaryBehaviour(
             return existing_data
 
         # Decide if we really should replace last point: only if incoming stats contain that same day
-        last_point_day = last_data_timestamp // SECONDS_PER_DAY if last_data_timestamp else None
-        incoming_days = {int(s["date"]) // SECONDS_PER_DAY for s in filtered_daily_stats}
+        last_point_day = (
+            last_data_timestamp // SECONDS_PER_DAY if last_data_timestamp else None
+        )
+        incoming_days = {
+            int(s["date"]) // SECONDS_PER_DAY for s in filtered_daily_stats
+        }
         if last_point_day is not None and last_point_day in incoming_days:
             replace_last = True
         elif replace_last and (last_point_day not in incoming_days):
@@ -1038,9 +1041,9 @@ class FetchPerformanceSummaryBehaviour(
             if isinstance(new_mech_requests, list):
                 requests_list = new_mech_requests
             else:
-                requests_list = (
-                    (new_mech_requests or {}).get("sender", {}) or {}
-                ).get("requests", [])
+                requests_list = ((new_mech_requests or {}).get("sender", {}) or {}).get(
+                    "requests", []
+                )
             for request in requests_list:
                 parsed = request.get("parsedRequest", {}) or {}
                 title = parsed.get("questionTitle", "")
@@ -1056,9 +1059,7 @@ class FetchPerformanceSummaryBehaviour(
         prev_placed = getattr(existing_data, "placed_mech_requests_count", 0)
         placed_delta = sum(mech_request_lookup.get(title, 0) for title in placed_titles)
 
-        already_counted = getattr(
-            existing_data, "unplaced_mech_requests_count", 0
-        )
+        already_counted = getattr(existing_data, "unplaced_mech_requests_count", 0)
         combined_extra_fees_by_day, filtered_lookup, unplaced_allocated = (
             self._compute_mech_fee_buckets(
                 filtered_daily_stats,
@@ -1195,7 +1196,6 @@ class FetchPerformanceSummaryBehaviour(
 
         # Check if we need to update (daily check)
         existing_summary = self.shared_state.read_existing_performance_summary()
-        current_timestamp = self.shared_state.synced_timestamp
 
         # Build new profit over time data
         self.context.logger.info("Updating profit over time data...")
@@ -1222,13 +1222,12 @@ class FetchPerformanceSummaryBehaviour(
         current_timestamp = self.shared_state.synced_timestamp
         profit_over_time = yield from self._build_profit_over_time_data()
         self._unplaced_mech_requests_count = (
-            profit_over_time.unplaced_mech_requests_count
-            if profit_over_time
-            else 0
+            profit_over_time.unplaced_mech_requests_count if profit_over_time else 0
         )
         self._placed_mech_requests_count = (
             profit_over_time.placed_mech_requests_count
-            if profit_over_time and hasattr(profit_over_time, "placed_mech_requests_count")
+            if profit_over_time
+            and hasattr(profit_over_time, "placed_mech_requests_count")
             else 0
         )
 

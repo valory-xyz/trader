@@ -114,3 +114,5 @@ d7e2f8d463decedecb6ba571a93a7fccd37263fb:packages/valory/skills/decision_maker_a
 d7e2f8d463decedecb6ba571a93a7fccd37263fb:packages/valory/skills/decision_maker_abci/behaviours/polymarket_reedem.py:generic-api-key:44
 346bcea3bd1ff666e3e94777a0c8708677df291c:packages/valory/skills/agent_performance_summary_abci/graph_tooling/requests.py:generic-api-key:51
 d7e2f8d463decedecb6ba571a93a7fccd37263fb:packages/valory/skills/decision_maker_abci/behaviours/polymarket_reedem.py:generic-api-key:44
+d35223455f423bfb1e20a70afa5dcdf9bca24b56:packages/valory/skills/agent_performance_summary_abci/graph_tooling/requests.py:generic-api-key:51
+d35223455f423bfb1e20a70afa5dcdf9bca24b56:packages/valory/skills/agent_performance_summary_abci/graph_tooling/requests.py:generic-api-key:51
