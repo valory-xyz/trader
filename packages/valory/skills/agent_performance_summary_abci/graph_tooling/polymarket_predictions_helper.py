@@ -25,6 +25,9 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
+    PredictionsFetcher,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
 )
@@ -37,10 +40,12 @@ GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
-class PolymarketPredictionsFetcher:
+class PolymarketPredictionsFetcher(
+    PredictionsFetcher,
+):
     """Shared logic for fetching and formatting Polymarket predictions."""
 
-    def __init__(self, context, logger):
+    def __init__(self, context: Any, logger: Any):
         """
         Initialize the Polymarket predictions fetcher.
 
@@ -205,12 +210,7 @@ class PolymarketPredictionsFetcher:
         }
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
-        """
-        Calculate profit for a single Polymarket bet.
-        Profit = (shares * settled_price) - bet_amount for winning bets
-        Profit = -bet_amount for losing bets
-        Profit = 0 for pending bets
-        """
+        """Calculate profit for a single Polymarket bet."""
         question = bet.get("question", {})
         resolution = question.get("resolution")
 
@@ -238,10 +238,7 @@ class PolymarketPredictionsFetcher:
         return (shares * settled_price) - bet_amount
 
     def _get_prediction_status(self, bet: Dict) -> str:
-        """
-        Determine the status of a Polymarket prediction.
-        Returns 'pending', 'won', or 'lost'.
-        """
+        """Determine the status of a Polymarket prediction."""
         question = bet.get("question", {})
         resolution = question.get("resolution")
 
@@ -279,3 +276,57 @@ class PolymarketPredictionsFetcher:
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
             return None
+
+    # Stub implementations for abstract methods not used in Polymarket
+    # TODO: Move relevant methods to base class if shared
+    def _fetch_trader_agent_bets(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def fetch_mech_tool_for_question(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _fetch_prediction_response_from_mech(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def fetch_position_details(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _load_multi_bets_data(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _load_agent_performance_data(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _find_market_entry(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _find_bet(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _format_bet_for_position(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _fetch_bet_from_subgraph(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _build_market_context(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _calculate_bet_net_profit(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")
+
+    def _get_ui_trading_strategy(self, *args: Any, **kwargs: Any) -> Any:
+        """Not used for Polymarket."""
+        raise NotImplementedError("Not used for Polymarket")

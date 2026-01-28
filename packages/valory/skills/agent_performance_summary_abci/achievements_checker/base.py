@@ -20,8 +20,10 @@
 """Base class for all achievements checkers."""
 
 
-from typing import Dict
+from typing import Any
 from uuid import NAMESPACE_DNS, uuid5
+
+from packages.valory.skills.agent_performance_summary_abci.models import Achievements
 
 
 OLAS_NETWORK_NS = uuid5(NAMESPACE_DNS, "olas.network")
@@ -37,7 +39,7 @@ class AchievementsChecker:
         """Generate a deterministic achievement type ID"""
         return str(uuid5(ACHIEVEMENTS_CHECKER_NS, f"{self.achievement_type}/{seed}"))
 
-    def update_achievements(self, achievements: Dict[str, Dict], **kwargs) -> bool:
+    def update_achievements(self, achievements: Achievements, **kwargs: Any) -> bool:
         """Check if an achievement has been reached and populate `achievements`. Returns `True` if the achievements dictionary has been updated."""
         raise NotImplementedError()
 

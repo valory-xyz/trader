@@ -32,6 +32,9 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
+    PredictionsFetcher as BasePredictionsFetcher,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
     PolymarketPredictionsFetcher,
 )
@@ -421,8 +424,6 @@ class FetchPerformanceSummaryBehaviour(
             )
             # Return empty structure instead of None
             return AgentPerformanceData(
-                window=None,
-                currency=None,
                 metrics=PerformanceMetricsData(),
                 stats=PerformanceStatsData(),
             )
@@ -559,8 +560,8 @@ class FetchPerformanceSummaryBehaviour(
 
         try:
             # Use platform-specific fetcher
+            fetcher: BasePredictionsFetcher
             if self.params.is_running_on_polymarket:
-
                 fetcher = PolymarketPredictionsFetcher(
                     self.context, self.context.logger
                 )

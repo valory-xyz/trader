@@ -21,6 +21,7 @@
 
 
 from datetime import datetime
+from typing import Any
 
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import (
     AchievementsChecker,
@@ -49,7 +50,7 @@ class BetPayoutChecker(AchievementsChecker):
         """Returns a string representing the achievement type"""
         return self._achievement_type
 
-    def update_achievements(self, achievements: Achievements, **kwargs) -> None:
+    def update_achievements(self, achievements: Achievements, **kwargs: Any) -> bool:
         """Check if an achievement has been reached and populate `achievements`. Returns `True` if the achievements dictionary has been updated."""
 
         if "prediction_history" not in kwargs:
@@ -58,7 +59,7 @@ class BetPayoutChecker(AchievementsChecker):
         prediction_history: PredictionHistory = kwargs["prediction_history"]
 
         if prediction_history is None:
-            return
+            return False
 
         achievements_updated = False
         for bet in prediction_history.items:
