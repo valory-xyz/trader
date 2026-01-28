@@ -430,6 +430,14 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         skip = 0
         batch_size = QUERY_BATCH_SIZE
 
+        # Determine which subgraph to use based on platform
+        if self.params.is_running_on_polymarket:
+            subgraph = self.context.polygon_mech_subgraph
+            res_context_prefix = "polygon_all_mech_requests"
+        else:
+            subgraph = self.context.olas_mech_subgraph
+            res_context_prefix = "all_mech_requests"
+
         while True:
             result = yield from self._fetch_from_subgraph(
                 query=GET_MECH_SENDER_QUERY,
@@ -439,8 +447,8 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                     "skip": skip,
                     "first": batch_size,
                 },
-                subgraph=self.context.olas_mech_subgraph,
-                res_context=f"all_mech_requests_batch_{skip // batch_size + 1}",
+                subgraph=subgraph,
+                res_context=f"{res_context_prefix}_batch_{skip // batch_size + 1}",
             )
 
             if not result:
@@ -470,14 +478,22 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         if not question_titles:
             return []
 
+        # Determine which subgraph to use based on platform
+        if self.params.is_running_on_polymarket:
+            subgraph = self.context.polygon_mech_subgraph
+            res_context = "polygon_mech_requests_by_titles"
+        else:
+            subgraph = self.context.olas_mech_subgraph
+            res_context = "mech_requests_by_titles"
+
         result = yield from self._fetch_from_subgraph(
             query=GET_MECH_REQUESTS_BY_TITLES_QUERY,
             variables={
                 "sender": agent_safe_address.lower(),
                 "questionTitles": question_titles,
             },
-            subgraph=self.context.olas_mech_subgraph,
-            res_context="mech_requests_by_titles",
+            subgraph=subgraph,
+            res_context=res_context,
         )
 
         if result:

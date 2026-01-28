@@ -214,17 +214,18 @@ query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: 
 
 GET_ALL_MECH_REQUESTS_QUERY = """
 query GetAllMechRequests($sender: String!, $skip: Int!) {
-  requests(
-    where: { sender: $sender }
-    first: 1000
-    skip: $skip
-    orderBy: requestId
-    orderDirection: asc
-  ) {
-    id
-    requestId
-    parsedRequest {
-      questionTitle
+  sender(id: $sender) {
+    requests(
+      first: 1000
+      skip: $skip
+      orderBy: requestId
+      orderDirection: asc
+    ) {
+      id
+      requestId
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }

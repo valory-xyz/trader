@@ -151,7 +151,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: ''
+      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0
     class_name: PolygonMechSubgraph
 dependencies:
   requests:
