@@ -103,10 +103,10 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
     transition_function: AbciAppTransitionFunction = {
         FetchPerformanceDataRound: {
             Event.DONE: UpdateAchievementsRound,
-            Event.NONE: UpdateAchievementsRound,
+            Event.NONE: FetchPerformanceDataRound,
             Event.FAIL: UpdateAchievementsRound,
             Event.ROUND_TIMEOUT: UpdateAchievementsRound,
-            Event.NO_MAJORITY: UpdateAchievementsRound,
+            Event.NO_MAJORITY: FetchPerformanceDataRound,
         },
         UpdateAchievementsRound: {
             Event.DONE: FinishedFetchPerformanceDataRound,

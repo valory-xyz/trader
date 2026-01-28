@@ -913,10 +913,15 @@ class UpdateAchievementsBehaviour(
                 "Agent achievements updated."
             )
             self.shared_state.overwrite_performance_summary(agent_performance_summary)
+        else:
+            self.context.logger.info(
+                "Agent achievements not updated."
+            )
 
+        success = True  # Left to handle error conditions on future achievement checkers
         payload = UpdateAchievementsPayload(
             sender=self.context.agent_address,
-            vote=achievements_updated,
+            vote=success,
         )
 
         yield from self.finish_behaviour(payload)
