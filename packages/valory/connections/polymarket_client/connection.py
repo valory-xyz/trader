@@ -639,31 +639,15 @@ class PolymarketClientConnection(BaseSyncConnection):
                     f"  Found {len(yes_no_markets)} markets for '{category}'"
                 )
 
-            # Step 5: Remove duplicates across all categories
-            # Keep first occurrence of each market (preserves first category it appears in)
-            seen_market_ids = set()
-            deduplicated_by_category = {}
-
-            for category, markets in filtered_markets_by_category.items():
-                unique_markets_in_category = []
-                for market in markets:
-                    market_id = market.get("id")
-                    if market_id and market_id not in seen_market_ids:
-                        seen_market_ids.add(market_id)
-                        unique_markets_in_category.append(market)
-
-                # Only include category if it has markets after deduplication
-                if unique_markets_in_category:
-                    deduplicated_by_category[category] = unique_markets_in_category
-
-            total_unique = sum(
-                len(markets) for markets in deduplicated_by_category.values()
+            # Return all filtered markets by category (with potential duplicates)
+            total_markets = sum(
+                len(markets) for markets in filtered_markets_by_category.values()
             )
             self.logger.info(
-                f"After deduplication: {total_unique} unique markets across {len(deduplicated_by_category)} categories"
+                f"Fetched {total_markets} Yes/No markets across {len(filtered_markets_by_category)} categories"
             )
 
-            return deduplicated_by_category, None
+            return filtered_markets_by_category, None
 
         except Exception as e:
             error_msg = f"Unexpected error fetching markets: {str(e)}"

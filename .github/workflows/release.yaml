@@ -13,8 +13,8 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
@@ -103,8 +103,8 @@ jobs:
     env:
       CMD: "propel -U ${{ vars.PROPEL_BASE_URL }}"
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-versions }}
       - name: Install dependencies

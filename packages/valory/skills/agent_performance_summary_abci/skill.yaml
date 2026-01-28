@@ -7,20 +7,20 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
-  behaviours.py: bafybeihnqp5sxhxwaciwxyvrs2wyz77ioaxj5bms5csuf7gzetl633t7vq
+  behaviours.py: bafybeig7345nvzidfpdllhgn7ld7onls46hvygudmzitujv54hydludzju
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/predictions_helper.py: bafybeihhlynfolejnclursr4hvr5kyhzf3ddov62sjpawqvnxeivftvfsi
-  graph_tooling/queries.py: bafybeihos3zggwzrheuuoabwh4wsxw4k63zx7uwrrp56jxoi5x2ttvfbay
-  graph_tooling/requests.py: bafybeifxmx7dvm5atnkmcg6jfavco4gesyhoxuz4gzysyqd6w2vaywmvxq
-  handlers.py: bafybeihijsexjgk7lgoal4wslpv2kg7sg4el2rpfopkeiptlnw7q2uzrv4
-  models.py: bafybeiextmw5r2hfnkxh5sskybfpfdaeawzzr4ahwndjgnf6gi5yrvorl4
+  graph_tooling/predictions_helper.py: bafybeifduc6wkhuzgzkfme2qb34rle6vzpwcwqudskxjsoitwcgt4j3rny
+  graph_tooling/queries.py: bafybeick4bzu4jamzva6stzgjwpi4ucoupiuiksbjqh6vc442bjn6uej44
+  graph_tooling/requests.py: bafybeih3kvxu6ghoxwuiy6v2h6fdouzexdoulmqjvxr4ma7jbg2vrfnfv4
+  handlers.py: bafybeie2bvg5du7hopqe5r2ovkjom25rjxemktsvsmrkr4p43qawshljcy
+  models.py: bafybeigsnbcsypzwy4pq2ebzrxrzpjjyv5dqwplclihwtgikl6vwbbgxxy
   payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
   rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeigdgmorwmfx7pmnlmll5vwwtj2tscrmmsls6mi7wgtsalsufjzjwy
+- valory/erc20:0.1.0:bafybeibqqlr2c3dbn4zsnc75y5nesxf3j6wm7zadwz42gkt4u4outscfwm
 protocols:
 - valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
 - valory/contract_api:1.0.0:bafybeicmo2ufeoqyyczkom6xp3nwmhosd75kpe4xfwn7gaz6vegj732b4m

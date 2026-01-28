@@ -9,21 +9,21 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
-  composition.py: bafybeicxlioa2w4mug7cd6wdo452ebgzknbbd3ibr7aushiiyfqcz2v34a
+  composition.py: bafybeiguv5bthmm3th4c3ypp77xdoyreud2wo4adhxoupsufaidhbkq2q4
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeihsi2wuwrcek6fm2kuhcwembpy5f3bmkah3yqhrdc2bynylmuy54u
-  handlers.py: bafybeicul5uuunkhuj7pcipbaoqpv6qwyzp6zkrezz3k2b4v6mdi66cwtu
-  models.py: bafybeidoehmmau2emyawg7swblvp4cl3cg3p4mb2lyahux2n4ftf2wqary
+  fsm_specification.yaml: bafybeieaywql57x26qyovue3foudyj25rvw5ktcud3w6oznqwtyspcfng4
+  handlers.py: bafybeiciuczypaw557xwtntk6kff7mgxzzklyenc2wfhl3rvjwinvpswsi
+  models.py: bafybeigydfexxsxokfgpafols5ekoyp3e2zhjhklqpqxsdfagdmme2wxfe
   predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  predict-ui-build/assets/index-CXmEbKlU.js: bafybeibqdpts5s3p7yzbbdah2hvuiwkwrypompr7j2pzfoz3pxehranvxi
+  predict-ui-build/assets/index-D_Quo8RT.js: bafybeidzbmwomgtegwvmfzbhxv2lkiaoehyo5uvrrvhvq5oxrlii77fvaq
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
   predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeibiwd7czejsflp24m6cd7j4mnre6j5ogdzr2kvnnet4geh5izvnoi
+  predict-ui-build/index.html: bafybeicrx67muvyy2udjudraukb2aspqea2pkx4pl42vv3sdryx7a46sle
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
 fingerprint_ignore_patterns: []
@@ -39,14 +39,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibbgedhxkf44obw7mdcczz2hxkjnvfnifnsk6txq7z64v372bbgpa
 - valory/transaction_settlement_abci:0.1.0:bafybeifw2sem532gwdcyujknhsgdcgubpwsrrjtve4ztzxlkpmporjp4rq
 - valory/termination_abci:0.1.0:bafybeidrcpgdldhnxrhqbu5wpqjypwha6vmbzzjmaescto4vk5vut4fvha
-- valory/market_manager_abci:0.1.0:bafybeicv26ryhmwomw6yrndmsz3lmjbpj7hyovztvkakonqmulmi6kabki
-- valory/decision_maker_abci:0.1.0:bafybeibhvphc7yedq7hsf3sjiv75g2yydk7fksx6zowngl5ptr577ktalm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidu2mcoo4pw433use5kzcq35tip6kmxjghqzufbryrtugme2euogy
+- valory/market_manager_abci:0.1.0:bafybeib3ynx2jj4vuscq5lkqs4zg6bpytyqicoot2aezeboh4vyaflnoiq
+- valory/decision_maker_abci:0.1.0:bafybeihwdnbkjhri3etrhf5aycoswmo7ieesjkkbevszaiozhdsu35i5dq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihykwmbjydy2zqkwzmlv5uxek7zdujecw5hio7gfwxb7rxekursfi
 - valory/staking_abci:0.1.0:bafybeifaw3hbbroix264sigrawnmqg7y3r2pxcrj47homdkl3avjp4m7a4
-- valory/check_stop_trading_abci:0.1.0:bafybeia6faypdoaa6bqdsqnpp52mecoo5jf5reg7gnjpvnhgtiwkopqbdu
-- valory/mech_interact_abci:0.1.0:bafybeih3so6drovtjajbfknc6tfassb2kzdkjowwksg47n6uucl3q6jnq4
-- valory/chatui_abci:0.1.0:bafybeibyoa5jjjrjd7t2v7e2w6oo3dh5icqec73tywheaykzjphcp6r2tm
-- valory/agent_performance_summary_abci:0.1.0:bafybeihusrpuvgk4g7jtsqximrt5ay6vg4dpseszc6vpzsxslm5xzm7jlu
+- valory/check_stop_trading_abci:0.1.0:bafybeidhihbbxmvdqzshbobqt2osttviyu7v3m4xvnhh5bgnt7iglrivhm
+- valory/mech_interact_abci:0.1.0:bafybeiappct6b67sp33v4ejtoloqp7ufrfqpojayj5c5ktqzmg2vvbu7am
+- valory/chatui_abci:0.1.0:bafybeidfjxs4p55bhb56wrl4wwgiu5ncv77qpq5srqvnkb6q3sw4ntxzzy
+- valory/agent_performance_summary_abci:0.1.0:bafybeib6n6o6czdzq47e36yvqmqqdqfik2lni3qklooraq47g2xd77yfku
 - valory/funds_manager:0.1.0:bafybeiarjrgtot7gbqmwnu6ljfczf7gur6q35f3esgxzlw4hwwijbzrxgi
 behaviours:
   main:
@@ -151,7 +151,6 @@ models:
       service_registry_address: null
       genai_api_key: ''
       agent_registry_address: '0x0000000000000000000000000000000000000000'
-      complementary_service_metadata_address: '0x0000000000000000000000000000000000000000'
       use_acn_for_delivers: false
       setup:
         all_participants:
@@ -278,6 +277,8 @@ models:
       polymarket_ctf_exchange_address: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E'
       polymarket_neg_risk_ctf_exchange_address: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
       polymarket_neg_risk_adapter_address: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
+      ignored_mechs: []
+      penalize_mech_time_window: 1800
       pol_threshold_for_swap: 2000000000000000000
     class_name: TraderParams
   benchmarking_mode:
@@ -487,6 +488,34 @@ models:
       retries: 5
       url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
+  mech_tools:
+    args:
+      api_id: mech_tools
+      headers:
+        Content-Type: application/json
+      method: GET
+      parameters: {}
+      response_key: tools
+      response_type: list
+      retries: 5
+      url: ''
+    class_name: MechToolsSpecs
+  mechs_subgraph:
+    args:
+      api_id: mechs
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:meches
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0
+      delivery_rate_cap: 10000000000000000
+    class_name: MechsSubgraph
   requests:
     args: {}
     class_name: Requests

@@ -41,7 +41,6 @@ from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
 )
 from packages.valory.contracts.mech.contract import Mech
-from packages.valory.contracts.mech_mm.contract import MechMM
 from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
@@ -292,13 +291,17 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get whether the collateral address is wxDAI."""
         return self.collateral_token.lower() == WXDAI.lower()
 
-    @property
-    def is_usdc(self) -> bool:
+    def _is_usdc(self, collateral_token: str) -> bool:
         """Get whether the collateral address is USDC (Polygon)."""
-        return self.collateral_token.lower() in [
+        return collateral_token.lower() in [
             USDC_POLYGON.lower(),
             USCDE_POLYGON.lower(),
         ]
+
+    @property
+    def is_usdc(self) -> bool:
+        """Get whether the collateral address is USDC (Polygon)."""
+        return self._is_usdc(self.collateral_token)
 
     @staticmethod
     def wei_to_native(wei: int) -> float:
@@ -508,6 +511,18 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         return strategies_kwargs
 
+    def _get_decimals_for_token(self, collateral_token: str) -> int:
+        """Get the decimals for the given collateral token."""
+        return (
+            6
+            if collateral_token.lower()
+            in [
+                USDC_POLYGON.lower(),
+                USCDE_POLYGON.lower(),
+            ]
+            else 18
+        )
+
     def get_bet_amount(
         self,
         win_probability: float,
@@ -516,6 +531,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         other_tokens_in_pool: int,
         bet_fee: int,
         weighted_accuracy: float,
+        collateral_token: str,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
@@ -527,11 +543,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         tried_strategies: Set[str] = set()
         while True:
             self.context.logger.info(f"Used trading strategy: {next_strategy}")
+
             # the following are always passed to a strategy script, which may choose to ignore any
             kwargs: Dict[str, Any] = self._update_with_values_from_chatui(
                 self.params.strategies_kwargs
             )
-            kwargs["token_decimals"] = 6 if self.is_usdc else 18
+
+            kwargs["token_decimals"] = 6 if self._is_usdc(collateral_token) else 18
             kwargs["min_bet"] = self.params.strategies_kwargs["absolute_min_bet_size"]
             kwargs.update(
                 {
@@ -649,21 +667,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address=self.params.mech_contract_address,
             contract_public_id=Mech.contract_id,
-            contract_callable=contract_callable,
-            data_key=data_key,
-            placeholder=placeholder,
-            **kwargs,
-        )
-        return status
-
-    def _mech_mm_contract_interact(
-        self, contract_callable: str, data_key: str, placeholder: str, **kwargs: Any
-    ) -> WaitableConditionType:
-        """Interact with the mech mm contract."""
-        status = yield from self.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=self.params.mech_marketplace_config.priority_mech_address,  # type: ignore[arg-type]
-            contract_public_id=MechMM.contract_id,
             contract_callable=contract_callable,
             data_key=data_key,
             placeholder=placeholder,

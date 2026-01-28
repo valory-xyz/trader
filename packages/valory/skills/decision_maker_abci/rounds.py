@@ -482,14 +482,12 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRouterRound: set(),
-        DecisionReceiveRound: {
-            get_name(SynchronizedData.final_tx_hash),
-        },
-        HandleFailedTxRound: {
-            get_name(SynchronizedData.bets_hash),
-        },
+        # problematic check in `chain` does not allow to set `final_tx_hash` as a precondition here
+        DecisionReceiveRound: set(),
+        # problematic check in `chain` does not allow to set `bets_hash` as a precondition here
+        HandleFailedTxRound: set(),
         RandomnessRound: set(),
-        CheckBenchmarkingModeRound: set(),
+        CheckBenchmarkingModeRound: {get_name(SynchronizedData.is_marketplace_v2)},
         PolymarketPostSetApprovalRound: set(),
         DecisionRequestRound: set(),
     }

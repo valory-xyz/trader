@@ -71,7 +71,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                     and not self.shared_state.last_benchmarking_has_run
                 ):
                     self.policy.tool_used(selected_tool)
-                mech_tools = json.dumps(self.mech_tools)
+                mech_tools = json.dumps(list(self.mech_tools))
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
                 self._store_all()
