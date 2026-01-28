@@ -169,6 +169,19 @@ class Achievements:
 
     items: Dict[str, Achievement] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        """Convert dicts to dataclass instances."""
+        if not self.items:
+            return
+
+        first_value = next(iter(self.items.values()), None)
+        if isinstance(first_value, dict):
+            self.items = {
+                key: Achievement(**value)
+                for key, value in self.items.items()
+                if isinstance(value, dict)
+            }
+
 
 @dataclass
 class AgentPerformanceSummary:
@@ -202,6 +215,9 @@ class AgentPerformanceSummary:
 
         if isinstance(self.profit_over_time, dict):
             self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
+
+        if isinstance(self.achievements, dict):
+            self.achievements = Achievements(**self.achievements)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
