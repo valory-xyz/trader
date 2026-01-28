@@ -312,8 +312,8 @@ models:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${POLYGON_MECH_SUBGRAPH_METHOD:str:POST}
-      response_key: ${POLYGON_MECH_SUBGRAPH_RESPONSE_KEY:str:data:service}
-      response_type: ${POLYGON_MECH_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      response_key: ${POLYGON_MECH_SUBGRAPH_RESPONSE_KEY:str:data:meches}
+      response_type: ${POLYGON_MECH_SUBGRAPH_RESPONSE_TYPE:str:list}
       error_key: ${POLYGON_SUBGRAPH_ERROR_KEY:str:errors}
       error_index: ${POLYGON_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${POLYGON_SUBGRAPH_ERROR_TYPE:str:dict}
