@@ -8,8 +8,8 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeiegrs2tazgk4hg32thgskdvgun4se7bold3oagc6wehkuqifaj53q
-  bets.py: bafybeihlog2qqipijo75d3kxlgttbcvr5jdv5ohou75g5iproydbniuh5i
+  behaviours.py: bafybeihrntuowfjqor5qpqwzfcvfkwwmcyafxuxder36vlsau774jv3zpq
+  bets.py: bafybeiczt2bls6il264arsj4xpwsnr4dwbxudvadb5cgjrsxuxthzlxvbm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -22,7 +22,7 @@ fingerprint:
   graph_tooling/requests.py: bafybeif24qiwqjwvfbutbolodnctanzobipma636emrbv3eamafzxndgze
   graph_tooling/utils.py: bafybeihhxfifc5y3fjnxnan2zomsgr47h6u3khfeymi4p2x6txkkxmjq3e
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeibipxtzxa2ta2ezsqead7qs2fsaxkyrrwcgsthjpkw5nroctsqytu
+  models.py: bafybeianmadutvwe23ll3wbrbfkhbic6j3jtmk6va5tfaf6c4mk3dospxy
   payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
   rounds.py: bafybeiabpch7kwuuaxnp6okbz6s74mylkh5qw7zxcjhzcd7vrwxkmxyvpq
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
@@ -30,7 +30,7 @@ fingerprint:
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeidahkavof43y3o4omnihh6yxdx7gqofio7kzukdydymxbebylempu
-  tests/test_utils.py: bafybeibmwir6gj7fodrtfch5qk3qgvn6vrjmyxsc4o6rsb3tbgykpsawia
+  tests/test_utils.py: bafybeichbof6bftqhwgad4xaqwzks53rtsd34nggt7sxit2yuzd4w6b7ea
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
@@ -179,6 +179,7 @@ models:
       randomness: benchmarking_randomness
       nr_mech_calls: 60
       use_multi_bets_mode: true
+      enable_multi_bets_fallback: false
     class_name: BenchmarkingMode
   network_subgraph:
     args:

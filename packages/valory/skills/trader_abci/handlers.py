@@ -89,6 +89,10 @@ WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
+TRADING_STRATEGY_EXPLANATION = {
+    "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
+    "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
+}
 
 
 class HttpHandler(BaseHttpHandler):
@@ -165,6 +169,9 @@ class HttpHandler(BaseHttpHandler):
             rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
         )
         is_enabled_url = rf"{hostname_regex}\/features"
+        position_details_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
+        )
 
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
@@ -185,6 +192,10 @@ class HttpHandler(BaseHttpHandler):
                 (trading_details_url_regex, self._handle_get_trading_details),
                 (is_enabled_url, self._handle_get_features),
                 (agent_profit_over_time_url_regex, self._handle_get_profit_over_time),
+                (
+                    position_details_url_regex,
+                    self._handle_get_position_details,
+                ),
                 (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
@@ -242,11 +253,15 @@ class HttpHandler(BaseHttpHandler):
             # Get current trading strategy
             trading_strategy = self.shared_state.chatui_config.trading_strategy
             trading_type = self._get_ui_trading_strategy(trading_strategy).value
+            trading_strategy_explanation = TRADING_STRATEGY_EXPLANATION.get(
+                trading_type, ""
+            )
 
             # Format response
             formatted_response = {
                 "agent_id": safe_address,
                 "trading_type": trading_type,
+                "trading_type_description": trading_strategy_explanation,
             }
 
             self.context.logger.info(f"Sending trading details: {formatted_response}")
