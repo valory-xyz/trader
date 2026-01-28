@@ -253,13 +253,11 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
     requests(
       where: { parsedRequest_: { questionTitle: $questionTitle } }
       first: 1
-      orderBy: requestId
       orderDirection: desc
     ) {
-      parsedRequest {
-        questionTitle
+      deliveries {
+        model
       }
-      tool
     }
   }
 }
