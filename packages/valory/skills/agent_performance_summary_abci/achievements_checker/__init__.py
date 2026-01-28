@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,22 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the transaction payloads for the fetch performance summary abci."""
-
-from dataclasses import dataclass
-
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-
-
-@dataclass(frozen=True)
-class FetchPerformanceDataPayload(BaseTxPayload):
-    """Represents a transaction payload for the performance summary."""
-
-    vote: bool
-
-
-@dataclass(frozen=True)
-class UpdateAchievementsPayload(BaseTxPayload):
-    """Represents a transaction payload for the update achievements round."""
-
-    vote: bool
+"""This module contains functionality for checking Agent achievements."""

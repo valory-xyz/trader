@@ -136,6 +136,25 @@ class ProfitOverTimeData:
 
 
 @dataclass
+class Achievement:
+    """Achievement."""
+
+    achievement_id: str
+    achievement_type: str
+    title: str
+    description: str
+    timestamp: int
+    data: Dict
+
+
+@dataclass
+class Achievements:
+    """Achievements dictionary."""
+
+    items: Dict[str, Achievement] = field(default_factory=dict)
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -151,6 +170,7 @@ class AgentPerformanceSummary:
     agent_performance: Optional[AgentPerformanceData] = None
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
+    achievements: Optional[Achievements] = None
 
     def __post_init__(self):
         """Convert dicts to dataclass instances."""

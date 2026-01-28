@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Generator, Optional, Set, Type, cast
+from typing import Any, Generator, List, Optional, Set, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    Achievements,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
     AgentDetails,
@@ -44,14 +45,17 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
+    UpdateAchievementsPayload,
 )
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     FetchPerformanceDataRound,
+    UpdateAchievementsRound,
 )
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import PredictionsFetcher
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import BetPayoutChecker
 
 
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
@@ -872,9 +876,69 @@ class FetchPerformanceSummaryBehaviour(
         self.set_done()
 
 
+class UpdateAchievementsBehaviour(
+    APTQueryingBehaviour,
+):
+    """A behaviour for updating the agent achievements database."""
+
+    matching_round = UpdateAchievementsRound
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize Behaviour."""
+        super().__init__(**kwargs)
+
+        if self.params.is_running_on_polymarket:
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="payout_polymarket")
+        else:
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="payout_omen")
+
+    def async_act(self) -> Generator:
+        """Do the action."""
+
+        agent_performance_summary = self.shared_state.read_existing_performance_summary()
+
+        achievements = agent_performance_summary.achievements
+        if achievements is None:
+            achievements = Achievements()
+            agent_performance_summary.achievements = achievements
+
+        achievements_updated = False
+        achievements_updated = self._bet_payout_checker.update_achievements(
+            achievements=agent_performance_summary.achievements,
+            prediction_history=agent_performance_summary.prediction_history
+        )
+
+        if achievements_updated:
+            self.context.logger.info(
+                "Agent achievements updated."
+            )
+            self.shared_state.overwrite_performance_summary(agent_performance_summary)
+        else:
+            self.context.logger.info(
+                "Agent achievements not updated."
+            )
+
+        success = True  # Left to handle error conditions on future achievement checkers
+        payload = UpdateAchievementsPayload(
+            sender=self.context.agent_address,
+            vote=success,
+        )
+
+        yield from self.finish_behaviour(payload)
+        return
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
+            yield from self.send_a2a_transaction(payload)
+            yield from self.wait_until_round_end()
+
+        self.set_done()
+
+
 class AgentPerformanceSummaryRoundBehaviour(AbstractRoundBehaviour):
     """This behaviour manages the consensus stages for the AgentPerformanceSummary behaviour."""
 
     initial_behaviour_cls = FetchPerformanceSummaryBehaviour
     abci_app_cls = AgentPerformanceSummaryAbciApp
-    behaviours: Set[Type[BaseBehaviour]] = {FetchPerformanceSummaryBehaviour}  # type: ignore
+    behaviours: Set[Type[BaseBehaviour]] = {FetchPerformanceSummaryBehaviour, UpdateAchievementsBehaviour}  # type: ignore
