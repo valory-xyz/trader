@@ -7,17 +7,22 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
-  behaviours.py: bafybeibb27wivss5laf56y27rsk2o6ebhdvmgtf6jusnvc6mnlizypjqka
+  achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
+  achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
+  achievements_checker/bet_payout_checker.py: bafybeidgaht5nqjf4r5wuayjnsywt4fqdcymahkyn3yc3epwsd3ipdclxe
+  behaviours.py: bafybeidn2o3v7anocdq53w22tduvz5j3vf37ibhhvha2eijgyv5l655f3a
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
-  fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
+  fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/predictions_helper.py: bafybeica4o4m5s6pwhlyfuhnojqbaj7ap4hxwdlxjfemenhj4ialch3yqy
-  graph_tooling/queries.py: bafybeibn6v6h44kzqu5tlalbrsp24sa6tfiqzmywsenrtbkg2ij3z6in3y
-  graph_tooling/requests.py: bafybeiccl6gnorsxnz7jionn5rcg3vbu5b5nybccybxklswxnkmh2dbqou
+  graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
+  graph_tooling/polymarket_predictions_helper.py: bafybeidbwypcbsmb7dxheqcgctupjatu2dwtodn7rdn3hcp7enk7mgpvry
+  graph_tooling/predictions_helper.py: bafybeiaog54h22lqhda7d5ou7icsk2csb6s7pqntfd2meq6xdgaxokjngi
+  graph_tooling/queries.py: bafybeifi2qofwwsz5dzuw3ubhenepvqrazv7bf2zovsvmempjah6yzfpki
+  graph_tooling/requests.py: bafybeidepe2krnj2gb4fwmx3v6wbow2ebaobfjwze7d6rrvcqwq4nxefue
   handlers.py: bafybeib2ye3phzqi5yknt57xshtagxh3xncsh4d3cbiygo76nbo7yreoai
-  models.py: bafybeidh52qajmlxb6e2slxnfr44adfix3kbur4kxge3qrosxxekv2gcxa
-  payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
-  rounds.py: bafybeia6eslp54uzjxpdqhtrqj2wrvozgkflob4m3knqtqsxuf63gnsg5a
+  models.py: bafybeif7zp4ff2hc3mbfjuinygyvnaqumsdpqjk7rxhxrrbvvxkawanunm
+  payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
+  rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
 fingerprint_ignore_patterns: []
 contracts:
 - valory/erc20:0.1.0:bafybeidrjq5rf6ay2okyy3eoseeafzl7bmngcbs7nhohbifdephc77tbke
