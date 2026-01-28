@@ -13,9 +13,15 @@ start_states:
 states:
 - FetchPerformanceDataRound
 - FinishedFetchPerformanceDataRound
+- UpdateAchievementsRound
 transition_func:
-    (FetchPerformanceDataRound, DONE): FinishedFetchPerformanceDataRound
-    (FetchPerformanceDataRound, FAIL): FinishedFetchPerformanceDataRound
+    (FetchPerformanceDataRound, DONE): UpdateAchievementsRound
+    (FetchPerformanceDataRound, FAIL): UpdateAchievementsRound
     (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
     (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
-    (FetchPerformanceDataRound, ROUND_TIMEOUT): FinishedFetchPerformanceDataRound
+    (FetchPerformanceDataRound, ROUND_TIMEOUT): UpdateAchievementsRound
+    (UpdateAchievementsRound, DONE): FinishedFetchPerformanceDataRound
+    (UpdateAchievementsRound, FAIL): FinishedFetchPerformanceDataRound
+    (UpdateAchievementsRound, NONE): FetchPerformanceDataRound
+    (UpdateAchievementsRound, NO_MAJORITY): FetchPerformanceDataRound
+    (UpdateAchievementsRound, ROUND_TIMEOUT): FinishedFetchPerformanceDataRound

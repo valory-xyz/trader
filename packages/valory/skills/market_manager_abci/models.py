@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -107,6 +107,12 @@ class MarketManagerParams(BaseParams):
         )
         self.use_multi_bets_mode: bool = self._ensure(
             "use_multi_bets_mode", kwargs, bool
+        )
+        self.is_running_on_polymarket: bool = self._ensure(
+            "is_running_on_polymarket", kwargs, bool
+        )
+        self.enable_multi_bets_fallback: bool = self._ensure(
+            "enable_multi_bets_fallback", kwargs, bool
         )
         super().__init__(*args, **kwargs)
 

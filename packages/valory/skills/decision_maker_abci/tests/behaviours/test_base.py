@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2021-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
-from packages.valory.skills.market_manager_abci.behaviours import READ_MODE
+from packages.valory.skills.market_manager_abci.behaviours.base import READ_MODE
 
 
 settings.load_profile(profile_name)
@@ -239,11 +239,11 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.benchmarking_mode.enabled = benchmarking_mode_enabled
         with mock.patch.object(behaviour, "read_bets"):
             collateral_token = WXDAI if is_wxdai else "unknown"
-            behaviour.bets = [(mock.MagicMock(collateralToken=collateral_token))]
+            behaviour.bets = [mock.MagicMock(collateralToken=collateral_token)]
             result = behaviour._collateral_amount_info(amount)
 
         if benchmarking_mode_enabled or is_wxdai:
-            assert result == f"{behaviour.wei_to_native(amount)} wxDAI"
+            assert result == f"{behaviour.wei_to_native(amount):6f} wxDAI"
         else:
             assert (
                 result
@@ -292,6 +292,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             0,
             0,
             0,
+            "0x000000000000000000000000000000000000000",
         )
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls

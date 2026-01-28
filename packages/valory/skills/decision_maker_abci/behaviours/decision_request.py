@@ -49,7 +49,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
     @property
     def metadata(self) -> Dict[str, str]:
         """Get the metadata as a dictionary."""
-        return asdict(self._metadata)
+        return asdict(self._metadata)  # type: ignore[arg-type]
 
     @property
     def n_slots_supported(self) -> bool:

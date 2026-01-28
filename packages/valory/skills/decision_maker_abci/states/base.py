@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ class Event(Enum):
     DONE_SELL = "done_sell"
     DONE_NO_SELL = "done_no_sell"
     NONE = "none"
+    FETCH_ERROR = "fetch_error"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
     BENCHMARKING_FINISHED = "benchmarking_finished"
@@ -67,6 +68,7 @@ class Event(Enum):
     TIE = "tie"
     UNPROFITABLE = "unprofitable"
     INSUFFICIENT_BALANCE = "insufficient_balance"
+    APPROVAL_FAILED = "approval_failed"
     CALC_BUY_AMOUNT_FAILED = "calc_buy_amount_failed"
     CALC_SELL_AMOUNT_FAILED = "calc_sell_amount_failed"
     NO_REDEEMING = "no_redeeming"
@@ -77,6 +79,13 @@ class Event(Enum):
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
     NO_MAJORITY = "no_majority"
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
+    POLYMARKET_DONE = "polymarket_done"
+    POLYMARKET_FETCH_MARKETS = "polymarket_fetch_markets"
+    BET_PLACEMENT_FAILED = "bet_placement_failed"
+    BET_PLACEMENT_DONE = "bet_placement_done"
+    SKIP = "skip"
+    SET_APPROVAL = "set_approval"
+    PREPARE_TX = "prepare_tx"
 
 
 class SynchronizedData(

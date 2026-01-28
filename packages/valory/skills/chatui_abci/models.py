@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -58,6 +58,8 @@ class ChatuiConfig:
     trading_strategy: Optional[str] = None
     initial_trading_strategy: Optional[str] = None
     mech_tool: Optional[str] = None
+    fixed_bet_size: Optional[int] = None
+    max_bet_size: Optional[int] = None
 
 
 class SharedState(BaseSharedState):
@@ -120,6 +122,18 @@ class SharedState(BaseSharedState):
             )
             self._chatui_config = ChatuiConfig()
         trading_strategy_yaml = self.context.params.trading_strategy
+
+        max_bet_size_store = self._chatui_config.max_bet_size
+        if max_bet_size_store is None or not isinstance(max_bet_size_store, str):
+            self._chatui_config.max_bet_size = self.context.params.strategies_kwargs[
+                "default_max_bet_size"
+            ]
+
+        fixed_bet_size_store = self._chatui_config.fixed_bet_size
+        if fixed_bet_size_store is None or not isinstance(fixed_bet_size_store, str):
+            self._chatui_config.fixed_bet_size = self.context.params.strategies_kwargs[
+                "absolute_min_bet_size"
+            ]
 
         trading_strategy_store = self._chatui_config.trading_strategy
         initial_trading_strategy_store = self._chatui_config.initial_trading_strategy

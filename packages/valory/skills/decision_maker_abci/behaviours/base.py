@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 import dataclasses
 import os
 from abc import ABC
+from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
@@ -60,7 +61,9 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
-from packages.valory.skills.market_manager_abci.behaviours import BetsManagerBehaviour
+from packages.valory.skills.market_manager_abci.behaviours.base import (
+    BetsManagerBehaviour,
+)
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     CONFIDENCE_FIELD,
@@ -82,6 +85,8 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+USDC_POLYGON = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -286,10 +291,45 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get whether the collateral address is wxDAI."""
         return self.collateral_token.lower() == WXDAI.lower()
 
+    def _is_usdc(self, collateral_token: str) -> bool:
+        """Get whether the collateral address is USDC (Polygon)."""
+        return collateral_token.lower() in [
+            USDC_POLYGON.lower(),
+            USCDE_POLYGON.lower(),
+        ]
+
+    @property
+    def is_usdc(self) -> bool:
+        """Get whether the collateral address is USDC (Polygon)."""
+        return self._is_usdc(self.collateral_token)
+
     @staticmethod
     def wei_to_native(wei: int) -> float:
-        """Convert WEI to native token."""
+        """Convert WEI to native token (18 decimals for MATIC/xDAI)."""
         return wei / 10**18
+
+    @staticmethod
+    def usdc_to_native(usdc_wei: int) -> float:
+        """Convert USDC wei to native token (6 decimals)."""
+        return usdc_wei / 10**6
+
+    def get_token_precision(self) -> int:
+        """Get the token precision based on the collateral token type."""
+        if self.is_usdc:
+            return 10**6
+        return 10**18
+
+    def convert_to_native(self, amount: int) -> float:
+        """Convert token amount to native representation based on collateral token type."""
+        if self.is_usdc:
+            return self.usdc_to_native(amount)
+        return self.wei_to_native(amount)
+
+    def get_token_name(self) -> str:
+        """Get the token name based on the collateral token type."""
+        if self.is_usdc:
+            return "USDC"
+        return "xDAI"
 
     def get_active_sampled_bet(self) -> Bet:
         """Function to get the selected bet that is active without reseting self.bets."""
@@ -303,19 +343,22 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _collateral_amount_info(self, amount: int) -> str:
         """Get a description of the collateral token's amount."""
-        is_wxdai = True if self.benchmarking_mode.enabled else self.is_wxdai
-
-        return (
-            f"{self.wei_to_native(amount)} wxDAI"
-            if is_wxdai
-            else f"{amount} WEI of the collateral token with address {self.collateral_token}"
-        )
+        if self.benchmarking_mode.enabled or self.is_wxdai:
+            return f"{self.wei_to_native(amount):.6f} wxDAI"
+        elif self.is_usdc:
+            return f"{self.usdc_to_native(amount):.6f} USDC.e"
+        else:
+            return f"{amount} WEI of the collateral token with address {self.collateral_token}"
 
     def _report_balance(self) -> None:
         """Report the balances of the native and the collateral tokens."""
         native = self.wei_to_native(self.wallet_balance)
+        # Determine native token name based on collateral token
+        native_token_name = "POL" if self.is_usdc else "xDAI"
         collateral = self._collateral_amount_info(self.token_balance)
-        self.context.logger.info(f"The safe has {native} xDAI and {collateral}.")
+        self.context.logger.info(
+            f"The safe has {native:.6f} {native_token_name} and {collateral}."
+        )
 
     def _mock_balance_check(self) -> None:
         """Mock the balance of the native and the collateral tokens."""
@@ -368,6 +411,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         updated = sampled_bet.update_investments(self.synchronized_data.bet_amount)
         if not updated:
             self.context.logger.error("Could not update the investments!")
+
+        # Update strategy for the bet that was just placed
+        self._update_bet_strategy(sampled_bet)
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
@@ -448,6 +494,38 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             self.download_next_strategy()
             yield from self.sleep(self.params.sleep_time)
 
+    def _update_with_values_from_chatui(
+        self, strategies_kwargs: Dict[str, Any]
+    ) -> Dict:
+        """Set the chatui values in the strategies kwargs."""
+        strategies_kwargs = deepcopy(strategies_kwargs)
+        chatui_config = self.shared_state.chatui_config
+
+        # For kelly criterion strategy
+        if chatui_config.max_bet_size is not None:
+            strategies_kwargs["max_bet"] = chatui_config.max_bet_size
+
+        # For bet amount per threshold strategy
+        if chatui_config.fixed_bet_size is not None:
+            for key in strategies_kwargs["bet_amount_per_threshold"]:
+                strategies_kwargs["bet_amount_per_threshold"][
+                    key
+                ] = chatui_config.fixed_bet_size
+
+        return strategies_kwargs
+
+    def _get_decimals_for_token(self, collateral_token: str) -> int:
+        """Get the decimals for the given collateral token."""
+        return (
+            6
+            if collateral_token.lower()
+            in [
+                USDC_POLYGON.lower(),
+                USCDE_POLYGON.lower(),
+            ]
+            else 18
+        )
+
     def get_bet_amount(
         self,
         win_probability: float,
@@ -456,6 +534,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         other_tokens_in_pool: int,
         bet_fee: int,
         weighted_accuracy: float,
+        collateral_token: str,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
@@ -467,8 +546,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         tried_strategies: Set[str] = set()
         while True:
             self.context.logger.info(f"Used trading strategy: {next_strategy}")
+
             # the following are always passed to a strategy script, which may choose to ignore any
-            kwargs: Dict[str, Any] = self.params.strategies_kwargs
+            kwargs: Dict[str, Any] = self._update_with_values_from_chatui(
+                self.params.strategies_kwargs
+            )
+
+            kwargs["token_decimals"] = 6 if self._is_usdc(collateral_token) else 18
+            kwargs["min_bet"] = self.params.strategies_kwargs["absolute_min_bet_size"]
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
@@ -891,3 +976,19 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
+
+    def _update_bet_strategy(self, bet: Bet) -> None:
+        """Update the strategy for the bet that was just placed."""
+        try:
+            # Get current trading strategy and store it directly
+            trading_strategy = self.shared_state.chatui_config.trading_strategy
+
+            # Update strategy for the bet
+            bet.strategy = trading_strategy
+
+            self.context.logger.info(
+                f"Updated strategy for bet {bet.id}: {trading_strategy}"
+            )
+
+        except Exception as e:
+            self.context.logger.warning(f"Could not update bet strategy: {e}")

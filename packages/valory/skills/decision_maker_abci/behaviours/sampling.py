@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -63,7 +63,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
 
-    def processable_bet(self, bet: Bet, now: int) -> bool:
+    def _multi_bets_fallback_allowed(self) -> bool:
+        return self.params.enable_multi_bets_fallback and not self.kpi_is_met
+
+    def processable_bet(
+        self, bet: Bet, now: int, multi_bets_active: bool = False
+    ) -> bool:
         """Whether we can process the given bet."""
 
         if bet.queue_status.is_expired():
@@ -77,9 +82,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.info(f"Bet {bet.id} has no bets")
             return False
 
-        bet_mode_allowable = (
-            self.params.use_multi_bets_mode or not bets_placed or selling_specific
-        )
+        bet_mode_allowable = multi_bets_active or not bets_placed or selling_specific
 
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
@@ -208,13 +211,36 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
-        # filter in only the bets that are processable and have a queue_status that allows them to be sampled
+        # First, try to find bets in strict mode (no fallback) for single bet mode. But allow mutli-bets directly if enabled.
         available_bets = list(
             filter(
-                lambda bet: self.processable_bet(bet, now=now),
+                lambda bet: self.processable_bet(
+                    bet, now=now, multi_bets_active=self.params.use_multi_bets_mode
+                ),
                 self.bets,
             )
         )
+
+        # If no bets available and fallback is enabled, try again with fallback
+        if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
+            self.context.logger.info(
+                "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
+            )
+            available_bets = list(
+                filter(
+                    lambda bet: self.processable_bet(
+                        bet,
+                        now=now,
+                        multi_bets_active=True,
+                    ),
+                    self.bets,
+                )
+            )
+            if len(available_bets) > 0:
+                self.context.logger.info(
+                    f"Multi-bet fallback activated: {len(available_bets)} bets now available"
+                )
+
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
@@ -225,21 +251,30 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             if not idx:
                 return None
 
-        # sample a bet using the priority logic
-        idx = self._sampled_bet_idx(available_bets)
-        sampled_bet = self.bets[idx]
+        # Loop until we find a valid bet or run out of options
+        while available_bets:
+            # sample a bet using the priority logic
+            idx = self._sampled_bet_idx(available_bets)
+            sampled_bet = self.bets[idx]
 
-        # fetch the liquidity of the sampled bet and cache it
-        liquidity = sampled_bet.scaledLiquidityMeasure
-        if liquidity == 0:
-            msg = "There were no unprocessed bets with non-zero liquidity!"
-            self.context.logger.warning(msg)
-            return None
-        self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
+            # Check liquidity
+            liquidity = sampled_bet.scaledLiquidityMeasure
+            if liquidity == 0:
+                msg = f"Sampled bet {sampled_bet.id} has zero liquidity, skipping"
+                self.context.logger.warning(msg)
+                available_bets.remove(sampled_bet)
+                continue
 
-        msg = f"Sampled bet: {sampled_bet}"
-        self.context.logger.info(msg)
-        return idx
+            # Valid bet found
+            self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
+            msg = f"Sampled bet: {sampled_bet}"
+            self.context.logger.info(msg)
+            return idx
+
+        # No valid bets found
+        msg = "No valid bets found after liquidity validation!"
+        self.context.logger.warning(msg)
+        return None
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""
