@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib7tctaaccvntm24mteerycxds7hjfitdc5tjhllzeguuyca3asnu
+agent: valory/trader:0.1.0:bafybeiczigyafl5buwe7ndtypjgc5lr2zfjjdov4duyuuyklu3dduk26pa
 number_of_agents: 1
 deployment:
   agent:
@@ -308,6 +308,17 @@ models:
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
       url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
+  mechs_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${POLYGON_MECH_SUBGRAPH_METHOD:str:POST}
+      response_key: ${POLYGON_MECH_SUBGRAPH_RESPONSE_KEY:str:data:service}
+      response_type: ${POLYGON_MECH_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${POLYGON_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${POLYGON_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${POLYGON_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${POLYGON_MECH_SUBGRAPH_RETRIES:int:5}
+      url: ${POLYGON_MECH_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0}
 ---
 public_id: valory/ledger:0.19.0
 type: connection

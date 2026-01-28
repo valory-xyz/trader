@@ -343,8 +343,8 @@ class HttpHandler(BaseHttpHandler):
         """
         Adjust fund status based on chain-specific token equivalence:
 
-        - Gnosis (Omen): treat wxDAI as xDAI
-        - Polygon (Polymarket): treat USDC as POL with decimal conversion
+        - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
+        - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
 
         :return: The adjusted fund requirements.
         """
@@ -359,22 +359,40 @@ class HttpHandler(BaseHttpHandler):
             native_status = safe_balances.tokens[chain_config["native_token_address"]]
 
             if self.params.is_running_on_polymarket:
-                # On Polygon: USDC balance considered as POL
-                # Convert USDC to POL equivalent using their decimal places
+                # On Polygon: USDC balance needs to be converted to POL equivalent
+                # Using LiFi to get real-time exchange rate since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
                 usdc_balance = int(usdc_status.balance or 0)
                 usdc_decimals = usdc_status.decimals
-                native_decimals = native_status.decimals
-                # Convert from USDC decimals to native token decimals
-                if usdc_decimals is None or native_decimals is None:
+                pol_decimals = native_status.decimals
+
+                if usdc_decimals is None or pol_decimals is None:
                     self.context.logger.error(
                         "Missing decimal information for USDC or native token. Can't apply adjustment."
                     )
                     return funds_status
-                decimal_diff = native_decimals - usdc_decimals
-                adjustment_balance = usdc_balance * (10**decimal_diff)
+
+                # If USDC balance is zero, no adjustment needed
+                if usdc_balance == 0:
+                    self.context.logger.info(
+                        "USDC balance is zero. Skipping adjustment."
+                    )
+                    return funds_status
+
+                # Get POL equivalent for USDC balance using LiFi
+                pol_equivalent = self._get_pol_equivalent_for_usdc(
+                    usdc_balance, chain_config
+                )
+
+                if pol_equivalent is None:
+                    self.context.logger.warning(
+                        "Failed to get POL/USDC exchange rate from LiFi. Skipping adjustment."
+                    )
+                    return funds_status
+
+                adjustment_balance = pol_equivalent
             else:
-                # On Gnosis: wxDAI balance considered as xDAI (both same decimals)
+                # On Gnosis: wxDAI balance considered as xDAI (both same decimals, 1:1 rate)
                 wrapped_native_status = safe_balances.tokens[
                     chain_config["wrapped_native_address"]
                 ]
@@ -386,13 +404,59 @@ class HttpHandler(BaseHttpHandler):
             )
             return funds_status
 
+        actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
+
         if native_status.deficit != 0:
             native_status.deficit = max(
                 0,
-                int(native_status.deficit or 0) - adjustment_balance,
+                int(native_status.topup) - actual_considered_balance,
             )
 
         return funds_status
+
+    def _get_pol_equivalent_for_usdc(
+        self,
+        usdc_balance: int,
+        chain_config: Dict[str, Any],
+    ) -> Optional[int]:
+        """
+        Get the POL equivalent for a given USDC balance using LiFi quote.
+
+        :param usdc_balance: USDC balance in wei
+        :param chain_config: Chain configuration dictionary
+        :return: POL equivalent amount in wei, or None if failed
+        """
+        try:
+            safe_address = self.synchronized_data.safe_contract_address
+
+            # Get quote from USDC to POL using LiFi
+            quote = self._get_lifi_quote(
+                from_token=chain_config["usdc_address"],
+                to_token=chain_config["native_token_address"],
+                from_amount=str(usdc_balance),
+                from_address=safe_address,
+                to_address=safe_address,
+                chain_config=chain_config,
+                timeout=10,
+            )
+
+            if not quote:
+                return None
+
+            # Extract the estimated output amount in wei
+            to_amount = quote.get("estimate", {}).get("toAmount")
+
+            if to_amount:
+                return int(to_amount)
+
+            self.context.logger.error("No toAmount in LiFi quote response")
+            return None
+
+        except Exception as e:
+            self.context.logger.error(
+                f"Error getting POL equivalent for USDC: {str(e)}"
+            )
+            return None
 
     def _handle_get_funds_status(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -506,38 +570,67 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error checking USDC balance: {str(e)}")
             return None
 
-    def _get_lifi_quote_sync(
+    def _get_lifi_quote(
         self,
-        eoa_address: str,
-        usdc_address: str,
-        to_amount: str,
+        from_token: str,
+        to_token: str,
+        from_address: str,
+        to_address: str,
         chain_config: Dict[str, Any],
+        from_amount: Optional[str] = None,
+        to_amount: Optional[str] = None,
+        timeout: int = 30,
     ) -> Optional[Dict]:
-        """Get LiFi quote synchronously."""
-        try:
-            chain_id = chain_config["chain_id"]
-            native_token_address = chain_config["native_token_address"]
+        """
+        Get LiFi quote for token swap.
 
+        :param from_token: Source token address
+        :param to_token: Destination token address
+        :param from_address: Address sending the tokens
+        :param to_address: Address receiving the tokens
+        :param chain_config: Chain configuration dictionary
+        :param from_amount: Amount to swap from (for standard quote)
+        :param to_amount: Desired amount to receive (for toAmount quote)
+        :param timeout: Request timeout in seconds
+        :return: LiFi quote response or None if failed
+        """
+        try:
             params = {
-                "fromChain": chain_id,
-                "toChain": chain_id,
-                "fromToken": native_token_address,
-                "toToken": usdc_address,
-                "fromAddress": eoa_address,
-                "toAddress": eoa_address,
-                "toAmount": to_amount,
+                "fromChain": chain_config["chain_id"],
+                "toChain": chain_config["chain_id"],
+                "fromToken": from_token,
+                "toToken": to_token,
+                "fromAddress": from_address,
+                "toAddress": to_address,
                 "slippage": SLIPPAGE_FOR_SWAP,
                 "integrator": "valory",
             }
 
-            response = requests.get(
-                self.params.lifi_quote_to_amount_url, params=params, timeout=30
-            )
+            # Add amount parameter based on what's provided
+            if to_amount is not None:
+                params["toAmount"] = to_amount
+                url = self.params.lifi_quote_to_amount_url
+            elif from_amount is not None:
+                params["fromAmount"] = from_amount
+                url = self.params.lifi_quote_to_amount_url.replace(
+                    "/quote/toAmount", "/quote"
+                )
+            else:
+                self.context.logger.error(
+                    "Either from_amount or to_amount must be provided"
+                )
+                return None
+
+            response = requests.get(url, params=params, timeout=timeout)
 
             if response.status_code == 200:
                 return response.json()
 
+            self.context.logger.warning(
+                f"LiFi API failed with status {response.status_code} {response.text}"
+            )
             return None
+
         except Exception as e:
             self.context.logger.error(f"Error getting LiFi quote: {str(e)}")
             return None
@@ -693,8 +786,13 @@ class HttpHandler(BaseHttpHandler):
             )
 
             top_up_usdc_amount = str(top_up)
-            quote = self._get_lifi_quote_sync(
-                eoa_address, usdc_address, top_up_usdc_amount, chain_config
+            quote = self._get_lifi_quote(
+                from_token=chain_config["native_token_address"],
+                to_token=usdc_address,
+                from_address=eoa_address,
+                to_address=eoa_address,
+                chain_config=chain_config,
+                to_amount=top_up_usdc_amount,
             )
             if not quote:
                 self.context.logger.error("Failed to get LiFi quote")
