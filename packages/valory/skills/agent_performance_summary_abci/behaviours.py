@@ -894,10 +894,6 @@ class UpdateAchievementsBehaviour(
 
     def async_act(self) -> Generator:
         """Do the action."""
-        payload = UpdateAchievementsPayload(
-            sender=self.context.agent_address,
-            vote=True,
-        )
 
         agent_performance_summary = self.shared_state.read_existing_performance_summary()
 
@@ -913,7 +909,15 @@ class UpdateAchievementsBehaviour(
         )
 
         if achievements_updated:
+            self.context.logger.info(
+                "Agent achievements updated."
+            )
             self.shared_state.overwrite_performance_summary(agent_performance_summary)
+
+        payload = UpdateAchievementsPayload(
+            sender=self.context.agent_address,
+            vote=achievements_updated,
+        )
 
         yield from self.finish_behaviour(payload)
         return
