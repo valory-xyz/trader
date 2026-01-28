@@ -199,3 +199,4 @@ ef4b31dd87eafed37776689be95b0002ae235bd4:packages/valory/skills/trader_abci/pred
 813e0227406c06c838170445151247591996a946:packages/valory/skills/trader_abci/predict-ui-build/static/js/main.b2df20f8.js:generic-api-key:2
 813e0227406c06c838170445151247591996a946:packages/valory/skills/trader_abci/predict-ui-build/static/js/main.b2df20f8.js:generic-api-key:2
 813e0227406c06c838170445151247591996a946:packages/valory/skills/trader_abci/predict-ui-build/static/js/main.b2df20f8.js:generic-api-key:2
+d35223455f423bfb1e20a70afa5dcdf9bca24b56:packages/valory/skills/agent_performance_summary_abci/graph_tooling/requests.py:generic-api-key:51
