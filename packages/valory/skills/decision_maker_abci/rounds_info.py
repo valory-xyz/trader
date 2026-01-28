@@ -214,7 +214,7 @@ ROUNDS_INFO = {
     },
     "tool_selection_round": {
         "name": "Choosing the tool used for making a prediction",
-        "description": "Selects which external tool to use for determining a trade's outcome.",
+        "description": "Selects which external tool to use for determining a trade’s outcome.",
         "transitions": {},
     },
     "update_bets_round": {
@@ -258,8 +258,8 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "mech_information_round": {
-        "name": "Fetching mechs' information",
-        "description": "Fetches the mechs' information",
+        "name": "Fetching mech's information",
+        "description": "Fetches the mech's information",
         "transitions": {},
     },
     "mech_version_detection_round": {

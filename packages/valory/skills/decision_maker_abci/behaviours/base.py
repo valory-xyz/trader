@@ -412,6 +412,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if not updated:
             self.context.logger.error("Could not update the investments!")
 
+        # Update strategy for the bet that was just placed
+        self._update_bet_strategy(sampled_bet)
+
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
@@ -973,3 +976,19 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             yield from self.wait_until_round_end()
 
         self.set_done()
+
+    def _update_bet_strategy(self, bet: Bet) -> None:
+        """Update the strategy for the bet that was just placed."""
+        try:
+            # Get current trading strategy and store it directly
+            trading_strategy = self.shared_state.chatui_config.trading_strategy
+
+            # Update strategy for the bet
+            bet.strategy = trading_strategy
+
+            self.context.logger.info(
+                f"Updated strategy for bet {bet.id}: {trading_strategy}"
+            )
+
+        except Exception as e:
+            self.context.logger.warning(f"Could not update bet strategy: {e}")
