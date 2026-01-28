@@ -20,7 +20,7 @@
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
 
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
