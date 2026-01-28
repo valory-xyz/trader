@@ -13,8 +13,8 @@ fingerprint:
   behaviours/fetch_markets_router.py: bafybeiezt27o6u5tstmopzyyc5g7goyzsremai36ldxn7n2qjvhimbiyha
   behaviours/polymarket_fetch_market.py: bafybeia2hc76klwp4xw3haxdl4qxk3ycrer5yfkhq3nxvqhtm2ge26bp5y
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
-  behaviours/update_bets.py: bafybeihealdlbwmqdgb7fww4nv7tjz4k72mzhacudfytc52fccnnyzg6di
-  bets.py: bafybeihyr2eimiaotbjxvlqqo74uhh5ao6qpwrnxt466kw7acodcbkrmbq
+  behaviours/update_bets.py: bafybeiak53hcbqididneuw5crym5b4bkgwwc5jxvjw7zvysx3jsnmf6rbu
+  bets.py: bafybeigyzu3yi3mtvisicu35baclc6a64hjv5fhxc6n673cga57a47uwhy
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -27,7 +27,7 @@ fingerprint:
   graph_tooling/requests.py: bafybeif24qiwqjwvfbutbolodnctanzobipma636emrbv3eamafzxndgze
   graph_tooling/utils.py: bafybeihhxfifc5y3fjnxnan2zomsgr47h6u3khfeymi4p2x6txkkxmjq3e
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeidh5neat3l6kdjvl3wilnfcyr2bkomcyuejgfzfvimnxthpbbnvmq
+  models.py: bafybeib7kj5uaov7krj2u6slazd2oqe7jk3eyeeps3vvfpokr6pcxnm3xu
   payloads.py: bafybeiduptsixzxaut2zvak3htjmhkm2jgvprlvkaiiwjjtel7w5cwhw2y
   rounds.py: bafybeigdtdskkaxkf5ov74mnvq65koajwfbm77n6dxcp273l3bxknecd3u
   states/__init__.py: bafybeiawiqqbn667kpne23y5fvq3tgo3lyd5hho44zm6zh66bplwxpqgqa
@@ -41,16 +41,16 @@ fingerprint:
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeigzwujgok3pxgjxuumpbocyadhjlrdshsljnispvzz3muheprvvhm
-  tests/test_utils.py: bafybeicwend2pe4ginwtey64qcokxepfpeizomh2jdnbzgcbazxopyn7lq
+  tests/test_utils.py: bafybeiey75oehvz7g5z7rpf7wmbh3qofzq37sglhzbpsbmmnmlainm5o5q
 fingerprint_ignore_patterns: []
 connections:
 - valory/polymarket_client:0.1.0:bafybeihejljsobtmfc24y6edh7th2xg5psfkhglvzcwm6i5ligqxuedzs4
 contracts: []
 protocols:
-- valory/http:1.0.0:bafybeibxab2yfpchusrzw4rgrasjomtpphazanpivhhtznmuao5ny2lsmi
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeib4apybhtx3gx6o4x5b2nwqjkbdqi7dx7rxyrb5r3zztcdjiezvh4
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 behaviours:
   main:
     args: {}
@@ -192,6 +192,7 @@ models:
       randomness: benchmarking_randomness
       nr_mech_calls: 60
       use_multi_bets_mode: true
+      enable_multi_bets_fallback: false
     class_name: BenchmarkingMode
   network_subgraph:
     args:

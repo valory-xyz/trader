@@ -163,6 +163,7 @@ class Bet:
     outcome_token_ids: Optional[Dict[str, str]] = None
     condition_id: Optional[str] = None
     category: Optional[str] = None
+    strategy: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

@@ -80,6 +80,7 @@ PATH_TO_VAR = {
     "models/params/args/staking_contract_address": "STAKING_CONTRACT_ADDRESS",
     "models/params/args/ignored_mechs": "IGNORED_MECHS",
     "models/params/args/rpc_urls": "RPC_URLS",
+    "models/params/args/enable_multi_bets_fallback": "ENABLE_MULTI_BETS_FALLBACK",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
