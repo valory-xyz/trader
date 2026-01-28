@@ -33,12 +33,13 @@ class AchievementsChecker:
 
     def generate_achievement_id(self, seed: str) -> str:
         """Generate a deterministic achievement type ID"""
-        return str(uuid5(ACHIEVEMENTS_CHECKER_NS, f"{self.achievement_type()}/{seed}"))
+        return str(uuid5(ACHIEVEMENTS_CHECKER_NS, f"{self.achievement_type}/{seed}"))
 
     def update_achievements(self, achievements: Dict[str, Dict], **kwargs) -> bool:
         """Check if an achievement has been reached and populate `achievements`. Returns `True` if the achievements dictionary has been updated."""
         raise NotImplementedError()
 
+    @property
     def achievement_type(self) -> str:
         """Returns a string representing the achievement type"""
         raise NotImplementedError()
