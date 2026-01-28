@@ -582,11 +582,12 @@ class PredictionsFetcher:
     def _format_predictions(
         self, bets: List[Dict], safe_address: str, status_filter: Optional[str] = None
     ) -> List[Dict]:
-        """
-        Format raw bets into prediction objects.
+        """Format raw bets into prediction objects with proportional payout distribution.
 
-        Emits one item per bet (no aggregation), while still using market-level
-        participant totals to distribute payouts proportionally.
+        :param bets: List of raw bet dictionaries
+        :param safe_address: The safe address for filtering
+        :param status_filter: Optional status filter
+        :return: List of formatted prediction dictionaries
         """
         market_ctx = self._build_market_context(bets)
 
@@ -727,10 +728,11 @@ class PredictionsFetcher:
     def _get_prediction_status(
         self, bet: Dict, market_participant: Optional[Dict]
     ) -> str:
-        """
-        Determine the status of a prediction (pending, won, lost).
+        """Determine the status of a prediction (pending, won, lost), treating unredeemed wins as pending.
 
-        If won but no payout (unredeemed), treat as pending.
+        :param bet: The bet dictionary
+        :param market_participant: Optional market participant data
+        :return: Status string (pending, won, or lost)
         """
         fpmm = bet.get("fixedProductMarketMaker", {})
         current_answer = fpmm.get("currentAnswer")

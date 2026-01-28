@@ -114,10 +114,9 @@ class FetchPerformanceSummaryBehaviour(
         return time_since_last >= self._update_interval
 
     def _post_tx_round_detected(self) -> bool:
-        """
-        Detect whether post_tx_settlement_round occurred since last update.
+        """Detect whether post_tx_settlement_round occurred since last update.
 
-        post_tx_settlement_round is reached after every settled transaction.
+        :return: True if post_tx_settlement_round was detected in recent history
         """
         try:
             abci_app = self.context.state.round_sequence.abci_app  # type: ignore
@@ -162,11 +161,11 @@ class FetchPerformanceSummaryBehaviour(
     def _get_total_mech_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, int]:
-        """
-        Get total number of mech requests (cached).
+        """Get total number of mech requests (cached).
 
         :param agent_safe_address: The agent's safe address
         :return: Total number of mech requests
+        :yield: None
         """
         if self._total_mech_requests is not None:
             return self._total_mech_requests
@@ -187,11 +186,11 @@ class FetchPerformanceSummaryBehaviour(
     def _get_open_market_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, int]:
-        """
-        Get number of mech requests for open markets (cached).
+        """Get number of mech requests for open markets (cached).
 
         :param agent_safe_address: The agent's safe address
         :return: Number of open market requests
+        :yield: None
         """
         if self._open_market_requests is not None:
             return self._open_market_requests
@@ -236,13 +235,11 @@ class FetchPerformanceSummaryBehaviour(
     def _calculate_settled_mech_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, int]:
-        """
-        Calculate the number of settled mech requests.
-
-        Excludes mech requests for markets that are still open.
+        """Calculate the number of settled mech requests (excludes open markets).
 
         :param agent_safe_address: The agent's safe address
         :return: Number of settled mech requests
+        :yield: None
         """
         # Get total mech requests (uses cache if available)
         total_mech_requests = yield from self._get_total_mech_requests(
@@ -638,10 +635,11 @@ class FetchPerformanceSummaryBehaviour(
     def _build_multi_bet_allocations(
         self, daily_stats: list, mech_request_lookup: Dict[str, int]
     ) -> Tuple[Dict[int, int], Set[str]]:
-        """
-        For markets appearing on multiple days, split mech requests evenly across those days.
+        """For markets appearing on multiple days, split mech requests evenly across those days.
 
-        Returns (allocations_by_day, titles_allocated).
+        :param daily_stats: List of daily statistics
+        :param mech_request_lookup: Dictionary mapping question titles to request counts
+        :return: Tuple of (allocations_by_day, titles_allocated)
         """
         title_days: Dict[str, list] = {}
         for stat in daily_stats:
@@ -680,12 +678,13 @@ class FetchPerformanceSummaryBehaviour(
         placed_titles: Set[str],
         existing_unplaced_count: int,
     ) -> Tuple[Dict[int, int], Dict[str, int], int]:
-        """
-        Build per-day mech fee buckets for:
+        """Build per-day mech fee buckets for unplaced requests and multi-bet markets.
 
-        - unplaced requests (evenly spread)
-        - multi-bet markets (evenly split across appearances)
-        Returns: (extra_fees_by_day, filtered_lookup, unplaced_allocated)
+        :param daily_stats: List of daily statistics
+        :param mech_request_lookup: Dictionary mapping question titles to request counts
+        :param placed_titles: Set of titles that have been placed
+        :param existing_unplaced_count: Count of existing unplaced requests
+        :return: Tuple of (extra_fees_by_day, filtered_lookup, unplaced_allocated)
         """
         # Unplaced requests (no bets)
         total_mech_requests = self._total_mech_requests or sum(
@@ -730,11 +729,11 @@ class FetchPerformanceSummaryBehaviour(
     def _build_mech_request_lookup(
         self, agent_safe_address: str
     ) -> Generator[None, None, dict]:
-        """
-        Build a lookup map of question titles to mech request counts.
+        """Build a lookup map of question titles to mech request counts.
 
         :param agent_safe_address: The agent's safe address
         :return: Dictionary mapping question titles to request counts
+        :yield: None
         """
         # Fetch all mech requests for this agent
         if self._mech_request_lookup is not None:
@@ -765,10 +764,10 @@ class FetchPerformanceSummaryBehaviour(
     def _build_profit_over_time_data(
         self,
     ) -> Generator[None, None, Optional[ProfitOverTimeData]]:
-        """
-        Build profit over time data with efficient backfill and incremental update strategy.
+        """Build profit over time data with efficient backfill and incremental update strategy.
 
         :return: ProfitOverTimeData or None
+        :yield: None
         """
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
         current_timestamp = self.shared_state.synced_timestamp
