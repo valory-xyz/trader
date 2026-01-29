@@ -46,6 +46,9 @@ class PolymarketBetPlacementRound(TxPreparationRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
+
+        # For static checking
+        # Event.BET_PLACEMENT_DONE, Event.BET_PLACEMENT_FAILED, Event.INSUFFICIENT_BALANCE
         event = Event(self.most_voted_payload_values[-1])
 
         return synced_data, event
