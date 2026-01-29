@@ -40,10 +40,14 @@ class BetPayoutChecker(AchievementsChecker):
         self,
         achievement_type: str,
         roi_threshold: float = 2.0,
+        title_template="High ROI on bet!",
+        description_template: str = "Agent closed a bet at {roi}\u00d7 ROI.",
     ) -> None:
         """Initialize the achievement checker."""
         self._achievement_type = achievement_type
         self._roi_threshold = roi_threshold
+        self._title_template = title_template
+        self._description_template = description_template
 
     @property
     def achievement_type(self) -> str:
@@ -79,11 +83,18 @@ class BetPayoutChecker(AchievementsChecker):
             if achievement_id in achievements.items:
                 continue
 
+            title = self._title_template.format(
+                roi=roi,
+            )
+            description = self._description_template.format(
+                roi=roi,
+            )
+
             achievement = Achievement(
                 achievement_id=achievement_id,
                 achievement_type=self.achievement_type,
-                title="High ROI on bet!",
-                description=f"My agent bet on \"{bet['market']['title']}\" won a {roi:.2f}% ROI.",
+                title=title,
+                description=description,
                 timestamp=int(
                     datetime.fromisoformat(
                         bet["settled_at"].replace("Z", "+00:00")
