@@ -83,6 +83,7 @@ SECONDS_PER_DAY = 86400
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
+POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.7
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -1257,7 +1258,8 @@ class UpdateAchievementsBehaviour(
 
         if self.params.is_running_on_polymarket:
             self._bet_payout_checker = BetPayoutChecker(
-                achievement_type="polystrat/payout", roi_threshold=1.7
+                achievement_type="polystrat/payout",
+                roi_threshold=POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD,
             )
         else:
             self._bet_payout_checker = BetPayoutChecker(achievement_type="omen/payout")
