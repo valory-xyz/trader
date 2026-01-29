@@ -318,8 +318,8 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         try:
             params = payload.get("params", {})
-            response, error = request_function_map[request_type](**params)
-            return response, bool(error)
+            response, error_msg = request_function_map[request_type](**params)
+            return response, str(error_msg) if error_msg else ""
         except TypeError as e:
             error_msg = f"Invalid parameters for '{request_type.value}': {str(e)}"
             self.logger.error(error_msg)
@@ -353,7 +353,11 @@ class PolymarketClientConnection(BaseSyncConnection):
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
             return resp, None
         except PolyApiException as e:
-            error_msg = f"Error placing bet: {e}"
+            error_msg = (
+                e.error_msg.get("error")
+                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
+                else f"Error placing bet: {e}"
+            )
             self.logger.error(error_msg)
             return None, error_msg
 

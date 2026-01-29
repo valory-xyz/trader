@@ -28,6 +28,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketBetPlacementPayload,
 )
+from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
     PolymarketBetPlacementRound,
 )
@@ -57,13 +58,25 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 None,
                 None,
                 False,
-                success=False,
+                event=Event.BET_PLACEMENT_FAILED.value,
             )
             yield from self.finish_behaviour(payload)
             return
 
         token_id = self.sampled_bet.outcome_token_ids[outcome]
         amount = self.usdc_to_native(self.investment_amount)
+
+        if self.investment_amount > self.token_balance:
+            self.context.logger.error("Failed to place bet: insufficient token balance")
+            payload = PolymarketBetPlacementPayload(
+                self.context.agent_address,
+                None,
+                None,
+                False,
+                event=Event.INSUFFICIENT_BALANCE.value,
+            )
+            yield from self.finish_behaviour(payload)
+            return
 
         # Prepare payload data
         polymarket_bet_payload = {
@@ -91,7 +104,11 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             None,
             None,
             False,
-            success=success,
+            event=(
+                Event.BET_PLACEMENT_DONE.value
+                if success
+                else Event.BET_PLACEMENT_FAILED.value
+            ),
         )
 
         yield from self.finish_behaviour(payload)

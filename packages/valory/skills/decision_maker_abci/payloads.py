@@ -120,7 +120,7 @@ class BetPlacementPayload(MultisigTxPayload):
 class PolymarketBetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
-    success: Optional[bool] = None
+    event: Optional[str] = None
 
 
 @dataclass(frozen=True)
