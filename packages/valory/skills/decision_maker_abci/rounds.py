@@ -180,8 +180,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 14.
             - bet placement done: 14.
             - bet placement failed: 10.
-            - mock tx: 14.
             - insufficient balance: 26.
+            - mock tx: 14.
             - no majority: 10.
             - round timeout: 10.
             - none: 27.
@@ -361,6 +361,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: RedeemRouterRound,
             Event.BET_PLACEMENT_DONE: RedeemRouterRound,
             Event.BET_PLACEMENT_FAILED: PolymarketBetPlacementRound,
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
             # skip the bet placement tx
             Event.MOCK_TX: RedeemRouterRound,
             # degenerate round on purpose, owner must refill the safe
