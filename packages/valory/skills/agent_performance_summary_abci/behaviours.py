@@ -355,9 +355,11 @@ class FetchPerformanceSummaryBehaviour(
             agent_safe_address=agent_safe_address,
         )
         if agent_bets_data is None:
-            self.context.logger.warning(
-                f"Agent bets data not found for {agent_safe_address=}. Trader may be unstaked."
-            )
+            # For Polymarket, this is expected as bet accuracy data isn't available
+            if not self.params.is_running_on_polymarket:
+                self.context.logger.warning(
+                    f"Agent bets data not found for {agent_safe_address=}. Trader may be unstaked."
+                )
             return None
 
         if len(agent_bets_data.get("bets", [])) == 0:
@@ -1335,8 +1337,13 @@ class FetchPerformanceSummaryBehaviour(
             yield from self._fetch_agent_performance_summary()
 
             if self._agent_performance_summary is not None:
+                # For Polymarket, "Prediction accuracy" metric is allowed to be NA
                 success = all(
                     metric.value != NA
+                    or (
+                        self.params.is_running_on_polymarket
+                        and metric.name == "Prediction accuracy"
+                    )
                     for metric in self._agent_performance_summary.metrics
                 )
                 if not success:
