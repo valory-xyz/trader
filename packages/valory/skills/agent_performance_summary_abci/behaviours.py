@@ -1105,17 +1105,40 @@ class FetchPerformanceSummaryBehaviour(
         prev_settled = existing_data.settled_mech_requests_count or sum(
             dp.daily_mech_requests for dp in new_data_points
         )
-        if replace_last and new_data_points:
+        # If incoming stats include the last stored day, decide whether to replace it; always allow newer days to append
+        if new_data_points:
             last_dp = new_data_points[-1]
-            last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
-            if last_dp_day in incoming_days:
-                new_data_points.pop()
-                prev_settled -= last_dp.daily_mech_requests
+            last_ts = last_dp.timestamp
+            incoming_last = next(
+                (s for s in filtered_daily_stats if int(s["date"]) == last_ts), None
+            )
+            if incoming_last is not None:
+                new_raw = float(incoming_last.get("dailyProfit", 0)) / WEI_IN_ETH
+                old_raw = last_dp.daily_profit_raw or 0.0
+                if round(new_raw, 3) == round(old_raw, 3):
+                    # keep existing last day; do not replace it
+                    replace_last = False
+                    # drop this day from processing, keep only strictly newer days
+                    filtered_daily_stats = [
+                        s for s in filtered_daily_stats if int(s["date"]) > last_ts
+                    ]
+                else:
+                    # replace last
+                    new_data_points.pop()
+                    prev_settled -= last_dp.daily_mech_requests
+                    replace_last = True
+            else:
+                replace_last = False
         cumulative_profit = (
             new_data_points[-1].cumulative_profit if new_data_points else 0.0
         )
 
         new_mech_sum = 0
+        new_placed_sum = 0
+        new_unplaced_sum = 0
+        prev_last_unplaced = (
+            prev_last_point.daily_unplaced_mech_requests if prev_last_point else 0
+        )
         for stat in filtered_daily_stats:
             date_timestamp = int(stat["date"])
             date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
@@ -1123,16 +1146,35 @@ class FetchPerformanceSummaryBehaviour(
 
             # Calculate mech fees using lookup for this day only
             profit_participants = stat.get("profitParticipants", [])
-            mech_fees, daily_mech_count = self._apply_mech_fees(
+            (
+                mech_fees,
+                daily_mech_count,
+                daily_placed_count,
+                daily_unplaced_count,
+            ) = self._apply_mech_fees(
                 profit_participants,
                 filtered_lookup,
                 combined_extra_fees_by_day,
                 date_timestamp,
+                unplaced_buckets,
+                multi_allocations,
             )
+
+
+            # Preserve and append unplaced for the last stored day
+            if (
+                replace_last
+                and prev_last_point
+                and date_timestamp == prev_last_point.timestamp
+            ):
+                daily_unplaced_count = prev_last_unplaced + daily_unplaced_count
+                daily_mech_count = daily_placed_count + daily_unplaced_count
 
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
             new_mech_sum += daily_mech_count
+            new_placed_sum += daily_placed_count
+            new_unplaced_sum += daily_unplaced_count
 
             new_data_points.append(
                 ProfitDataPoint(
@@ -1142,6 +1184,8 @@ class FetchPerformanceSummaryBehaviour(
                     daily_profit=round(daily_profit_net, 3),
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
+                    daily_placed_mech_requests=daily_placed_count,
+                    daily_unplaced_mech_requests=daily_unplaced_count,
                 )
             )
 
@@ -1165,15 +1209,12 @@ class FetchPerformanceSummaryBehaviour(
             f"Incremental settled counts: prev={prev_settled}, delta={new_mech_sum}, pre_bounds={pre_bounds}, "
             f"bounded_settled={settled_mech_requests_count}, max_settled={max_settled}"
         )
-        # Recompute placed/unplaced totals using persisted counts + deltas
-        placed_total = prev_placed + placed_delta
-        prev_unplaced = getattr(existing_data, "unplaced_mech_requests_count", 0)
-        # Add newly allocated unplaced (compute_mech_fee_buckets subtracts already_counted)
-        unplaced_mech_requests_count = prev_unplaced + unplaced_allocated
-        # Safety clamp to settled - placed if somehow over
-        unplaced_mech_requests_count = min(
-            unplaced_mech_requests_count,
-            max(settled_mech_requests_count - placed_total, 0),
+        # Recompute placed/unplaced totals from the rebuilt data_points
+        placed_total = sum(
+            getattr(dp, "daily_placed_mech_requests", 0) for dp in new_data_points
+        )
+        unplaced_mech_requests_count = sum(
+            getattr(dp, "daily_unplaced_mech_requests", 0) for dp in new_data_points
         )
         self._placed_mech_requests_count = placed_total
         self._unplaced_mech_requests_count = unplaced_mech_requests_count

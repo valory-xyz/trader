@@ -119,7 +119,9 @@ class ProfitDataPoint:
     timestamp: int  # Unix timestamp
     daily_profit: float  # Net daily profit (after mech fees)
     cumulative_profit: float  # Cumulative profit from start of window
-    daily_mech_requests: int = 0  # Number of mech requests for this day
+    daily_mech_requests: int = 0  # Number of mech requests (placed + unplaced) for this day
+    daily_placed_mech_requests: Optional[int] = 0  # Mech requests tied to settled bets this day
+    daily_unplaced_mech_requests: Optional[int] = 0  # Mech requests with no bet this day (allocated share)
     daily_profit_raw: Optional[float] = (
         None  # Gross daily profit from subgraph (before fees)
     )
