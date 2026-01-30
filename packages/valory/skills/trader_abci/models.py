@@ -30,6 +30,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     GnosisStakingSubgraph as APTGnosisStakingSubgraph,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonStakingSubgraph as APTPolygonStakingSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
     OlasAgentsSubgraph as APTOlasAgentsSubgraph,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -133,6 +136,7 @@ RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
 GnosisStakingSubgraph = APTGnosisStakingSubgraph
+PolygonStakingSubgraph = APTPolygonStakingSubgraph
 OlasMechSubgraph = APTOlasMechSubgraph
 OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph
