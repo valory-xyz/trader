@@ -619,7 +619,7 @@ class HttpHandler(BaseHttpHandler):
         """
         try:
             # Use different slippage values based on chain
-            slippage = (
+            slippage = str(
                 self.params.slippages_for_swap["POL-USDC"]
                 if chain_config["chain_name"] == POLYGON_CHAIN_NAME
                 else self.params.slippages_for_swap["xDAI-USDC"]
