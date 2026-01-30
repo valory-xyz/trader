@@ -222,7 +222,7 @@ class PolymarketPredictionsFetcher(
 
         # Get bet amount
         bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
-        
+
         # Get total payout for this bet
         total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
 
@@ -245,7 +245,7 @@ class PolymarketPredictionsFetcher(
 
         # Market is resolved, determine win/loss based on totalPayout
         total_payout = float(bet.get("totalPayout", 0))
-        
+
         if total_payout > 0:
             return "won"
         else:

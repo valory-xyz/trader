@@ -223,7 +223,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         else:
             subgraph = self.context.gnosis_staking_subgraph
             res_context = "gnosis_staking_service"
-        
+
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_STAKING_SERVICE_QUERY,
@@ -253,7 +253,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         # Polymarket doesn't use this query (uses market participants instead)
         if self.params.is_running_on_polymarket:
             return None
-        
+
         # Omen uses olas_agents_subgraph for bet data
         result = yield from self._fetch_from_subgraph(
             query=GET_TRADER_AGENT_BETS_QUERY,
