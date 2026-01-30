@@ -928,12 +928,20 @@ class FetchPerformanceSummaryBehaviour(
 
             # Calculate mech fees (placed + unplaced) using cached lookup
             profit_participants = stat.get("profitParticipants", [])
-            mech_fees, daily_mech_count = self._apply_mech_fees(
+            (
+                mech_fees,
+                daily_mech_count,
+                daily_placed_count,
+                daily_unplaced_count,
+            ) = self._apply_mech_fees(
                 profit_participants,
                 filtered_lookup,
                 merged_extra_fees_by_day,
                 date_timestamp,
+                unplaced_buckets,
+                multi_allocations,
             )
+            
 
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
@@ -942,26 +950,36 @@ class FetchPerformanceSummaryBehaviour(
                 ProfitDataPoint(
                     date=date_str,
                     timestamp=date_timestamp,
-                    daily_profit_raw=round(daily_profit_raw, 3),
-                    daily_profit=round(daily_profit_net, 3),
-                    cumulative_profit=round(cumulative_profit, 3),
-                    daily_mech_requests=daily_mech_count,
-                )
+                daily_profit_raw=round(daily_profit_raw, 3),
+                daily_profit=round(daily_profit_net, 3),
+                cumulative_profit=round(cumulative_profit, 3),
+                daily_mech_requests=daily_mech_count,
+                daily_placed_mech_requests=daily_placed_count,
+                daily_unplaced_mech_requests=daily_unplaced_count,
             )
+        )
 
         # Calculate total settled mech requests from all data points
         settled_mech_requests_count = sum(
             point.daily_mech_requests for point in data_points
         )
-        self._unplaced_mech_requests_count = unplaced_count
+        placed_total = sum(
+            getattr(point, "daily_placed_mech_requests", 0) for point in data_points
+        )
+        unplaced_total = sum(
+            getattr(point, "daily_unplaced_mech_requests", 0) for point in data_points
+        )
+        self._unplaced_mech_requests_count = unplaced_total
+        self._placed_mech_requests_count = placed_total
+        
 
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(data_points),
             data_points=data_points,
             settled_mech_requests_count=settled_mech_requests_count,
-            unplaced_mech_requests_count=self._unplaced_mech_requests_count,
-            placed_mech_requests_count=self._placed_mech_requests_count,
+            unplaced_mech_requests_count=unplaced_total,
+            placed_mech_requests_count=placed_total,
             includes_unplaced_mech_fees=True,
         )
 
@@ -1067,15 +1085,20 @@ class FetchPerformanceSummaryBehaviour(
         placed_delta = sum(mech_request_lookup.get(title, 0) for title in placed_titles)
 
         already_counted = getattr(existing_data, "unplaced_mech_requests_count", 0)
-        combined_extra_fees_by_day, filtered_lookup, unplaced_allocated = (
-            self._compute_mech_fee_buckets(
-                filtered_daily_stats,
-                mech_request_lookup,
-                placed_titles,
-                existing_unplaced_count=already_counted,
-                existing_placed_count=prev_placed,
-            )
+        (
+            combined_extra_fees_by_day,
+            filtered_lookup,
+            unplaced_allocated,
+            unplaced_buckets,
+            multi_allocations,
+        ) = self._compute_mech_fee_buckets(
+            filtered_daily_stats,
+            mech_request_lookup,
+            placed_titles,
+            existing_unplaced_count=already_counted,
+            existing_placed_count=prev_placed,
         )
+        
 
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
