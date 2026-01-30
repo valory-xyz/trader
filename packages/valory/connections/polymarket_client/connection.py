@@ -243,7 +243,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
             return
 
-        payload, error = self._route_request(
+        payload, error_message = self._route_request(
             payload=json.loads(srr_message.payload),
         )
 
@@ -253,7 +253,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 performative=SrrMessage.Performative.RESPONSE,
                 target_message=srr_message,
                 payload=json.dumps(payload),
-                error=error,
+                error=bool(error_message),
             ),
         )
 
