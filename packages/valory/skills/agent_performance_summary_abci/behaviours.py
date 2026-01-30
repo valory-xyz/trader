@@ -88,7 +88,7 @@ POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = (
     "My Polystrat agent just closed a Polymarket trade at {roi}\u00d7 ROI. Pretty impressive! \U0001f680\n"
     "Curious to see how around-the-clock, autonomous trading with Polystrat on Pearl works and spin up an agent yourself?\n"
     "Check it out\U0001f447\n"
-    "https://olas.network/agents/polystrat\n"
+    "{{achievement_url}}\n"
     "#PolystratOnPearl"
 )
 

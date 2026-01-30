@@ -84,10 +84,10 @@ class BetPayoutChecker(AchievementsChecker):
                 continue
 
             title = self._title_template.format(
-                roi=roi,
+                roi=f"{roi:.1f}".rstrip("0").rstrip("."),
             )
             description = self._description_template.format(
-                roi=roi,
+                roi=f"{roi:.1f}".rstrip("0").rstrip("."),
             )
 
             achievement = Achievement(
