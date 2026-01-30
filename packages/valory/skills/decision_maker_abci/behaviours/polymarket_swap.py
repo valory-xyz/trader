@@ -48,7 +48,6 @@ USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # USDC on Polygon
 LIFI_QUOTE_URL = "https://li.quest/v1/quote"
 HTTP_OK = [200]
 INTEGRATOR = "valory"
-SLIPPAGE_FOR_SWAP = "0.004"  # 0.4%
 
 
 class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
@@ -253,7 +252,7 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
             "fromAddress": from_address,
             "toAddress": from_address,
             "integrator": INTEGRATOR,
-            "slippage": SLIPPAGE_FOR_SWAP,
+            "slippage": self.params.slippages_for_swap["POL-USDC"],
         }
 
         self.context.logger.info(

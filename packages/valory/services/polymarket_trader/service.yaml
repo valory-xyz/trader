@@ -155,6 +155,7 @@ models:
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
       ignored_mechs: ${IGNORED_MECHS:list:["0x1DCbC9368327776F8B20Dc041D40b8076C8AC173"]}
+      slippages_for_swap: ${SLIPPAGES_FOR_SWAP:dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}

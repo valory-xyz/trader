@@ -106,8 +106,6 @@ POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 
-SLIPPAGE_FOR_SWAP_GNOSIS = "0.003"  # 0.3% for Gnosis (Omen)
-SLIPPAGE_FOR_SWAP_POLYGON = "0.004"  # 0.4% for Polygon (Polymarket)
 TRADING_STRATEGY_EXPLANATION = {
     "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
     "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
@@ -622,9 +620,9 @@ class HttpHandler(BaseHttpHandler):
         try:
             # Use different slippage values based on chain
             slippage = (
-                SLIPPAGE_FOR_SWAP_POLYGON
+                self.params.slippages_for_swap["POL-USDC"]
                 if chain_config["chain_name"] == POLYGON_CHAIN_NAME
-                else SLIPPAGE_FOR_SWAP_GNOSIS
+                else self.params.slippages_for_swap["xDAI-USDC"]
             )
 
             params = {

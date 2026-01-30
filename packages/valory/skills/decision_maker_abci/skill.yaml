@@ -310,6 +310,7 @@ models:
       polymarket_neg_risk_adapter_address: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
       pol_threshold_for_swap: 2000000000000000000
       is_running_on_polymarket: false
+      slippages_for_swap: {}
     class_name: DecisionMakerParams
   acc_info_fields:
     args:

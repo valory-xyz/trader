@@ -293,6 +293,7 @@ models:
       ignored_mechs: []
       penalize_mech_time_window: 1800
       pol_threshold_for_swap: 2000000000000000000
+      slippages_for_swap: {}
     class_name: TraderParams
   benchmarking_mode:
     args:
