@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -160,6 +160,7 @@ class Bet:
     queue_status: QueueStatus = QueueStatus.FRESH
     # a mapping from vote to investment amounts
     investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
+    strategy: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -415,7 +416,7 @@ class BetsDecoder(json.JSONDecoder):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the Bets JSON decoder."""
-        super().__init__(object_hook=self.hook, *args, **kwargs)
+        super().__init__(*args, object_hook=self.hook, **kwargs)
 
     @staticmethod
     def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:

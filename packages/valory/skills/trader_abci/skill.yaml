@@ -4,7 +4,7 @@ version: 0.1.0
 type: skill
 description: This skill implements the trader skill for an AEA.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
@@ -12,42 +12,43 @@ fingerprint:
   composition.py: bafybeighy7x6nyi77q7a6fkgp5wkdivs5xax5bjpne6oaerlj667nevzgi
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeidd5wzcmemuzm6uu2z336hbmco5wnv5rxizpbfa7u4mu4rlpnlfo4
-  handlers.py: bafybeif2hduqgkqi6c457pla244kblxfam3mdoo7b23vxzpycumdlmgloe
-  models.py: bafybeifeixgffcdqhc36t6e37jwrscgwpg5qduzavef4wzdot55oifrgcm
-  predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
+  handlers.py: bafybeiepmx5paayuvuwf7qwtcc7otluzouwb5kbrrrnvs6hijjz2k2qcga
+  models.py: bafybeidwv66gexftimle2vgfwxhg3bfgsb4bnrcwgayc4bz65sjk2jasmm
+  predict-ui-build/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  predict-ui-build/assets/index-D_Quo8RT.js: bafybeidzbmwomgtegwvmfzbhxv2lkiaoehyo5uvrrvhvq5oxrlii77fvaq
+  predict-ui-build/assets/index-mG5s_OZu.js: bafybeigtpnp6o6sn3ted3uzetjnh6huu7v7prk4deg6uv6gax2fbi47ibe
   predict-ui-build/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
+  predict-ui-build/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   predict-ui-build/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
-  predict-ui-build/assets/predict-chat-DN4yv5M0.png: bafybeigscy3vmzfn5c6lfze7ro4h4qzowpvbuxdbxxlujcw7hv4klauhmq
+  predict-ui-build/assets/polystrat-chat-DlTWIQ8U.png: bafybeihz3bue6cuvvfadkzcjzhim5atgrgeew6pmzy6ignkjvkymofjfeu
   predict-ui-build/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   predict-ui-build/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   predict-ui-build/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  predict-ui-build/index.html: bafybeicrx67muvyy2udjudraukb2aspqea2pkx4pl42vv3sdryx7a46sle
+  predict-ui-build/index.html: bafybeifhmfws4usds2o5wnrufuulqzrddcliugcluan56tjwtpgjswrwpa
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
 fingerprint_ignore_patterns: []
 connections:
-- valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
+- valory/http_server:0.22.0:bafybeigyjwg6nfwmdkwzt7i56n4zv3oj6hii2mkkgstuaztyunscjifdee
 contracts: []
 protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
-- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
+- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
-- valory/registration_abci:0.1.0:bafybeie6rd7zlws4rxzkwka5mzhk56mn6clj3ocxbkbgeaiawv2c6b6jtm
-- valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
-- valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
-- valory/market_manager_abci:0.1.0:bafybeifkqnmoptfj4lmeazwxcgkutf3tsfldk5tc2nk4hp7n7sc7xgvgsa
-- valory/decision_maker_abci:0.1.0:bafybeiabs6jp3s5dhn6zure2ybult4mbufoyqrj7tjuru6wvuq62zyjdzu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid4bfgv4rlvqclnn6qxgyepvta66daavq7ut5yhotgfcapgvihupa
-- valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
-- valory/check_stop_trading_abci:0.1.0:bafybeicivq54wapqzjkb7fyujvqdvrbekhugavtrvh3gllxdr5jmgzzc6a
-- valory/mech_interact_abci:0.1.0:bafybeifig7i427sbpovlhpyybrii3i2hx4kre24i6xaz6wixi236tr6yne
-- valory/chatui_abci:0.1.0:bafybeigectle74bo33jurd37wrkyrbfnislqcgyrqyjl3vtp7lrbqzbrzm
-- valory/agent_performance_summary_abci:0.1.0:bafybeihtnx5gc47oo3oww6d5jmjhhu6533nsh6lj2qzlgvo3tcmc6bl7d4
-- valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
+- valory/registration_abci:0.1.0:bafybeie3dfore53bxvbokqiarzuwulzlyt4vz5mifb4t3gxl6drwkblfha
+- valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
+- valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
+- valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
+- valory/market_manager_abci:0.1.0:bafybeieqeutpxfr56yl4d2ik6kvnjuljrv5jtushqhhbp65gml6jyplyky
+- valory/decision_maker_abci:0.1.0:bafybeihpubhnx3aj3zdicghitlx4v6ffsbngbmbccxnetxrzxuoalfmkvu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidbuwx5nu2ts6binu5uaxesijyvbpoajgqkxvuq6scz2jbelnz3im
+- valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
+- valory/check_stop_trading_abci:0.1.0:bafybeidxgatkrxdrgmmzkeitqy4mu42d3e6p7w7wfasmh722yzqgnn3zyy
+- valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
+- valory/chatui_abci:0.1.0:bafybeiaws3zww4mkn4ae7jcntcm3nfa3cxgjekcg6zi6whey4nup25mkl4
+- valory/agent_performance_summary_abci:0.1.0:bafybeib4kmdbxbym5pyumknrrydndtvsriama5uy445f5pmx75wby5ptyu
+- valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
     args: {}
@@ -261,6 +262,7 @@ models:
       default_chain_id: gnosis
       mech_interact_round_timeout_seconds: 5400
       use_multi_bets_mode: true
+      enable_multi_bets_fallback: false
       enable_position_review: false
       review_period_seconds: 86400
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
@@ -432,7 +434,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://predict-agents.subgraph.autonolas.tech
+      url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen
     class_name: OpenMarketsSubgraph
   olas_agents_subgraph:
     args:
@@ -447,7 +449,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://predict-agents.subgraph.autonolas.tech
+      url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen
     class_name: OlasAgentsSubgraph
   olas_mech_subgraph:
     args:
@@ -462,7 +464,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.autonolas.tech/api/proxy/mech
+      url: https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:
@@ -524,11 +526,11 @@ models:
     class_name: SrrDialogues
 dependencies:
   eth-account:
-    version: '>=0.8.0, <0.9.0'
+    version: <0.14.0,>=0.13.0
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
   requests:
-    version: '>=2.28.1, <2.31.2'
+    version: <2.32.5,>=2.28.1
   open-aea-ledger-ethereum:
-    version: '>=1.65.0'
+    version: ==2.0.8
 is_abstract: false

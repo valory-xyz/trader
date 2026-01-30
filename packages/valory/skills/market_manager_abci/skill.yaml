@@ -4,12 +4,12 @@ version: 0.1.0
 type: skill
 description: This skill implements the MarketManager for an AEA.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeie6miwn67uin3bphukmf7qgiifh4xtm42i5v3nuyqxzxtehxsqvcq
   __init__.py: bafybeigrtedqzlq5mtql2ssjsdriw76ml3666m4e2c3fay6vmyzofl6v6e
-  behaviours.py: bafybeiadndkoa5ymxf2t5tzftgr5psznrmuf4dchzjxowemou42wh7uiwe
-  bets.py: bafybeid65t5a4dkwhvltwfhevjqvzntt6mdsuvbdstzehlwoe6pjdqndza
+  behaviours.py: bafybeihrntuowfjqor5qpqwzfcvfkwwmcyafxuxder36vlsau774jv3zpq
+  bets.py: bafybeiczt2bls6il264arsj4xpwsnr4dwbxudvadb5cgjrsxuxthzlxvbm
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeic5cvwfbiu5pywyp3h5s2elvu7jqdrcwayay7o3v3ow47vu2jw53q
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -19,10 +19,10 @@ fingerprint:
   graph_tooling/queries/omen.py: bafybeiesgavgoio6zeovdyvzeezz5qoosdgioktoen5ckrgyxpr4u3m3nu
   graph_tooling/queries/realitio.py: bafybeiftewjwk5fi6uqrhmalweun47voau2qkxi7hg3faxcmyy3va44zma
   graph_tooling/queries/trades.py: bafybeigu6c25kf3mrlvmwjeskgagswdjnnxsygpriygmip44us4xvuf7ji
-  graph_tooling/requests.py: bafybeidrcbfoa7cjxywgigl2ltinurzlmn6ywnwv654m3t3k3xgzekyt6m
+  graph_tooling/requests.py: bafybeif24qiwqjwvfbutbolodnctanzobipma636emrbv3eamafzxndgze
   graph_tooling/utils.py: bafybeihhxfifc5y3fjnxnan2zomsgr47h6u3khfeymi4p2x6txkkxmjq3e
   handlers.py: bafybeihot2i2yvfkz2gcowvt66wdu6tkjbmv7hsmc4jzt4reqeaiuphbtu
-  models.py: bafybeibipxtzxa2ta2ezsqead7qs2fsaxkyrrwcgsthjpkw5nroctsqytu
+  models.py: bafybeianmadutvwe23ll3wbrbfkhbic6j3jtmk6va5tfaf6c4mk3dospxy
   payloads.py: bafybeicfymvvtdpkcgmkvthfzmb7dqakepkzslqrz6rcs7nxkz7qq3mrzy
   rounds.py: bafybeiabpch7kwuuaxnp6okbz6s74mylkh5qw7zxcjhzcd7vrwxkmxyvpq
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
@@ -30,14 +30,14 @@ fingerprint:
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeidahkavof43y3o4omnihh6yxdx7gqofio7kzukdydymxbebylempu
-  tests/test_utils.py: bafybeia77p5nsp6txhvcdh4kyzjjujbwd2gnoi7fnpwxheeezeqebbufqq
+  tests/test_utils.py: bafybeichbof6bftqhwgad4xaqwzks53rtsd34nggt7sxit2yuzd4w6b7ea
 fingerprint_ignore_patterns: []
 connections: []
 contracts: []
 protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 behaviours:
   main:
     args: {}
@@ -179,6 +179,7 @@ models:
       randomness: benchmarking_randomness
       nr_mech_calls: 60
       use_multi_bets_mode: true
+      enable_multi_bets_fallback: false
     class_name: BenchmarkingMode
   network_subgraph:
     args:
@@ -222,5 +223,5 @@ models:
     class_name: SharedState
 dependencies:
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
 is_abstract: true

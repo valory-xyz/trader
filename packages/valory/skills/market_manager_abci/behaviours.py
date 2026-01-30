@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -228,7 +228,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}"
         )
 
-        # fetch checkpoint status and if reached requeue all bets
+        # fetch checkpoint status and if reached requeue all bets (only in multi-bet mode)
         if (
             self.synchronized_data.is_checkpoint_reached
             and self.params.use_multi_bets_mode
@@ -282,15 +282,18 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
-        # single-bets mode case - mark any market with a `FRESH` status as processable
-        if not self.params.use_multi_bets_mode:
+        # single-bet behavior: move fresh bets to process individually
+        if (
+            not self.params.use_multi_bets_mode
+            and not self.params.enable_multi_bets_fallback
+        ):
             for bet in self.bets:
                 if bet.queue_status.is_fresh():
                     bet.queue_status = bet.queue_status.move_to_process()
             return
 
-        # muti-bets mode case - mark markets as processable only if all the unexpired ones have a `FRESH` status
-        # this will happen if the agent just started or the checkpoint has just been reached
+        # multi-bets behavior:
+        # mark markets as processable only if all unexpired ones are fresh
         all_bets_fresh = all(
             bet.queue_status.is_fresh()
             for bet in self.bets
