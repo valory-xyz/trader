@@ -4,7 +4,7 @@ version: 0.1.0
 type: skill
 description: This skill implements the trader skill for an AEA.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
@@ -12,8 +12,8 @@ fingerprint:
   composition.py: bafybeighy7x6nyi77q7a6fkgp5wkdivs5xax5bjpne6oaerlj667nevzgi
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeidd5wzcmemuzm6uu2z336hbmco5wnv5rxizpbfa7u4mu4rlpnlfo4
-  handlers.py: bafybeif2hduqgkqi6c457pla244kblxfam3mdoo7b23vxzpycumdlmgloe
-  models.py: bafybeifeixgffcdqhc36t6e37jwrscgwpg5qduzavef4wzdot55oifrgcm
+  handlers.py: bafybeia6c37ulxgc7ljj3pkc46arcccqwovb2hh4bqozhsnxx2jlfv34oy
+  models.py: bafybeidwv66gexftimle2vgfwxhg3bfgsb4bnrcwgayc4bz65sjk2jasmm
   predict-ui-build/README.md: bafybeie6yr3viscukl7jibuhoh3bvhoyivw3c4kblgxk5w52ucirosqc34
   predict-ui-build/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   predict-ui-build/assets/index-D_Quo8RT.js: bafybeidzbmwomgtegwvmfzbhxv2lkiaoehyo5uvrrvhvq5oxrlii77fvaq
@@ -28,26 +28,26 @@ fingerprint:
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
 fingerprint_ignore_patterns: []
 connections:
-- valory/http_server:0.22.0:bafybeidrrp33iujkplxjs7eylsple4tw3ymqhaapzikjai5movuesuz7f4
+- valory/http_server:0.22.0:bafybeigyjwg6nfwmdkwzt7i56n4zv3oj6hii2mkkgstuaztyunscjifdee
 contracts: []
 protocols:
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
-- valory/srr:0.1.0:bafybeihrixgptxuqpf2s4nujypwlv5aed2nboozq5kl4c26cxw6r7si2x4
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
+- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
-- valory/registration_abci:0.1.0:bafybeie6rd7zlws4rxzkwka5mzhk56mn6clj3ocxbkbgeaiawv2c6b6jtm
-- valory/reset_pause_abci:0.1.0:bafybeian7gymp6x6rn55uaf4u3dgirbzr43xvnsj2ev27stkadikjqz4du
-- valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
-- valory/termination_abci:0.1.0:bafybeiht4uj5j3qqf2hewtzah7vcabb7okkjgi65jb76ddfltvjpk6bzxi
-- valory/market_manager_abci:0.1.0:bafybeiddcuhjc4dqqnfmcv5pk5jaljdiyf25j4llxngizrfeeabbqzhkzm
-- valory/decision_maker_abci:0.1.0:bafybeih3injy2v6jzs6uis7zjuaby44bfxtvsssrufmki2wra226nq22yq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigw3ndsbfboluc4lhymiqonugrqweyott5nxorm56od6axspjf43y
-- valory/staking_abci:0.1.0:bafybeigdg5rrqhw6gt6rsqdl2j54vfwddgt6rbdkawxaa4shc6pu3vpary
-- valory/check_stop_trading_abci:0.1.0:bafybeicivq54wapqzjkb7fyujvqdvrbekhugavtrvh3gllxdr5jmgzzc6a
-- valory/mech_interact_abci:0.1.0:bafybeifig7i427sbpovlhpyybrii3i2hx4kre24i6xaz6wixi236tr6yne
-- valory/chatui_abci:0.1.0:bafybeid7dqajrgb3lvcmmt624wzhltsfuo7tz7c3hhsvkqlarzcimop27a
-- valory/agent_performance_summary_abci:0.1.0:bafybeidrtib4vqdp5y74v32h6epgwqrogqfhdionklockqfompbz6gu2w4
-- valory/funds_manager:0.1.0:bafybeibm7l6typw4pmuk64k25jcintjc6srbxzzoojut5bi6xcvfl56myq
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
+- valory/registration_abci:0.1.0:bafybeie3dfore53bxvbokqiarzuwulzlyt4vz5mifb4t3gxl6drwkblfha
+- valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
+- valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
+- valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
+- valory/market_manager_abci:0.1.0:bafybeiguzhocstfqhn2dexomns6icyejyeajjl7o5vln6xffieirjdrvje
+- valory/decision_maker_abci:0.1.0:bafybeibyqyo3vapizhkgzp2jpbsm54vu25j2d5akg5lgiiphs7szzaha3y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiapi5lv4geak6asmkd44dmvjnqt22xdehp3rw6ym23rjhndbj3ds4
+- valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
+- valory/check_stop_trading_abci:0.1.0:bafybeid4hgdbz5bgnm2bu5hmqa3aab5sogvpoq2rsssk4js266in6ny57y
+- valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
+- valory/chatui_abci:0.1.0:bafybeifsfqwmpe3omeqsydkzdj7jskkb3rrjz5attd7brhtjo5plepa7cm
+- valory/agent_performance_summary_abci:0.1.0:bafybeigijmri4rbc4zn6huv2nezj335xioqq76kcj4mgi7nhti6ii5op2u
+- valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
     args: {}
@@ -524,11 +524,11 @@ models:
     class_name: SrrDialogues
 dependencies:
   eth-account:
-    version: '>=0.8.0, <0.9.0'
+    version: <0.14.0,>=0.13.0
   web3:
-    version: <7,>=6.0.0
+    version: <8,>=7.0.0
   requests:
-    version: '>=2.28.1, <2.31.2'
+    version: <2.32.5,>=2.28.1
   open-aea-ledger-ethereum:
-    version: '>=1.65.0'
+    version: ==2.0.8
 is_abstract: false
