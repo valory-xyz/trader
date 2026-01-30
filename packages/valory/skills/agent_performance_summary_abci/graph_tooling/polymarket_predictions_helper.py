@@ -34,7 +34,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
 
 
 # Constants
-WEI_TO_NATIVE = 10**18
+USDC_DECIMALS_DIVISOR = 10**6  # USDC has 6 decimals on Polymarket
 POLYMARKET_BASE_URL = "https://polymarket.com"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -55,6 +55,7 @@ class PolymarketPredictionsFetcher(
         self.context = context
         self.logger = logger
         self.polymarket_url = context.polymarket_agents_subgraph.url
+        self.polymarket_headers = context.polymarket_agents_subgraph.headers
 
     def fetch_predictions(
         self,
@@ -78,15 +79,16 @@ class PolymarketPredictionsFetcher(
             self.logger.warning(f"No market participants found for {safe_address}")
             return {"total_predictions": 0, "items": []}
 
-        # Extract all bets from all market participants with their associated question
+        # Extract all bets from all market participants
+        # Now each bet already has its own question object, and we need to attach totalPayout from participant
         all_bets_with_questions = []
         for participant in market_participants:
-            question = participant.get("question", {})
+            total_payout = participant.get("totalPayout", 0)
             bets = participant.get("bets", [])
-            # Attach the question to each bet for processing
+            # Attach the totalPayout to each bet for processing
             for bet in bets:
-                bet_with_question = {**bet, "question": question}
-                all_bets_with_questions.append(bet_with_question)
+                bet_with_payout = {**bet, "totalPayout": total_payout}
+                all_bets_with_questions.append(bet_with_payout)
 
         if not all_bets_with_questions:
             return {"total_predictions": 0, "items": []}
@@ -111,7 +113,7 @@ class PolymarketPredictionsFetcher(
             response = requests.post(
                 self.polymarket_url,
                 json=query_payload,
-                headers={"Content-Type": "application/json"},
+                headers=self.polymarket_headers,
                 timeout=30,
             )
 
@@ -151,7 +153,7 @@ class PolymarketPredictionsFetcher(
         self, bet: Dict, safe_address: str, status_filter: Optional[str]
     ) -> Optional[Dict]:
         """Format a single Polymarket bet into a prediction object."""
-        question = bet.get("question", {})
+        question = bet.get("question") or {}
         metadata = question.get("metadata", {})
         resolution = question.get("resolution")
 
@@ -166,7 +168,7 @@ class PolymarketPredictionsFetcher(
         net_profit = self._calculate_bet_profit(bet)
 
         # Get bet amount
-        bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+        bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
 
         # Get prediction side
         outcome_index = int(bet.get("outcomeIndex", 0))
@@ -181,7 +183,7 @@ class PolymarketPredictionsFetcher(
 
         # Get timestamps
         bet_timestamp = bet.get("blockTimestamp")
-        resolution_timestamp = resolution.get("timestamp") if resolution else None
+        resolution_timestamp = resolution.get("blockTimestamp") if resolution else None
 
         return {
             "id": bet_id,
@@ -211,52 +213,43 @@ class PolymarketPredictionsFetcher(
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
         """Calculate profit for a single Polymarket bet."""
-        question = bet.get("question", {})
+        question = bet.get("question") or {}
         resolution = question.get("resolution")
 
         # Pending if no resolution
         if not resolution:
             return 0.0
 
-        winning_index = resolution.get("winningIndex")
-        if winning_index is None or winning_index == "":
-            # No winner yet
-            return 0.0
+        # Get bet amount
+        bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
+        
+        # Get total payout for this bet
+        total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
 
-        winning_index = int(winning_index)
-        outcome_index = int(bet.get("outcomeIndex", 0))
-        bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-
-        # Lost bet
-        if outcome_index != winning_index:
+        # Calculate net profit: total_payout - bet_amount
+        # If totalPayout > 0, the bet was won
+        # If totalPayout == 0, the bet was lost
+        if total_payout > 0:
+            return total_payout - bet_amount
+        else:
             return -bet_amount
-
-        # Won bet: profit = (shares * settled_price) - bet_amount
-        shares = float(bet.get("shares", 0)) / WEI_TO_NATIVE
-        settled_price = float(resolution.get("settledPrice", 0)) / WEI_TO_NATIVE
-
-        return (shares * settled_price) - bet_amount
 
     def _get_prediction_status(self, bet: Dict) -> str:
         """Determine the status of a Polymarket prediction."""
-        question = bet.get("question", {})
+        question = bet.get("question") or {}
         resolution = question.get("resolution")
 
-        # Market not resolved
+        # Market not resolved - resolution object is null
         if not resolution:
             return "pending"
 
-        winning_index = resolution.get("winningIndex")
-        if winning_index is None or winning_index == "":
-            return "pending"
-
-        winning_index = int(winning_index)
-        outcome_index = int(bet.get("outcomeIndex", 0))
-
-        if outcome_index == winning_index:
+        # Market is resolved, determine win/loss based on totalPayout
+        total_payout = float(bet.get("totalPayout", 0))
+        
+        if total_payout > 0:
             return "won"
-
-        return "lost"
+        else:
+            return "lost"
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
