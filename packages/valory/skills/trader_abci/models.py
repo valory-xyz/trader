@@ -42,6 +42,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     PolygonMechSubgraph as APTPolygonMechSubgraph,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonStakingSubgraph as APTPolygonStakingSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
     PolymarketAgentsSubgraph as APTPolymarketAgentsSubgraph,
 )
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
@@ -133,6 +136,7 @@ RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
 GnosisStakingSubgraph = APTGnosisStakingSubgraph
+PolygonStakingSubgraph = APTPolygonStakingSubgraph
 OlasMechSubgraph = APTOlasMechSubgraph
 OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph

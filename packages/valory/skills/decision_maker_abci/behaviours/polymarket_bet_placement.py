@@ -93,7 +93,16 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         # Handle error case where response is None
         success = False
         if response is not None:
-            success = bool(response.get("success") or response.get("transactionHash"))
+            self.context.logger.info(
+                f"Bet placement: Status={response.get('status')}, "
+                f"OrderID={response.get('orderID')}, "
+                f"TX={response.get('transactionsHashes', [])}"
+            )
+
+            success = bool(
+                response.get("success") or response.get("transactionsHashes")
+            )
+
         else:
             self.context.logger.error(
                 "Failed to place bet: No response from connection"

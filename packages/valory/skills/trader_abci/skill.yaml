@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeigkqeife46pk65m4cizaijv2z3yxd4hpm67sy5mxsqkvqvxpx7eom
   handlers.py: bafybeid63jvimxemnjfusw6mzhpaxfeee3khm4oyy2zkqb75j74q44dwqu
-  models.py: bafybeieks3xp3xcojqf26ooye7ekb7zdgd7dpa2wqsobidhgqjmedvelxa
+  models.py: bafybeifp4x4j6pkcuir4mqrfbybq55sqb6lt5duq3h7xwxhi3kfaptwyu4
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
@@ -51,14 +51,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
-- valory/market_manager_abci:0.1.0:bafybeid2f4ixz3q3jxy4pw3xm5cg2fww3tkesf7rgr3dl4uckmeshj22lm
-- valory/decision_maker_abci:0.1.0:bafybeid5qnmfnt7onejrga35qumfpoqcfjzcvzvtaq46s6teelzbcgbk3m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibaswvkexxholnqc2hvg4aphltvsnziekx62w5755wlrqei5krj5y
+- valory/market_manager_abci:0.1.0:bafybeianfnmxdiwmzplk4la6ingrywu4enlxmx5wlr3aldjdovkp54h4fu
+- valory/decision_maker_abci:0.1.0:bafybeibud2guzww7n7gmf3dvtycvjw7kyxxgpgxd5jjr6tua6zymy5xqxq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibc67d2ox7kejxlo32vmsh5cdsxaxnxhoowgqqpjtswka7mop5hgy
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeig54tpr3zka6zi72wutin5cn7eph7tucutbsxiu2znrxmgpl4pp6i
-- valory/agent_performance_summary_abci:0.1.0:bafybeihxfzmxh27dhpwabsnrrc5idmgr3zrz45uc4tnq3ak4cfwizstvh4
+- valory/chatui_abci:0.1.0:bafybeiccpgnm2j53tbzg6g2dxm4qyigcwn7rw5aujriqnp26wp4zlpwbkm
+- valory/agent_performance_summary_abci:0.1.0:bafybeibzmdglhboezcoazfc7frt45usotapyclsd6dazavnd3i667cu6me
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
@@ -502,6 +502,21 @@ models:
       retries: 5
       url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
+  polygon_staking_subgraph:
+    args:
+      api_id: polygon_staking
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:service
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://staking-polygon.subgraph.autonolas.tech
+    class_name: PolygonStakingSubgraph
   mech_tools:
     args:
       api_id: mech_tools
@@ -535,6 +550,7 @@ models:
       api_id: polymarket_agents
       headers:
         Content-Type: application/json
+        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:traderAgent
@@ -543,7 +559,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.7
+      url: https://gateway.thegraph.com/api/deployments/id/QmbE1ByaFS9hQhUALsXbki4pXZvLrQyM2HuDm4t8VDTrja/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
     class_name: PolymarketAgentsSubgraph
   polygon_mech_subgraph:
     args:

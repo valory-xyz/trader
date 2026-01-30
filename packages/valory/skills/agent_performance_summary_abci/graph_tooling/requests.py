@@ -215,13 +215,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_staking_service(
         self, service_id: str
     ) -> Generator[None, None, Optional[Dict]]:
-        """Fetch trader agent details."""
+        """Fetch staking service details - platform-aware."""
+        # Use the appropriate staking subgraph based on platform
+        if self.params.is_running_on_polymarket:
+            subgraph = self.context.polygon_staking_subgraph
+            res_context = "polygon_staking_service"
+        else:
+            subgraph = self.context.gnosis_staking_subgraph
+            res_context = "gnosis_staking_service"
+
         return (
             yield from self._fetch_from_subgraph(
                 query=GET_STAKING_SERVICE_QUERY,
                 variables={"id": service_id},
-                subgraph=self.context.gnosis_staking_subgraph,
-                res_context="staking_service",
+                subgraph=subgraph,
+                res_context=res_context,
             )
         )
 
@@ -241,7 +249,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_trader_agent_bets(
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
-        """Fetch trader agent details."""
+        """Fetch trader agent bets - platform-aware."""
+        # Polymarket doesn't use this query (uses market participants instead)
+        if self.params.is_running_on_polymarket:
+            return None
+
+        # Omen uses olas_agents_subgraph for bet data
         result = yield from self._fetch_from_subgraph(
             query=GET_TRADER_AGENT_BETS_QUERY,
             variables={"id": agent_safe_address},

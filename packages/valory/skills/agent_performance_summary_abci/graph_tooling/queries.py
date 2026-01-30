@@ -278,6 +278,7 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
 GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY = """
 query GetPolymarketTraderAgentPerformance($id: ID!) {
   traderAgent(id: $id) {
+    serviceId
     totalBets
     totalPayout
     totalTraded
@@ -295,18 +296,7 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
     first: $first
     skip: $skip
   ) {
-    question {
-      questionId
-      metadata {
-        outcomes
-        title
-      }
-      resolution {
-        winningIndex
-        settledPrice
-        timestamp
-      }
-    }
+    totalPayout
     bets {
       id
       outcomeIndex
@@ -314,6 +304,18 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       shares
       blockTimestamp
       transactionHash
+      question {
+        questionId
+        metadata {
+          outcomes
+          title
+        }
+        resolution {
+          winningIndex
+          settledPrice
+          blockTimestamp
+        }
+      }
     }
   }
 }

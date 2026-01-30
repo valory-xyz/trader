@@ -338,6 +338,10 @@ class GnosisStakingSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Gnosis Staking's subgraph specifications."""
 
 
+class PolygonStakingSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polygon Staking's subgraph specifications."""
+
+
 class OpenMarketsSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Open Markets subgraph specifications."""
 
