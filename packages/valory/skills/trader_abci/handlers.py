@@ -82,13 +82,34 @@ AcnHandler = BaseAcnHandler
 SrrHandler = BaseSrrHandler
 
 
-PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
+# UI Build Configuration
+UI_BUILD_BASE_DIR = "ui-build"
+OMENSTRAT_UI_SUBDIR = "omenstrat"
+POLYSTRAT_UI_SUBDIR = "polystrat"
+
+# Gnosis Chain Configuration
 GNOSIS_CHAIN_NAME = "gnosis"
-XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
-WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
-SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
+GNOSIS_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000000000"  # nosec: B105
+)
+GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+GNOSIS_USDC_E_ADDRESS = "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"
+
+# Polygon Chain Configuration
+POLYGON_CHAIN_NAME = "polygon"
+POLYGON_CHAIN_ID = 137
+POLYGON_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000000000"  # nosec: B105
+)
+POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+
+TRADING_STRATEGY_EXPLANATION = {
+    "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
+    "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
+}
 
 
 class HttpHandler(BaseHttpHandler):
@@ -126,6 +147,26 @@ class HttpHandler(BaseHttpHandler):
     def params(self) -> TraderParams:
         """Get the skill params."""
         return self.context.params
+
+    def _get_chain_config(self) -> Dict[str, Any]:
+        """Get chain configuration based on is_running_on_polymarket parameter."""
+        if self.params.is_running_on_polymarket:
+            return {
+                "chain_name": POLYGON_CHAIN_NAME,
+                "chain_id": POLYGON_CHAIN_ID,
+                "native_token_address": POLYGON_NATIVE_TOKEN_ADDRESS,
+                "wrapped_native_address": POLYGON_WRAPPED_NATIVE_ADDRESS,
+                "usdc_e_address": POLYGON_USDC_E_ADDRESS,
+                "usdc_address": POLYGON_USDC_ADDRESS,
+            }
+
+        return {
+            "chain_name": GNOSIS_CHAIN_NAME,
+            "chain_id": GNOSIS_CHAIN_ID,
+            "native_token_address": GNOSIS_NATIVE_TOKEN_ADDRESS,
+            "wrapped_native_address": GNOSIS_WRAPPED_NATIVE_ADDRESS,
+            "usdc_e_address": GNOSIS_USDC_E_ADDRESS,
+        }
 
     def setup(self) -> None:
         """Setup the handler."""
@@ -165,6 +206,9 @@ class HttpHandler(BaseHttpHandler):
             rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
         )
         is_enabled_url = rf"{hostname_regex}\/features"
+        position_details_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
+        )
 
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
@@ -186,13 +230,23 @@ class HttpHandler(BaseHttpHandler):
                 (is_enabled_url, self._handle_get_features),
                 (agent_profit_over_time_url_regex, self._handle_get_profit_over_time),
                 (
+                    position_details_url_regex,
+                    self._handle_get_position_details,
+                ),
+                (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,
                 ),
             ],
         }
 
-        self.agent_profile_path = PREDICT_AGENT_PROFILE_PATH
+        # Determine UI build path based on trading platform
+        ui_build_subdir = (
+            POLYSTRAT_UI_SUBDIR
+            if self.params.is_running_on_polymarket
+            else OMENSTRAT_UI_SUBDIR
+        )
+        self.agent_profile_path = f"{UI_BUILD_BASE_DIR}/{ui_build_subdir}"
 
     def _get_content_type(self, file_path: Path) -> str:
         """Get the appropriate content type header based on file extension."""
@@ -242,11 +296,15 @@ class HttpHandler(BaseHttpHandler):
             # Get current trading strategy
             trading_strategy = self.shared_state.chatui_config.trading_strategy
             trading_type = self._get_ui_trading_strategy(trading_strategy).value
+            trading_strategy_explanation = TRADING_STRATEGY_EXPLANATION.get(
+                trading_type, ""
+            )
 
             # Format response
             formatted_response = {
                 "agent_id": safe_address,
                 "trading_type": trading_type,
+                "trading_type_description": trading_strategy_explanation,
             }
 
             self.context.logger.info(f"Sending trading details: {formatted_response}")
@@ -305,26 +363,123 @@ class HttpHandler(BaseHttpHandler):
             self._send_not_found_response(http_msg, http_dialogue)
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
-        """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it."""
+        """
+        Adjust fund status based on chain-specific token equivalence:
+
+        - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
+        - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
+
+        :return: The adjusted fund requirements.
+        """
         funds_status = copy.deepcopy(self.funds_status)
+
         try:
-            safe_balances = funds_status[GNOSIS_CHAIN_NAME].accounts[
+            chain_config = self._get_chain_config()
+            safe_balances = funds_status[chain_config["chain_name"]].accounts[
                 self.synchronized_data.safe_contract_address
             ]
 
-            xDAI_status = safe_balances.tokens[XDAI_ADDRESS]
-            wxDAI_status = safe_balances.tokens[WRAPPED_XDAI_ADDRESS]
+            native_status = safe_balances.tokens[chain_config["native_token_address"]]
+
+            if self.params.is_running_on_polymarket:
+                # On Polygon: USDC balance needs to be converted to POL equivalent
+                # Using LiFi to get real-time exchange rate since USDC and POL have different prices
+                usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
+                usdc_balance = int(usdc_status.balance or 0)
+                usdc_decimals = usdc_status.decimals
+                pol_decimals = native_status.decimals
+
+                if usdc_decimals is None or pol_decimals is None:
+                    self.context.logger.error(
+                        "Missing decimal information for USDC or native token. Can't apply adjustment."
+                    )
+                    return funds_status
+
+                # If USDC balance is zero, no adjustment needed
+                if usdc_balance == 0:
+                    self.context.logger.info(
+                        "USDC balance is zero. Skipping adjustment."
+                    )
+                    return funds_status
+
+                # Get POL equivalent for USDC balance using LiFi
+                pol_equivalent = self._get_pol_equivalent_for_usdc(
+                    usdc_balance, chain_config
+                )
+
+                if pol_equivalent is None:
+                    self.context.logger.warning(
+                        "Failed to get POL/USDC exchange rate from LiFi. Skipping adjustment."
+                    )
+                    return funds_status
+
+                adjustment_balance = pol_equivalent
+            else:
+                # On Gnosis: wxDAI balance considered as xDAI (both same decimals, 1:1 rate)
+                wrapped_native_status = safe_balances.tokens[
+                    chain_config["wrapped_native_address"]
+                ]
+                adjustment_balance = int(wrapped_native_status.balance or 0)
+
         except KeyError:
             self.context.logger.error(
                 "Misconfigured fund requirements data. Can't apply adjustment."
             )
             return funds_status
-        if xDAI_status.deficit != 0:
-            xDAI_status.deficit = max(
-                0, int(xDAI_status.deficit or 0) - int(wxDAI_status.balance or 0)
+
+        actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
+
+        if native_status.deficit != 0:
+            native_status.deficit = max(
+                0,
+                int(native_status.topup) - actual_considered_balance,
             )
 
         return funds_status
+
+    def _get_pol_equivalent_for_usdc(
+        self,
+        usdc_balance: int,
+        chain_config: Dict[str, Any],
+    ) -> Optional[int]:
+        """
+        Get the POL equivalent for a given USDC balance using LiFi quote.
+
+        :param usdc_balance: USDC balance in wei
+        :param chain_config: Chain configuration dictionary
+        :return: POL equivalent amount in wei, or None if failed
+        """
+        try:
+            safe_address = self.synchronized_data.safe_contract_address
+
+            # Get quote from USDC to POL using LiFi
+            quote = self._get_lifi_quote(
+                from_token=chain_config["usdc_address"],
+                to_token=chain_config["native_token_address"],
+                from_amount=str(usdc_balance),
+                from_address=safe_address,
+                to_address=safe_address,
+                chain_config=chain_config,
+                timeout=10,
+            )
+
+            if not quote:
+                return None
+
+            # Extract the estimated output amount in wei
+            to_amount = quote.get("estimate", {}).get("toAmount")
+
+            if to_amount:
+                return int(to_amount)
+
+            self.context.logger.error("No toAmount in LiFi quote response")
+            return None
+
+        except Exception as e:
+            self.context.logger.error(
+                f"Error getting POL equivalent for USDC: {str(e)}"
+            )
+            return None
 
     def _handle_get_funds_status(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -385,7 +540,14 @@ class HttpHandler(BaseHttpHandler):
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
         """Get Web3 instance for the specified chain."""
         try:
-            rpc_url = self.params.gnosis_ledger_rpc
+            # Select RPC URL based on chain
+            if chain == POLYGON_CHAIN_NAME:
+                rpc_url = self.params.polygon_ledger_rpc
+            elif chain == GNOSIS_CHAIN_NAME:
+                rpc_url = self.params.gnosis_ledger_rpc
+            else:
+                self.context.logger.error(f"Unknown chain: {chain}")
+                return None
 
             if not rpc_url:
                 self.context.logger.warning(f"No RPC URL for {chain}")
@@ -431,33 +593,74 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error checking USDC balance: {str(e)}")
             return None
 
-    def _get_lifi_quote_sync(
-        self, eoa_address: str, chain: str, usdc_address: str, to_amount: str
+    def _get_lifi_quote(
+        self,
+        from_token: str,
+        to_token: str,
+        from_address: str,
+        to_address: str,
+        chain_config: Dict[str, Any],
+        from_amount: Optional[str] = None,
+        to_amount: Optional[str] = None,
+        timeout: int = 30,
     ) -> Optional[Dict]:
-        """Get LiFi quote synchronously."""
+        """
+        Get LiFi quote for token swap.
+
+        :param from_token: Source token address
+        :param to_token: Destination token address
+        :param from_address: Address sending the tokens
+        :param to_address: Address receiving the tokens
+        :param chain_config: Chain configuration dictionary
+        :param from_amount: Amount to swap from (for standard quote)
+        :param to_amount: Desired amount to receive (for toAmount quote)
+        :param timeout: Request timeout in seconds
+        :return: LiFi quote response or None if failed
+        """
         try:
-            chain_id = GNOSIS_CHAIN_ID
+            # Use different slippage values based on chain
+            slippage = str(
+                self.params.slippages_for_swap["POL-USDC"]
+                if chain_config["chain_name"] == POLYGON_CHAIN_NAME
+                else self.params.slippages_for_swap["xDAI-USDC"]
+            )
 
             params = {
-                "fromChain": chain_id,
-                "toChain": chain_id,
-                "fromToken": XDAI_ADDRESS,
-                "toToken": usdc_address,
-                "fromAddress": eoa_address,
-                "toAddress": eoa_address,
-                "toAmount": to_amount,
-                "slippage": SLIPPAGE_FOR_SWAP,
+                "fromChain": chain_config["chain_id"],
+                "toChain": chain_config["chain_id"],
+                "fromToken": from_token,
+                "toToken": to_token,
+                "fromAddress": from_address,
+                "toAddress": to_address,
+                "slippage": slippage,
                 "integrator": "valory",
             }
 
-            response = requests.get(
-                self.params.lifi_quote_to_amount_url, params=params, timeout=30
-            )
+            # Add amount parameter based on what's provided
+            if to_amount is not None:
+                params["toAmount"] = to_amount
+                url = self.params.lifi_quote_to_amount_url
+            elif from_amount is not None:
+                params["fromAmount"] = from_amount
+                url = self.params.lifi_quote_to_amount_url.replace(
+                    "/quote/toAmount", "/quote"
+                )
+            else:
+                self.context.logger.error(
+                    "Either from_amount or to_amount must be provided"
+                )
+                return None
+
+            response = requests.get(url, params=params, timeout=timeout)
 
             if response.status_code == 200:
                 return response.json()
 
+            self.context.logger.warning(
+                f"LiFi API failed with status {response.status_code} {response.text}"
+            )
             return None
+
         except Exception as e:
             self.context.logger.error(f"Error getting LiFi quote: {str(e)}")
             return None
@@ -473,7 +676,7 @@ class HttpHandler(BaseHttpHandler):
 
             signed_tx = eoa_account.sign_transaction(tx_data)
 
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             return tx_hash.hex()
 
         except Exception as e:
@@ -572,14 +775,20 @@ class HttpHandler(BaseHttpHandler):
         """Ensure agent EOA has at sufficient funds for x402 requests payments"""
         self.context.logger.info("Checking USDC balance for x402 payments...")
         try:
-            chain = GNOSIS_CHAIN_NAME
+            chain_config = self._get_chain_config()
+            chain = chain_config["chain_name"]
             eoa_account = self._get_eoa_account()
             if not eoa_account:
                 self.context.logger.error("Failed to get EOA account")
                 return False
             eoa_address = eoa_account.address
 
-            usdc_address = USDC_E_ADDRESS
+            # For Polygon use USDC (native), for Gnosis use USDC.e (bridged)
+            usdc_address = (
+                chain_config["usdc_address"]
+                if self.params.is_running_on_polymarket
+                else chain_config["usdc_e_address"]
+            )
             if not usdc_address:
                 self.context.logger.error(f"No USDC address for {chain}")
                 return False
@@ -599,13 +808,21 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return True
 
+            native_token_name = (
+                "POL" if self.params.is_running_on_polymarket else "xDAI"
+            )
             self.context.logger.info(
-                f"USDC balance ({usdc_balance}) < {threshold}, swapping xDAI to {top_up} USDC..."
+                f"USDC balance ({usdc_balance}) < {threshold}, swapping {native_token_name} to {top_up} USDC..."
             )
 
             top_up_usdc_amount = str(top_up)
-            quote = self._get_lifi_quote_sync(
-                eoa_address, chain, usdc_address, top_up_usdc_amount
+            quote = self._get_lifi_quote(
+                from_token=chain_config["native_token_address"],
+                to_token=usdc_address,
+                from_address=eoa_address,
+                to_address=eoa_address,
+                chain_config=chain_config,
+                to_amount=top_up_usdc_amount,
             )
             if not quote:
                 self.context.logger.error("Failed to get LiFi quote")
@@ -638,7 +855,7 @@ class HttpHandler(BaseHttpHandler):
                 "gas": tx_gas,
                 "gasPrice": gas_price,
                 "nonce": nonce,
-                "chainId": GNOSIS_CHAIN_ID,
+                "chainId": chain_config["chain_id"],
             }
 
             self.context.logger.info(
@@ -651,7 +868,12 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to submit transaction")
                 return False
 
-            self.context.logger.info(f"xDAI to USDC swap submitted: {tx_hash}")
+            native_token_name = (
+                "POL" if self.params.is_running_on_polymarket else "xDAI"
+            )
+            self.context.logger.info(
+                f"{native_token_name} to USDC swap submitted: {tx_hash}"
+            )
 
             # Check transaction status to ensure it was successful
             tx_successful = self._check_transaction_status(tx_hash, chain)
@@ -661,7 +883,7 @@ class HttpHandler(BaseHttpHandler):
                 return False
 
             self.context.logger.info(
-                f"xDAI to USDC swap completed successfully: {tx_hash}"
+                f"{native_token_name} to USDC swap completed successfully: {tx_hash}"
             )
             return True
 

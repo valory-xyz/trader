@@ -1,0 +1,48 @@
+name: polymarket_client
+author: valory
+version: 0.1.0
+type: connection
+description: A connection that provides a wrapper around the py-clob-client library.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
+  __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
+  connection.py: bafybeig2ohsaljyem3ruplx2xem3zigp2qzpruzwnk4afwsiy64isgkotm
+  request_types.py: bafybeif6vbsxswqdrwjvh6adsnbapve7efmtclker4dirfcxxg4awjho3i
+fingerprint_ignore_patterns: []
+connections: []
+protocols:
+- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
+class_name: PolymarketClientConnection
+config:
+  host: https://clob.polymarket.com
+  chain_id: 137
+  safe_contract_addresses:
+    polygon: 0x
+  remote_builder_url: http://localhost:5001/sign
+  polymarket_builder_program_enabled: true
+  usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+  ctf_address: '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045'
+  ctf_exchange: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E'
+  neg_risk_ctf_exchange: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
+  neg_risk_adapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
+excluded_protocols: []
+restricted_to_protocols: []
+dependencies:
+  web3:
+    version: <8,>=7.0.0
+  eth-abi:
+    version: ==5.2.0
+  requests:
+    version: <2.32.5,>=2.28.1
+  eth-utils:
+    version: ==5.3.0
+  py-clob-client:
+    version: ==0.34.5
+  py-builder-relayer-client:
+    version: ==0.0.1
+  py_builder_signing_sdk:
+    version: <1,>=0.0.1
+is_abstract: false
+cert_requests: []

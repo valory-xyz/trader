@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
+    UpdateAchievementsPayload,
 )
 
 
@@ -49,7 +50,11 @@ class Event(Enum):
 
 
 class FetchPerformanceDataRound(VotingRound):
-    """A round for fetching and saving Agent Performance summary."""
+    """
+    A round for fetching and saving Agent Performance summary.
+
+    This round collects votes from agents on whether performance data was successfully fetched.
+    """
 
     payload_class = FetchPerformanceDataPayload
     synchronized_data_class = BaseSynchronizedData
@@ -60,10 +65,27 @@ class FetchPerformanceDataRound(VotingRound):
     collection_key = get_name(BaseSynchronizedData.participant_to_votes)
 
 
+class UpdateAchievementsRound(VotingRound):
+    """A round for updating the agent achievements database."""
+
+    payload_class = UpdateAchievementsPayload
+    synchronized_data_class = BaseSynchronizedData
+    done_event = Event.DONE
+    negative_event = Event.FAIL
+    none_event = Event.NONE
+    no_majority_event = Event.NO_MAJORITY
+    collection_key = get_name(BaseSynchronizedData.participant_to_votes)
+
+
 class FinishedFetchPerformanceDataRound(DegenerateRound, ABC):
-    """A terminal round indicating that performance data collection is complete."""
+    """
+    A terminal round indicating that performance data collection is complete.
+
+    This is the final state of the agent performance summary ABCI application.
+    """
 
 
+# fmt: off
 class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """AgentPerformanceSummaryAbciApp
 
@@ -78,7 +100,13 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
             - fail: 1.
             - round timeout: 1.
             - no majority: 0.
-        1. FinishedFetchPerformanceDataRound
+        1. UpdateAchievementsRound
+            - done: 2.
+            - none: 0.
+            - fail: 2.
+            - round timeout: 2.
+            - no majority: 0.
+        2. FinishedFetchPerformanceDataRound
 
     Final states: {FinishedFetchPerformanceDataRound}
 
@@ -89,6 +117,13 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
     initial_round_cls: Type[AbstractRound] = FetchPerformanceDataRound
     transition_function: AbciAppTransitionFunction = {
         FetchPerformanceDataRound: {
+            Event.DONE: UpdateAchievementsRound,
+            Event.NONE: FetchPerformanceDataRound,
+            Event.FAIL: UpdateAchievementsRound,
+            Event.ROUND_TIMEOUT: UpdateAchievementsRound,
+            Event.NO_MAJORITY: FetchPerformanceDataRound,
+        },
+        UpdateAchievementsRound: {
             Event.DONE: FinishedFetchPerformanceDataRound,
             Event.NONE: FetchPerformanceDataRound,
             Event.FAIL: FinishedFetchPerformanceDataRound,
@@ -107,3 +142,4 @@ class AgentPerformanceSummaryAbciApp(AbciApp[Event]):  # pylint: disable=too-few
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedFetchPerformanceDataRound: set(),
     }
+# fmt: on

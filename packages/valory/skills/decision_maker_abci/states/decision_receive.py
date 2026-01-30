@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -107,4 +107,6 @@ class DecisionReceiveRound(CollectSameUntilThresholdRound):
         if event == Event.DONE and not synced_data.is_profitable:
             return synced_data, Event.UNPROFITABLE
 
+        if self.context.params.is_running_on_polymarket:
+            event = Event.POLYMARKET_DONE
         return synced_data, event

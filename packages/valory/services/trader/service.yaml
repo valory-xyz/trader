@@ -2,12 +2,12 @@ name: trader
 author: valory
 version: 0.1.0
 description: A set of agents placing bets
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihmqhrfni24lhnjzie6z2blw3ignydnm73odletllbjeciizf6c5e
+agent: valory/trader:0.1.0:bafybeie2bu5thojll2nzoscwfwaaeks33bzwdrnhbvguhzsonco6vrkvwu
 number_of_agents: 4
 deployment:
   agent:
@@ -146,6 +146,7 @@ type: skill
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
         x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
         gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
         lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
@@ -273,7 +274,7 @@ type: skill
         error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OPEN_MARKETS_SUBGRAPH_RETRIES:int:5}
-        url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+        url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
     olas_agents_subgraph: &id014
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -284,7 +285,7 @@ type: skill
         error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
-        url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+        url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
     olas_mech_subgraph: &id015
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -295,7 +296,7 @@ type: skill
         error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
         error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
         retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
-        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/mech}
+        url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
     gnosis_staking_subgraph: &id016
       args:
         headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -433,6 +434,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
@@ -565,6 +567,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
@@ -697,6 +700,7 @@ type: skill
         default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
         mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
         use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+        enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
         enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
         review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
         genai_api_key: ${GENAI_API_KEY:str:""}

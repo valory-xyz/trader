@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -51,6 +51,10 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedPolymarketRedeemRound,
+    FinishedPolymarketSwapTxPreparationRound,
+    FinishedRedeemTxPreparationRound,
+    FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
     FinishedWithoutRedeemingRound,
     ImpossibleRound,
@@ -59,11 +63,29 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
+    PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
+    PolymarketRedeemRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
+    PolymarketSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
+    PolymarketSwapUsdcRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -81,97 +103,146 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, HandleFailedTxRound, RandomnessRound, RedeemRound}
+    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, RandomnessRound, RedeemRouterRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
             - benchmarking enabled: 1.
-            - benchmarking disabled: 12.
+            - benchmarking disabled: 18.
+            - set approval: 11.
+            - prepare tx: 11.
             - no majority: 0.
             - round timeout: 0.
-            - none: 17.
+            - none: 27.
         1. BenchmarkingRandomnessRound
             - done: 3.
             - round timeout: 1.
             - no majority: 1.
-            - none: 17.
+            - none: 27.
         2. RandomnessRound
             - done: 3.
             - round timeout: 2.
             - no majority: 2.
-            - none: 17.
+            - none: 27.
         3. SamplingRound
             - done: 4.
-            - none: 14.
+            - none: 24.
             - no majority: 3.
             - round timeout: 3.
             - new simulated resample: 3.
             - benchmarking enabled: 4.
-            - benchmarking finished: 18.
-            - fetch error: 17.
+            - benchmarking finished: 28.
+            - fetch error: 27.
         4. ToolSelectionRound
             - done: 5.
             - none: 4.
             - no majority: 4.
             - round timeout: 4.
-        5. DecisionRequestRound
-            - done: 13.
-            - mock mech request: 6.
-            - slots unsupported error: 7.
+        5. PolymarketSwapUsdcRound
+            - done: 6.
+            - none: 6.
+            - prepare tx: 22.
             - no majority: 5.
             - round timeout: 5.
-        6. DecisionReceiveRound
-            - done: 8.
-            - done no sell: 11.
-            - done sell: 19.
-            - mech response error: 7.
+            - mock tx: 6.
+        6. DecisionRequestRound
+            - done: 19.
+            - mock mech request: 7.
+            - slots unsupported error: 8.
             - no majority: 6.
-            - tie: 7.
-            - unprofitable: 7.
             - round timeout: 6.
-        7. BlacklistingRound
-            - done: 14.
-            - mock tx: 14.
-            - none: 17.
+        7. DecisionReceiveRound
+            - done: 9.
+            - polymarket done: 10.
+            - done no sell: 17.
+            - done sell: 29.
+            - mech response error: 8.
             - no majority: 7.
+            - tie: 8.
+            - unprofitable: 8.
             - round timeout: 7.
-            - fetch error: 17.
-        8. BetPlacementRound
-            - done: 11.
-            - mock tx: 9.
-            - insufficient balance: 16.
-            - calc buy amount failed: 10.
+        8. BlacklistingRound
+            - done: 14.
+            - mock tx: 24.
+            - none: 27.
             - no majority: 8.
             - round timeout: 8.
-            - none: 17.
-        9. RedeemRound
-            - done: 11.
-            - mock tx: 3.
-            - no redeeming: 15.
+            - fetch error: 27.
+        9. BetPlacementRound
+            - done: 17.
+            - mock tx: 13.
+            - insufficient balance: 26.
+            - calc buy amount failed: 16.
             - no majority: 9.
-            - redeem round timeout: 15.
-            - none: 17.
-        10. HandleFailedTxRound
-            - blacklist: 7.
-            - no op: 9.
+            - round timeout: 9.
+            - none: 27.
+        10. PolymarketBetPlacementRound
+            - done: 14.
+            - bet placement done: 14.
+            - bet placement failed: 10.
+            - insufficient balance: 26.
+            - mock tx: 14.
             - no majority: 10.
-        11. FinishedDecisionMakerRound
-        12. BenchmarkingModeDisabledRound
-        13. FinishedDecisionRequestRound
-        14. FinishedWithoutDecisionRound
-        15. FinishedWithoutRedeemingRound
-        16. RefillRequiredRound
-        17. ImpossibleRound
-        18. BenchmarkingDoneRound
-        19. SellOutcomeTokensRound
-            - done: 11.
-            - calc sell amount failed: 10.
-            - mock tx: 8.
-            - no majority: 19.
-            - round timeout: 19.
-            - none: 17.
+            - round timeout: 10.
+            - none: 27.
+        11. PolymarketSetApprovalRound
+            - done: 12.
+            - prepare tx: 23.
+            - no majority: 11.
+            - round timeout: 11.
+            - none: 27.
+            - mock tx: 12.
+        12. PolymarketPostSetApprovalRound
+            - done: 18.
+            - approval failed: 11.
+            - no majority: 12.
+            - round timeout: 12.
+            - none: 27.
+        13. RedeemRound
+            - done: 17.
+            - mock tx: 3.
+            - no redeeming: 25.
+            - no majority: 13.
+            - redeem round timeout: 25.
+            - none: 27.
+        14. RedeemRouterRound
+            - done: 13.
+            - polymarket done: 15.
+            - no majority: 14.
+            - none: 14.
+        15. PolymarketRedeemRound
+            - done: 21.
+            - prepare tx: 20.
+            - no majority: 15.
+            - none: 15.
+            - no redeeming: 25.
+            - redeem round timeout: 17.
+            - mock tx: 21.
+        16. HandleFailedTxRound
+            - blacklist: 8.
+            - no op: 13.
+            - no majority: 16.
+        17. FinishedDecisionMakerRound
+        18. BenchmarkingModeDisabledRound
+        19. FinishedDecisionRequestRound
+        20. FinishedRedeemTxPreparationRound
+        21. FinishedPolymarketRedeemRound
+        22. FinishedPolymarketSwapTxPreparationRound
+        23. FinishedSetApprovalTxPreparationRound
+        24. FinishedWithoutDecisionRound
+        25. FinishedWithoutRedeemingRound
+        26. RefillRequiredRound
+        27. ImpossibleRound
+        28. BenchmarkingDoneRound
+        29. SellOutcomeTokensRound
+            - done: 17.
+            - calc sell amount failed: 16.
+            - mock tx: 9.
+            - no majority: 29.
+            - round timeout: 29.
+            - none: 27.
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
 
     Timeouts:
         round timeout: 30.0
@@ -184,12 +255,16 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         RandomnessRound,
         HandleFailedTxRound,
         DecisionReceiveRound,
-        RedeemRound,
+        RedeemRouterRound,
+        PolymarketPostSetApprovalRound,
+        DecisionRequestRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
             Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
             Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
+            Event.SET_APPROVAL: PolymarketSetApprovalRound,
+            Event.PREPARE_TX: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs`
@@ -225,10 +300,18 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         ToolSelectionRound: {
-            Event.DONE: DecisionRequestRound,
+            Event.DONE: PolymarketSwapUsdcRound,
             Event.NONE: ToolSelectionRound,
             Event.NO_MAJORITY: ToolSelectionRound,
             Event.ROUND_TIMEOUT: ToolSelectionRound,
+        },
+        PolymarketSwapUsdcRound: {
+            Event.DONE: DecisionRequestRound,
+            Event.NONE: DecisionRequestRound,
+            Event.PREPARE_TX: FinishedPolymarketSwapTxPreparationRound,
+            Event.NO_MAJORITY: PolymarketSwapUsdcRound,
+            Event.ROUND_TIMEOUT: PolymarketSwapUsdcRound,
+            Event.MOCK_TX: DecisionRequestRound,
         },
         DecisionRequestRound: {
             Event.DONE: FinishedDecisionRequestRound,
@@ -240,6 +323,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         DecisionReceiveRound: {
             Event.DONE: BetPlacementRound,
+            Event.POLYMARKET_DONE: PolymarketBetPlacementRound,
             Event.DONE_NO_SELL: FinishedDecisionMakerRound,
             Event.DONE_SELL: SellOutcomeTokensRound,
             Event.MECH_RESPONSE_ERROR: BlacklistingRound,
@@ -250,7 +334,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.ROUND_TIMEOUT: DecisionReceiveRound,
         },
         BlacklistingRound: {
-            Event.DONE: FinishedWithoutDecisionRound,
+            Event.DONE: RedeemRouterRound,
             Event.MOCK_TX: FinishedWithoutDecisionRound,
             # degenerate round on purpose, should never have reached here
             Event.NONE: ImpossibleRound,
@@ -273,6 +357,42 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # falsely reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
+        PolymarketBetPlacementRound: {
+            Event.DONE: RedeemRouterRound,
+            Event.BET_PLACEMENT_DONE: RedeemRouterRound,
+            Event.BET_PLACEMENT_FAILED: PolymarketBetPlacementRound,
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
+            # skip the bet placement tx
+            Event.MOCK_TX: RedeemRouterRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
+            Event.NO_MAJORITY: PolymarketBetPlacementRound,
+            Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
+        PolymarketSetApprovalRound: {
+            Event.DONE: PolymarketPostSetApprovalRound,
+            Event.PREPARE_TX: FinishedSetApprovalTxPreparationRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.NO_MAJORITY: PolymarketSetApprovalRound,
+            Event.ROUND_TIMEOUT: PolymarketSetApprovalRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+            Event.MOCK_TX: PolymarketPostSetApprovalRound,
+        },
+        PolymarketPostSetApprovalRound: {
+            Event.DONE: BenchmarkingModeDisabledRound,
+            # degenerate round on purpose, owner must refill the safe
+            Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
+            Event.NO_MAJORITY: PolymarketPostSetApprovalRound,
+            Event.ROUND_TIMEOUT: PolymarketPostSetApprovalRound,
+            # this is here because of `autonomy analyse fsm-specs`
+            # falsely reporting it as missing from the transition
+            Event.NONE: ImpossibleRound,
+        },
         RedeemRound: {
             Event.DONE: FinishedDecisionMakerRound,
             Event.MOCK_TX: SamplingRound,
@@ -286,6 +406,21 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
+        RedeemRouterRound: {
+            Event.DONE: RedeemRound,
+            Event.POLYMARKET_DONE: PolymarketRedeemRound,
+            Event.NO_MAJORITY: RedeemRouterRound,
+            Event.NONE: RedeemRouterRound,
+        },
+        PolymarketRedeemRound: {
+            Event.DONE: FinishedPolymarketRedeemRound,
+            Event.PREPARE_TX: FinishedRedeemTxPreparationRound,
+            Event.NO_MAJORITY: PolymarketRedeemRound,
+            Event.NONE: PolymarketRedeemRound,
+            Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
+            Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
+            Event.MOCK_TX: FinishedPolymarketRedeemRound,
+        },
         HandleFailedTxRound: {
             Event.BLACKLIST: BlacklistingRound,
             Event.NO_OP: RedeemRound,
@@ -294,6 +429,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound: {},
         BenchmarkingModeDisabledRound: {},
         FinishedDecisionRequestRound: {},
+        FinishedRedeemTxPreparationRound: {},
+        FinishedPolymarketRedeemRound: {},
+        FinishedPolymarketSwapTxPreparationRound: {},
+        FinishedSetApprovalTxPreparationRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
         RefillRequiredRound: {},
@@ -328,6 +467,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedDecisionMakerRound,
         BenchmarkingModeDisabledRound,
         FinishedDecisionRequestRound,
+        FinishedRedeemTxPreparationRound,
+        FinishedPolymarketRedeemRound,
+        FinishedPolymarketSwapTxPreparationRound,
+        FinishedSetApprovalTxPreparationRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
         RefillRequiredRound,
@@ -339,13 +482,15 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         Event.REDEEM_ROUND_TIMEOUT: 3600.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
-        RedeemRound: set(),
+        RedeemRouterRound: set(),
         # problematic check in `chain` does not allow to set `final_tx_hash` as a precondition here
         DecisionReceiveRound: set(),
         # problematic check in `chain` does not allow to set `bets_hash` as a precondition here
         HandleFailedTxRound: set(),
         RandomnessRound: set(),
         CheckBenchmarkingModeRound: {get_name(SynchronizedData.is_marketplace_v2)},
+        PolymarketPostSetApprovalRound: set(),
+        DecisionRequestRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
@@ -355,6 +500,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         BenchmarkingModeDisabledRound: set(),
         FinishedDecisionRequestRound: set(),
+        FinishedRedeemTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedPolymarketRedeemRound: set(),
+        FinishedPolymarketSwapTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedSetApprovalTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
         FinishedWithoutDecisionRound: {get_name(SynchronizedData.sampled_bet_index)},
         FinishedWithoutRedeemingRound: set(),
         RefillRequiredRound: set(),

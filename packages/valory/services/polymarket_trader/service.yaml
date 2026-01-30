@@ -1,0 +1,388 @@
+name: polymarket_trader
+author: valory
+version: 0.1.0
+description: A single-agent service (sovereign agent) placing bets on Polymarket,
+  used by Pearl.
+aea_version: '>=1.0.0, <2.0.0'
+license: Apache-2.0
+fingerprint:
+  README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
+fingerprint_ignore_patterns: []
+agent: valory/trader:0.1.0:bafybeie2bu5thojll2nzoscwfwaaeks33bzwdrnhbvguhzsonco6vrkvwu
+number_of_agents: 1
+deployment:
+  agent:
+    ports:
+      0:
+        8716: 8716
+    volumes:
+      ./data: /data
+---
+public_id: valory/trader_abci:0.1.0
+type: skill
+models:
+  params:
+    args:
+      setup:
+        all_participants: ${ALL_PARTICIPANTS:list:[]}
+        safe_contract_address: ${SAFE_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
+        consensus_threshold: ${CONSENSUS_THRESHOLD:int:null}
+      cleanup_history_depth: ${CLEANUP_HISTORY_DEPTH:int:1}
+      cleanup_history_depth_current: ${CLEANUP_HISTORY_DEPTH_CURRENT:int:null}
+      drand_public_key: ${DRAND_PUBLIC_KEY:str:868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31}
+      finalize_timeout: ${FINALIZE_TIMEOUT:float:60.0}
+      genesis_config:
+        genesis_time: ${GENESIS_TIME:str:'2023-07-12T00:00:00.000000000Z'}
+        chain_id: ${GENESIS_CHAIN_ID:str:chain-c4daS1}
+        consensus_params:
+          block:
+            max_bytes: ${BLOCK_MAX_BYTES:str:'22020096'}
+            max_gas: ${MAX_GAS:str:'-1'}
+            time_iota_ms: ${TIME_IOTA_MS:str:'1000'}
+          evidence:
+            max_age_num_blocks: ${MAX_AGE_NUM_BLOCKS:str:'100000'}
+            max_age_duration: ${MAX_AGE_DURATION:str:'172800000000000'}
+            max_bytes: ${EVIDENCE_MAX_BYTES:str:'1048576'}
+          validator:
+            pub_key_types: ${PUB_KEY_TYPES:list:["ed25519"]}
+          version: ${VERSION:dict:{}}
+        voting_power: ${VOTING_POWER:str:'10'}
+      init_fallback_gas: ${INIT_FALLBACK_GAS:int:0}
+      keeper_allowed_retries: ${KEEPER_ALLOWED_RETRIES:int:3}
+      keeper_timeout: ${KEEPER_TIMEOUT:float:30.0}
+      max_attempts: ${MAX_ATTEMPTS:int:10}
+      max_healthcheck: ${MAX_HEALTHCHECK:int:120}
+      multisend_address: ${MULTISEND_ADDRESS:str:0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761}
+      multisend_batch_size: ${MULTISEND_BATCH_SIZE:int:1}
+      on_chain_service_id: ${ON_CHAIN_SERVICE_ID:int:null}
+      reset_tendermint_after: ${RESET_TM_AFTER:int:2}
+      retry_attempts: ${RETRY_ATTEMPTS:int:400}
+      retry_timeout: ${RETRY_TIMEOUT:int:3}
+      reset_pause_duration: ${RESET_PAUSE_DURATION:int:30}
+      request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
+      request_timeout: ${REQUEST_TIMEOUT:float:10.0}
+      round_timeout_seconds: ${ROUND_TIMEOUT:float:350.0}
+      service_id: ${SERVICE_ID:str:trader}
+      service_registry_address: ${SERVICE_REGISTRY_ADDRESS:str:0x9338b5153AE39BB89f50468E608eD9d764B755fD}
+      agent_registry_address: ${AGENT_REGISTRY_ADDRESS:str:0xE49CB081e8d96920C38aA7AB90cb0294ab4Bc8EA}
+      use_acn_for_delivers: ${USE_ACN_FOR_DELIVERS:bool:false}
+      share_tm_config_on_startup: ${USE_ACN:bool:false}
+      sleep_time: ${SLEEP_TIME:int:1}
+      tendermint_check_sleep_delay: ${TM_CHECK_SLEEP_DELAY:int:3}
+      tendermint_com_url: ${TENDERMINT_COM_URL:str:http://localhost:8080}
+      tendermint_max_retries: ${TM_MAX_RETRIES:int:5}
+      tendermint_url: ${TENDERMINT_URL:str:http://localhost:26657}
+      tendermint_p2p_url: ${TM_P2P_ENDPOINT_NODE_0:str:node0:26656}
+      termination_sleep: ${TERMINATION_SLEEP:int:900}
+      tx_timeout: ${TX_TIMEOUT:float:10.0}
+      use_termination: ${USE_TERMINATION:bool:false}
+      termination_from_block: ${TERMINATION_FROM_BLOCK:int:0}
+      validate_timeout: ${VALIDATE_TIMEOUT:int:1205}
+      history_check_timeout: ${HISTORY_CHECK_TIMEOUT:int:1205}
+      creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0xFfc8029154ECD55ABED15BD428bA596E7D23f557"]}}
+      slot_count: ${SLOT_COUNT:int:2}
+      opening_margin: ${OPENING_MARGIN:int:300}
+      languages: ${LANGUAGES:list:["en_US"]}
+      average_block_time: ${ABT:int:5}
+      abt_error_mult: ${ABT_ERROR_MULT:int:5}
+      the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
+      the_graph_payment_required_error: ${THE_GRAPH_PAYMENT_REQUIRED_ERROR:str:payment
+        required for subsequent requests for this API key}
+      mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x45F25db135E83d7a010b05FFc1202F8473E3ae7D}
+      mech_chain_id: ${MECH_CHAIN_ID:str:polygon}
+      mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270}
+      sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+      trading_strategy: ${TRADING_STRATEGY:str:bet_amount_per_threshold}
+      use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
+      mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
+      bet_threshold: ${BET_THRESHOLD:int:1000000}
+      ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
+      tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
+      prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        and the `yes` option represented by `@{yes}` and the `no` option represented
+        by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?}
+      dust_threshold: ${DUST_THRESHOLD:int:10000000000000}
+      conditional_tokens_address: ${CONDITIONAL_TOKENS_ADDRESS:str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
+      realitio_proxy_address: ${REALITIO_PROXY_ADDRESS:str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
+      realitio_address: ${REALITIO_ADDRESS:str:0x79e32aE03fb27B07C89c0c568F80287C01ca2E57}
+      event_filtering_batch_size: ${EVENT_FILTERING_BATCH_SIZE:int:5000}
+      reduce_factor: ${REDUCE_FACTOR:float:0.25}
+      max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
+      minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
+      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
+      slippage: ${SLIPPAGE:float:0.01}
+      policy_epsilon: ${POLICY_EPSILON:float:0.25}
+      store_path: ${STORE_PATH:str:/data/}
+      irrelevant_tools: ${IRRELEVANT_TOOLS:list:["native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-offline-sme","deepmind-optimization",
+        "deepmind-optimization-strong","openai-gpt-3.5-turbo","openai-gpt-3.5-turbo-instruct","openai-gpt-4","openai-text-davinci-002","openai-text-davinci-003","prediction-online-sum-url-content","prediction-online-summarized-info","stabilityai-stable-diffusion-512-v2-1","stabilityai-stable-diffusion-768-v2-1","stabilityai-stable-diffusion-v1-5","stabilityai-stable-diffusion-xl-beta-v2-2-2"]}
+      staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
+      staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
+      disable_trading: ${DISABLE_TRADING:bool:false}
+      stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
+      enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
+      review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
+      agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
+      refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
+      tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
+      redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+      contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
+      file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihsjx7we6b2scjt7777xmjte36rrubblusitqsipjhkttk4cmf5iu":["bet_amount_per_threshold"],"bafybeibxfp27rzrfnp7sxq62vwv32pdvrijxi7vzg7ihukkaka3bwzrgae":["kelly_criterion_no_conf"]}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"default_max_bet_size":5000000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":10000000,"bet_amount_per_threshold":{"0.0":1000000,"0.1":1000000,"0.2":1000000,"0.3":1000000,"0.4":1000000,"0.5":1000000,"0.6":1000000,"0.7":1000000,"0.8":1000000,"0.9":1000000,"1.0":1000000}}}
+      use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
+      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}
+      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x343F2B005cF6D70bA610CD9F1F1927049414B582","priority_mech_address":"0x1DCbC9368327776F8B20Dc041D40b8076C8AC173","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":25,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+      rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
+      safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
+      rebet_chance: ${REBET_CHANCE:float:0.6}
+      mech_interaction_sleep_time: ${MECH_INTERACTION_SLEEP_TIME:int:10}
+      policy_store_update_offset: ${POLICY_STORE_UPDATE_OFFSET:int:259200}
+      expected_mech_response_time: ${EXPECTED_MECH_RESPONSE_TIME:int:300}
+      mech_invalid_response: ${MECH_INVALID_RESPONSE:str:Invalid Response}
+      mech_consecutive_failures_threshold: ${MECH_CONSECUTIVE_FAILURES_THRESHOLD:int:2}
+      tool_quarantine_duration: ${TOOL_QUARANTINE_DURATION:int:10800}
+      default_chain_id: ${DEFAULT_CHAIN_ID:str:polygon}
+      mech_interact_round_timeout_seconds: ${MECH_INTERACT_ROUND_TIMEOUT_SECONDS:int:1800}
+      use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:false}
+      coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+      genai_api_key: ${GENAI_API_KEY:str:""}
+      x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
+      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
+      use_x402: ${USE_X402:bool:false}
+      is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+      is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
+      polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+      pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
+      ignored_mechs: ${IGNORED_MECHS:list:["0x1DCbC9368327776F8B20Dc041D40b8076C8AC173"]}
+      slippages_for_swap: ${SLIPPAGES_FOR_SWAP:dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
+  benchmark_tool:
+    args:
+      log_dir: ${LOG_DIR:str:/benchmarks}
+  benchmarking_mode:
+    args:
+      enabled: ${BENCHMARKING_MODE_ENABLED:bool:false}
+      native_balance: ${BENCHMARKING_MODE_NATIVE_BALANCE:int:10000000000000000000}
+      collateral_balance: ${BENCHMARKING_MODE_COLLATERAL_BALANCE:int:10000000000000000000}
+      mech_cost: ${BENCHMARKING_MODE_MECH_COST:int:10000000000000000}
+      pool_fee: ${BENCHMARKING_MODE_POOL_FEE:int:20000000000000000}
+      sep: ${BENCHMARKING_MODE_SEP:str:,}
+      dataset_filename: ${BENCHMARKING_MODE_DATASET_FILENAME:str:benchmark_data.csv}
+      question_field: ${BENCHMARKING_MODE_QUESTION_FIELD:str:question}
+      question_id_field: ${BENCHMARKING_MODE_QUESTION_ID_FIELD:str:question_id}
+      answer_field: ${BENCHMARKING_MODE_ANSWER_FIELD:str:answer}
+      p_yes_field_part: ${BENCHMARKING_MODE_P_YES_FIELD_PART:str:p_yes_}
+      p_no_field_part: ${BENCHMARKING_MODE_P_NO_FIELD_PART:str:p_no_}
+      confidence_field_part: ${BENCHMARKING_MODE_CONFIDENCE_FIELD_PART:str:confidence_}
+      part_prefix_mode: ${BENCHMARKING_MODE_PART_PREFIX_MODE:bool:true}
+      bet_amount_field: ${BENCHMARKING_MODE_BET_AMOUNT_FIELD:str:collateral_amount}
+      results_filename: ${BENCHMARKING_MODE_RESULTS_FILENAME:str:benchmarking_results.csv}
+      randomness: ${BENCHMARKING_MODE_RANDOMNESS:str:benchmarking_randomness}
+  acc_info_fields:
+    args:
+      tool: ${ACC_INFO_FIELDS_TOOL:str:tool}
+      requests: ${ACC_INFO_FIELDS_REQUESTS:str:total_requests}
+      accuracy: ${ACC_INFO_FIELDS_ACCURACY:str:tool_accuracy}
+      sep: ${ACC_INFO_FIELDS_SEP:str:,}
+      max: ${ACC_INFO_FIELDS_MAX:str:max}
+      datetime_format: ${ACC_INFO_FIELDS_DATETIME_FORMAT:str:%Y-%m-%d %H:%M:%S}
+  network_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
+      response_key: ${NETWORK_SUBGRAPH_RESPONSE_KEY:str:data:blocks}
+      response_index: ${NETWORK_SUBGRAPH_RESPONSE_INDEX:int:0}
+      response_type: ${NETWORK_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${NETWORK_SUBGRAPH_RETRIES:int:5}
+      url: ${NETWORK_SUBGRAPH_URL:str:https://gnosis.subgraph.autonolas.tech}
+  omen_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OMEN_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OMEN_SUBGRAPH_RESPONSE_KEY:str:data:fixedProductMarketMakers}
+      response_type: ${OMEN_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OMEN_SUBGRAPH_RETRIES:int:5}
+      url: ${OMEN_SUBGRAPH_URL:str:https://omen.subgraph.autonolas.tech}
+  randomness_api:
+    args:
+      method: ${RANDOMNESS_API_METHOD:str:GET}
+      response_key: ${RANDOMNESS_API_RESPONSE_KEY:str:null}
+      response_type: ${RANDOMNESS_API_RESPONSE_TYPE:str:dict}
+      retries: ${RANDOMNESS_API_RETRIES:int:5}
+      url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
+  mech_response:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${MECH_RESPONSE_API_METHOD:str:GET}
+      response_key: ${MECH_RESPONSE_API_RESPONSE_KEY:str:result}
+      response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
+      retries: ${MECH_RESPONSE_API_RETRIES:int:5}
+      url: ${MECH_RESPONSE_API_URL:str:''}
+  agent_tools:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${AGENT_TOOLS_API_METHOD:str:GET}
+      response_key: ${AGENT_TOOLS_API_RESPONSE_KEY:str:tools}
+      response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
+      retries: ${AGENT_TOOLS_API_RETRIES:int:5}
+      url: ${AGENT_TOOLS_API_URL:str:''}
+  trades_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${TRADES_SUBGRAPH_METHOD:str:POST}
+      response_key: ${TRADES_SUBGRAPH_RESPONSE_KEY:str:data:fpmmTrades}
+      response_type: ${TRADES_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${TRADES_SUBGRAPH_RETRIES:int:5}
+      url: ${TRADES_SUBGRAPH_URL:str:https://trades.subgraph.autonolas.tech}
+  conditional_tokens_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
+      response_key: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_KEY:str:data:user:userPositions}
+      response_type: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${CONDITIONAL_TOKENS_SUBGRAPH_RETRIES:int:5}
+      url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://conditional-tokens.subgraph.autonolas.tech}
+  realitio_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
+      response_key: ${REALITIO_SUBGRAPH_RESPONSE_KEY:str:data:answers}
+      response_type: ${REALITIO_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${REALITIO_SUBGRAPH_RETRIES:int:5}
+      url: ${REALITIO_SUBGRAPH_URL:str:https://realitio.subgraph.autonolas.tech}
+  open_markets_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OPEN_MARKETS_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_KEY:str:data:questions}
+      response_type: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OPEN_MARKETS_SUBGRAPH_RETRIES:int:5}
+      url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+  olas_agents_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OLAS_AGENTS_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_KEY:str:data:traderAgent}
+      response_type: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
+      url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+  olas_mech_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${OLAS_MECH_SUBGRAPH_METHOD:str:POST}
+      response_key: ${OLAS_MECH_SUBGRAPH_RESPONSE_KEY:str:data:sender}
+      response_type: ${OLAS_MECH_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
+      url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/mech}
+  gnosis_staking_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${GNOSIS_STAKING_SUBGRAPH_METHOD:str:POST}
+      response_key: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_KEY:str:data:service}
+      response_type: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_TYPE:str:dict}
+      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${GNOSIS_STAKING_SUBGRAPH_RETRIES:int:5}
+      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
+  mechs_subgraph:
+    args:
+      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
+      method: ${POLYGON_MECH_SUBGRAPH_METHOD:str:POST}
+      response_key: ${POLYGON_MECH_SUBGRAPH_RESPONSE_KEY:str:data:meches}
+      response_type: ${POLYGON_MECH_SUBGRAPH_RESPONSE_TYPE:str:list}
+      error_key: ${POLYGON_SUBGRAPH_ERROR_KEY:str:errors}
+      error_index: ${POLYGON_SUBGRAPH_ERROR_INDEX:int:0}
+      error_type: ${POLYGON_SUBGRAPH_ERROR_TYPE:str:dict}
+      retries: ${POLYGON_MECH_SUBGRAPH_RETRIES:int:5}
+      url: ${POLYGON_MECH_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0}
+---
+public_id: valory/ledger:0.19.0
+type: connection
+config:
+  ledger_apis:
+    polygon:
+      address: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      chain_id: ${POLYGON_LEDGER_CHAIN_ID:int:137}
+      poa_chain: ${POLYGON_LEDGER_IS_POA_CHAIN:bool:true}
+      default_gas_price_strategy: ${POLYGON_LEDGER_PRICING:str:eip1559}
+      gas_price_strategies:
+        eip1559:
+          max_gas_fast: ${POLYGON_MAX_GAS_FAST:int:1500}
+          default_priority_fee: ${POLYGON_DEFAULT_PRIORITY_FEE:int:null}
+      is_gas_estimation_enabled: ${POLYGON_IS_GAS_ESTIMATION_ENABLED:bool:true}
+      timeout: ${POLYGON_LEDGER_TIMEOUT:int:10}
+---
+public_id: valory/p2p_libp2p_client:0.1.0
+type: connection
+config:
+  nodes:
+  - uri: ${ACN_URI:str:acn.staging.autonolas.tech:9005}
+    public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
+cert_requests:
+- identifier: acn
+  ledger_id: ethereum
+  message_format: '{public_key}'
+  not_after: '2023-01-01'
+  not_before: '2022-01-01'
+  public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
+  save_path: .certs/acn_cosmos_11000.txt
+is_abstract: true
+---
+public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  host: ${HTTP_SERVER_HOST:str:0.0.0.0}
+  port: ${HTTP_SERVER_PORT:int:8716}
+  timeout: ${HTTP_SERVER_TIMEOUT:float:30.0}
+  target_skill_id: valory/trader_abci:0.1.0
+---
+public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  genai_api_key: ${GENAI_API_KEY:str:""}
+  genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/polygon/v1beta}
+  use_x402: ${USE_X402:bool:false}
+---
+public_id: valory/funds_manager:0.1.0
+type: skill
+models:
+  params:
+    args:
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":28000000000000000000,"threshold":3200000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":40000000000000000000,"threshold":32000000000000000000},"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":{"topup":65000000,"threshold":16000000},"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359":{"topup":0,"threshold":0}}}}}
+      rpc_urls:
+        polygon: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+---
+public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+type: connection
+config:
+  host: https://clob.polymarket.com
+  chain_id: 137
+  safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+  remote_builder_url: ${REMOTE_BUILDER_URL:str:http://localhost:5001/sign}
+  polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}

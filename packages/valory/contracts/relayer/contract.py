@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -39,8 +39,8 @@ class RelayerContract(Contract):
     ) -> JSONLike:
         """Build a deposit tx."""
         contract = cls.get_instance(ledger_api, contract_address)
-        data = contract.encodeABI(
-            fn_name="operatorDeposit",
+        data = contract.encode_abi(
+            abi_element_identifier="operatorDeposit",
             args=[
                 amount,
             ],
@@ -57,8 +57,8 @@ class RelayerContract(Contract):
     ) -> JSONLike:
         """Build a execute tx."""
         contract = cls.get_instance(ledger_api, contract_address)
-        data = contract.encodeABI(
-            fn_name="exec",
+        data = contract.encode_abi(
+            abi_element_identifier="exec",
             args=[
                 to,
                 data,

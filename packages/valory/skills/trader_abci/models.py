@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -37,6 +37,15 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     OpenMarketsSubgraph as APTOpenMarketsSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonMechSubgraph as APTPolygonMechSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonStakingSubgraph as APTPolygonStakingSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolymarketAgentsSubgraph as APTPolymarketAgentsSubgraph,
 )
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     Event as AgentPerformanceSummaryEvent,
@@ -127,11 +136,14 @@ RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
 GnosisStakingSubgraph = APTGnosisStakingSubgraph
+PolygonStakingSubgraph = APTPolygonStakingSubgraph
 OlasMechSubgraph = APTOlasMechSubgraph
 OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph
 MechToolsSpecs = InteractMechToolsSpecs
 MechsSubgraph = InteractMechsSubgraph
+PolygonMechSubgraph = APTPolygonMechSubgraph
+PolymarketAgentsSubgraph = APTPolymarketAgentsSubgraph
 
 MARGIN = 5
 
@@ -164,6 +176,7 @@ class TraderParams(
             "lifi_quote_to_amount_url", kwargs, str
         )
         self.gnosis_ledger_rpc: str = self._ensure("gnosis_ledger_rpc", kwargs, str)
+        self.polygon_ledger_rpc: str = self._ensure("polygon_ledger_rpc", kwargs, str)
         self.use_x402: bool = self._ensure("use_x402", kwargs, bool)
         super().__init__(*args, **kwargs)
 
@@ -195,9 +208,9 @@ class SharedState(BaseSharedState):
         round_timeout_overrides = {
             cast(EventType, event).ROUND_TIMEOUT: round_timeout for event in events
         }
-        round_timeout_overrides[
-            MechInteractEvent.ROUND_TIMEOUT
-        ] = params.mech_interact_round_timeout_seconds
+        round_timeout_overrides[MechInteractEvent.ROUND_TIMEOUT] = (
+            params.mech_interact_round_timeout_seconds
+        )
         reset_pause_timeout = params.reset_pause_duration + MARGIN
         event_to_timeout_overrides: EventToTimeoutMappingType = {
             **round_timeout_overrides,

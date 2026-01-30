@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -39,6 +39,15 @@ from packages.valory.skills.decision_maker_abci.states.base import SynchronizedD
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
+    PolymarketRedeemRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
+    PolymarketSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
+    PolymarketSwapUsdcRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -61,9 +70,11 @@ class Event(Enum):
     REDEEMING_DONE = "redeeming_done"
     STAKING_DONE = "staking_done"
     SUBSCRIPTION_DONE = "subscription_done"
+    SET_APPROVAL_DONE = "set_approval_done"
     ROUND_TIMEOUT = "round_timeout"
     UNRECOGNIZED = "unrecognized"
     NO_MAJORITY = "no_majority"
+    SWAP_DONE = "swap_done"
 
 
 class PreTxSettlementRound(VotingRound):
@@ -108,8 +119,11 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             BetPlacementRound.auto_round_id(): Event.BET_PLACEMENT_DONE,
             SellOutcomeTokensRound.auto_round_id(): Event.SELL_OUTCOME_TOKENS_DONE,
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
+            PolymarketRedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
             MechPurchaseSubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
+            PolymarketSetApprovalRound.auto_round_id(): Event.SET_APPROVAL_DONE,
+            PolymarketSwapUsdcRound.auto_round_id(): Event.SWAP_DONE,
         }
 
         synced_data = SynchronizedData(self.synchronized_data.db)
@@ -166,8 +180,16 @@ class FinishedSubscriptionTxRound(DegenerateRound):
     """Finished subscription round."""
 
 
+class FinishedSetApprovalTxRound(DegenerateRound):
+    """Finished set approval round."""
+
+
 class FailedMultiplexerRound(DegenerateRound):
     """Round that represents failure in identifying the transmitter round."""
+
+
+class FinishedPolymarketSwapTxRound(DegenerateRound):
+    """Round that represents that polymarket swap has finished."""
 
 
 class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
@@ -187,21 +209,25 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             - mech requesting done: 3.
             - bet placement done: 4.
             - sell outcome tokens done: 5.
-            - redeeming done: 7.
-            - staking done: 8.
+            - redeeming done: 8.
+            - swap done: 9.
+            - staking done: 10.
             - subscription done: 6.
+            - set approval done: 7.
             - round timeout: 1.
-            - unrecognized: 9.
+            - unrecognized: 11.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
         5. FinishedSellOutcomeTokensTxRound
         6. FinishedSubscriptionTxRound
-        7. FinishedRedeemingTxRound
-        8. FinishedStakingTxRound
-        9. FailedMultiplexerRound
+        7. FinishedSetApprovalTxRound
+        8. FinishedRedeemingTxRound
+        9. FinishedPolymarketSwapTxRound
+        10. FinishedStakingTxRound
+        11. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedPolymarketSwapTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0
@@ -221,8 +247,10 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             Event.BET_PLACEMENT_DONE: FinishedBetPlacementTxRound,
             Event.SELL_OUTCOME_TOKENS_DONE: FinishedSellOutcomeTokensTxRound,
             Event.REDEEMING_DONE: FinishedRedeemingTxRound,
+            Event.SWAP_DONE: FinishedPolymarketSwapTxRound,
             Event.STAKING_DONE: FinishedStakingTxRound,
             Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
+            Event.SET_APPROVAL_DONE: FinishedSetApprovalTxRound,
             Event.ROUND_TIMEOUT: PostTxSettlementRound,
             Event.UNRECOGNIZED: FailedMultiplexerRound,
         },
@@ -231,7 +259,9 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedBetPlacementTxRound: {},
         FinishedSellOutcomeTokensTxRound: {},
         FinishedSubscriptionTxRound: {},
+        FinishedSetApprovalTxRound: {},
         FinishedRedeemingTxRound: {},
+        FinishedPolymarketSwapTxRound: {},
         FinishedStakingTxRound: {},
         FailedMultiplexerRound: {},
     }
@@ -244,8 +274,10 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedBetPlacementTxRound,
         FinishedSellOutcomeTokensTxRound,
         FinishedRedeemingTxRound,
+        FinishedPolymarketSwapTxRound,
         FinishedStakingTxRound,
         FinishedSubscriptionTxRound,
+        FinishedSetApprovalTxRound,
         FailedMultiplexerRound,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
@@ -258,7 +290,9 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedBetPlacementTxRound: set(),
         FinishedSellOutcomeTokensTxRound: set(),
         FinishedRedeemingTxRound: set(),
+        FinishedPolymarketSwapTxRound: set(),
         FinishedStakingTxRound: set(),
         FailedMultiplexerRound: set(),
         FinishedSubscriptionTxRound: set(),
+        FinishedSetApprovalTxRound: set(),
     }

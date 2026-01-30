@@ -4,28 +4,33 @@ description: Agent Performance summary skill for Predict agent
 author: valory
 type: skill
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeifrlephtnp4zdqlmovozy25ztjsfyvopm2pinkzyxtc65hmg53b5m
-  behaviours.py: bafybeig7345nvzidfpdllhgn7ld7onls46hvygudmzitujv54hydludzju
+  achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
+  achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
+  achievements_checker/bet_payout_checker.py: bafybeiezmhphr6fjpt2cnp2dnv5kbdxjpby3in26uvdrqsfgc4exa6jsla
+  behaviours.py: bafybeidbdlkw2afrgrh5k2ric24vqdf3lzmltfmyxlznggu5k4ips5srjq
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
-  fsm_specification.yaml: bafybeieh2wmnqfkrpfeyvkoojbvd7tbjg36edhnisi6mycdjugymgut3vi
+  fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
-  graph_tooling/predictions_helper.py: bafybeifduc6wkhuzgzkfme2qb34rle6vzpwcwqudskxjsoitwcgt4j3rny
-  graph_tooling/queries.py: bafybeick4bzu4jamzva6stzgjwpi4ucoupiuiksbjqh6vc442bjn6uej44
-  graph_tooling/requests.py: bafybeih3kvxu6ghoxwuiy6v2h6fdouzexdoulmqjvxr4ma7jbg2vrfnfv4
-  handlers.py: bafybeie2bvg5du7hopqe5r2ovkjom25rjxemktsvsmrkr4p43qawshljcy
-  models.py: bafybeigsnbcsypzwy4pq2ebzrxrzpjjyv5dqwplclihwtgikl6vwbbgxxy
-  payloads.py: bafybeibrfby2hkt3ljy4qpkshx5shjozxu2jfw4wpzggqvejce4nridyhe
-  rounds.py: bafybeifkvdespxwx5m2kvnaiidplx6brotpp3xiay3xahqmlasq7uvxcxe
+  graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
+  graph_tooling/polymarket_predictions_helper.py: bafybeici3gfktxehcbofikbqqksgrscfgbfl24zunpfuf3w24jicbnrcve
+  graph_tooling/predictions_helper.py: bafybeiaog54h22lqhda7d5ou7icsk2csb6s7pqntfd2meq6xdgaxokjngi
+  graph_tooling/queries.py: bafybeiaiytkowg7hewtcprkze3wvgq56cjvpatba44njobjtnh5k5twkuq
+  graph_tooling/requests.py: bafybeifglc3t6h4cd3h77rflyfozamjpi5smkslhkozg2kzidlygjeea4e
+  handlers.py: bafybeib2ye3phzqi5yknt57xshtagxh3xncsh4d3cbiygo76nbo7yreoai
+  models.py: bafybeiacsfx2r572y26aa63msp2ktromt6n2r6q7xwpriarif6fw2wc5vm
+  payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
+  rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeifaep43unfegellngvqln7v5tsbmpb6vvkzc7k7ta7b5yyym3rr74
+- valory/erc20:0.1.0:bafybeidrjq5rf6ay2okyy3eoseeafzl7bmngcbs7nhohbifdephc77tbke
 protocols:
-- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
-- valory/http:1.0.0:bafybeih4azmfwtamdbkhztkm4xitep3gx6tfdnoz6tvllmaqnhu3klejfa
+- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
+- valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 handlers:
   abci:
     args: {}
@@ -61,6 +66,7 @@ models:
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       store_path: /data/
       is_agent_performance_summary_enabled: true
+      is_running_on_polymarket: false
     class_name: AgentPerformanceSummaryParams
   olas_agents_subgraph:
     args:
@@ -75,7 +81,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://predict-agents.subgraph.autonolas.tech
+      url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen
     class_name: OlasAgentsSubgraph
   olas_mech_subgraph:
     args:
@@ -90,7 +96,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.autonolas.tech/api/proxy/mech
+      url: https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:
@@ -107,6 +113,21 @@ models:
       retries: 5
       url: https://staking-gnosis.subgraph.autonolas.tech
     class_name: GnosisStakingSubgraph
+  polygon_staking_subgraph:
+    args:
+      api_id: polygon_staking
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:service
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://staking-polygon.subgraph.autonolas.tech
+    class_name: PolygonStakingSubgraph
   trades_subgraph:
     args:
       api_id: trades
@@ -122,6 +143,37 @@ models:
       retries: 5
       url: https://api.thegraph.com/subgraphs/name/protofire/omen-xdai
     class_name: TradesSubgraph
+  polymarket_agents_subgraph:
+    args:
+      api_id: polymarket_agents
+      headers:
+        Content-Type: application/json
+        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
+      method: POST
+      parameters: {}
+      response_key: data:traderAgent
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://gateway.thegraph.com/api/deployments/id/QmbE1ByaFS9hQhUALsXbki4pXZvLrQyM2HuDm4t8VDTrja/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+    class_name: PolymarketAgentsSubgraph
+  polygon_mech_subgraph:
+    args:
+      api_id: polygon_mech
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:sender
+      response_type: dict
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0
+    class_name: PolygonMechSubgraph
 dependencies:
   requests:
     version: '>=2.28.1, <2.31.2'
