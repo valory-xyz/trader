@@ -25,8 +25,10 @@ query GetOlasTraderAgent($id: ID!) {
     id
     serviceId
     totalTraded
+    totalTradedSettled
     totalPayout
     totalFees
+    totalFeesSettled
   }
 }
 """
@@ -34,9 +36,11 @@ query GetOlasTraderAgent($id: ID!) {
 GET_MECH_SENDER_QUERY = """
 query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
-    totalRequests
+    totalMarketplaceRequests
     requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
-      questionTitle
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }
@@ -89,8 +93,10 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
   traderAgent(id: $id) {
     id
     totalTraded
+    totalTradedSettled
     totalPayout
     totalFees
+    totalFeesSettled
     totalBets
     bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
       amount
@@ -105,31 +111,54 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
 
 GET_PREDICTION_HISTORY_QUERY = """
 query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
-  traderAgent(id: $id) {
+  marketParticipants(
+    where: { traderAgent_: { id: $id } }
+    orderBy: blockTimestamp
+    orderDirection: desc
+    first: $first
+    skip: $skip
+  ) {
+    id
     totalBets
-    totalTraded
     totalPayout
+    totalTraded
     totalFees
-    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+    totalTradedSettled
+    totalFeesSettled
+    fixedProductMarketMaker {
+      id
+      question
+      outcomes
+      currentAnswer
+      currentAnswerTimestamp
+    }
+    bets {
       id
       timestamp
       amount
       feeAmount
       outcomeIndex
-      fixedProductMarketMaker {
-        id
-        question
-        outcomes
-        currentAnswer
-        currentAnswerTimestamp
-        participants(where: { traderAgent: $id }) {
-          totalBets
-          totalTraded
-          totalPayout
-          totalFees
-        }
-      }
     }
+  }
+}
+"""
+
+GET_RESOLVED_MARKETS_QUERY = """
+query GetResolvedMarkets($timestamp_gt: BigInt!, $timestamp_lte: BigInt) {
+  fixedProductMarketMakers(
+    where: {
+      currentAnswerTimestamp_gt: $timestamp_gt
+      currentAnswerTimestamp_lte: $timestamp_lte
+    }
+    orderBy: currentAnswerTimestamp
+    orderDirection: asc
+    first: $first
+    skip: $skip
+  ) {
+    id
+    question
+    currentAnswer
+    currentAnswerTimestamp
   }
 }
 """
@@ -159,7 +188,7 @@ GET_DAILY_PROFIT_STATISTICS_QUERY = """
 query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
   traderAgent(id: $agentId) {
     dailyProfitStatistics(
-      where: { 
+      where: {
         date_gte: $startTimestamp,
       }
       orderBy: date
@@ -194,7 +223,9 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
   ) {
     id
     requestId
-    questionTitle
+    parsedRequest {
+      questionTitle
+    }
   }
 }
 """
@@ -203,13 +234,77 @@ GET_MECH_REQUESTS_BY_TITLES_QUERY = """
 query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
   sender(id: $sender) {
     requests(
-      where: { 
-        questionTitle_in: $questionTitles
+      where: {
+        parsedRequest_: { questionTitle_in: $questionTitles }
       }
     ) {
       id
-      questionTitle
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }
+"""
+
+GET_MECH_TOOL_FOR_QUESTION_QUERY = """
+query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
+  sender(id: $sender) {
+    requests(
+      where: { parsedRequest_: { questionTitle: $questionTitle } }
+      first: 1
+      orderDirection: desc
+    ) {
+      deliveries {
+        model
+      }
+    }
+  }
+}
+"""
+
+GET_MECH_RESPONSE_QUERY = """
+query GetMechResponse($sender: String!, $questionTitle: String!) {
+  requests(
+    where: { sender: $sender, parsedRequest_: { questionTitle: $questionTitle } }
+    first: 1
+    orderBy: requestId
+    orderDirection: desc
+  ) {
+    parsedRequest {
+      questionTitle
+    }
+    deliveries(first: 1, orderBy: deliveryId, orderDirection: desc) {
+      toolResponse
+      model
+    }
+  }
+}
+"""
+
+GET_SPECIFIC_MARKET_BETS_QUERY = """
+query GetSpecificMarketBets($id: ID!, $betId: ID!) {
+          traderAgent(id: $id) {
+            bets(where: { id: $betId }, orderBy: timestamp, orderDirection: desc) {
+              id
+              timestamp
+              amount
+              feeAmount
+              outcomeIndex
+              fixedProductMarketMaker {
+                id
+                question
+                outcomes
+                currentAnswer
+                currentAnswerTimestamp
+                participants(where: { traderAgent: $id }) {
+                  totalBets
+                  totalTraded
+                  totalPayout
+                  totalFees
+                }
+              }
+            }
+          }
+        }
 """

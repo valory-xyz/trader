@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -33,13 +33,13 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "bet_placement_round": {
-        "name": "Placing a bet",
-        "description": "Attempts to place a bet on a prediction market.",
+        "name": "Opening a trade",
+        "description": "Attempts to place a trade on a prediction market.",
         "transitions": {},
     },
     "blacklisting_round": {
-        "name": "Blacklisting the sampled bet",
-        "description": "Removes the selected bet from consideration and updates the list of available bets.",
+        "name": "Blacklisting the sampled trade",
+        "description": "Removes the selected trade from consideration and updates the list of available trades.",
         "transitions": {},
     },
     "call_checkpoint_round": {
@@ -59,7 +59,7 @@ ROUNDS_INFO = {
     },
     "check_stop_trading_round": {
         "name": "Checking if trading should stop",
-        "description": "The agent checks its KPIs to decide whether to pause placing new bets.",
+        "description": "The agent checks its KPIs to decide whether to pause placing new trades.",
         "transitions": {},
     },
     "check_transaction_history_round": {
@@ -74,12 +74,12 @@ ROUNDS_INFO = {
     },
     "decision_receive_round": {
         "name": "Making a prediction",
-        "description": "The agent reviews the information it received to make its prediction for the bet.",
+        "description": "The agent reviews the information it received to make its prediction for the trade.",
         "transitions": {},
     },
     "decision_request_round": {
         "name": "Requesting bet outcome",
-        "description": "Requests external information needed to determine the answer to a bet.",
+        "description": "Requests external information needed to determine the answer to a prediction.",
         "transitions": {},
     },
     "failed_multiplexer_round": {
@@ -99,12 +99,12 @@ ROUNDS_INFO = {
     },
     "impossible_round": {
         "name": "Unable to decide",
-        "description": "The agent cannot determine a bet’s outcome with the available data.",
+        "description": "The agent cannot determine a position's outcome with the available data.",
         "transitions": {},
     },
     "mech_request_round": {
         "name": "Requesting outcome data",
-        "description": "Asks an external service for information needed to resolve a bet.",
+        "description": "Asks an external service for information needed to resolve a trade.",
         "transitions": {},
     },
     "mech_purchase_subscription_round": {
@@ -139,7 +139,7 @@ ROUNDS_INFO = {
     },
     "redeem_round": {
         "name": "Preparing a redeem transaction",
-        "description": "Prepares a transaction to redeem winnings from a resolved bet.",
+        "description": "Prepares a transaction to redeem winnings from a resolved trade.",
         "transitions": {},
     },
     "registration_round": {
@@ -163,8 +163,8 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "sampling_round": {
-        "name": "Sampling a bet",
-        "description": "Selects a potential bet for the agent to consider.",
+        "name": "Sampling a trade",
+        "description": "Selects a potential trade for the agent to consider.",
         "transitions": {},
     },
     "select_keeper_transaction_submission_a_round": {
@@ -183,7 +183,7 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "sell_outcome_tokens_round": {
-        "name": "Selling tokens of unresolved bets",
+        "name": "Selling tokens of unresolved trades",
         "description": "The agent sells its tokens before resolution to manage risk.",
         "transitions": {},
     },
@@ -199,12 +199,12 @@ ROUNDS_INFO = {
     },
     "tool_selection_round": {
         "name": "Choosing the tool used for making a prediction",
-        "description": "Selects which external tool to use for determining a bet’s outcome.",
+        "description": "Selects which external tool to use for determining a trade’s outcome.",
         "transitions": {},
     },
     "update_bets_round": {
-        "name": "Updating bet list",
-        "description": "Retrieves the latest market information and updates available bets.",
+        "name": "Updating trade list",
+        "description": "Retrieves the latest market information and updates available trades.",
         "transitions": {},
     },
     "validate_transaction_round": {
@@ -223,8 +223,8 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "mech_information_round": {
-        "name": "Fetching mechs' information",
-        "description": "Fetches the mechs' information",
+        "name": "Fetching mech's information",
+        "description": "Fetches the mech's information",
         "transitions": {},
     },
     "mech_version_detection_round": {
