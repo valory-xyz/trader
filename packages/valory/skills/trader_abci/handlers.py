@@ -338,7 +338,7 @@ class HttpHandler(BaseHttpHandler):
             xDAI_status.deficit = max(
                 0,
                 int(xDAI_status.threshold or 0)
-                - (int(xDAI_status.balance) + int(wxDAI_status.balance or 0)),
+                - (int(xDAI_status.balance or 0) + int(wxDAI_status.balance or 0)),
             )
         return funds_status
 
