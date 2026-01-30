@@ -472,6 +472,7 @@ models:
     args:
       headers:
         Content-Type: ${str:application/json}
+        Authorization: ${str:Bearer a97ff23d989cb855d2c0caecc864efc8}
       method: ${str:POST}
       response_key: ${str:data:traderAgent}
       response_type: ${str:dict}
@@ -479,7 +480,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: https://api.studio.thegraph.com/query/67875/olas-polymarket/v0.0.7
+      url: https://gateway.thegraph.com/api/deployments/id/QmbE1ByaFS9hQhUALsXbki4pXZvLrQyM2HuDm4t8VDTrja/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
   polygon_mech_subgraph:
     args:
       headers:
