@@ -608,17 +608,24 @@ class FetchPerformanceSummaryBehaviour(
         mech_request_lookup: Dict[str, int],
         extra_fees_by_day: Dict[int, int],
         date_timestamp: int,
-    ) -> Tuple[float, int]:
+        unplaced_buckets: Dict[int, int],
+        multi_allocations: Dict[int, int],
+    ) -> Tuple[float, int, int, int]:
         """Calculate mech fees for a day: lookup-based fees plus any precomputed extra buckets."""
         mech_fees, mech_count = self._calculate_mech_fees_for_day(
             profit_participants, mech_request_lookup
         )
+        # placed includes lookup matches + multi-day allocations
+        placed_extra = multi_allocations.get(date_timestamp, 0)
+        placed_count = mech_count + placed_extra
+        # unplaced is the evenly spread bucket
+        unplaced_count = unplaced_buckets.get(date_timestamp, 0)
+        total_count = placed_count + unplaced_count
 
-        extra_count = extra_fees_by_day.get(date_timestamp, 0)
-        if extra_count:
-            mech_fees += extra_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
-            mech_count += extra_count
-        return mech_fees, mech_count
+        if placed_extra or unplaced_count:
+            mech_fees = total_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+
+        return mech_fees, total_count, placed_count, unplaced_count
 
     def _evenly_distribute_requests(
         self, total_requests: int, days: list[int]
@@ -680,13 +687,13 @@ class FetchPerformanceSummaryBehaviour(
         placed_titles: Set[str],
         existing_unplaced_count: int,
         existing_placed_count: int = 0,
-    ) -> Tuple[Dict[int, int], Dict[str, int], int]:
+    ) -> Tuple[Dict[int, int], Dict[str, int], int, Dict[int, int], Dict[int, int]]:
         """
         Build per-day mech fee buckets for:
 
         - unplaced requests (evenly spread)
         - multi-bet markets (evenly split across appearances)
-        Returns: (extra_fees_by_day, filtered_lookup, unplaced_allocated)
+        Returns: (extra_fees_by_day, filtered_lookup, unplaced_allocated, unplaced_buckets, multi_allocations)
         """
         # Unplaced requests (no bets)
         total_mech_requests = self._total_mech_requests or sum(
@@ -727,7 +734,13 @@ class FetchPerformanceSummaryBehaviour(
             if k not in allocated_titles
         }
         unplaced_allocated = sum(unplaced_buckets.values())
-        return extra_fees_by_day, filtered_lookup, unplaced_allocated
+        return (
+            extra_fees_by_day,
+            filtered_lookup,
+            unplaced_allocated,
+            unplaced_buckets,
+            multi_allocations,
+        )
 
     def _build_mech_request_lookup(
         self, agent_safe_address: str
