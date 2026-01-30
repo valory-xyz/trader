@@ -65,10 +65,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihzh7vxfdnmadskxuvmu2ccqdpapur5y6qlqwatdzcyqlxbkjnp44
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiag6spebf5icpoqhrslearqzd4vuojnmhopwa43xt6btmthp6fhkq
 - valory/market_manager_abci:0.1.0:bafybeid2f4ixz3q3jxy4pw3xm5cg2fww3tkesf7rgr3dl4uckmeshj22lm
-- valory/decision_maker_abci:0.1.0:bafybeihxwetq45m4fsg7w3j5hoidgxpuujekgmiko6aaydmiud2b36rrdi
-- valory/trader_abci:0.1.0:bafybeic62rf6tlg5vrevuqsxqad3gdsvk44hndfkkbzureccox2xkgw3oq
+- valory/decision_maker_abci:0.1.0:bafybeihsdcnseg6qh5sb6zjkoemcgwof5rq5vi7sxmhzut6jknof6xd33m
+- valory/trader_abci:0.1.0:bafybeigkfv66tl7fjd6hsy7s4m2maokmctl3qjf7n6rdfzvwufnt6t6r6q
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
@@ -283,6 +283,7 @@ models:
       ignored_mechs: ${list:[]}
       penalize_mech_time_window: ${int:1800}
       pol_threshold_for_swap: ${int:2000000000000000000}
+      slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
