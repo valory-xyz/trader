@@ -493,6 +493,9 @@ class DecisionMakerParams(
         self.pol_threshold_for_swap: int = self._ensure(
             "pol_threshold_for_swap", kwargs, int
         )
+        self.slippages_for_swap: Dict[str, float] = self._ensure(
+            "slippages_for_swap", kwargs, Dict[str, float]
+        )
         super().__init__(*args, **kwargs)
 
     @property

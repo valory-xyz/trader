@@ -252,6 +252,7 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
             "fromAddress": from_address,
             "toAddress": from_address,
             "integrator": INTEGRATOR,
+            "slippage": str(self.params.slippages_for_swap["POL-USDC"]),
         }
 
         self.context.logger.info(
