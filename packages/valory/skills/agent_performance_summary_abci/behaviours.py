@@ -19,6 +19,7 @@
 
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
 
@@ -72,6 +73,11 @@ DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
+USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e on Polygon
+USDC_DECIMALS_DIVISOR = 10**6  # USDC.e has 6 decimals
+POLYGON_NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000001010"  # POL on Polygon
+POLYGON_CHAIN_ID = 137  # Polygon chain ID
+LIFI_QUOTE_URL = "https://li.quest/v1/quote"  # LiFi API endpoint
 
 INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
@@ -283,7 +289,6 @@ class FetchPerformanceSummaryBehaviour(
             trader_agent is None
             or trader_agent.get("serviceId") is None
             or trader_agent.get("totalTraded") is None
-            or trader_agent.get("totalFees") is None
             or trader_agent.get("totalPayout") is None
         ):
             self.context.logger.warning(
@@ -468,21 +473,23 @@ class FetchPerformanceSummaryBehaviour(
 
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
 
+        # Use appropriate divisor based on platform
+        # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
+        token_divisor = USDC_DECIMALS_DIVISOR if self.params.is_running_on_polymarket else WEI_IN_ETH
+
         # All-time funds used: traded + fees + ALL mech costs
-        all_time_funds_used = (total_traded + total_fees + all_mech_costs) / WEI_IN_ETH
+        all_time_funds_used = (total_traded + total_fees) / token_divisor + (all_mech_costs / WEI_IN_ETH)
 
         # All-time profit: uses settled traded/fees and settled mech costs
         # Settled mech requests include both placed and unplaced mech calls (excluding open markets).
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         all_time_profit = (
-            total_payout
-            - total_traded_settled
-            - total_fees_settled
-            - settled_mech_costs
-        ) / WEI_IN_ETH
+            (total_payout - total_traded_settled - total_fees_settled) / token_divisor
+            - (settled_mech_costs / WEI_IN_ETH)
+        )
 
         # Calculate locked funds
-        funds_locked_in_markets = (total_traded - total_traded_settled) / WEI_IN_ETH
+        funds_locked_in_markets = (total_traded - total_traded_settled) / token_divisor
 
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
@@ -510,12 +517,87 @@ class FetchPerformanceSummaryBehaviour(
             unplaced_mech_request_count=unplaced_mech_requests,
         )
 
+    def _get_usdc_equivalent_for_pol(
+        self, pol_balance_wei: int
+    ) -> Generator[None, None, Optional[float]]:
+        """
+        Convert POL balance to USDC equivalent using LiFi quote.
+        
+        :param pol_balance_wei: POL balance in wei
+        :return: USDC equivalent in standard units, or None if failed
+        """
+        try:
+            safe_address = self.synchronized_data.safe_contract_address
+            
+            # Build LiFi quote request URL
+            params = {
+                "fromChain": str(POLYGON_CHAIN_ID),
+                "toChain": str(POLYGON_CHAIN_ID),
+                "fromToken": POLYGON_NATIVE_TOKEN_ADDRESS,
+                "toToken": USDC_E_ADDRESS,
+                "fromAmount": str(pol_balance_wei),
+                "fromAddress": safe_address,
+                "toAddress": safe_address,
+            }
+            
+            # Construct URL with query parameters
+            query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+            url = f"{LIFI_QUOTE_URL}?{query_string}"
+            
+            self.context.logger.info(f"Fetching LiFi quote for POL→USDC conversion")
+            
+            # Make HTTP request to LiFi API
+            response = yield from self.get_http_response(
+                method="GET",
+                url=url,
+            )
+            
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"LiFi API returned status {response.status_code}"
+                )
+                return None
+            
+            # Parse response
+            response_data = json.loads(response.body.decode())
+            
+            # Extract USDC amount from quote
+            to_amount_wei = response_data.get("estimate", {}).get("toAmount")
+            
+            if not to_amount_wei:
+                self.context.logger.error("No toAmount in LiFi quote response")
+                return None
+            
+            # Convert USDC wei to standard units (6 decimals)
+            usdc_amount = int(to_amount_wei) / USDC_DECIMALS_DIVISOR
+            
+            self.context.logger.info(
+                f"POL→USDC conversion: {pol_balance_wei / WEI_IN_ETH:.4f} POL ≈ {usdc_amount:.2f} USDC"
+            )
+            
+            return usdc_amount
+            
+        except Exception as e:
+            self.context.logger.error(
+                f"Error getting USDC equivalent for POL: {str(e)}"
+            )
+            return None
+
     def _fetch_available_funds(self) -> Generator[None, None, Optional[float]]:
-        """Fetch available funds (wxDAI + xDAI balance)."""
+        """Fetch available funds (token + native balance) - platform-aware."""
         safe_contract_address = self.synchronized_data.safe_contract_address
+        
+        # Use appropriate token address based on platform
+        token_address = USDC_E_ADDRESS if self.params.is_running_on_polymarket else WXDAI_ADDRESS
+        
+        self.context.logger.info(
+            f"Fetching available funds: is_polymarket={self.params.is_running_on_polymarket}, "
+            f"token_address={token_address}, chain_id={self.params.mech_chain_id}"
+        )
+        
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=WXDAI_ADDRESS,
+            contract_address=token_address,
             contract_id=str(ERC20.contract_id),
             contract_callable="check_balance",
             account=safe_contract_address,
@@ -536,9 +618,31 @@ class FetchPerformanceSummaryBehaviour(
             )
             return None
 
-        token_balance = token / WEI_IN_ETH
-        wallet_balance = wallet / WEI_IN_ETH
-        available_funds = token_balance + wallet_balance
+        # Use appropriate divisor based on platform
+        token_divisor = USDC_DECIMALS_DIVISOR if self.params.is_running_on_polymarket else WEI_IN_ETH
+        token_balance = token / token_divisor
+        
+        # For Polymarket, convert POL to USDC equivalent; for Gnosis, xDAI is already ~$1
+        if self.params.is_running_on_polymarket:
+            # Convert POL (native token) to USDC equivalent
+            pol_in_usdc = yield from self._get_usdc_equivalent_for_pol(wallet)
+            if pol_in_usdc is None:
+                self.context.logger.warning(
+                    "Failed to convert POL to USDC. Using only USDC.e balance."
+                )
+                pol_in_usdc = 0.0
+            available_funds = token_balance + pol_in_usdc
+        else:
+            # For Gnosis: both wxDAI and xDAI are ~$1, can add directly
+            wallet_balance = wallet / WEI_IN_ETH
+            available_funds = token_balance + wallet_balance
+        
+        self.context.logger.info(
+            f"Calculated balances: token_balance={token_balance}, "
+            f"native_balance_converted={pol_in_usdc if self.params.is_running_on_polymarket else wallet / WEI_IN_ETH}, "
+            f"available_funds={available_funds}"
+        )
+        
         return available_funds
 
     def _calculate_performance_stats(
