@@ -40,7 +40,7 @@ class BetPayoutChecker(AchievementsChecker):
         self,
         achievement_type: str,
         roi_threshold: float = 2.0,
-        title_template="High ROI on bet!",
+        title_template: str = "High ROI on bet!",
         description_template: str = "Agent closed a bet at {roi}\u00d7 ROI.",
     ) -> None:
         """Initialize the achievement checker."""
