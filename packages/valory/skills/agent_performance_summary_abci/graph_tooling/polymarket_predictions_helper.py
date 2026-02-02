@@ -184,7 +184,7 @@ class PolymarketPredictionsFetcher(
         # Get timestamps
         bet_timestamp = bet.get("blockTimestamp")
         resolution_timestamp = resolution.get("blockTimestamp") if resolution else None
-
+        total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
         return {
             "id": bet_id,
             "market": {
@@ -209,6 +209,7 @@ class PolymarketPredictionsFetcher(
                 else None
             ),
             "transaction_hash": transaction_hash,
+            "total_payout": round(total_payout, 3) if total_payout is not None else None,
         }
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
