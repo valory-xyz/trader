@@ -165,6 +165,12 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
         )
         return {"bet_amount": 0, "info": info, "error": error}
 
+    if adj_kelly_bet_amount > max_bet:
+        info.append(
+            f"Adjusted Kelly bet amount ({wei_to_native(adj_kelly_bet_amount, token_decimals)} {token_name}) is above maximum bet ({wei_to_native(max_bet, token_decimals)} {token_name}).\nSet bet amount to maximum bet."
+        )
+        adj_kelly_bet_amount = max_bet
+
     return {"bet_amount": adj_kelly_bet_amount, "info": info, "error": error}
 
 
