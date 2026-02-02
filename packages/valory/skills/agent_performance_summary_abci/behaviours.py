@@ -321,27 +321,107 @@ class FetchPerformanceSummaryBehaviour(
 
         settled_mech_requests = self._settled_mech_requests_count
 
-        total_traded_settled = int(trader_agent.get("totalTradedSettled", 0))
-        total_fees_settled = int(trader_agent.get("totalFeesSettled", 0))
+        # Use appropriate divisor based on platform
+        # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
+        token_divisor = (
+            USDC_DECIMALS_DIVISOR
+            if self.params.is_running_on_polymarket
+            else WEI_IN_ETH
+        )
 
-        settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
-        total_costs = total_traded_settled + total_fees_settled + settled_mech_costs
+        self.context.logger.info(
+            f"[ROI Calculation] Platform: {'Polymarket' if self.params.is_running_on_polymarket else 'Gnosis'}, "
+            f"token_divisor: {token_divisor}"
+        )
 
-        if total_costs == 0:
+        # Get raw values from subgraph (in smallest units)
+        total_traded_settled_raw = int(trader_agent.get("totalTradedSettled", 0))
+        total_fees_settled_raw = int(trader_agent.get("totalFeesSettled", 0))
+        total_market_payout_raw = int(trader_agent.get("totalPayout", 0))
+
+        self.context.logger.info(
+            f"[ROI Calculation] Raw values from subgraph: "
+            f"totalTradedSettled={total_traded_settled_raw}, "
+            f"totalFeesSettled={total_fees_settled_raw}, "
+            f"totalPayout={total_market_payout_raw}"
+        )
+
+        # Convert market values to USD
+        total_traded_settled_usd = total_traded_settled_raw / token_divisor
+        total_fees_settled_usd = total_fees_settled_raw / token_divisor
+        total_market_payout_usd = total_market_payout_raw / token_divisor
+
+        self.context.logger.info(
+            f"[ROI Calculation] Converted to USD: "
+            f"total_traded_settled_usd={total_traded_settled_usd:.6f}, "
+            f"total_fees_settled_usd={total_fees_settled_usd:.6f}, "
+            f"total_market_payout_usd={total_market_payout_usd:.6f}"
+        )
+
+        # Convert mech costs from wei to native token, then treat as USD
+        # (For Gnosis: xDAI ≈ USD, for Polygon: POL ≈ USD approximation)
+        settled_mech_costs_raw = settled_mech_requests * DEFAULT_MECH_FEE
+        settled_mech_costs_usd = settled_mech_costs_raw / WEI_IN_ETH
+
+        self.context.logger.info(
+            f"[ROI Calculation] Mech costs: "
+            f"settled_mech_requests={settled_mech_requests}, "
+            f"settled_mech_costs_raw={settled_mech_costs_raw}, "
+            f"settled_mech_costs_usd={settled_mech_costs_usd:.6f}"
+        )
+
+        # Calculate total costs in USD
+        total_costs_usd = (
+            total_traded_settled_usd + total_fees_settled_usd + settled_mech_costs_usd
+        )
+
+        self.context.logger.info(
+            f"[ROI Calculation] Total costs USD: {total_costs_usd:.6f}"
+        )
+
+        if total_costs_usd == 0:
+            self.context.logger.warning(
+                "[ROI Calculation] Total costs is zero, returning None"
+            )
             return None, None
 
-        total_market_payout = int(trader_agent.get("totalPayout", 0))
-        total_olas_rewards_payout_in_usd = (
-            int(staking_service.get("olasRewardsEarned", 0)) * olas_in_usd_price
-        ) / WEI_IN_ETH
+        # Convert OLAS rewards to USD
+        olas_rewards_earned_raw = int(staking_service.get("olasRewardsEarned", 0))
+        self.context.logger.info(
+            f"[ROI Calculation] OLAS rewards: "
+            f"olasRewardsEarned (raw)={olas_rewards_earned_raw}, "
+            f"olas_in_usd_price={olas_in_usd_price}"
+        )
 
+        # olas_in_usd_price is already scaled to 18 decimals (wei), so we need to divide by WEI_IN_ETH twice
+        # once to convert olasRewardsEarned from wei to OLAS, and once to convert the price from wei to USD
+        total_olas_rewards_payout_in_usd = (
+            olas_rewards_earned_raw * olas_in_usd_price
+        ) / (WEI_IN_ETH * WEI_IN_ETH)
+
+        self.context.logger.info(
+            f"[ROI Calculation] OLAS rewards in USD: {total_olas_rewards_payout_in_usd:.6f}"
+        )
+
+        # Calculate ROI percentages
         partial_roi = (
-            (total_market_payout - total_costs) * PERCENTAGE_FACTOR
-        ) / total_costs
+            (total_market_payout_usd - total_costs_usd) * PERCENTAGE_FACTOR
+        ) / total_costs_usd
         final_roi = (
-            (total_market_payout + total_olas_rewards_payout_in_usd - total_costs)
+            (
+                total_market_payout_usd
+                + total_olas_rewards_payout_in_usd
+                - total_costs_usd
+            )
             * PERCENTAGE_FACTOR
-        ) / total_costs
+        ) / total_costs_usd
+
+        self.context.logger.info(
+            f"[ROI Calculation] ROI results: "
+            f"partial_roi={partial_roi:.2f}%, "
+            f"final_roi={final_roi:.2f}%"
+        )
+
         self._final_roi = final_roi
         self._partial_roi = partial_roi
 
