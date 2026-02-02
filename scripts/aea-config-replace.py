@@ -81,6 +81,7 @@ PATH_TO_VAR = {
     "models/params/args/ignored_mechs": "IGNORED_MECHS",
     "models/params/args/rpc_urls": "RPC_URLS",
     "models/params/args/enable_multi_bets_fallback": "ENABLE_MULTI_BETS_FALLBACK",
+    "models/params/args/use_multi_bets_mode": "USE_MULTI_BETS_MODE",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
