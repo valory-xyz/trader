@@ -535,52 +535,50 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def update_bets_investments(self) -> Generator:
         """Update the investments of the bets from Polymarket trades."""
         self.context.logger.info("Updating bets investments from Polymarket trades.")
-        
+
         # Fetch all trades to track all investments (including closed positions)
         polymarket_trades_payload = {
             "request_type": RequestType.FETCH_ALL_TRADES.value,
         }
-        
+
         trades = yield from self.send_polymarket_connection_request(
             polymarket_trades_payload
         )
-        
+
         if trades is None:
             self.context.logger.warning("Failed to fetch trades from Polymarket")
             return
-        
+
         self.context.logger.debug(f"Fetched {len(trades)} trades from Polymarket")
-        
+
         # Group trades by (conditionId, outcomeIndex) and aggregate
         # Structure: trades_by_condition_outcome[condition_id][outcome_index] = list of trades
-        trades_by_condition_outcome = defaultdict(lambda: defaultdict(list))
-        
+        trades_by_condition_outcome: Dict[str, Dict[int, List[Dict[str, Any]]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+
         for trade in trades:
             condition_id = trade.get("conditionId")
             outcome_index = trade.get("outcomeIndex")
             side = trade.get("side")  # "BUY" or "SELL"
             size = trade.get("size")
             price = trade.get("price")
-            
+
             # Validate required fields
             if condition_id is None or outcome_index is None:
                 self.context.logger.debug(
                     f"Trade missing conditionId or outcomeIndex: {trade}"
                 )
                 continue
-            
+
             if side not in ("BUY", "SELL"):
-                self.context.logger.warning(
-                    f"Trade has invalid side '{side}': {trade}"
-                )
+                self.context.logger.warning(f"Trade has invalid side '{side}': {trade}")
                 continue
-            
+
             if size is None or price is None:
-                self.context.logger.warning(
-                    f"Trade missing size or price: {trade}"
-                )
+                self.context.logger.warning(f"Trade missing size or price: {trade}")
                 continue
-            
+
             # Calculate USDC amount for this trade
             try:
                 size_float = float(size)
@@ -591,41 +589,47 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     f"Could not convert trade size/price to float: size={size}, price={price}, error: {e}"
                 )
                 continue
-            
-            trades_by_condition_outcome[condition_id][outcome_index].append({
-                "side": side,
-                "usdc_amount": usdc_amount,
-            })
-        
+
+            trades_by_condition_outcome[condition_id][outcome_index].append(
+                {
+                    "side": side,
+                    "usdc_amount": usdc_amount,
+                }
+            )
+
         # Update investments for each bet
         for bet in self.bets:
             if bet.queue_status.is_expired():
-                self.context.logger.debug(f"Bet {bet.id} is expired, skipping investment update")
+                self.context.logger.debug(
+                    f"Bet {bet.id} is expired, skipping investment update"
+                )
                 continue
-            
+
             if bet.condition_id is None:
                 self.context.logger.debug(f"Bet {bet.id} has no condition_id, skipping")
                 continue
-            
+
             # Reset investments first
             bet.reset_investments()
-            
+
             # Find trades for this bet's condition_id
-            matching_trades_by_outcome = trades_by_condition_outcome.get(bet.condition_id, {})
-            
+            matching_trades_by_outcome: Dict[int, List[Dict[str, Any]]] = (
+                trades_by_condition_outcome.get(bet.condition_id, {})
+            )
+
             if not matching_trades_by_outcome:
                 self.context.logger.debug(
                     f"No trades found for bet {bet.id} with condition_id {bet.condition_id}"
                 )
                 continue
-            
+
             # Validate bet has outcomes list
             if bet.outcomes is None:
                 self.context.logger.warning(
                     f"Bet {bet.id} has no outcomes list, cannot map outcome indices"
                 )
                 continue
-            
+
             # Calculate investment for each outcome (sum of BUY trades only)
             for outcome_index, trade_list in matching_trades_by_outcome.items():
                 # Validate outcome_index is within bounds
@@ -635,14 +639,14 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         f"with {len(bet.outcomes)} outcomes"
                     )
                     continue
-                
+
                 # Sum only BUY trades (ignore SELL trades)
                 total_investment_usdc = sum(
                     trade["usdc_amount"]
                     for trade in trade_list
                     if trade["side"] == "BUY"
                 )
-                
+
                 # Convert investment from USDC to base units (multiply by 10^6)
                 if total_investment_usdc > 0:
                     try:
@@ -653,7 +657,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                             f"total_investment_usdc={total_investment_usdc}, error: {e}"
                         )
                         continue
-                    
+
                     # Append investment amount - append_investment_amount internally calls get_outcome()
                     bet.append_investment_amount(outcome_index, investment_amount)
                     self.context.logger.debug(
@@ -661,8 +665,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         f"total_investment_usdc={total_investment_usdc}, "
                         f"amount={investment_amount}, investments={bet.investments}"
                     )
-        
-        self.context.logger.info("Finished updating bets investments from Polymarket trades")
+
+        self.context.logger.info(
+            "Finished updating bets investments from Polymarket trades"
+        )
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""

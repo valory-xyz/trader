@@ -814,9 +814,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             }
 
             request_url = f"{url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
-            self.logger.info(
-                f"Fetching trades from: {request_url}"
-            )
+            self.logger.info(f"Fetching trades from: {request_url}")
 
             response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
             response.raise_for_status()
