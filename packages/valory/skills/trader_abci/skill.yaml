@@ -550,6 +550,7 @@ models:
       api_id: polymarket_agents
       headers:
         Content-Type: application/json
+        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:traderAgent
@@ -558,7 +559,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-polymarket
+      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
     class_name: PolymarketAgentsSubgraph
   polygon_mech_subgraph:
     args:
