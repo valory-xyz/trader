@@ -406,6 +406,19 @@ class HttpHandler(BaseHttpHandler):
                 pol_equivalent = self._get_pol_equivalent_for_usdc(
                     usdc_balance, chain_config
                 )
+                self.context.logger.info(
+                    "USDC balance: raw=%s, decimals=%s",
+                    usdc_balance,
+                    usdc_decimals,
+                )
+                self.context.logger.info(
+                    "Native token decimals: %s",
+                    pol_decimals,
+                )
+                self.context.logger.info(
+                    "LiFi POL equivalent (raw): %s",
+                    pol_equivalent,
+                )
 
                 if pol_equivalent is None:
                     self.context.logger.warning(
@@ -429,11 +442,10 @@ class HttpHandler(BaseHttpHandler):
 
         actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
 
-        if native_status.deficit != 0:
-            native_status.deficit = max(
-                0,
-                int(native_status.topup) - actual_considered_balance,
-            )
+        actual_deficit = 0
+        if native_status.threshold > actual_considered_balance:
+            actual_deficit = max(0, native_status.topup - actual_considered_balance)
+        native_status.deficit = actual_deficit
 
         return funds_status
 
