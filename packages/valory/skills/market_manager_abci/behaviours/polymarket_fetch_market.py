@@ -531,6 +531,101 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Updated bets: {bets_str}")
 
+    def update_bets_investments(self) -> Generator:
+        """Update the investments of the bets from Polymarket positions."""
+        self.context.logger.info("Updating bets investments from Polymarket positions.")
+        
+        # Fetch all positions (not just redeemable ones) to track all investments
+        polymarket_positions_payload = {
+            "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+        }
+        
+        positions = yield from self.send_polymarket_connection_request(
+            polymarket_positions_payload
+        )
+        
+        if positions is None:
+            self.context.logger.warning("Failed to fetch positions from Polymarket")
+            return
+        
+        self.context.logger.debug(f"Fetched {len(positions)} positions from Polymarket")
+        
+        # Group positions by condition_id
+        positions_by_condition: Dict[str, List[Dict[str, Any]]] = {}
+        for position in positions:
+            condition_id = position.get("conditionId")
+            if condition_id:
+                if condition_id not in positions_by_condition:
+                    positions_by_condition[condition_id] = []
+                positions_by_condition[condition_id].append(position)
+        
+        # Update investments for each bet
+        for bet in self.bets:
+            if bet.queue_status.is_expired():
+                self.context.logger.debug(f"Bet {bet.id} is expired, skipping investment update")
+                continue
+            
+            if bet.condition_id is None:
+                self.context.logger.debug(f"Bet {bet.id} has no condition_id, skipping")
+                continue
+            
+            # Reset investments first
+            bet.reset_investments()
+            
+            # Find positions for this bet's condition_id
+            matching_positions = positions_by_condition.get(bet.condition_id, [])
+            
+            if not matching_positions:
+                self.context.logger.debug(
+                    f"No positions found for bet {bet.id} with condition_id {bet.condition_id}"
+                )
+                continue
+            
+            # Update investments for each position
+            for position in matching_positions:
+                outcome_index = position.get("outcomeIndex")
+                initial_value = position.get("initialValue")
+                
+                if outcome_index is None or initial_value is None:
+                    self.context.logger.warning(
+                        f"Position missing outcomeIndex or initialValue: {position}"
+                    )
+                    continue
+                
+                # Convert initialValue to investment amount in base units
+                try:
+                    # Convert initialValue from human-readable USDC to base units integer
+                    initial_value_float = float(initial_value)
+                    investment_amount = int(initial_value_float * 10**6)
+                except (ValueError, TypeError) as e:
+                    self.context.logger.warning(
+                        f"Could not convert position initialValue to investment amount: {initial_value}, error: {e}"
+                    )
+                    continue
+                
+                # Validate outcome_index is within bounds
+                if bet.outcomes is None:
+                    self.context.logger.warning(
+                        f"Bet {bet.id} has no outcomes list, cannot map outcome_index {outcome_index}"
+                    )
+                    continue
+                
+                if outcome_index < 0 or outcome_index >= len(bet.outcomes):
+                    self.context.logger.warning(
+                        f"Outcome index {outcome_index} out of bounds for bet {bet.id} "
+                        f"with {len(bet.outcomes)} outcomes"
+                    )
+                    continue
+                
+                # Append investment amount - append_investment_amount internally calls get_outcome()
+                bet.append_investment_amount(outcome_index, investment_amount)
+                self.context.logger.debug(
+                    f"Updated bet {bet.id}: outcome_index={outcome_index}, "
+                    f"amount={investment_amount}, investments={bet.investments}"
+                )
+        
+        self.context.logger.info("Finished updating bets investments from Polymarket positions")
+
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
         # single-bets mode case - mark any market with a `FRESH` status as processable
@@ -557,6 +652,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # Update the bets list with new bets or update existing ones
             yield from self._update_bets()
+            # Update investments from existing positions to prevent duplicate bets
+            yield from self.update_bets_investments()
 
             if self.review_bets_for_selling:
                 self._requeue_bets_for_selling()

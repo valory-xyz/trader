@@ -23,7 +23,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 import requests
 from aea.configurations.base import PublicId
@@ -689,7 +689,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         limit: int = 100,
         sort_by: str = "TOKENS",
         sort_direction: str = "DESC",
-        redeemable: bool = True,
+        redeemable: Optional[bool] = None,
+        offset: int = 0,
     ) -> Tuple[Any, Any]:
         """Get positions from Polymarket for the safe address.
 
@@ -697,7 +698,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param limit: Maximum number of positions to return
         :param sort_by: Field to sort by (e.g., TOKENS)
         :param sort_direction: Sort direction (ASC or DESC)
-        :param redeemable: Filter for redeemable positions only
+        :param redeemable: Filter for redeemable positions only. If None, returns all positions.
+        :param offset: Pagination offset (default: 0)
         :return: Tuple of (positions_data, error_message)
         """
         try:
@@ -707,9 +709,12 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "limit": limit,
                 "sortBy": sort_by,
                 "sortDirection": sort_direction,
-                "redeemable": redeemable,
+                "offset": offset,
                 "user": self.safe_address,
             }
+            # Only include redeemable parameter if explicitly provided
+            if redeemable is not None:
+                params["redeemable"] = redeemable
 
             response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
             response.raise_for_status()
@@ -734,18 +739,19 @@ class PolymarketClientConnection(BaseSyncConnection):
         size_threshold: int = 1,
         sort_by: str = "TOKENS",
         sort_direction: str = "DESC",
-        redeemable: bool = True,
+        redeemable: Optional[bool] = None,
     ) -> Tuple[Any, Any]:
         """Fetch all positions from Polymarket by paginating through all results for the safe address.
 
         :param size_threshold: Minimum position size threshold
         :param sort_by: Field to sort by (e.g., TOKENS)
         :param sort_direction: Sort direction (ASC or DESC)
-        :param redeemable: Filter for redeemable positions only
+        :param redeemable: Filter for redeemable positions only. If None, returns all positions.
         :return: Tuple of (all_positions_data, error_message)
         """
         all_positions = []
         limit = 100  # Max limit per request
+        offset = 0
 
         try:
             while True:
@@ -755,6 +761,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                     sort_by=sort_by,
                     sort_direction=sort_direction,
                     redeemable=redeemable,
+                    offset=offset,
                 )
 
                 if error:
@@ -768,6 +775,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 # If we got fewer results than the limit, we've reached the end
                 if len(positions) < limit:
                     break
+
+                # Increment offset for next page
+                offset += limit
 
             self.logger.info(
                 f"Fetched total of {len(all_positions)} positions for {self.safe_address}"
