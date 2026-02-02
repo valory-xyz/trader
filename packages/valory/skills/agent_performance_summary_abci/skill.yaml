@@ -171,7 +171,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0
+      url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon
     class_name: PolygonMechSubgraph
 dependencies:
   requests:
