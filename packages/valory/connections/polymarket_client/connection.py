@@ -309,6 +309,8 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.FETCH_MARKET: self._fetch_market_by_slug,
             RequestType.GET_POSITIONS: self._get_positions,
             RequestType.FETCH_ALL_POSITIONS: self._fetch_all_positions,
+            RequestType.GET_TRADES: self._get_trades,
+            RequestType.FETCH_ALL_TRADES: self._fetch_all_trades,
             RequestType.REDEEM_POSITIONS: self._redeem_positions,
             RequestType.SET_APPROVAL: self._set_approval,
             RequestType.CHECK_APPROVAL: self._check_approval,
@@ -786,6 +788,116 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         except Exception as e:
             error_msg = f"Unexpected error fetching all positions: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _get_trades(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        taker_only: bool = True,
+    ) -> Tuple[Any, Any]:
+        """Get trades from Polymarket for the safe address.
+
+        :param limit: Maximum number of trades to return (default: 100)
+        :param offset: Pagination offset (default: 0)
+        :param taker_only: Only show trades where user was taker (default: True)
+        :return: Tuple of (trades_data, error_message)
+        """
+        try:
+            url = f"{DATA_API_BASE_URL}/trades"
+            params = {
+                "limit": limit,
+                "offset": offset,
+                "takerOnly": taker_only,
+                "user": self.safe_address,
+            }
+
+            request_url = f"{url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
+            self.logger.info(
+                f"Fetching trades from: {request_url}"
+            )
+
+            response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
+            response.raise_for_status()
+
+            trades = response.json()
+            self.logger.info(
+                f"Fetched {len(trades)} trades for {self.safe_address} "
+                f"(offset={offset}, limit={limit}, takerOnly={taker_only})"
+            )
+            return trades, None
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Error fetching trades: {str(e)}"
+            self.logger.error(error_msg)
+            return None, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error fetching trades: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _fetch_all_trades(
+        self,
+        taker_only: bool = True,
+    ) -> Tuple[Any, Any]:
+        """Fetch all trades from Polymarket by paginating through all results for the safe address.
+
+        :param taker_only: Only show trades where user was taker (default: True)
+        :return: Tuple of (all_trades_data, error_message)
+        """
+        all_trades = []
+        limit = 100  # Max limit per request
+        offset = 0
+
+        try:
+            self.logger.info(
+                f"Starting to fetch all trades (takerOnly={taker_only}, limit={limit})"
+            )
+
+            while True:
+                trades, error = self._get_trades(
+                    limit=limit,
+                    offset=offset,
+                    taker_only=taker_only,
+                )
+
+                if error:
+                    return None, error
+
+                if not trades or len(trades) == 0:
+                    break
+
+                all_trades.extend(trades)
+
+                self.logger.info(
+                    f"Paginating: fetched {len(trades)} trades, "
+                    f"total so far: {len(all_trades)}, next offset: {offset + limit}"
+                )
+
+                # If we got fewer results than the limit, we've reached the end
+                if len(trades) < limit:
+                    break
+
+                # Increment offset for next page
+                offset += limit
+
+            pages_fetched = (len(all_trades) + limit - 1) // limit if all_trades else 0
+            if pages_fetched == 0 and len(all_trades) > 0:
+                pages_fetched = 1  # At least one page was fetched
+
+            self.logger.info(
+                f"Fetched total of {len(all_trades)} trades for {self.safe_address} "
+                f"(completed pagination with {pages_fetched} page(s))"
+            )
+            if all_trades:
+                self.logger.debug(
+                    f"Trades fetched: {[(t.get('conditionId'), t.get('side'), t.get('outcomeIndex')) for t in all_trades[:10]]}"
+                )
+            return all_trades, None
+
+        except Exception as e:
+            error_msg = f"Unexpected error fetching all trades: {str(e)}"
             self.logger.exception(error_msg)
             return None, error_msg
 

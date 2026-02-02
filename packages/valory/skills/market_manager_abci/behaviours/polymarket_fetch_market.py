@@ -21,6 +21,7 @@
 
 import json
 import sys
+from collections import defaultdict
 from typing import Any, Dict, Generator, List, Optional
 
 from dateutil import parser as date_parser
@@ -532,32 +533,69 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         self.context.logger.info(f"Updated bets: {bets_str}")
 
     def update_bets_investments(self) -> Generator:
-        """Update the investments of the bets from Polymarket positions."""
-        self.context.logger.info("Updating bets investments from Polymarket positions.")
+        """Update the investments of the bets from Polymarket trades."""
+        self.context.logger.info("Updating bets investments from Polymarket trades.")
         
-        # Fetch all positions (not just redeemable ones) to track all investments
-        polymarket_positions_payload = {
-            "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+        # Fetch all trades to track all investments (including closed positions)
+        polymarket_trades_payload = {
+            "request_type": RequestType.FETCH_ALL_TRADES.value,
         }
         
-        positions = yield from self.send_polymarket_connection_request(
-            polymarket_positions_payload
+        trades = yield from self.send_polymarket_connection_request(
+            polymarket_trades_payload
         )
         
-        if positions is None:
-            self.context.logger.warning("Failed to fetch positions from Polymarket")
+        if trades is None:
+            self.context.logger.warning("Failed to fetch trades from Polymarket")
             return
         
-        self.context.logger.debug(f"Fetched {len(positions)} positions from Polymarket")
+        self.context.logger.debug(f"Fetched {len(trades)} trades from Polymarket")
         
-        # Group positions by condition_id
-        positions_by_condition: Dict[str, List[Dict[str, Any]]] = {}
-        for position in positions:
-            condition_id = position.get("conditionId")
-            if condition_id:
-                if condition_id not in positions_by_condition:
-                    positions_by_condition[condition_id] = []
-                positions_by_condition[condition_id].append(position)
+        # Group trades by (conditionId, outcomeIndex) and aggregate
+        # Structure: trades_by_condition_outcome[condition_id][outcome_index] = list of trades
+        trades_by_condition_outcome = defaultdict(lambda: defaultdict(list))
+        
+        for trade in trades:
+            condition_id = trade.get("conditionId")
+            outcome_index = trade.get("outcomeIndex")
+            side = trade.get("side")  # "BUY" or "SELL"
+            size = trade.get("size")
+            price = trade.get("price")
+            
+            # Validate required fields
+            if condition_id is None or outcome_index is None:
+                self.context.logger.debug(
+                    f"Trade missing conditionId or outcomeIndex: {trade}"
+                )
+                continue
+            
+            if side not in ("BUY", "SELL"):
+                self.context.logger.warning(
+                    f"Trade has invalid side '{side}': {trade}"
+                )
+                continue
+            
+            if size is None or price is None:
+                self.context.logger.warning(
+                    f"Trade missing size or price: {trade}"
+                )
+                continue
+            
+            # Calculate USDC amount for this trade
+            try:
+                size_float = float(size)
+                price_float = float(price)
+                usdc_amount = size_float * price_float
+            except (ValueError, TypeError) as e:
+                self.context.logger.warning(
+                    f"Could not convert trade size/price to float: size={size}, price={price}, error: {e}"
+                )
+                continue
+            
+            trades_by_condition_outcome[condition_id][outcome_index].append({
+                "side": side,
+                "usdc_amount": usdc_amount,
+            })
         
         # Update investments for each bet
         for bet in self.bets:
@@ -572,44 +610,25 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             # Reset investments first
             bet.reset_investments()
             
-            # Find positions for this bet's condition_id
-            matching_positions = positions_by_condition.get(bet.condition_id, [])
+            # Find trades for this bet's condition_id
+            matching_trades_by_outcome = trades_by_condition_outcome.get(bet.condition_id, {})
             
-            if not matching_positions:
+            if not matching_trades_by_outcome:
                 self.context.logger.debug(
-                    f"No positions found for bet {bet.id} with condition_id {bet.condition_id}"
+                    f"No trades found for bet {bet.id} with condition_id {bet.condition_id}"
                 )
                 continue
             
-            # Update investments for each position
-            for position in matching_positions:
-                outcome_index = position.get("outcomeIndex")
-                initial_value = position.get("initialValue")
-                
-                if outcome_index is None or initial_value is None:
-                    self.context.logger.warning(
-                        f"Position missing outcomeIndex or initialValue: {position}"
-                    )
-                    continue
-                
-                # Convert initialValue to investment amount in base units
-                try:
-                    # Convert initialValue from human-readable USDC to base units integer
-                    initial_value_float = float(initial_value)
-                    investment_amount = int(initial_value_float * 10**6)
-                except (ValueError, TypeError) as e:
-                    self.context.logger.warning(
-                        f"Could not convert position initialValue to investment amount: {initial_value}, error: {e}"
-                    )
-                    continue
-                
+            # Validate bet has outcomes list
+            if bet.outcomes is None:
+                self.context.logger.warning(
+                    f"Bet {bet.id} has no outcomes list, cannot map outcome indices"
+                )
+                continue
+            
+            # Calculate investment for each outcome (sum of BUY trades only)
+            for outcome_index, trade_list in matching_trades_by_outcome.items():
                 # Validate outcome_index is within bounds
-                if bet.outcomes is None:
-                    self.context.logger.warning(
-                        f"Bet {bet.id} has no outcomes list, cannot map outcome_index {outcome_index}"
-                    )
-                    continue
-                
                 if outcome_index < 0 or outcome_index >= len(bet.outcomes):
                     self.context.logger.warning(
                         f"Outcome index {outcome_index} out of bounds for bet {bet.id} "
@@ -617,14 +636,33 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     )
                     continue
                 
-                # Append investment amount - append_investment_amount internally calls get_outcome()
-                bet.append_investment_amount(outcome_index, investment_amount)
-                self.context.logger.debug(
-                    f"Updated bet {bet.id}: outcome_index={outcome_index}, "
-                    f"amount={investment_amount}, investments={bet.investments}"
+                # Sum only BUY trades (ignore SELL trades)
+                total_investment_usdc = sum(
+                    trade["usdc_amount"]
+                    for trade in trade_list
+                    if trade["side"] == "BUY"
                 )
+                
+                # Convert investment from USDC to base units (multiply by 10^6)
+                if total_investment_usdc > 0:
+                    try:
+                        investment_amount = int(total_investment_usdc * 10**6)
+                    except (ValueError, TypeError) as e:
+                        self.context.logger.warning(
+                            f"Could not convert investment to base units: "
+                            f"total_investment_usdc={total_investment_usdc}, error: {e}"
+                        )
+                        continue
+                    
+                    # Append investment amount - append_investment_amount internally calls get_outcome()
+                    bet.append_investment_amount(outcome_index, investment_amount)
+                    self.context.logger.debug(
+                        f"Updated bet {bet.id}: outcome_index={outcome_index}, "
+                        f"total_investment_usdc={total_investment_usdc}, "
+                        f"amount={investment_amount}, investments={bet.investments}"
+                    )
         
-        self.context.logger.info("Finished updating bets investments from Polymarket positions")
+        self.context.logger.info("Finished updating bets investments from Polymarket trades")
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
