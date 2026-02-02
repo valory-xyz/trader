@@ -127,7 +127,7 @@ models:
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeidorzcnv3str6gcgzoevs4swji3qhhoveb5ze252zlyjdgime4g4m":["kelly_criterion_no_conf"]}}
-      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"default_max_bet_size":5000000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":10000000,"bet_amount_per_threshold":{"0.0":1000000,"0.1":1000000,"0.2":1000000,"0.3":1000000,"0.4":1000000,"0.5":1000000,"0.6":1000000,"0.7":1000000,"0.8":1000000,"0.9":1000000,"1.0":1000000}}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":5000000,"bet_amount_per_threshold":{"0.0":1000000,"0.1":1000000,"0.2":1000000,"0.3":1000000,"0.4":1000000,"0.5":1000000,"0.6":1000000,"0.7":1000000,"0.8":1000000,"0.9":1000000,"1.0":1000000}}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x343F2B005cF6D70bA610CD9F1F1927049414B582","priority_mech_address":"0x1DCbC9368327776F8B20Dc041D40b8076C8AC173","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":25,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
