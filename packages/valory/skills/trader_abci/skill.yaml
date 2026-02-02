@@ -51,14 +51,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
-- valory/market_manager_abci:0.1.0:bafybeianfnmxdiwmzplk4la6ingrywu4enlxmx5wlr3aldjdovkp54h4fu
-- valory/decision_maker_abci:0.1.0:bafybeibud2guzww7n7gmf3dvtycvjw7kyxxgpgxd5jjr6tua6zymy5xqxq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibc67d2ox7kejxlo32vmsh5cdsxaxnxhoowgqqpjtswka7mop5hgy
+- valory/market_manager_abci:0.1.0:bafybeiexqyzvycncay5opr3j7w5g4r3wg2ouspo7w6yr5nso7rgrevmt2i
+- valory/decision_maker_abci:0.1.0:bafybeihcyofjlqv3txtuai2gdphmjrq2nir5jp6l5j4tfuiq3vrbjfq7iu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigups5isdnf7jcefrkina4rxu4g4lmoxlgh6unpnimjubugejhf3i
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeiccpgnm2j53tbzg6g2dxm4qyigcwn7rw5aujriqnp26wp4zlpwbkm
-- valory/agent_performance_summary_abci:0.1.0:bafybeibzmdglhboezcoazfc7frt45usotapyclsd6dazavnd3i667cu6me
+- valory/chatui_abci:0.1.0:bafybeihbsoaewocnwvg2umjj575rx2a3h2ujwr36vrwipncdusfmqoywgi
+- valory/agent_performance_summary_abci:0.1.0:bafybeigrjvbwfprprz3bw5ebynbieqernuyhhsw4m4bxkjc4lddvjfo7oe
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
@@ -559,7 +559,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmbE1ByaFS9hQhUALsXbki4pXZvLrQyM2HuDm4t8VDTrja/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
     class_name: PolymarketAgentsSubgraph
   polygon_mech_subgraph:
     args:
@@ -574,7 +574,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0
+      url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon
     class_name: PolygonMechSubgraph
   requests:
     args: {}

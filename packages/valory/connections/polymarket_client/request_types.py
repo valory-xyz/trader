@@ -31,6 +31,8 @@ class RequestType(Enum):
     FETCH_MARKET = "fetch_market"
     GET_POSITIONS = "get_positions"
     FETCH_ALL_POSITIONS = "fetch_all_positions"
+    GET_TRADES = "get_trades"
+    FETCH_ALL_TRADES = "fetch_all_trades"
     REDEEM_POSITIONS = "redeem_positions"
     SET_APPROVAL = "set_approval"
     CHECK_APPROVAL = "check_approval"

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeie2bu5thojll2nzoscwfwaaeks33bzwdrnhbvguhzsonco6vrkvwu
+agent: valory/trader:0.1.0:bafybeihrtggbgr3mupp5rdrdi3ontatucbhpkp47orns4dlgr5irc5jrfy
 number_of_agents: 1
 deployment:
   agent:
@@ -319,7 +319,7 @@ models:
       error_index: ${POLYGON_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${POLYGON_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${POLYGON_MECH_SUBGRAPH_RETRIES:int:5}
-      url: ${POLYGON_MECH_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-polygon-v5_2_0}
+      url: ${POLYGON_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon}
 ---
 public_id: valory/ledger:0.19.0
 type: connection
@@ -373,7 +373,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":28000000000000000000,"threshold":3200000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":40000000000000000000,"threshold":32000000000000000000},"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":{"topup":65000000,"threshold":16000000},"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359":{"topup":0,"threshold":0}}}}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":30000000000000000000,"threshold":3200000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":40000000000000000000,"threshold":32000000000000000000},"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":{"topup":65000000,"threshold":16000000},"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359":{"topup":0,"threshold":0}}}}}
       rpc_urls:
         polygon: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
