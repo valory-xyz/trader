@@ -78,9 +78,9 @@ skills:
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
 - valory/bet_amount_per_threshold:0.1.0:bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge
-- valory/kelly_criterion_no_conf:0.1.0:bafybeialqkoq3aglt44wyko4vfflceiiss322hboeohnopkngsk4bhy2p4
+- valory/kelly_criterion_no_conf:0.1.0:bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m
 - w1kke/always_blue:0.1.0:bafybeietfklujos2sfy2h3f5ea2ra7yltdc4ongs3eatih4ib2744bieiq
-- jhehemann/kelly_criterion:0.1.0:bafybeigtgmkkr5q7gfo2zh5pjbqbcsjzxrq5j434ede33l3psjwy66dshm
+- jhehemann/kelly_criterion:0.1.0:bafybeidosnpfip3dupoin6uw4cwbajlnl6nx25njvjaul3gmo5gmw6kfze
 default_ledger: ethereum
 required_ledgers:
 - ethereum
