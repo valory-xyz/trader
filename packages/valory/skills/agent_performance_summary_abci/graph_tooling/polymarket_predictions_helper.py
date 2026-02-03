@@ -28,6 +28,9 @@ import requests
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
     PredictionsFetcher,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
+    BetStatus,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
 )
@@ -244,15 +247,25 @@ class PolymarketPredictionsFetcher(
 
         # Market not resolved - resolution object is null
         if not resolution:
-            return "pending"
+            return BetStatus.PENDING.value
 
-        # Market is resolved, determine win/loss based on totalPayout
-        total_payout = float(bet.get("totalPayout", 0))
+        # Market is resolved, determine win/loss by comparing outcomeIndex with winningIndex
+        outcome_index = bet.get("outcomeIndex")
+        winning_index = resolution.get("winningIndex")
 
-        if total_payout > 0:
-            return "won"
+        # Compare outcomeIndex with winningIndex
+        if outcome_index is not None and winning_index is not None:
+            if int(outcome_index) == int(winning_index):
+                return BetStatus.WON.value
+            else:
+                return BetStatus.LOST.value
         else:
-            return "lost"
+            # Fallback: if indices are missing, use totalPayout as backup
+            total_payout = float(bet.get("totalPayout", 0))
+            if total_payout > 0:
+                return BetStatus.WON.value
+            else:
+                return BetStatus.LOST.value
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
