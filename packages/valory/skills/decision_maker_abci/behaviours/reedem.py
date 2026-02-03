@@ -378,7 +378,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.trades = {
             trade
             for trade in self.trades
-            if trade.fpmm.condition.id.hex().lower() not in redeemed_condition_ids
+            if ("0x" + trade.fpmm.condition.id.hex()).lower() not in redeemed_condition_ids
         }
         self.redeeming_progress.trades = self.trades
 
@@ -855,7 +855,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             # self.redeeming_progress.claiming_condition_ids, and will no longer be taken into
             # consideration. This is done to avoid cases where the subgraph is not up-to date
             # and the same condition id is returned multiple times.
-            claiming_condition_id = redeem_candidate.fpmm.condition.id.hex()
+            claiming_condition_id = "0x" + redeem_candidate.fpmm.condition.id.hex()
             self.redeeming_progress.claiming_condition_ids.append(claiming_condition_id)
 
             if winnings_found == self.params.redeeming_batch_size:
