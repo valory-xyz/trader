@@ -43,6 +43,8 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
 
 USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+# USDC has 6 decimals on Polymarket
+USDC_DECIMALS = 10**6
 # Threshold for extreme outcome prices indicating resolved/over markets
 EXTREME_PRICE_THRESHOLD = 0.99
 
@@ -422,7 +424,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
                     # Calculate outcome token amounts
                     outcome_token_amounts = [
-                        int(liquidity * price * 10**6) for price in parsed_prices
+                        int(liquidity * price * USDC_DECIMALS) for price in parsed_prices
                     ]
 
                     # Create outcome_token_ids mapping
@@ -647,10 +649,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     if trade["side"] == "BUY"
                 )
 
-                # Convert investment from USDC to base units (multiply by 10^6)
+                # Convert investment from USDC to base units (multiply by USDC_DECIMALS)
                 if total_investment_usdc > 0:
                     try:
-                        investment_amount = int(total_investment_usdc * 10**6)
+                        investment_amount = int(total_investment_usdc * USDC_DECIMALS)
                     except (ValueError, TypeError) as e:
                         self.context.logger.warning(
                             f"Could not convert investment to base units: "
