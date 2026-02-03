@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicfzsare7v7hx4nzc36tea5phqnpq7nqew5ajthdhkv5bvcsx4iva
+agent: valory/trader:0.1.0:bafybeihcqiclvuv3kkjqmtscqufcsysii45bxr6reizjkdgqc2s7l5py2m
 number_of_agents: 1
 deployment:
   agent:
@@ -58,7 +58,7 @@ models:
       reset_tendermint_after: ${RESET_TM_AFTER:int:2}
       retry_attempts: ${RETRY_ATTEMPTS:int:400}
       retry_timeout: ${RETRY_TIMEOUT:int:3}
-      reset_pause_duration: ${RESET_PAUSE_DURATION:int:30}
+      reset_pause_duration: ${RESET_PAUSE_DURATION:int:90}
       request_retry_delay: ${REQUEST_RETRY_DELAY:float:1.0}
       request_timeout: ${REQUEST_TIMEOUT:float:10.0}
       round_timeout_seconds: ${ROUND_TIMEOUT:float:350.0}
