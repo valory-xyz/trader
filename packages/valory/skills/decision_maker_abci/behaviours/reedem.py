@@ -783,11 +783,22 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         if self.params.use_subgraph_for_redeeming:
+            # Normalize condition_id from candidate to have 0x prefix
             condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
+            condition_id = (
+                condition_id if condition_id.startswith("0x") else "0x" + condition_id
+            )
+
+            # Defensive: normalize all dictionary keys to ensure consistent format
+            # In case subgraph behavior changes in the future
+            normalized_unredeemed = {
+                (k if k.startswith("0x") else "0x" + k).lower(): v
+                for k, v in self.redeeming_progress.unredeemed_trades.items()
+            }
+
             if (
-                condition_id not in self.redeeming_progress.unredeemed_trades
-                or self.redeeming_progress.unredeemed_trades.get(condition_id, None)
-                == 0
+                condition_id not in normalized_unredeemed
+                or normalized_unredeemed.get(condition_id, None) == 0
             ):
                 return False
 
