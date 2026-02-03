@@ -209,7 +209,9 @@ class PolymarketPredictionsFetcher(
                 else None
             ),
             "transaction_hash": transaction_hash,
-            "total_payout": round(total_payout, 3) if total_payout is not None else None,
+            "total_payout": (
+                round(total_payout, 3) if total_payout is not None else None
+            ),
         }
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
