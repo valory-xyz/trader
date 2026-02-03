@@ -81,6 +81,11 @@ POLYGON_NATIVE_TOKEN_ADDRESS = (
 POLYGON_CHAIN_ID = 137  # Polygon chain ID
 LIFI_QUOTE_URL = "https://li.quest/v1/quote"  # LiFi API endpoint
 
+# Rate limiting for LiFi API: 200 requests per 2 hours
+LIFI_RATE_LIMIT_SECONDS = 7200  # 2 hours
+# Use 1 POL as the base amount for rate calculation
+RATE_CALC_BASE_AMOUNT = 10**18  # 1 POL in wei
+
 INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 )
@@ -122,6 +127,10 @@ class FetchPerformanceSummaryBehaviour(
         self._settled_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
         self._placed_titles: Set[str] = set()
+
+        # Cache for POL to USDC conversion rate
+        self._pol_usdc_rate: Optional[float] = None  # Rate: 1 POL = X USDC
+        self._pol_usdc_rate_timestamp: float = 0.0
 
     def _should_update(self) -> bool:
         """Check if we should update."""
@@ -613,20 +622,47 @@ class FetchPerformanceSummaryBehaviour(
             unplaced_mech_request_count=unplaced_mech_requests,
         )
 
-    def _get_usdc_equivalent_for_pol(
-        self, pol_balance_wei: int
+    def _get_pol_to_usdc_rate(
+        self,
     ) -> Generator[None, None, Optional[float]]:
-        """Convert POL balance to USDC equivalent using LiFi quote."""
+        """
+        Get the POL to USDC conversion rate (1 POL = X USDC), with caching.
+
+        Only fetches from LiFi API if cache is stale (older than 2 hours).
+
+        :return: Conversion rate (1 POL = X USDC), or None if failed
+        :yield: None
+        """
+
+        current_time = self.shared_state.synced_timestamp
+
+        # Check if cached rate is still valid
+        if (
+            self._pol_usdc_rate is not None
+            and (current_time - self._pol_usdc_rate_timestamp) < LIFI_RATE_LIMIT_SECONDS
+        ):
+            self.context.logger.info(
+                f"Using cached POL→USDC rate: 1 POL = {self._pol_usdc_rate} USDC "
+                f"(cached {int(current_time - self._pol_usdc_rate_timestamp)}s ago)"
+            )
+            return self._pol_usdc_rate
+
+        # Cache is stale or doesn't exist, fetch new rate
         try:
             safe_address = self.synchronized_data.safe_contract_address
 
-            # Build LiFi quote request URL
+            # Get quote for 1 POL to USDC to determine the rate
+            self.context.logger.info(
+                "Fetching fresh POL→USDC rate from LiFi API (cache expired or missing)"
+            )
+
+            # Build LiFi quote request URL for 1 POL
             params = {
                 "fromChain": str(POLYGON_CHAIN_ID),
                 "toChain": str(POLYGON_CHAIN_ID),
                 "fromToken": POLYGON_NATIVE_TOKEN_ADDRESS,
                 "toToken": USDC_E_ADDRESS,
-                "fromAmount": str(pol_balance_wei),
+                "fromAmount": str(RATE_CALC_BASE_AMOUNT),  # 1 POL in wei
                 "fromAddress": safe_address,
                 "toAddress": safe_address,
             }
@@ -635,8 +671,6 @@ class FetchPerformanceSummaryBehaviour(
             query_string = "&".join([f"{k}={v}" for k, v in params.items()])
             url = f"{LIFI_QUOTE_URL}?{query_string}"
 
-            self.context.logger.info("Fetching LiFi quote for POL→USDC conversion")
-
             # Make HTTP request to LiFi API
             response = yield from self.get_http_response(
                 method="GET",
@@ -644,26 +678,63 @@ class FetchPerformanceSummaryBehaviour(
             )
 
             if response.status_code != 200:
-                self.context.logger.error(
-                    f"LiFi API returned status {response.status_code}"
+                self.context.logger.warning(
+                    f"LiFi API returned status {response.status_code}, using stale cache if available"
                 )
-                return None
+                return self._pol_usdc_rate  # Return stale cache if available
 
             # Parse response
             response_data = json.loads(response.body.decode())
 
-            # Extract USDC amount from quote
+            # Extract USDC amount for 1 POL
             to_amount_wei = response_data.get("estimate", {}).get("toAmount")
 
             if not to_amount_wei:
                 self.context.logger.error("No toAmount in LiFi quote response")
-                return None
+                return self._pol_usdc_rate  # Return stale cache if available
 
-            # Convert USDC wei to standard units (6 decimals)
+            # Calculate rate: 1 POL = X USDC
+            # USDC has 6 decimals, POL has 18 decimals
             usdc_amount = int(to_amount_wei) / USDC_DECIMALS_DIVISOR
+            rate = usdc_amount  # This is the USDC amount for 1 POL
+
+            # Update cache
+            self._pol_usdc_rate = rate
+            self._pol_usdc_rate_timestamp = current_time
 
             self.context.logger.info(
-                f"POL→USDC conversion: {pol_balance_wei / WEI_IN_ETH:.4f} POL ≈ {usdc_amount:.2f} USDC"
+                f"Updated POL→USDC rate cache: 1 POL = {rate} USDC"
+            )
+
+            return rate
+
+        except Exception as e:
+            self.context.logger.error(f"Error fetching POL→USDC rate: {str(e)}")
+            return self._pol_usdc_rate  # Return stale cache if available
+
+    def _get_usdc_equivalent_for_pol(
+        self, pol_balance_wei: int
+    ) -> Generator[None, None, Optional[float]]:
+        """Convert POL balance to USDC equivalent using cached rate."""
+        try:
+            # Get the conversion rate (1 POL = X USDC)
+            rate = yield from self._get_pol_to_usdc_rate()
+
+            if rate is None or rate == 0:
+                self.context.logger.error(
+                    "No valid POL→USDC rate available, cannot calculate equivalent"
+                )
+                return None
+
+            # Convert POL from wei to standard units
+            pol_amount = pol_balance_wei / WEI_IN_ETH
+
+            # Calculate USDC equivalent: USDC = POL * rate
+            usdc_amount = pol_amount * rate
+
+            self.context.logger.info(
+                f"POL→USDC conversion: {pol_amount:.4f} POL ≈ {usdc_amount:.2f} USDC "
+                f"(rate: 1 POL = {rate} USDC)"
             )
 
             return usdc_amount
