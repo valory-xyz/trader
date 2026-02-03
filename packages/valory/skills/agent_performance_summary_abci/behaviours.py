@@ -23,6 +23,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
 
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -169,6 +170,52 @@ class FetchPerformanceSummaryBehaviour(
             )
             return False
 
+    def _fetch_polymarket_open_position_titles(
+        self,
+    ) -> Generator[None, None, Set[str]]:
+        """Fetch open position titles from Polymarket.
+
+        Returns a set of position titles (market questions) for positions
+        that are currently open (not redeemed). These are used to identify
+        which mech requests should be counted as 'open' (not settled).
+
+        :return: Set of position titles
+        :yield: None
+        """
+        try:
+            # Prepare payload - FETCH_ALL_POSITIONS with no redeemable filter
+            payload = {
+                "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                "params": {},  # No redeemable param = returns all positions
+            }
+
+            positions = yield from self.send_polymarket_connection_request(payload)
+
+            if not positions or not isinstance(positions, list):
+                self.context.logger.warning(
+                    f"No positions returned from Polymarket connection: {positions}"
+                )
+                return set()
+
+            # Extract titles from positions
+            titles = {
+                p.get("title")
+                for p in positions
+                if isinstance(p, dict) and p.get("title")
+            }
+
+            self.context.logger.info(
+                f"Fetched {len(positions)} positions from Polymarket, "
+                f"extracted {len(titles)} unique titles"
+            )
+            return titles
+
+        except Exception as e:
+            self.context.logger.error(
+                f"Error fetching Polymarket positions: {e}"
+            )
+            return set()
+
     @property
     def shared_state(self) -> SharedState:
         """Return the shared state."""
@@ -244,19 +291,24 @@ class FetchPerformanceSummaryBehaviour(
 
         last_four_days_requests = mech_sender.get("requests", [])
 
-        # Get open markets to count pending mech requests
-        open_markets = yield from self._fetch_open_markets(
-            timestamp_gt=self.market_open_timestamp,
-        )
+        # Platform-specific: get open markets
+        if self.params.is_running_on_polymarket:
+            # For Polymarket: get open positions from connection
+            open_market_titles = yield from self._fetch_polymarket_open_position_titles()
+        else:
+            # For Omen: get open markets from subgraph
+            open_markets = yield from self._fetch_open_markets(
+                timestamp_gt=self.market_open_timestamp,
+            )
 
-        if not open_markets:
-            self._open_market_requests = 0
-            return 0
+            if not open_markets:
+                self._open_market_requests = 0
+                return 0
 
-        # Get titles of open markets
-        open_market_titles = {
-            q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
-        }
+            # Get titles of open markets
+            open_market_titles = {
+                q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
+            }
 
         # Count requests for still-open markets
         open_market_requests = sum(
