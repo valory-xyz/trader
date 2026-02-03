@@ -28,7 +28,6 @@ from typing import Any, Dict, Generator, List, Optional, cast
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour

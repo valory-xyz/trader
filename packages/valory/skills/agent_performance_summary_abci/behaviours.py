@@ -199,9 +199,9 @@ class FetchPerformanceSummaryBehaviour(
 
             # Extract titles from positions
             titles = {
-                p.get("title")
+                p.get("title", "")
                 for p in positions
-                if isinstance(p, dict) and p.get("title")
+                if isinstance(p, dict) and p.get("title", "")
             }
 
             self.context.logger.info(
@@ -211,9 +211,7 @@ class FetchPerformanceSummaryBehaviour(
             return titles
 
         except Exception as e:
-            self.context.logger.error(
-                f"Error fetching Polymarket positions: {e}"
-            )
+            self.context.logger.error(f"Error fetching Polymarket positions: {e}")
             return set()
 
     @property
@@ -294,7 +292,9 @@ class FetchPerformanceSummaryBehaviour(
         # Platform-specific: get open markets
         if self.params.is_running_on_polymarket:
             # For Polymarket: get open positions from connection
-            open_market_titles = yield from self._fetch_polymarket_open_position_titles()
+            open_market_titles = (
+                yield from self._fetch_polymarket_open_position_titles()
+            )
         else:
             # For Omen: get open markets from subgraph
             open_markets = yield from self._fetch_open_markets(
