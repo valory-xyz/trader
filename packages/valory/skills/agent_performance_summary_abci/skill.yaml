@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
   achievements_checker/bet_payout_checker.py: bafybeiezmhphr6fjpt2cnp2dnv5kbdxjpby3in26uvdrqsfgc4exa6jsla
-  behaviours.py: bafybeidrs4xiu2uhlpzposnq3lg7g7ekmnl7hbpq3rvg4t325rmeyq77ka
+  behaviours.py: bafybeia7jjmwt42sijndiuvaglskoxrksgqcztuf5ellza74ufcwbgtviy
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -18,7 +18,7 @@ fingerprint:
   graph_tooling/polymarket_predictions_helper.py: bafybeieryekuips73hmuq4xkcbh62dbq3sye6nlhb75gmb3ei2ynpr3you
   graph_tooling/predictions_helper.py: bafybeiaog54h22lqhda7d5ou7icsk2csb6s7pqntfd2meq6xdgaxokjngi
   graph_tooling/queries.py: bafybeiaiytkowg7hewtcprkze3wvgq56cjvpatba44njobjtnh5k5twkuq
-  graph_tooling/requests.py: bafybeifglc3t6h4cd3h77rflyfozamjpi5smkslhkozg2kzidlygjeea4e
+  graph_tooling/requests.py: bafybeifye4fvc2jile253zh6r375yqha644oq6kupsbshmprqlki566agy
   handlers.py: bafybeib2ye3phzqi5yknt57xshtagxh3xncsh4d3cbiygo76nbo7yreoai
   models.py: bafybeiacsfx2r572y26aa63msp2ktromt6n2r6q7xwpriarif6fw2wc5vm
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
@@ -29,6 +29,7 @@ contracts:
 protocols:
 - valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
 - valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
+- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 handlers:
@@ -178,4 +179,5 @@ dependencies:
   requests:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
-connections: []
+connections:
+- valory/polymarket_client:0.1.0:bafybeibgdusopyvqhnjne4jdc2ihudk4brqm3d5ro4fdegcqhm57h7rt24

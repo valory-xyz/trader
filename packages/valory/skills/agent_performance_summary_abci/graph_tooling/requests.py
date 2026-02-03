@@ -25,8 +25,13 @@ from abc import ABC
 from enum import Enum, auto
 from typing import Any, Dict, Generator, List, Optional, cast
 
+from packages.valory.connections.polymarket_client.connection import (
+    PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
+)
+from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
+from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs, Requests
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_MECH_REQUESTS_BY_TITLES_QUERY,
@@ -88,6 +93,40 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def params(self) -> AgentPerformanceSummaryParams:
         """Get the params."""
         return cast(AgentPerformanceSummaryParams, self.context.params)
+
+    def send_polymarket_connection_request(
+        self,
+        payload_data: Dict[str, Any],
+    ) -> Generator[None, None, Any]:
+        """Send a request to the Polymarket connection and wait for the response.
+
+        :param payload_data: The payload data to send to the connection
+        :return: The response from the connection
+        :yield: None
+        """
+        self.context.logger.info(f"Sending Polymarket request: {payload_data}")
+
+        srr_dialogues = cast(SrrDialogues, self.context.srr_dialogues)
+        srr_message, srr_dialogue = srr_dialogues.create(
+            counterparty=str(POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID),
+            performative=SrrMessage.Performative.REQUEST,
+            payload=json.dumps(payload_data),
+        )
+
+        srr_message = cast(SrrMessage, srr_message)
+        srr_dialogue = cast(SrrDialogue, srr_dialogue)
+
+        # Send message and wait for response
+        self.context.outbox.put_message(message=srr_message)
+        request_nonce = self._get_request_nonce_from_dialogue(srr_dialogue)  # type: ignore
+        cast(Requests, self.context.requests).request_id_to_callback[
+            request_nonce
+        ] = self.get_callback_request()
+        response = yield from self.wait_for_message()
+
+        response_json = json.loads(response.payload)  # type: ignore
+
+        return response_json
 
     def _handle_response(
         self,
