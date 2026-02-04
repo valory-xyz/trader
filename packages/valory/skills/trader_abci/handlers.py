@@ -334,10 +334,14 @@ class HttpHandler(BaseHttpHandler):
                 "Misconfigured fund requirements data. Can't apply adjustment."
             )
             return funds_status
-        actual_considered_balance = xDAI_status.balance + wxDAI_status.balance
+        xdai_balance = int(xDAI_status.balance or 0)
+        wxdai_balance = int(wxDAI_status.balance or 0)
+        actual_considered_balance = xdai_balance + wxdai_balance
+
+        xdai_topup = int(xDAI_status.topup or 0)
         actual_deficit = 0
-        if xDAI_status.threshold > actual_considered_balance:
-            actual_deficit = max(0, xDAI_status.topup - actual_considered_balance)
+        if actual_considered_balance < xDAI_status.threshold:
+            actual_deficit = max(0, xdai_topup - actual_considered_balance)
         xDAI_status.deficit = actual_deficit
         return funds_status
 
