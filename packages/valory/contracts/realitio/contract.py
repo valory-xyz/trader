@@ -363,7 +363,14 @@ class RealitioContract(Contract):
                 question_nonce,
             ],
         )
-        return {"question_id": question_id.hex()}
+        question_id_hex = question_id.hex()
+        return {
+            "question_id": (
+                question_id_hex
+                if question_id_hex.startswith("0x")
+                else "0x" + question_id_hex
+            )
+        }
 
     @classmethod
     def get_question_events(
@@ -384,7 +391,11 @@ class RealitioContract(Contract):
         entries = get_entries(eth, contract, event_abi, topics, from_block, to_block)
         events = list(
             dict(
-                tx_hash=entry["transactionHash"].hex(),
+                tx_hash=(
+                    entry["transactionHash"].hex()
+                    if entry["transactionHash"].hex().startswith("0x")
+                    else "0x" + entry["transactionHash"].hex()
+                ),
                 block_number=entry["blockNumber"],
                 question_id=entry["args"]["question_id"],
                 user=entry["args"]["user"],

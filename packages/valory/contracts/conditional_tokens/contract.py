@@ -329,15 +329,21 @@ class ConditionalTokensContract(Contract):
         outcome_slot_count: int,
     ) -> str:
         """Calculate condition ID."""
+        condition_id_hex = ledger_api.api.solidity_keccak(
+            ["address", "bytes32", "uint256"],
+            [
+                ledger_api.api.to_checksum_address(oracle_contract),
+                bytes.fromhex(question_id[2:]),
+                outcome_slot_count,
+            ],
+        ).hex()
+
         return {
-            "condition_id": ledger_api.api.solidity_keccak(
-                ["address", "bytes32", "uint256"],
-                [
-                    ledger_api.api.to_checksum_address(oracle_contract),
-                    bytes.fromhex(question_id[2:]),
-                    outcome_slot_count,
-                ],
-            ).hex()
+            "condition_id": (
+                condition_id_hex
+                if condition_id_hex.startswith("0x")
+                else "0x" + condition_id_hex
+            )
         }
 
     @classmethod
@@ -355,7 +361,12 @@ class ConditionalTokensContract(Contract):
         (log,) = contract_instance.events.ConditionPreparation().process_receipt(
             tx_receipt
         )
-        return "0x" + log["args"]["conditionId"].hex()
+        condition_id_hex = log["args"]["conditionId"].hex()
+        return (
+            condition_id_hex
+            if condition_id_hex.startswith("0x")
+            else "0x" + condition_id_hex
+        )
 
     @classmethod
     def get_condition_preparation_events(
@@ -380,7 +391,7 @@ class ConditionalTokensContract(Contract):
         entries = [get_event_data(eth.codec, event_abi, log) for log in logs]
         events = [
             {
-                "tx_hash": entry["transactionHash"].hex(),
+                "tx_hash": entry["transactionHash"].to_0x_hex(),
                 "block_number": entry["blockNumber"],
                 "condition_id": entry["args"]["conditionId"],
                 "oracle": entry["args"]["oracle"],
