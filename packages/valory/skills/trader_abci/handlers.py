@@ -468,11 +468,18 @@ class HttpHandler(BaseHttpHandler):
         :return: Conversion rate (1 POL = X USDC), or None if failed
         """
 
-        current_time = self.shared_state.synced_timestamp
+        try:
+            current_time = self.shared_state.synced_timestamp
+        except Exception as e:
+            self.context.logger.warning(
+                f"Cannot access synced_timestamp because agent hasn't made any transitions yet: {str(e)}."
+            )
+            current_time = None
 
         # Check if cached rate is still valid
         if (
-            self._pol_usdc_rate is not None
+            current_time is not None
+            and self._pol_usdc_rate is not None
             and (current_time - self._pol_usdc_rate_timestamp) < LIFI_RATE_LIMIT_SECONDS
         ):
             self.context.logger.info(
@@ -517,13 +524,17 @@ class HttpHandler(BaseHttpHandler):
             usdc_amount = int(to_amount_wei) / (10**6)  # USDC has 6 decimals
             rate = usdc_amount  # This is the USDC amount for 1 POL
 
-            # Update cache
-            self._pol_usdc_rate = rate
-            self._pol_usdc_rate_timestamp = current_time
-
-            self.context.logger.info(
-                f"Updated POL→USDC rate cache: 1 POL = {rate} USDC"
-            )
+            # Update cache only if we have a valid timestamp
+            if current_time is not None:
+                self._pol_usdc_rate = rate
+                self._pol_usdc_rate_timestamp = current_time
+                self.context.logger.info(
+                    f"Updated POL→USDC rate cache: 1 POL = {rate} USDC"
+                )
+            else:
+                self.context.logger.info(
+                    f"Fetched POL→USDC rate: 1 POL = {rate} USDC (not cached due to missing timestamp)"
+                )
 
             return rate
 
