@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 
 import concurrent.futures
 import logging
-from typing import List, Tuple, Union, Dict, Callable, Any, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -32,14 +32,13 @@ from eth_utils import event_abi_to_log_topic
 from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
 from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from web3._utils.events import get_event_data
-from web3.eth import Eth
 from web3.contract import Contract as W3Contract
+from web3.eth import Eth
 from web3.exceptions import ContractLogicError
-from web3.types import BlockIdentifier, FilterParams, TContractEvent, _Hash32, LogReceipt, EventData
+from web3.types import BlockIdentifier, EventData, FilterParams, TContractEvent, _Hash32
 
-ClaimParamsType = Tuple[
-    List[bytes], List[ChecksumAddress], List[int], List[bytes]
-]
+
+ClaimParamsType = Tuple[List[bytes], List[ChecksumAddress], List[int], List[bytes]]
 
 FIVE_MINUTES = 300.0
 
@@ -154,7 +153,9 @@ class RealitioContract(Contract):
         def get_claim_params() -> Any:
             """Get claim params."""
             try:
-                return get_entries(eth, contract_instance, event_abi, topics, from_block, to_block)
+                return get_entries(
+                    eth, contract_instance, event_abi, topics, from_block, to_block
+                )
             except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
                 return (
                     "The RPC timed out! This usually happens if the filtering is too wide. "
@@ -198,7 +199,9 @@ class RealitioContract(Contract):
         sender_address: str,
     ) -> JSONLike:
         """Simulate `claimWinnings` transaction."""
-        data = cls.build_claim_winnings(ledger_api, contract_address, question_id, claim_params)["data"]
+        data = cls.build_claim_winnings(
+            ledger_api, contract_address, question_id, claim_params
+        )["data"]
         try:
             ledger_api.api.eth.call(
                 {
@@ -331,7 +334,9 @@ class RealitioContract(Contract):
         contract_instance = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        data = contract_instance.encode_abi(abi_element_identifier="askQuestion", kwargs=kwargs)
+        data = contract_instance.encode_abi(
+            abi_element_identifier="askQuestion", kwargs=kwargs
+        )
         return {"data": bytes.fromhex(data[2:])}  # type: ignore
 
     @classmethod
