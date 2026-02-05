@@ -61,12 +61,12 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         self._user_holdings = None
 
     @property
-    def token_balance(self):
+    def token_balance(self) -> Optional[int]:
         """Get the user holdings."""
         return self._user_holdings
 
     @token_balance.setter
-    def token_balance(self, user_holdings):
+    def token_balance(self, user_holdings: Optional[int]) -> None:
         """Set the user holdings."""
         self._user_holdings = user_holdings
 
@@ -95,6 +95,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
         :param token_id: The token ID to check balance for
         :return: Balance as integer, or None if error
+        :yield: None
         """
 
         response_status = yield from self._conditional_tokens_interact(
@@ -160,6 +161,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         :param is_neg_risk: Whether this is a negative risk market
         :param size: The size of the position to redeem (for neg risk markets)
         :return: Redemption result
+        :yield: None
         """
         # For negative risk markets, the connection expects different handling
         # The connection will need to be updated to support neg risk redemption
@@ -274,6 +276,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
         :param token_id: The token ID to check balance for
         :return: Token balance as integer, or None if error
+        :yield: None
         """
         balance = yield from self._get_token_balance(token_id)
 
