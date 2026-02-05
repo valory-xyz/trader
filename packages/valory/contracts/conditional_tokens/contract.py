@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -448,6 +448,32 @@ class ConditionalTokensContract(Contract):
             holdings=holdings,
             shares=shares,
         )
+
+    @classmethod
+    def get_balance_of(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        owner: str,
+        position_id: int,
+    ) -> JSONLike:
+        """Get the balance of a position for a given owner.
+
+        Args:
+            ledger_api: The ledger API instance.
+            contract_address: The contract address.
+            owner: The address of the token holder.
+            position_id: The ID of the position/token.
+
+        Returns:
+            A dictionary containing the balance.
+        """
+        instance = cls.get_instance(ledger_api, contract_address)
+        balance = instance.functions.balanceOf(
+            ledger_api.api.to_checksum_address(owner),
+            int(position_id),
+        ).call()
+        return dict(balance=balance)
 
     @classmethod
     def build_merge_positions_tx(
