@@ -232,16 +232,35 @@ class PolymarketPredictionsFetcher(
         # Get total payout for this bet
         total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
 
-        # Calculate net profit: total_payout - bet_amount
-        # If totalPayout > 0, the bet was won
-        # If totalPayout == 0, the bet was lost
-        if total_payout > 0:
-            return total_payout - bet_amount
+        # Check if bet won by comparing outcomeIndex with winningIndex
+        outcome_index = bet.get("outcomeIndex")
+        winning_index = resolution.get("winningIndex")
+
+        # If we can determine win/loss from indices
+        if outcome_index is not None and winning_index is not None:
+            if int(outcome_index) == int(winning_index):
+                # Winning bet
+                if total_payout > 0:
+                    # Redeemed - calculate actual profit
+                    return total_payout - bet_amount
+                else:
+                    # Won but not redeemed yet - return 0 (pending)
+                    return 0.0
+            else:
+                # Losing bet
+                return -bet_amount
         else:
-            return -bet_amount
+            # Fallback: use totalPayout to determine
+            # If totalPayout > 0, the bet was won and redeemed
+            # If totalPayout == 0, could be lost OR won but not redeemed
+            # In this case, we can't distinguish, so treat as loss
+            if total_payout > 0:
+                return total_payout - bet_amount
+            else:
+                return -bet_amount
 
     def _get_prediction_status(self, bet: Dict) -> str:
-        """Determine the status of a Polymarket prediction."""
+        """Determine the status of a Polymarket prediction, treating unredeemed wins as pending."""
         question = bet.get("question") or {}
         resolution = question.get("resolution")
 
@@ -256,6 +275,12 @@ class PolymarketPredictionsFetcher(
         # Compare outcomeIndex with winningIndex
         if outcome_index is not None and winning_index is not None:
             if int(outcome_index) == int(winning_index):
+                # Check if winnings have been redeemed
+                # totalPayout is only updated when the agent redeems (from subgraph)
+                total_payout = float(bet.get("totalPayout", 0))
+                if total_payout == 0:
+                    # Won but not redeemed yet - treat as pending
+                    return BetStatus.PENDING.value
                 return BetStatus.WON.value
             else:
                 return BetStatus.LOST.value
