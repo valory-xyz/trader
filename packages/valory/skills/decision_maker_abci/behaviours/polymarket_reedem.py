@@ -58,17 +58,17 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
     def __init__(self, **kwargs: Any) -> None:
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
-        self._user_holdings = None
+        self._user_token_balance: Optional[int] = None
 
     @property
-    def token_balance(self) -> Optional[int]:
-        """Get the user holdings."""
-        return self._user_holdings
+    def user_token_balance(self) -> Optional[int]:
+        """Get the token balance."""
+        return self._user_token_balance
 
-    @token_balance.setter
-    def token_balance(self, user_holdings: Optional[int]) -> None:
-        """Set the user holdings."""
-        self._user_holdings = user_holdings
+    @user_token_balance.setter
+    def user_token_balance(self, user_token_balance: Optional[int]) -> None:
+        """Set the token balance."""
+        self._user_token_balance = user_token_balance
 
     @property
     def params(self) -> DecisionMakerParams:
@@ -100,7 +100,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
         response_status = yield from self._conditional_tokens_interact(
             contract_callable="get_balance_of",
-            placeholder=get_name(PolymarketRedeemBehaviour.token_balance),
+            placeholder=get_name(PolymarketRedeemBehaviour.user_token_balance),
             owner=self.synchronized_data.safe_contract_address.lower(),
             data_key="balance",
             position_id=token_id,
@@ -110,7 +110,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
             self.context.logger.error("Failed to get token balance from contract")
             return None
 
-        return self.token_balance
+        return self.user_token_balance
 
     def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
         """Fetch redeemable positions from Polymarket."""
