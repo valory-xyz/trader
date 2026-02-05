@@ -68,12 +68,12 @@ class BetPayoutChecker(AchievementsChecker):
         achievements_updated = False
         for bet in prediction_history.items:
             bet_amount = bet.get("bet_amount", 0)
-            net_profit = bet.get("net_profit", 0)
+            total_payout = bet.get("total_payout", 0)
 
             if bet_amount <= 0:
                 continue
 
-            roi = net_profit / bet_amount
+            roi = total_payout / bet_amount
 
             if roi <= self._roi_threshold:
                 continue
