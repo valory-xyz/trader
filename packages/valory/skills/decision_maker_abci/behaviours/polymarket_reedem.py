@@ -67,7 +67,25 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
             polymarket_bet_payload
         )
 
-        return redeemable_positions
+        # Filter out positions with no redemption value (losing positions)
+        # A position is only worth redeeming if currentValue > 0
+        valuable_positions = []
+        for position in redeemable_positions:
+            current_value = position.get("currentValue", 0)
+            size = position.get("size", 0)
+
+            # Only include positions that have actual value to redeem
+            # currentValue is the total value of the position in USD
+            if current_value <= 0:
+                self.context.logger.info(
+                    f"Skipping worthless position {position.get('conditionId')} "
+                    f"with value ${current_value:.2f} (size: {size})"
+                )
+                continue
+
+            valuable_positions.append(position)
+
+        return valuable_positions
 
     def _redeem_position(
         self, condition_id: str, outcome_index: int, collateral_token: str
