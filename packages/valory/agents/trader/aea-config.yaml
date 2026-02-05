@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaqkcw6woqufvvtqph7o2o23z6liduuyfar4nnzirdnrcdziufg6u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic57evqcc3pkcwhl6f2wsvfpzozh4wnlmajzj6bt3p2d3os4vj32e
 - valory/market_manager_abci:0.1.0:bafybeiby3n45i6g6cfhfd3rtstl72zf5h72y5lk6ymunolmbpcxh6dnm2y
-- valory/decision_maker_abci:0.1.0:bafybeid6oipgjct7s27lxckxbn75imnoli6gsm3clszgwi3d2iuykwiiiu
-- valory/trader_abci:0.1.0:bafybeietkprsgk66zdpnucyidgzvbwqmmj2dzudjbwissk2sabc6u7sljm
+- valory/decision_maker_abci:0.1.0:bafybeic6nxcktfanbyh6yuvbbomb5jme7xovbs2p4ffr3qbozzxjtz2ge4
+- valory/trader_abci:0.1.0:bafybeick6t4gntpoilrnx5jpli3uej2k2zjvds6hzt3qluvrqn5d3id4qe
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeidh6ypnep2vvctofxt4unqqz4lw3oj4paxomsv3ddrdhnmfm3qlfm
-- valory/agent_performance_summary_abci:0.1.0:bafybeidjzgujh26eaaak6v2biseeuhya6xla2hpfzlhn4po2eteij45x2i
+- valory/chatui_abci:0.1.0:bafybeig4cmwg5k7plmzyg3llnghsceqejmzzyttueiqtlyzmj4px544yaa
+- valory/agent_performance_summary_abci:0.1.0:bafybeicbmvztgepm2chd5ykkod44d7sq6qxz7jbwwolzqs332vcn27lvqa
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -476,6 +476,19 @@ models:
       method: ${str:POST}
       response_key: ${str:data:traderAgent}
       response_type: ${str:dict}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+  polymarket_bets_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+        Authorization: ${str:Bearer a97ff23d989cb855d2c0caecc864efc8}
+      method: ${str:POST}
+      response_key: ${str:data:marketParticipants}
+      response_type: ${str:list}
       error_key: ${str:errors}
       error_index: ${int:0}
       error_type: ${str:dict}

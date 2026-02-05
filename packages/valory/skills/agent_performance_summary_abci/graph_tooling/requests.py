@@ -38,6 +38,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
     GET_RESOLVED_MARKETS_QUERY,
@@ -289,8 +290,20 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent bets - platform-aware."""
-        # Polymarket doesn't use this query (uses market participants instead)
         if self.params.is_running_on_polymarket:
+            # Fetch Polymarket bets with resolution data
+            result = yield from self._fetch_from_subgraph(
+                query=GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.polymarket_bets_subgraph,
+                res_context="polymarket_trader_agent_bets",
+            )
+            if result and isinstance(result, list):
+                # Flatten bets from all market participants
+                all_bets = []
+                for participant in result:
+                    all_bets.extend(participant.get("bets", []))
+                return {"bets": all_bets} if all_bets else None
             return None
 
         # Omen uses olas_agents_subgraph for bet data
