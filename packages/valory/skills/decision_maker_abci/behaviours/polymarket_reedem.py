@@ -267,6 +267,30 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
             event=Event.DONE.value,
         )
 
+    def _get_token_balance_from_chain(
+        self, token_id: int
+    ) -> Generator[None, None, Optional[int]]:
+        """Get token balance from the chain.
+
+        :param token_id: The token ID to check balance for
+        :return: Token balance as integer, or None if error
+        """
+        balance = yield from self._get_token_balance(token_id)
+
+        if balance is None:
+            self.context.logger.error(
+                f"Failed to get balance for token ID {token_id} from chain"
+            )
+            return None
+
+        if balance == 0:
+            self.context.logger.info(f"Token ID {token_id} has zero balance")
+            return 0
+
+        self.context.logger.info(f"Token ID {token_id} has balance: {balance}")
+
+        return balance
+
     def _prepare_redeem_tx(
         self, redeemable_positions: list
     ) -> Generator[None, None, Optional[str]]:
@@ -291,7 +315,6 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
             # Build the redemption data based on market type
             if is_neg_risk:
                 # For negative risk markets, query actual token balances from chain
-                # Get the token ID from the position's asset field
                 token_id = position.get("asset")
                 if not token_id:
                     self.context.logger.error(
@@ -299,37 +322,19 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                     )
                     continue
 
-                token_id = int(token_id)
+                balance = yield from self._get_token_balance_from_chain(int(token_id))
 
-                self.context.logger.info(
-                    f"Querying exact token balance for condition {condition_id}: token ID {token_id}"
-                )
-
-                # Get balance from chain for this specific token
-                balance = yield from self._get_token_balance(token_id)
-
-                if balance is None:
-                    self.context.logger.error(
-                        f"Failed to query token balance for token {token_id}"
+                if balance is None or balance == 0:
+                    self.context.logger.info(
+                        f"Skipping redemption for {condition_id} due to zero balance"
                     )
                     continue
-
-                self.context.logger.info(
-                    f"Token balance for outcome {outcome}: {balance}"
-                )
 
                 # For neg risk, we need to query both Yes and No tokens
                 # The outcome_index tells us which one this position is
                 # We need to build amounts array [yes_amount, no_amount]
                 redeem_amounts = [0, 0]
                 redeem_amounts[outcome_index] = int(balance)
-
-                # Skip if no tokens to redeem
-                if balance == 0:
-                    self.context.logger.info(
-                        f"Skipping condition {condition_id} - no tokens to redeem"
-                    )
-                    continue
 
                 redeem_data = self._build_redeem_neg_risk_data(
                     collateral_token=self.params.polymarket_usdc_address,
