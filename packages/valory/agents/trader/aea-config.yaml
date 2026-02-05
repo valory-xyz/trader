@@ -481,6 +481,19 @@ models:
       error_type: ${str:dict}
       retries: ${int:5}
       url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+  polymarket_bets_subgraph:
+    args:
+      headers:
+        Content-Type: ${str:application/json}
+        Authorization: ${str:Bearer a97ff23d989cb855d2c0caecc864efc8}
+      method: ${str:POST}
+      response_key: ${str:data:marketParticipants}
+      response_type: ${str:list}
+      error_key: ${str:errors}
+      error_index: ${int:0}
+      error_type: ${str:dict}
+      retries: ${int:5}
+      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
   polygon_mech_subgraph:
     args:
       headers:

@@ -321,6 +321,27 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
 }
 """
 
+GET_POLYMARKET_TRADER_AGENT_BETS_QUERY = """
+query GetPolymarketTraderAgentBets($id: ID!) {
+  marketParticipants(
+    where: {traderAgent_: {id: $id}}
+    first: 1000
+    orderBy: blockTimestamp
+    orderDirection: desc
+  ) {
+    bets {
+      id
+      outcomeIndex
+      question {
+        resolution {
+          winningIndex
+        }
+      }
+    }
+  }
+}
+"""
+
 GET_MECH_RESPONSE_QUERY = """
 query GetMechResponse($sender: String!, $questionTitle: String!) {
   requests(
