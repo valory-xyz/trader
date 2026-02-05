@@ -93,7 +93,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         """Redeem a single position."""
         # Prepare redemption payload
         # index_sets should be calculated as 1 << outcome_index
-        index_sets = [outcome_index + 1]
+        index_sets = [1 << outcome_index]
 
         polymarket_redeem_payload = {
             "request_type": RequestType.REDEEM_POSITIONS.value,
