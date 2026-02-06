@@ -900,13 +900,20 @@ class PolymarketClientConnection(BaseSyncConnection):
             return None, error_msg
 
     def _redeem_positions(
-        self, condition_id: str, index_sets: list[int], collateral_token: str
+        self,
+        condition_id: str,
+        index_sets: list[int],
+        collateral_token: str,
+        is_neg_risk: bool = False,
+        size: float = 0,
     ) -> Tuple[Any, Any]:
         """Redeem positions on Polymarket.
 
         :param condition_id: The condition ID (hex string with or without 0x prefix)
         :param index_sets: List of index sets to redeem (uint256[])
         :param collateral_token: The collateral token address
+        :param is_neg_risk: Whether this is a negative risk market
+        :param size: The size of the position to redeem (for neg risk markets)
         :return: Tuple of (transaction_result, error_message)
         """
         try:
@@ -920,24 +927,58 @@ class PolymarketClientConnection(BaseSyncConnection):
             condition_id_clean = condition_id.removeprefix("0x")
             condition_id_bytes = bytes.fromhex(condition_id_clean)
 
-            # Encode redeemPositions function call
-            selector = bytes.fromhex(
-                "01b7037c"
-            )  # redeemPositions(address,bytes32,bytes32,uint256[])
-            encoded_args = encode(
-                ["address", "bytes32", "bytes32", "uint256[]"],
-                [
-                    collateral_token,
-                    PARENT_COLLECTION_ID,
-                    condition_id_bytes,
-                    index_sets,
-                ],
-            )
-            calldata = selector + encoded_args
+            # Build transaction based on market type
+            if is_neg_risk:
+                # For negative risk markets, use neg risk adapter
+                # redeemPositions(bytes32,uint256[])
+                selector = bytes.fromhex(
+                    "6f0f6f3a"
+                )  # redeemPositions(bytes32,uint256[])
+
+                # For neg risk, index_sets contains bit-shifted outcome_index (1 << outcome_index)
+                # We need to build redeem_amounts array [yes_amount, no_amount]
+                # The size parameter tells us the amount to redeem
+                redeem_amounts = [0, 0]
+                if index_sets:
+                    # Extract outcome_index from bit-shifted value
+                    # index_sets[0] = 1 << outcome_index
+                    # So: 1 (0b01) -> outcome_index = 0, 2 (0b10) -> outcome_index = 1
+                    index_set = index_sets[0]
+                    outcome_index = 0
+                    while index_set > 1:
+                        index_set >>= 1
+                        outcome_index += 1
+                    redeem_amounts[outcome_index] = int(size)
+
+                encoded_args = encode(
+                    ["bytes32", "uint256[]"],
+                    [condition_id_bytes, redeem_amounts],
+                )
+                calldata = selector + encoded_args
+                target_address = self.neg_risk_adapter
+                market_type = "negative risk"
+            else:
+                # For standard markets, use CTF contract
+                # redeemPositions(address,bytes32,bytes32,uint256[])
+                selector = bytes.fromhex(
+                    "01b7037c"
+                )  # redeemPositions(address,bytes32,bytes32,uint256[])
+                encoded_args = encode(
+                    ["address", "bytes32", "bytes32", "uint256[]"],
+                    [
+                        collateral_token,
+                        PARENT_COLLECTION_ID,
+                        condition_id_bytes,
+                        index_sets,
+                    ],
+                )
+                calldata = selector + encoded_args
+                target_address = CONDITIONAL_TOKENS_CONTRACT
+                market_type = "standard"
 
             # Create SafeTransaction
             tx = SafeTransaction(
-                to=CONDITIONAL_TOKENS_CONTRACT,
+                to=target_address,
                 operation=OperationType.Call,
                 data="0x" + calldata.hex(),
                 value="0",
@@ -945,12 +986,12 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             # Execute transaction
             result = self.relayer_client.execute(
-                transactions=[tx], metadata="Redeem conditional tokens"
+                transactions=[tx], metadata=f"Redeem {market_type} conditional tokens"
             )
 
             transaction_data = result.get_transaction()
             self.logger.info(
-                f"Redeemed positions for condition {condition_id}: {transaction_data}"
+                f"Redeemed {market_type} positions for condition {condition_id}: {transaction_data}"
             )
             return transaction_data, None
 

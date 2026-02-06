@@ -233,6 +233,26 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                 f"Redeeming {market_type} position: {condition_id} - {outcome} (size: {size})"
             )
 
+            # For negative risk markets, query actual token balance from chain
+            if is_neg_risk:
+                token_id = position.get("asset")
+                if not token_id:
+                    self.context.logger.error(
+                        f"Missing asset (token ID) for position {condition_id}"
+                    )
+                    continue
+
+                balance = yield from self._get_token_balance_from_chain(int(token_id))
+
+                if balance is None or balance == 0:
+                    self.context.logger.info(
+                        f"Skipping redemption for {condition_id} due to zero balance"
+                    )
+                    continue
+
+                # Use actual balance from chain instead of API size
+                size = balance
+
             result = yield from self._redeem_position(
                 condition_id=condition_id,
                 outcome_index=outcome_index,
