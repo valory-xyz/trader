@@ -266,6 +266,7 @@ models:
       use_multi_bets_mode: ${bool:true}
       enable_multi_bets_fallback: ${bool:false}
       coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+      coingecko_pol_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd}
       genai_api_key: ${str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
