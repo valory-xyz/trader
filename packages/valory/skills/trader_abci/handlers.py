@@ -112,8 +112,8 @@ TRADING_STRATEGY_EXPLANATION = {
     "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
 }
 
-# Rate limiting for CoinGecko API: cache for 5 minutes to avoid hitting rate limits
-COINGECKO_RATE_CACHE_SECONDS = 300  # 5 minutes
+# Rate limiting for CoinGecko API: cache for 2 hours to avoid hitting rate limits
+COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 
 
 class HttpHandler(BaseHttpHandler):
