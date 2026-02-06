@@ -941,7 +941,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 redeem_amounts = [0, 0]
                 if index_sets:
                     # Extract outcome_index from bit-shifted value
-                    # index_sets[0] = 1 << outcome_index
+                    # index_sets[0] = 1 << outcome_index # noqa: E800
                     # So: 1 (0b01) -> outcome_index = 0, 2 (0b10) -> outcome_index = 1
                     index_set = index_sets[0]
                     outcome_index = 0
