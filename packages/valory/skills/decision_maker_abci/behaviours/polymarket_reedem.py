@@ -421,7 +421,7 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         # redeemPositions(bytes32,uint256[])
         # Note: neg risk adapter does NOT take collateral token as parameter
         function_signature = (
-            "0x6f0f6f3a"  # keccak256("redeemPositions(bytes32,uint256[])")[:4]
+            "0xdbeccb23"  # keccak256("redeemPositions(bytes32,uint256[])")[:4]
         )
 
         # Encode parameters
@@ -429,9 +429,8 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
         condition_id_padded = condition_id_clean.zfill(64).lower()
 
         # redeemAmounts (uint256[])
-        # Array encoding: offset to array data (1 * 32 bytes from start = 0x20)
         array_offset = (
-            "0000000000000000000000000000000000000000000000000000000000000020"
+            "0000000000000000000000000000000000000000000000000000000000000040"
         )
 
         # Array length (always 2 for binary outcomes)
