@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeiguv5bthmm3th4c3ypp77xdoyreud2wo4adhxoupsufaidhbkq2q4
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeigkqeife46pk65m4cizaijv2z3yxd4hpm67sy5mxsqkvqvxpx7eom
-  handlers.py: bafybeiazklztgf7dlk2eo27i2vn7hukeure77js2xnmil65brmfzfac6yi
+  handlers.py: bafybeidvau7p4tgxbqbfrtaxvix6rv3cbj2sgjq53o2qip2lcmc5o5hjsq
   models.py: bafybeial4jlvqrubm7q6hgiz4ehsaipgq2t6ruop2mkxkecz32kv3lwdeu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
@@ -52,13 +52,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/market_manager_abci:0.1.0:bafybeibbp2ue6mmg4c66luix6lu7rxayx5nhp7h5cc3f7gs7p2tduei23q
-- valory/decision_maker_abci:0.1.0:bafybeie2wbju7nk7nb4n72nouppwegc4mbxfi3dpg2iv2er4o2bt77zkyy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigioqxodssjudajkqneohylki2nv727z7el26n2iajen7if5xwlxq
+- valory/decision_maker_abci:0.1.0:bafybeidkxym2g75ghoz6y6nv7mzxwiqc3x3ilxgauhnncwmrulc55oekgy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidmhslohwapuskihdjs3evsbgjl2nokc76anx2cw3vnqo4lzru2gm
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeihdcvwq5yycvgd6kkaeiavwpedjbbj76q2txymfqdtgsf67dnkt3u
-- valory/agent_performance_summary_abci:0.1.0:bafybeiecof5kukfqyus4gtzk7tpfgl7jvhw37xwqsna7g2uhm3iwdvnba4
+- valory/chatui_abci:0.1.0:bafybeib35x5a3mhtr3wgn7sqap7252kwea3ggyrq7pwyjdhc7fviswy4hy
+- valory/agent_performance_summary_abci:0.1.0:bafybeiek3sywipbcvgfizlapth6xnf7lfs6otvipmxqibpdkgobcosvnca
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
