@@ -932,7 +932,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 # For negative risk markets, use neg risk adapter
                 # redeemPositions(bytes32,uint256[])
                 selector = bytes.fromhex(
-                    "6f0f6f3a"
+                    "dbeccb23"
                 )  # redeemPositions(bytes32,uint256[])
 
                 # For neg risk, index_sets contains bit-shifted outcome_index (1 << outcome_index)
