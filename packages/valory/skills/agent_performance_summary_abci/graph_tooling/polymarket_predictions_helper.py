@@ -232,9 +232,13 @@ class PolymarketPredictionsFetcher(
         # Get total payout for this bet
         total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
 
+        winning_index = resolution.get("winningIndex")
+        # Invalid market: winningIndex < 0 (e.g. cancelled). Net profit = totalPayout - bet amount.
+        if winning_index is not None and int(winning_index) < 0:
+            return total_payout - bet_amount
+
         # Check if bet won by comparing outcomeIndex with winningIndex
         outcome_index = bet.get("outcomeIndex")
-        winning_index = resolution.get("winningIndex")
 
         # If we can determine win/loss from indices
         if outcome_index is not None and winning_index is not None:
@@ -271,6 +275,10 @@ class PolymarketPredictionsFetcher(
         # Market is resolved, determine win/loss by comparing outcomeIndex with winningIndex
         outcome_index = bet.get("outcomeIndex")
         winning_index = resolution.get("winningIndex")
+
+        # Invalid market: winningIndex < 0 (e.g. cancelled)
+        if winning_index is not None and int(winning_index) < 0:
+            return BetStatus.INVALID.value
 
         # Compare outcomeIndex with winningIndex
         if outcome_index is not None and winning_index is not None:

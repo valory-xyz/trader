@@ -54,6 +54,7 @@ class BetStatus(enum.Enum):
     WON = "won"
     LOST = "lost"
     PENDING = "pending"
+    INVALID = "invalid"
 
 
 class TradingStrategy(enum.Enum):
