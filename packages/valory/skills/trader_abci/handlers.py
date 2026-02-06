@@ -489,7 +489,7 @@ class HttpHandler(BaseHttpHandler):
             signed_tx = eoa_account.sign_transaction(tx_data)
 
             tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            return tx_hash.hex()
+            return tx_hash.to_0x_hex()
 
         except Exception as e:
             self.context.logger.error(f"Error submitting transaction: {str(e)}")
