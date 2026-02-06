@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries.py: bafybeidqxri7zm67dvnenaiuhzngpf2mlww3c4vlmjehi5kn3j3egl6ln4
   graph_tooling/requests.py: bafybeie3nydzsyj2gl25hk7yejxgr3k3oh3aewrwachbtih5nyvoxg2pei
   handlers.py: bafybeib2ye3phzqi5yknt57xshtagxh3xncsh4d3cbiygo76nbo7yreoai
-  models.py: bafybeiadtxtbyfygy4bs2jv24iptxeyzcthwf6wqww3jbpbj6pxfa5kkfm
+  models.py: bafybeigxbyk7wczyygnecwzin2tbsxcgl7jpocpgxvhfundksua7zh747u
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
 fingerprint_ignore_patterns: []
@@ -65,6 +65,7 @@ models:
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
+      coingecko_pol_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd
       store_path: /data/
       is_agent_performance_summary_enabled: true
       is_running_on_polymarket: false

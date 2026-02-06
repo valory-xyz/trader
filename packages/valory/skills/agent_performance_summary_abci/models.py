@@ -228,6 +228,9 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.coingecko_olas_in_usd_price_url: str = self._ensure(
             "coingecko_olas_in_usd_price_url", kwargs, str
         )
+        self.coingecko_pol_in_usd_price_url: str = self._ensure(
+            "coingecko_pol_in_usd_price_url", kwargs, str
+        )
         self.store_path: Path = self.get_store_path(kwargs)
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool

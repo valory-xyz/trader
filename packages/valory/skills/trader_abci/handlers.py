@@ -105,16 +105,15 @@ POLYGON_NATIVE_TOKEN_ADDRESS = (
 POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+POLYGON_POL_ADDRESS = "0x0000000000000000000000000000000000001010"
 
 TRADING_STRATEGY_EXPLANATION = {
     "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
     "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
 }
 
-# Rate limiting for LiFi API: 200 requests per 2 hours
-LIFI_RATE_LIMIT_SECONDS = 7200  # 2 hours
-# Use 1 POL (or 1 native token) as the base amount for rate calculation
-RATE_CALC_BASE_AMOUNT = 10**18  # 1 token in wei
+# Rate limiting for CoinGecko API: cache for 2 hours to avoid hitting rate limits
+COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 
 
 class HttpHandler(BaseHttpHandler):
@@ -392,7 +391,7 @@ class HttpHandler(BaseHttpHandler):
 
             if self.params.is_running_on_polymarket:
                 # On Polygon: USDC balance needs to be converted to POL equivalent
-                # Using LiFi to get real-time exchange rate since USDC and POL have different prices
+                # Using CoinGecko to get real-time exchange rate since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
                 usdc_balance = int(usdc_status.balance or 0)
                 usdc_decimals = usdc_status.decimals
@@ -411,7 +410,7 @@ class HttpHandler(BaseHttpHandler):
                     )
                     return funds_status
 
-                # Get POL equivalent for USDC balance using LiFi
+                # Get POL equivalent for USDC balance using CoinGecko
                 pol_equivalent = self._get_pol_equivalent_for_usdc(
                     usdc_balance, chain_config
                 )
@@ -425,13 +424,13 @@ class HttpHandler(BaseHttpHandler):
                     pol_decimals,
                 )
                 self.context.logger.info(
-                    "LiFi POL equivalent (raw): %s",
+                    "CoinGecko POL equivalent (raw): %s",
                     pol_equivalent,
                 )
 
                 if pol_equivalent is None:
                     self.context.logger.warning(
-                        "Failed to get POL/USDC exchange rate from LiFi. Skipping adjustment."
+                        "Failed to get POL/USDC exchange rate from CoinGecko. Skipping adjustment."
                     )
                     return funds_status
 
@@ -462,7 +461,8 @@ class HttpHandler(BaseHttpHandler):
         """
         Get the POL to USDC conversion rate (1 POL = X USDC), with caching.
 
-        Only fetches from LiFi API if cache is stale (older than 2 hours).
+        Fetches from CoinGecko API if cache is stale (older than 5 minutes).
+        Only used for Polygon chain; Gnosis doesn't need this as wxDAI = xDAI (1:1).
 
         :param chain_config: Chain configuration dictionary
         :return: Conversion rate (1 POL = X USDC), or None if failed
@@ -480,7 +480,8 @@ class HttpHandler(BaseHttpHandler):
         if (
             current_time is not None
             and self._pol_usdc_rate is not None
-            and (current_time - self._pol_usdc_rate_timestamp) < LIFI_RATE_LIMIT_SECONDS
+            and (current_time - self._pol_usdc_rate_timestamp)
+            < COINGECKO_RATE_CACHE_SECONDS
         ):
             self.context.logger.info(
                 f"Using cached POL→USDC rate: 1 POL = {self._pol_usdc_rate} USDC "
@@ -488,41 +489,33 @@ class HttpHandler(BaseHttpHandler):
             )
             return self._pol_usdc_rate
 
-        # Cache is stale or doesn't exist, fetch new rate
+        # Cache is stale or doesn't exist, fetch new rate from CoinGecko
         try:
-            safe_address = self.synchronized_data.safe_contract_address
-
-            # Get quote for 1 POL to USDC to determine the rate
             self.context.logger.info(
-                "Fetching fresh POL→USDC rate from LiFi API (cache expired or missing)"
-            )
-            quote = self._get_lifi_quote(
-                from_token=chain_config["native_token_address"],
-                to_token=chain_config["usdc_address"],
-                from_amount=str(RATE_CALC_BASE_AMOUNT),  # 1 POL in wei
-                from_address=safe_address,
-                to_address=safe_address,
-                chain_config=chain_config,
-                timeout=10,
+                "Fetching fresh POL→USDC rate from CoinGecko API (cache expired or missing)"
             )
 
-            if not quote:
+            # Fetch POL price from CoinGecko
+            url = self.params.coingecko_pol_in_usd_price_url
+
+            response = requests.get(url, timeout=10)
+
+            if response.status_code != 200:
                 self.context.logger.warning(
-                    "Failed to fetch POL→USDC rate, using stale cache if available"
+                    f"CoinGecko API returned status {response.status_code}: {response.text}"
                 )
                 return self._pol_usdc_rate  # Return stale cache if available
 
-            # Extract the USDC amount for 1 POL
-            to_amount_wei = quote.get("estimate", {}).get("toAmount")
+            data: Dict = response.json()
 
-            if not to_amount_wei:
-                self.context.logger.error("No toAmount in LiFi quote response")
+            price_usd = data.get(POLYGON_POL_ADDRESS, {}).get("usd", None)
+
+            if not price_usd:
+                self.context.logger.error(f"No USD price in CoinGecko response: {data}")
                 return self._pol_usdc_rate  # Return stale cache if available
 
-            # Calculate rate: 1 POL = X USDC
-            # USDC has 6 decimals, POL has 18 decimals
-            usdc_amount = int(to_amount_wei) / (10**6)  # USDC has 6 decimals
-            rate = usdc_amount  # This is the USDC amount for 1 POL
+            # CoinGecko returns price in USD, which we treat as USDC (1 USD ≈ 1 USDC)
+            rate = float(price_usd)
 
             # Update cache only if we have a valid timestamp
             if current_time is not None:
@@ -539,7 +532,9 @@ class HttpHandler(BaseHttpHandler):
             return rate
 
         except Exception as e:
-            self.context.logger.error(f"Error fetching POL→USDC rate: {str(e)}")
+            self.context.logger.error(
+                f"Error fetching POL→USDC rate from CoinGecko: {str(e)}"
+            )
             return self._pol_usdc_rate  # Return stale cache if available
 
     def _get_pol_equivalent_for_usdc(
@@ -549,6 +544,8 @@ class HttpHandler(BaseHttpHandler):
     ) -> Optional[int]:
         """
         Get the POL equivalent for a given USDC balance using cached rate.
+
+        Only used for Polygon; on Gnosis, wxDAI = xDAI (1:1) so no conversion needed.
 
         :param usdc_balance: USDC balance in wei (6 decimals for USDC)
         :param chain_config: Chain configuration dictionary

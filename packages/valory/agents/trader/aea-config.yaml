@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigioqxodssjudajkqneohylki2nv727z7el26n2iajen7if5xwlxq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidmhslohwapuskihdjs3evsbgjl2nokc76anx2cw3vnqo4lzru2gm
 - valory/market_manager_abci:0.1.0:bafybeibbp2ue6mmg4c66luix6lu7rxayx5nhp7h5cc3f7gs7p2tduei23q
-- valory/decision_maker_abci:0.1.0:bafybeie2wbju7nk7nb4n72nouppwegc4mbxfi3dpg2iv2er4o2bt77zkyy
-- valory/trader_abci:0.1.0:bafybeidhfmalejfwm7eqhia6zshuxtbftn4poolejrzogymiahlajsrxke
+- valory/decision_maker_abci:0.1.0:bafybeidkxym2g75ghoz6y6nv7mzxwiqc3x3ilxgauhnncwmrulc55oekgy
+- valory/trader_abci:0.1.0:bafybeid265hdir4ndk3frkv77ycuapx4u55ko72izd6ap2bhh2pcefvvfa
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeihdcvwq5yycvgd6kkaeiavwpedjbbj76q2txymfqdtgsf67dnkt3u
-- valory/agent_performance_summary_abci:0.1.0:bafybeiecof5kukfqyus4gtzk7tpfgl7jvhw37xwqsna7g2uhm3iwdvnba4
+- valory/chatui_abci:0.1.0:bafybeib35x5a3mhtr3wgn7sqap7252kwea3ggyrq7pwyjdhc7fviswy4hy
+- valory/agent_performance_summary_abci:0.1.0:bafybeiek3sywipbcvgfizlapth6xnf7lfs6otvipmxqibpdkgobcosvnca
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -266,6 +266,7 @@ models:
       use_multi_bets_mode: ${bool:true}
       enable_multi_bets_fallback: ${bool:false}
       coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
+      coingecko_pol_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd}
       genai_api_key: ${str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
