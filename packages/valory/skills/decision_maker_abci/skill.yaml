@@ -21,7 +21,7 @@ fingerprint:
   behaviours/handle_failed_tx.py: bafybeib7yjysksnc7azr3okvskb62svlyj2qt2t4tsiaiosi3dumdrm6d4
   behaviours/polymarket_bet_placement.py: bafybeia4slhgdbr5udsdjwks74mzvw43kwg4hsyets2rmpesub75kui6vm
   behaviours/polymarket_post_set_approval.py: bafybeihcgxt4uupyjjvrecac7ggtdanob4xmbxm3l5pzwqzjyh55nkt6ly
-  behaviours/polymarket_reedem.py: bafybeihubmngtyv4gunnxvuikg4ow3uzhabmyphtpd3girsacapdawzgey
+  behaviours/polymarket_reedem.py: bafybeiaqbbmqr35ffwx7aqo7ibhk4ayemnfdjpnkm7fxgj6e32z2jvzkke
   behaviours/polymarket_set_approval.py: bafybeibbet2jvu573iqwl5pbq72vrngu2ugwugf3rrsqfdi5donvnr2gt4
   behaviours/polymarket_swap.py: bafybeidyrxwcetqmj23lhdgtjxu2pud2vmlezvyc42gc2ouhepunqhes2q
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
@@ -94,7 +94,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeigyjwg6nfwmdkwzt7i56n4zv3oj6hii2mkkgstuaztyunscjifdee
-- valory/polymarket_client:0.1.0:bafybeibgdusopyvqhnjne4jdc2ihudk4brqm3d5ro4fdegcqhm57h7rt24
+- valory/polymarket_client:0.1.0:bafybeidgvyh4bptodrckj5phaqwh44owq6mlpjmxzhqrte5k4sztlk6bue
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy
 - valory/market_maker:0.1.0:bafybeidwc7yvxufnupyjzge2ycbos2t24hoyaeosvzj3z63ccqdzotygdm
@@ -113,12 +113,12 @@ protocols:
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/market_manager_abci:0.1.0:bafybeiby3n45i6g6cfhfd3rtstl72zf5h72y5lk6ymunolmbpcxh6dnm2y
+- valory/market_manager_abci:0.1.0:bafybeibbp2ue6mmg4c66luix6lu7rxayx5nhp7h5cc3f7gs7p2tduei23q
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/agent_performance_summary_abci:0.1.0:bafybeicbmvztgepm2chd5ykkod44d7sq6qxz7jbwwolzqs332vcn27lvqa
-- valory/chatui_abci:0.1.0:bafybeig4cmwg5k7plmzyg3llnghsceqejmzzyttueiqtlyzmj4px544yaa
+- valory/agent_performance_summary_abci:0.1.0:bafybeiecof5kukfqyus4gtzk7tpfgl7jvhw37xwqsna7g2uhm3iwdvnba4
+- valory/chatui_abci:0.1.0:bafybeihdcvwq5yycvgd6kkaeiavwpedjbbj76q2txymfqdtgsf67dnkt3u
 behaviours:
   main:
     args: {}
