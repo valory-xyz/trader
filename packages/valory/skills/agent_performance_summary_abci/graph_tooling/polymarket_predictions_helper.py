@@ -300,6 +300,9 @@ class PolymarketPredictionsFetcher(
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
+        # TODO: Hardcoded as outcomes onchain are not in proper order.
+        # outcomes = metadata.get("outcomes", [])  # noqa: E800
+        outcomes = ["Yes", "No"]
         if not outcomes or outcome_index >= len(outcomes):
             return "unknown"
         return outcomes[outcome_index].lower()
