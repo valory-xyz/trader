@@ -22,6 +22,7 @@
 import json
 import sys
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Dict, Generator, List, Optional
 
 from dateutil import parser as date_parser
@@ -351,7 +352,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             polymarket_fetch_markets_payload
         )
 
-        if response is None:
+        if response is None or (isinstance(response, dict) and response.get("error")):
             self.context.logger.error(
                 "Failed to fetch markets from Polymarket - API call failed"
             )
@@ -562,7 +563,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             polymarket_trades_payload
         )
 
-        if trades is None:
+        if trades is None or (isinstance(trades, dict) and trades.get("error")):
             self.context.logger.warning("Failed to fetch trades from Polymarket")
             return None
 
@@ -706,12 +707,14 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         :param bet: Bet to update
         :param trades_by_condition_outcome: Grouped trades dictionary
         """
+        existing_investments = deepcopy(bet.investments)
         bet.reset_investments()
 
         # Extract condition_id and validate (mypy type narrowing)
         condition_id = bet.condition_id
         if condition_id is None:
             self.context.logger.debug(f"Bet {bet.id} has no condition_id, skipping")
+            self._replace_with_existing_investments_if_empty(bet, existing_investments)
             return
 
         matching_trades_by_outcome: Dict[int, List[Dict[str, Any]]] = (
@@ -722,12 +725,14 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.context.logger.debug(
                 f"No trades found for bet {bet.id} with condition_id {condition_id}"
             )
+            self._replace_with_existing_investments_if_empty(bet, existing_investments)
             return
 
         if bet.outcomes is None:
             self.context.logger.warning(
                 f"Bet {bet.id} has no outcomes list, cannot map outcome indices"
             )
+            self._replace_with_existing_investments_if_empty(bet, existing_investments)
             return
 
         for outcome_index, trade_list in matching_trades_by_outcome.items():
@@ -753,6 +758,20 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     f"total_investment_usdc={total_investment_usdc}, "
                     f"amount={investment_amount}, investments={bet.investments}"
                 )
+
+        self._replace_with_existing_investments_if_empty(bet, existing_investments)
+
+    def _replace_with_existing_investments_if_empty(
+        self, bet: Bet, existing_investments: Dict
+    ) -> None:
+        """Replace bet investments with existing ones if the new investments are empty."""
+        # This is to ensure that in case of subgraph or API failure,
+        # agent doesn't lose existing investment data and end up placing duplicate bets.
+        if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
+            self.context.logger.warning(
+                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+            )
+            bet.investments = existing_investments
 
     def _update_all_bets_investments(
         self,
