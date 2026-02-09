@@ -557,6 +557,9 @@ class FetchPerformanceSummaryBehaviour(
             # Skip if either index is None
             if winning_index is None or outcome_index is None:
                 continue
+            # Skip invalid markets (winningIndex < 0)
+            if int(winning_index) < 0:
+                continue
 
             total_bets += 1
 
