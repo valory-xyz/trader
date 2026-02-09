@@ -52,13 +52,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/market_manager_abci:0.1.0:bafybeigv5uysz4yzbgmx5lk4gtzdcy4bapiejrtjegh24vigvw7t27ecem
-- valory/decision_maker_abci:0.1.0:bafybeiehq3c3vcbxsmaytr5qnszfytsalk34sjdas74nab3jlozpvb6qc4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiehbxt5mk6ehqh2bujefbt2zd22x4kh3eg5cwbagunxkv3y3nrnpy
+- valory/decision_maker_abci:0.1.0:bafybeicjohzsmjzcpril7evcbdflc2qqndvpoimotok2nttx7nvble7hbm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihno6kyhqqvnc4dkome5dn56gkq3esc7dbcell7eukbn5lz5ubegq
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeifc3qfrzilxclp53722zdjypktjvmcjue5niwofmheijdideqvrp4
-- valory/agent_performance_summary_abci:0.1.0:bafybeifqxlivwhvrxvba3hyww3dnurw7qvd3vxo7nbt6ir5cal25z3dl4u
+- valory/chatui_abci:0.1.0:bafybeihjglju6epbtvech2hzbzx4mplho74i7kfft4pn7hjmtwj4kx4kte
+- valory/agent_performance_summary_abci:0.1.0:bafybeidhrm4wcg42h2d6uqrfiiyhdq47zzk5imfstskz6cskq6bnsm2w7a
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
