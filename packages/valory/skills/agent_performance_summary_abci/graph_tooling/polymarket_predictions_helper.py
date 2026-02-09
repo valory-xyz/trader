@@ -57,8 +57,6 @@ class PolymarketPredictionsFetcher(
         """
         self.context = context
         self.logger = logger
-        self.polymarket_url = context.polymarket_agents_subgraph.url
-        self.polymarket_headers = context.polymarket_agents_subgraph.headers
 
     def fetch_predictions(
         self,
@@ -112,11 +110,11 @@ class PolymarketPredictionsFetcher(
             "variables": {"id": safe_address, "first": first, "skip": skip},
         }
 
+        # TODO: Switch to using the framework methods for calling subgraphs
         try:
             response = requests.post(
-                self.polymarket_url,
+                self.context.polymarket_agents_subgraph.url,
                 json=query_payload,
-                headers=self.polymarket_headers,
                 timeout=30,
             )
 
