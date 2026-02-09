@@ -351,7 +351,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             polymarket_fetch_markets_payload
         )
 
-        if response is None:
+        if response is None or (isinstance(response, dict) and response.get("error")):
             self.context.logger.error(
                 "Failed to fetch markets from Polymarket - API call failed"
             )
@@ -562,7 +562,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             polymarket_trades_payload
         )
 
-        if trades is None:
+        if trades is None or (isinstance(trades, dict) and trades.get("error")):
             self.context.logger.warning("Failed to fetch trades from Polymarket")
             return None
 
