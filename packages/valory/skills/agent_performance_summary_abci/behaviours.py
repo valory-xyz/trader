@@ -107,6 +107,10 @@ POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = (
 )
 
 
+MIN_TRADES_FOR_ROI_DISPLAY = 10
+MORE_TRADES_NEEDED_TEXT = "More trades needed"
+
+
 class FetchPerformanceSummaryBehaviour(
     APTQueryingBehaviour,
 ):
@@ -1515,16 +1519,6 @@ class FetchPerformanceSummaryBehaviour(
 
         metrics = []
 
-        partial_roi_string = f"{round(partial_roi)}%" if partial_roi is not None else NA
-        metrics.append(
-            AgentPerformanceMetrics(
-                name="Total ROI",
-                is_primary=True,
-                description=f"Total return on investment including staking rewards. Partial ROI (Prediction market activity only): <b>{partial_roi_string}</b>",
-                value=f"{round(final_roi)}%" if final_roi is not None else NA,
-            )
-        )
-
         accuracy = yield from self._get_prediction_accuracy()
 
         metrics.append(
@@ -1540,6 +1534,30 @@ class FetchPerformanceSummaryBehaviour(
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
 
+        winning_trades = [
+            item for item in prediction_history.items if item.get("total_payout", 0) > 0
+        ]
+        if len(winning_trades) >= MIN_TRADES_FOR_ROI_DISPLAY:
+            partial_roi_string = (
+                f"{round(partial_roi)}%" if partial_roi is not None else NA
+            )
+            metrics.append(
+                AgentPerformanceMetrics(
+                    name="Total ROI",
+                    is_primary=True,
+                    description=f"Total return on investment including staking rewards. Partial ROI (Prediction market activity only): <b>{partial_roi_string}</b>",
+                    value=f"{round(final_roi)}%" if final_roi is not None else NA,
+                )
+            )
+        else:
+            metrics.append(
+                AgentPerformanceMetrics(
+                    name="Total ROI",
+                    is_primary=True,
+                    description=f"Total return on investment including staking rewards. ROI is not shown until at least {MIN_TRADES_FOR_ROI_DISPLAY} winning trades have been made to ensure statistical significance.",
+                    value=MORE_TRADES_NEEDED_TEXT,
+                )
+            )
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp,
             metrics=metrics,
