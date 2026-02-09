@@ -472,6 +472,19 @@ class DecisionMakerParams(
             "review_period_seconds", kwargs, int
         )
         self.min_confidence_for_selling: float = 0.5
+        # Strategy correction parameters: prevent negative-skew bets
+        # Maximum allowed price for the highest-priced outcome (e.g. 0.90 means skip if any price > 0.90)
+        self.max_outcome_price_threshold: float = self._ensure(
+            "max_outcome_price_threshold", kwargs, float
+        )
+        # Minimum payoff ratio (win_gain / loss_amount) below which bets are skipped
+        self.min_payoff_ratio: float = self._ensure("min_payoff_ratio", kwargs, float)
+        # Maximum fraction of bankroll to risk on a single bet (e.g. 0.005 = 0.5%)
+        self.max_loss_fraction: float = self._ensure("max_loss_fraction", kwargs, float)
+        # Minimum convexity score for a market to be considered worth evaluating
+        self.min_convexity_score: float = self._ensure(
+            "min_convexity_score", kwargs, float
+        )
         self.polymarket_builder_program_enabled: bool = self._ensure(
             "polymarket_builder_program_enabled", kwargs, bool
         )

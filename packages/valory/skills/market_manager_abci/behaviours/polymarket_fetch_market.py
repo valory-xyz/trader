@@ -46,7 +46,10 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 # USDC has 6 decimals on Polymarket
 USDC_DECIMALS = 10**6
 # Threshold for extreme outcome prices indicating resolved/over markets
-EXTREME_PRICE_THRESHOLD = 0.99
+# Lowered from 0.99 to 0.90: markets with any outcome price > 0.90 offer
+# negative payoff asymmetry (tiny upside, large downside) and are skipped
+EXTREME_PRICE_THRESHOLD = 0.90
+
 
 # Polymarket category keywords for validation
 # fmt: off
@@ -763,7 +766,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         :param trades_by_condition_outcome: Grouped trades dictionary
         """
         for bet in self.bets:
-            if self._should_skip_bet(bet):
+            if self._should_skip_bet(bet) or bet.yes_investments or bet.no_investments:
                 continue
 
             self._update_single_bet_investments(bet, trades_by_condition_outcome)

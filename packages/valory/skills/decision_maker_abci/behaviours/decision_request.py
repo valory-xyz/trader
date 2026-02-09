@@ -94,6 +94,7 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
             self.shared_state.mech_timed_out = False
             payload_content = None
             mocking_mode: Optional[bool] = self.benchmarking_mode.enabled
+            mocking_mode = True
             if self._metadata and self.n_slots_supported:
                 mech_requests = [self.metadata]
                 payload_content = json.dumps(mech_requests, sort_keys=True)

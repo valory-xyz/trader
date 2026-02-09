@@ -108,6 +108,8 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 "Failed to place bet: No response from connection"
             )
 
+        self.update_bet_transaction_information()
+
         payload = PolymarketBetPlacementPayload(
             self.context.agent_address,
             None,

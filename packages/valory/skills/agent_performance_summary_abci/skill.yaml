@@ -197,4 +197,4 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections:
-- valory/polymarket_client:0.1.0:bafybeidtwd3araaz5oqp2crroktirmna5eanwvsrmm6j7w4kj7turqtt3u
+- valory/polymarket_client:0.1.0:bafybeihlcow6zgptq4fayvw7m5wqoxde3beg2ejdt5ja46dqdftlc7homq

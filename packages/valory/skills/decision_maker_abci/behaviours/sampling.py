@@ -38,6 +38,37 @@ WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
+# Title phrases that indicate price-target / close-at markets which are
+# essentially random-walk bets and should be skipped.
+PRICE_TARGET_PHRASES = (
+    "close at",
+    "close above",
+    "close below",
+    "closes above",
+    "closes below",
+    "close on or above",
+    "close on or below",
+    "close higher than",
+    "close lower than",
+    "finish above",
+    "finish below",
+    "end above",
+    "end below",
+    "trade above",
+    "trade below",
+    "trading above",
+    "trading below",
+    "hit $",
+    "reach $",
+    "drop below $",
+    "fall below $",
+    "rise above $",
+    "price above",
+    "price below",
+    "above $",
+    "below $",
+)
+
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
@@ -65,6 +96,21 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _multi_bets_fallback_allowed(self) -> bool:
         return self.params.enable_multi_bets_fallback and not self.kpi_is_met
+
+    @staticmethod
+    def compute_convexity_score(bet: Bet) -> float:
+        """Compute a convexity score for the market.
+
+        ConvexityScore = (1 - max(price_yes, price_no)) * sqrt(liquidity)
+        Higher scores indicate markets with better asymmetric payoff potential.
+        Markets with extreme prices (near 0 or 1) score low.
+        """
+        prices = bet.outcomeTokenMarginalPrices
+        if prices is None or len(prices) < 2:
+            return 0.0
+        max_price = max(float(p) for p in prices)
+        liquidity = max(bet.scaledLiquidityMeasure, 0.0)
+        return (1.0 - max_price) * (liquidity**0.5)
 
     def processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool = False
@@ -96,6 +142,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if not within_safe_range:
             bet.blacklist_forever()
 
+            # Filter out price-target / close-at markets before processing
+        title = (bet.title or "").lower()
+        if any(phrase in title for phrase in PRICE_TARGET_PHRASES):
+
+            self.context.logger.debug(
+                f"Skipping price-target market: {bet.id} - {bet.title}"
+            )
+            return False
+
         within_ranges = within_opening_range and within_safe_range
 
         # check if bet queue number is processable
@@ -105,6 +160,31 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             QueueStatus.REPROCESSED,
         }
         bet_queue_processable = bet.queue_status in processable_statuses
+
+        # Strategy correction: skip markets with extreme outcome prices
+        # Betting at high prices (e.g. 0.95+) creates negative payoff asymmetry:
+        # tiny upside when right, large downside when wrong
+        prices = bet.outcomeTokenMarginalPrices
+        if prices is not None and len(prices) >= 2 and not selling_specific:
+            max_price = max(float(p) for p in prices)
+            threshold = self.params.max_outcome_price_threshold
+            if max_price > threshold:
+                self.context.logger.info(
+                    f"Skipping bet {bet.id}: max outcome price {max_price:.4f} "
+                    f"exceeds threshold {threshold} (negative payoff asymmetry)"
+                )
+                return False
+
+            # Strategy correction: skip markets with low convexity score
+            # Prefer markets where potential payoff is asymmetrically favorable
+            convexity = self.compute_convexity_score(bet)
+            min_convexity = self.params.min_convexity_score
+            if convexity < min_convexity:
+                self.context.logger.info(
+                    f"Skipping bet {bet.id}: convexity score {convexity:.4f} "
+                    f"below minimum {min_convexity} (insufficient payoff potential)"
+                )
+                return False
 
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
