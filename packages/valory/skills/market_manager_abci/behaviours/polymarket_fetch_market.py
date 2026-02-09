@@ -762,7 +762,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         self._replace_with_existing_investments_if_empty(bet, existing_investments)
 
     def _replace_with_existing_investments_if_empty(
-        self, bet: Bet, existing_investments: Dict[int, int]
+        self, bet: Bet, existing_investments: Dict
     ) -> None:
         """Replace bet investments with existing ones if the new investments are empty."""
         # This is to ensure that in case of subgraph or API failure,
