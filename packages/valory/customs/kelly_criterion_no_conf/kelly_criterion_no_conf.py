@@ -124,7 +124,10 @@ def wei_to_native(wei: int, decimals: int = 18) -> float:
     return wei / 10**decimals
 
 
-def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
+DEFAULT_MAX_LOSS_FRACTION = 0.0  # 0 means disabled
+
+
+def get_bet_amount_kelly(
     bet_kelly_fraction: float,
     bankroll: int,
     win_probability: float,
@@ -137,6 +140,7 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     max_bet: int = DEFAULT_MAX_BET,
     min_bet: int = DEFAULT_MIN_BET,
     token_decimals: int = DEFAULT_TOKEN_DECIMALS,
+    max_loss_fraction: float = DEFAULT_MAX_LOSS_FRACTION,
 ) -> Dict[str, Union[int, List[str]]]:
     """Calculate the Kelly bet amount."""
 
@@ -197,6 +201,17 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
             f"Adjusted Kelly bet amount ({wei_to_native(adj_kelly_bet_amount, token_decimals)} {token_name}) is above maximum bet ({wei_to_native(max_bet, token_decimals)} {token_name}).\nSet bet amount to maximum bet."
         )
         adj_kelly_bet_amount = max_bet
+
+    # Strategy correction: cap bet to max_loss_fraction of bankroll
+    if max_loss_fraction > 0:
+        max_allowed_loss = int(bankroll * max_loss_fraction)
+        if adj_kelly_bet_amount > max_allowed_loss > 0:
+            info.append(
+                f"Bet {wei_to_native(adj_kelly_bet_amount, token_decimals)} {token_name} exceeds "
+                f"max loss cap ({max_loss_fraction*100:.1f}% of bankroll = "
+                f"{wei_to_native(max_allowed_loss, token_decimals)} {token_name}). Capping."
+            )
+            adj_kelly_bet_amount = max_allowed_loss
 
     return {"bet_amount": adj_kelly_bet_amount, "info": info, "error": error}
 

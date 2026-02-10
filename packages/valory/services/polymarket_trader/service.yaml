@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifqekmjmvhl3swuv2qdkl3auuzboq3gtmrkrguyhxftytutptwcxi
+agent: valory/trader:0.1.0:bafybeifvaba6gfsbh2jrlx2j4id2fc2nqnoaikoy3cqb6zjfrs6ssp62iq
 number_of_agents: 1
 deployment:
   agent:
@@ -91,7 +91,7 @@ models:
       mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x45F25db135E83d7a010b05FFc1202F8473E3ae7D}
       mech_chain_id: ${MECH_CHAIN_ID:str:polygon}
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270}
-      sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+      sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:1}
       trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
       use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
@@ -127,7 +127,7 @@ models:
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
-      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":500000000000000000,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":5000000,"bet_amount_per_threshold":{"0.0":1000000,"0.1":1000000,"0.2":1000000,"0.3":1000000,"0.4":1000000,"0.5":1000000,"0.6":1000000,"0.7":1000000,"0.8":1000000,"0.9":1000000,"1.0":1000000}}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.5,"floor_balance":2000000,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":5000000,"max_loss_fraction":0.005,"min_edge":0.10,"min_ev_threshold":0.10,"bet_amount_per_threshold":{"0.0":1000000,"0.1":1000000,"0.2":1000000,"0.3":1000000,"0.4":1000000,"0.5":1000000,"0.6":1000000,"0.7":1000000,"0.8":1000000,"0.9":1000000,"1.0":1000000}}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x343F2B005cF6D70bA610CD9F1F1927049414B582","priority_mech_address":"0x1DCbC9368327776F8B20Dc041D40b8076C8AC173","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":25,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -153,6 +153,10 @@ models:
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
+      max_outcome_price_threshold: ${MAX_OUTCOME_PRICE_THRESHOLD:float:0.90}
+      min_payoff_ratio: ${MIN_PAYOFF_RATIO:float:0.2}
+      max_loss_fraction: ${MAX_LOSS_FRACTION:float:0.005}
+      min_convexity_score: ${MIN_CONVEXITY_SCORE:float:0.5}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
       ignored_mechs: ${IGNORED_MECHS:list:["0x1DCbC9368327776F8B20Dc041D40b8076C8AC173"]}

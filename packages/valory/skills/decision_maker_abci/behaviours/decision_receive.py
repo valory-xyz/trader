@@ -202,7 +202,31 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self,
     ) -> Optional[PredictionResponse]:
         """Get vote, win probability and confidence."""
-        if self.benchmarking_mode.enabled:
+        import requests
+
+        sampled_bet = self.sampled_bet
+        prompt_params = dict(
+            question=sampled_bet.title, yes=sampled_bet.yes, no=sampled_bet.no
+        )
+        prompt = self.params.prompt_template.substitute(prompt_params)
+
+        self.context.logger.info(f"Sending prompt to mech: {prompt}")
+        result = requests.post(
+            "http://localhost:8000/",
+            json={"prompt": prompt},
+            timeout=300,
+        ).json()
+        # self.context.logger.info(f"Received response from mech: {result}")
+
+        self._mech_response = MechInteractionResponse(
+            data=json.dumps(result), result=json.dumps(result)
+        )
+
+        # print(f"!!!!!!!!!!!! Mech response: {self.mech_response!r}")
+        self.context.logger.info(f"Mech response: {result['result']}")
+        return PredictionResponse(**result["result"])
+
+        if self.benchmarking_mode.enabled and True:
             self._mock_response()
         else:
             self._get_response()
@@ -465,7 +489,13 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             bet.collateralToken,
         )
         bet_threshold = self.params.bet_threshold
-        bet_amount = max(bet_amount, bet_threshold)
+        # bet_amount = max(bet_amount, bet_threshold)
+        if bet_amount <= bet_threshold:
+            self.context.logger.info(
+                f"Bet amount {bet_amount} is below the threshold {bet_threshold}. "
+                f"Decision will be considered not profitable."
+            )
+            return False, 0
 
         self.context.logger.info(f"Bet amount: {bet_amount}")
         self.context.logger.info(f"Bet fee: {bet.fee}")
@@ -485,6 +515,43 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
                 "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
             )
+
+        # Strategy correction: enforce payoff ratio minimum
+        # Skip bets where win_gain / loss_amount is too small (negative skew)
+        win_gain = num_shares - net_bet_amount
+        loss_amount = net_bet_amount
+        if loss_amount > 0:
+            payoff_ratio = win_gain / loss_amount
+            min_payoff_ratio = self.params.min_payoff_ratio
+            self.context.logger.info(
+                f"Payoff ratio: {payoff_ratio:.4f} (win_gain={win_gain}, loss={loss_amount}), "
+                f"minimum required: {min_payoff_ratio}"
+            )
+            if payoff_ratio < min_payoff_ratio:
+                self.context.logger.info(
+                    f"Bet rejected: payoff ratio {payoff_ratio:.4f} < {min_payoff_ratio}. "
+                    f"Insufficient asymmetric upside for the risk taken."
+                )
+                return False, 0
+
+        # Strategy correction: enforce max loss per market as fraction of bankroll
+        max_loss_fraction = self.params.max_loss_fraction
+        if max_loss_fraction > 0:
+            bankroll = self.token_balance + self.wallet_balance
+            max_allowed_loss = int(bankroll * max_loss_fraction)
+            if net_bet_amount > max_allowed_loss and max_allowed_loss > 0:
+                self.context.logger.info(
+                    f"Bet amount {net_bet_amount} exceeds max allowed loss "
+                    f"{max_allowed_loss} ({max_loss_fraction*100:.1f}% of bankroll {bankroll}). "
+                    f"Capping bet to max allowed loss."
+                )
+                # Recompute with capped amount
+                net_bet_amount = max_allowed_loss
+                bet_amount = net_bet_amount  # approximate, fee already removed
+                num_shares, available_shares = self._calc_binary_shares(
+                    bet, net_bet_amount, prediction_response.vote
+                )
+
         if bet_threshold <= 0:
             self.context.logger.warning(
                 f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "

@@ -541,7 +541,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         yield from self.wait_for_condition_with_sleep(self.check_balance)
 
         # accessing `self.shared_state.chatui_config` calls `self._ensure_chatui_store()` which ensures `trading_strategy` can never be `None`
-        next_strategy: str = self.shared_state.chatui_config.trading_strategy  # type: ignore[assignment]
+        # next_strategy: str = self.shared_state.chatui_config.trading_strategy  # type: ignore[assignment]
+        next_strategy = "edge_optimized"
 
         tried_strategies: Set[str] = set()
         while True:
@@ -557,7 +558,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
-                    "bankroll": self.token_balance + self.wallet_balance,
+                    "bankroll": self.token_balance,
                     "win_probability": win_probability,
                     "confidence": confidence,
                     "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
@@ -566,7 +567,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     "weighted_accuracy": weighted_accuracy,
                 }
             )
+
+            print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {kwargs=}")
             results = self.execute_strategy(**kwargs)
+            print(f"Strategy {next_strategy} returned the following results: {results}")
             for level in SUPPORTED_STRATEGY_LOG_LEVELS:
                 logger = getattr(self.context.logger, level, None)
                 if logger is not None:

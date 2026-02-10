@@ -51,14 +51,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
-- valory/market_manager_abci:0.1.0:bafybeigv5uysz4yzbgmx5lk4gtzdcy4bapiejrtjegh24vigvw7t27ecem
-- valory/decision_maker_abci:0.1.0:bafybeif4iiynm32xquj4t3xcfxxtglrdlosazycmy766oqewxemnnfo6gm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieez2rwsdhe7o3rruvkwbrz6njkkww3jyn5e3fupzv3zjp4hdopf4
+- valory/market_manager_abci:0.1.0:bafybeihaiwxu7mc43ltaglxjkl3tz7snkgkmvjs5uij6uue6wiw2n5wgje
+- valory/decision_maker_abci:0.1.0:bafybeidi2e27ycgrwlt6kxbrnesojmqkrzbmidhcimmlibfgxgkth4jl2y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidhdpwzmwwyto55qa2o7wrardta4zhfgbtyh3iezb2sey2g4tizye
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeicg5x46l7yamusphnj5bip5jeya26uqzygpd5jmezgwzmt6a2kbwu
-- valory/agent_performance_summary_abci:0.1.0:bafybeidk55vzqsdgb74hore7odmikyygdbsrj2e4k4er3xtu3g2zcdex34
+- valory/chatui_abci:0.1.0:bafybeihmugkpppswns6o6mp2vcsbw72nsyf7qsvrkxnao6ilonio5otx2y
+- valory/agent_performance_summary_abci:0.1.0:bafybeid6op3jqjvhnry4o7hpq5hanjhs2htimmuwt73itcbb3qs6do3rxu
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
@@ -240,7 +240,7 @@ models:
       file_hash_to_strategies: {}
       strategies_kwargs:
         bet_kelly_fraction: 1.0
-        floor_balance: 500000000000000000
+        floor_balance: 2000000
         bet_amount_per_threshold:
           0.0: 0
           0.1: 0
@@ -285,6 +285,10 @@ models:
       use_x402: false
       is_agent_performance_summary_enabled: true
       is_running_on_polymarket: false
+      max_outcome_price_threshold: 0.9
+      min_payoff_ratio: 0.2
+      max_loss_fraction: 0.005
+      min_convexity_score: 0.5
       polymarket_builder_program_enabled: true
       polymarket_usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
       polymarket_ctf_address: '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045'
