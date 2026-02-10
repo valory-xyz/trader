@@ -10,16 +10,16 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
   achievements_checker/bet_payout_checker.py: bafybeidgkd3c2t4amatocqbzw7e2l67k3cn5x5opojn3i5qeuwagthe4uy
-  behaviours.py: bafybeic7bve4qooqxwq7wknhse4bx5kvdu5pbkg6dggivr7vrsv3encx3i
+  behaviours.py: bafybeidcsyumfm35tlfg2nyzbhavctfkocosbqcjcypyf3bx4zy7mx2lya
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
   graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
-  graph_tooling/polymarket_predictions_helper.py: bafybeihdy7p22ecmw7s5mfdyrbeoyjbhvf4qm6uponzvefhg7iaal64zdq
-  graph_tooling/predictions_helper.py: bafybeiaog54h22lqhda7d5ou7icsk2csb6s7pqntfd2meq6xdgaxokjngi
+  graph_tooling/polymarket_predictions_helper.py: bafybeihtsmulay42wsfd4kmdg2rvd3bvkdykqcyz3t2e5k3wy6nvh2brlq
+  graph_tooling/predictions_helper.py: bafybeihcogvprrjvfo5jiiqxdeb7k5kfdql4mxuakzcr72laqz3iu7jmzy
   graph_tooling/queries.py: bafybeidqxri7zm67dvnenaiuhzngpf2mlww3c4vlmjehi5kn3j3egl6ln4
   graph_tooling/requests.py: bafybeie3nydzsyj2gl25hk7yejxgr3k3oh3aewrwachbtih5nyvoxg2pei
-  handlers.py: bafybeib2ye3phzqi5yknt57xshtagxh3xncsh4d3cbiygo76nbo7yreoai
+  handlers.py: bafybeibylgpwovuutdcm2me2ypit5zdc7mgzgxzj52gsp42jd7gvsk7i2e
   models.py: bafybeigxbyk7wczyygnecwzin2tbsxcgl7jpocpgxvhfundksua7zh747u
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
@@ -150,7 +150,6 @@ models:
       api_id: polymarket_agents
       headers:
         Content-Type: application/json
-        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:traderAgent
@@ -159,14 +158,13 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
     class_name: PolymarketAgentsSubgraph
   polymarket_bets_subgraph:
     args:
       api_id: polymarket_bets
       headers:
         Content-Type: application/json
-        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:marketParticipants
@@ -175,7 +173,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
     class_name: PolymarketBetsSubgraph
   polygon_mech_subgraph:
     args:
@@ -197,4 +195,4 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections:
-- valory/polymarket_client:0.1.0:bafybeihlcow6zgptq4fayvw7m5wqoxde3beg2ejdt5ja46dqdftlc7homq
+- valory/polymarket_client:0.1.0:bafybeid5wdm47ge3uepv2lxlbpucojrpb4af5ab7idlmw6j2f2snrt3juy

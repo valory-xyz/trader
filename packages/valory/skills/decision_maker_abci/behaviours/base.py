@@ -400,7 +400,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return True
 
     def update_bet_transaction_information(self) -> None:
-        """Get whether the bet's invested amount should be updated."""
+        """Update the bet's invested amount and timestamp after placing a bet."""
         sampled_bet = self.sampled_bet
         # Update bet transaction timestamp
         sampled_bet.processed_timestamp = self.synced_timestamp

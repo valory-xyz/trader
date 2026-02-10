@@ -57,8 +57,6 @@ class PolymarketPredictionsFetcher(
         """
         self.context = context
         self.logger = logger
-        self.polymarket_url = context.polymarket_agents_subgraph.url
-        self.polymarket_headers = context.polymarket_agents_subgraph.headers
 
     def fetch_predictions(
         self,
@@ -112,11 +110,11 @@ class PolymarketPredictionsFetcher(
             "variables": {"id": safe_address, "first": first, "skip": skip},
         }
 
+        # TODO: Switch to using the framework methods for calling subgraphs
         try:
             response = requests.post(
-                self.polymarket_url,
+                self.context.polymarket_agents_subgraph.url,
                 json=query_payload,
-                headers=self.polymarket_headers,
                 timeout=30,
             )
 
@@ -232,9 +230,13 @@ class PolymarketPredictionsFetcher(
         # Get total payout for this bet
         total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
 
+        winning_index = resolution.get("winningIndex")
+        # Invalid market: winningIndex < 0 (e.g. cancelled). Net profit = totalPayout - bet amount.
+        if winning_index is not None and int(winning_index) < 0:
+            return total_payout - bet_amount
+
         # Check if bet won by comparing outcomeIndex with winningIndex
         outcome_index = bet.get("outcomeIndex")
-        winning_index = resolution.get("winningIndex")
 
         # If we can determine win/loss from indices
         if outcome_index is not None and winning_index is not None:
@@ -272,6 +274,10 @@ class PolymarketPredictionsFetcher(
         outcome_index = bet.get("outcomeIndex")
         winning_index = resolution.get("winningIndex")
 
+        # Invalid market: winningIndex < 0 (e.g. cancelled)
+        if winning_index is not None and int(winning_index) < 0:
+            return BetStatus.INVALID.value
+
         # Compare outcomeIndex with winningIndex
         if outcome_index is not None and winning_index is not None:
             if int(outcome_index) == int(winning_index):
@@ -294,6 +300,9 @@ class PolymarketPredictionsFetcher(
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
+        # TODO: Hardcoded as outcomes onchain are not in proper order.
+        # outcomes = metadata.get("outcomes", [])  # noqa: E800
+        outcomes = ["Yes", "No"]
         if not outcomes or outcome_index >= len(outcomes):
             return "unknown"
         return outcomes[outcome_index].lower()

@@ -11,7 +11,7 @@ fingerprint:
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
   composition.py: bafybeiguv5bthmm3th4c3ypp77xdoyreud2wo4adhxoupsufaidhbkq2q4
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
-  fsm_specification.yaml: bafybeigkqeife46pk65m4cizaijv2z3yxd4hpm67sy5mxsqkvqvxpx7eom
+  fsm_specification.yaml: bafybeiascmjuel3oxf3izuxfjzwewimzgttbwkogxsugdnseyzz2j5ncqa
   handlers.py: bafybeifvizkacrqzkcc2wksdj4vjsw6jtewegmbkbqry4mhudglia5x4oe
   models.py: bafybeial4jlvqrubm7q6hgiz4ehsaipgq2t6ruop2mkxkecz32kv3lwdeu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
@@ -51,14 +51,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
-- valory/market_manager_abci:0.1.0:bafybeiayuq622he4ohuqavsd5jehqmloe5pqgyg2qk36xlk66c7wqckzmq
-- valory/decision_maker_abci:0.1.0:bafybeiau3zxfzvfmne5dbktqrmnvqsyesbh6xd5bd7ijfbk3ilttpbnbni
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia2vwwixykrd2in3quknxjnzt3ju5fj6f2yoem35yowcp76qodvnu
+- valory/market_manager_abci:0.1.0:bafybeigv5uysz4yzbgmx5lk4gtzdcy4bapiejrtjegh24vigvw7t27ecem
+- valory/decision_maker_abci:0.1.0:bafybeif4iiynm32xquj4t3xcfxxtglrdlosazycmy766oqewxemnnfo6gm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieez2rwsdhe7o3rruvkwbrz6njkkww3jyn5e3fupzv3zjp4hdopf4
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeicu7yeha3bucjyckfqtkwykvitag7m7642ho5lsd3crrymsi75v6i
-- valory/agent_performance_summary_abci:0.1.0:bafybeibn4abg5e26jzsqt32oh7woypvdhew2b4p25ggpjikspnfex7a6xq
+- valory/chatui_abci:0.1.0:bafybeicg5x46l7yamusphnj5bip5jeya26uqzygpd5jmezgwzmt6a2kbwu
+- valory/agent_performance_summary_abci:0.1.0:bafybeidk55vzqsdgb74hore7odmikyygdbsrj2e4k4er3xtu3g2zcdex34
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
@@ -555,7 +555,6 @@ models:
       api_id: polymarket_agents
       headers:
         Content-Type: application/json
-        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:traderAgent
@@ -564,14 +563,13 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
     class_name: PolymarketAgentsSubgraph
   polymarket_bets_subgraph:
     args:
       api_id: polymarket_bets
       headers:
         Content-Type: application/json
-        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:marketParticipants
@@ -580,7 +578,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
     class_name: PolymarketBetsSubgraph
   polygon_mech_subgraph:
     args:

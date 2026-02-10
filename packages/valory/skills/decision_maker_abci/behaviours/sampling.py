@@ -68,6 +68,7 @@ PRICE_TARGET_PHRASES = (
     "above $",
     "below $",
 )
+THRESHOLD_FOR_OUTCOME_SIDE = 0.8
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -326,6 +327,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.warning(msg)
             return None
 
+        self.context.logger.info(
+            f"Available bets to sample from: {len(available_bets)}"
+        )
+
         if self.benchmarking_mode.enabled:
             idx = self._sampling_benchmarking_bet(available_bets)
             if not idx:
@@ -342,6 +347,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             if liquidity == 0:
                 msg = f"Sampled bet {sampled_bet.id} has zero liquidity, skipping"
                 self.context.logger.warning(msg)
+                available_bets.remove(sampled_bet)
+                continue
+
+            # This is to avoid sampling bets where the market is already heavily
+            # skewed towards one outcome, results in unfavorable risk to reward ratio
+            self.context.logger.info(
+                f"Sampled bet {sampled_bet.id} has liquidity {liquidity} and outcome token marginal prices {sampled_bet.outcomeTokenMarginalPrices}"
+            )
+            if any(
+                side > THRESHOLD_FOR_OUTCOME_SIDE
+                for side in sampled_bet.outcomeTokenMarginalPrices
+            ):
                 available_bets.remove(sampled_bet)
                 continue
 
