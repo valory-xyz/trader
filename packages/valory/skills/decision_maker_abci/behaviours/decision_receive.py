@@ -202,6 +202,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self,
     ) -> Optional[PredictionResponse]:
         """Get vote, win probability and confidence."""
+        ddd = '{"p_yes": 0.99, "p_no": 0.01, "confidence": 0.8, "info_utility": 0.9}'
+        return PredictionResponse(**json.loads(ddd))
         import requests
 
         sampled_bet = self.sampled_bet
@@ -477,6 +479,23 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
             bet, prediction_response.vote
+        )
+
+        def _market_implied_price(
+            selected_type_tokens_in_pool: int, other_tokens_in_pool: int
+        ) -> float:
+            total = selected_type_tokens_in_pool + other_tokens_in_pool
+            if total == 0:
+                return 0.5
+            return other_tokens_in_pool / total
+
+        print(f"!!!!!!!!!!!!!!!! for bet id {bet.title} !!!!!!!!!!!!!")
+        print(
+            "!!!!!!!!!!!! selected_type_tokens_in_pool:", selected_type_tokens_in_pool
+        )
+        print("!!!!!!!!!!!! other_tokens_in_pool:", other_tokens_in_pool)
+        print(
+            f"!!!!!!!!!!!! market implied price: {_market_implied_price(selected_type_tokens_in_pool, other_tokens_in_pool)}"
         )
 
         bet_amount = yield from self.get_bet_amount(

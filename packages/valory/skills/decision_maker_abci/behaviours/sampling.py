@@ -143,14 +143,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if not within_safe_range:
             bet.blacklist_forever()
 
-            # Filter out price-target / close-at markets before processing
-        title = (bet.title or "").lower()
-        if any(phrase in title for phrase in PRICE_TARGET_PHRASES):
+        #     # Filter out price-target / close-at markets before processing
+        # title = (bet.title or "").lower()
+        # if any(phrase in title for phrase in PRICE_TARGET_PHRASES):
 
-            self.context.logger.debug(
-                f"Skipping price-target market: {bet.id} - {bet.title}"
-            )
-            return False
+        #     self.context.logger.debug(
+        #         f"Skipping price-target market: {bet.id} - {bet.title}"
+        #     )
+        #     return False
 
         within_ranges = within_opening_range and within_safe_range
 
@@ -161,31 +161,34 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             QueueStatus.REPROCESSED,
         }
         bet_queue_processable = bet.queue_status in processable_statuses
+        print(
+            f"bet {bet.id} queue status: {bet.queue_status}, processable: {bet_queue_processable}"
+        )
 
         # Strategy correction: skip markets with extreme outcome prices
         # Betting at high prices (e.g. 0.95+) creates negative payoff asymmetry:
         # tiny upside when right, large downside when wrong
-        prices = bet.outcomeTokenMarginalPrices
-        if prices is not None and len(prices) >= 2 and not selling_specific:
-            max_price = max(float(p) for p in prices)
-            threshold = self.params.max_outcome_price_threshold
-            if max_price > threshold:
-                self.context.logger.info(
-                    f"Skipping bet {bet.id}: max outcome price {max_price:.4f} "
-                    f"exceeds threshold {threshold} (negative payoff asymmetry)"
-                )
-                return False
+        # prices = bet.outcomeTokenMarginalPrices
+        # if prices is not None and len(prices) >= 2 and not selling_specific:
+        #     max_price = max(float(p) for p in prices)
+        #     threshold = self.params.max_outcome_price_threshold
+        #     if max_price > threshold:
+        #         self.context.logger.info(
+        #             f"Skipping bet {bet.id}: max outcome price {max_price:.4f} "
+        #             f"exceeds threshold {threshold} (negative payoff asymmetry)"
+        #         )
+        #         return False
 
-            # Strategy correction: skip markets with low convexity score
-            # Prefer markets where potential payoff is asymmetrically favorable
-            convexity = self.compute_convexity_score(bet)
-            min_convexity = self.params.min_convexity_score
-            if convexity < min_convexity:
-                self.context.logger.info(
-                    f"Skipping bet {bet.id}: convexity score {convexity:.4f} "
-                    f"below minimum {min_convexity} (insufficient payoff potential)"
-                )
-                return False
+        #     # Strategy correction: skip markets with low convexity score
+        #     # Prefer markets where potential payoff is asymmetrically favorable
+        #     convexity = self.compute_convexity_score(bet)
+        #     min_convexity = self.params.min_convexity_score
+        #     if convexity < min_convexity:
+        #         self.context.logger.info(
+        #             f"Skipping bet {bet.id}: convexity score {convexity:.4f} "
+        #             f"below minimum {min_convexity} (insufficient payoff potential)"
+        #         )
+        #         return False
 
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
@@ -301,6 +304,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 self.bets,
             )
         )
+        print(
+            f"!!!!!!!!!!!!! available bets before fallback: {len(available_bets)} !!!!!!!!!!!!!"
+        )
 
         # If no bets available and fallback is enabled, try again with fallback
         if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
@@ -321,6 +327,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 self.context.logger.info(
                     f"Multi-bet fallback activated: {len(available_bets)} bets now available"
                 )
+
+        print(
+            f"!!!!!!!!!!!!! available bets after fallback: {len(available_bets)} !!!!!!!!!!!!!"
+        )
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"

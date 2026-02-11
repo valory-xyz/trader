@@ -1,0 +1,15 @@
+name: edge_optimized_simplified
+author: valory
+version: 0.1.0
+type: custom
+description: Edge-optimized betting strategy that sizes bets based on the divergence
+  between predicted probability and market-implied price.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  __init__.py: bafybeigfl2mbiiaca5i6gjemnmgurkgmhuj5blb7ouus3j4gtzs3qki27m
+  edge_optimized.py: bafybeieaphnoyxmks3j75il4ttpuivbm7sd2kkxhpgjem5wkjikqysvose
+fingerprint_ignore_patterns: []
+entry_point: edge_optimized.py
+callable: run
+dependencies: {}

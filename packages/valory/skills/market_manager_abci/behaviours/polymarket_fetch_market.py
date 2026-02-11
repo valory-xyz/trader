@@ -517,6 +517,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"({total_skipped} skipped, {blacklisted_count} blacklisted due to category validation)"
         )
 
+        print(
+            f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! valididty{any(bet for bet in all_bets if bet.get("category_valid") is True)}'
+        )
+
         return all_bets
 
     def _update_bets(self) -> Generator:

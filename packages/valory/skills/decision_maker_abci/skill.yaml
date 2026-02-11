@@ -16,7 +16,7 @@ fingerprint:
   behaviours/bet_placement.py: bafybeidcbnvnlt6dtecwm3vewatmz5qx665ps2qubfbrsxgfys6cjjtrmi
   behaviours/blacklisting.py: bafybeigoelueawy5u6zsz23kyzgahllwi2nmucqif4523gtc7uvqzq4iee
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
-  behaviours/decision_receive.py: bafybeidb4i75eb5uuqg5ilp7wmcvwlrkfd4lnk5aj2bmutahgdaurzmwki
+  behaviours/decision_receive.py: bafybeiemeajbjvlzsdyv5eaeclrwbu2tgdhb3yi2bsukniibljoevoieei
   behaviours/decision_request.py: bafybeid42zpv6f4ltkow7qqsq5axyi2y4jgcgtrte4aja2hg22hjfnv2om
   behaviours/handle_failed_tx.py: bafybeib7yjysksnc7azr3okvskb62svlyj2qt2t4tsiaiosi3dumdrm6d4
   behaviours/polymarket_bet_placement.py: bafybeiafx5iluejdoxh5s3ct2ej54l73bbn2eepnduhqz2q7ocds6f6beu
@@ -28,7 +28,7 @@ fingerprint:
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeibtgclc6z3ltfyxb4pbhjqbcaf6luywmsaclkm5hso35zuu6srgdy
   behaviours/round_behaviour.py: bafybeifqeitdyclapc7biclohduvgnag7pycljck2fb7x6fydduvwy42nu
-  behaviours/sampling.py: bafybeie3qoqrowked7gh53h77c5lwce5rrd2uv7j7pelekaf47owvfgir4
+  behaviours/sampling.py: bafybeigtwoqv2idehkob2dl6janapeixavkq5k2nxrlp54cdsnj6vcjgvi
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeifdqy3t5bnu65ymzhqoqvcsb243qdgjhtf2shpgbklay7ch7biriu
   behaviours/tool_selection.py: bafybeihqykyfmeqi4les5feaef2jc5ubbapv7bh5uclwdokkz2btk5lkbq
@@ -94,7 +94,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeigyjwg6nfwmdkwzt7i56n4zv3oj6hii2mkkgstuaztyunscjifdee
-- valory/polymarket_client:0.1.0:bafybeialofx5fquegbnqbw2wjaih5q7ayrxt3g6vhwpt4qdfp7atles2zq
+- valory/polymarket_client:0.1.0:bafybeid5wdm47ge3uepv2lxlbpucojrpb4af5ab7idlmw6j2f2snrt3juy
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy
 - valory/market_maker:0.1.0:bafybeidwc7yvxufnupyjzge2ycbos2t24hoyaeosvzj3z63ccqdzotygdm
@@ -113,12 +113,12 @@ protocols:
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/market_manager_abci:0.1.0:bafybeihaiwxu7mc43ltaglxjkl3tz7snkgkmvjs5uij6uue6wiw2n5wgje
+- valory/market_manager_abci:0.1.0:bafybeib5z7bl7vjlngzmlb4h4le2jhi6wx4jphmtqfnuug5dx7cejx4uli
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/agent_performance_summary_abci:0.1.0:bafybeid6op3jqjvhnry4o7hpq5hanjhs2htimmuwt73itcbb3qs6do3rxu
-- valory/chatui_abci:0.1.0:bafybeihmugkpppswns6o6mp2vcsbw72nsyf7qsvrkxnao6ilonio5otx2y
+- valory/agent_performance_summary_abci:0.1.0:bafybeidk55vzqsdgb74hore7odmikyygdbsrj2e4k4er3xtu3g2zcdex34
+- valory/chatui_abci:0.1.0:bafybeicg5x46l7yamusphnj5bip5jeya26uqzygpd5jmezgwzmt6a2kbwu
 behaviours:
   main:
     args: {}
