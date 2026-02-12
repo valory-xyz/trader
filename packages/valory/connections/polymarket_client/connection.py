@@ -496,7 +496,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "tag_id": tag_id,
                 "end_date_max": end_date_max,
                 "end_date_min": end_date_min,
-                "closed": "false",
                 "limit": MARKETS_LIMIT,
                 "offset": offset,
             }
