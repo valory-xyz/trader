@@ -351,14 +351,14 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _place_bet(self, token_id: str, amount: float) -> Tuple[Any, Any]:
         """Place a bet on Polymarket."""
 
-        mo = MarketOrderArgs(
-            token_id=token_id,
-            amount=amount,
-            side=BUY,
-            order_type=OrderType.FOK,
-        )
-        signed = self.client.create_market_order(mo)
         try:
+            mo = MarketOrderArgs(
+                token_id=token_id,
+                amount=amount,
+                side=BUY,
+                order_type=OrderType.FOK,
+            )
+            signed = self.client.create_market_order(mo)
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
             return resp, None
         except PolyApiException as e:
