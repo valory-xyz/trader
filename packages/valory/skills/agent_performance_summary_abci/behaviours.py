@@ -98,13 +98,10 @@ NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
 POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.7
-POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = (
-    "My Polystrat agent just closed a Polymarket trade at {roi}\u00d7 ROI. Pretty impressive! \U0001f680\n"
-    "Curious to see how around-the-clock, autonomous trading with Polystrat on Pearl works and spin up an agent yourself?\n"
-    "Check it out\U0001f447\n"
-    "{{achievement_url}}\n"
-    "#PolystratOnPearl"
-)
+POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = """My Polystrat agent just made {roi}\u00d7 ROI on Polymarket! \U0001f680
+
+Check it out\U0001f447
+{{achievement_url}}"""
 
 
 MIN_TRADES_FOR_ROI_DISPLAY = 10
