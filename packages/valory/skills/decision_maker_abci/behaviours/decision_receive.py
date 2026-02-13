@@ -498,7 +498,53 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             bet_threshold = 0
 
         potential_net_profit = num_shares - net_bet_amount - bet_threshold
-        is_profitable = potential_net_profit >= 0
+
+        # (num_shares - net_bet_amount) is the earnings that you get if you win
+        # we say that is_profitable == True if  those earnings  >  bet_threshold.
+        # why does it have bet_threshold is it the mech cost?  0.01 XDAI
+
+
+        # is_profitable =   num_shares - net_bet_amount  >  "bet_threshold"
+
+
+        # TODO validate
+
+        # we are assuming that the price we pay is the conditional price for the bet
+
+        predicted_vote_side = prediction_response.vote  # 0 for yes and 1 for no
+        market_price_for_selected_vote = bet.outcomeTokenMarginalPrices[
+            predicted_vote_side
+        ]
+        opposing_market_price = bet.outcomeTokenMarginalPrices[
+            bet.opposite_vote(predicted_vote_side)
+        ]
+        market_probability_for_selected_vote = market_price_for_selected_vote / (market_price_for_selected_vote + opposing_market_price)
+
+        predicted_vote_probability = (
+            prediction_response.p_yes
+            if predicted_vote_side == 0
+            else prediction_response.p_no
+        )
+        # opposite_vote_probability = 1 - predicted_vote_probability
+        mech_costs = 0.01 # TODO check decimals
+        num_shares_predicted_vote = (net_bet_amount / market_probability_for_selected_vote)
+        expected_net_profit = predicted_vote_probability * num_shares_predicted_vote - net_bet_amount - mech_costs
+
+        print(f"{net_bet_amount=}")
+        print(f"{predicted_vote_side=}")
+        print(f"{market_price_for_selected_vote=}")
+        print(f"{opposing_market_price=}")
+        print(f"{market_probability_for_selected_vote=}")
+        print(f"{predicted_vote_probability=}")
+        print(f"{mech_costs=}")
+        print(f"{num_shares_predicted_vote=}")
+        print(f"{expected_net_profit=}")
+
+        if self.params.is_running_on_polymarket:
+            is_profitable = potential_net_profit >= 0 and expected_net_profit >= 0
+        else:
+            is_profitable = potential_net_profit >= 0
+        # TODO validate
 
         token_name = self.get_token_name()
         self.context.logger.info(
