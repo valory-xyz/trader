@@ -313,6 +313,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Convert USDC wei to native token (6 decimals)."""
         return usdc_wei / 10**6
 
+    def convert_unit_to_wei(self, amount: float) -> int:
+        """Convert an amount in the token's unit to its WEI equivalent based on collateral token type."""
+        return int(self.get_token_precision() * amount)
+
     def get_token_precision(self) -> int:
         """Get the token precision based on the collateral token type."""
         if self.is_usdc:

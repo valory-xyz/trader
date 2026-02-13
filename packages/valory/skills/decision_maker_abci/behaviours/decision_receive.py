@@ -60,6 +60,8 @@ SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
 
+DEFAULT_MECH_COSTS = 0.01
+
 
 class DecisionReceiveBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents receive the mech response."""
@@ -479,38 +481,109 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         )
         self.context.logger.info(f"Net bet amount: {net_bet_amount}")
 
-        num_shares, available_shares = self._calc_binary_shares(
-            bet, net_bet_amount, prediction_response.vote
-        )
-
-        self.context.logger.info(f"Adjusted available shares: {available_shares}")
-        if num_shares > available_shares * SLIPPAGE:
-            self.context.logger.warning(
-                "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
-                "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
-                "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
+        # Determine is_profitable - differs for Omenstrat and Polystrat
+        if not self.params.is_running_on_polymarket:  # Omenstrat
+            num_shares, available_shares = self._calc_binary_shares(
+                bet, net_bet_amount, prediction_response.vote
             )
-        if bet_threshold <= 0:
-            self.context.logger.warning(
-                f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
-                f"which means that any non-negative potential profit will be considered profitable!"
-            )
-            bet_threshold = 0
 
-        potential_net_profit = num_shares - net_bet_amount - bet_threshold
-        is_profitable = potential_net_profit >= 0
+            self.context.logger.info(f"Adjusted available shares: {available_shares}")
+            if num_shares > available_shares * SLIPPAGE:
+                self.context.logger.warning(
+                    "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
+                    "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
+                    "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
+                )
+            if bet_threshold <= 0:
+                self.context.logger.warning(
+                    f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
+                    f"which means that any non-negative potential profit will be considered profitable!"
+                )
+                bet_threshold = 0
 
-        token_name = self.get_token_name()
-        self.context.logger.info(
-            f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
-            f"The potential net profit is {self.convert_to_native(potential_net_profit)} {token_name} "
-            f"from buying {self.convert_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
-            f"Decision for profitability of this market: {is_profitable}."
-        )
-        if is_profitable:
-            is_profitable = self.rebet_allowed(
-                prediction_response, potential_net_profit
+            # Only bet if the actual profit (num_shares - net_bet_amount) > bet_threshold
+            potential_net_profit = num_shares - net_bet_amount - bet_threshold
+
+            is_profitable = potential_net_profit >= 0
+
+            token_name = self.get_token_name()
+            self.context.logger.info(
+                f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
+                f"The potential net profit is {self.convert_to_native(potential_net_profit)} {token_name} and "
+                f"from buying {self.convert_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
+                f"Decision for profitability of this market: {is_profitable}."
             )
+
+            if is_profitable:
+                is_profitable = self.rebet_allowed(
+                    prediction_response, potential_net_profit
+                )
+
+        else:  # Polystrat
+            predicted_vote_side = prediction_response.vote  # 0 for yes and 1 for no
+            market_price_for_selected_vote = self.convert_unit_to_wei(
+                bet.outcomeTokenMarginalPrices[predicted_vote_side]
+            )
+            opposing_market_price = self.convert_unit_to_wei(
+                bet.outcomeTokenMarginalPrices[bet.opposite_vote(predicted_vote_side)]
+            )
+
+            if (
+                market_price_for_selected_vote <= 0
+                or market_price_for_selected_vote + opposing_market_price <= 0
+            ):
+                self.context.logger.warning(
+                    "Market prices are not valid for the profitability calculation. "
+                    "Please check the market's liquidity and prices. "
+                    "The bet will be deemed not profitable."
+                )
+                return False, 0
+
+            market_probability_for_selected_vote = market_price_for_selected_vote / (
+                market_price_for_selected_vote + opposing_market_price
+            )
+
+            predicted_vote_probability = (
+                prediction_response.p_yes
+                if predicted_vote_side == 0
+                else prediction_response.p_no
+            )
+            mech_costs = self.convert_unit_to_wei(DEFAULT_MECH_COSTS)
+            num_shares_predicted_vote = (
+                net_bet_amount / market_probability_for_selected_vote
+            )
+            expected_net_profit = (
+                predicted_vote_probability * num_shares_predicted_vote
+                - net_bet_amount
+                - mech_costs
+            )
+
+            is_profitable = expected_net_profit >= 0
+
+            token_name = self.get_token_name()
+            self.context.logger.info(
+                f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
+                f"The expected net profit is {self.convert_to_native(int(expected_net_profit))} {token_name} and "
+                f"from buying {self.convert_to_native(int(num_shares_predicted_vote))} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
+                f"Decision for profitability of this market: {is_profitable}."
+            )
+
+            self.context.logger.info(f"{bet_amount=}")
+            self.context.logger.info(f"{net_bet_amount=}")
+            self.context.logger.info(f"{predicted_vote_side=}")
+            self.context.logger.info(f"{market_price_for_selected_vote=}")
+            self.context.logger.info(f"{opposing_market_price=}")
+            self.context.logger.info(f"{market_probability_for_selected_vote=}")
+            self.context.logger.info(f"{predicted_vote_probability=}")
+            self.context.logger.info(f"{mech_costs=}")
+            self.context.logger.info(f"{num_shares_predicted_vote=}")
+            self.context.logger.info(f"{expected_net_profit=}")
+            self.context.logger.info(f"{is_profitable=}")
+
+            if is_profitable:
+                is_profitable = self.rebet_allowed(
+                    prediction_response, int(expected_net_profit)
+                )
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
