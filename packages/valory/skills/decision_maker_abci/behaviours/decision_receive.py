@@ -536,7 +536,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 if predicted_vote_side == 0
                 else prediction_response.p_no
             )
-            # opposite_vote_probability = 1 - predicted_vote_probability
             mech_costs = self.convert_unit_to_wei(DEFAULT_MECH_COSTS)
             num_shares_predicted_vote = (
                 net_bet_amount / market_probability_for_selected_vote
@@ -552,8 +551,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             token_name = self.get_token_name()
             self.context.logger.info(
                 f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
-                f"The expected net profit is {self.convert_to_native(expected_net_profit)} {token_name} and "
-                f"from buying {self.convert_to_native(num_shares_predicted_vote)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
+                f"The expected net profit is {self.convert_to_native(int(expected_net_profit))} {token_name} and "
+                f"from buying {self.convert_to_native(int(num_shares_predicted_vote))} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
                 f"Decision for profitability of this market: {is_profitable}."
             )
 
@@ -571,7 +570,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
             if is_profitable:
                 is_profitable = self.rebet_allowed(
-                    prediction_response, expected_net_profit
+                    prediction_response, int(expected_net_profit)
                 )
 
         if self.benchmarking_mode.enabled:
