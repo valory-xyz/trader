@@ -513,6 +513,12 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 f"from buying {self.convert_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
                 f"Decision for profitability of this market: {is_profitable}."
             )
+
+            if is_profitable:
+                is_profitable = self.rebet_allowed(
+                    prediction_response, potential_net_profit
+                )
+
         else:  # Polystrat
             predicted_vote_side = prediction_response.vote  # 0 for yes and 1 for no
             market_price_for_selected_vote = self.convert_unit_to_wei(
@@ -563,10 +569,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(f"{expected_net_profit=}")
             self.context.logger.info(f"{is_profitable=}")
 
-        if is_profitable:
-            is_profitable = self.rebet_allowed(
-                prediction_response, potential_net_profit
-            )
+            if is_profitable:
+                is_profitable = self.rebet_allowed(
+                    prediction_response, expected_net_profit
+                )
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
