@@ -20,7 +20,7 @@ fingerprint:
   behaviours/decision_request.py: bafybeifvhr5t4o6i7kyfdjxkjiaizdxhtc7vzn733gorgsocyyl3h3yzgu
   behaviours/handle_failed_tx.py: bafybeib7yjysksnc7azr3okvskb62svlyj2qt2t4tsiaiosi3dumdrm6d4
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/reedem.py: bafybeibtgclc6z3ltfyxb4pbhjqbcaf6luywmsaclkm5hso35zuu6srgdy
+  behaviours/reedem.py: bafybeif6utosf2oj3c7mtyths3jszodzrfii7kolb64gif3grtsdj3mv5a
   behaviours/round_behaviour.py: bafybeigeung4tkt7qzive6ap3b7pjjkincfd7wpd2ht5ud6mi46j3sviwa
   behaviours/sampling.py: bafybeiccavcaozdd7prklww5wug7tcfgzsilhnqxquebgzuo5wk2du3vhy
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
@@ -88,8 +88,8 @@ contracts:
 - valory/erc20:0.1.0:bafybeidrjq5rf6ay2okyy3eoseeafzl7bmngcbs7nhohbifdephc77tbke
 - valory/multisend:0.1.0:bafybeidjdgi2kyexajirj3cnpzgse4y5u664b2blztt4flv6i7knlecyr4
 - valory/mech:0.1.0:bafybeibzaxri2yru6l2nwgr2vdctkczqthalel2g4wojz2whohr3sznil4
-- valory/conditional_tokens:0.1.0:bafybeiblhcmhaawseoblmz3bqlti6f456xqrdgpaxcyr5h2fjy3yd6rw4i
-- valory/realitio:0.1.0:bafybeielggu3u36rsjiw6m3fdg7uhf426cv4mdo2osusjwrmnenq3ex6di
+- valory/conditional_tokens:0.1.0:bafybeifxo7hdrpnjrzib2lrmlfjj3a7m4kgsqwp67zfbooqyzyrzuo575i
+- valory/realitio:0.1.0:bafybeihe53hnzcaopijg7ngg2ackkb2mu6iqpvxdjxpnvdzaqckq4txtea
 - valory/realitio_proxy:0.1.0:bafybeibsink25xdxk2yt7tx2aaznmqaidxs22gknb5alqnkhlqahazlydm
 - valory/agent_registry:0.1.0:bafybeigl7bqvjyvryxuugpx6ogn4n6d2hryebup3x4hxhfirpjm6kjw4vq
 protocols:
