@@ -503,22 +503,22 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         # we say that is_profitable == True if  those earnings  >  bet_threshold.
         # why does it have bet_threshold is it the mech cost?  0.01 XDAI
 
-
         # is_profitable =   num_shares - net_bet_amount  >  "bet_threshold"
-
 
         # TODO validate
 
         # we are assuming that the price we pay is the conditional price for the bet
 
         predicted_vote_side = prediction_response.vote  # 0 for yes and 1 for no
-        market_price_for_selected_vote = bet.outcomeTokenMarginalPrices[
-            predicted_vote_side
-        ]
-        opposing_market_price = bet.outcomeTokenMarginalPrices[
-            bet.opposite_vote(predicted_vote_side)
-        ]
-        market_probability_for_selected_vote = market_price_for_selected_vote / (market_price_for_selected_vote + opposing_market_price)
+        market_price_for_selected_vote = self.convert_to_native(
+            bet.outcomeTokenMarginalPrices[predicted_vote_side]
+        )
+        opposing_market_price = self.convert_to_native(
+            bet.outcomeTokenMarginalPrices[bet.opposite_vote(predicted_vote_side)]
+        )
+        market_probability_for_selected_vote = market_price_for_selected_vote / (
+            market_price_for_selected_vote + opposing_market_price
+        )
 
         predicted_vote_probability = (
             prediction_response.p_yes
@@ -526,9 +526,15 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             else prediction_response.p_no
         )
         # opposite_vote_probability = 1 - predicted_vote_probability
-        mech_costs = 0.01 # TODO check decimals
-        num_shares_predicted_vote = (net_bet_amount / market_probability_for_selected_vote)
-        expected_net_profit = predicted_vote_probability * num_shares_predicted_vote - net_bet_amount - mech_costs
+        mech_costs = DEFAULT_MECH_COSTS * self.get_token_precision()
+        num_shares_predicted_vote = (
+            net_bet_amount / market_probability_for_selected_vote
+        )
+        expected_net_profit = (
+            predicted_vote_probability * num_shares_predicted_vote
+            - net_bet_amount
+            - mech_costs
+        )
 
         print(f"{net_bet_amount=}")
         print(f"{predicted_vote_side=}")
@@ -549,7 +555,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         token_name = self.get_token_name()
         self.context.logger.info(
             f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
-            f"The potential net profit is {self.convert_to_native(potential_net_profit)} {token_name} "
+            f"The potential net profit is {self.convert_to_native(potential_net_profit)} {token_name} and "
+            f"The expected net profit is {self.convert_to_native(expected_net_profit)} {token_name} "
             f"from buying {self.convert_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
             f"Decision for profitability of this market: {is_profitable}."
         )
