@@ -527,6 +527,18 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             opposing_market_price = self.convert_unit_to_wei(
                 bet.outcomeTokenMarginalPrices[bet.opposite_vote(predicted_vote_side)]
             )
+
+            if (
+                market_price_for_selected_vote <= 0
+                or market_price_for_selected_vote + opposing_market_price <= 0
+            ):
+                self.context.logger.warning(
+                    "Market prices are not valid for the profitability calculation. "
+                    "Please check the market's liquidity and prices. "
+                    "The bet will be deemed not profitable."
+                )
+                return False, 0
+
             market_probability_for_selected_vote = market_price_for_selected_vote / (
                 market_price_for_selected_vote + opposing_market_price
             )
