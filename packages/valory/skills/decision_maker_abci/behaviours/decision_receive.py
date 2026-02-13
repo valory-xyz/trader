@@ -510,10 +510,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         # we are assuming that the price we pay is the conditional price for the bet
 
         predicted_vote_side = prediction_response.vote  # 0 for yes and 1 for no
-        market_price_for_selected_vote = self.convert_to_native(
+        market_price_for_selected_vote = self.convert_unit_to_wei(
             bet.outcomeTokenMarginalPrices[predicted_vote_side]
         )
-        opposing_market_price = self.convert_to_native(
+        opposing_market_price = self.convert_unit_to_wei(
             bet.outcomeTokenMarginalPrices[bet.opposite_vote(predicted_vote_side)]
         )
         market_probability_for_selected_vote = market_price_for_selected_vote / (
@@ -526,7 +526,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             else prediction_response.p_no
         )
         # opposite_vote_probability = 1 - predicted_vote_probability
-        mech_costs = DEFAULT_MECH_COSTS * self.get_token_precision()
+        mech_costs = self.convert_unit_to_wei(DEFAULT_MECH_COSTS)
         num_shares_predicted_vote = (
             net_bet_amount / market_probability_for_selected_vote
         )
@@ -547,7 +547,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         print(f"{expected_net_profit=}")
 
         if self.params.is_running_on_polymarket:
-            is_profitable = potential_net_profit >= 0 and expected_net_profit >= 0
+            is_profitable = expected_net_profit >= 0
         else:
             is_profitable = potential_net_profit >= 0
         # TODO validate
