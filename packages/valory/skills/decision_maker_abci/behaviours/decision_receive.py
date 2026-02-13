@@ -60,6 +60,8 @@ SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
 
+DEFAULT_MECH_COSTS = 0.01
+
 
 class DecisionReceiveBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents receive the mech response."""
