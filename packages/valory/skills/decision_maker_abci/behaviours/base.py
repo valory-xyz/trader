@@ -554,10 +554,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
             kwargs["token_decimals"] = 6 if self._is_usdc(collateral_token) else 18
             kwargs["min_bet"] = self.params.strategies_kwargs["absolute_min_bet_size"]
+
+            bankroll = (
+                self.token_balance
+                if self.params.is_running_on_polymarket
+                else self.token_balance + self.wallet_balance
+            )
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
-                    "bankroll": self.token_balance + self.wallet_balance,
+                    "bankroll": bankroll,
                     "win_probability": win_probability,
                     "confidence": confidence,
                     "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
