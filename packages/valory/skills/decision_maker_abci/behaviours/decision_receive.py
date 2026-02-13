@@ -465,9 +465,14 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             bet.collateralToken,
         )
         bet_threshold = self.params.bet_threshold
-        bet_amount = max(bet_amount, bet_threshold)
 
         self.context.logger.info(f"Bet amount: {bet_amount}")
+        if bet_amount <= 0 or bet_amount < bet_threshold:
+            self.context.logger.info(
+                f"The bet amount is lower than the threshold {bet_threshold} or is non-positive, hence the bet is deemed not profitable."
+            )
+            return False, 0
+
         self.context.logger.info(f"Bet fee: {bet.fee}")
         net_bet_amount = remove_fraction_wei(
             bet_amount, self.convert_to_native(bet.fee)
