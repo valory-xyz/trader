@@ -93,7 +93,7 @@ models:
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270}
       sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
       trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
-      use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
+      use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:false}
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
       bet_threshold: ${BET_THRESHOLD:int:1000000}
       ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
