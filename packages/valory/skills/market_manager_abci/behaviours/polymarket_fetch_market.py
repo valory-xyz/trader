@@ -385,6 +385,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             for market in markets:
                 market_id = market.get("id", "unknown")
                 is_category_valid = market.get("category_valid", False)
+                market_closed = market.get("closed", False)
+
+                is_market_valid = is_category_valid and not market_closed
 
                 try:
                     # Parse JSON fields from response
@@ -455,18 +458,16 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "outcomeTokenAmounts": outcome_token_amounts,
                         "outcomeTokenMarginalPrices": parsed_prices,
                         "outcomes": (
-                            None if not is_category_valid else outcomes
+                            outcomes if is_market_valid else None
                         ),  # None = blacklist
                         "scaledLiquidityMeasure": liquidity,
-                        "processed_timestamp": (
-                            sys.maxsize if not is_category_valid else 0
-                        ),
+                        "processed_timestamp": (0 if is_market_valid else sys.maxsize),
                         "position_liquidity": 0,
                         "potential_net_profit": 0,
                         "queue_status": (
-                            QueueStatus.EXPIRED
-                            if not is_category_valid
-                            else QueueStatus.FRESH
+                            QueueStatus.FRESH
+                            if is_market_valid
+                            else QueueStatus.EXPIRED
                         ),
                         "investments": {},
                         "outcome_token_ids": outcome_token_ids_map,
@@ -482,7 +483,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     all_bets.append(bet_dict)
 
                     # Track blacklisted markets
-                    if not is_category_valid:
+                    if not is_market_valid:
                         blacklisted_count += 1
 
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
