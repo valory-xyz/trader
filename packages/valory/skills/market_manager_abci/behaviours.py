@@ -235,11 +235,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         balances = get_bet_id_to_balance(trades, user_positions)
         return balances
 
-    @property
-    def kpi_is_met(self) -> bool:
-        """Whether the kpi is met."""
-        return self.synchronized_data.is_staking_kpi_met  # type: ignore[attr-defined]
-
     def setup(self) -> None:
         """Set up the behaviour."""
 
@@ -250,9 +245,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}"
         )
 
-        # fetch checkpoint status and if reached requeue all bets
-        if self.synchronized_data.is_checkpoint_reached and (
-            self._multi_bets_allowed()
+        # fetch checkpoint status and if reached requeue all bets (only in multi-bet mode)
+        if (
+            self.synchronized_data.is_checkpoint_reached
+            and self.params.use_multi_bets_mode
         ):
             self._requeue_all_bets()
 
@@ -279,11 +275,6 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             else:
                 self.bets[index].update_market_info(bet)
 
-    def _multi_bets_allowed(self) -> bool:
-        return self.params.use_multi_bets_mode or (
-            self.params.enable_multi_bets_fallback and not self.kpi_is_met
-        )
-
     def _update_bets(
         self,
     ) -> Generator:
@@ -308,8 +299,11 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
-        # single-bet behavior
-        if not self._multi_bets_allowed():
+        # single-bet behavior: move fresh bets to process individually
+        if (
+            not self.params.use_multi_bets_mode
+            and not self.params.enable_multi_bets_fallback
+        ):
             for bet in self.bets:
                 if bet.queue_status.is_fresh():
                     bet.queue_status = bet.queue_status.move_to_process()

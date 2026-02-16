@@ -24,8 +24,8 @@ contracts:
 - valory/market_maker:0.1.0:bafybeidwc7yvxufnupyjzge2ycbos2t24hoyaeosvzj3z63ccqdzotygdm
 - valory/multisend:0.1.0:bafybeidjdgi2kyexajirj3cnpzgse4y5u664b2blztt4flv6i7knlecyr4
 - valory/mech:0.1.0:bafybeibzaxri2yru6l2nwgr2vdctkczqthalel2g4wojz2whohr3sznil4
-- valory/conditional_tokens:0.1.0:bafybeiblhcmhaawseoblmz3bqlti6f456xqrdgpaxcyr5h2fjy3yd6rw4i
-- valory/realitio:0.1.0:bafybeielggu3u36rsjiw6m3fdg7uhf426cv4mdo2osusjwrmnenq3ex6di
+- valory/conditional_tokens:0.1.0:bafybeifxo7hdrpnjrzib2lrmlfjj3a7m4kgsqwp67zfbooqyzyrzuo575i
+- valory/realitio:0.1.0:bafybeihe53hnzcaopijg7ngg2ackkb2mu6iqpvxdjxpnvdzaqckq4txtea
 - valory/realitio_proxy:0.1.0:bafybeibsink25xdxk2yt7tx2aaznmqaidxs22gknb5alqnkhlqahazlydm
 - valory/agent_registry:0.1.0:bafybeigl7bqvjyvryxuugpx6ogn4n6d2hryebup3x4hxhfirpjm6kjw4vq
 - valory/service_staking_token:0.1.0:bafybeidbq4kuajhygalrx2uuo73dfg4etffccm6a7jurvlb7mjwycofz3q
@@ -64,15 +64,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiboqnpohtirm4uf5iycggujcy42kzgymtfmcz6rjovxeksmc5xz3i
-- valory/market_manager_abci:0.1.0:bafybeielbx7mn3wmvmypmkbgnzqhxx5gil7lzlma6xhvw4emb6ik7uqw3i
-- valory/decision_maker_abci:0.1.0:bafybeihwqqwozgpxbau2mkepb2bvnr3xrrifj7pqwzbtbipgvqkvp76p7e
-- valory/trader_abci:0.1.0:bafybeihxx4d7gfmgry3qi7qenr3sqpdbadomabxwj6rdsx47g6dnoilvqe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihv3xreu7o5zj2ttpqb3uorfosjcngx26vr73misrrookqkkw6dty
+- valory/market_manager_abci:0.1.0:bafybeieqeutpxfr56yl4d2ik6kvnjuljrv5jtushqhhbp65gml6jyplyky
+- valory/decision_maker_abci:0.1.0:bafybeiai3w2753yonavnwctkicd2bolbulx7pi2r7mx5gmrfovq66syksm
+- valory/trader_abci:0.1.0:bafybeiehjnz2t545cohoenjbeu2xtnyhvh6w7j2yzyduk4vzetb37fdo4y
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/check_stop_trading_abci:0.1.0:bafybeid4hgdbz5bgnm2bu5hmqa3aab5sogvpoq2rsssk4js266in6ny57y
+- valory/check_stop_trading_abci:0.1.0:bafybeidxgatkrxdrgmmzkeitqy4mu42d3e6p7w7wfasmh722yzqgnn3zyy
 - valory/mech_interact_abci:0.1.0:bafybeid5jy6oru6rgpuxxkxaz2ejg3yuoi5wb2v44nj66rek3lmkgzzm6y
-- valory/chatui_abci:0.1.0:bafybeihsybxi6bwm52hetfjmaudrrkdqb76wpyaou7ac6ftome3g5x3634
-- valory/agent_performance_summary_abci:0.1.0:bafybeic3l5wypicj6rhm2bxka5bp22i3p5z4vphdnuz52273no22aroybi
+- valory/chatui_abci:0.1.0:bafybeiaws3zww4mkn4ae7jcntcm3nfa3cxgjekcg6zi6whey4nup25mkl4
+- valory/agent_performance_summary_abci:0.1.0:bafybeib4kmdbxbym5pyumknrrydndtvsriama5uy445f5pmx75wby5ptyu
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -398,31 +398,31 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
   olas_agents_subgraph:
     args:
       headers:
         Content-Type: ${str:application/json}
       method: ${str:POST}
-      response_key: ${str:data:traderAgent}
+      response_key: ${str:data}
       response_type: ${str:dict}
       error_key: ${str:errors}
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen}
   olas_mech_subgraph:
     args:
       headers:
         Content-Type: ${str:application/json}
       method: ${str:POST}
-      response_key: ${str:data:sender}
+      response_key: ${str:data}
       response_type: ${str:dict}
       error_key: ${str:errors}
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/mech}
+      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
       headers:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -53,16 +53,15 @@ class CheckStopTradingParams(StakingParams):
         """
         Initialize the parameters object with trading configuration.
 
-        Args:
-            *args: Positional arguments passed to parent class.
-            **kwargs: Keyword arguments including:
-                - mech_contract_address: Address of the mech contract
-                - use_mech_marketplace: Flag to enable/disable mech marketplace
-                - mech_marketplace_config: Configuration for mech marketplace (required if use_mech_marketplace is True)
-                - disable_trading: Flag to disable trading
-                - stop_trading_if_staking_kpi_met: Flag to stop trading when staking KPI is met
-                - enable_position_review: Flag to enable position review
-                - review_period_seconds: Time interval in seconds between reviews
+        :param args: Positional arguments passed to parent class.
+        :param kwargs: Keyword arguments including:
+            - mech_contract_address: Address of the mech contract
+            - use_mech_marketplace: Flag to enable/disable mech marketplace
+            - mech_marketplace_config: Configuration for mech marketplace (required if use_mech_marketplace is True)
+            - disable_trading: Flag to disable trading
+            - stop_trading_if_staking_kpi_met: Flag to stop trading when staking KPI is met
+            - enable_position_review: Flag to enable position review
+            - review_period_seconds: Time interval in seconds between reviews
         """
         # Validate required parameters
         self._validate_required_params(kwargs)
@@ -90,11 +89,7 @@ class CheckStopTradingParams(StakingParams):
         """
         Validate that required parameters are present.
 
-        Args:
-            kwargs: Parameters dictionary to validate
-
-        Raises:
-            AEAEnforceError: If required parameters are missing
+        :param kwargs: Parameters dictionary to validate
         """
         mech_address = kwargs.get("mech_contract_address")
         use_mech_flag = kwargs.get("use_mech_marketplace")
@@ -112,11 +107,7 @@ class CheckStopTradingParams(StakingParams):
         """
         Configure marketplace settings when marketplace is enabled.
 
-        Args:
-            kwargs: Parameters dictionary containing marketplace configuration
-
-        Raises:
-            AEAEnforceError: If marketplace configuration is invalid
+        :param kwargs: Parameters dictionary containing marketplace configuration
         """
         marketplace_config = kwargs.get("mech_marketplace_config", {})
         enforce(marketplace_config is not None, "Market place config cannot be empty")
