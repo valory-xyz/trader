@@ -23,6 +23,7 @@ import json
 import os.path
 import time
 from abc import ABC
+from copy import deepcopy
 from json import JSONDecodeError
 from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
@@ -191,32 +192,31 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 continue
 
             # Store previous investments before resetting
-            previous_n_bets = bet.n_bets
-            previous_invested_amount = bet.invested_amount
+            existing_investments = deepcopy(bet.investments)
 
-            # Only update if bet has balances in the query result
-            if bet.id in balances:
-                bet.reset_investments()
-                for outcome, value in balances[bet.id].items():
-                    outcome_is_no = (
-                        BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
-                    )
-                    outcome_int = 0 if outcome_is_no else 1
-                    self.context.logger.debug(f"Outcome {outcome_int} value {value}")
-                    bet.append_investment_amount(outcome_int, value)
-                    self.context.logger.debug(
-                        f"Bet {bet.id} investments: {bet.investments=}"
-                    )
-            elif previous_n_bets > 0:
-                # Defensive: If bet previously had investments but is missing from balances,
-                # this could indicate a query issue. Log a warning but preserve the bet's processed state.
-                self.context.logger.warning(
-                    f"Bet {bet.id} previously had {previous_n_bets} bet(s) with total investment "
-                    f"{previous_invested_amount}, but is missing from balance query. This may indicate "
-                    f"a subgraph sync issue or query problem. Bet will remain in its current queue state "
-                    f"to prevent unintended re-betting."
+            bet.reset_investments()
+            for outcome, value in balances[bet.id].items():
+                outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
+                outcome_int = 0 if outcome_is_no else 1
+                self.context.logger.debug(f"Outcome {outcome_int} value {value}")
+                bet.append_investment_amount(outcome_int, value)
+                self.context.logger.debug(
+                    f"Bet {bet.id} investments: {bet.investments=}"
                 )
-                # Note: Investments remain at 0 after reset, but queue_status is preserved
+
+            self._replace_with_existing_investments_if_empty(bet, existing_investments)
+
+    def _replace_with_existing_investments_if_empty(
+        self, bet: Bet, existing_investments: Dict
+    ) -> None:
+        """Replace bet investments with existing ones if the new investments are empty."""
+        # This is to ensure that in case of subgraph or API failure,
+        # agent doesn't lose existing investment data and end up placing duplicate bets.
+        if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
+            self.context.logger.warning(
+                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+            )
+            bet.investments = existing_investments
 
     def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
         """Get the active bets."""
