@@ -66,7 +66,7 @@ code-checks:
 .PHONY: security
 security:
 	tomte check-security
-	gitleaks detect --report-format json --report-path leak_report
+	gitleaks detect --report-format json --report-path leak_report --log-opts="HEAD"
 
 # generate abci docstrings
 # update copyright headers
@@ -217,7 +217,7 @@ check-agent-runner:
 
 .PHONY: ci-linter-checks
 ci-linter-checks:
-	gitleaks detect --report-format json --report-path leak_report
+	gitleaks detect --report-format json --report-path leak_report --log-opts="HEAD"
 	tomte check-copyright --author valory --exclude-part abci --exclude-part http_client --exclude-part ipfs --exclude-part ledger --exclude-part p2p_libp2p_client --exclude-part gnosis_safe --exclude-part gnosis_safe_proxy_factory --exclude-part multisend --exclude-part service_registry --exclude-part protocols --exclude-part abstract_abci --exclude-part abstract_round_abci --exclude-part registration_abci --exclude-part reset_pause_abci --exclude-part termination_abci --exclude-part transaction_settlement_abci --exclude-part websocket_client --exclude-part contract_subscription --exclude-part mech --exclude-part mech_interact_abci  --exclude-part http_server --exclude-part mech_marketplace --exclude-part erc20 --exclude-part x402 --exclude-part agreement_store_manager --exclude-part did_registry --exclude-part escrow_payment_condition --exclude-part ierc1155 --exclude-part lock_payment_condition --exclude-part mech_marketplace_legacy --exclude-part mech_mm --exclude-part nft_sales --exclude-part nvm_balance_tracker_native --exclude-part nvm_balance_tracker_token --exclude-part subscription_provider --exclude-part funds_manager
 	tox -e liccheck
 	tox -e check-dependencies

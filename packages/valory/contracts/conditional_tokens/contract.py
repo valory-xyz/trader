@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -20,20 +20,27 @@
 """This module contains the conditional tokens contract definition."""
 
 import concurrent.futures
-from typing import List, Any, Dict, Union, Callable, Literal, Sequence, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Union
 
-from eth_utils import event_abi_to_log_topic
-from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
-from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
+from eth_utils import event_abi_to_log_topic
 from hexbytes import HexBytes
+from requests.exceptions import ReadTimeout as RequestsReadTimeoutError
+from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from web3._utils.events import get_event_data
 from web3.contract import Contract as W3Contract
 from web3.eth import Eth
-from web3.types import BlockIdentifier, FilterParams, TContractEvent, _Hash32, LogReceipt
+from web3.types import (
+    BlockIdentifier,
+    FilterParams,
+    LogReceipt,
+    TContractEvent,
+    _Hash32,
+)
+
 
 FIVE_MINUTES = 300.0
 DEFAULT_OUTCOME_SLOT = 2
@@ -316,7 +323,9 @@ class ConditionalTokensContract(Contract):
         contract_instance = cls.get_instance(
             ledger_api=ledger_api, contract_address=contract_address
         )
-        data = contract_instance.encode_abi(abi_element_identifier="prepareCondition", kwargs=kwargs)
+        data = contract_instance.encode_abi(
+            abi_element_identifier="prepareCondition", kwargs=kwargs
+        )
         return {"data": bytes.fromhex(data[2:])}
 
     @classmethod
@@ -329,15 +338,21 @@ class ConditionalTokensContract(Contract):
         outcome_slot_count: int,
     ) -> str:
         """Calculate condition ID."""
+        condition_id_hex = ledger_api.api.solidity_keccak(
+            ["address", "bytes32", "uint256"],
+            [
+                ledger_api.api.to_checksum_address(oracle_contract),
+                bytes.fromhex(question_id[2:]),
+                outcome_slot_count,
+            ],
+        ).hex()
+
         return {
-            "condition_id": ledger_api.api.solidity_keccak(
-                ["address", "bytes32", "uint256"],
-                [
-                    ledger_api.api.to_checksum_address(oracle_contract),
-                    bytes.fromhex(question_id[2:]),
-                    outcome_slot_count,
-                ],
-            ).hex()
+            "condition_id": (
+                condition_id_hex
+                if condition_id_hex.startswith("0x")
+                else "0x" + condition_id_hex
+            )
         }
 
     @classmethod
@@ -355,7 +370,12 @@ class ConditionalTokensContract(Contract):
         (log,) = contract_instance.events.ConditionPreparation().process_receipt(
             tx_receipt
         )
-        return "0x" + log["args"]["conditionId"].hex()
+        condition_id_hex = log["args"]["conditionId"].hex()
+        return (
+            condition_id_hex
+            if condition_id_hex.startswith("0x")
+            else "0x" + condition_id_hex
+        )
 
     @classmethod
     def get_condition_preparation_events(
@@ -374,13 +394,11 @@ class ConditionalTokensContract(Contract):
         event_abi = contract_instance.events.ConditionPreparation().abi
         topics = [condition_ids]
 
-        logs = get_logs(
-            eth, contract_instance, event_abi, topics, from_block, to_block
-        )
+        logs = get_logs(eth, contract_instance, event_abi, topics, from_block, to_block)
         entries = [get_event_data(eth.codec, event_abi, log) for log in logs]
         events = [
             {
-                "tx_hash": entry["transactionHash"].hex(),
+                "tx_hash": entry["transactionHash"].to_0x_hex(),
                 "block_number": entry["blockNumber"],
                 "condition_id": entry["args"]["conditionId"],
                 "oracle": entry["args"]["oracle"],
