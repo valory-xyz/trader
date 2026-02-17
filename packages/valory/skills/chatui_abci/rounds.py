@@ -22,7 +22,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, List, Set, Type
+from typing import Dict, Set, Type
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -44,10 +44,10 @@ class SynchronizedData(BaseSynchronizedData):
     """
 
     @property
-    def available_mech_tools(self) -> List[str]:
+    def available_mech_tools(self) -> Set[str]:
         """Get all the available mech tools."""
         tools = self.db.get_strict("available_mech_tools")
-        return json.loads(tools)
+        return set(json.loads(tools))
 
 
 class Event(Enum):

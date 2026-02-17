@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -378,7 +378,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self.trades = {
             trade
             for trade in self.trades
-            if trade.fpmm.condition.id.hex().lower() not in redeemed_condition_ids
+            if trade.fpmm.condition.id.to_0x_hex().lower() not in redeemed_condition_ids
         }
         self.redeeming_progress.trades = self.trades
 
@@ -783,7 +783,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return False
 
         if self.params.use_subgraph_for_redeeming:
-            condition_id = redeem_candidate.fpmm.condition.id.hex().lower()
+            condition_id = redeem_candidate.fpmm.condition.id.to_0x_hex().lower()
             if (
                 condition_id not in self.redeeming_progress.unredeemed_trades
                 or self.redeeming_progress.unredeemed_trades.get(condition_id, None)
@@ -844,7 +844,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             # self.redeeming_progress.claiming_condition_ids, and will no longer be taken into
             # consideration. This is done to avoid cases where the subgraph is not up-to date
             # and the same condition id is returned multiple times.
-            claiming_condition_id = redeem_candidate.fpmm.condition.id.hex()
+            claiming_condition_id = redeem_candidate.fpmm.condition.id.to_0x_hex()
             self.redeeming_progress.claiming_condition_ids.append(claiming_condition_id)
 
             if winnings_found == self.params.redeeming_batch_size:
@@ -893,7 +893,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         agent = self.context.agent_address
         tx_submitter = self.matching_round.auto_round_id()
         benchmarking_enabled = self.benchmarking_mode.enabled
-        serialized_tools = json.dumps(self.mech_tools)
+        serialized_tools = json.dumps(list(self.mech_tools))
         policy = self.policy.serialize()
         utilized_tools = json.dumps(self.utilized_tools)
         condition_ids = json.dumps(list(self.redeemed_condition_ids))
@@ -930,7 +930,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if not self.redeeming_progress.check_finished:
             self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
 
-        serialized_tools = json.dumps(self.mech_tools)
+        serialized_tools = json.dumps(list(self.mech_tools))
         payload = RedeemPayload(self.context.agent_address, mech_tools=serialized_tools)
         if self.redeeming_progress.cleaned:
             redeem_tx_hex = yield from self._prepare_safe_tx()

@@ -4,7 +4,7 @@ version: 0.1.0
 type: skill
 description: This skill implements the Staking for an AEA.
 license: Apache-2.0
-aea_version: '>=1.0.0, <2.0.0'
+aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
@@ -23,15 +23,15 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeihqefvhxbdocjphrcz33txmbgembl35qtcc7nusdvymrh4o3sp5um
-- valory/service_staking_token:0.1.0:bafybeifwuhumt42azgqaqiu7v4he3e6aybtnltgsmiqx6i3mzylhngrske
-- valory/staking_token:0.1.0:bafybeieqpvgicsnb6wusm7rv2nw2hqihdks3s64xz66otgspnyubkgyoei
-- valory/mech_activity:0.1.0:bafybeig5lmfl545c7jdn5awe6vwx7yqf3igrtjunbjriszewqs45voc6dm
+- valory/gnosis_safe:0.1.0:bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy
+- valory/service_staking_token:0.1.0:bafybeidbq4kuajhygalrx2uuo73dfg4etffccm6a7jurvlb7mjwycofz3q
+- valory/staking_token:0.1.0:bafybeic4ap4aj47qgjerrmkizl6llw5v5nel6ddil6e3w62h6zxoy3xjji
+- valory/mech_activity:0.1.0:bafybeiemnfhxt47ey5bzqztwaayfc2epwiup5btbnltmjuzgqirzi6ieb4
 protocols:
-- valory/contract_api:1.0.0:bafybeid247uig2ekykdumh7ewhp2cdq7rchaeqjj6e7urx35zfpdl5zrn4
+- valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifsuf7sh5vlugnqinbqe2f7vnssuqyxcrzqgotohhwqewyjeibneu
-- valory/transaction_settlement_abci:0.1.0:bafybeiem4qoc2pdpxoingjqp3qnrdjwho67pd6amy7o3xjr5mpdrepctve
+- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
+- valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 behaviours:
   main:
     args: {}

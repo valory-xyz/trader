@@ -70,11 +70,18 @@ from packages.valory.skills.market_manager_abci.rounds import (
 )
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FailedMechInformationRound,
+    FinishedMarketplaceLegacyDetectedRound,
+    FinishedMechInformationRound,
+    FinishedMechLegacyDetectedRound,
     FinishedMechPurchaseSubscriptionRound,
     FinishedMechRequestRound,
     FinishedMechRequestSkipRound,
     FinishedMechResponseRound,
     FinishedMechResponseTimeoutRound,
+)
+from packages.valory.skills.mech_interact_abci.states.mech_version import (
+    MechVersionDetectionRound,
 )
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
@@ -124,7 +131,11 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
-    FinishedChatuiLoadRound: CheckBenchmarkingModeRound,
+    FinishedChatuiLoadRound: MechVersionDetectionRound,
+    FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,
+    FinishedMechLegacyDetectedRound: CheckBenchmarkingModeRound,
+    FinishedMechInformationRound: CheckBenchmarkingModeRound,
+    FailedMechInformationRound: MechVersionDetectionRound,
     BenchmarkingModeDisabledRound: UpdateBetsRound,
     FinishedMarketManagerRound: CheckStopTradingRound,
     FinishedCheckStopTradingRound: RandomnessRound,

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -60,6 +60,8 @@ PATH_TO_VAR = {
     "config/genai_api_key": "GENAI_API_KEY",
     "models/params/args/use_x402": "USE_X402",
     "config/use_x402": "USE_X402",
+    "models/params/args/is_agent_performance_summary_enabled": "IS_AGENT_PERFORMANCE_SUMMARY_ENABLED",
+    "models/params/args/enable_multi_bets_fallback": "ENABLE_MULTI_BETS_FALLBACK",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"

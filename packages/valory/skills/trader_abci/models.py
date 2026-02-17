@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -80,6 +80,12 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
+from packages.valory.skills.mech_interact_abci.models import (
+    MechToolsSpecs as InteractMechToolsSpecs,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    MechsSubgraph as InteractMechsSubgraph,
+)
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.termination_abci.models import TerminationParams
@@ -124,6 +130,8 @@ GnosisStakingSubgraph = APTGnosisStakingSubgraph
 OlasMechSubgraph = APTOlasMechSubgraph
 OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph
+MechToolsSpecs = InteractMechToolsSpecs
+MechsSubgraph = InteractMechsSubgraph
 
 MARGIN = 5
 
@@ -187,9 +195,9 @@ class SharedState(BaseSharedState):
         round_timeout_overrides = {
             cast(EventType, event).ROUND_TIMEOUT: round_timeout for event in events
         }
-        round_timeout_overrides[
-            MechInteractEvent.ROUND_TIMEOUT
-        ] = params.mech_interact_round_timeout_seconds
+        round_timeout_overrides[MechInteractEvent.ROUND_TIMEOUT] = (
+            params.mech_interact_round_timeout_seconds
+        )
         reset_pause_timeout = params.reset_pause_duration + MARGIN
         event_to_timeout_overrides: EventToTimeoutMappingType = {
             **round_timeout_overrides,

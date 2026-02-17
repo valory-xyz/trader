@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
-from packages.valory.skills.chatui_abci.models import SharedState as BaseSharedState
+from packages.valory.skills.chatui_abci.models import SharedState as ChatUISharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.decision_maker_abci.redeem_info import Trade
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
@@ -55,6 +55,9 @@ from packages.valory.skills.market_manager_abci.models import (
 )
 from packages.valory.skills.mech_interact_abci.models import (
     Params as MechInteractParams,
+)
+from packages.valory.skills.mech_interact_abci.models import (
+    SharedState as MechInteractSharedState,
 )
 
 
@@ -187,10 +190,10 @@ class RedeemingProgress:
         return history_hashes, addresses, bonds, answers
 
 
-class SharedState(BaseSharedState):
+class SharedState(ChatUISharedState, MechInteractSharedState):
     """Keep the current shared state of the skill."""
 
-    abci_app_cls: Type[AbciApp] = DecisionMakerAbciApp
+    abci_app_cls: Type[AbciApp] = DecisionMakerAbciApp  # type: ignore
 
     def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
         """Initialize the state."""
@@ -217,8 +220,8 @@ class SharedState(BaseSharedState):
         self.bet_id_row_manager: Dict[str, List[int]] = {}
         # mech call counter for benchmarking behaviour
         self.benchmarking_mech_calls: int = 0
-        # whether the code has detected the new mech marketplace being used
-        self.new_mm_detected: Optional[bool] = None
+        # whether the mech response round timed out
+        self.mech_timed_out: bool = False
 
     @property
     def mock_question_id(self) -> Any:
@@ -377,15 +380,6 @@ class DecisionMakerParams(
         )
         agent_registry_address = cast(str, agent_registry_address)
 
-        metadata_address: Optional[str] = kwargs.get(
-            "complementary_service_metadata_address", None
-        )
-        enforce(
-            metadata_address is not None,
-            "Complementary service metadata address not specified!",
-        )
-        metadata_address = cast(str, metadata_address)
-
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
@@ -437,8 +431,6 @@ class DecisionMakerParams(
         self.slippage: float = self._ensure("slippage", kwargs, float)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
-        self.metadata_address: str = metadata_address
-        self.irrelevant_tools: set = set(self._ensure("irrelevant_tools", kwargs, list))
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
         )

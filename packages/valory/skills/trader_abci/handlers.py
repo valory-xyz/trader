@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -48,10 +48,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
-from packages.valory.skills.chatui_abci.handlers import (
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
-    HTTP_CONTENT_TYPE_MAP,
 )
+from packages.valory.skills.chatui_abci.handlers import HTTP_CONTENT_TYPE_MAP
 from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
@@ -89,6 +89,10 @@ WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
 SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
+TRADING_STRATEGY_EXPLANATION = {
+    "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
+    "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
+}
 
 
 class HttpHandler(BaseHttpHandler):
@@ -153,6 +157,22 @@ class HttpHandler(BaseHttpHandler):
 
         funds_status_regex = rf"{hostname_regex}\/funds-status"
 
+        agent_details_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/details"
+        agent_performance_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/performance"
+        agent_predictions_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/prediction-history"
+        )
+        agent_profit_over_time_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/profit-over-time"
+        )
+        trading_details_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
+        )
+        is_enabled_url = rf"{hostname_regex}\/features"
+        position_details_url_regex = (
+            rf"{hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
+        )
+
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
         )
@@ -165,6 +185,16 @@ class HttpHandler(BaseHttpHandler):
                 (
                     funds_status_regex,
                     self._handle_get_funds_status,
+                ),
+                (agent_details_url_regex, self._handle_get_agent_details),
+                (agent_performance_url_regex, self._handle_get_agent_performance),
+                (agent_predictions_url_regex, self._handle_get_predictions),
+                (trading_details_url_regex, self._handle_get_trading_details),
+                (is_enabled_url, self._handle_get_features),
+                (agent_profit_over_time_url_regex, self._handle_get_profit_over_time),
+                (
+                    position_details_url_regex,
+                    self._handle_get_position_details,
                 ),
                 (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
@@ -211,6 +241,37 @@ class HttpHandler(BaseHttpHandler):
         }
         self.context.logger.info(f"Sending agent info: {data=}")
         self._send_ok_response(http_msg, http_dialogue, data)
+
+    def _handle_get_trading_details(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/trading_details request."""
+        try:
+            # Get safe address
+            safe_address = self.synchronized_data.safe_contract_address
+
+            # Get current trading strategy
+            trading_strategy = self.shared_state.chatui_config.trading_strategy
+            trading_type = self._get_ui_trading_strategy(trading_strategy).value
+            trading_strategy_explanation = TRADING_STRATEGY_EXPLANATION.get(
+                trading_type, ""
+            )
+
+            # Format response
+            formatted_response = {
+                "agent_id": safe_address,
+                "trading_type": trading_type,
+                "trading_type_description": trading_strategy_explanation,
+            }
+
+            self.context.logger.info(f"Sending trading details: {formatted_response}")
+            self._send_ok_response(http_msg, http_dialogue, formatted_response)
+
+        except Exception as e:
+            self.context.logger.error(f"Error fetching trading details: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue, {"error": "Failed to fetch trading details"}
+            )
 
     def _handle_get_static_file(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -273,11 +334,15 @@ class HttpHandler(BaseHttpHandler):
                 "Misconfigured fund requirements data. Can't apply adjustment."
             )
             return funds_status
-        if xDAI_status.deficit != 0:
-            xDAI_status.deficit = max(
-                0, int(xDAI_status.deficit or 0) - int(wxDAI_status.balance or 0)
-            )
+        xdai_balance = int(xDAI_status.balance or 0)
+        wxdai_balance = int(wxDAI_status.balance or 0)
+        actual_considered_balance = xdai_balance + wxdai_balance
 
+        xdai_topup = int(xDAI_status.topup or 0)
+        actual_deficit = 0
+        if actual_considered_balance < xDAI_status.threshold:
+            actual_deficit = max(0, xdai_topup - actual_considered_balance)
+        xDAI_status.deficit = actual_deficit
         return funds_status
 
     def _handle_get_funds_status(
@@ -427,8 +492,8 @@ class HttpHandler(BaseHttpHandler):
 
             signed_tx = eoa_account.sign_transaction(tx_data)
 
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            return tx_hash.hex()
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            return tx_hash.to_0x_hex()
 
         except Exception as e:
             self.context.logger.error(f"Error submitting transaction: {str(e)}")
