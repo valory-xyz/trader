@@ -356,15 +356,15 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         # fmt: off
         (
             # bet amount per threshold strategy
-            ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, 0),
-            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, int(6e16)),
-            ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, int(1e17)),
-            ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, int(1e18)),
+            ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, 0, "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, int(6e16), "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+            ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, int(1e17), "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+            ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, int(1e18), "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
             # kelly criterion no confidence strategy
-            ("kelly_criterion_no_conf", 0.85, 0.0, 100, 200, int(1e15), 0.75, int(5e19), 0, 243),
-            ("kelly_criterion_no_conf", 0.80, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 37_241_555_003),
-            ("kelly_criterion_no_conf", 0.95, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 1_139_999_999_999_998_976),
-            ("kelly_criterion_no_conf", 0.20, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 0),
+            ("kelly_criterion_no_conf", 0.85, 0.0, 100, 200, int(1e15), 0.75, int(5e19), 0, 243, "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+            ("kelly_criterion_no_conf", 0.80, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 37_241_555_003, "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+            ("kelly_criterion_no_conf", 0.95, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 1_139_999_999_999_998_976, "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
+            ("kelly_criterion_no_conf", 0.20, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 0, "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"),
 
         ),
         ids=[
@@ -391,6 +391,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         token_balance: int,
         wallet_balance: int,
         expected_result: int,
+        collateral_token: str,
     ) -> None:
         """Test the `get_bet_amount` method."""
         behaviour = self.behaviour
@@ -410,6 +411,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             other_tokens_in_pool,
             bet_fee,
             weighted_accuracy,
+            collateral_token,
         )
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls
