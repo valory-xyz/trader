@@ -68,7 +68,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
-  tests/behaviours/test_base.py: bafybeicktiliiioj5tm7nbfcwb4txf7rm7qv2szmirp5wsg2spmrgdqvum
+  tests/behaviours/test_base.py: bafybeielmgnh6tircelzsdprq6pskinntdyay6bkkmyqekuxel32os5axe
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
   tests/states/test_base.py: bafybeiey6caorqi6cd4ejxi5vvfxioc6kg5pmibowfq3j3holl67tnis7i
   tests/states/test_bet_placement.py: bafybeibvc37n2cluep4tasvgmvwxwne2deais6ptirducpogk67v4gj4ga
@@ -117,8 +117,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/agent_performance_summary_abci:0.1.0:bafybeicpw53r4cm3jkaehmvdmas6qb2xdpvxsdpu7arcxdomrwnu55yzyu
-- valory/chatui_abci:0.1.0:bafybeigolmk5eu7rglxm4jddrxuhdlv6nj4vjuggg73ywc32f2oe2qv6ki
+- valory/agent_performance_summary_abci:0.1.0:bafybeifhylods4pf5p7zdz7ocz2vp6u3i526u4lceo4kxzvcyk3peoznha
+- valory/chatui_abci:0.1.0:bafybeic7cg3meaxqd47osvlk5tk3cr2h5ce7pao3rijqmo2ce7vwehfcga
 behaviours:
   main:
     args: {}

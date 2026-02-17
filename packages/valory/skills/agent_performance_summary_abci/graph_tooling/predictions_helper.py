@@ -363,7 +363,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 else total_bet
             )
 
-            if status == BetStatus.WON.value:
+            if status in (BetStatus.WON.value, BetStatus.INVALID.value):
                 to_win = total_payout
             elif status == BetStatus.LOST.value:
                 to_win = 0
@@ -386,7 +386,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 "external_url": market_info.get("external_url", ""),
                 "currency": DEFAULT_CURRENCY,
                 "total_bet": round(total_bet, 3),
-                "to_win": round(to_win, 3),
+                "payout": round(to_win, 3),
                 "remaining_seconds": remaining_seconds,
                 "status": status,
                 "net_profit": round(net_profit, 3),
