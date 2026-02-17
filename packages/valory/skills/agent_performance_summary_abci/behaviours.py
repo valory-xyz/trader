@@ -1078,15 +1078,9 @@ class FetchPerformanceSummaryBehaviour(
         mech_request_lookup: Dict[str, int],
         placed_titles: Set[str],
         existing_unplaced_count: int,
+        existing_placed_count: int = 0,
     ) -> Tuple[Dict[int, int], Dict[str, int], int]:
-        """Build per-day mech fee buckets for unplaced requests and multi-bet markets.
-
-        :param daily_stats: List of daily statistics
-        :param mech_request_lookup: Dictionary mapping question titles to request counts
-        :param placed_titles: Set of titles that have been placed
-        :param existing_unplaced_count: Count of existing unplaced requests
-        :return: Tuple of (extra_fees_by_day, filtered_lookup, unplaced_allocated)
-        """
+        """Build per-day mech fee buckets for:"""
         # Unplaced requests (no bets)
         total_mech_requests = self._total_mech_requests or sum(
             (mech_request_lookup or {}).values()
@@ -1099,6 +1093,7 @@ class FetchPerformanceSummaryBehaviour(
             total_mech_requests
             - open_requests
             - placed_requests_count
+            - existing_placed_count
             - existing_unplaced_count,
             0,
         )
