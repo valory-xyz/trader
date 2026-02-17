@@ -227,6 +227,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
         if result and isinstance(result, dict) and "sender" in result:
             return result.get("sender")
+        return result
 
     def _fetch_trader_agent(
         self, agent_safe_address: str
