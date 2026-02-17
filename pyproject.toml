@@ -85,6 +85,7 @@ w3multicall = ">=0.3.1"
 pydantic = "==2.11.9"
 multiaddr = "==0.0.9"
 httpx = "<1,>=0.23.0"
+setuptools = "<=81.0.0"
 
 [tool.poetry.dependencies.tomte]
 version = "==0.4.0"
