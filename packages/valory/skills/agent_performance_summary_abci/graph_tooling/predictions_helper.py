@@ -747,7 +747,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         # Check for invalid market
         if current_answer == INVALID_ANSWER_HEX:
-            return BetStatus.LOST.value
+            return BetStatus.INVALID.value
 
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
