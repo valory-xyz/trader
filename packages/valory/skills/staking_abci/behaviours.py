@@ -246,6 +246,12 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     ) -> WaitableConditionType:
         """Interact with a contract."""
         contract_id = str(contract_public_id)
+
+        self.context.logger.info(
+            f"Interacting with contract {contract_id} at address {contract_address}\n"
+            f"Calling method {contract_callable} with parameters: {kwargs}"
+        )
+
         response_msg = yield from self.get_contract_api_response(
             ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
             contract_address,

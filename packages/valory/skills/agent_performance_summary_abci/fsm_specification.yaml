@@ -1,0 +1,21 @@
+alphabet_in:
+- DONE
+- FAIL
+- NONE
+- NO_MAJORITY
+- ROUND_TIMEOUT
+default_start_state: FetchPerformanceDataRound
+final_states:
+- FinishedFetchPerformanceDataRound
+label: AgentPerformanceSummaryAbciApp
+start_states:
+- FetchPerformanceDataRound
+states:
+- FetchPerformanceDataRound
+- FinishedFetchPerformanceDataRound
+transition_func:
+    (FetchPerformanceDataRound, DONE): FinishedFetchPerformanceDataRound
+    (FetchPerformanceDataRound, FAIL): FinishedFetchPerformanceDataRound
+    (FetchPerformanceDataRound, NONE): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, NO_MAJORITY): FetchPerformanceDataRound
+    (FetchPerformanceDataRound, ROUND_TIMEOUT): FinishedFetchPerformanceDataRound

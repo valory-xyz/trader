@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2025 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -42,8 +42,8 @@ class RealitioProxyContract(Contract):
     ) -> JSONLike:
         """Build a `resolve` tx."""
         contract = cls.get_instance(ledger_api, contract_address)
-        data = contract.encodeABI(
-            fn_name="resolve",
+        data = contract.encode_abi(
+            abi_element_identifier="resolve",
             args=[
                 question_id,
                 template_id,

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -46,11 +46,14 @@ class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            after_bet_attempt = self.synchronized_data.tx_submitter in (
-                MechRequestRound.auto_round_id(),
+            tx_submitter = self.synchronized_data.tx_submitter
+            mech_timed_out = tx_submitter == MechRequestRound.auto_round_id()
+            self.shared_state.mech_timed_out = mech_timed_out
+            after_bet_attempt = mech_timed_out or tx_submitter in (
                 BetPlacementRound.auto_round_id(),
                 SellOutcomeTokensRound.auto_round_id(),
             )
+
             submitter = HandleFailedTxRound.auto_round_id()
             payload = HandleFailedTxPayload(
                 self.context.agent_address, after_bet_attempt, submitter

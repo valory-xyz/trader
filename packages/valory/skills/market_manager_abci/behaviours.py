@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import json
 import os.path
 import time
 from abc import ABC
+from copy import deepcopy
 from json import JSONDecodeError
 from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
@@ -190,8 +191,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.context.logger.debug(f"Bet {bet.id} is expired")
                 continue
 
-            bet.reset_investments()
+            # Store previous investments before resetting
+            existing_investments = deepcopy(bet.investments)
 
+            bet.reset_investments()
             for outcome, value in balances[bet.id].items():
                 outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
                 outcome_int = 0 if outcome_is_no else 1
@@ -200,6 +203,20 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.context.logger.debug(
                     f"Bet {bet.id} investments: {bet.investments=}"
                 )
+
+            self._replace_with_existing_investments_if_empty(bet, existing_investments)
+
+    def _replace_with_existing_investments_if_empty(
+        self, bet: Bet, existing_investments: Dict
+    ) -> None:
+        """Replace bet investments with existing ones if the new investments are empty."""
+        # This is to ensure that in case of subgraph or API failure,
+        # agent doesn't lose existing investment data and end up placing duplicate bets.
+        if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
+            self.context.logger.warning(
+                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+            )
+            bet.investments = existing_investments
 
     def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
         """Get the active bets."""
@@ -228,7 +245,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"Check point is reached: {self.synchronized_data.is_checkpoint_reached=}"
         )
 
-        # fetch checkpoint status and if reached requeue all bets
+        # fetch checkpoint status and if reached requeue all bets (only in multi-bet mode)
         if (
             self.synchronized_data.is_checkpoint_reached
             and self.params.use_multi_bets_mode
@@ -282,15 +299,18 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""
-        # single-bets mode case - mark any market with a `FRESH` status as processable
-        if not self.params.use_multi_bets_mode:
+        # single-bet behavior: move fresh bets to process individually
+        if (
+            not self.params.use_multi_bets_mode
+            and not self.params.enable_multi_bets_fallback
+        ):
             for bet in self.bets:
                 if bet.queue_status.is_fresh():
                     bet.queue_status = bet.queue_status.move_to_process()
             return
 
-        # muti-bets mode case - mark markets as processable only if all the unexpired ones have a `FRESH` status
-        # this will happen if the agent just started or the checkpoint has just been reached
+        # multi-bets behavior:
+        # mark markets as processable only if all unexpired ones are fresh
         all_bets_fresh = all(
             bet.queue_status.is_fresh()
             for bet in self.bets

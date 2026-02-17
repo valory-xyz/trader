@@ -52,7 +52,11 @@ dotenv.load_dotenv(override=True)
 HTTP_OK = 200
 TRADER_SERVICE_NAME = "trader_pearl"
 PROPEL_TRADER_PROD_KEY_IDXS = [
-    int(x) for x in os.getenv("PROPEL_TRADER_PROD_KEY_IDXS", "").split(",") if x
+    int(x)
+    for x in os.getenv(  # pylint: disable=E1101
+        "PROPEL_TRADER_PROD_KEY_IDXS", ""
+    ).split(",")
+    if x
 ]
 
 TRADER_VARIABLES_PROD = [
@@ -109,7 +113,8 @@ class Agent:
         )
 
         try:
-            response = requests.get(healthcheck_url, verify=False)  # nosec
+            # pylint: disable=W3101
+            response = requests.get(healthcheck_url, verify=False)  # nosec B501 B113
             if response.status_code != HTTP_OK:
                 return False, {}
             response_json = response.json()
@@ -196,15 +201,15 @@ class Propel:
     def login(self) -> None:
         """Login"""
         self.client.login(
-            username=os.getenv("PROPEL_USERNAME"),
-            password=os.getenv("PROPEL_PASSWORD"),
+            username=os.getenv("PROPEL_USERNAME"),  # pylint: disable=E1101
+            password=os.getenv("PROPEL_PASSWORD"),  # pylint: disable=E1101
         )
 
     def logout(self) -> None:
         """Logout"""
         self.client.logout()
 
-    def deploy(  # pylint: disable=too-many-arguments,too-many-locals
+    def deploy(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         service_name: str,
         variables: List[str],

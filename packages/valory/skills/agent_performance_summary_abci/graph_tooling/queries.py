@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -25,18 +25,22 @@ query GetOlasTraderAgent($id: ID!) {
     id
     serviceId
     totalTraded
+    totalTradedSettled
     totalPayout
     totalFees
+    totalFeesSettled
   }
 }
 """
 
 GET_MECH_SENDER_QUERY = """
-query MechSender($id: ID!, $timestamp_gt: Int!) {
+query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
-    totalRequests
-    requests(first: 1000, where: { blockTimestamp_gt: $timestamp_gt }) {
-      questionTitle
+    totalMarketplaceRequests
+    requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
+      parsedRequest {
+        questionTitle
+      }
     }
   }
 }
@@ -73,3 +77,234 @@ query GetOlasTraderAgentBets($id: ID!) {
       }
     }
   }"""
+
+GET_TRADER_AGENT_DETAILS_QUERY = """
+query GetTraderAgentDetails($id: ID!) {
+  traderAgent(id: $id) {
+    id
+    blockTimestamp
+    lastActive
+  }
+}
+"""
+
+GET_TRADER_AGENT_PERFORMANCE_QUERY = """
+query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
+  traderAgent(id: $id) {
+    id
+    totalTraded
+    totalTradedSettled
+    totalPayout
+    totalFees
+    totalFeesSettled
+    totalBets
+    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      amount
+      outcomeIndex
+      fixedProductMarketMaker {
+        currentAnswer
+      }
+    }
+  }
+}
+"""
+
+GET_PREDICTION_HISTORY_QUERY = """
+query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
+  marketParticipants(
+    where: { traderAgent_: { id: $id } }
+    orderBy: blockTimestamp
+    orderDirection: desc
+    first: $first
+    skip: $skip
+  ) {
+    id
+    totalBets
+    totalPayout
+    totalTraded
+    totalFees
+    totalTradedSettled
+    totalFeesSettled
+    fixedProductMarketMaker {
+      id
+      question
+      outcomes
+      currentAnswer
+      currentAnswerTimestamp
+    }
+    bets {
+      id
+      timestamp
+      amount
+      feeAmount
+      outcomeIndex
+    }
+  }
+}
+"""
+
+GET_RESOLVED_MARKETS_QUERY = """
+query GetResolvedMarkets($timestamp_gt: BigInt!, $timestamp_lte: BigInt) {
+  fixedProductMarketMakers(
+    where: {
+      currentAnswerTimestamp_gt: $timestamp_gt
+      currentAnswerTimestamp_lte: $timestamp_lte
+    }
+    orderBy: currentAnswerTimestamp
+    orderDirection: asc
+    first: $first
+    skip: $skip
+  ) {
+    id
+    question
+    currentAnswer
+    currentAnswerTimestamp
+  }
+}
+"""
+
+GET_FPMM_PAYOUTS_QUERY = """
+query GetFPMMPayouts($fpmmIds: [ID!]!) {
+  fixedProductMarketMakers(where: { id_in: $fpmmIds }, first: 1000) {
+    id
+    payouts
+    resolutionTimestamp
+  }
+}
+"""
+
+GET_PENDING_BETS_QUERY = """
+query GetPendingBets($id: ID!) {
+  traderAgent(id: $id) {
+    bets(where: { fixedProductMarketMaker_: { currentAnswer: null } }) {
+      amount
+      feeAmount
+    }
+  }
+}
+"""
+
+GET_DAILY_PROFIT_STATISTICS_QUERY = """
+query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
+  traderAgent(id: $agentId) {
+    dailyProfitStatistics(
+      where: {
+        date_gte: $startTimestamp,
+      }
+      orderBy: date
+      orderDirection: asc
+      first: $first
+      skip: $skip
+    ) {
+      id
+      date
+      totalBets
+      totalTraded
+      totalFees
+      totalPayout
+      dailyProfit
+      profitParticipants {
+        id
+        question
+      }
+    }
+  }
+}
+"""
+
+GET_ALL_MECH_REQUESTS_QUERY = """
+query GetAllMechRequests($sender: String!, $skip: Int!) {
+  requests(
+    where: { sender: $sender }
+    first: 1000
+    skip: $skip
+    orderBy: requestId
+    orderDirection: asc
+  ) {
+    id
+    requestId
+    parsedRequest {
+      questionTitle
+    }
+  }
+}
+"""
+
+GET_MECH_REQUESTS_BY_TITLES_QUERY = """
+query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
+  sender(id: $sender) {
+    requests(
+      where: {
+        parsedRequest_: { questionTitle_in: $questionTitles }
+      }
+    ) {
+      id
+      parsedRequest {
+        questionTitle
+      }
+    }
+  }
+}
+"""
+
+GET_MECH_TOOL_FOR_QUESTION_QUERY = """
+query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
+  sender(id: $sender) {
+    requests(
+      where: { parsedRequest_: { questionTitle: $questionTitle } }
+      first: 1
+      orderDirection: desc
+    ) {
+      deliveries {
+        model
+      }
+    }
+  }
+}
+"""
+
+GET_MECH_RESPONSE_QUERY = """
+query GetMechResponse($sender: String!, $questionTitle: String!) {
+  requests(
+    where: { sender: $sender, parsedRequest_: { questionTitle: $questionTitle } }
+    first: 1
+    orderBy: requestId
+    orderDirection: desc
+  ) {
+    parsedRequest {
+      questionTitle
+    }
+    deliveries(first: 1, orderBy: deliveryId, orderDirection: desc) {
+      toolResponse
+      model
+    }
+  }
+}
+"""
+
+GET_SPECIFIC_MARKET_BETS_QUERY = """
+query GetSpecificMarketBets($id: ID!, $betId: ID!) {
+          traderAgent(id: $id) {
+            bets(where: { id: $betId }, orderBy: timestamp, orderDirection: desc) {
+              id
+              timestamp
+              amount
+              feeAmount
+              outcomeIndex
+              fixedProductMarketMaker {
+                id
+                question
+                outcomes
+                currentAnswer
+                currentAnswerTimestamp
+                participants(where: { traderAgent: $id }) {
+                  totalBets
+                  totalTraded
+                  totalPayout
+                  totalFees
+                }
+              }
+            }
+          }
+        }
+"""

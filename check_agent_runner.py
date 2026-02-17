@@ -8,7 +8,7 @@ import shlex
 
 
 def main():
-    timeout = 20
+    timeout = 80
     search = "Starting AEA"
     cmd = "bash -c 'cd ./agent && ../dist/agent_runner_bin -s run'"
 
