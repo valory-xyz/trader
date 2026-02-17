@@ -678,7 +678,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
             "total_payout": (
-                round(payout_amount, 3) if payout_amount is not None else None
+                round(payout_amount, 3) if payout_amount is not None else 0
             ),
             "created_at": self._format_timestamp(bet.get("timestamp")),
             "settled_at": (
