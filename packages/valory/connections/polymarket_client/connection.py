@@ -321,7 +321,14 @@ class PolymarketClientConnection(BaseSyncConnection):
         try:
             params = payload.get("params", {})
             response, error_msg = request_function_map[request_type](**params)
-            return response, str(error_msg) if error_msg else ""
+            if error_msg:
+                error_msg = str(error_msg)
+                response = {"error": error_msg}
+                return response, error_msg
+
+            error_msg = ""
+            return response, error_msg
+
         except TypeError as e:
             error_msg = f"Invalid parameters for '{request_type.value}': {str(e)}"
             self.logger.error(error_msg)
@@ -344,14 +351,14 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _place_bet(self, token_id: str, amount: float) -> Tuple[Any, Any]:
         """Place a bet on Polymarket."""
 
-        mo = MarketOrderArgs(
-            token_id=token_id,
-            amount=amount,
-            side=BUY,
-            order_type=OrderType.FOK,
-        )
-        signed = self.client.create_market_order(mo)
         try:
+            mo = MarketOrderArgs(
+                token_id=token_id,
+                amount=amount,
+                side=BUY,
+                order_type=OrderType.FOK,
+            )
+            signed = self.client.create_market_order(mo)
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
             return resp, None
         except PolyApiException as e:
@@ -489,7 +496,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "tag_id": tag_id,
                 "end_date_max": end_date_max,
                 "end_date_min": end_date_min,
-                "closed": "false",
                 "limit": MARKETS_LIMIT,
                 "offset": offset,
             }

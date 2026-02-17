@@ -10,12 +10,12 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
   achievements_checker/bet_payout_checker.py: bafybeidgkd3c2t4amatocqbzw7e2l67k3cn5x5opojn3i5qeuwagthe4uy
-  behaviours.py: bafybeiajydakskm7jg736gigbbnuytm3dbpmhsvpu5ufppn2vkechiqkti
+  behaviours.py: bafybeieztyez3qlmpzbuyrvdtmp64vymk5ajbhfezl5bu4gsrdbd44sogm
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
   graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
-  graph_tooling/polymarket_predictions_helper.py: bafybeifn24vtdgby53q7vcihz6nxzkxqcoytje3bjk6luu2eudizvz6dgu
+  graph_tooling/polymarket_predictions_helper.py: bafybeihtsmulay42wsfd4kmdg2rvd3bvkdykqcyz3t2e5k3wy6nvh2brlq
   graph_tooling/predictions_helper.py: bafybeihcogvprrjvfo5jiiqxdeb7k5kfdql4mxuakzcr72laqz3iu7jmzy
   graph_tooling/queries.py: bafybeidqxri7zm67dvnenaiuhzngpf2mlww3c4vlmjehi5kn3j3egl6ln4
   graph_tooling/requests.py: bafybeie3nydzsyj2gl25hk7yejxgr3k3oh3aewrwachbtih5nyvoxg2pei
@@ -150,7 +150,6 @@ models:
       api_id: polymarket_agents
       headers:
         Content-Type: application/json
-        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:traderAgent
@@ -159,14 +158,13 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
     class_name: PolymarketAgentsSubgraph
   polymarket_bets_subgraph:
     args:
       api_id: polymarket_bets
       headers:
         Content-Type: application/json
-        Authorization: Bearer a97ff23d989cb855d2c0caecc864efc8
       method: POST
       parameters: {}
       response_key: data:marketParticipants
@@ -175,7 +173,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://gateway.thegraph.com/api/deployments/id/QmZVsS4G7yaMyi4NhzLG4X2YSvNg41WT6KR1vJFsPc7u76/indexers/id/0xf92f430dd8567b0d466358c79594ab58d919a6d4
+      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
     class_name: PolymarketBetsSubgraph
   polygon_mech_subgraph:
     args:
@@ -197,4 +195,4 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections:
-- valory/polymarket_client:0.1.0:bafybeidtwd3araaz5oqp2crroktirmna5eanwvsrmm6j7w4kj7turqtt3u
+- valory/polymarket_client:0.1.0:bafybeidiop5rp2xwtkf3dpc54ej67qnlqmjru2hzwqrbf2xd4kozmoxrx4

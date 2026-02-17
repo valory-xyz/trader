@@ -90,34 +90,50 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             polymarket_bet_payload
         )
 
-        # Handle error case where response is None
         success = False
-        if response is not None:
-            self.context.logger.info(
-                f"Bet placement: Status={response.get('status')}, "
-                f"OrderID={response.get('orderID')}, "
-                f"TX={response.get('transactionsHashes', [])}"
-            )
+        error_message = None
+        event = None
 
-            success = bool(
-                response.get("success") or response.get("transactionsHashes")
-            )
-
+        if response is None:
+            error_message = "Failed to place bet: No response from connection"
+            self.context.logger.error(error_message)
+            event = Event.BET_PLACEMENT_FAILED
         else:
-            self.context.logger.error(
-                "Failed to place bet: No response from connection"
+            status = response.get("status")
+            order_id = response.get("orderID")
+            tx_hashes = response.get("transactionsHashes", [])
+            self.context.logger.info(
+                f"Bet placement: Status={status}, OrderID={order_id}, TX={tx_hashes}"
             )
+
+            response_str = str(response)
+            if "No orderbook exists for the requested token id" in response_str:
+                error_message = "Failed to place bet: No orderbook exists for the requested token id"
+                self.context.logger.error(error_message)
+
+                event = Event.BET_PLACEMENT_IMPOSSIBLE
+            success = bool(response.get("success") or tx_hashes)
+
+            # Only set event to DONE if not already set to IMPOSSIBLE
+            if event is None:
+                if success:
+                    self.update_bet_transaction_information()
+                    self.context.logger.info("Bet placement successful.")
+                    event = Event.BET_PLACEMENT_DONE
+                else:
+                    self.context.logger.error("Bet placement failed.")
+                    event = Event.BET_PLACEMENT_FAILED
+
+        # Fallback in case event is not set (should not happen, but for safety)
+        if event is None:
+            event = Event.BET_PLACEMENT_FAILED
 
         payload = PolymarketBetPlacementPayload(
             self.context.agent_address,
             None,
             None,
             False,
-            event=(
-                Event.BET_PLACEMENT_DONE.value
-                if success
-                else Event.BET_PLACEMENT_FAILED.value
-            ),
+            event=event.value,
         )
 
         yield from self.finish_behaviour(payload)

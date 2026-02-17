@@ -313,6 +313,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Convert USDC wei to native token (6 decimals)."""
         return usdc_wei / 10**6
 
+    def convert_unit_to_wei(self, amount: float) -> int:
+        """Convert an amount in the token's unit to its WEI equivalent based on collateral token type."""
+        return int(self.get_token_precision() * amount)
+
     def get_token_precision(self) -> int:
         """Get the token precision based on the collateral token type."""
         if self.is_usdc:
@@ -400,7 +404,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return True
 
     def update_bet_transaction_information(self) -> None:
-        """Get whether the bet's invested amount should be updated."""
+        """Update the bet's invested amount and timestamp after placing a bet."""
         sampled_bet = self.sampled_bet
         # Update bet transaction timestamp
         sampled_bet.processed_timestamp = self.synced_timestamp
@@ -554,10 +558,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
             kwargs["token_decimals"] = 6 if self._is_usdc(collateral_token) else 18
             kwargs["min_bet"] = self.params.strategies_kwargs["absolute_min_bet_size"]
+
+            bankroll = (
+                self.token_balance
+                if self.params.is_running_on_polymarket
+                else self.token_balance + self.wallet_balance
+            )
             kwargs.update(
                 {
                     "trading_strategy": next_strategy,
-                    "bankroll": self.token_balance + self.wallet_balance,
+                    "bankroll": bankroll,
                     "win_probability": win_probability,
                     "confidence": confidence,
                     "selected_type_tokens_in_pool": selected_type_tokens_in_pool,

@@ -359,7 +359,7 @@ class Bet:
             self.processed_timestamp == sys.maxsize
             or bet.processed_timestamp == sys.maxsize
         ):
-            # do not update the bet if it has been blacklisted forever
+            self.blacklist_forever()  # copy over the changes from new bet object to the local store
             return
 
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()

@@ -82,6 +82,7 @@ class Event(Enum):
     POLYMARKET_DONE = "polymarket_done"
     POLYMARKET_FETCH_MARKETS = "polymarket_fetch_markets"
     BET_PLACEMENT_FAILED = "bet_placement_failed"
+    BET_PLACEMENT_IMPOSSIBLE = "bet_placement_impossible"
     BET_PLACEMENT_DONE = "bet_placement_done"
     SKIP = "skip"
     SET_APPROVAL = "set_approval"

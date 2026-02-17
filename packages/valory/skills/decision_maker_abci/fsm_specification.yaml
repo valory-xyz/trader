@@ -5,6 +5,7 @@ alphabet_in:
 - BENCHMARKING_FINISHED
 - BET_PLACEMENT_DONE
 - BET_PLACEMENT_FAILED
+- BET_PLACEMENT_IMPOSSIBLE
 - BLACKLIST
 - CALC_BUY_AMOUNT_FAILED
 - CALC_SELL_AMOUNT_FAILED
@@ -127,6 +128,7 @@ transition_func:
     (HandleFailedTxRound, NO_OP): RedeemRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
     (PolymarketBetPlacementRound, DONE): RedeemRouterRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound

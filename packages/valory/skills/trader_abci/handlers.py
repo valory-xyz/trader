@@ -115,6 +115,8 @@ TRADING_STRATEGY_EXPLANATION = {
 # Rate limiting for CoinGecko API: cache for 2 hours to avoid hitting rate limits
 COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 
+FALLBACK_POL_TO_USD_RATE = 0.089935  # AS of 2026-02-11T18:35:09Z
+
 
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
@@ -504,7 +506,9 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(
                     f"CoinGecko API returned status {response.status_code}: {response.text}"
                 )
-                return self._pol_usdc_rate  # Return stale cache if available
+                return (
+                    self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
+                )  # Return stale cache if available
 
             data: Dict = response.json()
 
@@ -512,7 +516,9 @@ class HttpHandler(BaseHttpHandler):
 
             if not price_usd:
                 self.context.logger.error(f"No USD price in CoinGecko response: {data}")
-                return self._pol_usdc_rate  # Return stale cache if available
+                return (
+                    self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
+                )  # Return stale cache if available
 
             # CoinGecko returns price in USD, which we treat as USDC (1 USD ≈ 1 USDC)
             rate = float(price_usd)
@@ -535,7 +541,9 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(
                 f"Error fetching POL→USDC rate from CoinGecko: {str(e)}"
             )
-            return self._pol_usdc_rate  # Return stale cache if available
+            return (
+                self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
+            )  # Return stale cache if available
 
     def _get_pol_equivalent_for_usdc(
         self,
