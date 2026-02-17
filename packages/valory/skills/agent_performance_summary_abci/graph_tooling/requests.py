@@ -234,23 +234,24 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details - platform-aware."""
         if self.params.is_running_on_polymarket:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
-                    variables={"id": agent_safe_address},
-                    subgraph=self.context.polymarket_agents_subgraph,
-                    res_context="polymarket_trader_agent",
-                )
+
+            result = yield from self._fetch_from_subgraph(
+                query=GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.polymarket_agents_subgraph,
+                res_context="polymarket_trader_agent",
             )
         else:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_TRADER_AGENT_QUERY,
-                    variables={"id": agent_safe_address},
-                    subgraph=self.context.olas_agents_subgraph,
-                    res_context="trader_agent",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_TRADER_AGENT_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="trader_agent",
             )
+
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_staking_service(
         self, service_id: str
