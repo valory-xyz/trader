@@ -390,12 +390,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
         behaviour.params.strategies_kwargs = STRATEGIES_KWARGS
         behaviour.shared_state.chatui_config.trading_strategy = trading_strategy
-        behaviour.shared_state.chatui_config.max_bet_size = STRATEGIES_KWARGS[
-            "default_max_bet_size"
-        ]
-        behaviour.shared_state.chatui_config.fixed_bet_size = STRATEGIES_KWARGS[
-            "absolute_min_bet_size"
-        ]
+        behaviour.shared_state.chatui_config.max_bet_size = STRATEGIES_KWARGS["default_max_bet_size"]  # type: ignore[assignment]
+        behaviour.shared_state.chatui_config.fixed_bet_size = STRATEGIES_KWARGS["absolute_min_bet_size"]  # type: ignore[assignment]
         behaviour.params.use_fallback_strategy = False
         behaviour.params.is_running_on_polymarket = (
             False  # TODO: Add tests for Polymarket
