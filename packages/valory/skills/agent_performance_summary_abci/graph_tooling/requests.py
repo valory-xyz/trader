@@ -201,33 +201,32 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch mech sender details - platform-aware."""
         if self.params.is_running_on_polymarket:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_MECH_SENDER_QUERY,
-                    variables={
-                        "id": agent_safe_address,
-                        "timestamp_gt": int(timestamp_gt),
-                        "skip": 0,
-                        "first": QUERY_BATCH_SIZE,
-                    },
-                    subgraph=self.context.polygon_mech_subgraph,
-                    res_context="polygon_mech_sender",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_MECH_SENDER_QUERY,
+                variables={
+                    "id": agent_safe_address,
+                    "timestamp_gt": int(timestamp_gt),
+                    "skip": 0,
+                    "first": QUERY_BATCH_SIZE,
+                },
+                subgraph=self.context.polygon_mech_subgraph,
+                res_context="polygon_mech_sender",
             )
         else:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_MECH_SENDER_QUERY,
-                    variables={
-                        "id": agent_safe_address,
-                        "timestamp_gt": int(timestamp_gt),
-                        "skip": 0,
-                        "first": QUERY_BATCH_SIZE,
-                    },
-                    subgraph=self.context.olas_mech_subgraph,
-                    res_context="mech_sender",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_MECH_SENDER_QUERY,
+                variables={
+                    "id": agent_safe_address,
+                    "timestamp_gt": int(timestamp_gt),
+                    "skip": 0,
+                    "first": QUERY_BATCH_SIZE,
+                },
+                subgraph=self.context.olas_mech_subgraph,
+                res_context="mech_sender",
             )
+
+        if result and isinstance(result, dict) and "sender" in result:
+            return result.get("sender")
 
     def _fetch_trader_agent(
         self, agent_safe_address: str
@@ -323,46 +322,45 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch agent metadata (id, created_at, last_active_at) - platform-aware."""
         if self.params.is_running_on_polymarket:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
-                    variables={"id": agent_safe_address},
-                    subgraph=self.context.polymarket_agents_subgraph,
-                    res_context="polymarket_agent_details",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.polymarket_agents_subgraph,
+                res_context="polymarket_agent_details",
             )
         else:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_TRADER_AGENT_DETAILS_QUERY,
-                    variables={"id": agent_safe_address},
-                    subgraph=self.context.olas_agents_subgraph,
-                    res_context="agent_details",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_TRADER_AGENT_DETAILS_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="agent_details",
             )
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_trader_agent_performance(
         self, agent_safe_address: str, first: int = 200, skip: int = 0
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent performance with bets (includes totalBets, totalTraded, etc) - platform-aware."""
         if self.params.is_running_on_polymarket:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
-                    variables={"id": agent_safe_address},
-                    subgraph=self.context.polymarket_agents_subgraph,
-                    res_context="polymarket_trader_agent_performance",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
+                variables={"id": agent_safe_address},
+                subgraph=self.context.polymarket_agents_subgraph,
+                res_context="polymarket_trader_agent_performance",
             )
         else:
-            return (
-                yield from self._fetch_from_subgraph(
-                    query=GET_TRADER_AGENT_PERFORMANCE_QUERY,
-                    variables={"id": agent_safe_address, "first": first, "skip": skip},
-                    subgraph=self.context.olas_agents_subgraph,
-                    res_context="trader_agent_performance",
-                )
+            result = yield from self._fetch_from_subgraph(
+                query=GET_TRADER_AGENT_PERFORMANCE_QUERY,
+                variables={"id": agent_safe_address, "first": first, "skip": skip},
+                subgraph=self.context.olas_agents_subgraph,
+                res_context="trader_agent_performance",
             )
+
+        if result and isinstance(result, dict) and "traderAgent" in result:
+            return result.get("traderAgent")
+        return result
 
     def _fetch_pending_bets(
         self, agent_safe_address: str
