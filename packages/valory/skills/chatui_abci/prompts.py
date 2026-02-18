@@ -35,7 +35,7 @@ Configuration details:
 - Trading strategy: "{current_trading_strategy}"
     -- Available strategies:
         --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while maximizing the long-term return on an investment. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount). This is also known as the risky strategy.
-        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. For example, with a mapping like {{"0.6": 60000000000000000, "0.7": 90000000000000000, ...}}, higher AI confidence leads to higher bet amounts. This is also known as the balanced strategy.
+        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. This is also known as the balanced strategy. But in this implemented version, the user sets a fixed bet size that applies to all confidence thresholds, overriding the threshold-based amounts.
     -- Can not be deselected, but can be changed to another strategy if the user says to change it.
 - Mech tool: "{current_mech_tool}"
     -- Available tools: {available_tools}
@@ -43,14 +43,14 @@ Configuration details:
 - Fixed bet size: "{current_fixed_bet_size}"
     -- Used with the "bet_amount_per_threshold" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
-    -- Value is in {units} base units.
+    -- Value is in {units} units.
     -- Cannot be less than {absolute_min_bet_size} {units}.
     -- Cannot exceed {absolute_max_bet_size} {units}.
     -- Can be deselected to fall back to the default value if the user says to remove it.
 - Max bet size: "{current_max_bet_size}"
     -- Used with the "kelly_criterion_no_conf" (Risky) strategy only.
     -- When set, this caps the maximum bet amount calculated by the Kelly Criterion formula.
-    -- Value is in {units} base units.
+    -- Value is in {units} units.
     -- Cannot be less than {absolute_min_bet_size} {units}.
     -- Cannot exceed {absolute_max_bet_size} {units}.
     -- Can be deselected to fall back to the default value if the user says to remove it.
@@ -89,8 +89,8 @@ class UpdatedAgentConfig(BaseModel):
 
     trading_strategy: typing.Optional[TradingStrategy]
     mech_tool: typing.Optional[str]
-    fixed_bet_size: typing.Optional[int]
-    max_bet_size: typing.Optional[int]
+    fixed_bet_size: typing.Optional[float]
+    max_bet_size: typing.Optional[float]
     removed_config_fields: typing.List[FieldsThatCanBeRemoved]
     behavior: typing.Optional[str]
 
