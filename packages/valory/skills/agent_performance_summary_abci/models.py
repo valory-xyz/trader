@@ -239,6 +239,9 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool
         )
+        self.is_achievement_checker_enabled: bool = self._ensure(
+            "is_achievement_checker_enabled", kwargs, bool
+        )
         # Handle is_running_on_polymarket which may be shared with MarketManagerParams
         # If already set by a parent class (MarketManagerParams), use that value
         # Otherwise, pop it from kwargs ourselves

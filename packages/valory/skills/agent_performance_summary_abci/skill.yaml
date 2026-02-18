@@ -69,6 +69,7 @@ models:
       store_path: /data/
       is_agent_performance_summary_enabled: true
       is_running_on_polymarket: false
+      is_achievement_checker_enabled: true
     class_name: AgentPerformanceSummaryParams
   olas_agents_subgraph:
     args:

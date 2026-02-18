@@ -284,6 +284,7 @@ models:
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
       is_agent_performance_summary_enabled: true
+      is_achievement_checker_enabled: true
       is_running_on_polymarket: false
       polymarket_builder_program_enabled: true
       polymarket_usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
