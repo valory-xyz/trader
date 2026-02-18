@@ -29,7 +29,7 @@ fingerprint:
   ui-build/omenstrat/index.html: bafybeidfxtgnzglvcmt5okrwuer54d7fqsigqaas74ehutrksazejamy5m
   ui-build/polystrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/polystrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/polystrat/assets/index-2bkPIXf3.js: bafybeigbnbiwiygegw4fzpxfhi77dydlnxfuha7wqts4p6ibb4l4smntua
+  ui-build/polystrat/assets/index-BblxPD_U.js: bafybeihdxuzoywdwcn6dr74udi6fgmfodn3bxvjw4ibtq4k5oiza3ykjgq
   ui-build/polystrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/polystrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/polystrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -37,7 +37,7 @@ fingerprint:
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeidmaeeyzzorsmjjlmj2bjef4xa4n2y2nwvkip2dosgoinaqvpfwfq
+  ui-build/polystrat/index.html: bafybeigkhqvnjsfqxlt5ingovbfubwgzdyseov5a4erq2aekucfmxiagle
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeigyjwg6nfwmdkwzt7i56n4zv3oj6hii2mkkgstuaztyunscjifdee
