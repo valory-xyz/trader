@@ -124,13 +124,13 @@ class SharedState(BaseSharedState):
         trading_strategy_yaml = self.context.params.trading_strategy
 
         max_bet_size_store = self._chatui_config.max_bet_size
-        if max_bet_size_store is None or not isinstance(max_bet_size_store, str):
+        if max_bet_size_store is None or not isinstance(max_bet_size_store, int):
             self._chatui_config.max_bet_size = self.context.params.strategies_kwargs[
                 "default_max_bet_size"
             ]
 
         fixed_bet_size_store = self._chatui_config.fixed_bet_size
-        if fixed_bet_size_store is None or not isinstance(fixed_bet_size_store, str):
+        if fixed_bet_size_store is None or not isinstance(fixed_bet_size_store, int):
             self._chatui_config.fixed_bet_size = self.context.params.strategies_kwargs[
                 "absolute_min_bet_size"
             ]

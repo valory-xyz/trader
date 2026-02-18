@@ -461,8 +461,8 @@ class HttpHandler(BaseHttpHandler):
             self._store_chatui_param_to_json("fixed_bet_size", None)
 
         elif updated_fixed_bet_size is not None:
-            updated_fixed_bet_size_in_base_units = updated_fixed_bet_size * (
-                10**decimals
+            updated_fixed_bet_size_in_base_units = int(
+                updated_fixed_bet_size * (10**decimals)
             )
             if (
                 updated_fixed_bet_size_in_base_units >= absolute_min_bet_size
@@ -492,7 +492,9 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.chatui_config.max_bet_size = None
             self._store_chatui_param_to_json("max_bet_size", None)
         elif updated_max_bet_size is not None:
-            updated_max_bet_size_in_base_units = updated_max_bet_size * (10**decimals)
+            updated_max_bet_size_in_base_units = int(
+                updated_max_bet_size * (10**decimals)
+            )
             if (
                 updated_max_bet_size_in_base_units >= absolute_min_bet_size
                 and updated_max_bet_size_in_base_units <= absolute_max_bet_size
