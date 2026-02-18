@@ -25,8 +25,8 @@ contracts:
 - valory/market_maker:0.1.0:bafybeidwc7yvxufnupyjzge2ycbos2t24hoyaeosvzj3z63ccqdzotygdm
 - valory/multisend:0.1.0:bafybeidjdgi2kyexajirj3cnpzgse4y5u664b2blztt4flv6i7knlecyr4
 - valory/mech:0.1.0:bafybeibzaxri2yru6l2nwgr2vdctkczqthalel2g4wojz2whohr3sznil4
-- valory/conditional_tokens:0.1.0:bafybeiblf2gr4guj3gpb2k64vwcnfop44pmqg7rbemcsn633okvggc3p34
-- valory/realitio:0.1.0:bafybeielggu3u36rsjiw6m3fdg7uhf426cv4mdo2osusjwrmnenq3ex6di
+- valory/conditional_tokens:0.1.0:bafybeihg4vo2qxpdioopj2oudhbbql4yfgiadr7px3x73e5zxsouziijwy
+- valory/realitio:0.1.0:bafybeihe53hnzcaopijg7ngg2ackkb2mu6iqpvxdjxpnvdzaqckq4txtea
 - valory/realitio_proxy:0.1.0:bafybeibsink25xdxk2yt7tx2aaznmqaidxs22gknb5alqnkhlqahazlydm
 - valory/agent_registry:0.1.0:bafybeigl7bqvjyvryxuugpx6ogn4n6d2hryebup3x4hxhfirpjm6kjw4vq
 - valory/service_staking_token:0.1.0:bafybeidbq4kuajhygalrx2uuo73dfg4etffccm6a7jurvlb7mjwycofz3q
@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifkwo6v5nfdhfuye6aq6r3vkyjwwpvicxvxgrzkcaceeagy5ijzka
-- valory/market_manager_abci:0.1.0:bafybeicht6vkhuf5xp6hw4y26nvt5oeov33q4rx3ecihruw44ejvjm4c3e
-- valory/decision_maker_abci:0.1.0:bafybeibm3kqbupr3klfzbi4dtbdbu2i3lu7j2hxuj3k7bjflrvortw7yru
-- valory/trader_abci:0.1.0:bafybeicaydrxpopteuiwlbqjjn5jtwevzmnafvgcaauwaopj3knhoyli3u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifdezufpjmqghmciiqg5xuazxo3bybvf72n3zlxoi72yc7grm4zou
+- valory/market_manager_abci:0.1.0:bafybeihfbcusrjpkrnpcfhsotkzau4skm2d7rkwyumqlcsu5iffylcajbq
+- valory/decision_maker_abci:0.1.0:bafybeierber5ygw6kpdb7zofdrib4wrebzg2ajwl3hi5m63ny5cm4jypbm
+- valory/trader_abci:0.1.0:bafybeig6d3nvkncbsd25njlslmer67cfekgns7tgf4ormzyvp3ut7kikfm
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeieb356c3tazp2grnqj6a3luztpimbnwpylno4by2k6cup25t4xzji
-- valory/agent_performance_summary_abci:0.1.0:bafybeiffwo4zxd2scoaxucy23u7x4tg2ryskq3vfafvmpqcln2mbask4la
+- valory/chatui_abci:0.1.0:bafybeigz2hoe3uzvqewyybauwbwllcvawpit3yfrlhg6dmyi4irey7jvkq
+- valory/agent_performance_summary_abci:0.1.0:bafybeigzp2jzyynqtnjgxub3trkqav5naq4jjqrr7vsmyceqkc2rbv7u3i
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -209,7 +209,7 @@ models:
       mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
       mech_chain_id: ${str:gnosis}
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
-      mech_wrapped_native_token_address: ${str:0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270}
+      mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion_no_conf}
       use_fallback_strategy: ${bool:true}

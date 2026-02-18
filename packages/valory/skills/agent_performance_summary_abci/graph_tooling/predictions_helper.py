@@ -363,7 +363,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 else total_bet
             )
 
-            if status == BetStatus.WON.value:
+            if status in (BetStatus.WON.value, BetStatus.INVALID.value):
                 to_win = total_payout
             elif status == BetStatus.LOST.value:
                 to_win = 0
@@ -386,7 +386,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 "external_url": market_info.get("external_url", ""),
                 "currency": DEFAULT_CURRENCY,
                 "total_bet": round(total_bet, 3),
-                "to_win": round(to_win, 3),
+                "payout": round(to_win, 3),
                 "remaining_seconds": remaining_seconds,
                 "status": status,
                 "net_profit": round(net_profit, 3),
@@ -678,7 +678,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
             "total_payout": (
-                round(payout_amount, 3) if payout_amount is not None else None
+                round(payout_amount, 3) if payout_amount is not None else 0
             ),
             "created_at": self._format_timestamp(bet.get("timestamp")),
             "settled_at": (
@@ -747,7 +747,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         # Check for invalid market
         if current_answer == INVALID_ANSWER_HEX:
-            return BetStatus.LOST.value
+            return BetStatus.INVALID.value
 
         outcome_index = int(bet.get("outcomeIndex", 0))
         correct_answer = int(current_answer, 0)
