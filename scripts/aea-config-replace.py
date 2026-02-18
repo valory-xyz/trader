@@ -62,6 +62,7 @@ PATH_TO_VAR = {
     "models/params/args/use_x402": "USE_X402",
     "config/use_x402": "USE_X402",
     "models/params/args/is_agent_performance_summary_enabled": "IS_AGENT_PERFORMANCE_SUMMARY_ENABLED",
+    "models/params/args/is_achievement_checker_enabled": "IS_ACHIEVEMENT_CHECKER_ENABLED",
     "models/params/args/default_chain_id": "DEFAULT_CHAIN_ID",
     "models/params/args/mech_chain_id": "MECH_CHAIN_ID",
     "config/genai_x402_server_base_url": "GENAI_X402_SERVER_BASE_URL",

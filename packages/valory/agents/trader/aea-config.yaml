@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigbj76ap2bifi4he25odpy7aklhyanpr7c3ykl76ej2mqx6sp4lrq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia3mcxjjixucgjroliz3ouf5dnwjieohned4iyt5lm42o6bk5vsqm
 - valory/market_manager_abci:0.1.0:bafybeihbso4qnnrnfgnmhy7yfrm6pj3j4xrmetvahcu3qflana2dx4q7gm
-- valory/decision_maker_abci:0.1.0:bafybeiaqcueb2atlzhigtvduxlymj5a2mqdlop2zwqrqm3iidryeaygll4
-- valory/trader_abci:0.1.0:bafybeihsivjeitdttlo7t3mrnjdmumbpxxikxk6mqjrnkhn4dalsu7f5ee
+- valory/decision_maker_abci:0.1.0:bafybeiaaunysube37zposva6wbx2jaqoe4knw4nglsfoipf5ls5iay4dzi
+- valory/trader_abci:0.1.0:bafybeiczrb2juo2c4ylare2uio4iqdu4cpgbvzjxwqgdhinc6wdz6ldcge
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
 - valory/check_stop_trading_abci:0.1.0:bafybeiglf5zzxp67i6qyr775vgjacws4piniau43d6dr2pfwdbaau6r6wi
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
-- valory/chatui_abci:0.1.0:bafybeibm6f3nrdcgojekq2otkgp7gqt3qtucavaytdskgkqjiu5aaobiea
-- valory/agent_performance_summary_abci:0.1.0:bafybeiezp3bt2bfliq6nxxa6fjajal2cmz5vk6tsq47sfeiv5uuqwcgwja
+- valory/chatui_abci:0.1.0:bafybeih6gljnflkgnnkoneyfxm6v3sor5rydt4tqaysqhizbht5tlhwvpe
+- valory/agent_performance_summary_abci:0.1.0:bafybeig7zwkdimzcqxoftfweywccqxeyzjenxzd7a32c7endvpz62ondty
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -274,6 +274,7 @@ models:
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${bool:false}
       is_agent_performance_summary_enabled: ${bool:true}
+      is_achievement_checker_enabled: ${bool:true}
       is_running_on_polymarket: ${bool:false}
       polymarket_builder_program_enabled: ${bool:true}
       polymarket_usdc_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}

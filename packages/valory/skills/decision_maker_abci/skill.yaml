@@ -117,8 +117,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/mech_interact_abci:0.1.0:bafybeig6klxwz6pzl4tym5cxl25i5yvcxbdypyhszvoozgp5pkndi3yc24
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/agent_performance_summary_abci:0.1.0:bafybeiezp3bt2bfliq6nxxa6fjajal2cmz5vk6tsq47sfeiv5uuqwcgwja
-- valory/chatui_abci:0.1.0:bafybeibm6f3nrdcgojekq2otkgp7gqt3qtucavaytdskgkqjiu5aaobiea
+- valory/agent_performance_summary_abci:0.1.0:bafybeig7zwkdimzcqxoftfweywccqxeyzjenxzd7a32c7endvpz62ondty
+- valory/chatui_abci:0.1.0:bafybeih6gljnflkgnnkoneyfxm6v3sor5rydt4tqaysqhizbht5tlhwvpe
 behaviours:
   main:
     args: {}
@@ -302,6 +302,7 @@ models:
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       coingecko_pol_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd
       is_agent_performance_summary_enabled: true
+      is_achievement_checker_enabled: true
       store_path: data/
       polymarket_builder_program_enabled: true
       polymarket_usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'

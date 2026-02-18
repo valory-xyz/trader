@@ -1758,6 +1758,17 @@ class UpdateAchievementsBehaviour(
     def async_act(self) -> Generator:
         """Do the action."""
 
+        if not self.params.is_achievement_checker_enabled:
+            self.context.logger.info(
+                "Achievement checker is disabled. Skipping achievements update."
+            )
+            payload = UpdateAchievementsPayload(
+                sender=self.context.agent_address,
+                vote=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
+
         agent_performance_summary = (
             self.shared_state.read_existing_performance_summary()
         )
