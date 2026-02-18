@@ -23,6 +23,7 @@ import json
 import os.path
 import time
 from abc import ABC
+from copy import deepcopy
 from json import JSONDecodeError
 from typing import Any, Dict, Generator, List, Optional, Set, Type, cast
 
@@ -190,8 +191,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.context.logger.debug(f"Bet {bet.id} is expired")
                 continue
 
-            bet.reset_investments()
+            # Store previous investments before resetting
+            existing_investments = deepcopy(bet.investments)
 
+            bet.reset_investments()
             for outcome, value in balances[bet.id].items():
                 outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
                 outcome_int = 0 if outcome_is_no else 1
@@ -200,6 +203,20 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.context.logger.debug(
                     f"Bet {bet.id} investments: {bet.investments=}"
                 )
+
+            self._replace_with_existing_investments_if_empty(bet, existing_investments)
+
+    def _replace_with_existing_investments_if_empty(
+        self, bet: Bet, existing_investments: Dict
+    ) -> None:
+        """Replace bet investments with existing ones if the new investments are empty."""
+        # This is to ensure that in case of subgraph or API failure,
+        # agent doesn't lose existing investment data and end up placing duplicate bets.
+        if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
+            self.context.logger.warning(
+                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+            )
+            bet.investments = existing_investments
 
     def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:
         """Get the active bets."""
