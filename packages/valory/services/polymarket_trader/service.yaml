@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigqm2nf2bj4xnpzaeeh7yxioovm5xhuz3pyvyuaazagertwqtyvaq
+agent: valory/trader:0.1.0:bafybeicpgeegzc4p4sndhjaqtkqbqhmbaccumzimircxutrya3unxrrmle
 number_of_agents: 1
 deployment:
   agent:
@@ -387,3 +387,4 @@ config:
   safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
   remote_builder_url: ${REMOTE_BUILDER_URL:str:http://localhost:5001/sign}
   polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+  polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon-rpc.com}

@@ -59,7 +59,6 @@ CHAIN_ID = 137  # Polygon
 MAX_UINT256 = (
     115792089237316195423570985008687907853269984665640564039457584007913129639935
 )
-POLYGON_RPC_URL = "https://polygon-rpc.com"
 POLYMARKET_CATEGORY_TAGS = [
     "business",
     "politics",
@@ -193,7 +192,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         )
 
         # Initialize Web3 for approval checking
-        self.w3 = Web3(Web3.HTTPProvider(POLYGON_RPC_URL))
+        rpc_url = self.configuration.config.get("polygon_ledger_rpc")
+        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
     # TODO:

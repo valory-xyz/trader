@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeifkphpe4buqtswaz6udhwd6euaqrsbhaannhyrmoiyit75s7ncih4
+  connection.py: bafybeiftfxklaaot7xzzfucu6qpcix5moteldx5kenzobdftibyoc6xmju
   request_types.py: bafybeifgkpwhllc7lihwssbah5ilvghqshzlqnaiaapsvdd5cnptyteerq
 fingerprint_ignore_patterns: []
 connections: []
@@ -27,6 +27,7 @@ config:
   ctf_exchange: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E'
   neg_risk_ctf_exchange: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
   neg_risk_adapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
+  polygon_ledger_rpc: https://polygon-rpc.com
 excluded_protocols: []
 restricted_to_protocols: []
 dependencies:
