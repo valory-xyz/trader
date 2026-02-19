@@ -70,6 +70,7 @@ from packages.valory.skills.mech_interact_abci.handlers import (
 from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.models import TraderParams
+from packages.valory.skills.trader_abci.rpc_manager import RPCManager
 
 
 TraderHandler = ABCIRoundHandler
@@ -128,6 +129,7 @@ class HttpHandler(BaseHttpHandler):
         super().__init__(**kwargs)
         self.handler_url_regex: str = ""
         self.routes: Dict[tuple, list] = {}
+        self._rpc_manager: Optional[RPCManager] = None
 
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         atexit.register(self._executor_shutdown)
@@ -647,40 +649,39 @@ class HttpHandler(BaseHttpHandler):
 
         return None
 
+    def _get_rpc_manager(self) -> RPCManager:
+        """Get (or lazily create) the RPCManager, registering known chains."""
+        if self._rpc_manager is None:
+            self._rpc_manager = RPCManager()
+            if self.params.gnosis_ledger_rpc:
+                self._rpc_manager.register_chain(
+                    GNOSIS_CHAIN_NAME,
+                    self.params.gnosis_ledger_rpc,
+                    chain_id=GNOSIS_CHAIN_ID,
+                )
+            if self.params.polygon_ledger_rpc:
+                self._rpc_manager.register_chain(
+                    POLYGON_CHAIN_NAME,
+                    self.params.polygon_ledger_rpc,
+                    chain_id=POLYGON_CHAIN_ID,
+                )
+        return self._rpc_manager
+
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
-        """Get Web3 instance for the specified chain."""
-        try:
-            # Select RPC URL based on chain
-            if chain == POLYGON_CHAIN_NAME:
-                rpc_url = self.params.polygon_ledger_rpc
-            elif chain == GNOSIS_CHAIN_NAME:
-                rpc_url = self.params.gnosis_ledger_rpc
-            else:
-                self.context.logger.error(f"Unknown chain: {chain}")
-                return None
-
-            if not rpc_url:
-                self.context.logger.warning(f"No RPC URL for {chain}")
-                return None
-
-            # Commented for future debugging purposes:
-            # Note that you should create only one HTTPProvider with the same provider URL per python process,
-            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
-            # Multiple HTTPProviders with different URLs will work as expected.
-            return Web3(Web3.HTTPProvider(rpc_url))
-        except Exception as e:
-            self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
+        """Get cached Web3 instance for the specified chain."""
+        if chain not in (GNOSIS_CHAIN_NAME, POLYGON_CHAIN_NAME):
+            self.context.logger.error(f"Unknown chain: {chain}")
             return None
+        w3 = self._get_rpc_manager().get_web3(chain)
+        if w3 is None:
+            self.context.logger.warning(f"No RPC URL configured for {chain}")
+        return w3
 
     def _check_usdc_balance(
         self, eoa_address: str, chain: str, usdc_address: str
     ) -> Optional[float]:
         """Check USDC balance using Web3 library."""
         try:
-            w3 = self._get_web3_instance(chain)
-            if not w3:
-                return None
-
             # ERC20 ABI for balanceOf
             erc20_abi = [
                 {
@@ -692,13 +693,17 @@ class HttpHandler(BaseHttpHandler):
                 }
             ]
 
-            usdc_contract = w3.eth.contract(
-                address=Web3.to_checksum_address(usdc_address), abi=erc20_abi
+            def _op(w3: Web3) -> int:
+                usdc_contract = w3.eth.contract(
+                    address=Web3.to_checksum_address(usdc_address), abi=erc20_abi
+                )
+                return usdc_contract.functions.balanceOf(
+                    Web3.to_checksum_address(eoa_address)
+                ).call()
+
+            return self._get_rpc_manager().execute_with_rotation(
+                chain, _op, "check_usdc_balance"
             )
-            balance = usdc_contract.functions.balanceOf(
-                Web3.to_checksum_address(eoa_address)
-            ).call()
-            return balance
         except Exception as e:
             self.context.logger.error(f"Error checking USDC balance: {str(e)}")
             return None
@@ -780,15 +785,15 @@ class HttpHandler(BaseHttpHandler):
     ) -> Optional[str]:
         """Sign and submit transaction using Web3."""
         try:
-            w3 = self._get_web3_instance(chain)
-            if not w3:
-                return None
-
             signed_tx = eoa_account.sign_transaction(tx_data)
 
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            return tx_hash.to_0x_hex()
+            def _op(w3: Web3) -> str:
+                tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                return tx_hash.to_0x_hex()
 
+            return self._get_rpc_manager().execute_with_rotation(
+                chain, _op, "send_raw_transaction", is_write=True
+            )
         except Exception as e:
             self.context.logger.error(f"Error submitting transaction: {str(e)}")
             return None
@@ -798,25 +803,24 @@ class HttpHandler(BaseHttpHandler):
     ) -> bool:
         """Check if transaction was successful by waiting for receipt."""
         try:
-            w3 = self._get_web3_instance(chain)
-            if not w3:
-                return False
-
             self.context.logger.info(
                 f"Waiting for transaction {tx_hash} to be mined..."
             )
 
-            # Wait for transaction receipt with timeout
-            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
-
-            if receipt.status == 1:
-                self.context.logger.info(f"Transaction {tx_hash} successful")
-                return True
-            else:
+            def _op(w3: Web3) -> bool:
+                receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
+                if receipt.status == 1:
+                    self.context.logger.info(f"Transaction {tx_hash} successful")
+                    return True
                 self.context.logger.error(
                     f"Transaction {tx_hash} failed (status: {receipt.status})"
                 )
                 return False
+
+            result = self._get_rpc_manager().execute_with_rotation(
+                chain, _op, "check_transaction_status"
+            )
+            return result if result is not None else False
 
         except Exception as e:
             self.context.logger.error(f"Error checking transaction status: {str(e)}")
@@ -827,14 +831,16 @@ class HttpHandler(BaseHttpHandler):
     ) -> Tuple[Optional[int], Optional[int]]:
         """Get nonce and gas price using Web3."""
         try:
-            w3 = self._get_web3_instance(chain)
-            if not w3:
-                return None, None
 
-            nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(address))
-            gas_price = w3.eth.gas_price
+            def _op(w3: Web3) -> Tuple[int, int]:
+                nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(address))
+                gas_price = w3.eth.gas_price
+                return nonce, gas_price
 
-            return nonce, gas_price
+            result = self._get_rpc_manager().execute_with_rotation(
+                chain, _op, "get_nonce_and_gas"
+            )
+            return result if result is not None else (None, None)
 
         except Exception as e:
             self.context.logger.error(f"Error getting nonce/gas: {str(e)}")
@@ -848,34 +854,30 @@ class HttpHandler(BaseHttpHandler):
     ) -> Optional[int]:
         """Estimate gas for a transaction"""
         try:
-            w3 = self._get_web3_instance(chain)
-            if not w3:
-                self.context.logger.error(
-                    "Failed to get Web3 instance for gas estimation"
-                )
-                return False
-
             tx_value = (
                 int(tx_request["value"], 16)
                 if isinstance(tx_request["value"], str)
                 else tx_request["value"]
             )
 
-            # Prepare transaction data for gas estimation
             tx_data_for_estimation = {
                 "to": Web3.to_checksum_address(tx_request["to"]),
                 "data": tx_request["data"],
                 "value": tx_value,
                 "from": Web3.to_checksum_address(eoa_address),
             }
-            # Try to estimate gas using Web3
-            estimated_gas = w3.eth.estimate_gas(tx_data_for_estimation)
-            # Add 20% buffer to estimated gas
-            tx_gas = int(estimated_gas * 1.2)
-            self.context.logger.info(
-                f"Estimated gas: {estimated_gas}, with 20% buffer: {tx_gas}"
+
+            def _op(w3: Web3) -> int:
+                estimated_gas = w3.eth.estimate_gas(tx_data_for_estimation)
+                tx_gas = int(estimated_gas * 1.2)
+                self.context.logger.info(
+                    f"Estimated gas: {estimated_gas}, with 20% buffer: {tx_gas}"
+                )
+                return tx_gas
+
+            return self._get_rpc_manager().execute_with_rotation(
+                chain, _op, "estimate_gas"
             )
-            return tx_gas
 
         except Exception as e:
             self.context.logger.error(f"Error in gas estimation: {str(e)}")
