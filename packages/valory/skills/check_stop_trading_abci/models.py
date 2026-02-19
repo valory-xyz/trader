@@ -50,19 +50,7 @@ class CheckStopTradingParams(StakingParams):
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Initialize the parameters object with trading configuration.
-
-        :param args: Positional arguments passed to parent class.
-        :param kwargs: Keyword arguments including:
-            - mech_contract_address: Address of the mech contract
-            - use_mech_marketplace: Flag to enable/disable mech marketplace
-            - mech_marketplace_config: Configuration for mech marketplace (required if use_mech_marketplace is True)
-            - disable_trading: Flag to disable trading
-            - stop_trading_if_staking_kpi_met: Flag to stop trading when staking KPI is met
-            - enable_position_review: Flag to enable position review
-            - review_period_seconds: Time interval in seconds between reviews
-        """
+        """Initialize the parameters object with trading configuration."""
         # Validate required parameters
         self._validate_required_params(kwargs)
 
@@ -86,11 +74,7 @@ class CheckStopTradingParams(StakingParams):
         super().__init__(*args, **kwargs)
 
     def _validate_required_params(self, kwargs: Dict[str, Any]) -> None:
-        """
-        Validate that required parameters are present.
-
-        :param kwargs: Parameters dictionary to validate
-        """
+        """Validate that required parameters are present."""
         mech_address = kwargs.get("mech_contract_address")
         use_mech_flag = kwargs.get("use_mech_marketplace")
 
@@ -104,11 +88,7 @@ class CheckStopTradingParams(StakingParams):
         )
 
     def _configure_marketplace(self, kwargs: Dict[str, Any]) -> None:
-        """
-        Configure marketplace settings when marketplace is enabled.
-
-        :param kwargs: Parameters dictionary containing marketplace configuration
-        """
+        """Configure marketplace settings when marketplace is enabled."""
         marketplace_config = kwargs.get("mech_marketplace_config", {})
         enforce(marketplace_config is not None, "Market place config cannot be empty")
 

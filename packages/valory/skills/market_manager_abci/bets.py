@@ -160,6 +160,9 @@ class Bet:
     queue_status: QueueStatus = QueueStatus.FRESH
     # a mapping from vote to investment amounts
     investments: Dict[str, List[int]] = dataclasses.field(default_factory=dict)
+    outcome_token_ids: Optional[Dict[str, str]] = None
+    condition_id: Optional[str] = None
+    category: Optional[str] = None
     strategy: Optional[str] = None
 
     def __post_init__(self) -> None:
@@ -356,7 +359,7 @@ class Bet:
             self.processed_timestamp == sys.maxsize
             or bet.processed_timestamp == sys.maxsize
         ):
-            # do not update the bet if it has been blacklisted forever
+            self.blacklist_forever()  # copy over the changes from new bet object to the local store
             return
 
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()

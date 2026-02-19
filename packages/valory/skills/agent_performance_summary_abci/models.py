@@ -74,6 +74,8 @@ class PerformanceMetricsData:
     settled_mech_request_count: Optional[int] = None
     total_mech_request_count: Optional[int] = None
     open_mech_request_count: Optional[int] = None
+    placed_mech_request_count: Optional[int] = None
+    unplaced_mech_request_count: Optional[int] = None
 
 
 @dataclass
@@ -154,6 +156,38 @@ class ProfitOverTimeData:
 
 
 @dataclass
+class Achievement:
+    """Achievement."""
+
+    achievement_id: str
+    achievement_type: str
+    title: str
+    description: str
+    timestamp: int
+    data: Dict
+
+
+@dataclass
+class Achievements:
+    """Achievements dictionary."""
+
+    items: Dict[str, Achievement] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Convert dicts to dataclass instances."""
+        if not self.items:
+            return
+
+        first_value = next(iter(self.items.values()), None)
+        if isinstance(first_value, dict):
+            self.items = {
+                key: Achievement(**value)
+                for key, value in self.items.items()
+                if isinstance(value, dict)
+            }
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -169,6 +203,7 @@ class AgentPerformanceSummary:
     agent_performance: Optional[AgentPerformanceData] = None
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
+    achievements: Optional[Achievements] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -185,6 +220,9 @@ class AgentPerformanceSummary:
         if isinstance(self.profit_over_time, dict):
             self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
 
+        if isinstance(self.achievements, dict):
+            self.achievements = Achievements(**self.achievements)
+
 
 class AgentPerformanceSummaryParams(BaseParams):
     """Agent Performance Summary's parameters."""
@@ -194,10 +232,27 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.coingecko_olas_in_usd_price_url: str = self._ensure(
             "coingecko_olas_in_usd_price_url", kwargs, str
         )
+        self.coingecko_pol_in_usd_price_url: str = self._ensure(
+            "coingecko_pol_in_usd_price_url", kwargs, str
+        )
         self.store_path: Path = self.get_store_path(kwargs)
         self.is_agent_performance_summary_enabled: bool = self._ensure(
             "is_agent_performance_summary_enabled", kwargs, bool
         )
+        self.is_achievement_checker_enabled: bool = self._ensure(
+            "is_achievement_checker_enabled", kwargs, bool
+        )
+        # Handle is_running_on_polymarket which may be shared with MarketManagerParams
+        # If already set by a parent class (MarketManagerParams), use that value
+        # Otherwise, pop it from kwargs ourselves
+        if hasattr(self, "is_running_on_polymarket"):
+            # Already set by MarketManagerParams in the inheritance chain
+            pass
+        else:
+            # Standalone usage or not yet set - pop it from kwargs
+            self.is_running_on_polymarket: bool = self._ensure(
+                "is_running_on_polymarket", kwargs, bool
+            )
         super().__init__(*args, **kwargs)
 
     def get_store_path(self, kwargs: Dict) -> Path:
@@ -293,9 +348,25 @@ class GnosisStakingSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Gnosis Staking's subgraph specifications."""
 
 
+class PolygonStakingSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polygon Staking's subgraph specifications."""
+
+
 class OpenMarketsSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Open Markets subgraph specifications."""
 
 
 class TradesSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the OMEN's subgraph specifications for trades."""
+
+
+class PolymarketAgentsSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polymarket Agent's subgraph specifications."""
+
+
+class PolymarketBetsSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polymarket bets subgraph specifications."""
+
+
+class PolygonMechSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polygon Mech's subgraph specifications."""

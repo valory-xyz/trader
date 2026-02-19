@@ -19,15 +19,26 @@
 
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
 
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
+)
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
+    BetPayoutChecker,
+)
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
+    PredictionsFetcher as BasePredictionsFetcher,
+)
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
+    PolymarketPredictionsFetcher,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
@@ -36,6 +47,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    Achievements,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
@@ -49,10 +61,12 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
+    UpdateAchievementsPayload,
 )
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     FetchPerformanceDataRound,
+    UpdateAchievementsRound,
 )
 
 
@@ -60,6 +74,18 @@ DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
+USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e on Polygon
+USDC_DECIMALS_DIVISOR = 10**6  # USDC.e has 6 decimals
+POLYGON_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000001010"  # POL on Polygon  # nosec B105
+)
+POLYGON_CHAIN_ID = 137  # Polygon chain ID
+LIFI_QUOTE_URL = "https://li.quest/v1/quote"  # LiFi API endpoint
+
+# Rate limiting for LiFi API: 200 requests per 2 hours
+LIFI_RATE_LIMIT_SECONDS = 7200  # 2 hours
+# Use 1 POL as the base amount for rate calculation
+RATE_CALC_BASE_AMOUNT = 10**18  # 1 POL in wei
 
 INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
@@ -71,6 +97,15 @@ SECONDS_PER_DAY = 86400
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
+POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.7
+POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = """My Polystrat agent just made {roi}\u00d7 ROI on Polymarket! \U0001f680
+
+Check it out\U0001f447
+{{achievement_url}}"""
+
+
+MIN_TRADES_FOR_ROI_DISPLAY = 10
+MORE_TRADES_NEEDED_TEXT = "More trades needed"
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -96,6 +131,10 @@ class FetchPerformanceSummaryBehaviour(
         self._unplaced_mech_requests_count: int = 0
         self._placed_titles: Set[str] = set()
 
+        # Cache for POL to USDC conversion rate
+        self._pol_usdc_rate: Optional[float] = None  # Rate: 1 POL = X USDC
+        self._pol_usdc_rate_timestamp: float = 0.0
+
     def _should_update(self) -> bool:
         """Check if we should update."""
         existing_summary = self.shared_state.read_existing_performance_summary()
@@ -115,10 +154,9 @@ class FetchPerformanceSummaryBehaviour(
         return time_since_last >= self._update_interval
 
     def _post_tx_round_detected(self) -> bool:
-        """
-        Detect whether post_tx_settlement_round occurred since last update.
+        """Detect whether post_tx_settlement_round occurred since last update.
 
-        post_tx_settlement_round is reached after every settled transaction.
+        :return: True if post_tx_settlement_round was detected in recent history
         """
         try:
             abci_app = self.context.state.round_sequence.abci_app  # type: ignore
@@ -133,6 +171,50 @@ class FetchPerformanceSummaryBehaviour(
                 f"post-tx detection via round history skipped: {e}"
             )
             return False
+
+    def _fetch_polymarket_open_position_titles(
+        self,
+    ) -> Generator[None, None, Set[str]]:
+        """Fetch open position titles from Polymarket.
+
+        Returns a set of position titles (market questions) for positions
+        that are currently open (not redeemed). These are used to identify
+        which mech requests should be counted as 'open' (not settled).
+
+        :return: Set of position titles
+        :yield: None
+        """
+        try:
+            # Prepare payload - FETCH_ALL_POSITIONS with no redeemable filter
+            payload = {
+                "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                "params": {},  # No redeemable param = returns all positions
+            }
+
+            positions = yield from self.send_polymarket_connection_request(payload)
+
+            if not positions or not isinstance(positions, list):
+                self.context.logger.warning(
+                    f"No positions returned from Polymarket connection: {positions}"
+                )
+                return set()
+
+            # Extract titles from positions
+            titles = {
+                p.get("title", "")
+                for p in positions
+                if isinstance(p, dict) and p.get("title", "")
+            }
+
+            self.context.logger.info(
+                f"Fetched {len(positions)} positions from Polymarket, "
+                f"extracted {len(titles)} unique titles"
+            )
+            return titles
+
+        except Exception as e:
+            self.context.logger.error(f"Error fetching Polymarket positions: {e}")
+            return set()
 
     @property
     def shared_state(self) -> SharedState:
@@ -163,11 +245,11 @@ class FetchPerformanceSummaryBehaviour(
     def _get_total_mech_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, int]:
-        """
-        Get total number of mech requests (cached).
+        """Get total number of mech requests (cached).
 
         :param agent_safe_address: The agent's safe address
         :return: Total number of mech requests
+        :yield: None
         """
         if self._total_mech_requests is not None:
             return self._total_mech_requests
@@ -188,11 +270,11 @@ class FetchPerformanceSummaryBehaviour(
     def _get_open_market_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, int]:
-        """
-        Get number of mech requests for open markets (cached).
+        """Get number of mech requests for open markets (cached).
 
         :param agent_safe_address: The agent's safe address
         :return: Number of open market requests
+        :yield: None
         """
         if self._open_market_requests is not None:
             return self._open_market_requests
@@ -209,19 +291,26 @@ class FetchPerformanceSummaryBehaviour(
 
         last_four_days_requests = mech_sender.get("requests", [])
 
-        # Get open markets to count pending mech requests
-        open_markets = yield from self._fetch_open_markets(
-            timestamp_gt=self.market_open_timestamp,
-        )
+        # Platform-specific: get open markets
+        if self.params.is_running_on_polymarket:
+            # For Polymarket: get open positions from connection
+            open_market_titles = (
+                yield from self._fetch_polymarket_open_position_titles()
+            )
+        else:
+            # For Omen: get open markets from subgraph
+            open_markets = yield from self._fetch_open_markets(
+                timestamp_gt=self.market_open_timestamp,
+            )
 
-        if not open_markets:
-            self._open_market_requests = 0
-            return 0
+            if not open_markets:
+                self._open_market_requests = 0
+                return 0
 
-        # Get titles of open markets
-        open_market_titles = {
-            q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
-        }
+            # Get titles of open markets
+            open_market_titles = {
+                q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
+            }
 
         # Count requests for still-open markets
         open_market_requests = sum(
@@ -237,29 +326,27 @@ class FetchPerformanceSummaryBehaviour(
     def _calculate_settled_mech_requests(
         self, agent_safe_address: str
     ) -> Generator[None, None, int]:
-        """
-        Calculate the number of settled mech requests.
-
-        Excludes mech requests for markets that are still open.
+        """Calculate the number of settled mech requests (excludes open markets).
 
         :param agent_safe_address: The agent's safe address
         :return: Number of settled mech requests
+        :yield: None
         """
         # Get total mech requests (uses cache if available)
-        self._total_mech_requests = yield from self._get_total_mech_requests(
+        total_mech_requests = yield from self._get_total_mech_requests(
             agent_safe_address
         )
 
-        if not self._total_mech_requests:
+        if not total_mech_requests:
             return 0
 
         # Get open market requests (uses cache if available)
-        self._open_market_requests = yield from self._get_open_market_requests(
+        open_market_requests = yield from self._get_open_market_requests(
             agent_safe_address
         )
 
         # where settled = Total - Open
-        return self._total_mech_requests - self._open_market_requests
+        return total_mech_requests - open_market_requests
 
     def calculate_roi(
         self,
@@ -274,7 +361,6 @@ class FetchPerformanceSummaryBehaviour(
             trader_agent is None
             or trader_agent.get("serviceId") is None
             or trader_agent.get("totalTraded") is None
-            or trader_agent.get("totalFees") is None
             or trader_agent.get("totalPayout") is None
         ):
             self.context.logger.warning(
@@ -298,27 +384,107 @@ class FetchPerformanceSummaryBehaviour(
 
         settled_mech_requests = self._settled_mech_requests_count
 
-        total_traded_settled = int(trader_agent.get("totalTradedSettled", 0))
-        total_fees_settled = int(trader_agent.get("totalFeesSettled", 0))
+        # Use appropriate divisor based on platform
+        # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
+        token_divisor = (
+            USDC_DECIMALS_DIVISOR
+            if self.params.is_running_on_polymarket
+            else WEI_IN_ETH
+        )
 
-        settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
-        total_costs = total_traded_settled + total_fees_settled + settled_mech_costs
+        self.context.logger.info(
+            f"[ROI Calculation] Platform: {'Polymarket' if self.params.is_running_on_polymarket else 'Gnosis'}, "
+            f"token_divisor: {token_divisor}"
+        )
 
-        if total_costs == 0:
+        # Get raw values from subgraph (in smallest units)
+        total_traded_settled_raw = int(trader_agent.get("totalTradedSettled", 0))
+        total_fees_settled_raw = int(trader_agent.get("totalFeesSettled", 0))
+        total_market_payout_raw = int(trader_agent.get("totalPayout", 0))
+
+        self.context.logger.info(
+            f"[ROI Calculation] Raw values from subgraph: "
+            f"totalTradedSettled={total_traded_settled_raw}, "
+            f"totalFeesSettled={total_fees_settled_raw}, "
+            f"totalPayout={total_market_payout_raw}"
+        )
+
+        # Convert market values to USD
+        total_traded_settled_usd = total_traded_settled_raw / token_divisor
+        total_fees_settled_usd = total_fees_settled_raw / token_divisor
+        total_market_payout_usd = total_market_payout_raw / token_divisor
+
+        self.context.logger.info(
+            f"[ROI Calculation] Converted to USD: "
+            f"total_traded_settled_usd={total_traded_settled_usd:.6f}, "
+            f"total_fees_settled_usd={total_fees_settled_usd:.6f}, "
+            f"total_market_payout_usd={total_market_payout_usd:.6f}"
+        )
+
+        # Convert mech costs from wei to native token, then treat as USD
+        # (For Gnosis: xDAI ≈ USD, for Polygon: POL ≈ USD approximation)
+        settled_mech_costs_raw = settled_mech_requests * DEFAULT_MECH_FEE
+        settled_mech_costs_usd = settled_mech_costs_raw / WEI_IN_ETH
+
+        self.context.logger.info(
+            f"[ROI Calculation] Mech costs: "
+            f"settled_mech_requests={settled_mech_requests}, "
+            f"settled_mech_costs_raw={settled_mech_costs_raw}, "
+            f"settled_mech_costs_usd={settled_mech_costs_usd:.6f}"
+        )
+
+        # Calculate total costs in USD
+        total_costs_usd = (
+            total_traded_settled_usd + total_fees_settled_usd + settled_mech_costs_usd
+        )
+
+        self.context.logger.info(
+            f"[ROI Calculation] Total costs USD: {total_costs_usd:.6f}"
+        )
+
+        if total_costs_usd == 0:
+            self.context.logger.warning(
+                "[ROI Calculation] Total costs is zero, returning None"
+            )
             return None, None
 
-        total_market_payout = int(trader_agent.get("totalPayout", 0))
-        total_olas_rewards_payout_in_usd = (
-            int(staking_service.get("olasRewardsEarned", 0)) * olas_in_usd_price
-        ) / WEI_IN_ETH
+        # Convert OLAS rewards to USD
+        olas_rewards_earned_raw = int(staking_service.get("olasRewardsEarned", 0))
+        self.context.logger.info(
+            f"[ROI Calculation] OLAS rewards: "
+            f"olasRewardsEarned (raw)={olas_rewards_earned_raw}, "
+            f"olas_in_usd_price={olas_in_usd_price}"
+        )
 
+        # olas_in_usd_price is already scaled to 18 decimals (wei), so we need to divide by WEI_IN_ETH twice
+        # once to convert olasRewardsEarned from wei to OLAS, and once to convert the price from wei to USD
+        total_olas_rewards_payout_in_usd = (
+            olas_rewards_earned_raw * olas_in_usd_price
+        ) / (WEI_IN_ETH * WEI_IN_ETH)
+
+        self.context.logger.info(
+            f"[ROI Calculation] OLAS rewards in USD: {total_olas_rewards_payout_in_usd:.6f}"
+        )
+
+        # Calculate ROI percentages
         partial_roi = (
-            (total_market_payout - total_costs) * PERCENTAGE_FACTOR
-        ) / total_costs
+            (total_market_payout_usd - total_costs_usd) * PERCENTAGE_FACTOR
+        ) / total_costs_usd
         final_roi = (
-            (total_market_payout + total_olas_rewards_payout_in_usd - total_costs)
+            (
+                total_market_payout_usd
+                + total_olas_rewards_payout_in_usd
+                - total_costs_usd
+            )
             * PERCENTAGE_FACTOR
-        ) / total_costs
+        ) / total_costs_usd
+
+        self.context.logger.info(
+            f"[ROI Calculation] ROI results: "
+            f"partial_roi={partial_roi:.2f}%, "
+            f"final_roi={final_roi:.2f}%"
+        )
+
         self._final_roi = final_roi
         self._partial_roi = partial_roi
 
@@ -340,17 +506,27 @@ class FetchPerformanceSummaryBehaviour(
         if len(agent_bets_data.get("bets", [])) == 0:
             return None
 
-        bets_on_closed_markets = [
+        # Platform-specific accuracy calculation
+        if self.params.is_running_on_polymarket:
+            return self._calculate_polymarket_accuracy(agent_bets_data)
+        else:
+            return self._calculate_omen_accuracy(agent_bets_data)
+
+    def _calculate_omen_accuracy(self, agent_bets_data: dict) -> Optional[float]:
+        """Calculate prediction accuracy for Omen markets."""
+        bets = agent_bets_data.get("bets", [])
+        bets_on_resolved_markets = [
             bet
-            for bet in agent_bets_data["bets"]
+            for bet in bets
             if bet.get("fixedProductMarketMaker", {}).get("currentAnswer") is not None
         ]
-        total_bets = len(bets_on_closed_markets)
+        total_bets = len(bets_on_resolved_markets)
         won_bets = 0
 
         if total_bets == 0:
             return None
-        for bet in bets_on_closed_markets:
+
+        for bet in bets_on_resolved_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
             if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
@@ -359,7 +535,44 @@ class FetchPerformanceSummaryBehaviour(
                 won_bets += 1
 
         win_rate = (won_bets / total_bets) * PERCENTAGE_FACTOR
+        return win_rate
 
+    def _calculate_polymarket_accuracy(self, agent_bets_data: dict) -> Optional[float]:
+        """Calculate prediction accuracy for Polymarket markets."""
+        bets = agent_bets_data.get("bets", [])
+        # Filter for resolved markets only
+        bets_on_resolved_markets = [
+            bet for bet in bets if bet.get("question", {}).get("resolution") is not None
+        ]
+
+        if len(bets_on_resolved_markets) == 0:
+            return None
+
+        won_bets = 0
+        total_bets = 0
+
+        for bet in bets_on_resolved_markets:
+            resolution = bet.get("question", {}).get("resolution", {})
+            winning_index = resolution.get("winningIndex")
+            outcome_index = bet.get("outcomeIndex")
+
+            # Skip if either index is None
+            if winning_index is None or outcome_index is None:
+                continue
+            # Skip invalid markets (winningIndex < 0)
+            if int(winning_index) < 0:
+                continue
+
+            total_bets += 1
+
+            # Compare outcomeIndex with winningIndex
+            if int(outcome_index) == int(winning_index):
+                won_bets += 1
+
+        if total_bets == 0:
+            return None
+
+        win_rate = (won_bets / total_bets) * PERCENTAGE_FACTOR
         return win_rate
 
     def _format_timestamp(self, timestamp: Optional[str]) -> Optional[str]:
@@ -387,7 +600,12 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning(
                 f"Could not fetch agent details for {safe_address}"
             )
-            return None
+            # Return empty structure instead of None
+            return AgentDetails(
+                id=None,
+                created_at=None,
+                last_active_at=None,
+            )
 
         return AgentDetails(
             id=agent_details_raw.get("id", safe_address),
@@ -409,7 +627,11 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning(
                 "Could not fetch trader agent for performance data"
             )
-            return None
+            # Return empty structure instead of None
+            return AgentPerformanceData(
+                metrics=PerformanceMetricsData(),
+                stats=PerformanceStatsData(),
+            )
 
         # Calculate metrics
         metrics = yield from self._calculate_performance_metrics(trader_agent)
@@ -426,6 +648,7 @@ class FetchPerformanceSummaryBehaviour(
         self, trader_agent: dict
     ) -> Generator[None, None, PerformanceMetricsData]:
         """Calculate performance metrics from trader agent data."""
+        safe_address = self.synchronized_data.safe_contract_address.lower()
 
         total_traded = int(trader_agent.get("totalTraded", 0))
         total_fees = int(trader_agent.get("totalFees", 0))
@@ -436,7 +659,7 @@ class FetchPerformanceSummaryBehaviour(
         settled_mech_requests = self._settled_mech_requests_count
 
         # Get mech request counts (uses caches populated earlier)
-        total_mech_requests = self._total_mech_requests or 0
+        total_mech_requests = yield from self._get_total_mech_requests(safe_address)
         open_mech_requests = self._open_market_requests or 0
         placed_mech_requests = sum(
             (self._mech_request_lookup or {}).get(title, 0)
@@ -446,26 +669,31 @@ class FetchPerformanceSummaryBehaviour(
             (total_mech_requests or 0) - open_mech_requests - placed_mech_requests,
             0,
         )
-        self._placed_mech_requests_count = placed_mech_requests
-        self._unplaced_mech_requests_count = unplaced_mech_requests
 
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
 
+        # Use appropriate divisor based on platform
+        # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
+        token_divisor = (
+            USDC_DECIMALS_DIVISOR
+            if self.params.is_running_on_polymarket
+            else WEI_IN_ETH
+        )
+
         # All-time funds used: traded + fees + ALL mech costs
-        all_time_funds_used = (total_traded + total_fees + all_mech_costs) / WEI_IN_ETH
+        all_time_funds_used = (total_traded + total_fees) / token_divisor + (
+            all_mech_costs / WEI_IN_ETH
+        )
 
         # All-time profit: uses settled traded/fees and settled mech costs
         # Settled mech requests include both placed and unplaced mech calls (excluding open markets).
         settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
         all_time_profit = (
-            total_payout
-            - total_traded_settled
-            - total_fees_settled
-            - settled_mech_costs
-        ) / WEI_IN_ETH
+            total_payout - total_traded_settled - total_fees_settled
+        ) / token_divisor - (settled_mech_costs / WEI_IN_ETH)
 
         # Calculate locked funds
-        funds_locked_in_markets = (total_traded - total_traded_settled) / WEI_IN_ETH
+        funds_locked_in_markets = (total_traded - total_traded_settled) / token_divisor
 
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
@@ -489,14 +717,150 @@ class FetchPerformanceSummaryBehaviour(
             settled_mech_request_count=self._settled_mech_requests_count,
             total_mech_request_count=total_mech_requests,
             open_mech_request_count=open_mech_requests,
+            placed_mech_request_count=placed_mech_requests,
+            unplaced_mech_request_count=unplaced_mech_requests,
         )
 
+    def _get_pol_to_usdc_rate(
+        self,
+    ) -> Generator[None, None, Optional[float]]:
+        """
+        Get the POL to USDC conversion rate (1 POL = X USDC), with caching.
+
+        Only fetches from LiFi API if cache is stale (older than 2 hours).
+
+        :return: Conversion rate (1 POL = X USDC), or None if failed
+        :yield: None
+        """
+
+        current_time = self.shared_state.synced_timestamp
+
+        # Check if cached rate is still valid
+        if (
+            self._pol_usdc_rate is not None
+            and (current_time - self._pol_usdc_rate_timestamp) < LIFI_RATE_LIMIT_SECONDS
+        ):
+            self.context.logger.info(
+                f"Using cached POL→USDC rate: 1 POL = {self._pol_usdc_rate} USDC "
+                f"(cached {int(current_time - self._pol_usdc_rate_timestamp)}s ago)"
+            )
+            return self._pol_usdc_rate
+
+        # Cache is stale or doesn't exist, fetch new rate
+        try:
+            safe_address = self.synchronized_data.safe_contract_address
+
+            # Get quote for 1 POL to USDC to determine the rate
+            self.context.logger.info(
+                "Fetching fresh POL→USDC rate from LiFi API (cache expired or missing)"
+            )
+
+            # Build LiFi quote request URL for 1 POL
+            params = {
+                "fromChain": str(POLYGON_CHAIN_ID),
+                "toChain": str(POLYGON_CHAIN_ID),
+                "fromToken": POLYGON_NATIVE_TOKEN_ADDRESS,
+                "toToken": USDC_E_ADDRESS,
+                "fromAmount": str(RATE_CALC_BASE_AMOUNT),  # 1 POL in wei
+                "fromAddress": safe_address,
+                "toAddress": safe_address,
+            }
+
+            # Construct URL with query parameters
+            query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+            url = f"{LIFI_QUOTE_URL}?{query_string}"
+
+            # Make HTTP request to LiFi API
+            response = yield from self.get_http_response(
+                method="GET",
+                url=url,
+            )
+
+            if response.status_code != 200:
+                self.context.logger.warning(
+                    f"LiFi API returned status {response.status_code}, using stale cache if available"
+                )
+                return self._pol_usdc_rate  # Return stale cache if available
+
+            # Parse response
+            response_data = json.loads(response.body.decode())
+
+            # Extract USDC amount for 1 POL
+            to_amount_wei = response_data.get("estimate", {}).get("toAmount")
+
+            if not to_amount_wei:
+                self.context.logger.error("No toAmount in LiFi quote response")
+                return self._pol_usdc_rate  # Return stale cache if available
+
+            # Calculate rate: 1 POL = X USDC
+            # USDC has 6 decimals, POL has 18 decimals
+            usdc_amount = int(to_amount_wei) / USDC_DECIMALS_DIVISOR
+            rate = usdc_amount  # This is the USDC amount for 1 POL
+
+            # Update cache
+            self._pol_usdc_rate = rate
+            self._pol_usdc_rate_timestamp = current_time
+
+            self.context.logger.info(
+                f"Updated POL→USDC rate cache: 1 POL = {rate} USDC"
+            )
+
+            return rate
+
+        except Exception as e:
+            self.context.logger.error(f"Error fetching POL→USDC rate: {str(e)}")
+            return self._pol_usdc_rate  # Return stale cache if available
+
+    def _get_usdc_equivalent_for_pol(
+        self, pol_balance_wei: int
+    ) -> Generator[None, None, Optional[float]]:
+        """Convert POL balance to USDC equivalent using cached rate."""
+        try:
+            # Get the conversion rate (1 POL = X USDC)
+            rate = yield from self._get_pol_to_usdc_rate()
+
+            if rate is None or rate == 0:
+                self.context.logger.error(
+                    "No valid POL→USDC rate available, cannot calculate equivalent"
+                )
+                return None
+
+            # Convert POL from wei to standard units
+            pol_amount = pol_balance_wei / WEI_IN_ETH
+
+            # Calculate USDC equivalent: USDC = POL * rate
+            usdc_amount = pol_amount * rate
+
+            self.context.logger.info(
+                f"POL→USDC conversion: {pol_amount:.4f} POL ≈ {usdc_amount:.2f} USDC "
+                f"(rate: 1 POL = {rate} USDC)"
+            )
+
+            return usdc_amount
+
+        except Exception as e:
+            self.context.logger.error(
+                f"Error getting USDC equivalent for POL: {str(e)}"
+            )
+            return None
+
     def _fetch_available_funds(self) -> Generator[None, None, Optional[float]]:
-        """Fetch available funds (wxDAI + xDAI balance)."""
+        """Fetch available funds (token + native balance) - platform-aware."""
         safe_contract_address = self.synchronized_data.safe_contract_address
+
+        # Use appropriate token address based on platform
+        token_address = (
+            USDC_E_ADDRESS if self.params.is_running_on_polymarket else WXDAI_ADDRESS
+        )
+
+        self.context.logger.info(
+            f"Fetching available funds: is_polymarket={self.params.is_running_on_polymarket}, "
+            f"token_address={token_address}, chain_id={self.params.mech_chain_id}"
+        )
+
         response_msg = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
-            contract_address=WXDAI_ADDRESS,
+            contract_address=token_address,
             contract_id=str(ERC20.contract_id),
             contract_callable="check_balance",
             account=safe_contract_address,
@@ -517,9 +881,35 @@ class FetchPerformanceSummaryBehaviour(
             )
             return None
 
-        token_balance = token / WEI_IN_ETH
-        wallet_balance = wallet / WEI_IN_ETH
-        available_funds = token_balance + wallet_balance
+        # Use appropriate divisor based on platform
+        token_divisor = (
+            USDC_DECIMALS_DIVISOR
+            if self.params.is_running_on_polymarket
+            else WEI_IN_ETH
+        )
+        token_balance = token / token_divisor
+
+        # For Polymarket, convert POL to USDC equivalent; for Gnosis, xDAI is already ~$1
+        if self.params.is_running_on_polymarket:
+            # Convert POL (native token) to USDC equivalent
+            pol_in_usdc = yield from self._get_usdc_equivalent_for_pol(wallet)
+            if pol_in_usdc is None:
+                self.context.logger.warning(
+                    "Failed to convert POL to USDC. Using only USDC.e balance."
+                )
+                pol_in_usdc = 0.0
+            available_funds = token_balance + pol_in_usdc
+        else:
+            # For Gnosis: both wxDAI and xDAI are ~$1, can add directly
+            wallet_balance = wallet / WEI_IN_ETH
+            available_funds = token_balance + wallet_balance
+
+        self.context.logger.info(
+            f"Calculated balances: token_balance={token_balance}, "
+            f"native_balance_converted={pol_in_usdc if self.params.is_running_on_polymarket else wallet / WEI_IN_ETH}, "
+            f"available_funds={available_funds}"
+        )
+
         return available_funds
 
     def _calculate_performance_stats(
@@ -541,7 +931,15 @@ class FetchPerformanceSummaryBehaviour(
         safe_address = self.synchronized_data.safe_contract_address.lower()
 
         try:
-            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            # Use platform-specific fetcher
+            fetcher: BasePredictionsFetcher
+            if self.params.is_running_on_polymarket:
+                fetcher = PolymarketPredictionsFetcher(
+                    self.context, self.context.logger
+                )
+            else:
+                fetcher = PredictionsFetcher(self.context, self.context.logger)
+
             result = fetcher.fetch_predictions(
                 safe_address=safe_address, first=200, skip=0, status_filter=None
             )
@@ -638,10 +1036,11 @@ class FetchPerformanceSummaryBehaviour(
     def _build_multi_bet_allocations(
         self, daily_stats: list, mech_request_lookup: Dict[str, int]
     ) -> Tuple[Dict[int, int], Set[str]]:
-        """
-        For markets appearing on multiple days, split mech requests evenly across those days.
+        """For markets appearing on multiple days, split mech requests evenly across those days.
 
-        Returns (allocations_by_day, titles_allocated).
+        :param daily_stats: List of daily statistics
+        :param mech_request_lookup: Dictionary mapping question titles to request counts
+        :return: Tuple of (allocations_by_day, titles_allocated)
         """
         title_days: Dict[str, list] = {}
         for stat in daily_stats:
@@ -681,13 +1080,7 @@ class FetchPerformanceSummaryBehaviour(
         existing_unplaced_count: int,
         existing_placed_count: int = 0,
     ) -> Tuple[Dict[int, int], Dict[str, int], int]:
-        """
-        Build per-day mech fee buckets for:
-
-        - unplaced requests (evenly spread)
-        - multi-bet markets (evenly split across appearances)
-        Returns: (extra_fees_by_day, filtered_lookup, unplaced_allocated)
-        """
+        """Build per-day mech fee buckets for:"""
         # Unplaced requests (no bets)
         total_mech_requests = self._total_mech_requests or sum(
             (mech_request_lookup or {}).values()
@@ -732,11 +1125,11 @@ class FetchPerformanceSummaryBehaviour(
     def _build_mech_request_lookup(
         self, agent_safe_address: str
     ) -> Generator[None, None, dict]:
-        """
-        Build a lookup map of question titles to mech request counts.
+        """Build a lookup map of question titles to mech request counts.
 
         :param agent_safe_address: The agent's safe address
         :return: Dictionary mapping question titles to request counts
+        :yield: None
         """
         # Fetch all mech requests for this agent
         if self._mech_request_lookup is not None:
@@ -767,10 +1160,10 @@ class FetchPerformanceSummaryBehaviour(
     def _build_profit_over_time_data(
         self,
     ) -> Generator[None, None, Optional[ProfitOverTimeData]]:
-        """
-        Build profit over time data with efficient backfill and incremental update strategy.
+        """Build profit over time data with efficient backfill and incremental update strategy.
 
         :return: ProfitOverTimeData or None
+        :yield: None
         """
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
         current_timestamp = self.shared_state.synced_timestamp
@@ -1229,16 +1622,6 @@ class FetchPerformanceSummaryBehaviour(
 
         metrics = []
 
-        partial_roi_string = f"{round(partial_roi)}%" if partial_roi is not None else NA
-        metrics.append(
-            AgentPerformanceMetrics(
-                name="Total ROI",
-                is_primary=True,
-                description=f"Total return on investment including staking rewards. Partial ROI (Prediction market activity only): <b>{partial_roi_string}</b>",
-                value=f"{round(final_roi)}%" if final_roi is not None else NA,
-            )
-        )
-
         accuracy = yield from self._get_prediction_accuracy()
 
         metrics.append(
@@ -1254,6 +1637,30 @@ class FetchPerformanceSummaryBehaviour(
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
 
+        winning_trades = [
+            item for item in prediction_history.items if item.get("total_payout", 0) > 0
+        ]
+        if len(winning_trades) >= MIN_TRADES_FOR_ROI_DISPLAY:
+            partial_roi_string = (
+                f"{round(partial_roi)}%" if partial_roi is not None else NA
+            )
+            metrics.append(
+                AgentPerformanceMetrics(
+                    name="Total ROI",
+                    is_primary=True,
+                    description=f"Total return on investment including staking rewards. Partial ROI (Prediction market activity only): <b>{partial_roi_string}</b>",
+                    value=f"{round(final_roi)}%" if final_roi is not None else NA,
+                )
+            )
+        else:
+            metrics.append(
+                AgentPerformanceMetrics(
+                    name="Total ROI",
+                    is_primary=True,
+                    description=f"Total return on investment including staking rewards. ROI is not shown until at least {MIN_TRADES_FOR_ROI_DISPLAY} winning trades have been made to ensure statistical significance.",
+                    value=MORE_TRADES_NEEDED_TEXT,
+                )
+            )
         self._agent_performance_summary = AgentPerformanceSummary(
             timestamp=current_timestamp,
             metrics=metrics,
@@ -1328,9 +1735,82 @@ class FetchPerformanceSummaryBehaviour(
         self.set_done()
 
 
+class UpdateAchievementsBehaviour(
+    APTQueryingBehaviour,
+):
+    """A behaviour for updating the agent achievements database."""
+
+    matching_round = UpdateAchievementsRound
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize Behaviour."""
+        super().__init__(**kwargs)
+
+        if self.params.is_running_on_polymarket:
+            self._bet_payout_checker = BetPayoutChecker(
+                achievement_type="polystrat/payout",
+                roi_threshold=POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD,
+                description_template=POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
+            )
+        else:
+            self._bet_payout_checker = BetPayoutChecker(achievement_type="omen/payout")
+
+    def async_act(self) -> Generator:
+        """Do the action."""
+
+        if not self.params.is_achievement_checker_enabled:
+            self.context.logger.info(
+                "Achievement checker is disabled. Skipping achievements update."
+            )
+            payload = UpdateAchievementsPayload(
+                sender=self.context.agent_address,
+                vote=False,
+            )
+            yield from self.finish_behaviour(payload)
+            return
+
+        agent_performance_summary = (
+            self.shared_state.read_existing_performance_summary()
+        )
+
+        achievements = agent_performance_summary.achievements
+        if achievements is None:
+            achievements = Achievements()
+            agent_performance_summary.achievements = achievements
+
+        achievements_updated = False
+        achievements_updated = self._bet_payout_checker.update_achievements(
+            achievements=agent_performance_summary.achievements,
+            prediction_history=agent_performance_summary.prediction_history,
+        )
+
+        if achievements_updated:
+            self.context.logger.info("Agent achievements updated.")
+            self.shared_state.overwrite_performance_summary(agent_performance_summary)
+        else:
+            self.context.logger.info("Agent achievements not updated.")
+
+        success = True  # Left to handle error conditions on future achievement checkers
+        payload = UpdateAchievementsPayload(
+            sender=self.context.agent_address,
+            vote=success,
+        )
+
+        yield from self.finish_behaviour(payload)
+        return
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
+            yield from self.send_a2a_transaction(payload)
+            yield from self.wait_until_round_end()
+
+        self.set_done()
+
+
 class AgentPerformanceSummaryRoundBehaviour(AbstractRoundBehaviour):
     """This behaviour manages the consensus stages for the AgentPerformanceSummary behaviour."""
 
     initial_behaviour_cls = FetchPerformanceSummaryBehaviour
     abci_app_cls = AgentPerformanceSummaryAbciApp
-    behaviours: Set[Type[BaseBehaviour]] = {FetchPerformanceSummaryBehaviour}  # type: ignore
+    behaviours: Set[Type[BaseBehaviour]] = {FetchPerformanceSummaryBehaviour, UpdateAchievementsBehaviour}  # type: ignore

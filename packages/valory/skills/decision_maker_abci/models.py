@@ -472,6 +472,30 @@ class DecisionMakerParams(
             "review_period_seconds", kwargs, int
         )
         self.min_confidence_for_selling: float = 0.5
+        self.polymarket_builder_program_enabled: bool = self._ensure(
+            "polymarket_builder_program_enabled", kwargs, bool
+        )
+        self.polymarket_usdc_address: str = self._ensure(
+            "polymarket_usdc_address", kwargs, str
+        )
+        self.polymarket_ctf_address: str = self._ensure(
+            "polymarket_ctf_address", kwargs, str
+        )
+        self.polymarket_ctf_exchange_address: str = self._ensure(
+            "polymarket_ctf_exchange_address", kwargs, str
+        )
+        self.polymarket_neg_risk_ctf_exchange_address: str = self._ensure(
+            "polymarket_neg_risk_ctf_exchange_address", kwargs, str
+        )
+        self.polymarket_neg_risk_adapter_address: str = self._ensure(
+            "polymarket_neg_risk_adapter_address", kwargs, str
+        )
+        self.pol_threshold_for_swap: int = self._ensure(
+            "pol_threshold_for_swap", kwargs, int
+        )
+        self.slippages_for_swap: Dict[str, float] = self._ensure(
+            "slippages_for_swap", kwargs, Dict[str, float]
+        )
         super().__init__(*args, **kwargs)
 
     @property
