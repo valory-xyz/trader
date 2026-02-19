@@ -45,17 +45,21 @@ class TestParseRpcUrls:
     """Tests for parse_rpc_urls."""
 
     def test_single_url(self) -> None:
+        """Single URL is returned as a one-element list."""
         assert parse_rpc_urls("http://localhost:8545") == ["http://localhost:8545"]
 
     def test_multiple_urls(self) -> None:
+        """Comma-separated URLs are split into a list."""
         result = parse_rpc_urls("http://rpc1,http://rpc2,http://rpc3")
         assert result == ["http://rpc1", "http://rpc2", "http://rpc3"]
 
     def test_whitespace_stripped(self) -> None:
+        """Whitespace around URLs is stripped."""
         result = parse_rpc_urls(" http://a , http://b ")
         assert result == ["http://a", "http://b"]
 
     def test_empty_segments_ignored(self) -> None:
+        """Empty segments from consecutive commas are ignored."""
         result = parse_rpc_urls("http://a,,http://b,")
         assert result == ["http://a", "http://b"]
 
@@ -85,6 +89,7 @@ class TestClassifyError:
         ],
     )
     def test_classification(self, msg: str, expected: str) -> None:
+        """Error message is classified into the expected category."""
         assert classify_error(Exception(msg)) == expected
 
 

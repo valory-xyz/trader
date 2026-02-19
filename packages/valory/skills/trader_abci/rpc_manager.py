@@ -128,6 +128,9 @@ def classify_error(error: Exception) -> str:
 
     Returns one of: ``"rate_limit"``, ``"connection"``, ``"quota"``,
     ``"server"``, ``"fd_exhaustion"``, or ``"unknown"``.
+
+    :param error: the exception to classify.
+    :return: error category string.
     """
     err_text = str(error).lower()
     if any(s in err_text for s in FD_EXHAUSTION_SIGNALS):
@@ -179,6 +182,7 @@ class RPCManager:
     """
 
     def __init__(self) -> None:
+        """Initialise with empty chain registry."""
         self._chains: Dict[str, _ChainState] = {}
         self._lock = threading.Lock()
 
@@ -192,6 +196,10 @@ class RPCManager:
 
         If *chain_id* is provided, the RPC list is enriched with
         validated public endpoints from Chainlist.org.
+
+        :param chain: logical chain name (e.g. ``"gnosis"``).
+        :param rpc_string: one URL or comma-separated list of RPC URLs.
+        :param chain_id: numeric EVM chain identifier for Chainlist enrichment.
         """
         if chain in self._chains:
             return  # already registered
@@ -307,6 +315,12 @@ class RPCManager:
         connection failures.
 
         Returns ``None`` if the chain is not registered or all retries are exhausted.
+
+        :param chain: logical chain name.
+        :param operation: callable receiving a Web3 instance.
+        :param operation_name: label used in log messages.
+        :param is_write: if True, only retry on connection/FD errors.
+        :return: operation result, or None if chain is not registered.
         """
         state = self._chains.get(chain)
         if state is None:
