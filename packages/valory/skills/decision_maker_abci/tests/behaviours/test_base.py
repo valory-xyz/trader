@@ -44,7 +44,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
 )
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
-from packages.valory.skills.market_manager_abci.behaviours import READ_MODE
+from packages.valory.skills.market_manager_abci.behaviours.base import READ_MODE
 
 
 settings.load_profile(profile_name)
@@ -56,7 +56,7 @@ DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strateg
 VALID_STRATEGY_FILE_EXTENSIONS = {".py", ".yaml", ".yml"}
 
 # fmt: off
-STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": int(5e18), "bet_amount_per_threshold": {"0.0": 0, "0.1": 0, "0.2": 0, "0.3": 0, "0.4": 0, "0.5": 0, "0.6": int(6e16), "0.7": int(9e16), "0.8": int(1e17), "0.9": int(1e18), "1.0": int(1e19)}}
+STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": int(5e17), "default_max_bet_size": int(2e18), "absolute_min_bet_size": int(1e16), "absolute_max_bet_size": int(2e18), "bet_amount_per_threshold": {"0.0": int(1e16), "0.1": int(1e16), "0.2": int(1e16), "0.3": int(1e16), "0.4": int(1e16), "0.5": int(1e16), "0.6": int(1e16), "0.7": int(1e16), "0.8": int(1e16), "0.9": (1e16), "1.0": (1e16)}}
 
 STRATEGY_TO_FILEPATH = {"bet_amount_per_threshold": "packages/valory/customs/bet_amount_per_threshold", "kelly_criterion_no_conf": "packages/valory/customs/kelly_criterion_no_conf"}
 # fmt: on
@@ -290,7 +290,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             result = behaviour._collateral_amount_info(amount)
 
         if benchmarking_mode_enabled or is_wxdai:
-            assert result == f"{behaviour.wei_to_native(amount)} wxDAI"
+            assert result == f"{behaviour.wei_to_native(amount):6f} wxDAI"
         else:
             assert (
                 result
@@ -339,6 +339,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             0,
             0,
             0,
+            "0x000000000000000000000000000000000000000",
         )
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls
@@ -351,30 +352,21 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             raise AssertionError("Expected `StopIteration` exception!")
 
     @pytest.mark.parametrize(
-        "trading_strategy, win_probability, confidence, selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee, weighted_accuracy, token_balance, wallet_balance, expected_result",
+        "trading_strategy, win_probability, confidence, selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee, weighted_accuracy, token_balance, wallet_balance, expected_result, collateral_token",
         # fmt: off
         (
             # bet amount per threshold strategy
-            ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, 0),
-            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, int(6e16)),
-            ("bet_amount_per_threshold", 0.0, 0.8, 0.1, 0, 0, 0.0, 0, 0, int(1e17)),
-            ("bet_amount_per_threshold", 0.0, 0.9, 0.1, 0, 0, 0.0, 0, 0, int(1e18)),
+            ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, int(1e16), "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
+            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, int(1e16), "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
             # kelly criterion no confidence strategy
-            ("kelly_criterion_no_conf", 0.85, 0.0, 100, 200, int(1e15), 0.75, int(5e19), 0, 243),
-            ("kelly_criterion_no_conf", 0.80, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 37_241_555_003),
-            ("kelly_criterion_no_conf", 0.95, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 1_139_999_999_999_998_976),
-            ("kelly_criterion_no_conf", 0.20, 0.0, 150, 100, int(5e14), 0.90, int(7.5e19), int(1e19), 0),
-
+            ("kelly_criterion_no_conf", 0.75, 0.7, 6986284704175073976, 7013742221343643211, 10000000000000000, 0.90, 0, 2274727164028066772, 1582751545041709312, "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
+            ("kelly_criterion_no_conf", 0.11, 0.51, 6986284704175073976, 7013742221343643211, 10000000000000000, 0.90, 0, 2274727164028066772, 0, "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
         ),
         ids=[
             "bet_amount_per_threshold_0",
-            "bet_amount_per_threshold_high",
-            "bet_amount_per_threshold_higher",
-            "bet_amount_per_threshold_very_high",
-            "kelly_criterion_no_conf_low",
-            "kelly_criterion_no_conf_medium",
-            "kelly_criterion_no_conf_high",
-            "kelly_criterion_no_conf_zero",
+            "bet_amount_per_threshold_fixed",
+            "kelly_criterion_no_conf_real",
+            "kelly_criterion_no_conf_zero"
         ],
         # fmt: on
     )
@@ -390,6 +382,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         token_balance: int,
         wallet_balance: int,
         expected_result: int,
+        collateral_token: str,
     ) -> None:
         """Test the `get_bet_amount` method."""
         behaviour = self.behaviour
@@ -397,7 +390,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
         behaviour.params.strategies_kwargs = STRATEGIES_KWARGS
         behaviour.shared_state.chatui_config.trading_strategy = trading_strategy
+        behaviour.shared_state.chatui_config.max_bet_size = STRATEGIES_KWARGS["default_max_bet_size"]  # type: ignore[assignment]
+        behaviour.shared_state.chatui_config.fixed_bet_size = STRATEGIES_KWARGS["absolute_min_bet_size"]  # type: ignore[assignment]
         behaviour.params.use_fallback_strategy = False
+        behaviour.params.is_running_on_polymarket = (
+            False  # TODO: Add tests for Polymarket
+        )
         behaviour.shared_state.strategies_executables = get_strategy_executables()
         behaviour.token_balance = token_balance
         behaviour.wallet_balance = wallet_balance
@@ -409,6 +407,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             other_tokens_in_pool,
             bet_fee,
             weighted_accuracy,
+            collateral_token,
         )
         for _ in range(2):
             # `download_strategies` and `wait_for_condition_with_sleep` mock calls

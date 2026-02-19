@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -49,8 +49,11 @@ from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayloa
 from packages.valory.skills.market_manager_abci.rounds import (
     Event,
     FailedMarketManagerRound,
+    FetchMarketsRouterRound,
     FinishedMarketManagerRound,
+    FinishedPolymarketFetchMarketRound,
     MarketManagerAbciApp,
+    PolymarketFetchMarketRound,
     SynchronizedData,
     UpdateBetsRound,
 )
@@ -227,26 +230,46 @@ class TestFailedMarketManagerRound:
 
 def test_market_manager_abci_app_initialization(abci_app: MarketManagerAbciApp) -> None:
     """Test the initialization of MarketManagerAbciApp."""
-    assert abci_app.initial_round_cls is UpdateBetsRound
+    assert abci_app.initial_round_cls is FetchMarketsRouterRound
     assert abci_app.final_states == {
         FinishedMarketManagerRound,
         FailedMarketManagerRound,
+        FinishedPolymarketFetchMarketRound,
     }
+
     assert abci_app.transition_function == {
+        FetchMarketsRouterRound: {
+            Event.DONE: UpdateBetsRound,
+            Event.NONE: FetchMarketsRouterRound,
+            Event.NO_MAJORITY: FetchMarketsRouterRound,
+            Event.POLYMARKET_FETCH_MARKETS: PolymarketFetchMarketRound,
+        },
+        PolymarketFetchMarketRound: {
+            Event.DONE: FinishedPolymarketFetchMarketRound,
+            Event.FETCH_ERROR: FailedMarketManagerRound,
+            Event.NO_MAJORITY: PolymarketFetchMarketRound,
+            Event.ROUND_TIMEOUT: PolymarketFetchMarketRound,
+        },
         UpdateBetsRound: {
             Event.DONE: FinishedMarketManagerRound,
             Event.FETCH_ERROR: FailedMarketManagerRound,
-            Event.ROUND_TIMEOUT: UpdateBetsRound,
             Event.NO_MAJORITY: UpdateBetsRound,
+            Event.ROUND_TIMEOUT: UpdateBetsRound,
         },
         FinishedMarketManagerRound: {},
         FailedMarketManagerRound: {},
+        FinishedPolymarketFetchMarketRound: {},
     }
+
     assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
-    assert abci_app.db_pre_conditions == {UpdateBetsRound: set()}
+    assert abci_app.db_pre_conditions == {
+        FetchMarketsRouterRound: set(),
+        UpdateBetsRound: set(),
+    }
     assert abci_app.db_post_conditions == {
         FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},
         FailedMarketManagerRound: set(),
+        FinishedPolymarketFetchMarketRound: set(),
     }
 
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 """This module contains the rounds for the MarketManager ABCI application."""
 
 from abc import ABC
-from enum import Enum
 from typing import Dict, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -29,22 +28,21 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbstractRound,
     AppState,
     BaseSynchronizedData,
-    CollectSameUntilThresholdRound,
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
     get_name,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
-
-
-class Event(Enum):
-    """Event enumeration for the MarketManager demo."""
-
-    DONE = "done"
-    NO_MAJORITY = "no_majority"
-    ROUND_TIMEOUT = "round_timeout"
-    FETCH_ERROR = "fetch_error"
+from packages.valory.skills.market_manager_abci.states.base import Event
+from packages.valory.skills.market_manager_abci.states.fetch_markets_router import (
+    FetchMarketsRouterRound,
+)
+from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market import (
+    PolymarketFetchMarketRound,
+)
+from packages.valory.skills.market_manager_abci.states.update_bets import (
+    UpdateBetsRound,
+)
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -81,6 +79,11 @@ class SynchronizedData(BaseSynchronizedData):
             return False
         return bool(db_value)
 
+    @property
+    def participant_to_selection(self) -> DeserializedCollection:
+        """Get the participants to selection."""
+        return self._get_deserialized("participant_to_selection")
+
 
 class MarketManagerAbstractRound(AbstractRound[Event], ABC):
     """Abstract round for the MarketManager skill."""
@@ -99,18 +102,6 @@ class MarketManagerAbstractRound(AbstractRound[Event], ABC):
         return self.synchronized_data, Event.NO_MAJORITY
 
 
-class UpdateBetsRound(CollectSameUntilThresholdRound, MarketManagerAbstractRound):
-    """A round for the bets fetching & updating."""
-
-    payload_class = UpdateBetsPayload
-    done_event: Enum = Event.DONE
-    none_event: Enum = Event.FETCH_ERROR
-    no_majority_event: Enum = Event.NO_MAJORITY
-    selection_key = get_name(SynchronizedData.bets_hash)
-    collection_key = get_name(SynchronizedData.participant_to_bets_hash)
-    synchronized_data_class = SynchronizedData
-
-
 class FinishedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents MarketManager has finished"""
 
@@ -119,46 +110,86 @@ class FailedMarketManagerRound(DegenerateRound, ABC):
     """A round that represents that the period failed"""
 
 
+class FinishedPolymarketFetchMarketRound(DegenerateRound, ABC):
+    """A round representing that Polymarket fetch market has finished."""
+
+
 class MarketManagerAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """MarketManagerAbciApp
 
-    Initial round: UpdateBetsRound
+    Initial round: FetchMarketsRouterRound
 
-    Initial states: {UpdateBetsRound}
+    Initial states: {FetchMarketsRouterRound, UpdateBetsRound}
 
     Transition states:
-        0. UpdateBetsRound
+        0. FetchMarketsRouterRound
             - done: 1.
-            - fetch error: 2.
-            - round timeout: 0.
+            - polymarket fetch markets: 2.
             - no majority: 0.
-        1. FinishedMarketManagerRound
-        2. FailedMarketManagerRound
+            - none: 0.
+        1. UpdateBetsRound
+            - done: 3.
+            - fetch error: 4.
+            - round timeout: 1.
+            - no majority: 1.
+        2. PolymarketFetchMarketRound
+            - done: 5.
+            - fetch error: 4.
+            - no majority: 2.
+            - round timeout: 2.
+        3. FinishedMarketManagerRound
+        4. FailedMarketManagerRound
+        5. FinishedPolymarketFetchMarketRound
 
-    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound}
+    Final states: {FailedMarketManagerRound, FinishedMarketManagerRound, FinishedPolymarketFetchMarketRound}
 
     Timeouts:
         round timeout: 30.0
     """
 
-    initial_round_cls: Type[AbstractRound] = UpdateBetsRound
+    initial_round_cls: Type[AbstractRound] = FetchMarketsRouterRound
+    initial_states: Set[AppState] = {
+        FetchMarketsRouterRound,
+        UpdateBetsRound,
+    }
     transition_function: AbciAppTransitionFunction = {
+        FetchMarketsRouterRound: {
+            Event.DONE: UpdateBetsRound,
+            Event.POLYMARKET_FETCH_MARKETS: PolymarketFetchMarketRound,
+            Event.NO_MAJORITY: FetchMarketsRouterRound,
+            Event.NONE: FetchMarketsRouterRound,
+        },
         UpdateBetsRound: {
             Event.DONE: FinishedMarketManagerRound,
             Event.FETCH_ERROR: FailedMarketManagerRound,
             Event.ROUND_TIMEOUT: UpdateBetsRound,
             Event.NO_MAJORITY: UpdateBetsRound,
         },
+        PolymarketFetchMarketRound: {
+            Event.DONE: FinishedPolymarketFetchMarketRound,
+            Event.FETCH_ERROR: FailedMarketManagerRound,
+            Event.NO_MAJORITY: PolymarketFetchMarketRound,
+            Event.ROUND_TIMEOUT: PolymarketFetchMarketRound,
+        },
         FinishedMarketManagerRound: {},
         FailedMarketManagerRound: {},
+        FinishedPolymarketFetchMarketRound: {},
     }
     cross_period_persisted_keys = frozenset({get_name(SynchronizedData.bets_hash)})
-    final_states: Set[AppState] = {FinishedMarketManagerRound, FailedMarketManagerRound}
+    final_states: Set[AppState] = {
+        FinishedMarketManagerRound,
+        FailedMarketManagerRound,
+        FinishedPolymarketFetchMarketRound,
+    }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
     }
-    db_pre_conditions: Dict[AppState, Set[str]] = {UpdateBetsRound: set()}
+    db_pre_conditions: Dict[AppState, Set[str]] = {
+        UpdateBetsRound: set(),
+        FetchMarketsRouterRound: set(),
+    }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedMarketManagerRound: {get_name(SynchronizedData.bets_hash)},
         FailedMarketManagerRound: set(),
+        FinishedPolymarketFetchMarketRound: set(),
     }

@@ -38,6 +38,18 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 from packages.valory.skills.agent_performance_summary_abci.models import (
     OpenMarketsSubgraph as APTOpenMarketsSubgraph,
 )
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonMechSubgraph as APTPolygonMechSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolygonStakingSubgraph as APTPolygonStakingSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolymarketAgentsSubgraph as APTPolymarketAgentsSubgraph,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    PolymarketBetsSubgraph as APTPolymarketBetsSubgraph,
+)
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     Event as AgentPerformanceSummaryEvent,
 )
@@ -127,11 +139,15 @@ RealitioSubgraph = DecisionMakerRealitioSubgraph
 BenchmarkingMode = BaseBenchmarkingMode
 AccuracyInfoFields = BaseAccuracyInfoFields
 GnosisStakingSubgraph = APTGnosisStakingSubgraph
+PolygonStakingSubgraph = APTPolygonStakingSubgraph
 OlasMechSubgraph = APTOlasMechSubgraph
 OlasAgentsSubgraph = APTOlasAgentsSubgraph
 OpenMarketsSubgraph = APTOpenMarketsSubgraph
 MechToolsSpecs = InteractMechToolsSpecs
 MechsSubgraph = InteractMechsSubgraph
+PolygonMechSubgraph = APTPolygonMechSubgraph
+PolymarketAgentsSubgraph = APTPolymarketAgentsSubgraph
+PolymarketBetsSubgraph = APTPolymarketBetsSubgraph
 
 MARGIN = 5
 
@@ -164,6 +180,7 @@ class TraderParams(
             "lifi_quote_to_amount_url", kwargs, str
         )
         self.gnosis_ledger_rpc: str = self._ensure("gnosis_ledger_rpc", kwargs, str)
+        self.polygon_ledger_rpc: str = self._ensure("polygon_ledger_rpc", kwargs, str)
         self.use_x402: bool = self._ensure("use_x402", kwargs, bool)
         super().__init__(*args, **kwargs)
 

@@ -38,6 +38,8 @@ WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
+THRESHOLD_FOR_OUTCOME_SIDE = 0.8
+
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
@@ -246,26 +248,51 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.context.logger.warning(msg)
             return None
 
+        self.context.logger.info(
+            f"Available bets to sample from: {len(available_bets)}"
+        )
+
         if self.benchmarking_mode.enabled:
             idx = self._sampling_benchmarking_bet(available_bets)
             if not idx:
                 return None
 
-        # sample a bet using the priority logic
-        idx = self._sampled_bet_idx(available_bets)
-        sampled_bet = self.bets[idx]
+        # Loop until we find a valid bet or run out of options
+        while available_bets:
+            # sample a bet using the priority logic
+            idx = self._sampled_bet_idx(available_bets)
+            sampled_bet = self.bets[idx]
 
-        # fetch the liquidity of the sampled bet and cache it
-        liquidity = sampled_bet.scaledLiquidityMeasure
-        if liquidity == 0:
-            msg = "There were no unprocessed bets with non-zero liquidity!"
-            self.context.logger.warning(msg)
-            return None
-        self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
+            # Check liquidity
+            liquidity = sampled_bet.scaledLiquidityMeasure
+            if liquidity == 0:
+                msg = f"Sampled bet {sampled_bet.id} has zero liquidity, skipping"
+                self.context.logger.warning(msg)
+                available_bets.remove(sampled_bet)
+                continue
 
-        msg = f"Sampled bet: {sampled_bet}"
-        self.context.logger.info(msg)
-        return idx
+            # This is to avoid sampling bets where the market is already heavily
+            # skewed towards one outcome, results in unfavorable risk to reward ratio
+            self.context.logger.info(
+                f"Sampled bet {sampled_bet.id} has liquidity {liquidity} and outcome token marginal prices {sampled_bet.outcomeTokenMarginalPrices}"
+            )
+            if any(
+                side > THRESHOLD_FOR_OUTCOME_SIDE
+                for side in sampled_bet.outcomeTokenMarginalPrices
+            ):
+                available_bets.remove(sampled_bet)
+                continue
+
+            # Valid bet found
+            self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
+            msg = f"Sampled bet: {sampled_bet}"
+            self.context.logger.info(msg)
+            return idx
+
+        # No valid bets found
+        msg = "No valid bets found after liquidity validation!"
+        self.context.logger.warning(msg)
+        return None
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""

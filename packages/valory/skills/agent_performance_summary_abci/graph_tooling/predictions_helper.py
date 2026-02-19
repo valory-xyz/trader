@@ -26,6 +26,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
+    PredictionsFetcher as BasePredictionsFetcher,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_RESPONSE_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
@@ -75,7 +78,7 @@ class BetSide(enum.Enum):
     NO = "no"
 
 
-class PredictionsFetcher:
+class PredictionsFetcher(BasePredictionsFetcher):
     """Shared logic for fetching and formatting predictions."""
 
     def __init__(self, context: Any, logger: Any) -> None:
@@ -583,11 +586,12 @@ class PredictionsFetcher:
     def _format_predictions(
         self, bets: List[Dict], safe_address: str, status_filter: Optional[str] = None
     ) -> List[Dict]:
-        """
-        Format raw bets into prediction objects.
+        """Format raw bets into prediction objects with proportional payout distribution.
 
-        Emits one item per bet (no aggregation), while still using market-level
-        participant totals to distribute payouts proportionally.
+        :param bets: List of raw bet dictionaries
+        :param safe_address: The safe address for filtering
+        :param status_filter: Optional status filter
+        :return: List of formatted prediction dictionaries
         """
         market_ctx = self._build_market_context(bets)
 
@@ -674,7 +678,7 @@ class PredictionsFetcher:
             "status": prediction_status,
             "net_profit": round(net_profit, 3) if net_profit is not None else None,
             "total_payout": (
-                round(payout_amount, 3) if payout_amount is not None else None
+                round(payout_amount, 3) if payout_amount is not None else 0
             ),
             "created_at": self._format_timestamp(bet.get("timestamp")),
             "settled_at": (
@@ -728,10 +732,11 @@ class PredictionsFetcher:
     def _get_prediction_status(
         self, bet: Dict, market_participant: Optional[Dict]
     ) -> str:
-        """
-        Determine the status of a prediction (pending, won, lost).
+        """Determine the status of a prediction (pending, won, lost), treating unredeemed wins as pending.
 
-        If won but no payout (unredeemed), treat as pending.
+        :param bet: The bet dictionary
+        :param market_participant: Optional market participant data
+        :return: Status string (pending, won, or lost)
         """
         fpmm = bet.get("fixedProductMarketMaker", {})
         current_answer = fpmm.get("currentAnswer")

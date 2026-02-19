@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -182,6 +182,13 @@ class HttpHandler(BaseHttpHandler):
         """Return the synchronized data."""
         return SynchronizedData(db=self.round_sequence.latest_synchronized_data.db)
 
+    def get_units_and_decimals(self) -> tuple:
+        """Get the units and decimals based on the environment."""
+        is_polymarket = self.context.params.is_running_on_polymarket
+        units = "USDC" if is_polymarket else "wxDAI"
+        decimals = 6 if is_polymarket else 18
+        return units, decimals
+
     def _handle_chatui_prompt(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -213,12 +220,36 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.chatui_config.mech_tool
             or "Automatic tool selection based on policy"
         )
+        current_fixed_bet_size = self.shared_state.chatui_config.fixed_bet_size
+        current_max_bet_size = self.shared_state.chatui_config.max_bet_size
+        absolute_max_bet_size = self.context.params.strategies_kwargs[
+            "absolute_max_bet_size"
+        ]
+        absolute_min_bet_size = self.context.params.strategies_kwargs[
+            "absolute_min_bet_size"
+        ]
+
+        units, decimals = self.get_units_and_decimals()
 
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
             current_mech_tool=current_mech_tool,
             available_tools=available_tools,
+            current_fixed_bet_size=(
+                current_fixed_bet_size / (10**decimals)
+                if current_fixed_bet_size is not None
+                else None
+            ),
+            current_max_bet_size=(
+                current_max_bet_size / (10**decimals)
+                if current_max_bet_size is not None
+                else None
+            ),
+            absolute_min_bet_size=absolute_min_bet_size / (10**decimals),
+            absolute_max_bet_size=absolute_max_bet_size / (10**decimals),
+            units=units,
+            decimals=decimals,
         )
         self._send_chatui_llm_request(
             prompt=prompt,
@@ -406,6 +437,77 @@ class HttpHandler(BaseHttpHandler):
                 self._store_selected_tool(updated_mech_tool)
             else:
                 issue_message = f"Unsupported mech tool: {updated_mech_tool!r}. Available tools are: {', '.join(self.synchronized_data.available_mech_tools)}."
+                self.context.logger.warning(issue_message)
+                issues.append(issue_message)
+
+        _, decimals = self.get_units_and_decimals()
+        absolute_max_bet_size = self.context.params.strategies_kwargs[
+            "absolute_max_bet_size"
+        ]
+        absolute_min_bet_size = self.context.params.strategies_kwargs[
+            "absolute_min_bet_size"
+        ]
+
+        updated_fixed_bet_size: Optional[int] = updated_agent_config.get(
+            "fixed_bet_size", None
+        )
+        fixed_bet_size_is_removed: bool = (
+            FieldsThatCanBeRemoved.FIXED_BET_SIZE.value
+            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+        )
+        if fixed_bet_size_is_removed:
+            updated_params.update({"fixed_bet_size": None})
+            self.shared_state.chatui_config.fixed_bet_size = None
+            self._store_chatui_param_to_json("fixed_bet_size", None)
+
+        elif updated_fixed_bet_size is not None:
+            updated_fixed_bet_size_in_base_units = int(
+                updated_fixed_bet_size * (10**decimals)
+            )
+            if (
+                updated_fixed_bet_size_in_base_units >= absolute_min_bet_size
+                and updated_fixed_bet_size_in_base_units <= absolute_max_bet_size
+            ):
+                updated_params.update({"fixed_bet_size": updated_fixed_bet_size})
+                self.shared_state.chatui_config.fixed_bet_size = (
+                    updated_fixed_bet_size_in_base_units
+                )
+                self._store_chatui_param_to_json(
+                    "fixed_bet_size", updated_fixed_bet_size_in_base_units
+                )
+            else:
+                issue_message = f"Fixed bet size {updated_fixed_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
+                self.context.logger.warning(issue_message)
+                issues.append(issue_message)
+
+        updated_max_bet_size: Optional[int] = updated_agent_config.get(
+            "max_bet_size", None
+        )
+        max_bet_size_is_removed: bool = (
+            FieldsThatCanBeRemoved.MAX_BET_SIZE.value
+            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+        )
+        if max_bet_size_is_removed:
+            updated_params.update({"max_bet_size": None})
+            self.shared_state.chatui_config.max_bet_size = None
+            self._store_chatui_param_to_json("max_bet_size", None)
+        elif updated_max_bet_size is not None:
+            updated_max_bet_size_in_base_units = int(
+                updated_max_bet_size * (10**decimals)
+            )
+            if (
+                updated_max_bet_size_in_base_units >= absolute_min_bet_size
+                and updated_max_bet_size_in_base_units <= absolute_max_bet_size
+            ):
+                updated_params.update({"max_bet_size": updated_max_bet_size})
+                self.shared_state.chatui_config.max_bet_size = (
+                    updated_max_bet_size_in_base_units
+                )
+                self._store_chatui_param_to_json(
+                    "max_bet_size", updated_max_bet_size_in_base_units
+                )
+            else:
+                issue_message = f"Max bet size {updated_max_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
 

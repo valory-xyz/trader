@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@
 
 """This module contains the kelly criterion strategy without confidence factor in the formula."""
 
-from typing import Dict, Any, List, Union, Optional
+from typing import Any, Dict, List, Optional, Union
+
 
 REQUIRED_FIELDS = frozenset(
     {
@@ -35,9 +36,11 @@ REQUIRED_FIELDS = frozenset(
         "floor_balance",
     }
 )
-OPTIONAL_FIELDS = frozenset({"max_bet"})
+OPTIONAL_FIELDS = frozenset({"max_bet", "min_bet", "token_decimals"})
 ALL_FIELDS = REQUIRED_FIELDS.union(OPTIONAL_FIELDS)
 DEFAULT_MAX_BET = 8e17
+DEFAULT_MIN_BET = 1
+DEFAULT_TOKEN_DECIMALS = 18  # xDAI uses 18 decimals, USDC uses 6
 
 
 def check_missing_fields(kwargs: Dict[str, Any]) -> List[str]:
@@ -65,7 +68,7 @@ def get_adjusted_kelly_amount(
     """
     if weighted_accuracy is None:
         error.append(
-            f"No weighted accuracy information for this tool. Using static fraction."
+            "No weighted accuracy information for this tool. Using static fraction."
         )
         return int(kelly_bet_amount * static_kelly_fraction)
     # weighted_accuracy must be always between [0, 1]
@@ -116,9 +119,9 @@ def calculate_kelly_bet_amount_no_conf(
     return int(kelly_bet_amount)
 
 
-def wei_to_native(wei: int) -> float:
-    """Convert WEI to native token."""
-    return wei / 10**18
+def wei_to_native(wei: int, decimals: int = 18) -> float:
+    """Convert smallest unit to native token (supports xDAI with 18 decimals and USDC with 6 decimals)."""
+    return wei / 10**decimals
 
 
 def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
@@ -132,23 +135,29 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
     weighted_accuracy: float,
     floor_balance: int,
     max_bet: int = DEFAULT_MAX_BET,
+    min_bet: int = DEFAULT_MIN_BET,
+    token_decimals: int = DEFAULT_TOKEN_DECIMALS,
 ) -> Dict[str, Union[int, List[str]]]:
     """Calculate the Kelly bet amount."""
-    # keep `floor_balance` xDAI in the bankroll
+
+    # Determine token name based on decimals
+    token_name = "USDC" if token_decimals == 6 else "xDAI"
+
+    # keep `floor_balance` in the bankroll
     bankroll_adj = bankroll - floor_balance
     bankroll_adj = min(bankroll_adj, max_bet)
-    bankroll_adj_xdai = wei_to_native(bankroll_adj)
-    info = [f"Adjusted bankroll: {bankroll_adj_xdai} xDAI."]
+    bankroll_adj_native = wei_to_native(bankroll_adj, token_decimals)
+    info = [f"Adjusted bankroll: {bankroll_adj_native} {token_name}."]
     error = []
     if bankroll_adj <= 0:
         error.append(
             f"Bankroll ({bankroll_adj}) is less than the floor balance ({floor_balance})."
         )
         error.append("Set bet amount to 0.")
-        error.append("Top up safe with DAI or wait for redeeming.")
+        error.append(f"Top up safe with {token_name} or wait for redeeming.")
         return {"bet_amount": 0, "info": info, "error": error}
 
-    fee_fraction = 1 - wei_to_native(bet_fee)
+    fee_fraction = 1 - wei_to_native(bet_fee, token_decimals)
     info.append(f"Fee fraction: {fee_fraction}")
     kelly_bet_amount = calculate_kelly_bet_amount_no_conf(
         selected_type_tokens_in_pool,
@@ -163,7 +172,9 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
         )
         return {"bet_amount": 0, "info": info, "error": error}
 
-    info.append(f"Kelly bet amount: {wei_to_native(kelly_bet_amount)} xDAI")
+    info.append(
+        f"Kelly bet amount: {wei_to_native(kelly_bet_amount, token_decimals)} {token_name}"
+    )
     info.append(f"Bet kelly fraction: {bet_kelly_fraction}")
     info.append(
         f"Applying dynamic kelly fraction to all bets. Weighted accuracy of the tool={weighted_accuracy}"
@@ -172,15 +183,30 @@ def get_bet_amount_kelly(  # pylint: disable=too-many-arguments
         kelly_bet_amount, weighted_accuracy, bet_kelly_fraction, error
     )
     info.append(
-        f"Adjusted Kelly bet amount: {wei_to_native(adj_kelly_bet_amount)} xDAI"
+        f"Adjusted Kelly bet amount: {wei_to_native(adj_kelly_bet_amount, token_decimals)} {token_name}"
     )
+
+    if adj_kelly_bet_amount < min_bet:
+        info.append(
+            f"Adjusted Kelly bet amount ({wei_to_native(adj_kelly_bet_amount, token_decimals)} {token_name}) is below minimum bet ({wei_to_native(min_bet, token_decimals)} {token_name}).\nSet bet amount to 0."
+        )
+        return {"bet_amount": 0, "info": info, "error": error}
+
+    if adj_kelly_bet_amount > max_bet:
+        info.append(
+            f"Adjusted Kelly bet amount ({wei_to_native(adj_kelly_bet_amount, token_decimals)} {token_name}) is above maximum bet ({wei_to_native(max_bet, token_decimals)} {token_name}).\nSet bet amount to maximum bet."
+        )
+        adj_kelly_bet_amount = max_bet
+
     return {"bet_amount": adj_kelly_bet_amount, "info": info, "error": error}
 
 
 def run(*_args, **kwargs) -> Dict[str, Union[int, List[str]]]:
     """Run the strategy."""
     missing = check_missing_fields(kwargs)
+
     if len(missing) > 0:
         return {"error": [f"Required kwargs {missing} were not provided."]}
+
     kwargs = remove_irrelevant_fields(kwargs)
     return get_bet_amount_kelly(**kwargs)

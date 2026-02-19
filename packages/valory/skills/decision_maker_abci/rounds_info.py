@@ -34,7 +34,7 @@ ROUNDS_INFO = {
     },
     "bet_placement_round": {
         "name": "Opening a trade",
-        "description": "Attempts to place a trade on a prediction market.",
+        "description": "Attempts to open a trade on a prediction market.",
         "transitions": {},
     },
     "blacklisting_round": {
@@ -59,7 +59,7 @@ ROUNDS_INFO = {
     },
     "check_stop_trading_round": {
         "name": "Checking if trading should stop",
-        "description": "The agent checks its KPIs to decide whether to pause placing new trades.",
+        "description": "The agent checks its KPIs to decide whether to pause opening new trades.",
         "transitions": {},
     },
     "check_transaction_history_round": {
@@ -78,8 +78,8 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "decision_request_round": {
-        "name": "Requesting bet outcome",
-        "description": "Requests external information needed to determine the answer to a prediction.",
+        "name": "Requesting trade outcome",
+        "description": "Requests external information needed to determine the answer to a trade.",
         "transitions": {},
     },
     "failed_multiplexer_round": {
@@ -99,7 +99,7 @@ ROUNDS_INFO = {
     },
     "impossible_round": {
         "name": "Unable to decide",
-        "description": "The agent cannot determine a position's outcome with the available data.",
+        "description": "The agent cannot determine a trade’s outcome with the available data.",
         "transitions": {},
     },
     "mech_request_round": {
@@ -115,6 +115,21 @@ ROUNDS_INFO = {
     "mech_response_round": {
         "name": "Receiving outcome data",
         "description": "Collects outcome information from the external service.",
+        "transitions": {},
+    },
+    "polymarket_bet_placement_round": {
+        "name": "Opening a trade on Polymarket",
+        "description": "Attempts to open a trade on a Polymarket prediction market.",
+        "transitions": {},
+    },
+    "polymarket_set_approval_round": {
+        "name": "Setting approval on Polymarket",
+        "description": "Attempts to set approval on a Polymarket prediction market.",
+        "transitions": {},
+    },
+    "polymarket_post_set_approval_round": {
+        "name": "Post setting approval on Polymarket",
+        "description": "Attempts to finalize the approval setting on a Polymarket prediction market.",
         "transitions": {},
     },
     "post_tx_settlement_round": {
@@ -222,6 +237,26 @@ ROUNDS_INFO = {
         "description": "Retrieves the latest performance statistics for the agent.",
         "transitions": {},
     },
+    "redeem_router_round": {
+        "name": "Deciding between redeem tools",
+        "description": "A round for switching between Omen and Polymarket redeem rounds.",
+        "transitions": {},
+    },
+    "polymarket_redeem_round": {
+        "name": "Redeeming winnings from Polymarket",
+        "description": "Redeems winnings from resolved Polymarket trades.",
+        "transitions": {},
+    },
+    "fetch_markets_router_round": {
+        "name": "Routing to market fetching logic",
+        "description": "Routes between Omen and Polymarket market fetching based on configuration.",
+        "transitions": {},
+    },
+    "polymarket_fetch_market_round": {
+        "name": "Fetching Polymarket markets",
+        "description": "Fetches multiple markets from Polymarket using category tags with filtering.",
+        "transitions": {},
+    },
     "mech_information_round": {
         "name": "Fetching mech's information",
         "description": "Fetches the mech's information",
@@ -230,6 +265,16 @@ ROUNDS_INFO = {
     "mech_version_detection_round": {
         "name": "Detecting the priority mech's version.",
         "description": "Detect the version of the priority mech (Legacy, Legacy Mech Marketplace, Mech Marketplace)",
+        "transitions": {},
+    },
+    "polymarket_swap_usdc_round": {
+        "name": "Swapping POL to USDC for placing mech requests",
+        "description": "Swaps POL tokens to USDC tokens",
+        "transitions": {},
+    },
+    "update_achievements_round": {
+        "name": "Updating agent achievements",
+        "description": "Updates the achievements earned by the agent based on its performance.",
         "transitions": {},
     },
 }

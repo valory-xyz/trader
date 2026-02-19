@@ -82,17 +82,40 @@ AcnHandler = BaseAcnHandler
 SrrHandler = BaseSrrHandler
 
 
-PREDICT_AGENT_PROFILE_PATH = "predict-ui-build"
+# UI Build Configuration
+UI_BUILD_BASE_DIR = "ui-build"
+OMENSTRAT_UI_SUBDIR = "omenstrat"
+POLYSTRAT_UI_SUBDIR = "polystrat"
+
+# Gnosis Chain Configuration
 GNOSIS_CHAIN_NAME = "gnosis"
-XDAI_ADDRESS = "0x0000000000000000000000000000000000000000"
-WRAPPED_XDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 GNOSIS_CHAIN_ID = 100
-SLIPPAGE_FOR_SWAP = "0.003"  # 0.3%
+GNOSIS_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000000000"  # nosec: B105
+)
+GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+GNOSIS_USDC_E_ADDRESS = "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"
+
+# Polygon Chain Configuration
+POLYGON_CHAIN_NAME = "polygon"
+POLYGON_CHAIN_ID = 137
+POLYGON_NATIVE_TOKEN_ADDRESS = (
+    "0x0000000000000000000000000000000000000000"  # nosec: B105
+)
+POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+POLYGON_POL_ADDRESS = "0x0000000000000000000000000000000000001010"
+
 TRADING_STRATEGY_EXPLANATION = {
     "risky": "Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.",
     "balanced": "A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.",
 }
+
+# Rate limiting for CoinGecko API: cache for 2 hours to avoid hitting rate limits
+COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
+
+FALLBACK_POL_TO_USD_RATE = 0.089935  # AS of 2026-02-11T18:35:09Z
 
 
 class HttpHandler(BaseHttpHandler):
@@ -108,6 +131,10 @@ class HttpHandler(BaseHttpHandler):
 
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         atexit.register(self._executor_shutdown)
+
+        # Cache for POL to USDC conversion rate
+        self._pol_usdc_rate: Optional[float] = None  # Rate: 1 POL = X USDC
+        self._pol_usdc_rate_timestamp: float = 0.0
 
     @property
     def staking_synchronized_data(self) -> SynchronizedData:
@@ -130,6 +157,26 @@ class HttpHandler(BaseHttpHandler):
     def params(self) -> TraderParams:
         """Get the skill params."""
         return self.context.params
+
+    def _get_chain_config(self) -> Dict[str, Any]:
+        """Get chain configuration based on is_running_on_polymarket parameter."""
+        if self.params.is_running_on_polymarket:
+            return {
+                "chain_name": POLYGON_CHAIN_NAME,
+                "chain_id": POLYGON_CHAIN_ID,
+                "native_token_address": POLYGON_NATIVE_TOKEN_ADDRESS,
+                "wrapped_native_address": POLYGON_WRAPPED_NATIVE_ADDRESS,
+                "usdc_e_address": POLYGON_USDC_E_ADDRESS,
+                "usdc_address": POLYGON_USDC_ADDRESS,
+            }
+
+        return {
+            "chain_name": GNOSIS_CHAIN_NAME,
+            "chain_id": GNOSIS_CHAIN_ID,
+            "native_token_address": GNOSIS_NATIVE_TOKEN_ADDRESS,
+            "wrapped_native_address": GNOSIS_WRAPPED_NATIVE_ADDRESS,
+            "usdc_e_address": GNOSIS_USDC_E_ADDRESS,
+        }
 
     def setup(self) -> None:
         """Setup the handler."""
@@ -203,7 +250,13 @@ class HttpHandler(BaseHttpHandler):
             ],
         }
 
-        self.agent_profile_path = PREDICT_AGENT_PROFILE_PATH
+        # Determine UI build path based on trading platform
+        ui_build_subdir = (
+            POLYSTRAT_UI_SUBDIR
+            if self.params.is_running_on_polymarket
+            else OMENSTRAT_UI_SUBDIR
+        )
+        self.agent_profile_path = f"{UI_BUILD_BASE_DIR}/{ui_build_subdir}"
 
     def _get_content_type(self, file_path: Path) -> str:
         """Get the appropriate content type header based on file extension."""
@@ -320,30 +373,223 @@ class HttpHandler(BaseHttpHandler):
             self._send_not_found_response(http_msg, http_dialogue)
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
-        """Deals with the edge case where there is xDAI deficit but wxDAI balance to cover it."""
+        """
+        Adjust fund status based on chain-specific token equivalence:
+
+        - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
+        - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
+
+        :return: The adjusted fund requirements.
+        """
         funds_status = copy.deepcopy(self.funds_status)
+
         try:
-            safe_balances = funds_status[GNOSIS_CHAIN_NAME].accounts[
+            chain_config = self._get_chain_config()
+            safe_balances = funds_status[chain_config["chain_name"]].accounts[
                 self.synchronized_data.safe_contract_address
             ]
 
-            xDAI_status = safe_balances.tokens[XDAI_ADDRESS]
-            wxDAI_status = safe_balances.tokens[WRAPPED_XDAI_ADDRESS]
+            native_status = safe_balances.tokens[chain_config["native_token_address"]]
+
+            if self.params.is_running_on_polymarket:
+                # On Polygon: USDC balance needs to be converted to POL equivalent
+                # Using CoinGecko to get real-time exchange rate since USDC and POL have different prices
+                usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
+                usdc_balance = int(usdc_status.balance or 0)
+                usdc_decimals = usdc_status.decimals
+                pol_decimals = native_status.decimals
+
+                if usdc_decimals is None or pol_decimals is None:
+                    self.context.logger.error(
+                        "Missing decimal information for USDC or native token. Can't apply adjustment."
+                    )
+                    return funds_status
+
+                # If USDC balance is zero, no adjustment needed
+                if usdc_balance == 0:
+                    self.context.logger.info(
+                        "USDC balance is zero. Skipping adjustment."
+                    )
+                    return funds_status
+
+                # Get POL equivalent for USDC balance using CoinGecko
+                pol_equivalent = self._get_pol_equivalent_for_usdc(
+                    usdc_balance, chain_config
+                )
+                self.context.logger.info(
+                    "USDC balance: raw=%s, decimals=%s",
+                    usdc_balance,
+                    usdc_decimals,
+                )
+                self.context.logger.info(
+                    "Native token decimals: %s",
+                    pol_decimals,
+                )
+                self.context.logger.info(
+                    "CoinGecko POL equivalent (raw): %s",
+                    pol_equivalent,
+                )
+
+                if pol_equivalent is None:
+                    self.context.logger.warning(
+                        "Failed to get POL/USDC exchange rate from CoinGecko. Skipping adjustment."
+                    )
+                    return funds_status
+
+                adjustment_balance = pol_equivalent
+            else:
+                # On Gnosis: wxDAI balance considered as xDAI (both same decimals, 1:1 rate)
+                wrapped_native_status = safe_balances.tokens[
+                    chain_config["wrapped_native_address"]
+                ]
+                adjustment_balance = int(wrapped_native_status.balance or 0)
+
         except KeyError:
             self.context.logger.error(
                 "Misconfigured fund requirements data. Can't apply adjustment."
             )
             return funds_status
-        xdai_balance = int(xDAI_status.balance or 0)
-        wxdai_balance = int(wxDAI_status.balance or 0)
-        actual_considered_balance = xdai_balance + wxdai_balance
 
-        xdai_topup = int(xDAI_status.topup or 0)
+        actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
+
         actual_deficit = 0
-        if actual_considered_balance < xDAI_status.threshold:
-            actual_deficit = max(0, xdai_topup - actual_considered_balance)
-        xDAI_status.deficit = actual_deficit
+        if native_status.threshold > actual_considered_balance:
+            actual_deficit = max(0, native_status.topup - actual_considered_balance)
+        native_status.deficit = actual_deficit
+
         return funds_status
+
+    def _get_pol_to_usdc_rate(self, chain_config: Dict[str, Any]) -> Optional[float]:
+        """
+        Get the POL to USDC conversion rate (1 POL = X USDC), with caching.
+
+        Fetches from CoinGecko API if cache is stale (older than 5 minutes).
+        Only used for Polygon chain; Gnosis doesn't need this as wxDAI = xDAI (1:1).
+
+        :param chain_config: Chain configuration dictionary
+        :return: Conversion rate (1 POL = X USDC), or None if failed
+        """
+
+        try:
+            current_time = self.shared_state.synced_timestamp
+        except Exception as e:
+            self.context.logger.warning(
+                f"Cannot access synced_timestamp because agent hasn't made any transitions yet: {str(e)}."
+            )
+            current_time = None
+
+        # Check if cached rate is still valid
+        if (
+            current_time is not None
+            and self._pol_usdc_rate is not None
+            and (current_time - self._pol_usdc_rate_timestamp)
+            < COINGECKO_RATE_CACHE_SECONDS
+        ):
+            self.context.logger.info(
+                f"Using cached POL→USDC rate: 1 POL = {self._pol_usdc_rate} USDC "
+                f"(cached {int(current_time - self._pol_usdc_rate_timestamp)}s ago)"
+            )
+            return self._pol_usdc_rate
+
+        # Cache is stale or doesn't exist, fetch new rate from CoinGecko
+        try:
+            self.context.logger.info(
+                "Fetching fresh POL→USDC rate from CoinGecko API (cache expired or missing)"
+            )
+
+            # Fetch POL price from CoinGecko
+            url = self.params.coingecko_pol_in_usd_price_url
+
+            response = requests.get(url, timeout=10)
+
+            if response.status_code != 200:
+                self.context.logger.warning(
+                    f"CoinGecko API returned status {response.status_code}: {response.text}"
+                )
+                return (
+                    self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
+                )  # Return stale cache if available
+
+            data: Dict = response.json()
+
+            price_usd = data.get(POLYGON_POL_ADDRESS, {}).get("usd", None)
+
+            if not price_usd:
+                self.context.logger.error(f"No USD price in CoinGecko response: {data}")
+                return (
+                    self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
+                )  # Return stale cache if available
+
+            # CoinGecko returns price in USD, which we treat as USDC (1 USD ≈ 1 USDC)
+            rate = float(price_usd)
+
+            # Update cache only if we have a valid timestamp
+            if current_time is not None:
+                self._pol_usdc_rate = rate
+                self._pol_usdc_rate_timestamp = current_time
+                self.context.logger.info(
+                    f"Updated POL→USDC rate cache: 1 POL = {rate} USDC"
+                )
+            else:
+                self.context.logger.info(
+                    f"Fetched POL→USDC rate: 1 POL = {rate} USDC (not cached due to missing timestamp)"
+                )
+
+            return rate
+
+        except Exception as e:
+            self.context.logger.error(
+                f"Error fetching POL→USDC rate from CoinGecko: {str(e)}"
+            )
+            return (
+                self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
+            )  # Return stale cache if available
+
+    def _get_pol_equivalent_for_usdc(
+        self,
+        usdc_balance: int,
+        chain_config: Dict[str, Any],
+    ) -> Optional[int]:
+        """
+        Get the POL equivalent for a given USDC balance using cached rate.
+
+        Only used for Polygon; on Gnosis, wxDAI = xDAI (1:1) so no conversion needed.
+
+        :param usdc_balance: USDC balance in wei (6 decimals for USDC)
+        :param chain_config: Chain configuration dictionary
+        :return: POL equivalent amount in wei (18 decimals), or None if failed
+        """
+        try:
+            # Get the conversion rate (1 POL = X USDC)
+            rate = self._get_pol_to_usdc_rate(chain_config)
+
+            if rate is None or rate == 0:
+                self.context.logger.error(
+                    "No valid POL→USDC rate available, cannot calculate equivalent"
+                )
+                return None
+
+            # Convert USDC balance (6 decimals) to standard units
+            usdc_amount = usdc_balance / (10**6)
+
+            # Calculate POL equivalent: POL = USDC / rate
+            pol_amount = usdc_amount / rate
+
+            # Convert back to wei (18 decimals)
+            pol_wei = int(pol_amount * (10**18))
+
+            self.context.logger.info(
+                f"Calculated POL equivalent: {usdc_amount:.2f} USDC ≈ {pol_amount:.4f} POL "
+                f"(rate: 1 POL = {rate} USDC)"
+            )
+
+            return pol_wei
+
+        except Exception as e:
+            self.context.logger.error(
+                f"Error calculating POL equivalent for USDC: {str(e)}"
+            )
+            return None
 
     def _handle_get_funds_status(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -404,7 +650,14 @@ class HttpHandler(BaseHttpHandler):
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
         """Get Web3 instance for the specified chain."""
         try:
-            rpc_url = self.params.gnosis_ledger_rpc
+            # Select RPC URL based on chain
+            if chain == POLYGON_CHAIN_NAME:
+                rpc_url = self.params.polygon_ledger_rpc
+            elif chain == GNOSIS_CHAIN_NAME:
+                rpc_url = self.params.gnosis_ledger_rpc
+            else:
+                self.context.logger.error(f"Unknown chain: {chain}")
+                return None
 
             if not rpc_url:
                 self.context.logger.warning(f"No RPC URL for {chain}")
@@ -450,33 +703,74 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error checking USDC balance: {str(e)}")
             return None
 
-    def _get_lifi_quote_sync(
-        self, eoa_address: str, chain: str, usdc_address: str, to_amount: str
+    def _get_lifi_quote(
+        self,
+        from_token: str,
+        to_token: str,
+        from_address: str,
+        to_address: str,
+        chain_config: Dict[str, Any],
+        from_amount: Optional[str] = None,
+        to_amount: Optional[str] = None,
+        timeout: int = 30,
     ) -> Optional[Dict]:
-        """Get LiFi quote synchronously."""
+        """
+        Get LiFi quote for token swap.
+
+        :param from_token: Source token address
+        :param to_token: Destination token address
+        :param from_address: Address sending the tokens
+        :param to_address: Address receiving the tokens
+        :param chain_config: Chain configuration dictionary
+        :param from_amount: Amount to swap from (for standard quote)
+        :param to_amount: Desired amount to receive (for toAmount quote)
+        :param timeout: Request timeout in seconds
+        :return: LiFi quote response or None if failed
+        """
         try:
-            chain_id = GNOSIS_CHAIN_ID
+            # Use different slippage values based on chain
+            slippage = str(
+                self.params.slippages_for_swap["POL-USDC"]
+                if chain_config["chain_name"] == POLYGON_CHAIN_NAME
+                else self.params.slippages_for_swap["xDAI-USDC"]
+            )
 
             params = {
-                "fromChain": chain_id,
-                "toChain": chain_id,
-                "fromToken": XDAI_ADDRESS,
-                "toToken": usdc_address,
-                "fromAddress": eoa_address,
-                "toAddress": eoa_address,
-                "toAmount": to_amount,
-                "slippage": SLIPPAGE_FOR_SWAP,
+                "fromChain": chain_config["chain_id"],
+                "toChain": chain_config["chain_id"],
+                "fromToken": from_token,
+                "toToken": to_token,
+                "fromAddress": from_address,
+                "toAddress": to_address,
+                "slippage": slippage,
                 "integrator": "valory",
             }
 
-            response = requests.get(
-                self.params.lifi_quote_to_amount_url, params=params, timeout=30
-            )
+            # Add amount parameter based on what's provided
+            if to_amount is not None:
+                params["toAmount"] = to_amount
+                url = self.params.lifi_quote_to_amount_url
+            elif from_amount is not None:
+                params["fromAmount"] = from_amount
+                url = self.params.lifi_quote_to_amount_url.replace(
+                    "/quote/toAmount", "/quote"
+                )
+            else:
+                self.context.logger.error(
+                    "Either from_amount or to_amount must be provided"
+                )
+                return None
+
+            response = requests.get(url, params=params, timeout=timeout)
 
             if response.status_code == 200:
                 return response.json()
 
+            self.context.logger.warning(
+                f"LiFi API failed with status {response.status_code} {response.text}"
+            )
             return None
+
         except Exception as e:
             self.context.logger.error(f"Error getting LiFi quote: {str(e)}")
             return None
@@ -591,14 +885,20 @@ class HttpHandler(BaseHttpHandler):
         """Ensure agent EOA has at sufficient funds for x402 requests payments"""
         self.context.logger.info("Checking USDC balance for x402 payments...")
         try:
-            chain = GNOSIS_CHAIN_NAME
+            chain_config = self._get_chain_config()
+            chain = chain_config["chain_name"]
             eoa_account = self._get_eoa_account()
             if not eoa_account:
                 self.context.logger.error("Failed to get EOA account")
                 return False
             eoa_address = eoa_account.address
 
-            usdc_address = USDC_E_ADDRESS
+            # For Polygon use USDC (native), for Gnosis use USDC.e (bridged)
+            usdc_address = (
+                chain_config["usdc_address"]
+                if self.params.is_running_on_polymarket
+                else chain_config["usdc_e_address"]
+            )
             if not usdc_address:
                 self.context.logger.error(f"No USDC address for {chain}")
                 return False
@@ -618,13 +918,21 @@ class HttpHandler(BaseHttpHandler):
                 )
                 return True
 
+            native_token_name = (
+                "POL" if self.params.is_running_on_polymarket else "xDAI"
+            )
             self.context.logger.info(
-                f"USDC balance ({usdc_balance}) < {threshold}, swapping xDAI to {top_up} USDC..."
+                f"USDC balance ({usdc_balance}) < {threshold}, swapping {native_token_name} to {top_up} USDC..."
             )
 
             top_up_usdc_amount = str(top_up)
-            quote = self._get_lifi_quote_sync(
-                eoa_address, chain, usdc_address, top_up_usdc_amount
+            quote = self._get_lifi_quote(
+                from_token=chain_config["native_token_address"],
+                to_token=usdc_address,
+                from_address=eoa_address,
+                to_address=eoa_address,
+                chain_config=chain_config,
+                to_amount=top_up_usdc_amount,
             )
             if not quote:
                 self.context.logger.error("Failed to get LiFi quote")
@@ -657,7 +965,7 @@ class HttpHandler(BaseHttpHandler):
                 "gas": tx_gas,
                 "gasPrice": gas_price,
                 "nonce": nonce,
-                "chainId": GNOSIS_CHAIN_ID,
+                "chainId": chain_config["chain_id"],
             }
 
             self.context.logger.info(
@@ -670,7 +978,12 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to submit transaction")
                 return False
 
-            self.context.logger.info(f"xDAI to USDC swap submitted: {tx_hash}")
+            native_token_name = (
+                "POL" if self.params.is_running_on_polymarket else "xDAI"
+            )
+            self.context.logger.info(
+                f"{native_token_name} to USDC swap submitted: {tx_hash}"
+            )
 
             # Check transaction status to ensure it was successful
             tx_successful = self._check_transaction_status(tx_hash, chain)
@@ -680,7 +993,7 @@ class HttpHandler(BaseHttpHandler):
                 return False
 
             self.context.logger.info(
-                f"xDAI to USDC swap completed successfully: {tx_hash}"
+                f"{native_token_name} to USDC swap completed successfully: {tx_hash}"
             )
             return True
 

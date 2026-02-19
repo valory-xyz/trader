@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ class SamplingRound(UpdateBetsRound):
         get_name(SynchronizedData.benchmarking_finished),
         get_name(SynchronizedData.simulated_day),
     )
-    synchronized_data_class = SynchronizedData
+    synchronized_data_class = SynchronizedData  # type: ignore[assignment]
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
