@@ -279,7 +279,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     side > self.params.outcome_side_threshold_filter_threshold
                     for side in sampled_bet.outcomeTokenMarginalPrices
                 ):
-                    msg = f"Sampled bet {sampled_bet.id} has an outcome side above the threshold of {self.params.outcome_side_threshold_filter_threshold}, skipping"
                     available_bets.remove(sampled_bet)
                     continue
 
