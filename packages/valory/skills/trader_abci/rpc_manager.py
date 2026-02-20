@@ -28,8 +28,9 @@ import threading
 import time
 from typing import Callable, Dict, List, Optional, TypeVar
 
-from packages.valory.skills.trader_abci.chainlist import enrich_rpc_urls
 from web3 import Web3
+
+from packages.valory.skills.trader_abci.chainlist import enrich_rpc_urls
 
 
 _logger = logging.getLogger(__name__)
