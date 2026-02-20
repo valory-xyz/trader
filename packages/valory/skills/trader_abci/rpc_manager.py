@@ -28,6 +28,7 @@ import threading
 import time
 from typing import Callable, Dict, List, Optional, TypeVar
 
+from packages.valory.skills.trader_abci.chainlist import enrich_rpc_urls
 from web3 import Web3
 
 
@@ -203,10 +204,6 @@ class RPCManager:
         """
         if chain in self._chains:
             return  # already registered
-        from packages.valory.skills.trader_abci.chainlist import (  # lazy import
-            enrich_rpc_urls,
-        )
-
         rpc_urls = parse_rpc_urls(rpc_string)
         rpc_urls = enrich_rpc_urls(rpc_urls, chain_id=chain_id)
         self._chains[chain] = _ChainState(rpc_urls)
