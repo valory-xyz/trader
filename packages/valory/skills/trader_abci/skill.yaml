@@ -296,6 +296,8 @@ models:
       penalize_mech_time_window: 1800
       pol_threshold_for_swap: 2000000000000000000
       slippages_for_swap: {}
+      is_outcome_side_threshold_filter_enabled: false
+      outcome_side_threshold_filter_threshold: 0.8
     class_name: TraderParams
   benchmarking_mode:
     args:

@@ -38,8 +38,6 @@ WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
-THRESHOLD_FOR_OUTCOME_SIDE = 0.8
-
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
@@ -273,15 +271,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
             # This is to avoid sampling bets where the market is already heavily
             # skewed towards one outcome, results in unfavorable risk to reward ratio
-            self.context.logger.info(
-                f"Sampled bet {sampled_bet.id} has liquidity {liquidity} and outcome token marginal prices {sampled_bet.outcomeTokenMarginalPrices}"
-            )
-            if any(
-                side > THRESHOLD_FOR_OUTCOME_SIDE
-                for side in sampled_bet.outcomeTokenMarginalPrices
-            ):
-                available_bets.remove(sampled_bet)
-                continue
+            if self.params.is_outcome_side_threshold_filter_enabled:
+                self.context.logger.info(
+                    f"Sampled bet {sampled_bet.id} has liquidity {liquidity} and outcome token marginal prices {sampled_bet.outcomeTokenMarginalPrices}"
+                )
+                if any(
+                    side > self.params.outcome_side_threshold_filter_threshold
+                    for side in sampled_bet.outcomeTokenMarginalPrices
+                ):
+                    msg = f"Sampled bet {sampled_bet.id} has an outcome side above the threshold of {self.params.outcome_side_threshold_filter_threshold}, skipping"
+                    available_bets.remove(sampled_bet)
+                    continue
 
             # Valid bet found
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity

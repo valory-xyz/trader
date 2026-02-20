@@ -286,6 +286,8 @@ models:
       penalize_mech_time_window: ${int:1800}
       pol_threshold_for_swap: ${int:2000000000000000000}
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
+      is_outcome_side_threshold_filter_enabled: ${bool:false}
+      outcome_side_threshold_filter_threshold: ${float:0.8}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
