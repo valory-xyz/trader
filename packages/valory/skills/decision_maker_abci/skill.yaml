@@ -28,7 +28,7 @@ fingerprint:
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeif6utosf2oj3c7mtyths3jszodzrfii7kolb64gif3grtsdj3mv5a
   behaviours/round_behaviour.py: bafybeifqeitdyclapc7biclohduvgnag7pycljck2fb7x6fydduvwy42nu
-  behaviours/sampling.py: bafybeif2c5bndg2wrwcxwk4bu2qkynzjvvb6p5jamotnt5i47mo6b5c27q
+  behaviours/sampling.py: bafybeie6xnyrklar5atovcbquwikpijfcprair2wht3bod4v6lbfmiykve
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeifdqy3t5bnu65ymzhqoqvcsb243qdgjhtf2shpgbklay7ch7biriu
   behaviours/tool_selection.py: bafybeihqykyfmeqi4les5feaef2jc5ubbapv7bh5uclwdokkz2btk5lkbq
