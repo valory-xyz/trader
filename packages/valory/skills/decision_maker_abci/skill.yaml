@@ -28,7 +28,7 @@ fingerprint:
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeif6utosf2oj3c7mtyths3jszodzrfii7kolb64gif3grtsdj3mv5a
   behaviours/round_behaviour.py: bafybeifqeitdyclapc7biclohduvgnag7pycljck2fb7x6fydduvwy42nu
-  behaviours/sampling.py: bafybeie6qrxcspew6jeo7ewqx4i7azh55e64pnorz2yl3nlgzozgm3wx5u
+  behaviours/sampling.py: bafybeie6xnyrklar5atovcbquwikpijfcprair2wht3bod4v6lbfmiykve
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeifdqy3t5bnu65ymzhqoqvcsb243qdgjhtf2shpgbklay7ch7biriu
   behaviours/tool_selection.py: bafybeihqykyfmeqi4les5feaef2jc5ubbapv7bh5uclwdokkz2btk5lkbq
@@ -37,7 +37,7 @@ fingerprint:
   handlers.py: bafybeigcjcvrtkbskacgyvecxirt2ji5sio7vmihwyqzcybfv46dborgyu
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeih3sdsx5dhe4kzhtoafexjgkutsujwqy3zcdrlrkhtdks45bc7exa
-  models.py: bafybeiakahv2gp4scwtb3joal33dcasisqthuc42dhsmtfcolfxneo7ndu
+  models.py: bafybeiahktkzwuqdmqkcpkp6y65y5dtn5qnepdskccrush25joynk54rty
   payloads.py: bafybeibjipb5dpnpbpafkreoxtfq5mbbvnjlv2kibpuryto5hokqlcuj4m
   policy.py: bafybeigckodvrynyokprhaqca6nqtgny4duddo3gwldyvj44maedw2xvbi
   redeem_info.py: bafybeifiiix4gihfo4avraxt34sfw35v6dqq45do2drrssei2shbps63mm
@@ -313,6 +313,8 @@ models:
       pol_threshold_for_swap: 2000000000000000000
       is_running_on_polymarket: false
       slippages_for_swap: {}
+      is_outcome_side_threshold_filter_enabled: false
+      outcome_side_threshold_filter_threshold: 0.8
     class_name: DecisionMakerParams
   acc_info_fields:
     args:
