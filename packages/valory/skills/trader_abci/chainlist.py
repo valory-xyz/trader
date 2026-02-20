@@ -30,6 +30,7 @@ import logging
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -124,7 +125,7 @@ def _filter_candidates(
     candidates: List[str] = []
     for node in nodes:
         url = node.url
-        if not url.startswith("https://"):
+        if urllib.parse.urlparse(url).scheme != "https":
             continue
         if _is_template_url(url):
             continue
