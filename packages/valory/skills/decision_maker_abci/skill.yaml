@@ -94,7 +94,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeigyjwg6nfwmdkwzt7i56n4zv3oj6hii2mkkgstuaztyunscjifdee
-- valory/polymarket_client:0.1.0:bafybeihndmdxyie2v3s3k6qj4xwdbn5jbpdnr26izigs3ayomhd5m7jkdu
+- valory/polymarket_client:0.1.0:bafybeidiar3wo5pnqilaypsuehpetgsfgaagnzsxrax3zyloafj4gimttu
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy
 - valory/market_maker:0.1.0:bafybeidwc7yvxufnupyjzge2ycbos2t24hoyaeosvzj3z63ccqdzotygdm
@@ -113,12 +113,12 @@ protocols:
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/market_manager_abci:0.1.0:bafybeihbso4qnnrnfgnmhy7yfrm6pj3j4xrmetvahcu3qflana2dx4q7gm
+- valory/market_manager_abci:0.1.0:bafybeibsy6cdmvrxaeivvzvg3viqfa243xbpw4qfibly6j3nkhz5wrlbhq
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/mech_interact_abci:0.1.0:bafybeiffz7arijdfjko47rqrkcs5eobyj4vmal5pmiuhopmot24qrigwdy
 - valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
-- valory/agent_performance_summary_abci:0.1.0:bafybeig7zwkdimzcqxoftfweywccqxeyzjenxzd7a32c7endvpz62ondty
-- valory/chatui_abci:0.1.0:bafybeif4em3ccvcsavmmqt4wz27l2alyf6v6n7r5pwsg3bmb6zuh4alw6u
+- valory/agent_performance_summary_abci:0.1.0:bafybeigscpyfmocogx2ufsvxu5cmvzylgcnn74g3polw76f5rz67c2i6f4
+- valory/chatui_abci:0.1.0:bafybeidmfqowa2x3xkpy5pvebo2otn7sf36dh6nzjd2cbc6r2ncqofyoxu
 behaviours:
   main:
     args: {}
