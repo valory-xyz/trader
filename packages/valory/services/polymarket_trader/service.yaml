@@ -391,3 +391,4 @@ config:
   remote_builder_url: ${REMOTE_BUILDER_URL:str:http://localhost:5001/sign}
   polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
   polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon-rpc.com}
+  is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}

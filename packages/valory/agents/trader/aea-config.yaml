@@ -585,3 +585,4 @@ config:
   remote_builder_url: ${str:http://localhost:5001/sign}
   polymarket_builder_program_enabled: ${bool:true}
   polygon_ledger_rpc: ${str:https://1rpc.io/matic}
+  is_running_on_polymarket: ${bool:false}

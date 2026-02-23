@@ -381,3 +381,4 @@ models:
       rpc_urls:
         gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+      is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
