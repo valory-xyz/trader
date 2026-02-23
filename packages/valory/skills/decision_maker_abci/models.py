@@ -496,6 +496,12 @@ class DecisionMakerParams(
         self.slippages_for_swap: Dict[str, float] = self._ensure(
             "slippages_for_swap", kwargs, Dict[str, float]
         )
+        self.is_outcome_side_threshold_filter_enabled: bool = self._ensure(
+            "is_outcome_side_threshold_filter_enabled", kwargs, bool
+        )
+        self.outcome_side_threshold_filter_threshold: float = self._ensure(
+            "outcome_side_threshold_filter_threshold", kwargs, float
+        )
         super().__init__(*args, **kwargs)
 
     @property
