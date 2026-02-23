@@ -40,6 +40,7 @@ from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import MarketOrderArgs, OrderType
 from py_clob_client.exceptions import PolyApiException
 from py_clob_client.order_builder.constants import BUY
+from py_order_utils.model import SignedOrder as UtilsSignedOrder
 from web3 import Web3
 from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
 
@@ -353,19 +354,37 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.error(f"Polymarket connection test failed: {e}")
             return False
 
-    def _place_bet(self, token_id: str, amount: float) -> Tuple[Any, Any]:
+    def _place_bet(
+        self, token_id: str, amount: float, cached_signed_order_json: str = None
+    ) -> Tuple[Any, Any]:
         """Place a bet on Polymarket."""
+        signed_order_json = None
 
         try:
-            mo = MarketOrderArgs(
-                token_id=token_id,
-                amount=amount,
-                side=BUY,
-                order_type=OrderType.FOK,
-            )
-            signed = self.client.create_market_order(mo)
+            # Use cached order or create new one
+            if cached_signed_order_json:
+                signed_dict = json.loads(cached_signed_order_json)
+                signed = UtilsSignedOrder(**signed_dict)
+                signed_order_json = cached_signed_order_json
+            else:
+                mo = MarketOrderArgs(
+                    token_id=token_id,
+                    amount=amount,
+                    side=BUY,
+                    order_type=OrderType.FOK,
+                )
+                signed = self.client.create_market_order(mo)
+                signed_order_json = json.dumps(signed.dict())
+
+            # Post order
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
+
+            # Add signed order to response
+            if resp:
+                resp["signed_order_json"] = signed_order_json
+
             return resp, None
+
         except PolyApiException as e:
             error_msg = (
                 e.error_msg.get("error")
@@ -373,7 +392,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 else f"Error placing bet: {e}"
             )
             self.logger.error(error_msg)
-            return None, error_msg
+            # Return error with signed order for retry
+            response = {"error": error_msg, "signed_order_json": signed_order_json}
+            return response, error_msg
 
     def _load_cache_file(self, cache_file_path: str) -> Dict:
         """Load the cache file from disk.

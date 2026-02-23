@@ -199,6 +199,14 @@ class SynchronizedData(
         return int(self.db.get_strict("bet_amount"))
 
     @property
+    def cached_signed_orders(self) -> Dict[str, str]:
+        """Get the cached signed orders."""
+        cached = self.db.get("cached_signed_orders", None)
+        if cached is None:
+            return {}
+        return json.loads(cached)
+
+    @property
     def weighted_accuracy(self) -> float:
         """Get the weighted accuracy of the selected tool."""
         tool_name = self.mech_tool

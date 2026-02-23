@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeih5gqx66p2hkz4kwanhh4hrzhbxhlzdo75h7p7gua5scwnx6uaatm
+  connection.py: bafybeidgosc45vh66d5oowlacc6rfpaazobc7wrgtrak3w4cqyu6o7t4zq
   request_types.py: bafybeifgkpwhllc7lihwssbah5ilvghqshzlqnaiaapsvdd5cnptyteerq
 fingerprint_ignore_patterns: []
 connections: []
@@ -42,6 +42,8 @@ dependencies:
     version: ==5.3.0
   py-clob-client:
     version: ==0.34.5
+  py-order-utils:
+    version: ==0.3.2
   py-builder-relayer-client:
     version: ==0.0.1
   py_builder_signing_sdk:
