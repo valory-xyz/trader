@@ -47,6 +47,9 @@ class PolymarketBetPlacementRound(TxPreparationRound):
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
 
+        # For static checking
+        # Event.BET_PLACEMENT_DONE, Event.BET_PLACEMENT_FAILED, Event.INSUFFICIENT_BALANCE, Event.BET_PLACEMENT_IMPOSSIBLE
+
         # Extract event and cached_signed_orders from payload
         # Payload: sender(0), tx_submitter(1), tx_hash(2), mocking_mode(3), event(4), cached_signed_orders(5)
         event = Event(self.most_voted_payload_values[-2])
