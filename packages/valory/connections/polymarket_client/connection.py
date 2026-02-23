@@ -135,6 +135,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param kwargs: keyword arguments passed to component base
         """
         super().__init__(*args, **kwargs)
+        if not self.configuration.config.get("is_running_on_polymarket", False):
+            self.logger.warning(
+                "Not running on Polymarket environment. PolymarketClientConnection will not initialize."
+            )
+            return
         self.connection_private_key = self.crypto_store.private_keys.get("ethereum")
 
         host = self.configuration.config.get("host")
