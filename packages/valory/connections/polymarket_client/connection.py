@@ -349,7 +349,9 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.error(f"Polymarket connection test failed: {e}")
             return False
 
-    def _place_bet(self, token_id: str, amount: float, cached_signed_order_json: str = None) -> Tuple[Any, Any]:
+    def _place_bet(
+        self, token_id: str, amount: float, cached_signed_order_json: str = None
+    ) -> Tuple[Any, Any]:
         """Place a bet on Polymarket."""
         signed_order_json = None
 
@@ -368,16 +370,16 @@ class PolymarketClientConnection(BaseSyncConnection):
                 )
                 signed = self.client.create_market_order(mo)
                 signed_order_json = json.dumps(signed.dict())
-            
+
             # Post order
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
-            
+
             # Add signed order to response
             if resp:
                 resp["signed_order_json"] = signed_order_json
-            
+
             return resp, None
-            
+
         except PolyApiException as e:
             error_msg = (
                 e.error_msg.get("error")

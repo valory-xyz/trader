@@ -80,23 +80,27 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             return
 
         # Generate cache key and check for cached order
-        cache_key = f"{self.synchronized_data.period_count}_{self.sampled_bet.id}_{token_id}"
+        cache_key = (
+            f"{self.synchronized_data.period_count}_{self.sampled_bet.id}_{token_id}"
+        )
         cached_orders = self.synchronized_data.cached_signed_orders
         cached_signed_order_json = cached_orders.get(cache_key)
 
         # Prepare payload data
-        polymarket_bet_payload = {
-            "request_type": RequestType.PLACE_BET.value,
-            "params": {
-                "token_id": token_id,
-                "amount": amount,
-            },
+        params = {
+            "token_id": token_id,
+            "amount": amount,
         }
-        
+
         # Add cached order if available
         if cached_signed_order_json:
-            polymarket_bet_payload["params"]["cached_signed_order_json"] = cached_signed_order_json
-            
+            params["cached_signed_order_json"] = cached_signed_order_json
+
+        polymarket_bet_payload = {
+            "request_type": RequestType.PLACE_BET.value,
+            "params": params,
+        }
+
         response = yield from self.send_polymarket_connection_request(
             polymarket_bet_payload
         )
@@ -118,12 +122,12 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             status = response.get("status")
             order_id = response.get("orderID")
             tx_hashes = response.get("transactionsHashes", [])
-            
+
             # Check for duplicate error in behaviour
             is_duplicate_error = False
             if error_msg:
                 is_duplicate_error = "duplicated" in str(error_msg).lower()
-            
+
             self.context.logger.info(
                 f"Bet placement: Status={status}, OrderID={order_id}, TX={tx_hashes}, IsDuplicate={is_duplicate_error}"
             )
@@ -137,14 +141,16 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 updated_cache.pop(cache_key, None)
             # Handle duplicate error - treat as success
             elif is_duplicate_error:
-                self.context.logger.warning(f"Duplicate order for {cache_key}. Treating as success.")
+                self.context.logger.warning(
+                    f"Duplicate order for {cache_key}. Treating as success."
+                )
                 self.update_bet_transaction_information()
                 event = Event.BET_PLACEMENT_DONE
                 updated_cache.pop(cache_key, None)
             # Normal success/failure handling
             else:
                 success = bool(response.get("success") or tx_hashes)
-                
+
                 if success:
                     self.update_bet_transaction_information()
                     self.context.logger.info("Bet placement successful.")

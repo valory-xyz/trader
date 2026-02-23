@@ -51,12 +51,15 @@ class PolymarketBetPlacementRound(TxPreparationRound):
         # Payload: sender(0), tx_submitter(1), tx_hash(2), mocking_mode(3), event(4), cached_signed_orders(5)
         event = Event(self.most_voted_payload_values[-2])
         cached_orders = self.most_voted_payload_values[-1]
-        
+
         # Persist cached orders to synchronized data
         if cached_orders is not None:
-            synced_data = synced_data.update(
-                synchronized_data_class=self.synchronized_data_class,
-                **{"cached_signed_orders": cached_orders}
+            synced_data = cast(
+                SynchronizedData,
+                synced_data.update(
+                    synchronized_data_class=self.synchronized_data_class,
+                    **{"cached_signed_orders": cached_orders}
+                ),
             )
 
         return synced_data, event
