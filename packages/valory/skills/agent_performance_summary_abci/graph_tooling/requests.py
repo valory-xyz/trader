@@ -38,6 +38,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
@@ -457,18 +458,28 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         skip = 0
         batch_size = QUERY_BATCH_SIZE
 
+        # Determine query and subgraph based on platform
+        if self.params.is_running_on_polymarket:
+            query = GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY
+            subgraph = self.context.polymarket_agents_subgraph
+            res_context_prefix = "polymarket_daily_profit"
+        else:
+            query = GET_DAILY_PROFIT_STATISTICS_QUERY
+            subgraph = self.context.olas_agents_subgraph
+            res_context_prefix = "daily_profit_statistics"
+
         while True:
 
             result = yield from self._fetch_from_subgraph(
-                query=GET_DAILY_PROFIT_STATISTICS_QUERY,
+                query=query,
                 variables={
                     "agentId": agent_safe_address.lower(),
                     "startTimestamp": str(start_timestamp),
                     "first": batch_size,
                     "skip": skip,
                 },
-                subgraph=self.context.olas_agents_subgraph,
-                res_context=f"daily_profit_statistics_batch_{skip // batch_size + 1}",
+                subgraph=subgraph,
+                res_context=f"{res_context_prefix}_batch_{skip // batch_size + 1}",
             )
 
             # Handle null traderAgent response

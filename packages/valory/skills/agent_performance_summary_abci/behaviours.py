@@ -975,13 +975,23 @@ class FetchPerformanceSummaryBehaviour(
         # Extract question titles from profit participants and count mech requests
         mech_fee_count = 0
         for participant in profit_participants:
-            question = participant.get("question", "")
-            if question:
-                # Split by separator and take the first part (question title)
-                title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                if title:
-                    # Use cached lookup instead of querying
-                    mech_fee_count += mech_request_lookup.get(title, 0)
+            # Handle both Omen and Polymarket structures
+            if self.params.is_running_on_polymarket:
+                # Polymarket: { id, questionId, metadata { title } }
+                metadata = participant.get("metadata", {})
+                title = metadata.get("title", "") if metadata else ""
+            else:
+                # Omen: { id, question } where question contains separator
+                question = participant.get("question", "")
+                if question:
+                    # Split by separator and take the first part (question title)
+                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
+                else:
+                    title = ""
+            
+            if title:
+                # Use cached lookup instead of querying
+                mech_fee_count += mech_request_lookup.get(title, 0)
 
         # Calculate fees: 0.01 xDAI per request
         total_mech_fees = mech_fee_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
@@ -993,11 +1003,21 @@ class FetchPerformanceSummaryBehaviour(
         placed_titles: Set[str] = set()
         for stat in daily_stats:
             for participant in stat.get("profitParticipants", []):
-                question = participant.get("question", "")
-                if question:
-                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                    if title:
-                        placed_titles.add(title)
+                # Handle both Omen and Polymarket structures
+                if self.params.is_running_on_polymarket:
+                    # Polymarket: { id, questionId, metadata { title } }
+                    metadata = participant.get("metadata", {})
+                    title = metadata.get("title", "") if metadata else ""
+                else:
+                    # Omen: { id, question } where question contains separator
+                    question = participant.get("question", "")
+                    if question:
+                        title = question.split(QUESTION_DATA_SEPARATOR)[0]
+                    else:
+                        title = ""
+                
+                if title:
+                    placed_titles.add(title)
         return placed_titles
 
     def _apply_mech_fees(
@@ -1045,11 +1065,23 @@ class FetchPerformanceSummaryBehaviour(
         title_days: Dict[str, list] = {}
         for stat in daily_stats:
             day_ts = int(stat["date"])
-            titles = {
-                participant.get("question", "").split(QUESTION_DATA_SEPARATOR)[0]
-                for participant in stat.get("profitParticipants", [])
-                if participant.get("question", "")
-            }
+            
+            # Extract titles based on platform
+            if self.params.is_running_on_polymarket:
+                # Polymarket: { id, questionId, metadata { title } }
+                titles = {
+                    participant.get("metadata", {}).get("title", "")
+                    for participant in stat.get("profitParticipants", [])
+                    if participant.get("metadata", {}).get("title", "")
+                }
+            else:
+                # Omen: { id, question }
+                titles = {
+                    participant.get("question", "").split(QUESTION_DATA_SEPARATOR)[0]
+                    for participant in stat.get("profitParticipants", [])
+                    if participant.get("question", "")
+                }
+            
             for title in titles:
                 if title:
                     title_days.setdefault(title, []).append(day_ts)
@@ -1301,10 +1333,17 @@ class FetchPerformanceSummaryBehaviour(
         data_points = []
         cumulative_profit = 0.0
 
+        # Determine divisor based on platform
+        profit_divisor = (
+            USDC_DECIMALS_DIVISOR
+            if self.params.is_running_on_polymarket
+            else WEI_IN_ETH
+        )
+
         for stat in daily_stats:
             date_timestamp = int(stat["date"])
             date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
-            daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
+            daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Calculate mech fees (placed + unplaced) using cached lookup
             profit_participants = stat.get("profitParticipants", [])
@@ -1472,11 +1511,18 @@ class FetchPerformanceSummaryBehaviour(
             new_data_points[-1].cumulative_profit if new_data_points else 0.0
         )
 
+        # Determine divisor based on platform
+        profit_divisor = (
+            USDC_DECIMALS_DIVISOR
+            if self.params.is_running_on_polymarket
+            else WEI_IN_ETH
+        )
+
         new_mech_sum = 0
         for stat in filtered_daily_stats:
             date_timestamp = int(stat["date"])
             date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
-            daily_profit_raw = float(stat.get("dailyProfit", 0)) / WEI_IN_ETH
+            daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Calculate mech fees using lookup for this day only
             profit_participants = stat.get("profitParticipants", [])

@@ -387,3 +387,33 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
           }
         }
 """
+
+GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY = """
+query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
+  traderAgent(id: $agentId) {
+    dailyProfitStatistics(
+      where: {
+        date_gte: $startTimestamp,
+      }
+      orderBy: date
+      orderDirection: asc
+      first: $first
+      skip: $skip
+    ) {
+      id
+      date
+      totalBets
+      totalTraded
+      totalPayout
+      dailyProfit
+      profitParticipants {
+        id
+        questionId
+        metadata {
+          title
+        }
+      }
+    }
+  }
+}
+"""
