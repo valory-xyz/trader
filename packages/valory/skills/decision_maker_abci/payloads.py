@@ -121,6 +121,7 @@ class PolymarketBetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
     event: Optional[str] = None
+    cached_signed_orders: Optional[str] = None
 
 
 @dataclass(frozen=True)
