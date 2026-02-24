@@ -305,6 +305,7 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       blockTimestamp
       transactionHash
       question {
+        id
         questionId
         metadata {
           outcomes
@@ -432,6 +433,7 @@ query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
       blockTimestamp
       transactionHash
       question {
+        id
         questionId
         metadata {
           outcomes

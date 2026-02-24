@@ -185,6 +185,7 @@ class PolymarketPredictionsFetcher(
         # Get IDs
         bet_id = bet.get("id", "")
         question_id = question.get("questionId", "")
+        condition_id = question.get("id", "")
         market_title = metadata.get("title", "")
         transaction_hash = bet.get("transactionHash", "")
 
@@ -196,6 +197,7 @@ class PolymarketPredictionsFetcher(
             "id": bet_id,
             "market": {
                 "id": question_id,
+                "condition_id": condition_id,
                 "title": market_title,
                 "external_url": (
                     f"{POLYMARKET_BASE_URL}/event/{question_id}"
@@ -456,12 +458,17 @@ class PolymarketPredictionsFetcher(
             return {}
 
     def _find_market_entry(
-        self, multi_bets_data: List[Dict], market_id: str
+        self, multi_bets_data: List[Dict], market_id: str, condition_id: str = ""
     ) -> Optional[Dict]:
         """Find market information in multi_bets data by market ID (questionId)."""
         for market in multi_bets_data:
-            # Check both 'id' and 'market' fields as the data structure may vary
-            if market.get("id") == market_id or market.get("market") == market_id:
+            # Primary: match by condition_id (most reliable cross-reference)
+            if condition_id and market.get("condition_id") == condition_id:
+                return market
+            # Fallback: match by id or market field
+            if market_id and (
+                market.get("id") == market_id or market.get("market") == market_id
+            ):
                 return market
         return None
 
@@ -557,6 +564,7 @@ class PolymarketPredictionsFetcher(
                             "id": bet.get("id"),
                             "market": {
                                 "id": question.get("questionId", ""),
+                                "condition_id": question.get("id", ""),
                                 "title": metadata.get("title", ""),
                                 "external_url": f"{POLYMARKET_BASE_URL}/event/{question.get('questionId', '')}",
                             },
@@ -642,7 +650,10 @@ class PolymarketPredictionsFetcher(
             # Load market metadata from multi_bets.json
             multi_bets_data = self._load_multi_bets_data(store_path)
             market_id = bet.get("market", {}).get("id", "")
-            market_info = self._find_market_entry(multi_bets_data, market_id)
+            condition_id = bet.get("market", {}).get("condition_id", "")
+            market_info = self._find_market_entry(
+                multi_bets_data, market_id, condition_id
+            )
 
             if not market_info:
                 # Use minimal market info from bet data
