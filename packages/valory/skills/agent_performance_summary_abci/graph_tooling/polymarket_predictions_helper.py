@@ -521,14 +521,19 @@ class PolymarketPredictionsFetcher(
                         question = bet.get("question") or {}
                         metadata = question.get("metadata", {})
                         resolution = question.get("resolution")
-                        
+
                         # Calculate profit
                         bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
-                        total_payout = float(participant.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
-                        
+                        total_payout = (
+                            float(participant.get("totalPayout", 0))
+                            / USDC_DECIMALS_DIVISOR
+                        )
+
                         # Determine status and profit
-                        status = self._get_prediction_status({**bet, "totalPayout": participant.get("totalPayout", 0)})
-                        
+                        status = self._get_prediction_status(
+                            {**bet, "totalPayout": participant.get("totalPayout", 0)}
+                        )
+
                         # Calculate net profit
                         if not resolution:
                             net_profit = 0.0
@@ -540,12 +545,14 @@ class PolymarketPredictionsFetcher(
                                 net_profit = total_payout - bet_amount
                             else:
                                 net_profit = -bet_amount
-                        
+
                         # Get prediction side
                         outcome_index = int(bet.get("outcomeIndex", 0))
                         outcomes = metadata.get("outcomes", [])
-                        prediction_side = self._get_prediction_side(outcome_index, outcomes)
-                        
+                        prediction_side = self._get_prediction_side(
+                            outcome_index, outcomes
+                        )
+
                         return {
                             "id": bet.get("id"),
                             "market": {
@@ -564,7 +571,9 @@ class PolymarketPredictionsFetcher(
                                 else None
                             ),
                             "settled_at": (
-                                self._format_timestamp(str(resolution.get("blockTimestamp")))
+                                self._format_timestamp(
+                                    str(resolution.get("blockTimestamp"))
+                                )
                                 if resolution and resolution.get("blockTimestamp")
                                 else None
                             ),
@@ -574,39 +583,42 @@ class PolymarketPredictionsFetcher(
             return None
 
         except Exception as e:
-            self.logger.error(
-                f"Error fetching specific bet for {bet_id}: {str(e)}"
-            )
+            self.logger.error(f"Error fetching specific bet for {bet_id}: {str(e)}")
             return None
 
-    def _get_ui_trading_strategy(self, strategy: Optional[str]) -> Optional[Dict[str, str]]:
+    def _get_ui_trading_strategy(
+        self, strategy: Optional[str]
+    ) -> Optional[Dict[str, str]]:
         """Get the UI trading strategy representation."""
         if not strategy:
             return None
-        
+
         # Strategy mapping based on the existing patterns
         strategy_map = {
             "kelly_criterion": {
                 "name": "Kelly Criterion",
-                "description": "Optimal bet sizing based on edge and bankroll"
+                "description": "Optimal bet sizing based on edge and bankroll",
             },
             "fixed_amount": {
                 "name": "Fixed Amount",
-                "description": "Fixed bet size per prediction"
-            }
+                "description": "Fixed bet size per prediction",
+            },
         }
-        
-        return strategy_map.get(strategy, {
-            "name": strategy.replace("_", " ").title(),
-            "description": f"{strategy.replace('_', ' ').title()} strategy"
-        })
+
+        return strategy_map.get(
+            strategy,
+            {
+                "name": strategy.replace("_", " ").title(),
+                "description": f"{strategy.replace('_', ' ').title()} strategy",
+            },
+        )
 
     def fetch_position_details(
         self, bet_id: str, safe_address: str, store_path: str
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch complete position details for a specific Polymarket bet.
-        
+
         :param bet_id: The bet ID to fetch details for
         :param safe_address: The agent's safe address
         :param store_path: Path to the data store directory
@@ -616,53 +628,59 @@ class PolymarketPredictionsFetcher(
             # Load from agent_performance.json first
             agent_performance_data = self._load_agent_performance_data(store_path)
             bet = self._find_bet(agent_performance_data, bet_id)
-            
+
             # Fallback to subgraph if not found
             if not bet:
                 self.logger.info(
                     f"No bet found in agent_performance.json for bet {bet_id}, fetching from subgraph"
                 )
                 bet = self._fetch_bet_from_subgraph(bet_id, safe_address)
-            
+
             if not bet:
                 return None
-            
+
             # Load market metadata from multi_bets.json
             multi_bets_data = self._load_multi_bets_data(store_path)
             market_id = bet.get("market", {}).get("id", "")
             market_info = self._find_market_entry(multi_bets_data, market_id)
-            
+
             if not market_info:
                 # Use minimal market info from bet data
                 market_info = bet.get("market", {}) or {}
-            
+
             # Fetch prediction response from mech if not in multi_bets
             if market_info and not market_info.get("prediction_response"):
-                question_title = market_info.get("title") or bet.get("market", {}).get("title", "")
+                question_title = market_info.get("title") or bet.get("market", {}).get(
+                    "title", ""
+                )
                 if question_title:
                     prediction_response = self._fetch_prediction_response_from_mech(
                         question_title, safe_address
                     )
                     if prediction_response:
                         market_info["prediction_response"] = prediction_response
-            
+
             # Calculate financials
             total_bet = bet.get("bet_amount", 0)
             net_profit = bet.get("net_profit", 0)
             total_payout = bet.get("total_payout", 0)
             status = bet.get("status", "pending")
-            
+
             # Calculate remaining time and potential payout
-            closing_timestamp = market_info.get("openingTimestamp", 0) if market_info else 0
+            closing_timestamp = (
+                market_info.get("openingTimestamp", 0) if market_info else 0
+            )
             current_timestamp = int(datetime.utcnow().timestamp())
             remaining_seconds = (
                 (closing_timestamp - current_timestamp)
                 if closing_timestamp > current_timestamp
                 else 0
             )
-            
+
             # Calculate to_win based on status and potential profit
-            potential_profit = market_info.get("potential_net_profit", 0) if market_info else 0
+            potential_profit = (
+                market_info.get("potential_net_profit", 0) if market_info else 0
+            )
             if status == "won" or status == "invalid":
                 to_win = total_payout
             elif status == "lost":
@@ -674,7 +692,7 @@ class PolymarketPredictionsFetcher(
                     if potential_profit > 0
                     else total_bet
                 )
-            
+
             # Get prediction tool from mech subgraph
             prediction_tool = None
             if market_info:
@@ -683,12 +701,12 @@ class PolymarketPredictionsFetcher(
                     prediction_tool = self.fetch_mech_tool_for_question(
                         question_title, safe_address
                     )
-            
+
             # Format bet details
             formatted_bet = self._format_bet_for_position(
                 bet, market_info, prediction_tool
             )
-            
+
             return {
                 "id": bet_id,
                 "question": bet.get("market", {}).get("title", ""),
@@ -712,19 +730,19 @@ class PolymarketPredictionsFetcher(
         self, bet: Dict, market_info: Optional[Dict], prediction_tool: Optional[str]
     ) -> Dict:
         """Format bet into the required API format for position details."""
-        
+
         # Get prediction response from market_info
         prediction_response = (market_info or {}).get("prediction_response") or {}
         strategy = (market_info or {}).get("strategy")
         trading_strategy_ui = self._get_ui_trading_strategy(strategy)
-        
+
         # Determine implied probability based on bet side
         bet_side = bet.get("prediction_side", "").lower()
         if bet_side == "yes":
             implied_probability = prediction_response.get("p_yes", 0) * 100
         else:
             implied_probability = prediction_response.get("p_no", 0) * 100
-        
+
         formatted_bet = {
             "id": bet.get("id", ""),
             "bet": {
@@ -744,7 +762,7 @@ class PolymarketPredictionsFetcher(
             },
             "strategy": trading_strategy_ui,
         }
-        
+
         return formatted_bet
 
     # Stub implementations for abstract methods not used in Polymarket

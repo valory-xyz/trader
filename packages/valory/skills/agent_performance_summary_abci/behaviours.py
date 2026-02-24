@@ -988,7 +988,7 @@ class FetchPerformanceSummaryBehaviour(
                     title = question.split(QUESTION_DATA_SEPARATOR)[0]
                 else:
                     title = ""
-            
+
             if title:
                 # Use cached lookup instead of querying
                 mech_fee_count += mech_request_lookup.get(title, 0)
@@ -1015,7 +1015,7 @@ class FetchPerformanceSummaryBehaviour(
                         title = question.split(QUESTION_DATA_SEPARATOR)[0]
                     else:
                         title = ""
-                
+
                 if title:
                     placed_titles.add(title)
         return placed_titles
@@ -1065,23 +1065,21 @@ class FetchPerformanceSummaryBehaviour(
         title_days: Dict[str, list] = {}
         for stat in daily_stats:
             day_ts = int(stat["date"])
-            
+
             # Extract titles based on platform
             if self.params.is_running_on_polymarket:
-                # Polymarket: { id, questionId, metadata { title } }
                 titles = {
                     participant.get("metadata", {}).get("title", "")
                     for participant in stat.get("profitParticipants", [])
                     if participant.get("metadata", {}).get("title", "")
                 }
             else:
-                # Omen: { id, question }
                 titles = {
                     participant.get("question", "").split(QUESTION_DATA_SEPARATOR)[0]
                     for participant in stat.get("profitParticipants", [])
                     if participant.get("question", "")
                 }
-            
+
             for title in titles:
                 if title:
                     title_days.setdefault(title, []).append(day_ts)

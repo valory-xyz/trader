@@ -54,6 +54,9 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.agent_performance_summary_abci.dialogues import HttpDialogue
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
+    PredictionsFetcher as BasePredictionsFetcher,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
     PolymarketPredictionsFetcher,
 )
@@ -765,11 +768,14 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.info(f"Fetching position details for bet ID: {bet_id}")
 
             # Use platform-specific fetcher
+            fetcher: BasePredictionsFetcher
             if self.context.params.is_running_on_polymarket:
-                fetcher = PolymarketPredictionsFetcher(self.context, self.context.logger)
+                fetcher = PolymarketPredictionsFetcher(
+                    self.context, self.context.logger
+                )
             else:
                 fetcher = PredictionsFetcher(self.context, self.context.logger)
-            
+
             safe_address = self.synchronized_data.safe_contract_address.lower()
 
             store_path = str(self.context.params.store_path)
