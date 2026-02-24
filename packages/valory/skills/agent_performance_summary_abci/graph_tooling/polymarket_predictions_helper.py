@@ -20,6 +20,7 @@
 
 """Helper for fetching and formatting Polymarket predictions data."""
 
+import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -32,7 +33,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     BetStatus,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
+    GET_MECH_RESPONSE_QUERY,
+    GET_MECH_TOOL_FOR_QUESTION_QUERY,
     GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
+    GET_POLYMARKET_SPECIFIC_BET_QUERY,
 )
 
 
@@ -57,6 +61,8 @@ class PolymarketPredictionsFetcher(
         """
         self.context = context
         self.logger = logger
+        self.agents_url = context.polymarket_agents_subgraph.url
+        self.mech_url = context.polygon_mech_subgraph.url
 
     def fetch_predictions(
         self,
@@ -320,45 +326,429 @@ class PolymarketPredictionsFetcher(
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
             return None
 
+    def fetch_mech_tool_for_question(
+        self, question_title: str, sender_address: str
+    ) -> Optional[str]:
+        """
+        Fetch the prediction tool used for a specific question from the polygon mech subgraph.
+
+        :param question_title: The question title to search for
+        :param sender_address: The sender address
+        :return: The tool name or None if not found
+        """
+        query_payload = {
+            "query": GET_MECH_TOOL_FOR_QUESTION_QUERY,
+            "variables": {
+                "sender": sender_address.lower(),
+                "questionTitle": question_title,
+            },
+        }
+
+        try:
+            response = requests.post(
+                self.mech_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                self.logger.error(f"Failed to fetch mech tool: {response.status_code}")
+                return None
+
+            response_data = response.json()
+            sender_data = (response_data.get("data", {}) or {}).get("sender") or {}
+
+            requests_list = sender_data.get("requests") or []
+            if not requests_list:
+                return None
+
+            deliveries = (requests_list[0] or {}).get("deliveries") or []
+            if not deliveries:
+                return None
+
+            return deliveries[0].get("model")
+
+        except Exception as e:
+            self.logger.error(
+                f"Error fetching mech tool for question '{question_title}': {str(e)}"
+            )
+            return None
+
+    def _fetch_prediction_response_from_mech(
+        self, question_title: str, sender_address: str
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch prediction response (p_yes, p_no, etc.) from polygon mech subgraph"""
+        if not question_title:
+            return None
+
+        query_payload = {
+            "query": GET_MECH_RESPONSE_QUERY,
+            "variables": {
+                "sender": sender_address.lower(),
+                "questionTitle": question_title,
+            },
+        }
+
+        try:
+            response = requests.post(
+                self.mech_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                self.logger.error(
+                    f"Failed to fetch mech market data: {response.status_code}"
+                )
+                return None
+
+            response_data = response.json()
+            requests_list = (response_data.get("data", {}) or {}).get(
+                "requests", []
+            ) or []
+            if not requests_list:
+                return None
+
+            deliveries = requests_list[0].get("deliveries", []) or []
+            if not deliveries:
+                return None
+
+            tool_response_raw = deliveries[0].get("toolResponse")
+            if not tool_response_raw:
+                return None
+
+            try:
+                return json.loads(tool_response_raw)
+            except json.JSONDecodeError:
+                self.logger.error("Unable to parse mech toolResponse JSON")
+                return None
+
+        except Exception as e:
+            self.logger.error(
+                f"Error fetching prediction response from mech for '{question_title}': {str(e)}"
+            )
+            return None
+
+    def _load_multi_bets_data(self, store_path: str) -> List[Dict]:
+        """Load data from multi_bets.json file."""
+        try:
+            import os
+
+            multi_bets_path = os.path.join(store_path, "multi_bets.json")
+            with open(multi_bets_path, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            self.logger.error(f"Error loading multi_bets.json: {e}")
+            return []
+
+    def _load_agent_performance_data(self, store_path: str) -> Dict:
+        """Load data from agent_performance.json file."""
+        try:
+            import os
+
+            agent_performance_path = os.path.join(store_path, "agent_performance.json")
+            with open(agent_performance_path, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            self.logger.error(f"Error loading agent_performance.json: {e}")
+            return {}
+
+    def _find_market_entry(
+        self, multi_bets_data: List[Dict], market_id: str
+    ) -> Optional[Dict]:
+        """Find market information in multi_bets data by market ID (questionId)."""
+        for market in multi_bets_data:
+            # Check both 'id' and 'market' fields as the data structure may vary
+            if market.get("id") == market_id or market.get("market") == market_id:
+                return market
+        return None
+
+    def _find_bet(self, agent_performance_data: Dict, bet_id: str) -> Optional[Dict]:
+        """Find bet for a specific bet ID in agent performance data."""
+        prediction_history = agent_performance_data.get("prediction_history", {})
+        items = prediction_history.get("items", [])
+
+        for item in items:
+            if item.get("id") == bet_id:
+                return item
+
+        return None
+
+    def _fetch_bet_from_subgraph(
+        self, bet_id: str, safe_address: str
+    ) -> Optional[Dict]:
+        """
+        Fetch bet for a specific market from the Polymarket subgraph.
+
+        :param bet_id: The bet ID to fetch
+        :param safe_address: The agent's safe address
+        :return: formatted bet
+        """
+        query_payload = {
+            "query": GET_POLYMARKET_SPECIFIC_BET_QUERY,
+            "variables": {"id": safe_address, "betId": bet_id},
+        }
+
+        try:
+            response = requests.post(
+                self.agents_url,
+                json=query_payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                self.logger.error(
+                    f"Failed to fetch specific bet: {response.status_code}"
+                )
+                return None
+
+            response_data = response.json()
+            data = response_data.get("data", {}) or {}
+            market_participants = data.get("marketParticipants", [])
+
+            if not market_participants:
+                return None
+
+            # Find the bet across all market participants
+            for participant in market_participants:
+                bets = participant.get("bets", [])
+                for bet in bets:
+                    if bet.get("id") == bet_id:
+                        # Format the bet to match agent_performance.json structure
+                        question = bet.get("question") or {}
+                        metadata = question.get("metadata", {})
+                        resolution = question.get("resolution")
+                        
+                        # Calculate profit
+                        bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
+                        total_payout = float(participant.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
+                        
+                        # Determine status and profit
+                        status = self._get_prediction_status({**bet, "totalPayout": participant.get("totalPayout", 0)})
+                        
+                        # Calculate net profit
+                        if not resolution:
+                            net_profit = 0.0
+                        else:
+                            winning_index = resolution.get("winningIndex")
+                            if winning_index is not None and int(winning_index) < 0:
+                                net_profit = total_payout - bet_amount
+                            elif bet.get("outcomeIndex") == winning_index:
+                                net_profit = total_payout - bet_amount
+                            else:
+                                net_profit = -bet_amount
+                        
+                        # Get prediction side
+                        outcome_index = int(bet.get("outcomeIndex", 0))
+                        outcomes = metadata.get("outcomes", [])
+                        prediction_side = self._get_prediction_side(outcome_index, outcomes)
+                        
+                        return {
+                            "id": bet.get("id"),
+                            "market": {
+                                "id": question.get("questionId", ""),
+                                "title": metadata.get("title", ""),
+                                "external_url": f"{POLYMARKET_BASE_URL}/event/{question.get('questionId', '')}",
+                            },
+                            "prediction_side": prediction_side,
+                            "bet_amount": round(bet_amount, 3),
+                            "status": status,
+                            "net_profit": round(net_profit, 3),
+                            "total_payout": round(total_payout, 3),
+                            "created_at": (
+                                self._format_timestamp(str(bet.get("blockTimestamp")))
+                                if bet.get("blockTimestamp")
+                                else None
+                            ),
+                            "settled_at": (
+                                self._format_timestamp(str(resolution.get("blockTimestamp")))
+                                if resolution and resolution.get("blockTimestamp")
+                                else None
+                            ),
+                            "transaction_hash": bet.get("transactionHash", ""),
+                        }
+
+            return None
+
+        except Exception as e:
+            self.logger.error(
+                f"Error fetching specific bet for {bet_id}: {str(e)}"
+            )
+            return None
+
+    def _get_ui_trading_strategy(self, strategy: Optional[str]) -> Optional[Dict[str, str]]:
+        """Get the UI trading strategy representation."""
+        if not strategy:
+            return None
+        
+        # Strategy mapping based on the existing patterns
+        strategy_map = {
+            "kelly_criterion": {
+                "name": "Kelly Criterion",
+                "description": "Optimal bet sizing based on edge and bankroll"
+            },
+            "fixed_amount": {
+                "name": "Fixed Amount",
+                "description": "Fixed bet size per prediction"
+            }
+        }
+        
+        return strategy_map.get(strategy, {
+            "name": strategy.replace("_", " ").title(),
+            "description": f"{strategy.replace('_', ' ').title()} strategy"
+        })
+
+    def fetch_position_details(
+        self, bet_id: str, safe_address: str, store_path: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch complete position details for a specific Polymarket bet.
+        
+        :param bet_id: The bet ID to fetch details for
+        :param safe_address: The agent's safe address
+        :param store_path: Path to the data store directory
+        :return: Complete position details or None if not found
+        """
+        try:
+            # Load from agent_performance.json first
+            agent_performance_data = self._load_agent_performance_data(store_path)
+            bet = self._find_bet(agent_performance_data, bet_id)
+            
+            # Fallback to subgraph if not found
+            if not bet:
+                self.logger.info(
+                    f"No bet found in agent_performance.json for bet {bet_id}, fetching from subgraph"
+                )
+                bet = self._fetch_bet_from_subgraph(bet_id, safe_address)
+            
+            if not bet:
+                return None
+            
+            # Load market metadata from multi_bets.json
+            multi_bets_data = self._load_multi_bets_data(store_path)
+            market_id = bet.get("market", {}).get("id", "")
+            market_info = self._find_market_entry(multi_bets_data, market_id)
+            
+            if not market_info:
+                # Use minimal market info from bet data
+                market_info = bet.get("market", {}) or {}
+            
+            # Fetch prediction response from mech if not in multi_bets
+            if market_info and not market_info.get("prediction_response"):
+                question_title = market_info.get("title") or bet.get("market", {}).get("title", "")
+                if question_title:
+                    prediction_response = self._fetch_prediction_response_from_mech(
+                        question_title, safe_address
+                    )
+                    if prediction_response:
+                        market_info["prediction_response"] = prediction_response
+            
+            # Calculate financials
+            total_bet = bet.get("bet_amount", 0)
+            net_profit = bet.get("net_profit", 0)
+            total_payout = bet.get("total_payout", 0)
+            status = bet.get("status", "pending")
+            
+            # Calculate remaining time and potential payout
+            closing_timestamp = market_info.get("openingTimestamp", 0) if market_info else 0
+            current_timestamp = int(datetime.utcnow().timestamp())
+            remaining_seconds = (
+                (closing_timestamp - current_timestamp)
+                if closing_timestamp > current_timestamp
+                else 0
+            )
+            
+            # Calculate to_win based on status and potential profit
+            potential_profit = market_info.get("potential_net_profit", 0) if market_info else 0
+            if status == "won" or status == "invalid":
+                to_win = total_payout
+            elif status == "lost":
+                to_win = 0
+            else:
+                # Pending - use potential profit
+                to_win = (
+                    total_bet + (potential_profit / USDC_DECIMALS_DIVISOR)
+                    if potential_profit > 0
+                    else total_bet
+                )
+            
+            # Get prediction tool from mech subgraph
+            prediction_tool = None
+            if market_info:
+                question_title = market_info.get("title", "")
+                if question_title:
+                    prediction_tool = self.fetch_mech_tool_for_question(
+                        question_title, safe_address
+                    )
+            
+            # Format bet details
+            formatted_bet = self._format_bet_for_position(
+                bet, market_info, prediction_tool
+            )
+            
+            return {
+                "id": bet_id,
+                "question": bet.get("market", {}).get("title", ""),
+                "external_url": bet.get("market", {}).get("external_url", ""),
+                "currency": "USDC",
+                "total_bet": round(total_bet, 3),
+                "payout": round(to_win, 3),
+                "remaining_seconds": remaining_seconds,
+                "status": status,
+                "net_profit": round(net_profit, 3),
+                "bets": [formatted_bet],
+            }
+
+        except Exception as e:
+            self.logger.error(
+                f"Error fetching position details for bet {bet_id}: {str(e)}"
+            )
+            return None
+
+    def _format_bet_for_position(
+        self, bet: Dict, market_info: Optional[Dict], prediction_tool: Optional[str]
+    ) -> Dict:
+        """Format bet into the required API format for position details."""
+        
+        # Get prediction response from market_info
+        prediction_response = (market_info or {}).get("prediction_response") or {}
+        strategy = (market_info or {}).get("strategy")
+        trading_strategy_ui = self._get_ui_trading_strategy(strategy)
+        
+        # Determine implied probability based on bet side
+        bet_side = bet.get("prediction_side", "").lower()
+        if bet_side == "yes":
+            implied_probability = prediction_response.get("p_yes", 0) * 100
+        else:
+            implied_probability = prediction_response.get("p_no", 0) * 100
+        
+        formatted_bet = {
+            "id": bet.get("id", ""),
+            "bet": {
+                "amount": round(bet.get("bet_amount", 0), 3),
+                "side": bet_side,
+                "placed_at": bet.get("created_at", ""),
+            },
+            "intelligence": {
+                "prediction_tool": prediction_tool,
+                "implied_probability": round(implied_probability, 1),
+                "confidence_score": round(
+                    prediction_response.get("confidence", 0) * 100, 1
+                ),
+                "utility_score": round(
+                    prediction_response.get("info_utility", 0) * 100, 1
+                ),
+            },
+            "strategy": trading_strategy_ui,
+        }
+        
+        return formatted_bet
+
     # Stub implementations for abstract methods not used in Polymarket
-    # TODO: Move relevant methods to base class if shared
     def _fetch_trader_agent_bets(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def fetch_mech_tool_for_question(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _fetch_prediction_response_from_mech(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def fetch_position_details(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _load_multi_bets_data(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _load_agent_performance_data(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _find_market_entry(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _find_bet(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _format_bet_for_position(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _fetch_bet_from_subgraph(self, *args: Any, **kwargs: Any) -> Any:
         """Not used for Polymarket."""
         raise NotImplementedError("Not used for Polymarket")
 
@@ -367,9 +757,5 @@ class PolymarketPredictionsFetcher(
         raise NotImplementedError("Not used for Polymarket")
 
     def _calculate_bet_net_profit(self, *args: Any, **kwargs: Any) -> Any:
-        """Not used for Polymarket."""
-        raise NotImplementedError("Not used for Polymarket")
-
-    def _get_ui_trading_strategy(self, *args: Any, **kwargs: Any) -> Any:
         """Not used for Polymarket."""
         raise NotImplementedError("Not used for Polymarket")

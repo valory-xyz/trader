@@ -417,3 +417,33 @@ query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!
   }
 }
 """
+
+GET_POLYMARKET_SPECIFIC_BET_QUERY = """
+query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
+  marketParticipants(
+    where: {traderAgent_: {id: $id}}
+  ) {
+    totalPayout
+    bets(where: {id: $betId}) {
+      id
+      outcomeIndex
+      amount
+      shares
+      blockTimestamp
+      transactionHash
+      question {
+        questionId
+        metadata {
+          outcomes
+          title
+        }
+        resolution {
+          winningIndex
+          settledPrice
+          blockTimestamp
+        }
+      }
+    }
+  }
+}
+"""
