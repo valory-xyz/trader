@@ -346,6 +346,7 @@ class PolymarketPredictionsFetcher(
             },
         }
 
+        # TODO: Switch to using the framework methods for calling subgraphs
         try:
             response = requests.post(
                 self.mech_url,
@@ -392,6 +393,7 @@ class PolymarketPredictionsFetcher(
             },
         }
 
+        # TODO: Switch to using the framework methods for calling subgraphs
         try:
             response = requests.post(
                 self.mech_url,
@@ -498,6 +500,7 @@ class PolymarketPredictionsFetcher(
             "variables": {"id": safe_address, "betId": bet_id},
         }
 
+        # TODO: Switch to using the framework methods for calling subgraphs
         try:
             response = requests.post(
                 self.agents_url,

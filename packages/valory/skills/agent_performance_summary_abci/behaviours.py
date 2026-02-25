@@ -959,6 +959,11 @@ class FetchPerformanceSummaryBehaviour(
                 items=[],
             )
 
+    @staticmethod
+    def _extract_omen_question_title(question: str) -> str:
+        """Extract the question title from an Omen question string (split by separator)."""
+        return question.split(QUESTION_DATA_SEPARATOR)[0] if question else ""
+
     def _calculate_mech_fees_for_day(
         self, profit_participants: list, mech_request_lookup: dict
     ) -> tuple[float, int]:
@@ -983,11 +988,7 @@ class FetchPerformanceSummaryBehaviour(
             else:
                 # Omen: { id, question } where question contains separator
                 question = participant.get("question", "")
-                if question:
-                    # Split by separator and take the first part (question title)
-                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                else:
-                    title = ""
+                title = self._extract_omen_question_title(question)
 
             if title:
                 # Use cached lookup instead of querying
@@ -1011,10 +1012,7 @@ class FetchPerformanceSummaryBehaviour(
                 else:
                     # Omen: { id, question } where question contains separator
                     question = participant.get("question", "")
-                    if question:
-                        title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                    else:
-                        title = ""
+                    title = self._extract_omen_question_title(question)
 
                 if title:
                     placed_titles.add(title)
@@ -1074,12 +1072,11 @@ class FetchPerformanceSummaryBehaviour(
                     if participant.get("metadata", {}).get("title", "")
                 }
             else:
-                titles = {
-                    participant.get("question", "").split(QUESTION_DATA_SEPARATOR)[0]
-                    for participant in stat.get("profitParticipants", [])
-                    if participant.get("question", "")
-                }
-
+                for participant in stat.get("profitParticipants", []):
+                    question = participant.get("question", "")
+                    title = self._extract_omen_question_title(question)
+                    if title:
+                        titles.add(title)
             for title in titles:
                 if title:
                     title_days.setdefault(title, []).append(day_ts)
@@ -1454,10 +1451,9 @@ class FetchPerformanceSummaryBehaviour(
         for stat in filtered_daily_stats:
             for participant in stat.get("profitParticipants", []):
                 question = participant.get("question", "")
-                if question:
-                    title = question.split(QUESTION_DATA_SEPARATOR)[0]
-                    if title:
-                        new_question_titles.add(title)
+                title = self._extract_omen_question_title(question)
+                if title:
+                    new_question_titles.add(title)
 
         mech_request_lookup: Dict[str, int] = {}
         if new_question_titles:
