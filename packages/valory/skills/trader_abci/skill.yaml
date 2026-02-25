@@ -9,7 +9,7 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeido7wa33h4dtleap57vzgyb4fsofk4vindsqcekyfo5i56i2rll2a
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
-  chainlist.py: bafybeibu2b6ngwthnfc2rubpkbu7bpfulxkutmtv32rdcxclpx7drepcsi
+  chainlist.py: bafybeiaexf7iha2b4bkyd2lliswrr73nv5rzphppgddzxev5jgsaubk7im
   composition.py: bafybeiguv5bthmm3th4c3ypp77xdoyreud2wo4adhxoupsufaidhbkq2q4
   dialogues.py: bafybeiaiv562rcf7cjenuowrus744jc2njycrobkl72jwebocuh3htx2mu
   fsm_specification.yaml: bafybeiascmjuel3oxf3izuxfjzwewimzgttbwkogxsugdnseyzz2j5ncqa
@@ -17,7 +17,7 @@ fingerprint:
   models.py: bafybeial4jlvqrubm7q6hgiz4ehsaipgq2t6ruop2mkxkecz32kv3lwdeu
   rpc_manager.py: bafybeidg5nsafvijfnxi4axm3il5qxdba6gjz4ghsadtirnpkujjvetphm
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/test_chainlist.py: bafybeifhwv3fdugdbn2nvgz6ewxoyf5xlkvtflj2bswz6atk7lwotk2nke
+  tests/test_chainlist.py: bafybeihc3mwrqvul2bkuhiiuom75zeuuwlleb4nuhhf5eqqwxjm52nnpdm
   tests/test_rpc_manager.py: bafybeiczph3w5s5usg6ium6pmyanzretqiysh5lowq42rt6e3e3b6uqg2a
   tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
