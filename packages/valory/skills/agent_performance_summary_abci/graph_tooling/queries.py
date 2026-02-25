@@ -305,6 +305,7 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       blockTimestamp
       transactionHash
       question {
+        id
         questionId
         metadata {
           outcomes
@@ -386,4 +387,65 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
             }
           }
         }
+"""
+
+GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY = """
+query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
+  traderAgent(id: $agentId) {
+    dailyProfitStatistics(
+      where: {
+        date_gte: $startTimestamp,
+      }
+      orderBy: date
+      orderDirection: asc
+      first: $first
+      skip: $skip
+    ) {
+      id
+      date
+      totalBets
+      totalTraded
+      totalPayout
+      dailyProfit
+      profitParticipants {
+        id
+        questionId
+        metadata {
+          title
+        }
+      }
+    }
+  }
+}
+"""
+
+GET_POLYMARKET_SPECIFIC_BET_QUERY = """
+query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
+  marketParticipants(
+    where: {traderAgent_: {id: $id}}
+  ) {
+    totalPayout
+    bets(where: {id: $betId}) {
+      id
+      outcomeIndex
+      amount
+      shares
+      blockTimestamp
+      transactionHash
+      question {
+        id
+        questionId
+        metadata {
+          outcomes
+          title
+        }
+        resolution {
+          winningIndex
+          settledPrice
+          blockTimestamp
+        }
+      }
+    }
+  }
+}
 """
