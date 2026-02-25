@@ -202,13 +202,16 @@ jobs:
           poetry run autonomy init --reset --author "dummy_author_git_ci" --ipfs --remote
           make hash_id
           make agent_id
-          make ./agent/ethereum_private_key.txt
 
       - name: prepare archives
         if: runner.os == 'macOS'
         run: |
           make agent.zip
           make agent.tar.gz
+
+      - name: make key
+        run: |
+          make ./agent/ethereum_private_key.txt
 
       ## LINUX
       - name: Build Agent Runner Linux
