@@ -182,6 +182,7 @@ class TraderParams(
         self.gnosis_ledger_rpc: str = self._ensure("gnosis_ledger_rpc", kwargs, str)
         self.polygon_ledger_rpc: str = self._ensure("polygon_ledger_rpc", kwargs, str)
         self.use_x402: bool = self._ensure("use_x402", kwargs, bool)
+        self.skip_chainlist: bool = self._ensure("skip_chainlist", kwargs, bool)
         super().__init__(*args, **kwargs)
 
 

@@ -658,12 +658,14 @@ class HttpHandler(BaseHttpHandler):
                     GNOSIS_CHAIN_NAME,
                     self.params.gnosis_ledger_rpc,
                     chain_id=GNOSIS_CHAIN_ID,
+                    skip_chainlist=self.params.skip_chainlist,
                 )
             if self.params.polygon_ledger_rpc:
                 self._rpc_manager.register_chain(
                     POLYGON_CHAIN_NAME,
                     self.params.polygon_ledger_rpc,
                     chain_id=POLYGON_CHAIN_ID,
+                    skip_chainlist=self.params.skip_chainlist,
                 )
         return self._rpc_manager
 

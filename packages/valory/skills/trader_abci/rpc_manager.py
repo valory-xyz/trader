@@ -193,6 +193,7 @@ class RPCManager:
         chain: str,
         rpc_string: str,
         chain_id: Optional[int] = None,
+        skip_chainlist: bool = False,
     ) -> None:
         """Register a chain with one or more comma-separated RPC URLs.
 
@@ -202,11 +203,14 @@ class RPCManager:
         :param chain: logical chain name (e.g. ``"gnosis"``).
         :param rpc_string: one URL or comma-separated list of RPC URLs.
         :param chain_id: numeric EVM chain identifier for Chainlist enrichment.
+        :param skip_chainlist: disable Chainlist enrichment entirely.
         """
         if chain in self._chains:
             return  # already registered
         rpc_urls = parse_rpc_urls(rpc_string)
-        rpc_urls = enrich_rpc_urls(rpc_urls, chain_id=chain_id)
+        rpc_urls = enrich_rpc_urls(
+            rpc_urls, chain_id=chain_id, skip_chainlist=skip_chainlist
+        )
         self._chains[chain] = _ChainState(rpc_urls)
         if len(rpc_urls) > 1:
             _logger.info(

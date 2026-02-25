@@ -27,7 +27,6 @@ for the RPC rotation system.
 
 import json
 import logging
-import os
 import tempfile
 import time
 import urllib.error
@@ -281,6 +280,7 @@ def enrich_rpc_urls(
     rpc_urls: List[str],
     chain_id: Optional[int] = None,
     max_rpcs: int = MAX_RPCS,
+    skip_chainlist: bool = False,
 ) -> List[str]:
     """Enrich *rpc_urls* with validated public RPCs from Chainlist.
 
@@ -290,20 +290,17 @@ def enrich_rpc_urls(
     If *chain_id* is ``None`` or enrichment fails, returns *rpc_urls*
     unchanged.
 
-    Set the environment variable ``SKIP_CHAINLIST=1`` to disable
-    Chainlist enrichment entirely (useful for air-gapped or
-    controlled environments).
-
     :param rpc_urls: existing RPC URLs to enrich.
     :param chain_id: numeric EVM chain identifier, or None to skip enrichment.
     :param max_rpcs: upper bound on total RPC URLs to return.
+    :param skip_chainlist: disable Chainlist enrichment entirely.
     :return: original URLs followed by any validated Chainlist fallbacks.
     """
-    if chain_id is None or len(rpc_urls) >= max_rpcs:
+    if skip_chainlist:
+        _logger.info("Chainlist enrichment disabled via skip_chainlist param")
         return rpc_urls
 
-    if os.environ.get("SKIP_CHAINLIST", "").strip().lower() in ("1", "true", "yes"):
-        _logger.info("Chainlist enrichment disabled via SKIP_CHAINLIST env var")
+    if chain_id is None or len(rpc_urls) >= max_rpcs:
         return rpc_urls
 
     try:

@@ -20,7 +20,6 @@
 """Tests for the Chainlist RPC enrichment module."""
 
 import json
-import os
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.trader_abci.chainlist import (
@@ -328,18 +327,11 @@ class TestEnrichRpcUrls:
         assert result == ["https://rpc1.com"]
 
     @patch("packages.valory.skills.trader_abci.chainlist.ChainlistRPC")
-    def test_skip_chainlist_env_var(self, mock_cl_cls: MagicMock) -> None:
-        """SKIP_CHAINLIST=1 disables enrichment."""
-        with patch.dict(os.environ, {"SKIP_CHAINLIST": "1"}):
-            result = enrich_rpc_urls(["https://rpc1.com"], chain_id=100)
-        assert result == ["https://rpc1.com"]
-        mock_cl_cls.assert_not_called()
-
-    @patch("packages.valory.skills.trader_abci.chainlist.ChainlistRPC")
-    def test_skip_chainlist_env_var_true(self, mock_cl_cls: MagicMock) -> None:
-        """SKIP_CHAINLIST=true also disables enrichment."""
-        with patch.dict(os.environ, {"SKIP_CHAINLIST": "true"}):
-            result = enrich_rpc_urls(["https://rpc1.com"], chain_id=100)
+    def test_skip_chainlist_param(self, mock_cl_cls: MagicMock) -> None:
+        """skip_chainlist=True disables enrichment."""
+        result = enrich_rpc_urls(
+            ["https://rpc1.com"], chain_id=100, skip_chainlist=True
+        )
         assert result == ["https://rpc1.com"]
         mock_cl_cls.assert_not_called()
 
