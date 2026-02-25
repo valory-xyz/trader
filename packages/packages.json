@@ -15,17 +15,17 @@
         "contract/valory/market_maker/0.1.0": "bafybeidwc7yvxufnupyjzge2ycbos2t24hoyaeosvzj3z63ccqdzotygdm",
         "connection/valory/polymarket_client/0.1.0": "bafybeict27cpr3tldxlii5qj2eyt4vpa7rnfzwztusyfrcm57zxucgqw7i",
         "skill/valory/market_manager_abci/0.1.0": "bafybeihhb7dicqj5fh2qqwogh2m4svesnxippy2lyiix2cq56dpix43rqa",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiad5odo7z3g46gmmastqzoenqxktzywnng5jbunm5bf25eataycbm",
-        "skill/valory/trader_abci/0.1.0": "bafybeifsny3q23dkm6fq445eudwfakzgluzx6twcixwmwh3hjgbxuhviam",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibrtbjkqx4zqqzo6mu747rankvddc7bnyrlgpfx66kmjpwmzjrwki",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeifltiih4npwufi2v47ineqk55u6zbqufhshygrnaqvk64zofhpmlq",
+        "skill/valory/trader_abci/0.1.0": "bafybeiekdxdper725udpba5akdwxbo7z7ziwqhaumzqylht44oklhuykz4",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeifqnb3vgs4k5baj6plrfd7fr66sshow7je4fz3y645w3o5kwbtxwq",
         "skill/valory/staking_abci/0.1.0": "bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeifb4wtv7x6r3foxansh3xieru64x6bmvp3jnbjkx4w5ib576t6amy",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeigzyeoixq26bkfguvx2macfb4ktqhjqzwrrwaxvje4tghlc3ca4f4",
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeigz3z6lbogvu5b43glqn7bsl7uyudj42covv7cm3k4l5j7ninnqi4",
         "skill/valory/chatui_abci/0.1.0": "bafybeicmwauibnzlzatjjatcc2dcl6fmegr3gwlhmcc6l7oy7hp57rcnqa",
-        "agent/valory/trader/0.1.0": "bafybeihco2fxvgnpuh4zcyex6wf7t3frpfdld3pc2we6ms3hi7thsvxs4a",
-        "service/valory/trader/0.1.0": "bafybeidjsplq7gaqvem3pzday4hvdffnkga3ifvlqjuku4tiffey5avsry",
-        "service/valory/trader_pearl/0.1.0": "bafybeiak2qtkqttcm4wufxisxwsm7b2z5aweizy6bwr6y4a277f3d6gvqe",
-        "service/valory/polymarket_trader/0.1.0": "bafybeiczi2ootkzsdd2q2okxryfcq4uwuplzq4km4rrquqizliud6p5mpm"
+        "agent/valory/trader/0.1.0": "bafybeifdscpukh5or3jdg23knyymepxetzeqmnnx5uk7b5u5ioqewowlhe",
+        "service/valory/trader/0.1.0": "bafybeigazmzbdrd23anrn4jpla3tbgstkesbz4y7xei2lzyrh7xq4xibzu",
+        "service/valory/trader_pearl/0.1.0": "bafybeih3c5ihzn7ypcjkqg3zk4mmribuzqctj5ninzs52jm35lpmocjtly",
+        "service/valory/polymarket_trader/0.1.0": "bafybeibgjllmzaxdqubf7np52taidexm34dt3civwcjxonddz7snojgwre"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeiebct3enol4nkiy3uxm2xnn2hniwnorjfwtcjbsywea5ql36pqk3y",
@@ -38,7 +38,7 @@
         "protocol/valory/tendermint/0.1.0": "bafybeie4jqosqiicefnlnxsvrymqj6tycv7x5qeitsdew6abhdcxlu23r4",
         "protocol/valory/ipfs/0.1.0": "bafybeidqfs3njcishcwv4ymf4srxibw44u7qrnryxiwrg5ulk2h7myvt6q",
         "protocol/valory/srr/0.1.0": "bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4",
-        "contract/valory/agent_registry/0.1.0": "bafybeigl7bqvjyvryxuugpx6ogn4n6d2hryebup3x4hxhfirpjm6kjw4vq",
+        "contract/valory/agent_registry/0.1.0": "bafybeictjtktyj2nq4hqkzslnyp2b4rflgt6fjqigs5qwpzbt2tnynmaxi",
         "contract/valory/gnosis_safe_proxy_factory/0.1.0": "bafybeicnwvklc4dkstzf4jex7cgwmanf2wdnhwmw4hhi4fgtcrg5dt2itu",
         "contract/valory/gnosis_safe/0.1.0": "bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy",
         "contract/valory/mech/0.1.0": "bafybeibzaxri2yru6l2nwgr2vdctkczqthalel2g4wojz2whohr3sznil4",
@@ -73,6 +73,6 @@
         "skill/valory/registration_abci/0.1.0": "bafybeie3dfore53bxvbokqiarzuwulzlyt4vz5mifb4t3gxl6drwkblfha",
         "skill/valory/transaction_settlement_abci/0.1.0": "bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74",
         "skill/valory/termination_abci/0.1.0": "bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeiffz7arijdfjko47rqrkcs5eobyj4vmal5pmiuhopmot24qrigwdy"
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeiep43uc55y6df6rjwpntaqewwxovyghi2iaxemmpk43uw6ayj3ax4"
     }
 }
