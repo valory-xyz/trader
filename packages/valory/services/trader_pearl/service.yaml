@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig3ur4musfte6dsvd3buvevq757etkcbo4kn2aetaehh6sp65fjwi
+agent: valory/trader:0.1.0:bafybeid2tezfuw6y3jqcjsr3dhhvpj23to74msrbssaau5cc7h4io7d52e
 number_of_agents: 1
 deployment:
   agent:
@@ -151,6 +151,7 @@ models:
       gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
+      skip_chainlist: ${SKIP_CHAINLIST:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:false}
       ignored_mechs: ${IGNORED_MECHS:list:[]}
