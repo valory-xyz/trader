@@ -44,7 +44,8 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
 
 # Constants
 USDC_DECIMALS_DIVISOR = 10**6  # USDC has 6 decimals on Polymarket
-POLYMARKET_BASE_URL = "https://polymarket.com"
+POLYMARKET_MARKET_BASE_URL = "https://polymarket.com/market"
+GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -201,11 +202,6 @@ class PolymarketPredictionsFetcher(
                 "id": question_id,
                 "condition_id": condition_id,
                 "title": market_title,
-                "external_url": (
-                    f"{POLYMARKET_BASE_URL}/event/{question_id}"
-                    if question_id
-                    else f"{POLYMARKET_BASE_URL}/"
-                ),
             },
             "prediction_side": prediction_side,
             "bet_amount": round(bet_amount, 3),
@@ -571,7 +567,6 @@ class PolymarketPredictionsFetcher(
                                 "id": question.get("questionId", ""),
                                 "condition_id": question.get("id", ""),
                                 "title": metadata.get("title", ""),
-                                "external_url": f"{POLYMARKET_BASE_URL}/event/{question.get('questionId', '')}",
                             },
                             "prediction_side": prediction_side,
                             "bet_amount": round(bet_amount, 3),
@@ -598,6 +593,24 @@ class PolymarketPredictionsFetcher(
         except Exception as e:
             self.logger.error(f"Error fetching specific bet for {bet_id}: {str(e)}")
             return None
+
+    def _fetch_market_slug(self, market_id: str) -> str:
+        """Fetch the market slug from the Polymarket Gamma API.
+
+        :param market_id: The numeric market ID (e.g. '1333587')
+        :return: The market slug string, or empty string on failure
+        """
+        if not market_id:
+            return ""
+        try:
+            # TODO: Switch to using the polymarket client connection for calling the Gamma API
+            url = f"{GAMMA_API_BASE_URL}/markets/{market_id}"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            return response.json().get("slug", "")
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch slug for market {market_id}: {e}")
+            return ""
 
     def _get_ui_trading_strategy(self, strategy: Optional[str]) -> Optional[str]:
         """Get the UI trading strategy representation."""
@@ -707,10 +720,15 @@ class PolymarketPredictionsFetcher(
                 bet, market_info, prediction_tool
             )
 
+            # Fetch slug from Gamma API to build the external URL
+            numeric_market_id = str(market_info.get("id", "")) if market_info else ""
+            slug = self._fetch_market_slug(numeric_market_id)
+            external_url = f"{POLYMARKET_MARKET_BASE_URL}/{slug}" if slug else ""
+
             return {
                 "id": bet_id,
                 "question": bet.get("market", {}).get("title", ""),
-                "external_url": bet.get("market", {}).get("external_url", ""),
+                "external_url": external_url,
                 "currency": "USDC",
                 "total_bet": round(total_bet, 3),
                 "payout": round(to_win, 3),
