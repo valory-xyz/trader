@@ -356,3 +356,33 @@ class TestRPCManagerMultiChain:
 
         with pytest.raises(ValueError, match="contract revert"):
             mgr.execute_with_rotation("gnosis", _op, "test")
+
+    @patch("packages.valory.skills.trader_abci.rpc_manager.time.sleep")
+    @patch("packages.valory.skills.trader_abci.rpc_manager.enrich_rpc_urls")
+    def test_framework_rpc_first_then_fallback_on_failure(
+        self, mock_enrich: MagicMock, mock_sleep: MagicMock
+    ) -> None:
+        """Framework RPC is used first; fallback is used only after failure."""
+        mock_enrich.return_value = [
+            "https://framework.com",
+            "https://public1.com",
+            "https://public2.com",
+        ]
+
+        mgr = RPCManager()
+        mgr.register_chain("gnosis", "https://framework.com", chain_id=100)
+
+        visited: list = []
+
+        def _op(w3: Web3) -> str:
+            endpoint = getattr(w3.provider, "endpoint_uri", "")
+            visited.append(endpoint)
+            if endpoint == "https://framework.com":
+                raise Exception("429 rate limit")
+            return endpoint
+
+        result = mgr.execute_with_rotation("gnosis", _op, "order_test")
+
+        assert result == "https://public1.com"
+        assert visited == ["https://framework.com", "https://public1.com"]
+        assert mgr._chains["gnosis"].current_index == 1
