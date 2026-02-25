@@ -31,6 +31,8 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_pr
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     BetStatus,
+    TradingStrategy,
+    TradingStrategyUI,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_RESPONSE_QUERY,
@@ -597,32 +599,16 @@ class PolymarketPredictionsFetcher(
             self.logger.error(f"Error fetching specific bet for {bet_id}: {str(e)}")
             return None
 
-    def _get_ui_trading_strategy(
-        self, strategy: Optional[str]
-    ) -> Optional[Dict[str, str]]:
+    def _get_ui_trading_strategy(self, strategy: Optional[str]) -> Optional[str]:
         """Get the UI trading strategy representation."""
         if not strategy:
             return None
 
-        # Strategy mapping based on the existing patterns
         strategy_map = {
-            "kelly_criterion": {
-                "name": "Kelly Criterion",
-                "description": "Optimal bet sizing based on edge and bankroll",
-            },
-            "fixed_amount": {
-                "name": "Fixed Amount",
-                "description": "Fixed bet size per prediction",
-            },
+            TradingStrategy.KELLY_CRITERION_NO_CONF.value: TradingStrategyUI.RISKY.value,
+            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value: TradingStrategyUI.BALANCED.value,
         }
-
-        return strategy_map.get(
-            strategy,
-            {
-                "name": strategy.replace("_", " ").title(),
-                "description": f"{strategy.replace('_', ' ').title()} strategy",
-            },
-        )
+        return strategy_map.get(strategy)
 
     def fetch_position_details(
         self, bet_id: str, safe_address: str, store_path: str
