@@ -24,11 +24,11 @@ fingerprint_ignore_patterns: []
 connections: []
 contracts:
 - valory/mech:0.1.0:bafybeibzaxri2yru6l2nwgr2vdctkczqthalel2g4wojz2whohr3sznil4
-- valory/agent_mech:0.1.0:bafybeiee6j6tjjsoa7qn2ganeyxm7h5n3x3ukqdrs7sf7aliybcekantka
+- valory/agent_mech:0.1.0:bafybeibvtxsxeuymbmxyyn7rj46m3skylupr7qib5eptqluklz4apr77iq
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/mech_interact_abci:0.1.0:bafybeigz7smxwsfxovyzn6lhh74k5z35a5piz2oioi5fgr7mqcjicbpleu
+- valory/mech_interact_abci:0.1.0:bafybeibp5jxwhubuhs37s67kzubq7lleaxc4lyaxina22nboafodpyskvy
 - valory/staking_abci:0.1.0:bafybeiclavetnqnuoqcsb2qrsyjtrumat3dhxkwt6gdorg7lkgk5h7amqu
 behaviours:
   main:
