@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
 import math
 from typing import Any, Generator, Set, Type, cast
 
-from packages.valory.contracts.mech.contract import Mech as MechContract
 from packages.valory.contracts.agent_mech.contract import AgentMech
+from packages.valory.contracts.mech.contract import Mech as MechContract
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
