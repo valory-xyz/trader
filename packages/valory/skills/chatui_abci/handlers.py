@@ -98,7 +98,7 @@ UPDATED_CONFIG_FIELD = "updated_agent_config"
 UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
-MECH_TOOL_FIELD = "mech_tool"
+ALLOWED_TOOLS_FIELD = "allowed_tools"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
@@ -216,9 +216,11 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
-        current_mech_tool = (
-            self.shared_state.chatui_config.mech_tool
-            or "Automatic tool selection based on policy"
+        current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
+        current_allowed_tools = (
+            ", ".join(current_allowed_tools_raw)
+            if current_allowed_tools_raw
+            else "Automatic tool selection based on policy (all available tools)"
         )
         current_fixed_bet_size = self.shared_state.chatui_config.fixed_bet_size
         current_max_bet_size = self.shared_state.chatui_config.max_bet_size
@@ -234,7 +236,7 @@ class HttpHandler(BaseHttpHandler):
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
-            current_mech_tool=current_mech_tool,
+            current_allowed_tools=current_allowed_tools,
             available_tools=available_tools,
             current_fixed_bet_size=(
                 current_fixed_bet_size / (10**decimals)
@@ -419,26 +421,36 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
 
-        updated_mech_tool: Optional[str] = updated_agent_config.get(
-            MECH_TOOL_FIELD, None
+        updated_allowed_tools: Optional[List[str]] = updated_agent_config.get(
+            ALLOWED_TOOLS_FIELD, None
         )
-        mech_tool_is_removed: bool = (
-            FieldsThatCanBeRemoved.MECH_TOOL.value
+        allowed_tools_is_removed: bool = (
+            FieldsThatCanBeRemoved.ALLOWED_TOOLS.value
             in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
         )
 
-        if mech_tool_is_removed:
-            updated_params.update({MECH_TOOL_FIELD: None})
-            self._store_selected_tool(None)
+        if allowed_tools_is_removed:
+            updated_params.update({ALLOWED_TOOLS_FIELD: None})
+            self._store_allowed_tools(None)
 
-        elif updated_mech_tool:
-            if updated_mech_tool in self.synchronized_data.available_mech_tools:
-                updated_params.update({MECH_TOOL_FIELD: updated_mech_tool})
-                self._store_selected_tool(updated_mech_tool)
-            else:
-                issue_message = f"Unsupported mech tool: {updated_mech_tool!r}. Available tools are: {', '.join(self.synchronized_data.available_mech_tools)}."
+        elif updated_allowed_tools is not None:
+            available = self.synchronized_data.available_mech_tools
+            unknown = [t for t in updated_allowed_tools if t not in available]
+            valid = [t for t in updated_allowed_tools if t in available]
+            if unknown:
+                issue_message = (
+                    f"Unknown tool(s) ignored: {unknown}. "
+                    f"Available tools are: {', '.join(available)}."
+                )
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
+            if valid:
+                updated_params.update({ALLOWED_TOOLS_FIELD: valid})
+                self._store_allowed_tools(valid)
+            elif not unknown:
+                # empty list explicitly passed — treat as clear
+                updated_params.update({ALLOWED_TOOLS_FIELD: None})
+                self._store_allowed_tools(None)
 
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
@@ -556,10 +568,10 @@ class HttpHandler(BaseHttpHandler):
         self.shared_state.chatui_config.trading_strategy = trading_strategy
         self._store_chatui_param_to_json(TRADING_STRATEGY_FIELD, trading_strategy)
 
-    def _store_selected_tool(self, selected_tool: Optional[str] = None) -> None:
-        """Store the selected tool."""
-        self.shared_state.chatui_config.mech_tool = selected_tool
-        self._store_chatui_param_to_json(MECH_TOOL_FIELD, selected_tool)
+    def _store_allowed_tools(self, tools: Optional[List[str]] = None) -> None:
+        """Store the allowed tools list."""
+        self.shared_state.chatui_config.allowed_tools = tools
+        self._store_chatui_param_to_json(ALLOWED_TOOLS_FIELD, tools)
 
 
 class SrrHandler(AbstractResponseHandler):
