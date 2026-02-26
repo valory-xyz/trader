@@ -19,7 +19,7 @@
 
 """Tests for ToolSelectionBehaviour._select_tool (allowed_tools restriction logic)."""
 
-from typing import Optional
+from typing import Callable, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
@@ -43,6 +43,9 @@ def _make_policy(*tool_names: str) -> EGreedyPolicy:
 
     AccuracyInfo is seeded with requests=1 so that n_requests > 0 and
     EGreedyPolicy.__post_init__ doesn't raise ZeroDivisionError.
+
+    :param tool_names: names of tools to add to the policy.
+    :return: configured EGreedyPolicy instance.
     """
     return EGreedyPolicy(
         eps=0.1,
@@ -52,10 +55,10 @@ def _make_policy(*tool_names: str) -> EGreedyPolicy:
     )
 
 
-def _mock_setup(success: bool):
+def _mock_setup(success: bool) -> Callable[..., Generator[None, None, bool]]:
     """Return a generator function that immediately returns ``success``."""
 
-    def _gen(self):  # noqa: ANN001
+    def _gen(self: object) -> Generator[None, None, bool]:
         return success
         yield  # makes it a generator function
 
@@ -88,11 +91,11 @@ class _TestableBehaviour(ToolSelectionBehaviour):
 def _make_behaviour(
     policy: EGreedyPolicy,
     mech_tools: set,
-    allowed_tools=None,
+    allowed_tools: Optional[List[str]] = None,
     randomness: str = RANDOMNESS,
 ) -> _TestableBehaviour:
     """Return a _TestableBehaviour wired with mocked dependencies."""
-    behaviour = object.__new__(_TestableBehaviour)
+    behaviour = object.__new__(_TestableBehaviour)  # type: ignore[type-abstract]
 
     # context
     context = MagicMock()
@@ -101,20 +104,20 @@ def _make_behaviour(
     # benchmarking_mode disabled so we use synchronized_data.most_voted_randomness
     benchmarking_mode = MagicMock()
     benchmarking_mode.enabled = False
-    behaviour.benchmarking_mode = benchmarking_mode
+    behaviour.benchmarking_mode = benchmarking_mode  # type: ignore[misc]
 
     # synchronized_data
     sync_data = MagicMock()
     sync_data.most_voted_randomness = randomness
-    behaviour.synchronized_data = sync_data
+    behaviour.synchronized_data = sync_data  # type: ignore[misc]
 
     # shared_state / chatui_config
     shared_state = MagicMock()
     shared_state.chatui_config.allowed_tools = allowed_tools
-    behaviour.shared_state = shared_state
+    behaviour.shared_state = shared_state  # type: ignore[misc]
 
     # policy and mech_tools
-    behaviour.policy = policy
+    behaviour.policy = policy  # type: ignore[misc]
     behaviour.mech_tools = mech_tools
 
     return behaviour
@@ -126,6 +129,8 @@ def _make_behaviour(
 
 
 class TestSelectToolSetupFailure:
+    """Tests for _select_tool when _setup_policy_and_tools fails."""
+
     def test_returns_none_when_setup_fails(self) -> None:
         """_select_tool must return None immediately if _setup_policy_and_tools fails."""
         policy = _make_policy("tool-a", "tool-b")
@@ -140,6 +145,8 @@ class TestSelectToolSetupFailure:
 
 
 class TestSelectToolNoAllowedTools:
+    """Tests for _select_tool when no allowed_tools restriction is set."""
+
     def test_unrestricted_policy_used_when_no_allowed_tools(self) -> None:
         """With allowed_tools=None the full policy must be used without deepcopy."""
         policy = _make_policy("tool-a", "tool-b", "tool-c")
@@ -176,6 +183,8 @@ class TestSelectToolNoAllowedTools:
 
 
 class TestSelectToolWithAllowedTools:
+    """Tests for _select_tool with a valid allowed_tools intersection."""
+
     def test_restricted_policy_used_for_valid_intersection(self) -> None:
         """When allowed_tools intersects mech_tools, a restricted deepcopy is used."""
         policy = _make_policy("tool-a", "tool-b", "tool-c")
@@ -246,6 +255,8 @@ class TestSelectToolWithAllowedTools:
 
 
 class TestSelectToolEmptyIntersection:
+    """Tests for _select_tool when allowed_tools has no intersection with mech_tools."""
+
     def test_falls_back_to_unrestricted_policy_and_logs_warning(self) -> None:
         """When no allowed tool exists in mech_tools, fallback to full policy + warning."""
         policy = _make_policy("tool-a", "tool-b")
@@ -265,8 +276,8 @@ class TestSelectToolEmptyIntersection:
 
         assert result == "tool-a"
         mock_select.assert_called_once_with(RANDOMNESS)
-        behaviour.context.logger.warning.assert_called_once()
-        warning_msg: str = behaviour.context.logger.warning.call_args[0][0]
+        behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+        warning_msg: str = behaviour.context.logger.warning.call_args[0][0]  # type: ignore[attr-defined]
         assert "Falling back" in warning_msg
 
     def test_original_policy_store_not_mutated_on_fallback(self) -> None:

@@ -50,6 +50,9 @@ def _make_shared_state(store: Dict[str, Any]) -> _TestableSharedState:
 
     Bypasses the AEA framework by replacing only the attributes that
     _ensure_chatui_store() actually reads.
+
+    :param store: initial JSON store dict to load.
+    :return: configured _TestableSharedState instance.
     """
     state = object.__new__(_TestableSharedState)
     state._chatui_config = None
@@ -65,8 +68,8 @@ def _make_shared_state(store: Dict[str, Any]) -> _TestableSharedState:
     context.params = params
     state.context = context
 
-    state._get_current_json_store = MagicMock(return_value=dict(store))
-    state._set_json_store = MagicMock()
+    state._get_current_json_store = MagicMock(return_value=dict(store))  # type: ignore[method-assign]
+    state._set_json_store = MagicMock()  # type: ignore[method-assign]
 
     return state
 
@@ -84,6 +87,7 @@ class TestAllowedToolsMigration:
         state = _make_shared_state({"mech_tool": "prediction-online"})
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools == ["prediction-online"]
 
     def test_legacy_mech_tool_null_yields_none(self) -> None:
@@ -91,6 +95,7 @@ class TestAllowedToolsMigration:
         state = _make_shared_state({"mech_tool": None})
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools is None
 
     def test_migration_persists_without_mech_tool_key(self) -> None:
@@ -98,7 +103,8 @@ class TestAllowedToolsMigration:
         state = _make_shared_state({"mech_tool": "prediction-online"})
         state._ensure_chatui_store()
 
-        persisted: dict = state._set_json_store.call_args[0][0]
+        assert state._chatui_config is not None
+        persisted: dict = state._set_json_store.call_args[0][0]  # type: ignore[attr-defined]
         assert "allowed_tools" in persisted
         assert "mech_tool" not in persisted
         assert persisted["allowed_tools"] == ["prediction-online"]
@@ -108,6 +114,7 @@ class TestAllowedToolsMigration:
         state = _make_shared_state({"allowed_tools": ["tool-a", "tool-b"]})
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools == ["tool-a", "tool-b"]
 
     def test_existing_allowed_tools_null_is_respected(self) -> None:
@@ -115,6 +122,7 @@ class TestAllowedToolsMigration:
         state = _make_shared_state({"allowed_tools": None})
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools is None
 
     def test_leftover_mech_tool_key_dropped_when_allowed_tools_present(self) -> None:
@@ -124,8 +132,9 @@ class TestAllowedToolsMigration:
         )
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools == ["tool-a"]
-        persisted: dict = state._set_json_store.call_args[0][0]
+        persisted: dict = state._set_json_store.call_args[0][0]  # type: ignore[attr-defined]
         assert "mech_tool" not in persisted
 
     def test_migration_fires_only_once(self) -> None:
@@ -134,19 +143,20 @@ class TestAllowedToolsMigration:
         state._ensure_chatui_store()
         state._ensure_chatui_store()
 
-        assert state._get_current_json_store.call_count == 1
-        assert state._set_json_store.call_count == 1
+        assert state._get_current_json_store.call_count == 1  # type: ignore[attr-defined]
+        assert state._set_json_store.call_count == 1  # type: ignore[attr-defined]
 
     def test_fresh_store_no_tool_keys_gives_none(self) -> None:
         """A completely fresh store with no tool keys must result in allowed_tools=None."""
         state = _make_shared_state({})
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools is None
 
     def test_clear_then_reload_does_not_reseed(self) -> None:
-        """
-        Simulate the 'remove allowed_tools' -> reload cycle:
+        """Simulate the 'remove allowed_tools' -> reload cycle.
+
         After allowed_tools is cleared (written as null), the next load
         must NOT re-seed from any legacy mech_tool residue.
         """
@@ -154,6 +164,7 @@ class TestAllowedToolsMigration:
         state = _make_shared_state({"allowed_tools": None})
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools is None
 
 
@@ -166,23 +177,31 @@ class TestEnsureChatuiStoreDefaults:
     """Tests for default values filled from params when the store is empty."""
 
     def test_max_bet_size_filled_from_params_when_missing(self) -> None:
+        """Max bet size must be sourced from params when absent from the store."""
         state = _make_shared_state({})
         state._ensure_chatui_store()
+        assert state._chatui_config is not None
         assert state._chatui_config.max_bet_size == DEFAULT_MAX_BET_SIZE
 
     def test_fixed_bet_size_filled_from_params_when_missing(self) -> None:
+        """Fixed bet size must be sourced from params when absent from the store."""
         state = _make_shared_state({})
         state._ensure_chatui_store()
+        assert state._chatui_config is not None
         assert state._chatui_config.fixed_bet_size == DEFAULT_MIN_BET_SIZE
 
     def test_trading_strategy_filled_from_yaml_when_missing(self) -> None:
+        """Trading strategy must be sourced from YAML params when absent from the store."""
         state = _make_shared_state({})
         state._ensure_chatui_store()
+        assert state._chatui_config is not None
         assert state._chatui_config.trading_strategy == DEFAULT_TRADING_STRATEGY
 
     def test_initial_trading_strategy_filled_from_yaml_when_missing(self) -> None:
+        """Initial trading strategy must be sourced from YAML params when absent from the store."""
         state = _make_shared_state({})
         state._ensure_chatui_store()
+        assert state._chatui_config is not None
         assert state._chatui_config.initial_trading_strategy == DEFAULT_TRADING_STRATEGY
 
     def test_trading_strategy_resets_when_yaml_changed(self) -> None:
@@ -193,9 +212,10 @@ class TestEnsureChatuiStoreDefaults:
                 "initial_trading_strategy": "bet_amount_per_threshold",
             }
         )
-        state.context.params.trading_strategy = "kelly_criterion_no_conf"
+        state.context.params.trading_strategy = "kelly_criterion_no_conf"  # type: ignore[attr-defined]
         state._ensure_chatui_store()
 
+        assert state._chatui_config is not None
         assert state._chatui_config.trading_strategy == "kelly_criterion_no_conf"
         assert (
             state._chatui_config.initial_trading_strategy == "kelly_criterion_no_conf"
@@ -214,4 +234,4 @@ class TestEnsureChatuiStoreDefaults:
         state = _make_shared_state({})
         state._ensure_chatui_store()
 
-        state._set_json_store.assert_called_once()
+        state._set_json_store.assert_called_once()  # type: ignore[attr-defined]
