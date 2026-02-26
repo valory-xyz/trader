@@ -25,7 +25,7 @@ import enum
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from aea.skills.base import SkillContext
 
@@ -57,7 +57,7 @@ class ChatuiConfig:
 
     trading_strategy: Optional[str] = None
     initial_trading_strategy: Optional[str] = None
-    mech_tool: Optional[str] = None
+    allowed_tools: Optional[List[str]] = None
     fixed_bet_size: Optional[int] = None
     max_bet_size: Optional[int] = None
 
@@ -113,6 +113,17 @@ class SharedState(BaseSharedState):
             return
 
         current_store = self._get_current_json_store()
+
+        # Migrate legacy mech_tool (single string) -> allowed_tools (list).
+        # The migration only fires when the "allowed_tools" key is completely absent
+        # from the store, so clearing the list (writing null) is preserved correctly.
+        if "allowed_tools" not in current_store:
+            old_mech_tool = current_store.pop("mech_tool", None)
+            current_store["allowed_tools"] = [old_mech_tool] if old_mech_tool else None
+        else:
+            # Drop any leftover legacy key that would cause ChatuiConfig(**...) to fail.
+            current_store.pop("mech_tool", None)
+
         try:
             self._chatui_config = ChatuiConfig(**current_store)
         except TypeError as e:

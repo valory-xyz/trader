@@ -24,12 +24,12 @@
 import enum
 import pickle  # nosec
 import typing
+from typing import List
 
 from pydantic import BaseModel
 
 
-CHATUI_PROMPT = """
-You are an expert assistant tasked with helping users update an agent's trading configuration.
+CHATUI_PROMPT = """You are an expert assistant tasked with helping users update an agent's trading configuration.
 
 Configuration details:
 - Trading strategy: "{current_trading_strategy}"
@@ -37,9 +37,13 @@ Configuration details:
         --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while maximizing the long-term return on an investment. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount). This is also known as the risky strategy.
         --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. This is also known as the balanced strategy. But in this implemented version, the user sets a fixed bet size that applies to all confidence thresholds, overriding the threshold-based amounts.
     -- Can not be deselected, but can be changed to another strategy if the user says to change it.
-- Mech tool: "{current_mech_tool}"
+- Allowed tools: {current_allowed_tools}
     -- Available tools: {available_tools}
-    -- Can be deselected to let the agent choose the best tool based on its policy if the user says to remove the tool.
+    -- When set, the agent's e-greedy policy will only select from this subset of tools on each trade. The policy continues learning across all tools, but selection is restricted to the allowed list.
+    -- When null/empty, the agent freely selects from all available tools based on its policy.
+    -- Can be cleared to restore unrestricted tool selection if the user says to remove or clear the allowed tools.
+    -- Each tool in the list must be one of the available tools listed above.
+    -- The user can add tools to or remove individual tools from the current allowed list, or replace it entirely.
 - Fixed bet size: "{current_fixed_bet_size}"
     -- Used with the "bet_amount_per_threshold" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
@@ -79,7 +83,7 @@ class TradingStrategy(enum.Enum):
 class FieldsThatCanBeRemoved(enum.Enum):
     """FieldsThatCanBeRemoved"""
 
-    MECH_TOOL = "mech_tool"
+    ALLOWED_TOOLS = "allowed_tools"
     FIXED_BET_SIZE = "fixed_bet_size"
     MAX_BET_SIZE = "max_bet_size"
 
@@ -88,7 +92,7 @@ class UpdatedAgentConfig(BaseModel):
     """UpdatedAgentConfig"""
 
     trading_strategy: typing.Optional[TradingStrategy]
-    mech_tool: typing.Optional[str]
+    allowed_tools: typing.Optional[List[str]]
     fixed_bet_size: typing.Optional[float]
     max_bet_size: typing.Optional[float]
     removed_config_fields: typing.List[FieldsThatCanBeRemoved]
