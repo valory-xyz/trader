@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifg464o7i6jg6ww2rjjfsxekkheg3l5772wzcotusi3cpsqjx7dyu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidsrzoffhxvsi7x4ujuwfmw7hk5nbf2pvjhqosr43x6a7ngtcoake
 - valory/market_manager_abci:0.1.0:bafybeihhb7dicqj5fh2qqwogh2m4svesnxippy2lyiix2cq56dpix43rqa
-- valory/decision_maker_abci:0.1.0:bafybeid7kyq6ayrostmtj6z6z5hkqsfbjkyay4rm45o5l3hkmxkexvnacm
-- valory/trader_abci:0.1.0:bafybeiabjjzv4iwiavvdod6a2ldt36l7pqfifatlakcj76lowm2tc3bprq
-- valory/staking_abci:0.1.0:bafybeiclavetnqnuoqcsb2qrsyjtrumat3dhxkwt6gdorg7lkgk5h7amqu
-- valory/check_stop_trading_abci:0.1.0:bafybeiav4lpyqpm2ja6myznms4zboskhgrtcui5nkpi6styr6kaq7x2znq
-- valory/mech_interact_abci:0.1.0:bafybeigz7smxwsfxovyzn6lhh74k5z35a5piz2oioi5fgr7mqcjicbpleu
-- valory/chatui_abci:0.1.0:bafybeiewmqonq3nwdnopcpn3exq25p2ar5g6vrgynzibhhpsm4mz3txi7m
-- valory/agent_performance_summary_abci:0.1.0:bafybeicljdctxl4b6nsfiznicliqfnh4hvmo7p7cj34zdeif7sncpagy7m
+- valory/decision_maker_abci:0.1.0:bafybeigy6f6a2a6caijo2jupwrkn6hrqao7c6dzwgz42zoalcivwzn6am4
+- valory/trader_abci:0.1.0:bafybeicsh6ejvaceus2fod64trfyg2hphhdhdnc6gmwpwomygbhsdlodpu
+- valory/staking_abci:0.1.0:bafybeid4ro6pw2yiwwu7e4hfyrzunsqoaq5prsgeasf4othrmwy2jslvlu
+- valory/check_stop_trading_abci:0.1.0:bafybeigzyeoixq26bkfguvx2macfb4ktqhjqzwrrwaxvje4tghlc3ca4f4
+- valory/mech_interact_abci:0.1.0:bafybeiffz7arijdfjko47rqrkcs5eobyj4vmal5pmiuhopmot24qrigwdy
+- valory/chatui_abci:0.1.0:bafybeigodqjbvog22qms4kwtgwukdr7w3o34cikwrjqgtpjyswen2mzlrm
+- valory/agent_performance_summary_abci:0.1.0:bafybeifb4wtv7x6r3foxansh3xieru64x6bmvp3jnbjkx4w5ib576t6amy
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
