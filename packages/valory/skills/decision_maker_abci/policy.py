@@ -219,11 +219,12 @@ class EGreedyPolicy:
 
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
+        n_requests = self.n_requests
         self.weighted_accuracy = {
             tool: scale_value(
                 (
                     acc_info.accuracy
-                    + ((acc_info.requests - acc_info.pending) / self.n_requests)
+                    + ((acc_info.requests - acc_info.pending) / (n_requests or 1))
                     * VOLUME_FACTOR_REGULARIZATION
                 ),
                 UNSCALED_WEIGHTED_ACCURACY_INTERVAL,
