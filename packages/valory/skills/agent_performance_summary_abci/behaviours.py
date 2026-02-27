@@ -1065,6 +1065,7 @@ class FetchPerformanceSummaryBehaviour(
             day_ts = int(stat["date"])
 
             # Extract titles based on platform
+            titles: Set[str] = set()
             if self.params.is_running_on_polymarket:
                 titles = {
                     participant.get("metadata", {}).get("title", "")
