@@ -267,8 +267,8 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
       first: 1
       orderDirection: desc
     ) {
-      deliveries {
-        model
+      parsedRequest {
+        tool
       }
     }
   }

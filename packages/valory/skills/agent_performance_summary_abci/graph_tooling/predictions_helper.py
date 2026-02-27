@@ -206,7 +206,6 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 headers={"Content-Type": "application/json"},
                 timeout=30,
             )
-
             if response.status_code != 200:
                 self.logger.error(f"Failed to fetch mech tool: {response.status_code}")
                 return None
@@ -218,13 +217,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
             if not requests_list:
                 return None
 
-            deliveries = (requests_list[0] or {}).get("deliveries") or []
-            if not deliveries:
+            parsed_request = (requests_list[0] or {}).get("parsedRequest") or {}
+            if not parsed_request:
                 return None
 
-            return deliveries[0].get("model")
-
-            return None
+            return parsed_request.get("tool")
 
         except Exception as e:
             self.logger.error(
