@@ -32,7 +32,7 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 from hexbytes import HexBytes
 
-from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
     SafeOperation,

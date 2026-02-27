@@ -25,7 +25,7 @@ connections: []
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy
 - valory/service_staking_token:0.1.0:bafybeidbq4kuajhygalrx2uuo73dfg4etffccm6a7jurvlb7mjwycofz3q
-- valory/staking_token:0.1.0:bafybeic4ap4aj47qgjerrmkizl6llw5v5nel6ddil6e3w62h6zxoy3xjji
+- valory/staking_token:0.1.0:bafybeicmpo7ycspixqofh6uesxsrzi6hla77vgjpxp2v2nxysr5hnm4x7q
 - valory/mech_activity:0.1.0:bafybeiemnfhxt47ey5bzqztwaayfc2epwiup5btbnltmjuzgqirzi6ieb4
 protocols:
 - valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
