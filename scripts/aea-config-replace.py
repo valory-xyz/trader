@@ -89,6 +89,8 @@ PATH_TO_VAR = {
     "models/params/args/mech_wrapped_native_token_address": "MECH_WRAPPED_NATIVE_TOKEN_ADDRESS",
     "models/params/args/is_outcome_side_threshold_filter_enabled": "IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED",
     "models/params/args/outcome_side_threshold_filter_threshold": "OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD",
+    "models/params/args/disable_trading": "DISABLE_TRADING",
+    "models/params/args/enable_position_review": "ENABLE_POSITION_REVIEW",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"
