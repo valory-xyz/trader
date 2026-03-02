@@ -19,6 +19,7 @@
 
 """This module contains the redeeming state of the decision-making abci app."""
 
+import json
 from typing import Any, Generator, Optional, cast
 
 from hexbytes import HexBytes
@@ -30,9 +31,9 @@ from packages.valory.contracts.conditional_tokens.contract import (
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
-    MultisendBatch,
+from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketRedeemPayload
@@ -50,7 +51,7 @@ DEFAULT_TO_BLOCK = "latest"
 WaitableConditionType = Generator[None, None, bool]
 
 
-class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
+class PolymarketRedeemBehaviour(StorageManagerBehaviour):
     """Redeem the winnings."""
 
     matching_round = PolymarketRedeemRound
@@ -170,10 +171,42 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
 
         return redeem_result
 
+    def _setup_policy_and_tools(self) -> Generator[None, None, bool]:
+        """Set up the policy and tools."""
+        if self.synchronized_data.is_policy_set:
+            self._policy = self.synchronized_data.policy
+            self.mech_tools = self.synchronized_data.available_mech_tools
+            return True
+        status = yield from super()._setup_policy_and_tools()
+        return status
+
     def async_act(self) -> Generator:
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            # Mirror Omen's RedeemBehaviour._setup_policy_and_tools + _build_payload:
+            # load from synchronized_data properties, then serialize for the payload.
+            # PolymarketRedeemRound.selection_key includes all three fields, so leaving
+            # them as defaults (mech_tools="[]", policy=None, utilized_tools=None) would
+            # overwrite the live values in synchronized data on every redeem round.
+            success = yield from self._setup_policy_and_tools()
+            if not success:
+                return
+            is_policy_set = self.synchronized_data.is_policy_set
+
+            current_mech_tools = json.dumps(list(self.mech_tools))
+            current_policy = self.policy.serialize() if is_policy_set else None
+            current_utilized_tools = json.dumps(self.utilized_tools)
+
+            # TODO: Tool accuracy update is not implemented for Polymarket.
+            # Unlike Omen (reedem.py), this behaviour does not update the e-greedy
+            # policy's accuracy store based on whether redeemed positions were winning
+            # or losing. To implement this, a `polymarket_utilized_tools` mapping of
+            # {conditionId -> tool_name} should be maintained (recorded at bet placement
+            # in the tx settlement multiplexer), and each redeemable position's outcome
+            # should be used to call `policy.update_accuracy_store(tool, winning)` here,
+            # mirroring RedeemInfoBehaviour._update_policy in reedem.py.
+
             # Fetch redeemable positions once for both flows
             redeemable_positions = yield from self._fetch_redeemable_positions()
             self.context.logger.info(
@@ -187,6 +220,9 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                     tx_submitter=None,
                     tx_hash=None,
                     mocking_mode=False,
+                    mech_tools=current_mech_tools,
+                    policy=current_policy,
+                    utilized_tools=current_utilized_tools,
                     event=Event.NO_REDEEMING.value,
                 )
                 yield from self.finish_behaviour(self.payload)
@@ -198,7 +234,12 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                     "Polymarket builder program enabled - calling connection to redeem positions..."
                 )
                 # Call the polymarket client to redeem positions
-                yield from self._redeem_via_builder(redeemable_positions)
+                yield from self._redeem_via_builder(
+                    redeemable_positions,
+                    current_mech_tools,
+                    current_policy,
+                    current_utilized_tools,
+                )
             else:
                 self.context.logger.info(
                     "Polymarket builder program disabled - preparing redemption transaction..."
@@ -212,12 +253,21 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
                     tx_submitter=tx_submitter,
                     tx_hash=tx_hash,
                     mocking_mode=False,
+                    mech_tools=current_mech_tools,
+                    policy=current_policy,
+                    utilized_tools=current_utilized_tools,
                     event=Event.PREPARE_TX.value,
                 )
 
         yield from self.finish_behaviour(self.payload)
 
-    def _redeem_via_builder(self, redeemable_positions: list) -> Generator:
+    def _redeem_via_builder(
+        self,
+        redeemable_positions: list,
+        current_mech_tools: str = "[]",
+        current_policy: Optional[str] = None,
+        current_utilized_tools: Optional[str] = None,
+    ) -> Generator:
         """Redeem positions via builder flow (connection request)."""
 
         # Redeem each position
@@ -268,6 +318,9 @@ class PolymarketRedeemBehaviour(DecisionMakerBaseBehaviour):
             tx_submitter=None,
             tx_hash=None,
             mocking_mode=False,
+            mech_tools=current_mech_tools,
+            policy=current_policy,
+            utilized_tools=current_utilized_tools,
             event=Event.DONE.value,
         )
 

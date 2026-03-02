@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 
 """This module contains the behaviour of the skill which is responsible for selecting a mech tool."""
 
+import copy
 import json
 from typing import Generator, Optional
 
@@ -42,16 +43,36 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         if not success:
             return None
 
-        # If chat UI mech tool is provided, use it directly and skip randomness/policy.
-        chatui_mech_tool = self.shared_state.chatui_config.mech_tool
-        if chatui_mech_tool is not None:
-            selected_tool = self.shared_state.chatui_config.mech_tool
+        randomness = (
+            (self.benchmarking_mode.randomness if self.is_first_period else None)
+            if self.benchmarking_mode.enabled
+            else self.synchronized_data.most_voted_randomness
+        )
+
+        # If an allowed-tools list is set via the chat UI, restrict the policy's
+        # selection to only those tools.  The policy keeps learning across the full
+        # accuracy store; we only narrow the selection pool temporarily.
+        chatui_allowed_tools = self.shared_state.chatui_config.allowed_tools
+        if chatui_allowed_tools:
+            allowed_intersection = [
+                t for t in chatui_allowed_tools if t in self.mech_tools
+            ]
+            if allowed_intersection:
+                restricted_policy = copy.deepcopy(self.policy)
+                restricted_policy.accuracy_store = {
+                    t: v
+                    for t, v in restricted_policy.accuracy_store.items()
+                    if t in allowed_intersection
+                }
+                restricted_policy.update_weighted_accuracy()
+                selected_tool = restricted_policy.select_tool(randomness)
+            else:
+                self.context.logger.warning(
+                    f"None of the allowed tools {chatui_allowed_tools} are in the "
+                    f"current tool set {self.mech_tools}. Falling back to unrestricted policy."
+                )
+                selected_tool = self.policy.select_tool(randomness)
         else:
-            randomness = (
-                (self.benchmarking_mode.randomness if self.is_first_period else None)
-                if self.benchmarking_mode.enabled
-                else self.synchronized_data.most_voted_randomness
-            )
             selected_tool = self.policy.select_tool(randomness)
 
         self.context.logger.info(f"Selected the mech tool {selected_tool!r}.")
