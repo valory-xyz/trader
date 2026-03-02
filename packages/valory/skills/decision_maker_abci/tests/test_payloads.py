@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -29,6 +29,11 @@ from packages.valory.skills.decision_maker_abci.payloads import (
     DecisionReceivePayload,
     DecisionRequestPayload,
     MultisigTxPayload,
+    PolymarketBetPlacementPayload,
+    PolymarketPostSetApprovalPayload,
+    PolymarketRedeemPayload,
+    PolymarketSetApprovalPayload,
+    PolymarketSwapPayload,
     RedeemPayload,
     SamplingPayload,
     SubscriptionPayload,
@@ -116,6 +121,51 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
                 "selected_tool": "dummy selected tool",
+            },
+        ),
+        (
+            PolymarketBetPlacementPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": True,
+                "event": "bet_placement_done",
+                "cached_signed_orders": '{"tok1": "order1"}',
+            },
+        ),
+        (
+            PolymarketSetApprovalPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": False,
+            },
+        ),
+        (
+            PolymarketPostSetApprovalPayload,
+            {"vote": True},
+        ),
+        (
+            PolymarketRedeemPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": True,
+                "mech_tools": '["tool_a"]',
+                "policy": "dummy policy",
+                "utilized_tools": '{"tool_a": 1}',
+                "redeemed_condition_ids": '["cid1"]',
+                "payout_so_far": 42,
+                "event": "done",
+            },
+        ),
+        (
+            PolymarketSwapPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": False,
+                "should_swap": True,
             },
         ),
     ],
