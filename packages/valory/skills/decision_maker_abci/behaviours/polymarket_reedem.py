@@ -30,7 +30,7 @@ from packages.valory.contracts.conditional_tokens.contract import (
     ConditionalTokensContract,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload, get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
@@ -60,6 +60,11 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
         self._user_token_balance: Optional[int] = None
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        self._store_utilized_tools()
+        yield from super().finish_behaviour(payload)
 
     @property
     def user_token_balance(self) -> Optional[int]:

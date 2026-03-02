@@ -23,8 +23,9 @@ import json
 from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketBetPlacementPayload,
@@ -35,7 +36,7 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 )
 
 
-class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
+class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = PolymarketBetPlacementRound
@@ -174,9 +175,8 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         if event == Event.BET_PLACEMENT_DONE:
             condition_id = self.get_active_sampled_bet().condition_id
             if condition_id is not None:
-                updated_utilized_tools = dict(self.synchronized_data.utilized_tools)
-                updated_utilized_tools[condition_id] = self.synchronized_data.mech_tool
-                utilized_tools_json = json.dumps(updated_utilized_tools, sort_keys=True)
+                self.utilized_tools[condition_id] = self.synchronized_data.mech_tool
+                utilized_tools_json = json.dumps(self.utilized_tools, sort_keys=True)
                 self.context.logger.info(
                     f"Recorded mech tool {self.synchronized_data.mech_tool!r} "
                     f"for condition_id {condition_id!r} in utilized_tools."
@@ -198,3 +198,8 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
         )
 
         yield from self.finish_behaviour(payload)
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        self._store_utilized_tools()
+        yield from super().finish_behaviour(payload)
