@@ -129,6 +129,8 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         use a 0.5 midpoint threshold to distinguish them.  This mirrors how
         ``RedeemInfoBehaviour._update_policy`` in reedem.py handles Omen trades
         via ``Trade.is_winning``.
+
+        :param redeemable_positions: list of position dicts from the Polymarket API.
         """
         for position in redeemable_positions:
             condition_id = position.get("conditionId")

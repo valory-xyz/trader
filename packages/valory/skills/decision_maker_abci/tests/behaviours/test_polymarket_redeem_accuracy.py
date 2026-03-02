@@ -19,7 +19,7 @@
 
 """Tests proving PREDICT-769: local accuracy store not updated for Polystrat.
 
-Level 3 – the accuracy store is never updated at redemption time:
+Level 3 - the accuracy store is never updated at redemption time:
   ``PolymarketRedeemBehaviour`` fetches redeemable positions (positions whose
   market resolved with a win for the agent) but never calls
   ``policy.update_accuracy_store(tool, winning=True)``.  This means the
@@ -37,11 +37,7 @@ On the *original* code the method did not exist at all, causing an
 the TODO the update was never performed.
 """
 
-import json
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     PolymarketRedeemBehaviour,
@@ -104,6 +100,8 @@ def _make_policy(tool: str = MECH_TOOL) -> EGreedyPolicy:
 def _make_behaviour() -> PolymarketRedeemBehaviour:
     """Return a PolymarketRedeemBehaviour with just the minimum attributes needed
     to call ``_update_policy_for_redeemable_positions`` without a real AEA context.
+
+    :return: a partially constructed PolymarketRedeemBehaviour instance.
     """
     behaviour = object.__new__(PolymarketRedeemBehaviour)
 
