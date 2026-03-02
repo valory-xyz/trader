@@ -98,8 +98,7 @@ def _make_policy(tool: str = MECH_TOOL) -> EGreedyPolicy:
 
 
 def _make_behaviour() -> PolymarketRedeemBehaviour:
-    """Return a PolymarketRedeemBehaviour with just the minimum attributes needed
-    to call ``_update_policy_for_redeemable_positions`` without a real AEA context.
+    """Return a PolymarketRedeemBehaviour with just the minimum attributes.
 
     :return: a partially constructed PolymarketRedeemBehaviour instance.
     """
@@ -134,7 +133,7 @@ class TestUpdatePolicyMethodExists:
     """
 
     def test_method_exists_on_behaviour(self) -> None:
-        """PolymarketRedeemBehaviour must have _update_policy_for_redeemable_positions.
+        """Behaviour must have _update_policy_for_redeemable_positions.
 
         Without this method there is simply no code path that can update the
         accuracy store for Polymarket bets.  On the original code this assertion
@@ -163,8 +162,7 @@ class TestUpdatePolicyMethodExists:
 
 
 class TestUpdatePolicyForRedeemablePositions:
-    """_update_policy_for_redeemable_positions must call policy.update_accuracy_store
-    for every settled position whose conditionId appears in utilized_tools.
+    """_update_policy_for_redeemable_positions must call policy.update_accuracy_store for every settled position whose conditionId appears in utilized_tools.
 
     ``redeemable=True`` from the Polymarket API includes BOTH winning and losing
     settled positions.  ``curPrice`` is 1.0 for winning outcome tokens and 0.0
@@ -173,9 +171,7 @@ class TestUpdatePolicyForRedeemablePositions:
     """
 
     def test_accuracy_store_updated_for_known_condition_id(self) -> None:
-        """When a redeemable position's conditionId is in utilized_tools the
-        policy's accuracy store must be updated (requests incremented, accuracy
-        recalculated).
+        """When a redeemable position's conditionId is in utilized_tools the policy's accuracy store must be updated (requests incremented, accuracy recalculated).
 
         On the original code the method did not exist, so this would raise
         AttributeError and the accuracy store was never mutated.
@@ -255,9 +251,7 @@ class TestUpdatePolicyForRedeemablePositions:
         ), "pending was not decremented; update_accuracy_store was not called."
 
     def test_unknown_condition_id_is_skipped_gracefully(self) -> None:
-        """If a redeemable position's conditionId is NOT in utilized_tools
-        (bet placed before the fix, or tool info lost) the method must not
-        raise and must not modify the policy."""
+        """If a redeemable position's conditionId is NOT in utilized_tools (bet placed before the fix, or tool info lost) the method must not raise and must not modify the policy."""
         behaviour = _make_behaviour()
         behaviour._utilized_tools = {}  # no known tools  # type: ignore[attr-defined]
         initial_requests = behaviour._policy.accuracy_store[MECH_TOOL].requests  # type: ignore[union-attr]
@@ -276,7 +270,7 @@ class TestUpdatePolicyForRedeemablePositions:
 
         behaviour._update_policy_for_redeemable_positions([])  # type: ignore[attr-defined]
 
-        assert behaviour._policy.accuracy_store[MECH_TOOL].requests == initial_requests
+        assert behaviour._policy.accuracy_store[MECH_TOOL].requests == initial_requests  # type: ignore[union-attr]
 
     def test_multiple_positions_each_update_their_tool(self) -> None:
         """Multiple redeemable positions update the accuracy store once per position."""

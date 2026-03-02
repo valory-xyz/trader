@@ -34,10 +34,8 @@ Level 2 – the round must persist the mapping:
 
 import dataclasses
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, cast
 from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
 
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketBetPlacementPayload,
@@ -74,7 +72,7 @@ class TestPolymarketBetPlacementPayloadCarriesUtilizedTools:
     """
 
     def test_payload_accepts_utilized_tools_kwarg(self) -> None:
-        """PolymarketBetPlacementPayload must accept utilized_tools at construction."""
+        """Payload must accept utilized_tools at construction."""
         # This would raise TypeError on the original code because the dataclass
         # had no such field.
         payload = PolymarketBetPlacementPayload(
@@ -94,8 +92,7 @@ class TestPolymarketBetPlacementPayloadCarriesUtilizedTools:
         assert payload.utilized_tools is None
 
     def test_payload_utilized_tools_is_part_of_data_dict(self) -> None:
-        """utilized_tools must appear in payload.data so it is included in the
-        consensus value broadcast to other agents."""
+        """utilized_tools must appear in payload.data so it is included in the consensus value broadcast to other agents."""
         payload = PolymarketBetPlacementPayload(
             sender="agent",
             event=Event.BET_PLACEMENT_DONE.value,
@@ -124,8 +121,7 @@ class TestPolymarketBetPlacementPayloadCarriesUtilizedTools:
 
 
 class TestPolymarketBetPlacementRoundPersistsUtilizedTools:
-    """Prove that PolymarketBetPlacementRound.end_block writes utilized_tools
-    into synchronized data when the payload contains a non-None value.
+    """Prove that PolymarketBetPlacementRound.end_block writes utilized_tools into synchronized data when the payload contains a non-None value.
 
     The original end_block only saved cached_signed_orders; utilized_tools was
     silently discarded after every successful bet placement.
@@ -141,9 +137,7 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools:
         )
 
     def test_utilized_tools_written_to_synced_data_on_success(self) -> None:
-        """When the consensus payload has utilized_tools set, end_block must
-        persist them so the redeem behaviour can later look up which tool was
-        used for each conditionId.
+        """When the consensus payload has utilized_tools set, end_block must persist them so the redeem behaviour can later look up which tool was used for each conditionId.
 
         On the original code this assertion fails because end_block never called
         synced_data.update(utilized_tools=...).
@@ -181,7 +175,8 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools:
         # The round must have called .update(utilized_tools=UTILIZED_TOOLS_JSON)
         # at some point.  Collect all kwargs passed to every .update() call.
         all_update_kwargs: Dict[str, Any] = {}
-        for call in round_.synchronized_data.update.call_args_list:
+        update_mock = cast(MagicMock, round_.synchronized_data.update)
+        for call in update_mock.call_args_list:
             all_update_kwargs.update(call.kwargs)
 
         assert "utilized_tools" in all_update_kwargs, (
@@ -192,8 +187,7 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools:
         assert all_update_kwargs["utilized_tools"] == UTILIZED_TOOLS_JSON
 
     def test_utilized_tools_not_written_when_none(self) -> None:
-        """When utilized_tools is None (e.g. a failed placement) end_block must
-        NOT overwrite the existing utilized_tools in synchronized data."""
+        """When utilized_tools is None (e.g. a failed placement) end_block must NOT overwrite the existing utilized_tools in synchronized data."""
         round_ = self._make_round()
 
         # Post-fix 6-element tuple; utilized_tools is None for a failed placement.
@@ -219,7 +213,8 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools:
                 round_.end_block()
 
         # Verify .update() was never called with utilized_tools
-        for call in round_.synchronized_data.update.call_args_list:
+        update_mock = cast(MagicMock, round_.synchronized_data.update)
+        for call in update_mock.call_args_list:
             assert "utilized_tools" not in call.kwargs, (
                 "end_block must not overwrite utilized_tools when the payload "
                 "carries None (i.e. the bet did not succeed)."
