@@ -168,6 +168,25 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             if signed_order_json:
                 updated_cache[cache_key] = signed_order_json
 
+        # On success, record conditionId → mech_tool so the redeem behaviour can
+        # later update the e-greedy policy's accuracy store for this position.
+        utilized_tools_json = None
+        if event == Event.BET_PLACEMENT_DONE:
+            condition_id = self.get_active_sampled_bet().condition_id
+            if condition_id is not None:
+                updated_utilized_tools = dict(self.synchronized_data.utilized_tools)
+                updated_utilized_tools[condition_id] = self.synchronized_data.mech_tool
+                utilized_tools_json = json.dumps(updated_utilized_tools, sort_keys=True)
+                self.context.logger.info(
+                    f"Recorded mech tool {self.synchronized_data.mech_tool!r} "
+                    f"for condition_id {condition_id!r} in utilized_tools."
+                )
+            else:
+                self.context.logger.warning(
+                    "No condition_id found on the sampled bet; "
+                    "utilized_tools will not be updated for this placement."
+                )
+
         payload = PolymarketBetPlacementPayload(
             self.context.agent_address,
             None,
@@ -175,6 +194,7 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             False,
             event=event.value,
             cached_signed_orders=json.dumps(updated_cache),
+            utilized_tools=utilized_tools_json,
         )
 
         yield from self.finish_behaviour(payload)
