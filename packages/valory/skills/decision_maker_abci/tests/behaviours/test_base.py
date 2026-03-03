@@ -188,6 +188,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                         "penalize_mech_time_window": 0,
                         "irrelevant_tools": [],
                         "ignored_mechs": [],
+                        "deliveries_lookback_days": 30,
                     }
                 }
             }
