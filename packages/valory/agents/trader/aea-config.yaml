@@ -514,7 +514,7 @@ public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
 config:
   nodes:
-  - uri: ${str:acn.staging.autonolas.tech:9005}
+  - uri: ${str:acn.autonolas.tech:9005}
     public_key: ${str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
 cert_requests:
 - identifier: acn
