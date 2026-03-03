@@ -94,7 +94,11 @@ class TestPolymarketBetPlacementRound:
         assert result is None
 
     def test_end_block_updates_cached_orders_when_present(self) -> None:
-        """Updates synced_data with cached_signed_orders when not None."""
+        """Updates synced_data with cached_signed_orders when not None.
+
+        The key business invariant: the round must persist the cached signed
+        orders to synchronized data so other agents can retry the same order.
+        """
         round_ = _make_round(PolymarketBetPlacementRound)
         synced_data_mock = MagicMock(spec=SynchronizedData)
         updated_synced_data = MagicMock(spec=SynchronizedData)
@@ -114,10 +118,13 @@ class TestPolymarketBetPlacementRound:
             result = round_.end_block()
 
         assert result is not None
-        synced_data_mock.update.assert_called_once()
         updated, event = result
         assert event == Event.BET_PLACEMENT_DONE
         assert updated is updated_synced_data
+        # The cached orders MUST be stored under the correct key
+        synced_data_mock.update.assert_called_once()
+        call_kwargs = synced_data_mock.update.call_args[1]
+        assert call_kwargs["cached_signed_orders"] == cached_orders
 
     def test_end_block_no_cached_orders_returns_event(self) -> None:
         """Does not call update when cached_orders is None."""
@@ -233,27 +240,33 @@ class TestPolymarketSetApprovalRound:
         _, event = result
         assert event == Event.PREPARE_TX
 
-    def test_builder_enabled_logs_info(self) -> None:
-        """Logs info when builder program is enabled."""
+    def test_builder_enabled_passes_through_synced_data(self) -> None:
+        """The synced_data from parent is returned unchanged when builder is enabled."""
         round_ = _make_round(PolymarketSetApprovalRound)
         round_.context.params.polymarket_builder_program_enabled = True
+        synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(MagicMock(), Event.DONE)):
-            round_.end_block()
+        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)):
+            result = round_.end_block()
 
-        round_.context.logger.info.assert_called()
+        # Event overridden to DONE; synced_data must be the same object from parent
+        assert result[0] is synced_data_mock
+        assert result[1] == Event.DONE
 
-    def test_builder_disabled_logs_info(self) -> None:
-        """Logs info when builder program is disabled."""
+    def test_builder_disabled_passes_through_synced_data(self) -> None:
+        """The synced_data from parent is returned unchanged when builder is disabled."""
         round_ = _make_round(PolymarketSetApprovalRound)
         round_.context.params.polymarket_builder_program_enabled = False
+        synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(MagicMock(), Event.DONE)):
-            round_.end_block()
+        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)):
+            result = round_.end_block()
 
-        round_.context.logger.info.assert_called()
+        # Event overridden to PREPARE_TX; synced_data must be the same object from parent
+        assert result[0] is synced_data_mock
+        assert result[1] == Event.PREPARE_TX
 
 
 # ---------------------------------------------------------------------------
@@ -359,6 +372,49 @@ class TestPolymarketPostSetApprovalRound:
 
         assert result == (synced_data_mock, Event.NONE)
 
+    def test_integer_zero_vote_is_not_approval_failed(self) -> None:
+        """Integer 0 is not identical to False — must NOT trigger APPROVAL_FAILED.
+
+        The check is `most_voted_payload is False` (identity), not `== False`
+        (equality). The integer 0 compares equal to False but is not identical.
+        Routing 0 to APPROVAL_FAILED would incorrectly retry the set-approval flow.
+        """
+        round_ = _make_round(PolymarketPostSetApprovalRound)
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+
+        parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
+        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
+             patch.object(
+                 type(round_),
+                 "most_voted_payload",
+                 new_callable=PropertyMock,
+                 return_value=0,  # 0 == False but 0 is not False
+             ):
+            result = round_.end_block()
+
+        assert result == (synced_data_mock, Event.DONE)
+
+    def test_none_vote_is_not_approval_failed(self) -> None:
+        """None is not identical to False — must NOT trigger APPROVAL_FAILED.
+
+        None is falsy but `None is False` is False. Routing None to
+        APPROVAL_FAILED would incorrectly retry the set-approval flow.
+        """
+        round_ = _make_round(PolymarketPostSetApprovalRound)
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+
+        parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
+        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
+             patch.object(
+                 type(round_),
+                 "most_voted_payload",
+                 new_callable=PropertyMock,
+                 return_value=None,
+             ):
+            result = round_.end_block()
+
+        assert result == (synced_data_mock, Event.DONE)
+
 
 # ---------------------------------------------------------------------------
 # PolymarketSwapUsdcRound
@@ -416,6 +472,45 @@ class TestPolymarketSwapUsdcRound:
         _, event = result
         assert event == Event.DONE
 
+    def test_none_should_swap_returns_done(self) -> None:
+        """A None should_swap (falsy) routes to Event.DONE, not Event.PREPARE_TX.
+
+        The branch is `Event.PREPARE_TX if should_swap else Event.DONE`. None is
+        falsy so the result must be DONE, not PREPARE_TX.
+        """
+        round_ = _make_round(PolymarketSwapUsdcRound)
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+        mvpv = ("tx_submitter", "tx_hash", "False", None)
+
+        parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
+        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
+             patch.object(type(round_), "most_voted_payload_values",
+                          new_callable=PropertyMock, return_value=mvpv):
+            result = round_.end_block()
+
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE
+
+    def test_swap_synced_data_passed_through(self) -> None:
+        """The synced_data object from the parent is returned unchanged.
+
+        The round only overwrites the event; the synchronized data must be
+        the exact same object so no state is lost between rounds.
+        """
+        round_ = _make_round(PolymarketSwapUsdcRound)
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+        mvpv = ("tx_submitter", "tx_hash", "False", True)
+
+        parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
+        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
+             patch.object(type(round_), "most_voted_payload_values",
+                          new_callable=PropertyMock, return_value=mvpv):
+            result = round_.end_block()
+
+        assert result is not None
+        assert result[0] is synced_data_mock
+
 
 # ---------------------------------------------------------------------------
 # PolymarketRedeemRound
@@ -442,18 +537,24 @@ class TestPolymarketRedeemRound:
         assert MECH_TOOLS_FIELD == "mech_tools"
 
     def test_most_voted_payload_values_returns_none_tuple_when_all_none(self) -> None:
-        """Returns tuple of None when all non-mech_tools values are None."""
+        """Returns (None,) * len(selection_key) when all non-mech_tools values are None.
+
+        This triggers the none_event path in the base round — the length must
+        exactly match selection_key so that downstream unpacking works correctly.
+        """
         round_ = _make_round(PolymarketRedeemRound)
-        # Build a payload where all fields except mech_tools are None
-        # The payload values tuple order: tx_submitter, tx_hash, mocking_mode, mech_tools, policy,
+        # All fields are None except mech_tools (index 3) which must be non-None
+        # Payload value order: tx_submitter, tx_hash, mocking_mode, mech_tools, policy,
         #   utilized_tools, redeemed_condition_ids, payout_so_far, event
         none_values = (None, None, None, "[]", None, None, None, None, None)
 
         parent_prop = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.most_voted_payload_values"
         with patch(parent_prop, new_callable=PropertyMock, return_value=none_values):
             result = round_.most_voted_payload_values
-        # When all non-mech fields are None, should return (None,) * len(selection_key)
+
+        # Must be all-None AND the correct length for downstream code
         assert all(v is None for v in result)
+        assert len(result) == len(PolymarketRedeemRound.selection_key)
 
     def test_most_voted_payload_values_raises_if_mech_tools_none(self) -> None:
         """Raises ValueError when mech_tools is None."""
@@ -482,12 +583,15 @@ class TestPolymarketRedeemRound:
         assert result == original_values
 
     def test_end_block_returns_none_when_parent_returns_none_period_0(self) -> None:
-        """Initializes db when period=0 and block_confirmations=0 (None from parent)."""
+        """Initializes db when period=0 and block_confirmations=0 (None from parent).
+
+        The round must pre-populate every key in its selection_key so the first
+        period transition never raises a missing-key error.
+        """
         round_ = _make_round(PolymarketRedeemRound)
         round_.block_confirmations = 0
         round_.synchronized_data.period_count = 0
 
-        # Set up db.get to return None
         round_.synchronized_data.db = MagicMock()
         round_.synchronized_data.db.get.return_value = None
         round_.synchronized_data.db.update = MagicMock()
@@ -496,10 +600,13 @@ class TestPolymarketRedeemRound:
         with patch(parent_cls, return_value=None):
             result = round_.end_block()
 
-        # Should have called db.update to initialise keys
         round_.synchronized_data.db.update.assert_called_once()
         assert round_.block_confirmations == 1
         assert result is None
+        # Every key in the round's selection_key must appear in the db.update call
+        update_kwargs = round_.synchronized_data.db.update.call_args[1]
+        for key in PolymarketRedeemRound.selection_key:
+            assert key in update_kwargs, f"Missing key in db.update: {key}"
 
     def test_end_block_returns_none_when_period_nonzero(self) -> None:
         """Returns None without db.update when period > 0."""
@@ -526,7 +633,12 @@ class TestPolymarketRedeemRound:
         assert result is None
 
     def test_end_block_success_non_no_majority(self) -> None:
-        """Updates mech_tools and returns (updated_data, event) on non-NO_MAJORITY."""
+        """Updates mech_tools and returns (updated_data, event) on non-NO_MAJORITY.
+
+        Key invariant: the mech_tools value from the winning payload must be
+        written into synchronized data under the correct field name so that the
+        next round can read the available tools.
+        """
         round_ = _make_round(PolymarketRedeemRound)
         round_.block_confirmations = 1
         round_.synchronized_data.period_count = 0
@@ -535,8 +647,9 @@ class TestPolymarketRedeemRound:
         updated_data_mock = MagicMock(spec=SynchronizedData)
         synced_data_mock.update.return_value = updated_data_mock
 
+        # mech_tools (index 3) = '["tool_a"]' — this must end up in synced data
         original_values = (
-            "tx_sub", "tx_hash", False, '["tool"]', "policy",
+            "tx_sub", "tx_hash", False, '["tool_a"]', "policy",
             '{}', '[]', 0, Event.DONE.value
         )
         payload_count_mock = MagicMock()
@@ -554,6 +667,13 @@ class TestPolymarketRedeemRound:
         result_data, result_event = result
         assert result_data is updated_data_mock
         assert result_event == Event.DONE
+
+        # The mech_tools value from the winning payload must be stored correctly
+        synced_data_mock.update.assert_called_once()
+        update_kwargs = synced_data_mock.update.call_args[1]
+        mech_tools_key = PolymarketRedeemRound.mech_tools_name
+        assert mech_tools_key in update_kwargs, "mech_tools not written to synced data"
+        assert update_kwargs[mech_tools_key] == '["tool_a"]'
 
     def test_end_block_no_majority_returns_as_is(self) -> None:
         """Returns original result for NO_MAJORITY event (no mech_tools update)."""
@@ -576,6 +696,41 @@ class TestPolymarketRedeemRound:
 
         # NO_MAJORITY equals no_majority_event, so return res as-is
         assert result == (synced_data_mock, Event.NO_MAJORITY)
+
+    def test_actual_event_comes_from_payload_not_parent(self) -> None:
+        """The result event is taken from the payload's last field, not the parent's event.
+
+        The parent round may return DONE, but the payload-encoded event (e.g.
+        PREPARE_TX) must win. This guards against a regression where the parent
+        event leaks through and bypasses the per-payload event logic.
+        """
+        round_ = _make_round(PolymarketRedeemRound)
+        round_.block_confirmations = 1
+        round_.synchronized_data.period_count = 0
+
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+        updated_data_mock = MagicMock(spec=SynchronizedData)
+        synced_data_mock.update.return_value = updated_data_mock
+
+        # Payload encodes PREPARE_TX; parent returns DONE — payload must win
+        original_values = (
+            "tx_sub", "tx_hash", False, '["tool"]', "policy",
+            '{}', '[]', 0, Event.PREPARE_TX.value
+        )
+        payload_count_mock = MagicMock()
+        payload_count_mock.most_common.return_value = [(original_values, 3)]
+
+        redeem_prop = "packages.valory.skills.decision_maker_abci.states.polymarket_redeem.PolymarketRedeemRound.most_voted_payload_values"
+        parent_eb = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
+        pvc_prop = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.payload_values_count"
+        with patch(redeem_prop, new_callable=PropertyMock, return_value=original_values), \
+             patch(parent_eb, return_value=(synced_data_mock, Event.DONE)), \
+             patch(pvc_prop, new_callable=PropertyMock, return_value=payload_count_mock):
+            result = round_.end_block()
+
+        assert result is not None
+        _, result_event = result
+        assert result_event == Event.PREPARE_TX  # payload-encoded event overrides parent
 
 
 # ---------------------------------------------------------------------------

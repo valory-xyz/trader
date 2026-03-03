@@ -31,7 +31,9 @@ import requests
 
 from packages.valory.connections.polymarket_client.connection import (
     CONDITIONAL_TOKENS_CONTRACT,
+    DATA_API_BASE_URL,
     GAMMA_API_BASE_URL,
+    MARKETS_LIMIT,
     MARKETS_MIN_CREATED_AT,
     MAX_UINT256,
     PARENT_COLLECTION_ID,
@@ -185,14 +187,18 @@ class TestOnSend:
         return envelope
 
     def test_on_send_routes_request(self) -> None:
-        """on_send calls _route_request and puts an envelope back."""
+        """on_send calls _route_request and puts a response envelope back.
+
+        Critically, the response envelope must swap to/sender so the reply
+        is addressed back to the original caller.
+        """
         conn = _make_connection()
         from packages.valory.protocols.srr.message import SrrMessage
 
         # Set up dialogue mock
         dialogue_mock = MagicMock()
         response_msg = MagicMock(spec=SrrMessage)
-        # Envelope consistency checks require message.to == envelope.to (sender_address)
+        # Envelope consistency checks require message.to == envelope.sender
         response_msg.to = "sender_address"
         response_msg.sender = "receiver_address"
         dialogue_mock.reply.return_value = response_msg
@@ -213,6 +219,12 @@ class TestOnSend:
 
         conn._route_request.assert_called_once()
         conn.put_envelope.assert_called_once()
+
+        # Verify the response envelope addresses are correctly swapped:
+        # the reply must go back to the original sender
+        sent_envelope = conn.put_envelope.call_args[0][0]
+        assert sent_envelope.to == "sender_address"   # reply goes to original sender
+        assert sent_envelope.sender == "receiver_address"  # from the connection
 
     def test_on_send_wrong_performative_logs_error(self) -> None:
         """on_send logs error and returns early when performative is not REQUEST."""
@@ -355,23 +367,33 @@ class TestPlaceBet:
     """Tests for _place_bet."""
 
     def test_place_bet_success_no_cache(self) -> None:
-        """Places bet from scratch (no cached order) and returns response."""
+        """Places bet from scratch (no cached order) and returns response.
+
+        The response must include 'signed_order_json' so the caller can retry
+        with the same order if the submission fails later.
+        """
         conn = _make_connection()
         signed_mock = MagicMock()
-        signed_mock.dict.return_value = {"order": "data"}
+        order_dict = {"order": "data"}
+        signed_mock.dict.return_value = order_dict
         conn.client.create_market_order.return_value = signed_mock
-        resp_data = {"status": "matched", "signed_order_json": json.dumps({"order": "data"})}
-        conn.client.post_order.return_value = resp_data
+        conn.client.post_order.return_value = {"status": "matched"}
 
         response, error = conn._place_bet(token_id="tok123", amount=10.0)
         assert error is None
         conn.client.create_market_order.assert_called_once()
         conn.client.post_order.assert_called_once()
+        # The signed order JSON must be embedded in the response for potential retries
+        assert "signed_order_json" in response
+        assert json.loads(response["signed_order_json"]) == order_dict
 
     def test_place_bet_with_cached_order(self) -> None:
-        """Uses cached signed order when provided."""
-        from py_order_utils.model import SignedOrder as UtilsSignedOrder
+        """Uses cached signed order instead of creating a new one.
 
+        When a cached order is provided the CLOB client must not create a fresh
+        market order, and the cached JSON must be echoed back in the response so
+        the caller can reconstruct the order if needed.
+        """
         conn = _make_connection()
         cached = {"salt": "1", "maker": "0x0", "signer": "0x0", "taker": "0x0",
                   "tokenId": "tok", "makerAmount": "10", "takerAmount": "5",
@@ -387,10 +409,21 @@ class TestPlaceBet:
             response, error = conn._place_bet(
                 token_id="tok123", amount=10.0, cached_signed_order_json=cached_json
             )
+        # Must reuse the cached order - no new order creation
         conn.client.create_market_order.assert_not_called()
+        assert error is None
+        # The cached JSON must be propagated back in the response
+        assert response is not None
+        assert "signed_order_json" in response
+        assert response["signed_order_json"] == cached_json
 
     def test_place_bet_poly_api_exception_with_dict_error(self) -> None:
-        """PolyApiException with dict error_msg returns error in response."""
+        """PolyApiException with dict error_msg returns error in response.
+
+        The response must also contain 'signed_order_json' so the caller can
+        retry the submission with the same order (even though order creation
+        failed before posting).
+        """
         from py_clob_client.exceptions import PolyApiException
 
         conn = _make_connection()
@@ -400,9 +433,11 @@ class TestPlaceBet:
         response, error = conn._place_bet(token_id="tok123", amount=5.0)
         assert error == "duplicate order"
         assert "error" in response
+        # signed_order_json must be present so the caller can cache and retry
+        assert "signed_order_json" in response
 
     def test_place_bet_poly_api_exception_non_dict_error(self) -> None:
-        """PolyApiException with non-dict error_msg returns stringified error."""
+        """PolyApiException with non-dict error_msg is formatted as 'Error placing bet: ...'."""
         from py_clob_client.exceptions import PolyApiException
 
         conn = _make_connection()
@@ -410,7 +445,9 @@ class TestPlaceBet:
         conn.client.create_market_order.side_effect = exc
 
         response, error = conn._place_bet(token_id="tok123", amount=5.0)
+        # Non-dict error falls through to the f"Error placing bet: {e}" branch
         assert error is not None
+        assert error.startswith("Error placing bet:")
         assert "error" in response
 
     def test_place_bet_post_order_none_response(self) -> None:
@@ -688,10 +725,6 @@ class TestFetchMarketsByTag:
 
     def test_paginates_multiple_pages(self) -> None:
         """Paginates until a page with fewer than MARKETS_LIMIT items is returned."""
-        from packages.valory.connections.polymarket_client.connection import (
-            MARKETS_LIMIT,
-        )
-
         conn = _make_connection()
         page1 = [{"id": f"m{i}"} for i in range(MARKETS_LIMIT)]
         page2 = [{"id": f"m{i}"} for i in range(10)]
@@ -727,6 +760,31 @@ class TestFetchMarketsByTag:
         )
         assert result == []
         assert error is None
+
+    def test_sends_correct_params_to_gamma_api(self) -> None:
+        """_fetch_markets_by_tag passes tag_id, dates, MARKETS_LIMIT, and offset=0 to the API.
+
+        The API must receive all five required parameters. Using the wrong limit
+        or missing the tag_id would silently return unrelated markets.
+        """
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=([], None))
+
+        tag_id = "42"
+        end_date_min = "2025-01-01T00:00:00Z"
+        end_date_max = "2025-01-05T00:00:00Z"
+        conn._fetch_markets_by_tag(tag_id, end_date_min, end_date_max)
+
+        call_args = conn._request_with_retries.call_args
+        actual_url = call_args[0][0]
+        actual_params = call_args[1]["params"]
+
+        assert f"{GAMMA_API_BASE_URL}/markets" in actual_url
+        assert actual_params["tag_id"] == tag_id
+        assert actual_params["end_date_min"] == end_date_min
+        assert actual_params["end_date_max"] == end_date_max
+        assert actual_params["limit"] == MARKETS_LIMIT
+        assert actual_params["offset"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -873,23 +931,37 @@ class TestFetchMarkets:
     """Tests for _fetch_markets."""
 
     def test_successful_fetch_returns_markets_by_category(self) -> None:
-        """Returns dict of category->markets when all steps succeed."""
+        """Returns dict of category->markets with Yes/No filtering applied.
+
+        Markets that do NOT have Yes/No outcomes or that are too old must be
+        excluded from the result even if they are returned by the API.
+        """
         conn = _make_connection()
         conn._load_cache_file = MagicMock(
             return_value={"allowances_set": False, "tag_id_cache": {}}
         )
         conn._fetch_tag_id = MagicMock(return_value=("tag123", None))
+        # Mix: one valid Yes/No market and two that should be filtered out
         markets = [
-            {"id": "m1", "createdAt": "2026-01-01T00:00:00Z", "outcomes": '["Yes","No"]'}
+            # passes both filters
+            {"id": "m1", "createdAt": "2026-01-01T00:00:00Z", "outcomes": '["Yes","No"]'},
+            # fails yes/no filter (multi-outcome)
+            {"id": "m2", "createdAt": "2026-01-01T00:00:00Z", "outcomes": '["A","B","C"]'},
+            # fails createdAt filter (too old - empty string < MIN_CREATED_AT)
+            {"id": "m3", "createdAt": "", "outcomes": '["Yes","No"]'},
         ]
         conn._fetch_markets_by_tag = MagicMock(return_value=(markets, None))
 
         result, error = conn._fetch_markets()
         assert error is None
         assert isinstance(result, dict)
-        # All categories should be present
+        # All categories attempted
         for cat in POLYMARKET_CATEGORY_TAGS:
             assert cat in result
+        # Each category's list must contain only the one valid market
+        for cat_markets in result.values():
+            assert len(cat_markets) == 1
+            assert cat_markets[0]["id"] == "m1"
 
     def test_tag_id_error_skips_category(self) -> None:
         """Category is skipped when tag_id fetch fails."""
@@ -1003,6 +1075,23 @@ class TestFetchMarketBySlug:
         assert result is None
         assert "Unexpected error" in error
 
+    def test_url_includes_slug_parameter(self) -> None:
+        """_fetch_market_by_slug uses GAMMA_API_BASE_URL/markets/slug/{slug}.
+
+        The slug is part of the URL path, not a query parameter. Placing the slug
+        in the wrong location would silently return no results or 404.
+        """
+        conn = _make_connection()
+        slug = "my-test-market"
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"id": "m1"}
+
+        with patch("requests.get", return_value=mock_resp) as mock_get:
+            conn._fetch_market_by_slug(slug)
+
+        url_called = mock_get.call_args[0][0]
+        assert url_called == f"{GAMMA_API_BASE_URL}/markets/slug/{slug}"
+
 
 # ---------------------------------------------------------------------------
 # _get_positions
@@ -1052,6 +1141,19 @@ class TestGetPositions:
         call_kwargs = mock_get.call_args[1]
         assert "redeemable" not in call_kwargs["params"]
 
+    def test_safe_address_sent_as_user_param(self) -> None:
+        """The safe address is passed as the 'user' query parameter."""
+        conn = _make_connection()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = []
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+
+        with patch("requests.get", return_value=mock_resp) as mock_get:
+            conn._get_positions()
+
+        call_kwargs = mock_get.call_args[1]
+        assert call_kwargs["params"]["user"] == SAFE_ADDRESS
+
     def test_request_exception_returns_error(self) -> None:
         """Returns (None, error) on RequestException."""
         conn = _make_connection()
@@ -1074,6 +1176,19 @@ class TestGetPositions:
 
         assert result is None
         assert "Unexpected error" in error
+
+    def test_uses_data_api_positions_url(self) -> None:
+        """_get_positions fetches from DATA_API_BASE_URL/positions, not a different base URL."""
+        conn = _make_connection()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = []
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+
+        with patch("requests.get", return_value=mock_resp) as mock_get:
+            conn._get_positions()
+
+        url_called = mock_get.call_args[0][0]
+        assert url_called == f"{DATA_API_BASE_URL}/positions"
 
 
 # ---------------------------------------------------------------------------
@@ -1155,6 +1270,20 @@ class TestGetTrades:
         assert result == trades
         assert error is None
 
+    def test_safe_address_and_taker_only_params_sent(self) -> None:
+        """safe_address is sent as 'user' and taker_only as 'takerOnly'."""
+        conn = _make_connection()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = []
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+
+        with patch("requests.get", return_value=mock_resp) as mock_get:
+            conn._get_trades(taker_only=False)
+
+        call_kwargs = mock_get.call_args[1]
+        assert call_kwargs["params"]["user"] == SAFE_ADDRESS
+        assert call_kwargs["params"]["takerOnly"] is False
+
     def test_request_exception_returns_error(self) -> None:
         """Returns (None, error) on RequestException."""
         conn = _make_connection()
@@ -1177,6 +1306,19 @@ class TestGetTrades:
 
         assert result is None
         assert "Unexpected error" in error
+
+    def test_uses_data_api_trades_url(self) -> None:
+        """_get_trades fetches from DATA_API_BASE_URL/trades, not a different base URL."""
+        conn = _make_connection()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = []
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+
+        with patch("requests.get", return_value=mock_resp) as mock_get:
+            conn._get_trades()
+
+        url_called = mock_get.call_args[0][0]
+        assert url_called == f"{DATA_API_BASE_URL}/trades"
 
 
 # ---------------------------------------------------------------------------
@@ -1235,14 +1377,16 @@ class TestFetchAllTrades:
         assert result is None
         assert "Unexpected error" in error
 
-    def test_pages_count_zero_all_trades(self) -> None:
-        """Handles the edge case where pages_fetched calculation results in 0."""
+    def test_full_page_triggers_next_page_fetch(self) -> None:
+        """A full page (limit items) causes another request; an empty page stops pagination."""
         conn = _make_connection()
-        # Return exactly 100 items (full page), then empty
+        # Return exactly 100 items (limit), triggering a follow-up request
         page1 = [{"conditionId": f"c{i}"} for i in range(100)]
         conn._get_trades = MagicMock(side_effect=[(page1, None), ([], None)])
 
         result, error = conn._fetch_all_trades()
+        # Both pages fetched; empty second page ends pagination
+        assert conn._get_trades.call_count == 2
         assert len(result) == 100
         assert error is None
 
@@ -1349,6 +1493,117 @@ class TestRedeemPositions:
         assert result is None
         assert "Error redeeming positions" in error
 
+    def test_standard_market_calldata_uses_ctf_selector(self) -> None:
+        """Standard market uses 4-byte selector 01b7037c (redeemPositions(address,bytes32,bytes32,uint256[])).
+
+        An incorrect selector would silently submit a no-op or wrong function call on-chain.
+        The expected selector is independently computed from the ABI signature.
+        """
+        from eth_hash.auto import keccak
+
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=USDC_ADDRESS,
+            is_neg_risk=False,
+        )
+
+        expected = keccak(b"redeemPositions(address,bytes32,bytes32,uint256[])")[:4].hex()
+        assert expected == "01b7037c"
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        assert tx.data[2:10] == expected
+
+    def test_neg_risk_calldata_uses_adapter_selector(self) -> None:
+        """Neg-risk market uses 4-byte selector dbeccb23 (redeemPositions(bytes32,uint256[])).
+
+        The neg-risk adapter takes different arguments than the standard CTF contract.
+        Using the wrong selector would silently fail on-chain.
+        """
+        from eth_hash.auto import keccak
+
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=USDC_ADDRESS,
+            is_neg_risk=True,
+            size=10.0,
+        )
+
+        expected = keccak(b"redeemPositions(bytes32,uint256[])")[:4].hex()
+        assert expected == "dbeccb23"
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        assert tx.data[2:10] == expected
+
+    def test_condition_id_0x_prefix_stripped(self) -> None:
+        """A 0x-prefixed and non-prefixed condition_id produce identical calldata.
+
+        The code calls removeprefix('0x') so both forms are normalised before
+        encoding. This prevents silent calldata corruption when the caller uses
+        0x-prefixed hex strings.
+        """
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="0x" + "ab" * 32,
+            index_sets=[1],
+            collateral_token=USDC_ADDRESS,
+            is_neg_risk=False,
+        )
+        tx_with_prefix = conn.relayer_client.execute.call_args[1]["transactions"][0]
+
+        conn.relayer_client.reset_mock()
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=USDC_ADDRESS,
+            is_neg_risk=False,
+        )
+        tx_without_prefix = conn.relayer_client.execute.call_args[1]["transactions"][0]
+
+        assert tx_with_prefix.data == tx_without_prefix.data
+
+    def test_neg_risk_correct_redeem_amounts_for_outcome_1(self) -> None:
+        """index_sets=[2] (1<<1) maps to outcome_index=1, yielding redeem_amounts=[0, size].
+
+        The ABI encoding must place the amount at position 1 (the No outcome),
+        not position 0. A bit-shift calculation error would silently redeem the
+        wrong outcome.
+        """
+        from eth_abi import decode as abi_decode
+
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[2],  # 2 = 1 << 1 → outcome_index = 1
+            collateral_token=USDC_ADDRESS,
+            is_neg_risk=True,
+            size=50.0,
+        )
+
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        # Skip "0x" and 4-byte selector, then ABI-decode the remaining args
+        calldata_bytes = bytes.fromhex(tx.data[2:])
+        args_bytes = calldata_bytes[4:]  # skip 4-byte selector
+        _condition_id, redeem_amounts = abi_decode(["bytes32", "uint256[]"], args_bytes)
+        assert list(redeem_amounts) == [0, 50]
+
 
 # ---------------------------------------------------------------------------
 # _encode_approve / _encode_set_approval_for_all
@@ -1358,13 +1613,22 @@ class TestRedeemPositions:
 class TestEncodingMethods:
     """Tests for _encode_approve and _encode_set_approval_for_all."""
 
-    def test_encode_approve_returns_hex_string(self) -> None:
-        """_encode_approve returns a non-empty hex string starting with 0x."""
+    def test_encode_approve_returns_correct_selector(self) -> None:
+        """_encode_approve uses the ERC-20 approve(address,uint256) 4-byte selector.
+
+        The selector is the first 4 bytes of keccak256('approve(address,uint256)').
+        Encoding the wrong function signature would silently submit a no-op on-chain.
+        """
+        from eth_hash.auto import keccak
+
         conn = _make_connection()
         result = conn._encode_approve(CTF_EXCHANGE, MAX_UINT256)
         assert isinstance(result, str)
         assert result.startswith("0x")
-        assert len(result) > 10
+        # Independently compute the expected 4-byte selector
+        expected_selector = keccak(b"approve(address,uint256)")[:4].hex()
+        # The selector must appear immediately after "0x"
+        assert result[2:10] == expected_selector
 
     def test_encode_approve_deterministic(self) -> None:
         """Same inputs produce same encoding."""
@@ -1380,13 +1644,20 @@ class TestEncodingMethods:
         r2 = conn._encode_approve(CTF_EXCHANGE, 2000)
         assert r1 != r2
 
-    def test_encode_set_approval_for_all_returns_hex(self) -> None:
-        """_encode_set_approval_for_all returns a hex string starting with 0x."""
+    def test_encode_set_approval_for_all_returns_correct_selector(self) -> None:
+        """_encode_set_approval_for_all uses the ERC-1155 setApprovalForAll(address,bool) selector.
+
+        Wrong selector would silently submit a no-op transaction on-chain.
+        """
+        from eth_hash.auto import keccak
+
         conn = _make_connection()
         result = conn._encode_set_approval_for_all(CTF_EXCHANGE, True)
         assert isinstance(result, str)
         assert result.startswith("0x")
-        assert len(result) > 10
+        # Independently compute the expected 4-byte selector
+        expected_selector = keccak(b"setApprovalForAll(address,bool)")[:4].hex()
+        assert result[2:10] == expected_selector
 
     def test_encode_set_approval_for_all_approved_vs_revoked(self) -> None:
         """True and False produce different encodings."""
@@ -1438,6 +1709,40 @@ class TestSetApproval:
         assert result is None
         assert "Error setting approvals" in error
 
+    def test_usdc_approve_transactions_target_usdc_contract(self) -> None:
+        """ERC-20 approve transactions (indices 0, 2, 4) all target the USDC contract.
+
+        These are the three `approve(ctf_exchange, MAX_UINT256)` calls. Targeting
+        the wrong contract would grant allowances to the wrong token address.
+        """
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._set_approval()
+
+        txns = conn.relayer_client.execute.call_args[1]["transactions"]
+        for idx in [0, 2, 4]:
+            assert txns[idx].to == USDC_ADDRESS, f"txns[{idx}].to should be USDC"
+
+    def test_ctf_approval_transactions_target_ctf_contract(self) -> None:
+        """ERC-1155 setApprovalForAll transactions (indices 1, 3, 5) all target the CTF contract.
+
+        These are the three `setApprovalForAll(spender, True)` calls. Targeting
+        the wrong contract would grant operator access on the wrong token.
+        """
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._set_approval()
+
+        txns = conn.relayer_client.execute.call_args[1]["transactions"]
+        for idx in [1, 3, 5]:
+            assert txns[idx].to == CTF_ADDRESS, f"txns[{idx}].to should be CTF"
+
 
 # ---------------------------------------------------------------------------
 # _check_erc20_allowance / _check_erc1155_approval
@@ -1477,6 +1782,50 @@ class TestOnChainChecks:
         conn.w3.keccak.return_value = b"\x12\x34\x56\x78" + b"\x00" * 28
         conn.w3.to_checksum_address.return_value = CTF_ADDRESS
         conn.w3.eth.call.return_value = not_approved_bytes
+
+        result = conn._check_erc1155_approval(CTF_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
+        assert result is False
+
+    def test_check_erc20_allowance_calls_keccak_with_correct_signature(self) -> None:
+        """_check_erc20_allowance calls w3.keccak with the exact ERC-20 allowance signature.
+
+        Using the wrong ABI signature would produce an incorrect function selector,
+        silently reading data from the wrong on-chain storage slot.
+        """
+        conn = _make_connection()
+        conn.w3.keccak.return_value = b"\x12\x34\x56\x78" + b"\x00" * 28
+        conn.w3.to_checksum_address.return_value = USDC_ADDRESS
+        conn.w3.eth.call.return_value = (1000).to_bytes(32, byteorder="big")
+
+        conn._check_erc20_allowance(USDC_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
+
+        conn.w3.keccak.assert_called_once_with(text="allowance(address,address)")
+
+    def test_check_erc1155_approval_calls_keccak_with_correct_signature(self) -> None:
+        """_check_erc1155_approval calls w3.keccak with the exact ERC-1155 signature.
+
+        Using the wrong ABI signature would produce an incorrect selector and
+        silently return stale or zero data instead of the real approval state.
+        """
+        conn = _make_connection()
+        conn.w3.keccak.return_value = b"\x12\x34\x56\x78" + b"\x00" * 28
+        conn.w3.to_checksum_address.return_value = CTF_ADDRESS
+        conn.w3.eth.call.return_value = (1).to_bytes(32, byteorder="big")
+
+        conn._check_erc1155_approval(CTF_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
+
+        conn.w3.keccak.assert_called_once_with(text="isApprovedForAll(address,address)")
+
+    def test_check_erc1155_non_one_value_returns_false(self) -> None:
+        """Any return value other than exactly 1 is treated as not approved.
+
+        The ERC-1155 spec returns 1 for approved; the check is `== 1`. A value
+        like 2 must not be treated as approved.
+        """
+        conn = _make_connection()
+        conn.w3.keccak.return_value = b"\x12\x34\x56\x78" + b"\x00" * 28
+        conn.w3.to_checksum_address.return_value = CTF_ADDRESS
+        conn.w3.eth.call.return_value = (2).to_bytes(32, byteorder="big")
 
         result = conn._check_erc1155_approval(CTF_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
         assert result is False
@@ -1557,6 +1906,21 @@ class TestCheckApproval:
         assert "ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_adapter" in result["ctf_approvals"]
+
+    def test_allowance_of_1_passes_approval_check(self) -> None:
+        """An allowance of exactly 1 satisfies the > 0 threshold for all_approvals_set.
+
+        The threshold is `> 0`, NOT `== MAX_UINT256`. A non-maximum but positive
+        allowance must not be treated as unapproved.
+        """
+        conn = _make_connection()
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        conn._check_erc20_allowance = MagicMock(return_value=1)  # minimal positive allowance
+        conn._check_erc1155_approval = MagicMock(return_value=True)
+
+        result, error = conn._check_approval()
+        assert error is None
+        assert result["all_approvals_set"] is True
 
 
 # ---------------------------------------------------------------------------
