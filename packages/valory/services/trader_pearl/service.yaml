@@ -157,6 +157,7 @@ models:
       penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
+      deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}

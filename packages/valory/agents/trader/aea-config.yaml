@@ -288,6 +288,7 @@ models:
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
       is_outcome_side_threshold_filter_enabled: ${bool:false}
       outcome_side_threshold_filter_threshold: ${float:0.8}
+      deliveries_lookback_days: ${int:30}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

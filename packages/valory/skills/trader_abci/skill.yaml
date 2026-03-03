@@ -298,6 +298,7 @@ models:
       slippages_for_swap: {}
       is_outcome_side_threshold_filter_enabled: false
       outcome_side_threshold_filter_threshold: 0.8
+      deliveries_lookback_days: 30
     class_name: TraderParams
   benchmarking_mode:
     args:
