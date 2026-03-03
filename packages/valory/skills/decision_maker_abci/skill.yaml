@@ -68,7 +68,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeig5e3xfr7gxsakfj4stbxqcwdiljl7klvgahkuwe3obzxgkg3qt2e
-  tests/behaviours/test_base.py: bafybeicktiliiioj5tm7nbfcwb4txf7rm7qv2szmirp5wsg2spmrgdqvum
+  tests/behaviours/test_base.py: bafybeie6dwi2jczmpbtzyxt4gva7qk5py6jf3equ2oawovpjvsnmql7qoq
   tests/behaviours/test_polymarket_redeem_accuracy.py: bafybeidoxzqp2sfiu5gky55qxdmgq4cf5fov7ygnm7dyoniw73ssxq7wfu
   tests/behaviours/test_tool_selection.py: bafybeigfdxwuq7nd4dcg7zwr2ne45o6bttnvwihb4isfmyfmtn3pflxs5i
   tests/conftest.py: bafybeidy5hw56kw5mxudnfbhvogofn6k4rqb4ux2bd45baedrrhmgyrude
@@ -118,10 +118,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 - valory/market_manager_abci:0.1.0:bafybeihhb7dicqj5fh2qqwogh2m4svesnxippy2lyiix2cq56dpix43rqa
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/mech_interact_abci:0.1.0:bafybeienj5jzbq2x5hpedqwpa46rmprcdc42536zjyxkmsemjs3jjhl5oe
+- valory/mech_interact_abci:0.1.0:bafybeifmewonamynusdi3sz5qenlr3f7mu67sic33aub5uzc2w3mpqsyqa
 - valory/staking_abci:0.1.0:bafybeibluoix3sly35f52paqlwc33n4ibfpnitlzqkt4la6yfq7jv4al6y
-- valory/agent_performance_summary_abci:0.1.0:bafybeiej3uw4obyeky6onmncr3tyve5tnjc7onc22w5pelrabiwoiig72q
-- valory/chatui_abci:0.1.0:bafybeibunvp2g2zffth6i43yjfjgwtauavl2kaqnw6opxb2pflajsz4bsu
+- valory/agent_performance_summary_abci:0.1.0:bafybeidvkbfdbx5fup6d25jkunh6vdvf6rl7cznrvawl73nspkw5kyqts4
+- valory/chatui_abci:0.1.0:bafybeibdynhjz7pbxwlyitqq6vxqa2ckq4c34v6u5cmu5laqlo5n7z23bq
 behaviours:
   main:
     args: {}
