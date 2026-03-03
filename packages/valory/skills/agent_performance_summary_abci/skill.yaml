@@ -99,7 +99,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis
+      url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:

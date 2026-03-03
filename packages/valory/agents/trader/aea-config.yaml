@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieu6jgr4k2qcej4axglthjxreexaowhnyaav6lkj4qeesnxwf54dq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigjgr2cgki43w2l6si2zm5sytr6auku3ia35tszwznbqgme3c7dju
 - valory/market_manager_abci:0.1.0:bafybeihhb7dicqj5fh2qqwogh2m4svesnxippy2lyiix2cq56dpix43rqa
-- valory/decision_maker_abci:0.1.0:bafybeic3fxy7amzbl6erj6fbszu47zsvuxmbvstms6ckafclnrxde4t4ha
-- valory/trader_abci:0.1.0:bafybeibst254qn5cpnppgwwwe5cgr45nocnonim2giqnz54qg3moqhwhmy
+- valory/decision_maker_abci:0.1.0:bafybeif6kvvzb5rumi6q6vw2oo6uzur65yo5vwkuyny5ybkvvpuanbvmdu
+- valory/trader_abci:0.1.0:bafybeibojrvlnch7c6nxdht6sk4iybkajvdgtwpl57u5qvo5gtcram273y
 - valory/staking_abci:0.1.0:bafybeibluoix3sly35f52paqlwc33n4ibfpnitlzqkt4la6yfq7jv4al6y
-- valory/check_stop_trading_abci:0.1.0:bafybeicxt3yxel66mbi242pshoboiegx7vc2pkr4w6kd2i7lqg6ev24ms4
-- valory/mech_interact_abci:0.1.0:bafybeienj5jzbq2x5hpedqwpa46rmprcdc42536zjyxkmsemjs3jjhl5oe
-- valory/chatui_abci:0.1.0:bafybeibunvp2g2zffth6i43yjfjgwtauavl2kaqnw6opxb2pflajsz4bsu
-- valory/agent_performance_summary_abci:0.1.0:bafybeiej3uw4obyeky6onmncr3tyve5tnjc7onc22w5pelrabiwoiig72q
+- valory/check_stop_trading_abci:0.1.0:bafybeigc7kcvnlvajelwc3n63ldtd2gsg3tes5pihqa5nkavhv5c2iims4
+- valory/mech_interact_abci:0.1.0:bafybeifmewonamynusdi3sz5qenlr3f7mu67sic33aub5uzc2w3mpqsyqa
+- valory/chatui_abci:0.1.0:bafybeibdynhjz7pbxwlyitqq6vxqa2ckq4c34v6u5cmu5laqlo5n7z23bq
+- valory/agent_performance_summary_abci:0.1.0:bafybeidvkbfdbx5fup6d25jkunh6vdvf6rl7cznrvawl73nspkw5kyqts4
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
