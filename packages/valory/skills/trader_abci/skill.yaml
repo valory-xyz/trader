@@ -489,7 +489,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis
+      url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis
     class_name: OlasMechSubgraph
   gnosis_staking_subgraph:
     args:
@@ -546,7 +546,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0
+      url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis
       delivery_rate_cap: 10000000000000000
     class_name: MechsSubgraph
   polymarket_agents_subgraph:

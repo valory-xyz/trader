@@ -437,7 +437,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
+      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
       headers:
@@ -470,7 +470,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
+      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
       delivery_rate_cap: ${int:10000000000000000}
   polymarket_agents_subgraph:
     args:
