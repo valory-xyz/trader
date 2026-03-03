@@ -122,6 +122,7 @@ class PolymarketBetPlacementPayload(MultisigTxPayload):
 
     event: Optional[str] = None
     cached_signed_orders: Optional[str] = None
+    utilized_tools: Optional[str] = None
 
 
 @dataclass(frozen=True)
