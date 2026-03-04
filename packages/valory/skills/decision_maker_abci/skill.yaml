@@ -143,10 +143,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
 - valory/market_manager_abci:0.1.0:bafybeif4f46gh5sz3ykwjm6sg3ijuzqfpbpcwgqq53x3sef75tqapmjbai
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/mech_interact_abci:0.1.0:bafybeienj5jzbq2x5hpedqwpa46rmprcdc42536zjyxkmsemjs3jjhl5oe
-- valory/staking_abci:0.1.0:bafybeibluoix3sly35f52paqlwc33n4ibfpnitlzqkt4la6yfq7jv4al6y
-- valory/agent_performance_summary_abci:0.1.0:bafybeidvkbfdbx5fup6d25jkunh6vdvf6rl7cznrvawl73nspkw5kyqts4
-- valory/chatui_abci:0.1.0:bafybeib6pa27nuekin6l67udngemh5buwfa2ywtfchbuusit6ibv3p2en4
+- valory/mech_interact_abci:0.1.0:bafybeifmewonamynusdi3sz5qenlr3f7mu67sic33aub5uzc2w3mpqsyqa
+- valory/staking_abci:0.1.0:bafybeiacclepese2m2ytjusuzeizrtfcrcndxe4blk5apkz2ktowfb2fm4
+- valory/agent_performance_summary_abci:0.1.0:bafybeig2aq3xzgwnrmjuzgtut6eqafybdgzp353tdq3cd7ko2okalvrqby
+- valory/chatui_abci:0.1.0:bafybeier4w72zu5xcswcebh7hktwh6udymwnimtq3cx667sfkhfq75cbci
 behaviours:
   main:
     args: {}
