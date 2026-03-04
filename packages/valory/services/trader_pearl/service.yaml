@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib5n7jlbgewefxx3a27dvdlnxt4b2uhllnkqiwvfiyo3wft7logli
+agent: valory/trader:0.1.0:bafybeiacinljny2hp3dgv3szwri6c4xjou56khtyyqspvq6ol7ggecvuae
 number_of_agents: 1
 deployment:
   agent:
@@ -131,7 +131,7 @@ models:
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x4554fE75c1f5576c1d7F765B2A036c199Adae329","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x998dEFafD094817EF329f6dc79c703f1CF18bC90","priority_mech_service_id":975,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
-      service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.staging.autonolas.tech/}
+      service_endpoint: ${SERVICE_ENDPOINT:str:https://trader.autonolas.tech/}
       rpc_sleep_time: ${RPC_SLEEP_TIME:int:10}
       safe_voting_range: ${SAFE_VOTING_RANGE:int:600}
       rebet_chance: ${REBET_CHANCE:float:0.6}
@@ -346,7 +346,7 @@ public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
 config:
   nodes:
-  - uri: ${ACN_URI:str:acn.staging.autonolas.tech:9005}
+  - uri: ${ACN_URI:str:acn.autonolas.tech:9005}
     public_key: ${ACN_NODE_PUBLIC_KEY:str:02d3a830c9d6ea1ae91936951430dee11f4662f33118b02190693be835359a9d77}
 cert_requests:
 - identifier: acn
