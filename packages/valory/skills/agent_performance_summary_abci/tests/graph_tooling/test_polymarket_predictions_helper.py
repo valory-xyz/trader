@@ -1968,7 +1968,9 @@ class TestFetchPositionDetails:
         with patch.object(
             fetcher, "_load_agent_performance_data", side_effect=Exception("Error")
         ):
-            result = fetcher.fetch_position_details("bet_1", "0xsafe", "/tmp/test")
+            result = fetcher.fetch_position_details(
+                "bet_1", "0xsafe", "/tmp/test"  # nosec B108
+            )
 
         assert result is None
 

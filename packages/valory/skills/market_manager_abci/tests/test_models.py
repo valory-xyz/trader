@@ -423,26 +423,32 @@ class TestBenchmarkingModeInit:
     def test_dataset_filename_is_path(self) -> None:
         """Test that BenchmarkingMode converts dataset_filename string to Path."""
         mock_skill_context = MagicMock()
-        kwargs = {**DEFAULT_BM_KWARGS, "dataset_filename": "/tmp/my_data.csv"}
+        kwargs = {
+            **DEFAULT_BM_KWARGS,
+            "dataset_filename": "/tmp/my_data.csv",  # nosec B108
+        }
         with patch.object(Model, "__init__", return_value=None):
             bm = BenchmarkingMode(
                 skill_context=mock_skill_context,
                 **kwargs,
             )
         assert isinstance(bm.dataset_filename, Path)
-        assert bm.dataset_filename == Path("/tmp/my_data.csv")
+        assert bm.dataset_filename == Path("/tmp/my_data.csv")  # nosec B108
 
     def test_results_filename_is_path(self) -> None:
         """Test that BenchmarkingMode converts results_filename string to Path."""
         mock_skill_context = MagicMock()
-        kwargs = {**DEFAULT_BM_KWARGS, "results_filename": "/tmp/results.csv"}
+        kwargs = {
+            **DEFAULT_BM_KWARGS,
+            "results_filename": "/tmp/results.csv",  # nosec B108
+        }
         with patch.object(Model, "__init__", return_value=None):
             bm = BenchmarkingMode(
                 skill_context=mock_skill_context,
                 **kwargs,
             )
         assert isinstance(bm.results_filename, Path)
-        assert bm.results_filename == Path("/tmp/results.csv")
+        assert bm.results_filename == Path("/tmp/results.csv")  # nosec B108
 
     def test_enabled_false(self) -> None:
         """Test that BenchmarkingMode can be initialized with enabled=False."""

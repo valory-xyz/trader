@@ -722,7 +722,7 @@ class TestCallCheckpointBehaviourInit:
     def test_init(self) -> None:
         """__init__ sets default attributes."""
         mock_params = MagicMock()
-        mock_params.store_path = Path("/tmp")
+        mock_params.store_path = Path("/tmp")  # nosec B108
         with patch.object(
             StakingInteractBaseBehaviour, "__init__", return_value=None
         ), patch.object(
@@ -736,7 +736,9 @@ class TestCallCheckpointBehaviourInit:
         assert b._next_checkpoint == 0
         assert b._checkpoint_data == b""
         assert b._safe_tx_hash == ""
-        assert b._checkpoint_filepath == Path("/tmp") / CHECKPOINT_FILENAME
+        assert (
+            b._checkpoint_filepath == Path("/tmp") / CHECKPOINT_FILENAME  # nosec B108
+        )
 
 
 class TestCallCheckpointBehaviourProperties:
@@ -885,7 +887,7 @@ class TestReadStoredTimestamp:
     def _make(self) -> CallCheckpointBehaviour:
         """Create a bare instance with mocked context."""
         b = object.__new__(CallCheckpointBehaviour)
-        b._checkpoint_filepath = Path("/tmp/checkpoint.txt")
+        b._checkpoint_filepath = Path("/tmp/checkpoint.txt")  # nosec B108
         return b
 
     def test_success(self) -> None:
@@ -948,7 +950,7 @@ class TestStoreTimestamp:
     def _make(self) -> CallCheckpointBehaviour:
         """Create a bare instance."""
         b = object.__new__(CallCheckpointBehaviour)
-        b._checkpoint_filepath = Path("/tmp/checkpoint.txt")
+        b._checkpoint_filepath = Path("/tmp/checkpoint.txt")  # nosec B108
         b._checkpoint_ts = 0
         return b
 
@@ -1082,7 +1084,7 @@ class TestCheckNewEpoch:
         """Create a behaviour with defaults."""
         b = object.__new__(CallCheckpointBehaviour)
         b._checkpoint_ts = 100
-        b._checkpoint_filepath = Path("/tmp/checkpoint.txt")
+        b._checkpoint_filepath = Path("/tmp/checkpoint.txt")  # nosec B108
         b._next_checkpoint = 0
         b._service_staking_state = StakingState.STAKED
         b._agent_ids = "[]"

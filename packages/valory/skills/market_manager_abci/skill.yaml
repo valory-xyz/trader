@@ -37,21 +37,21 @@ fingerprint:
   states/polymarket_fetch_market.py: bafybeicseyfwvewhlwvn7kwp2ec3l5ionjswchyk4w76tymnuxhq3vxza4
   states/update_bets.py: bafybeictnk527d5wrixsw2klbb3m52clsfvapmjylhguluidn6mhyd6s2e
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
-  tests/test_behaviours_base.py: bafybeidsgzqphxf7bk2j6wmzds4v4uvn3rfxhairyw2lot2szc4tprneuq
-  tests/test_behaviours_polymarket.py: bafybeie2q36s6ehqh2ngluc3g7b54psaeeeltkhslasxdie7kslvdddidm
-  tests/test_behaviours_update_bets.py: bafybeieyr3zbf3ukrdwmj7z3kyvdchtwrdfips5bn7nsrhrhplu7fcxyv4
+  tests/test_behaviours_base.py: bafybeidehp6h6i5mls6swewukcxcbla5siwaofmvboxna57gbgtyeg5txu
+  tests/test_behaviours_polymarket.py: bafybeigpddxgxikyootauad6dkoch3ciaudbpyqfc5dqphruvgfrhvc5u4
+  tests/test_behaviours_update_bets.py: bafybeib6z65zdoz6ryt6zdx6dxmernxmhd35pym3fk677zxdolheigcoyq
   tests/test_bets.py: bafybeicpwrjmo77p3bynwmflvb5jwcnhzhrbmbuexg24isgiduczgy7fea
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_graph_queries.py: bafybeifrh723g6jbu2yvikz74eyfjwdbo4sz7ockecliia5zfqe5vu3ed4
   tests/test_graph_requests.py: bafybeidbghql666hbkppbfaara2dcij3jpxmkhs3rf34acwsvciwzwuwg4
   tests/test_handlers.py: bafybeiaz3idwevvlplcyieaqo5oeikuthlte6e2gi4ajw452ylvimwgiki
-  tests/test_models.py: bafybeiduib4tjinetlc3lemxfmfmtuqkd4x5bdvz6le5o7bd76guuv3ia4
+  tests/test_models.py: bafybeiha7cb3d35wjy5zcfxtx65t3ls2wuoeflo6ijor2kn7yrbdmpzt7u
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeiaiozpmj6sqywzc3xf7zvadaupchtquaeuv3lq2us5svrlvmmvmw4
   tests/test_utils.py: bafybeibnbj5p3aghklkn7t2edhwgssyyjmwtckgbieqssztlpc24hzhuny
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeig2x55sfuvjvpwgvpcgabf63nyv4hvwvswqhrcfzsyptfxsaxpojm
+- valory/polymarket_client:0.1.0:bafybeid6ooz37l2hrnxhmb4m5kdt3dydomtzlfofyfl33wqgalfkonn6wu
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm

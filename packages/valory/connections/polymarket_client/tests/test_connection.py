@@ -381,7 +381,7 @@ class TestPlaceBet:
         conn.client.create_market_order.return_value = signed_mock
         conn.client.post_order.return_value = {"status": "matched"}
 
-        response, error = conn._place_bet(token_id="tok123", amount=10.0)
+        response, error = conn._place_bet(token_id="tok123", amount=10.0)  # nosec B106
         assert error is None
         conn.client.create_market_order.assert_called_once()
         conn.client.post_order.assert_called_once()
@@ -420,7 +420,9 @@ class TestPlaceBet:
             MagicMock(return_value=MagicMock()),
         ):
             response, error = conn._place_bet(
-                token_id="tok123", amount=10.0, cached_signed_order_json=cached_json
+                token_id="tok123",
+                amount=10.0,
+                cached_signed_order_json=cached_json,  # nosec B106
             )
         # Must reuse the cached order - no new order creation
         conn.client.create_market_order.assert_not_called()
@@ -443,7 +445,7 @@ class TestPlaceBet:
         exc = PolyApiException(error_msg={"error": "duplicate order"})
         conn.client.create_market_order.side_effect = exc
 
-        response, error = conn._place_bet(token_id="tok123", amount=5.0)
+        response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
         assert error == "duplicate order"
         assert "error" in response
         # signed_order_json must be present so the caller can cache and retry
@@ -457,7 +459,7 @@ class TestPlaceBet:
         exc = PolyApiException(error_msg="plain string error")
         conn.client.create_market_order.side_effect = exc
 
-        response, error = conn._place_bet(token_id="tok123", amount=5.0)
+        response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
         # Non-dict error falls through to the f"Error placing bet: {e}" branch
         assert error is not None
         assert error.startswith("Error placing bet:")
@@ -471,7 +473,7 @@ class TestPlaceBet:
         conn.client.create_market_order.return_value = signed_mock
         conn.client.post_order.return_value = None
 
-        response, error = conn._place_bet(token_id="tok123", amount=5.0)
+        response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
         assert error is None
         assert response is None
 
@@ -1021,16 +1023,20 @@ class TestFetchMarkets:
         )
         conn._fetch_markets_by_tag = MagicMock(return_value=([], None))
 
-        result, error = conn._fetch_markets(cache_file_path="/tmp/cache.json")
+        result, error = conn._fetch_markets(
+            cache_file_path="/tmp/cache.json"  # nosec B108
+        )
         assert error is None
-        conn._load_cache_file.assert_called_once_with("/tmp/cache.json")
+        conn._load_cache_file.assert_called_once_with("/tmp/cache.json")  # nosec B108
 
     def test_unexpected_exception_returns_error(self) -> None:
         """Catches unexpected exceptions and returns error message."""
         conn = _make_connection()
         conn._load_cache_file = MagicMock(side_effect=RuntimeError("disk full"))
 
-        result, error = conn._fetch_markets(cache_file_path="/tmp/cache.json")
+        result, error = conn._fetch_markets(
+            cache_file_path="/tmp/cache.json"  # nosec B108
+        )
         assert result is None
         assert "Unexpected error" in error
 
@@ -1043,7 +1049,9 @@ class TestFetchMarkets:
         conn._fetch_tag_id = MagicMock(return_value=("tag123", None))
         conn._fetch_markets_by_tag = MagicMock(return_value=([], None))
 
-        result, error = conn._fetch_markets(cache_file_path="/tmp/cache.json")
+        result, error = conn._fetch_markets(
+            cache_file_path="/tmp/cache.json"  # nosec B108
+        )
         assert error is None
 
 

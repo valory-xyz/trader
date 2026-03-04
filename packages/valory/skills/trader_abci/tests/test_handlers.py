@@ -1293,7 +1293,7 @@ class TestGetEoaAccount:
         """Set up."""
         self.handler = _make_handler()
         self.handler.context.default_ledger_id = "ethereum"
-        self.handler.context.data_dir = "/tmp/data"
+        self.handler.context.data_dir = "/tmp/data"  # nosec B108
 
     def test_with_password(self) -> None:
         """Test when password is available."""
@@ -1493,7 +1493,7 @@ class TestGetLifiQuote:
             return_value=mock_response,
         ):
             result = self.handler._get_lifi_quote(
-                from_token="0xNative",
+                from_token="0xNative",  # nosec B106
                 to_token="0xUSDC",
                 from_address="0xFrom",
                 to_address="0xTo",
@@ -1513,7 +1513,7 @@ class TestGetLifiQuote:
             return_value=mock_response,
         ):
             result = self.handler._get_lifi_quote(
-                from_token="0xNative",
+                from_token="0xNative",  # nosec B106
                 to_token="0xUSDC",
                 from_address="0xFrom",
                 to_address="0xTo",
@@ -1525,7 +1525,7 @@ class TestGetLifiQuote:
     def test_neither_amount(self) -> None:
         """Test error when neither from_amount nor to_amount is provided."""
         result = self.handler._get_lifi_quote(
-            from_token="0xNative",
+            from_token="0xNative",  # nosec B106
             to_token="0xUSDC",
             from_address="0xFrom",
             to_address="0xTo",
@@ -1545,7 +1545,7 @@ class TestGetLifiQuote:
             return_value=mock_response,
         ):
             result = self.handler._get_lifi_quote(
-                from_token="0xNative",
+                from_token="0xNative",  # nosec B106
                 to_token="0xUSDC",
                 from_address="0xFrom",
                 to_address="0xTo",
@@ -1561,7 +1561,7 @@ class TestGetLifiQuote:
             side_effect=Exception("network error"),
         ):
             result = self.handler._get_lifi_quote(
-                from_token="0xNative",
+                from_token="0xNative",  # nosec B106
                 to_token="0xUSDC",
                 from_address="0xFrom",
                 to_address="0xTo",
@@ -1591,7 +1591,7 @@ class TestGetLifiQuote:
             return_value=mock_response,
         ) as mock_get:
             result = handler._get_lifi_quote(
-                from_token="0xNative",
+                from_token="0xNative",  # nosec B106
                 to_token="0xUSDC",
                 from_address="0xFrom",
                 to_address="0xTo",

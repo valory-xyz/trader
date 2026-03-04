@@ -204,7 +204,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                         "irrelevant_tools": [],
                         "ignored_mechs": [],
                         "deliveries_lookback_days": 30,
-                        "store_path": "/tmp",
+                        "store_path": "/tmp",  # nosec B108
                     }
                 }
             }
@@ -2014,7 +2014,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             return_value=WXDAI,
         ):
             gen = behaviour.build_approval_tx(
-                amount=1000, spender="0xspender", token="0xtoken"
+                amount=1000, spender="0xspender", token="0xtoken"  # nosec B106
             )  # type: ignore[no-untyped-def]
             next(gen)
             try:
@@ -2046,7 +2046,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             return_value=WXDAI,
         ):
             gen = behaviour.build_approval_tx(
-                amount=1000, spender="0xspender", token="0xtoken"
+                amount=1000, spender="0xspender", token="0xtoken"  # nosec B106
             )  # type: ignore[no-untyped-def]
             next(gen)
             try:
@@ -2076,7 +2076,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             return_value=WXDAI,
         ):
             gen = behaviour.build_approval_tx(
-                amount=1000, spender="0xspender", token="0xtoken"
+                amount=1000, spender="0xspender", token="0xtoken"  # nosec B106
             )  # type: ignore[no-untyped-def]
             next(gen)
             try:

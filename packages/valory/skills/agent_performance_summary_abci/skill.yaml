@@ -29,13 +29,13 @@ fingerprint:
   tests/achievements_checker/test_bet_payout_checker.py: bafybeie4h4yw5o7q54lplbuqhgbbcz2vcj2tap6stnshis54hkhv4v3fca
   tests/graph_tooling/__init__.py: bafybeia4232yl536xzhvnkjblvfbtphtp34t4zylkay4fimm26bgo5tzru
   tests/graph_tooling/test_base_predictions_helper.py: bafybeihcnx5crq5j5nr5p6h5y3vuqgqapdnkcghubehk7fnnyv2vmcpriq
-  tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeibfnmrtt6u2ijp6mi2j3yxhxbxzkq6fji63iznmtbbnfyviyjtlxe
-  tests/graph_tooling/test_predictions_helper.py: bafybeiduwywg64wgna2ppj36thvax6xocur5ilicxlgklyo7sv5eiha3ze
+  tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeifjdykcpkcfnrvfcuif7dmdbf2adlroic2dlv4jyroavq2vinke2a
+  tests/graph_tooling/test_predictions_helper.py: bafybeiducq7qmiranv655mj67qbdvogjsdmti5rx7no5r2pcycsnizj6fa
   tests/graph_tooling/test_queries.py: bafybeicwsfmmct45nkistplftyxo3d4dqi3cgsln2wudwqvysn2cxqx3ta
-  tests/graph_tooling/test_requests.py: bafybeicfy257xs4el2e7ojn3c5cs4dz2ljng3ebfrsiflh6ibx52pqdgve
-  tests/test_behaviours.py: bafybeifilxfony64cbns7c24wclq6vp7szwlabqp2q5uwjbvucc3vvo2pm
+  tests/graph_tooling/test_requests.py: bafybeibfsud2gg32zrxls3cmu4m2ozj7uebrd24nfqrsjdfmvjoaj45qri
+  tests/test_behaviours.py: bafybeiglmlcxyc4xdtytb7rak6ymv4wctyz6tcsi6zg44c6osyinrctsmm
   tests/test_dialogues.py: bafybeiglcg5e24wn5cx3lzpdka6pnj6gl5lhoe57eacqpdxibngw7ojj3e
-  tests/test_handlers.py: bafybeiazjbylc4zk7nvo3hox2zx767vy3y2uua5csawdkaqqw4iyydp46q
+  tests/test_handlers.py: bafybeicwf5263ynncxxlhluyunjv64pbxc5pbkouus572xmkl32pbzq2am
   tests/test_models.py: bafybeif7r66eofu4hik75bozvs6rdyvwkxopl3cxtuao7jtzdpkts66o3a
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeidm2rl27fpn6wyllpz25sy3t6emlk7cwy2pzbyfda7yv66znnneoq
@@ -212,4 +212,4 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections:
-- valory/polymarket_client:0.1.0:bafybeig2x55sfuvjvpwgvpcgabf63nyv4hvwvswqhrcfzsyptfxsaxpojm
+- valory/polymarket_client:0.1.0:bafybeid6ooz37l2hrnxhmb4m5kdt3dydomtzlfofyfl33wqgalfkonn6wu

@@ -102,7 +102,7 @@ def _make_handler(
     is_running_on_polymarket: bool = False,
     service_endpoint: str = "http://localhost:8080",
     safe_address: str = "0xabc123",
-    store_path: str = "/tmp/test_store",
+    store_path: str = "/tmp/test_store",  # nosec B108
 ) -> _TestableHttpHandler:
     """Return a _TestableHttpHandler wired with minimal mocks."""
     handler = object.__new__(_TestableHttpHandler)
@@ -329,7 +329,7 @@ class TestHttpHandlerProperties:
         assert "propel" in regex
         assert r"192\.168" in regex
         assert "127.0.0.1" in regex
-        assert "0.0.0.0" in regex
+        assert "0.0.0.0" in regex  # nosec B104
 
     def test_hostname_regex_custom_host(self) -> None:
         """Test hostname_regex with a custom hostname."""

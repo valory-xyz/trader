@@ -81,7 +81,7 @@ def _make_trade(  # type: ignore[no-untyped-def]
     current_answer="0x0000000000000000000000000000000000000000000000000000000000000000",
     outcome_tokens_traded=1000,
     tx_hash="0xtx1",
-    collateral_token="0xcollateral",
+    collateral_token="0xcollateral",  # nosec B107
     template_id=2,
     question_data="test question",
     creation_timestamp=1000000,
@@ -3395,7 +3395,7 @@ class TestAsyncAct:
         mock_bm.enabled = True
 
         params = MagicMock()
-        params.store_path = Path("/tmp/test")
+        params.store_path = Path("/tmp/test")  # nosec B108
 
         def mock_store_all() -> None:
             """Mock _store_all."""
@@ -3451,7 +3451,7 @@ class TestAsyncAct:
         mock_bm.enabled = False
 
         params = MagicMock()  # type: ignore[no-untyped-def]
-        params.store_path = Path("/tmp/test")
+        params.store_path = Path("/tmp/test")  # nosec B108
 
         progress = RedeemingProgress()
         progress.check_started = False

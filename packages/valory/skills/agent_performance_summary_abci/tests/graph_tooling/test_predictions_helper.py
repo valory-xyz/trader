@@ -2090,7 +2090,9 @@ class TestFetchPositionDetails:  # type: ignore[no-untyped-def]
         with patch.object(
             fetcher, "_load_multi_bets_data", side_effect=Exception("Error")
         ):
-            result = fetcher.fetch_position_details("bet_1", "0xsafe", "/tmp/test")
+            result = fetcher.fetch_position_details(
+                "bet_1", "0xsafe", "/tmp/test"  # nosec B108
+            )
         # type: ignore[no-untyped-def]
         assert result is None
 

@@ -94,8 +94,8 @@ def _make_behaviour(**overrides: Any) -> UpdateBetsBehaviour:
     behaviour = object.__new__(UpdateBetsBehaviour)
     behaviour._context = MagicMock()
     behaviour.bets = []
-    behaviour.multi_bets_filepath = "/tmp/multi_bets.json"
-    behaviour.bets_filepath = "/tmp/bets.json"
+    behaviour.multi_bets_filepath = "/tmp/multi_bets.json"  # nosec B108
+    behaviour.bets_filepath = "/tmp/bets.json"  # nosec B108
     behaviour._call_failed = False
     behaviour._fetch_status = FetchStatus.NONE
     behaviour._creators_iterator = iter([])

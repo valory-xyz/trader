@@ -231,9 +231,8 @@ class TestModuleConstants:
 
     def test_polygon_native_token_address(self) -> None:
         """POLYGON_NATIVE_TOKEN_ADDRESS is correct."""
-        assert (
-            POLYGON_NATIVE_TOKEN_ADDRESS == "0x0000000000000000000000000000000000001010"
-        )
+        expected = "0x0000000000000000000000000000000000001010"  # nosec B105
+        assert POLYGON_NATIVE_TOKEN_ADDRESS == expected
 
     def test_polygon_chain_id(self) -> None:
         """POLYGON_CHAIN_ID is 137."""

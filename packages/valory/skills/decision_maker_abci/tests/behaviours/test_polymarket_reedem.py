@@ -436,7 +436,7 @@ class TestRedeemPosition:
         gen = behaviour._redeem_position(
             condition_id="0xcond1",
             outcome_index=0,
-            collateral_token="0xusdc",
+            collateral_token="0xusdc",  # nosec B106
             is_neg_risk=False,
             size=100,
         )
@@ -461,7 +461,7 @@ class TestRedeemPosition:
         gen = behaviour._redeem_position(
             condition_id="0xcond2",
             outcome_index=1,
-            collateral_token="0xusdc",
+            collateral_token="0xusdc",  # nosec B106
             is_neg_risk=True,
             size=50,
         )
@@ -545,7 +545,7 @@ class TestBuildRedeemPositionsData:
         """Should start with redeemPositions function selector."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_positions_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             index_sets=[1],
         )
@@ -555,7 +555,7 @@ class TestBuildRedeemPositionsData:
         """Should contain the collateral token address."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_positions_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             index_sets=[1],
         )
@@ -565,7 +565,7 @@ class TestBuildRedeemPositionsData:
         """Should contain the condition ID."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_positions_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             index_sets=[1],
         )
@@ -575,7 +575,7 @@ class TestBuildRedeemPositionsData:
         """Should handle multiple index sets."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_positions_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             index_sets=[1, 2],
         )
@@ -583,7 +583,7 @@ class TestBuildRedeemPositionsData:
         assert result.startswith("0x01b7037c")
         # Should be longer than single element
         single = behaviour._build_redeem_positions_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             index_sets=[1],
         )
@@ -601,7 +601,7 @@ class TestBuildRedeemNegRiskData:
         """Should start with redeemPositions(bytes32,uint256[]) selector."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             redeem_amounts=[100, 0],
         )
@@ -611,7 +611,7 @@ class TestBuildRedeemNegRiskData:
         """Should contain the condition ID."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             redeem_amounts=[100, 0],
         )
@@ -621,7 +621,7 @@ class TestBuildRedeemNegRiskData:
         """Should encode redeem amounts correctly."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             redeem_amounts=[100, 0],
         )
@@ -632,7 +632,7 @@ class TestBuildRedeemNegRiskData:
         """Should handle zero amounts."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="0xaabbccdd",
             redeem_amounts=[0, 0],
         )
@@ -642,7 +642,7 @@ class TestBuildRedeemNegRiskData:
         """Should handle condition ID without 0x prefix."""
         behaviour = _make_behaviour()
         result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",
+            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
             condition_id="aabbccdd",
             redeem_amounts=[100, 0],
         )

@@ -103,7 +103,7 @@ def _make_behaviour(tmp_path: Any = None, **overrides: Any) -> _ConcreteBetsMana
 
     # -- context / params --
     ctx = MagicMock()
-    store_path = Path(tmp_path) if tmp_path else Path("/tmp/test_store")
+    store_path = Path(tmp_path) if tmp_path else Path("/tmp/test_store")  # nosec B108
     ctx.params.store_path = store_path
     b._context = ctx
 
@@ -154,7 +154,7 @@ class TestBetsManagerInit:
     def test_init_sets_attributes(self) -> None:
         """Test that __init__ sets bets, multi_bets_filepath, and bets_filepath."""
         mock_context = MagicMock()
-        mock_context.params.store_path = Path("/tmp/test_store")
+        mock_context.params.store_path = Path("/tmp/test_store")  # nosec B108
 
         with patch(
             "packages.valory.skills.abstract_round_abci.behaviour_utils.BaseBehaviour.__init__"
@@ -166,9 +166,12 @@ class TestBetsManagerInit:
         assert instance.bets == []
         assert (
             instance.multi_bets_filepath
-            == Path("/tmp/test_store") / MULTI_BETS_FILENAME
+            == Path("/tmp/test_store") / MULTI_BETS_FILENAME  # nosec B108
         )
-        assert instance.bets_filepath == Path("/tmp/test_store") / BETS_FILENAME
+        assert (
+            instance.bets_filepath
+            == Path("/tmp/test_store") / BETS_FILENAME  # nosec B108
+        )
 
 
 # ===========================================================================

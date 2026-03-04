@@ -147,7 +147,8 @@ class TestConstants:
 
     def test_olas_token_address(self) -> None:
         """Test the OLAS_TOKEN_ADDRESS constant."""
-        assert OLAS_TOKEN_ADDRESS == "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"
+        expected = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"  # nosec B105
+        assert OLAS_TOKEN_ADDRESS == expected
 
     def test_decimal_scaling_factor(self) -> None:
         """Test the DECIMAL_SCALING_FACTOR constant."""

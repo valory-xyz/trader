@@ -65,8 +65,8 @@ def _make_behaviour(**overrides: Any) -> PolymarketFetchMarketBehaviour:
     behaviour = object.__new__(PolymarketFetchMarketBehaviour)  # type: ignore[type-abstract]
     behaviour._context = MagicMock()
     behaviour.bets = []
-    behaviour.multi_bets_filepath = "/tmp/multi_bets.json"  # type: ignore[type-abstract]
-    behaviour.bets_filepath = "/tmp/bets.json"
+    behaviour.multi_bets_filepath = "/tmp/multi_bets.json"  # type: ignore[type-abstract]  # nosec B108
+    behaviour.bets_filepath = "/tmp/bets.json"  # nosec B108
     behaviour._call_failed = False
     behaviour._fetch_status = FetchStatus.NONE
     behaviour._creators_iterator = iter([])
@@ -1424,7 +1424,7 @@ class TestFetchMarketsFromPolymarket:
     def _setup_behaviour(self) -> PolymarketFetchMarketBehaviour:
         """Set up a behaviour with mocked params."""
         behaviour = _make_behaviour()
-        behaviour.context.params.store_path = Path("/tmp")
+        behaviour.context.params.store_path = Path("/tmp")  # nosec B108
         behaviour.send_polymarket_connection_request = MagicMock()  # type: ignore[method-assign]
         return behaviour
 
@@ -2183,7 +2183,7 @@ class TestEdgeCases:
     def test_fetch_markets_type_error_in_market(self) -> None:
         """Test that TypeError in market processing is caught."""
         behaviour = _make_behaviour()
-        behaviour.context.params.store_path = Path("/tmp")
+        behaviour.context.params.store_path = Path("/tmp")  # nosec B108
 
         market = _make_valid_market(
             outcomes=json.dumps(["Yes", "No"]),
@@ -2266,7 +2266,7 @@ class TestEdgeCases:
     def test_fetch_markets_valid_market_is_valid_true(self) -> None:
         """Test that a valid categorized, not-closed market has correct flags."""
         behaviour = _make_behaviour()
-        behaviour.context.params.store_path = Path("/tmp")
+        behaviour.context.params.store_path = Path("/tmp")  # nosec B108
 
         market = _make_valid_market(
             question="Will Google release new AI?",
@@ -2288,7 +2288,7 @@ class TestEdgeCases:
     def test_fetch_markets_no_categories(self) -> None:
         """Test fetching with empty response dict."""
         behaviour = _make_behaviour()
-        behaviour.context.params.store_path = Path("/tmp")
+        behaviour.context.params.store_path = Path("/tmp")  # nosec B108
         behaviour.send_polymarket_connection_request = _return_gen({})  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()

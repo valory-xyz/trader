@@ -18,7 +18,7 @@ fingerprint:
   tests/test_behaviours.py: bafybeibbnzwxdtrmmhg7u46dmmhulf6bihdb7hlzxmawhz7m4hpc3foueu
   tests/test_composition.py: bafybeicwxr37urp6rvpkpx7r4saq6eeeyz5r6ogittkupi6hcoqd6of7by
   tests/test_dialogues.py: bafybeih4zfxgm2ycxro2qv3msr2mjnu3v53p6qqjrndorrhb4xwjlqhp2m
-  tests/test_handlers.py: bafybeidtr46uevcdvqwlyrywnwcxqj6hsgvxbkhl2xqwirivv55vdtydaq
+  tests/test_handlers.py: bafybeihf3dp4hmgowxybhnzm4hoiguq762cbz5z75pwcooph3bp6qmsqn4
   tests/test_models.py: bafybeigqhswbxyn2lgheatkxdnbhbo3kbutrv5km3psn26xqw7j254b4oa
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
-- valory/market_manager_abci:0.1.0:bafybeif4f46gh5sz3ykwjm6sg3ijuzqfpbpcwgqq53x3sef75tqapmjbai
-- valory/decision_maker_abci:0.1.0:bafybeiaffj56spemn3hxtodc7kr7mhpok5pfupwfodbz2mnop3vlgvtedm
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigtp2xzkkxxbzezxtgg3sgq4fbkjucjogukakozjwnbpyzjl3bhbi
-- valory/staking_abci:0.1.0:bafybeiacclepese2m2ytjusuzeizrtfcrcndxe4blk5apkz2ktowfb2fm4
-- valory/check_stop_trading_abci:0.1.0:bafybeiaxzzmbtucp4xr4ysohl4wygwel3c7krrbaauxacddbacopc366hi
+- valory/market_manager_abci:0.1.0:bafybeibqeoxz7453drvup6sevqtdkrg23kc3as4pnzs2mqsylbt5mdpbje
+- valory/decision_maker_abci:0.1.0:bafybeicxgkdrenqchkaeyveffltjyj2wqlykbeauqy2qgob3ktrn33ugfe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie4baczuym2risxqmshjkuhfsn36gfeyqfaz47r6zgzsuq7pdspw4
+- valory/staking_abci:0.1.0:bafybeihmfnagtvt2pdk5z3oncggr2avk7jfjpqqiw5qy7otavqbfls3zpu
+- valory/check_stop_trading_abci:0.1.0:bafybeih7dyzn2itnf6ey4ugfduo7a5g4fpog4sg5fg75et2yax2ob4oks4
 - valory/mech_interact_abci:0.1.0:bafybeifmewonamynusdi3sz5qenlr3f7mu67sic33aub5uzc2w3mpqsyqa
-- valory/chatui_abci:0.1.0:bafybeier4w72zu5xcswcebh7hktwh6udymwnimtq3cx667sfkhfq75cbci
-- valory/agent_performance_summary_abci:0.1.0:bafybeig2aq3xzgwnrmjuzgtut6eqafybdgzp353tdq3cd7ko2okalvrqby
+- valory/chatui_abci:0.1.0:bafybeicpzebayr4bp6qvvii3sddgseeku33clfhdaitk75o5kpnobyda2m
+- valory/agent_performance_summary_abci:0.1.0:bafybeiezvryammp6tpc3g6bmzsydqxndpntbu2tzorw55s3gn5gb5quuxq
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:
