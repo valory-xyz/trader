@@ -20,10 +20,16 @@
 """This package contains the tests for Decision Maker"""
 
 import json
-from unittest.mock import MagicMock, patch
+from enum import Enum
+from typing import Optional, Tuple, cast
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseSynchronizedData,
+    CollectSameUntilThresholdRound,
+)
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
@@ -236,6 +242,266 @@ def test_mech_responses(sync_data: SynchronizedData, mocked_db: MagicMock) -> No
     assert responses == []
 
 
+def test_benchmarking_finished(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the benchmarking_finished property."""
+    mocked_db.get_strict.return_value = True
+    assert sync_data.benchmarking_finished is True
+    mocked_db.get_strict.assert_called_once_with("benchmarking_finished")
+
+
+def test_simulated_day(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the simulated_day property."""
+    mocked_db.get_strict.return_value = False
+    assert sync_data.simulated_day is False
+    mocked_db.get_strict.assert_called_once_with("simulated_day")
+
+
+def test_vote_none(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the vote property when it is None."""
+    mocked_db.get_strict.return_value = None
+    assert sync_data.vote is None
+
+
+def test_previous_vote(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the previous_vote property."""
+    mocked_db.get_strict.return_value = "2"
+    assert sync_data.previous_vote == 2
+
+
+def test_previous_vote_none(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the previous_vote property when None."""
+    mocked_db.get_strict.return_value = None
+    assert sync_data.previous_vote is None
+
+
+def test_review_bets_for_selling_true(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test review_bets_for_selling when True."""
+    mocked_db.get.return_value = True
+    assert sync_data.review_bets_for_selling is True
+
+
+def test_review_bets_for_selling_false(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test review_bets_for_selling when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.review_bets_for_selling is False
+
+
+def test_review_bets_for_selling_non_bool(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test review_bets_for_selling when value is not a bool."""
+    mocked_db.get.return_value = "some_string"
+    assert sync_data.review_bets_for_selling is False
+
+
+def test_cached_signed_orders_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test cached_signed_orders when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.cached_signed_orders == {}
+
+
+def test_cached_signed_orders_with_data(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test cached_signed_orders with actual data."""
+    mocked_db.get.return_value = '{"order1": "data1"}'
+    assert sync_data.cached_signed_orders == {"order1": "data1"}
+
+
+def test_weighted_accuracy_tool_not_in_store(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test weighted_accuracy raises when tool not in store."""
+    selected_mech_tool = "nonexistent_tool"
+    policy_mock = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=1,
+        quarantine_duration=0,
+        accuracy_store={"tool1": AccuracyInfo(requests=1)},
+    ).serialize()
+    mocked_db.get_strict = lambda name: (
+        policy_mock if name == "policy" else selected_mech_tool
+    )
+    with pytest.raises(ValueError, match="not available in the policy"):
+        sync_data.weighted_accuracy
+
+
+def test_did_transact_true(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test did_transact when tx_submitter is set."""
+    mocked_db.get.return_value = "some_submitter"
+    assert sync_data.did_transact is True
+
+
+def test_did_transact_false(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test did_transact when tx_submitter is None."""
+    mocked_db.get.return_value = None
+    assert sync_data.did_transact is False
+
+
+def test_mocking_mode(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the mocking_mode property."""
+    mocked_db.get_strict.return_value = True
+    assert sync_data.mocking_mode is True
+
+
+def test_mocking_mode_none(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the mocking_mode property when None."""
+    mocked_db.get_strict.return_value = None
+    assert sync_data.mocking_mode is None
+
+
+def test_next_mock_data_row(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the next_mock_data_row property."""
+    mocked_db.get.return_value = 5
+    assert sync_data.next_mock_data_row == 5
+
+
+def test_next_mock_data_row_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the next_mock_data_row property when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.next_mock_data_row == 1
+
+
+def test_wallet_balance(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the wallet_balance property."""
+    mocked_db.get.return_value = 1000
+    assert sync_data.wallet_balance == 1000
+
+
+def test_wallet_balance_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the wallet_balance property when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.wallet_balance == 0
+
+
+def test_decision_receive_timestamp(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the decision_receive_timestamp property."""
+    mocked_db.get.return_value = 1234567890
+    assert sync_data.decision_receive_timestamp == 1234567890
+
+
+def test_decision_receive_timestamp_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the decision_receive_timestamp property when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.decision_receive_timestamp == 0
+
+
+def test_service_staking_state(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the service_staking_state property."""
+    from packages.valory.skills.staking_abci.rounds import StakingState
+
+    mocked_db.get.return_value = 0
+    assert sync_data.service_staking_state == StakingState.UNSTAKED
+
+    mocked_db.get.return_value = 1
+    assert sync_data.service_staking_state == StakingState.STAKED
+
+    mocked_db.get.return_value = 2
+    assert sync_data.service_staking_state == StakingState.EVICTED
+
+
+def test_is_staking_kpi_met(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the is_staking_kpi_met property."""
+    mocked_db.get.return_value = True
+    assert sync_data.is_staking_kpi_met is True
+
+
+def test_after_bet_attempt(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the after_bet_attempt property."""
+    mocked_db.get.return_value = True
+    assert sync_data.after_bet_attempt is True
+
+
+def test_should_be_sold_true(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the should_be_sold property when True."""
+    mocked_db.get.return_value = True
+    assert sync_data.should_be_sold is True
+
+
+def test_should_be_sold_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the should_be_sold property when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.should_be_sold is False
+
+
+def test_should_be_sold_non_bool(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the should_be_sold property with non-bool value."""
+    mocked_db.get.return_value = "some_string"
+    assert sync_data.should_be_sold is False
+
+
+def test_redeemed_condition_ids_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the redeemed_condition_ids property when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.redeemed_condition_ids == set()
+
+
+def test_payout_so_far_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the payout_so_far property when None."""
+    mocked_db.get.return_value = None
+    assert sync_data.payout_so_far == 0
+
+
+def test_mech_requests_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the mech_requests property when None."""
+    mocked_db.get.return_value = None
+    requests = sync_data.mech_requests
+    assert requests == []
+
+
+def test_mech_requests_with_data(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the mech_requests property with valid serialized data."""
+    mocked_db.get.return_value = "[]"
+    requests = sync_data.mech_requests
+    assert requests == []
+
+
+def test_agreement_id(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the agreement_id property."""
+    mocked_db.get_strict.return_value = "agreement_123"
+    assert sync_data.agreement_id == "agreement_123"
+
+
+def test_mech_price(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the mech_price property."""
+    mocked_db.get_strict.return_value = 100
+    assert sync_data.mech_price == 100
+
+
 def test_end_block(mocked_db: MagicMock) -> None:
     """Test the end_block logic in TxPreparationRound."""
     mocked_sync_data = MagicMock(spec=SynchronizedData)
@@ -255,3 +521,90 @@ def test_end_block(mocked_db: MagicMock) -> None:
     ):
         result = round_instance.end_block()
         assert result == (mocked_sync_data, Event.NONE)
+
+
+def test_tx_preparation_round_end_block_returns_none() -> None:
+    """Test TxPreparationRound end_block returns None when super returns None."""
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+    mock_context = MagicMock()
+    round_instance = TxPreparationRound(
+        synchronized_data=mock_synced_data, context=mock_context
+    )
+    with patch.object(
+        CollectSameUntilThresholdRound, "end_block", return_value=None
+    ):
+        result = round_instance.end_block()
+    assert result is None
+
+
+def test_tx_preparation_round_end_block_mocking_mode() -> None:
+    """Test TxPreparationRound end_block with mocking_mode returns MOCK_TX."""
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+    mock_synced_data.mocking_mode = True
+    mock_context = MagicMock()
+    round_instance = TxPreparationRound(
+        synchronized_data=mock_synced_data, context=mock_context
+    )
+    with patch.object(
+        CollectSameUntilThresholdRound,
+        "end_block",
+        return_value=(mock_synced_data, Event.DONE),
+    ):
+        result = round_instance.end_block()
+    assert result is not None
+    _, event = result
+    assert event == Event.MOCK_TX
+
+
+def test_tx_preparation_round_end_block_non_mocking_mode() -> None:
+    """Test TxPreparationRound end_block without mocking_mode returns original event."""
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+    mock_synced_data.mocking_mode = False
+    mock_context = MagicMock()
+    round_instance = TxPreparationRound(
+        synchronized_data=mock_synced_data, context=mock_context
+    )
+    with patch.object(
+        CollectSameUntilThresholdRound,
+        "end_block",
+        return_value=(mock_synced_data, Event.DONE),
+    ):
+        result = round_instance.end_block()
+    assert result is not None
+    _, event = result
+    assert event == Event.DONE
+
+
+def test_has_tool_selection_run_false(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test has_tool_selection_run when mech_tool is None."""
+    mocked_db.get.return_value = None
+    assert sync_data.has_tool_selection_run is False
+
+
+def test_participant_to_decision(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the participant_to_decision property."""
+    with patch.object(SynchronizedData, "_get_deserialized", return_value={"agent_0": "decision_0"}):
+        result = sync_data.participant_to_decision
+    assert result == {"agent_0": "decision_0"}
+
+
+def test_participant_to_tx_prep(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the participant_to_tx_prep property."""
+    with patch.object(SynchronizedData, "_get_deserialized", return_value={"agent_0": "tx_0"}):
+        result = sync_data.participant_to_tx_prep
+    assert result == {"agent_0": "tx_0"}
+
+
+def test_participant_to_handle_failed_tx(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the participant_to_handle_failed_tx property."""
+    with patch.object(SynchronizedData, "_get_deserialized", return_value={"agent_0": "failed_0"}):
+        result = sync_data.participant_to_handle_failed_tx
+    assert result == {"agent_0": "failed_0"}

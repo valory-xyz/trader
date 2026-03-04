@@ -19,15 +19,21 @@
 
 """Test for Redeem round"""
 
-from typing import Any, Dict, Optional
-from unittest.mock import PropertyMock, patch
+from collections import Counter
+from typing import Any, Dict, Optional, Tuple
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import AbciAppDB
+from packages.valory.skills.abstract_round_abci.base import (
+    AbciAppDB,
+    CollectSameUntilThresholdRound,
+)
+from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
+    TxPreparationRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 
@@ -168,3 +174,135 @@ class TestRedeemRound:
 
             values = redeem_round.most_voted_payload_values
             assert values is not None  # Ensure it executes without error
+
+
+class TestRedeemRoundMostVotedPayloadValues:
+    """Tests for the most_voted_payload_values property of RedeemRound."""
+
+    def _make_round(self) -> RedeemRound:
+        """Create a RedeemRound with mocked dependencies."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        return RedeemRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+
+    def test_most_voted_payload_values_with_valid_data(self) -> None:
+        """Test most_voted_payload_values when there are non-None values besides mech_tools."""
+        round_instance = self._make_round()
+        # RedeemPayload fields: tx_submitter, tx_hash, mocking_mode, mech_tools, policy, utilized_tools, redeemed_condition_ids, payout_so_far
+        payload_values = ("submitter", "0xhash", False, '["tool1"]', "policy_val", '{}', '[]', 100)
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=payload_values,
+        ):
+            result = round_instance.most_voted_payload_values
+        assert result == payload_values
+
+    def test_most_voted_payload_values_all_none_except_mech_tools(self) -> None:
+        """Test most_voted_payload_values when all values except mech_tools are None."""
+        round_instance = self._make_round()
+        # All fields None except mech_tools
+        payload_values = (None, None, None, '["tool1"]', None, None, None, None)
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=payload_values,
+        ):
+            result = round_instance.most_voted_payload_values
+        assert result == (None,) * len(RedeemRound.selection_key)
+
+    def test_most_voted_payload_values_mech_tools_none_raises(self) -> None:
+        """Test most_voted_payload_values raises ValueError when mech_tools is None."""
+        round_instance = self._make_round()
+        # mech_tools is None (field index 3)
+        payload_values = ("submitter", "0xhash", False, None, "policy_val", '{}', '[]', 100)
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=payload_values,
+        ):
+            with pytest.raises(ValueError, match="must not be `None`"):
+                round_instance.most_voted_payload_values
+
+
+class TestRedeemRoundEndBlock:
+    """Direct unit tests for RedeemRound.end_block covering all branches."""
+
+    def _make_round(self) -> RedeemRound:
+        """Create a RedeemRound with mocked dependencies."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.period_count = 0
+        mock_synced_data.db = MagicMock()
+        mock_synced_data.db.get.return_value = None
+        mock_context = MagicMock()
+        return RedeemRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+
+    def test_end_block_returns_none_after_first_period_protection(self) -> None:
+        """Test end_block with first period protection (block_confirmations=0, period_count=0)."""
+        round_instance = self._make_round()
+        round_instance.block_confirmations = 0
+        round_instance.synchronized_data.period_count = 0
+        with patch.object(
+            TxPreparationRound, "end_block", return_value=None
+        ):
+            result = round_instance.end_block()
+        assert result is None
+        assert round_instance.block_confirmations == 1
+
+    def test_end_block_returns_none_when_period_count_not_zero(self) -> None:
+        """Test end_block returns None when period_count is not zero."""
+        round_instance = self._make_round()
+        round_instance.block_confirmations = 0
+        round_instance.synchronized_data.period_count = 1
+        with patch.object(
+            TxPreparationRound, "end_block", return_value=None
+        ):
+            result = round_instance.end_block()
+        assert result is None
+
+    def test_end_block_with_majority_updates_mech_tools(self) -> None:
+        """Test end_block updates mech_tools when there is a majority event (not NO_MAJORITY)."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        updated_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.update.return_value = updated_data
+        round_instance = self._make_round()
+        # Set up payload_values_count so most_common returns the right values
+        payload_values = ("submitter", "0xhash", False, '["tool1"]', "policy_val", '{}', '[]', 100)
+        mock_counter = Counter({payload_values: 3})
+        with patch.object(
+            TxPreparationRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                RedeemRound,
+                "payload_values_count",
+                new_callable=PropertyMock,
+                return_value=mock_counter,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        synced, event = result
+        assert event == Event.DONE
+        mock_synced_data.update.assert_called_once()
+
+    def test_end_block_no_majority_returns_original(self) -> None:
+        """Test end_block returns original result on NO_MAJORITY event."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        with patch.object(
+            TxPreparationRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.NO_MAJORITY),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY

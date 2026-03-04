@@ -172,9 +172,11 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
             return_value=payload_values,
         ):
             # We need super().end_block() to return something non-None.
+            # Use synced_data_mock (not round_.synchronized_data) so we can
+            # spy on .update() calls via MagicMock.call_args_list.
             with patch(
                 "packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement.TxPreparationRound.end_block",
-                return_value=(round_.synchronized_data, Event.BET_PLACEMENT_DONE),
+                return_value=(synced_data_mock, Event.BET_PLACEMENT_DONE),
             ):
                 result = round_.end_block()
 
@@ -184,8 +186,7 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
         # The round must have called .update(utilized_tools=UTILIZED_TOOLS_JSON)
         # at some point.  Collect all kwargs passed to every .update() call.
         all_update_kwargs: Dict[str, Any] = {}
-        update_mock = cast(MagicMock, round_.synchronized_data.update)
-        for call in update_mock.call_args_list:
+        for call in synced_data_mock.update.call_args_list:
             all_update_kwargs.update(call.kwargs)
 
         assert "utilized_tools" in all_update_kwargs, (
@@ -198,6 +199,10 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
     def test_utilized_tools_not_written_when_none(self) -> None:
         """When utilized_tools is None (e.g. a failed placement) end_block must NOT overwrite the existing utilized_tools in synchronized data."""
         round_ = self._make_round()
+
+        # Use a separate mock so we can spy on .update() calls.
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+        synced_data_mock.update.return_value = synced_data_mock
 
         # Post-fix 6-element tuple; utilized_tools is None for a failed placement.
         payload_values = (
@@ -217,13 +222,12 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
         ):
             with patch(
                 "packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement.TxPreparationRound.end_block",
-                return_value=(round_.synchronized_data, Event.BET_PLACEMENT_FAILED),
+                return_value=(synced_data_mock, Event.BET_PLACEMENT_FAILED),
             ):
                 round_.end_block()
 
         # Verify .update() was never called with utilized_tools
-        update_mock = cast(MagicMock, round_.synchronized_data.update)
-        for call in update_mock.call_args_list:
+        for call in synced_data_mock.update.call_args_list:
             assert "utilized_tools" not in call.kwargs, (
                 "end_block must not overwrite utilized_tools when the payload "
                 "carries None (i.e. the bet did not succeed)."

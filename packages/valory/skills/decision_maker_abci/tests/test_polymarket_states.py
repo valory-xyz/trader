@@ -115,10 +115,10 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
         synced_data_mock.update.return_value = updated_synced_data
 
         cached_orders = json.dumps({"tok1": '{"salt": "1"}'})
-        # most_voted_payload_values[-2] = event, [-1] = cached_orders
+        # most_voted_payload_values[-3] = event, [-2] = cached_orders, [-1] = utilized_tools
         mvpv = (
             "tx_submitter", "tx_hash", "False",
-            Event.BET_PLACEMENT_DONE.value, cached_orders
+            Event.BET_PLACEMENT_DONE.value, cached_orders, None
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
@@ -145,7 +145,7 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
 
         mvpv = (
             "tx_submitter", "tx_hash", "False",
-            Event.BET_PLACEMENT_FAILED.value, None
+            Event.BET_PLACEMENT_FAILED.value, None, None
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
@@ -168,7 +168,7 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
 
         mvpv = (
             "tx_submitter", "tx_hash", "False",
-            Event.BET_PLACEMENT_IMPOSSIBLE.value, None
+            Event.BET_PLACEMENT_IMPOSSIBLE.value, None, None
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
@@ -190,7 +190,7 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
 
         mvpv = (
             "tx_submitter", "tx_hash", "False",
-            Event.INSUFFICIENT_BALANCE.value, None
+            Event.INSUFFICIENT_BALANCE.value, None, None
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"

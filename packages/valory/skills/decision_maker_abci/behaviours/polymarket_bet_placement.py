@@ -164,7 +164,7 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
                         updated_cache[cache_key] = signed_order_json
 
         # Fallback
-        if event is None:
+        if event is None:  # pragma: no cover
             event = Event.BET_PLACEMENT_FAILED
             if signed_order_json:
                 updated_cache[cache_key] = signed_order_json

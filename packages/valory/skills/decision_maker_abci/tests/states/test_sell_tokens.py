@@ -23,6 +23,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -32,6 +33,7 @@ from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
+    TxPreparationRound,
 )
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -174,3 +176,66 @@ class TestSellOutcomeTokensRound(BaseCollectSameUntilThresholdRoundTest):
             most_voted_payload=test_case.most_voted_payload,
             exit_event=test_case.event,
         )
+
+
+class TestSellOutcomeTokensRoundEndBlock:
+    """Direct unit tests for SellOutcomeTokensRound.end_block covering all branches."""
+
+    def _make_round(self) -> SellOutcomeTokensRound:
+        """Create a SellOutcomeTokensRound with mocked dependencies."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        return SellOutcomeTokensRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+
+    def test_end_block_returns_none_when_super_returns_none(self) -> None:
+        """Test end_block returns None when parent returns None."""
+        round_instance = self._make_round()
+        with patch.object(TxPreparationRound, "end_block", return_value=None):
+            result = round_instance.end_block()
+        assert result is None
+
+    def test_end_block_done_with_tx_hash(self) -> None:
+        """Test end_block returns DONE when tx_hash is present."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.most_voted_tx_hash = "0xvalidhash"
+        round_instance = self._make_round()
+        with patch.object(
+            TxPreparationRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE
+
+    def test_end_block_done_without_tx_hash(self) -> None:
+        """Test end_block returns CALC_SELL_AMOUNT_FAILED when tx_hash is missing."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.most_voted_tx_hash = None
+        round_instance = self._make_round()
+        with patch.object(
+            TxPreparationRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.CALC_SELL_AMOUNT_FAILED
+
+    def test_end_block_non_done_event_passes_through(self) -> None:
+        """Test end_block passes through non-DONE events unchanged."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        with patch.object(
+            TxPreparationRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.NO_MAJORITY),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY

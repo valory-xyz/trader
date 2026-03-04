@@ -23,9 +23,13 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.skills.abstract_round_abci.base import (
+    CollectSameUntilThresholdRound,
+)
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
@@ -252,3 +256,324 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
             most_voted_payload=test_case.most_voted_payload,
             exit_event=test_case.event,
         )
+
+
+class TestDecisionReceiveRoundEndBlock:
+    """Direct unit tests for DecisionReceiveRound.end_block covering all branches."""
+
+    def _make_round(
+        self,
+        review_bets_for_selling: bool = False,
+        is_running_on_polymarket: bool = False,
+    ) -> DecisionReceiveRound:
+        """Create a DecisionReceiveRound with mocked dependencies."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.review_bets_for_selling = review_bets_for_selling
+        mock_context = MagicMock()
+        mock_context.params.is_running_on_polymarket = is_running_on_polymarket
+        return DecisionReceiveRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+
+    def test_synchronized_data_property(self) -> None:
+        """Test that synchronized_data property returns a cast SynchronizedData."""
+        round_instance = self._make_round()
+        result = round_instance.synchronized_data
+        assert result is not None
+
+    def test_review_bets_for_selling_mode_property(self) -> None:
+        """Test the review_bets_for_selling_mode property."""
+        round_instance = self._make_round(review_bets_for_selling=True)
+        assert round_instance.review_bets_for_selling_mode is True
+
+        round_instance = self._make_round(review_bets_for_selling=False)
+        assert round_instance.review_bets_for_selling_mode is False
+
+    def test_payload_method(self) -> None:
+        """Test the payload method creates a DecisionReceivePayload."""
+        round_instance = self._make_round()
+        payload_values = (
+            "bets_hash_val",
+            True,
+            1,
+            0.9,
+            100,
+            1,
+            "policy_val",
+            1234567890,
+            False,
+        )
+        result = round_instance.payload(payload_values)
+        assert isinstance(result, DecisionReceivePayload)
+
+    def test_end_block_returns_none_when_super_returns_none(self) -> None:
+        """Test end_block returns None when parent returns None."""
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound, "end_block", return_value=None
+        ):
+            result = round_instance.end_block()
+        assert result is None
+
+    def test_end_block_non_done_event(self) -> None:
+        """Test end_block passes through non-DONE events like NO_MAJORITY."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.NO_MAJORITY),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY
+
+    def test_end_block_done_vote_none_returns_tie(self) -> None:
+        """Test end_block returns TIE when event is DONE but vote is None."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.vote = None
+        # update() must return a synced_data where vote is still None
+        updated_synced_data = MagicMock(spec=SynchronizedData)
+        updated_synced_data.vote = None
+        mock_synced_data.update.return_value = updated_synced_data
+        round_instance = self._make_round()
+        mock_payload_values = (
+            "bets_hash",
+            True,
+            None,
+            0.9,
+            100,
+            1,
+            "policy",
+            1234567890,
+            False,
+        )
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                DecisionReceiveRound,
+                "most_voted_payload_values",
+                new_callable=PropertyMock,
+                return_value=mock_payload_values,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.TIE
+
+    def test_end_block_done_review_selling_should_be_sold(self) -> None:
+        """Test end_block returns DONE_SELL when in review selling mode and should_be_sold is True."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.vote = 1
+        mock_synced_data.is_profitable = True
+        updated_synced_data = MagicMock(spec=SynchronizedData)
+        updated_synced_data.vote = 1
+        updated_synced_data.is_profitable = True
+        updated_synced_data.should_be_sold = True
+        mock_synced_data.update.return_value = updated_synced_data
+        round_instance = self._make_round(review_bets_for_selling=True)
+        # Make synchronized_data.should_be_sold True (for `self.synchronized_data.should_be_sold`)
+        round_instance.synchronized_data.should_be_sold = True
+        mock_payload_values = (
+            "bets_hash",
+            True,
+            1,
+            0.9,
+            100,
+            1,
+            "policy",
+            1234567890,
+            True,
+        )
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                DecisionReceiveRound,
+                "most_voted_payload_values",
+                new_callable=PropertyMock,
+                return_value=mock_payload_values,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE_SELL
+
+    def test_end_block_done_review_selling_should_not_be_sold(self) -> None:
+        """Test end_block returns DONE_NO_SELL when in review selling mode and should_be_sold is False."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.vote = 1
+        mock_synced_data.is_profitable = True
+        updated_synced_data = MagicMock(spec=SynchronizedData)
+        updated_synced_data.vote = 1
+        updated_synced_data.is_profitable = True
+        updated_synced_data.should_be_sold = False
+        mock_synced_data.update.return_value = updated_synced_data
+        round_instance = self._make_round(review_bets_for_selling=True)
+        round_instance.synchronized_data.should_be_sold = False
+        mock_payload_values = (
+            "bets_hash",
+            True,
+            1,
+            0.9,
+            100,
+            1,
+            "policy",
+            1234567890,
+            False,
+        )
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                DecisionReceiveRound,
+                "most_voted_payload_values",
+                new_callable=PropertyMock,
+                return_value=mock_payload_values,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE_NO_SELL
+
+    def test_end_block_done_not_profitable(self) -> None:
+        """Test end_block returns UNPROFITABLE when event is DONE but not profitable."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.vote = 1
+        mock_synced_data.is_profitable = False
+        updated_synced_data = MagicMock(spec=SynchronizedData)
+        updated_synced_data.vote = 1
+        updated_synced_data.is_profitable = False
+        updated_synced_data.should_be_sold = False
+        mock_synced_data.update.return_value = updated_synced_data
+        round_instance = self._make_round(review_bets_for_selling=False)
+        mock_payload_values = (
+            "bets_hash",
+            False,
+            1,
+            0.9,
+            100,
+            1,
+            "policy",
+            1234567890,
+            False,
+        )
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                DecisionReceiveRound,
+                "most_voted_payload_values",
+                new_callable=PropertyMock,
+                return_value=mock_payload_values,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.UNPROFITABLE
+
+    def test_end_block_done_profitable_polymarket(self) -> None:
+        """Test end_block returns POLYMARKET_DONE when profitable and running on polymarket."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.vote = 1
+        mock_synced_data.is_profitable = True
+        updated_synced_data = MagicMock(spec=SynchronizedData)
+        updated_synced_data.vote = 1
+        updated_synced_data.is_profitable = True
+        updated_synced_data.should_be_sold = False
+        mock_synced_data.update.return_value = updated_synced_data
+        round_instance = self._make_round(
+            review_bets_for_selling=False,
+            is_running_on_polymarket=True,
+        )
+        mock_payload_values = (
+            "bets_hash",
+            True,
+            1,
+            0.9,
+            100,
+            1,
+            "policy",
+            1234567890,
+            False,
+        )
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                DecisionReceiveRound,
+                "most_voted_payload_values",
+                new_callable=PropertyMock,
+                return_value=mock_payload_values,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.POLYMARKET_DONE
+
+    def test_end_block_done_profitable_not_polymarket(self) -> None:
+        """Test end_block returns DONE when profitable and not running on polymarket."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.vote = 1
+        mock_synced_data.is_profitable = True
+        updated_synced_data = MagicMock(spec=SynchronizedData)
+        updated_synced_data.vote = 1
+        updated_synced_data.is_profitable = True
+        updated_synced_data.should_be_sold = False
+        mock_synced_data.update.return_value = updated_synced_data
+        round_instance = self._make_round(
+            review_bets_for_selling=False,
+            is_running_on_polymarket=False,
+        )
+        mock_payload_values = (
+            "bets_hash",
+            True,
+            1,
+            0.9,
+            100,
+            1,
+            "policy",
+            1234567890,
+            False,
+        )
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            with patch.object(
+                DecisionReceiveRound,
+                "most_voted_payload_values",
+                new_callable=PropertyMock,
+                return_value=mock_payload_values,
+            ):
+                result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE
+
+    def test_end_block_mech_response_error(self) -> None:
+        """Test end_block passes through MECH_RESPONSE_ERROR event."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.MECH_RESPONSE_ERROR),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.MECH_RESPONSE_ERROR

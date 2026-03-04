@@ -19,11 +19,20 @@
 
 """This package contains the tests for Decision Maker"""
 
-from unittest.mock import MagicMock
+import json
+import os
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound
-from packages.valory.skills.decision_maker_abci.states.base import Event
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
 
 
 def test_check_benchmarking_mode_round_initialization() -> None:
@@ -47,3 +56,104 @@ def test_check_benchmarking_mode_round_events() -> None:
 
     # Assert that the negative_event is BENCHMARKING_DISABLED
     assert round_instance.negative_event == Event.BENCHMARKING_DISABLED
+
+
+def test_end_block_polymarket_allowances_set() -> None:
+    """Test end_block on Polymarket with allowances already set."""
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        allowances_path = Path(tmpdir) / "polymarket.json"
+        with open(allowances_path, "w") as f:
+            json.dump({"allowances_set": True}, f)
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.BENCHMARKING_DISABLED
+
+
+def test_end_block_polymarket_allowances_not_set() -> None:
+    """Test end_block on Polymarket with allowances not set."""
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        allowances_path = Path(tmpdir) / "polymarket.json"
+        with open(allowances_path, "w") as f:
+            json.dump({"allowances_set": False}, f)
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
+
+
+def test_end_block_polymarket_no_allowances_file() -> None:
+    """Test end_block on Polymarket with no allowances file."""
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        # No file created
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
+
+
+def test_end_block_polymarket_invalid_json() -> None:
+    """Test end_block on Polymarket with invalid JSON in allowances file."""
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        allowances_path = Path(tmpdir) / "polymarket.json"
+        with open(allowances_path, "w") as f:
+            f.write("not valid json")
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
+
+
+def test_end_block_non_polymarket_delegates_to_super() -> None:
+    """Test end_block delegates to super when not on Polymarket."""
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = False
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    round_instance = CheckBenchmarkingModeRound(
+        synchronized_data=mock_synced_data, context=mock_context
+    )
+    with patch.object(VotingRound, "end_block", return_value=None):
+        result = round_instance.end_block()
+
+    assert result is None
