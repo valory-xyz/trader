@@ -56,14 +56,20 @@ NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
 
 
-def _make_connection() -> PolymarketClientConnection:
-    """Create a PolymarketClientConnection instance bypassing __init__ (pragma: no cover).
+class _TestableConnection(PolymarketClientConnection):
+    """Shadows the read-only AEA configuration property with a plain instance attribute."""
+
+    configuration = None  # type: ignore[assignment]
+
+
+def _make_connection() -> _TestableConnection:
+    """Create a _TestableConnection instance bypassing __init__ (pragma: no cover).
 
     We bypass __init__ (which is marked pragma: no cover) and directly set instance
-    attributes needed for testing. The AEA base class exposes 'configuration' as a
-    read-only property backed by the '_configuration' internal attribute.
+    attributes needed for testing. Shadowing the read-only AEA 'configuration'
+    property at class level allows direct assignment on the instance.
     """
-    conn = object.__new__(PolymarketClientConnection)
+    conn = object.__new__(_TestableConnection)
     conn.logger = MagicMock()
     conn.client = MagicMock()
     conn.relayer_client = MagicMock()
@@ -74,13 +80,12 @@ def _make_connection() -> PolymarketClientConnection:
     conn.neg_risk_ctf_exchange = NEG_RISK_CTF_EXCHANGE
     conn.neg_risk_adapter = NEG_RISK_ADAPTER
     conn.dialogues = MagicMock()
-    # AEA Component stores configuration in _configuration (backing the read-only property)
     configuration_mock = MagicMock()
     safe_contract_addresses = {"polygon": SAFE_ADDRESS}
     configuration_mock.config.get.side_effect = lambda key, *args, **kwargs: (
         safe_contract_addresses if key == "safe_contract_addresses" else args[0] if args else None
     )
-    conn._configuration = configuration_mock
+    conn.configuration = configuration_mock
     return conn
 
 

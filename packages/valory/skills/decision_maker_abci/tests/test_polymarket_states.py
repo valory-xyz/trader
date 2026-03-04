@@ -24,6 +24,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
+    BaseCollectSameUntilThresholdRoundTest,
+)
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketBetPlacementPayload,
     PolymarketPostSetApprovalPayload,
@@ -74,8 +77,11 @@ def _mock_super_end_block_none(round_instance):
 # ---------------------------------------------------------------------------
 
 
-class TestPolymarketBetPlacementRound:
+class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
     """Tests for PolymarketBetPlacementRound.end_block."""
+
+    _synchronized_data_class = SynchronizedData
+    _event_class = Event
 
     def test_payload_class(self) -> None:
         """Payload class is PolymarketBetPlacementPayload."""
@@ -87,7 +93,9 @@ class TestPolymarketBetPlacementRound:
 
     def test_end_block_returns_none_when_parent_returns_none(self) -> None:
         """Returns None when super().end_block() returns None."""
-        round_ = _make_round(PolymarketBetPlacementRound)
+        round_ = PolymarketBetPlacementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
         with patch(parent_cls, return_value=None):
             result = round_.end_block()
@@ -99,7 +107,9 @@ class TestPolymarketBetPlacementRound:
         The key business invariant: the round must persist the cached signed
         orders to synchronized data so other agents can retry the same order.
         """
-        round_ = _make_round(PolymarketBetPlacementRound)
+        round_ = PolymarketBetPlacementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
         updated_synced_data = MagicMock(spec=SynchronizedData)
         synced_data_mock.update.return_value = updated_synced_data
@@ -128,7 +138,9 @@ class TestPolymarketBetPlacementRound:
 
     def test_end_block_no_cached_orders_returns_event(self) -> None:
         """Does not call update when cached_orders is None."""
-        round_ = _make_round(PolymarketBetPlacementRound)
+        round_ = PolymarketBetPlacementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         mvpv = (
@@ -149,7 +161,9 @@ class TestPolymarketBetPlacementRound:
 
     def test_end_block_bet_placement_impossible_event(self) -> None:
         """Returns BET_PLACEMENT_IMPOSSIBLE event correctly."""
-        round_ = _make_round(PolymarketBetPlacementRound)
+        round_ = PolymarketBetPlacementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         mvpv = (
@@ -169,7 +183,9 @@ class TestPolymarketBetPlacementRound:
 
     def test_end_block_insufficient_balance_event(self) -> None:
         """Returns INSUFFICIENT_BALANCE event correctly."""
-        round_ = _make_round(PolymarketBetPlacementRound)
+        round_ = PolymarketBetPlacementRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         mvpv = (
@@ -193,8 +209,11 @@ class TestPolymarketBetPlacementRound:
 # ---------------------------------------------------------------------------
 
 
-class TestPolymarketSetApprovalRound:
+class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
     """Tests for PolymarketSetApprovalRound.end_block."""
+
+    _synchronized_data_class = SynchronizedData
+    _event_class = Event
 
     def test_payload_class(self) -> None:
         """Payload class is PolymarketSetApprovalPayload."""
@@ -206,7 +225,9 @@ class TestPolymarketSetApprovalRound:
 
     def test_end_block_returns_none_when_parent_returns_none(self) -> None:
         """Returns None when super().end_block() returns None."""
-        round_ = _make_round(PolymarketSetApprovalRound)
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
         with patch(parent_cls, return_value=None):
             result = round_.end_block()
@@ -214,7 +235,9 @@ class TestPolymarketSetApprovalRound:
 
     def test_builder_program_enabled_returns_done(self) -> None:
         """Returns Event.DONE when polymarket_builder_program_enabled=True."""
-        round_ = _make_round(PolymarketSetApprovalRound)
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         round_.context.params.polymarket_builder_program_enabled = True
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
@@ -228,7 +251,9 @@ class TestPolymarketSetApprovalRound:
 
     def test_builder_program_disabled_returns_prepare_tx(self) -> None:
         """Returns Event.PREPARE_TX when polymarket_builder_program_enabled=False."""
-        round_ = _make_round(PolymarketSetApprovalRound)
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         round_.context.params.polymarket_builder_program_enabled = False
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
@@ -242,7 +267,9 @@ class TestPolymarketSetApprovalRound:
 
     def test_builder_enabled_passes_through_synced_data(self) -> None:
         """The synced_data from parent is returned unchanged when builder is enabled."""
-        round_ = _make_round(PolymarketSetApprovalRound)
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         round_.context.params.polymarket_builder_program_enabled = True
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
@@ -256,7 +283,9 @@ class TestPolymarketSetApprovalRound:
 
     def test_builder_disabled_passes_through_synced_data(self) -> None:
         """The synced_data from parent is returned unchanged when builder is disabled."""
-        round_ = _make_round(PolymarketSetApprovalRound)
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         round_.context.params.polymarket_builder_program_enabled = False
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
@@ -274,8 +303,11 @@ class TestPolymarketSetApprovalRound:
 # ---------------------------------------------------------------------------
 
 
-class TestPolymarketPostSetApprovalRound:
+class TestPolymarketPostSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
     """Tests for PolymarketPostSetApprovalRound.end_block."""
+
+    _synchronized_data_class = SynchronizedData
+    _event_class = Event
 
     def test_payload_class(self) -> None:
         """Payload class is PolymarketPostSetApprovalPayload."""
@@ -298,7 +330,9 @@ class TestPolymarketPostSetApprovalRound:
 
     def test_end_block_returns_none_when_parent_returns_none(self) -> None:
         """Returns None when super().end_block() returns None."""
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
         with patch(parent_cls, return_value=None):
             result = round_.end_block()
@@ -306,9 +340,9 @@ class TestPolymarketPostSetApprovalRound:
 
     def test_end_block_approval_failed_when_vote_false(self) -> None:
         """Returns APPROVAL_FAILED when consensus vote is False."""
-        from unittest.mock import PropertyMock
-
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
@@ -329,9 +363,9 @@ class TestPolymarketPostSetApprovalRound:
 
     def test_end_block_done_when_vote_true(self) -> None:
         """Passes through (synced_data, DONE) when consensus vote is True."""
-        from unittest.mock import PropertyMock
-
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
@@ -350,7 +384,9 @@ class TestPolymarketPostSetApprovalRound:
 
     def test_end_block_passes_through_no_majority(self) -> None:
         """Passes through NO_MAJORITY event unchanged (most_voted_payload not checked)."""
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         # NO_MAJORITY bypasses most_voted_payload check so no need to patch it
@@ -362,7 +398,9 @@ class TestPolymarketPostSetApprovalRound:
 
     def test_end_block_passes_through_none_event(self) -> None:
         """Passes through NONE event unchanged (most_voted_payload not checked)."""
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         # NONE event bypasses most_voted_payload check
@@ -379,7 +417,9 @@ class TestPolymarketPostSetApprovalRound:
         (equality). The integer 0 compares equal to False but is not identical.
         Routing 0 to APPROVAL_FAILED would incorrectly retry the set-approval flow.
         """
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
@@ -400,7 +440,9 @@ class TestPolymarketPostSetApprovalRound:
         None is falsy but `None is False` is False. Routing None to
         APPROVAL_FAILED would incorrectly retry the set-approval flow.
         """
-        round_ = _make_round(PolymarketPostSetApprovalRound)
+        round_ = PolymarketPostSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
@@ -421,8 +463,11 @@ class TestPolymarketPostSetApprovalRound:
 # ---------------------------------------------------------------------------
 
 
-class TestPolymarketSwapUsdcRound:
+class TestPolymarketSwapUsdcRound(BaseCollectSameUntilThresholdRoundTest):
     """Tests for PolymarketSwapUsdcRound.end_block."""
+
+    _synchronized_data_class = SynchronizedData
+    _event_class = Event
 
     def test_payload_class(self) -> None:
         """Payload class is PolymarketSwapPayload."""
@@ -434,7 +479,9 @@ class TestPolymarketSwapUsdcRound:
 
     def test_end_block_returns_none_when_parent_returns_none(self) -> None:
         """Returns None when super().end_block() returns None."""
-        round_ = _make_round(PolymarketSwapUsdcRound)
+        round_ = PolymarketSwapUsdcRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
         with patch(parent_cls, return_value=None):
             result = round_.end_block()
@@ -442,7 +489,9 @@ class TestPolymarketSwapUsdcRound:
 
     def test_end_block_returns_prepare_tx_when_should_swap_true(self) -> None:
         """Returns PREPARE_TX when most_voted_payload_values[-1] is True."""
-        round_ = _make_round(PolymarketSwapUsdcRound)
+        round_ = PolymarketSwapUsdcRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
         mvpv = ("tx_submitter", "tx_hash", "False", True)
 
@@ -458,7 +507,9 @@ class TestPolymarketSwapUsdcRound:
 
     def test_end_block_returns_done_when_should_swap_false(self) -> None:
         """Returns DONE when most_voted_payload_values[-1] is False."""
-        round_ = _make_round(PolymarketSwapUsdcRound)
+        round_ = PolymarketSwapUsdcRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
         mvpv = ("tx_submitter", "tx_hash", "False", False)
 
@@ -478,7 +529,9 @@ class TestPolymarketSwapUsdcRound:
         The branch is `Event.PREPARE_TX if should_swap else Event.DONE`. None is
         falsy so the result must be DONE, not PREPARE_TX.
         """
-        round_ = _make_round(PolymarketSwapUsdcRound)
+        round_ = PolymarketSwapUsdcRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
         mvpv = ("tx_submitter", "tx_hash", "False", None)
 
@@ -498,7 +551,9 @@ class TestPolymarketSwapUsdcRound:
         The round only overwrites the event; the synchronized data must be
         the exact same object so no state is lost between rounds.
         """
-        round_ = _make_round(PolymarketSwapUsdcRound)
+        round_ = PolymarketSwapUsdcRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
         synced_data_mock = MagicMock(spec=SynchronizedData)
         mvpv = ("tx_submitter", "tx_hash", "False", True)
 
