@@ -285,7 +285,7 @@ class TestIsStakingKpiMet:
         behaviour = self._make_behaviour()
         behaviour.service_staking_state = StakingState.STAKED
         behaviour.staking_kpi_request_count = 100
-        # service_info index 2,1 holds the mech_request_count_on_last_checkpoint
+        behaviour.service_info = [None, None, [None, 5]]  # type: ignore[assignment]
         behaviour.ts_checkpoint = 1000
         behaviour.liveness_period = 10
         behaviour.liveness_ratio = 10**18  # 1 request per second
