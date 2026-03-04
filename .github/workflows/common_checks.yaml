@@ -128,7 +128,7 @@ jobs:
           gitleaks detect --report-format json --report-path --log-opts="HEAD" leak_report -v
 
   test:
-    continue-on-error: True
+    continue-on-error: False
     needs:
       - lock_check
       - copyright_and_dependencies_check
@@ -224,4 +224,4 @@ jobs:
           file: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
-          fail_ci_if_error: false
+          fail_ci_if_error: true
