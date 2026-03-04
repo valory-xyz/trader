@@ -52,7 +52,7 @@ def get_store_path(kwargs: dict) -> Path:
         or not os.access(path, os.W_OK)
         or not os.access(path, os.R_OK)
     ):
-        msg = f"The store path {path!r} is not a directory or is not writable."
+        msg = f"The store path {path!r} is not a directory or is not accessible."
         raise ValueError(msg)
 
     return Path(path)

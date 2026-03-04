@@ -389,3 +389,57 @@ def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
     data = SynchronizedData(db=AbciAppDB(setup_data={"test": ["test"]}))
     assert data.db._data == {0: {"test": ["test"]}}
+
+
+class TestSynchronizedDataProperties:
+    """Tests for SynchronizedData property accessors."""
+
+    def test_previous_checkpoint_none_when_not_set(self) -> None:
+        """Test previous_checkpoint returns None when not in setup_data."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.previous_checkpoint is None
+
+    def test_previous_checkpoint_returns_int_when_set(self) -> None:
+        """Test previous_checkpoint returns an int when set."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"previous_checkpoint": [12345]})
+        )
+        result = data.previous_checkpoint
+        assert result == 12345
+        assert isinstance(result, int)
+
+    def test_is_checkpoint_reached_default_false(self) -> None:
+        """Test is_checkpoint_reached returns False by default."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.is_checkpoint_reached is False
+
+    def test_is_checkpoint_reached_true_when_set(self) -> None:
+        """Test is_checkpoint_reached returns True when set."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"is_checkpoint_reached": [True]})
+        )
+        assert data.is_checkpoint_reached is True
+
+    def test_agent_ids_default_empty_list_string(self) -> None:
+        """Test agent_ids returns '[]' by default."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.agent_ids == "[]"
+
+    def test_agent_ids_returns_set_value(self) -> None:
+        """Test agent_ids returns the set value."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"agent_ids": ['[1, 2, 3]']})
+        )
+        assert data.agent_ids == "[1, 2, 3]"
+
+    def test_service_id_default_none(self) -> None:
+        """Test service_id returns None by default."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.service_id is None
+
+    def test_service_id_returns_set_value(self) -> None:
+        """Test service_id returns the set value."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"service_id": [42]})
+        )
+        assert data.service_id == 42
