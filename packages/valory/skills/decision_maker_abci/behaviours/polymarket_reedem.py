@@ -30,7 +30,7 @@ from packages.valory.contracts.conditional_tokens.contract import (
     ConditionalTokensContract,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload, get_name
 from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
@@ -60,6 +60,11 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         """Initialize `RedeemBehaviour`."""
         super().__init__(**kwargs)
         self._user_token_balance: Optional[int] = None
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        self._store_utilized_tools()
+        yield from super().finish_behaviour(payload)
 
     @property
     def user_token_balance(self) -> Optional[int]:
@@ -112,6 +117,52 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             return None
 
         return self.user_token_balance
+
+    def _update_policy_for_redeemable_positions(
+        self, redeemable_positions: list
+    ) -> None:
+        """Update policy accuracy store for each redeemable (settled) position.
+
+        ``redeemable=True`` from the Polymarket positions API includes both winning
+        and losing settled positions.  The ``curPrice`` field is 1.0 for a winning
+        outcome token and 0.0 for a losing one once the market has resolved, so we
+        use a 0.5 midpoint threshold to distinguish them.  This mirrors how
+        ``RedeemInfoBehaviour._update_policy`` in reedem.py handles Omen trades
+        via ``Trade.is_winning``.
+
+        :param redeemable_positions: list of position dicts from the Polymarket API.
+        """
+        for position in redeemable_positions:
+            condition_id = position.get("conditionId")
+            if condition_id is None:
+                continue
+            tool = self.utilized_tools.get(condition_id)
+            if tool is None:
+                self.context.logger.warning(
+                    f"No tool recorded for condition_id {condition_id!r}; "
+                    "skipping accuracy store update."
+                )
+                continue
+            cur_price = position.get("curPrice")
+            if cur_price is None:
+                self.context.logger.warning(
+                    f"No curPrice for condition_id {condition_id!r}; "
+                    "skipping accuracy store update."
+                )
+                continue
+            winning = float(cur_price) > 0.5
+            try:
+                self.policy.update_accuracy_store(tool, winning=winning)
+                outcome = "winning" if winning else "losing"
+                self.context.logger.info(
+                    f"Updated accuracy store for tool {tool!r} ({outcome}, curPrice={cur_price}) "
+                    f"from condition_id {condition_id!r}."
+                )
+                del self.utilized_tools[condition_id]
+            except KeyError:
+                self.context.logger.warning(
+                    f"Tool {tool!r} not found in accuracy store; skipping."
+                )
 
     def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
         """Fetch redeemable positions from Polymarket."""
@@ -195,23 +246,24 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             is_policy_set = self.synchronized_data.is_policy_set
 
             current_mech_tools = json.dumps(list(self.mech_tools))
-            current_policy = self.policy.serialize() if is_policy_set else None
-            current_utilized_tools = json.dumps(self.utilized_tools)
-
-            # TODO: Tool accuracy update is not implemented for Polymarket.
-            # Unlike Omen (reedem.py), this behaviour does not update the e-greedy
-            # policy's accuracy store based on whether redeemed positions were winning
-            # or losing. To implement this, a `polymarket_utilized_tools` mapping of
-            # {conditionId -> tool_name} should be maintained (recorded at bet placement
-            # in the tx settlement multiplexer), and each redeemable position's outcome
-            # should be used to call `policy.update_accuracy_store(tool, winning)` here,
-            # mirroring RedeemInfoBehaviour._update_policy in reedem.py.
 
             # Fetch redeemable positions once for both flows
             redeemable_positions = yield from self._fetch_redeemable_positions()
             self.context.logger.info(
                 f"Fetched {len(redeemable_positions)} redeemable positions"
             )
+
+            # Update the e-greedy policy's accuracy store for every winning position
+            # whose conditionId is recorded in utilized_tools.  All positions returned
+            # by the Polymarket API with redeemable=True are winning positions, so the
+            # update is always called with winning=True.  This mirrors
+            # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
+            self._update_policy_for_redeemable_positions(redeemable_positions)
+
+            # Re-serialise policy and utilized_tools *after* the accuracy-store update
+            # so that the updated values are carried in the payload.
+            current_policy = self.policy.serialize() if is_policy_set else None
+            current_utilized_tools = json.dumps(self.utilized_tools)
 
             if redeemable_positions == []:
                 self.context.logger.info("No redeemable positions found.")

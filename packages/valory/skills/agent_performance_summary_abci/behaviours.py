@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.contracts.erc20.contract import ERC20
+from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -97,7 +97,7 @@ SECONDS_PER_DAY = 86400
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
-POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.7
+POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.5
 POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = """My Polystrat agent just made {roi}\u00d7 ROI on Polymarket! \U0001f680
 
 Check it out\U0001f447

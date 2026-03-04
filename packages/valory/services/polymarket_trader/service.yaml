@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidu4dzwvdubikfubltjwxa4akdfze3xdhdwd23c6gyaawpal5rkte
+agent: valory/trader:0.1.0:bafybeib5n7jlbgewefxx3a27dvdlnxt4b2uhllnkqiwvfiyo3wft7logli
 number_of_agents: 1
 deployment:
   agent:
@@ -160,6 +160,7 @@ models:
       slippages_for_swap: ${SLIPPAGES_FOR_SWAP:dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:true}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
+      deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}

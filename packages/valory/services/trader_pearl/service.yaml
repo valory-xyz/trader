@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidu4dzwvdubikfubltjwxa4akdfze3xdhdwd23c6gyaawpal5rkte
+agent: valory/trader:0.1.0:bafybeib5n7jlbgewefxx3a27dvdlnxt4b2uhllnkqiwvfiyo3wft7logli
 number_of_agents: 1
 deployment:
   agent:
@@ -157,6 +157,7 @@ models:
       penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
+      deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}
@@ -298,7 +299,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
-      url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
+      url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -328,7 +329,7 @@ models:
       error_index: ${MECHSPH_ERROR_INDEX:int:0}
       error_type: ${MECHSPH_ERROR_TYPE:str:dict}
       retries: ${MECHS_SUBGRAPH_RETRIES:int:5}
-      url: ${MECHS_SUBGRAPH_URL:str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
+      url: ${MECHS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
       delivery_rate_cap: ${DELIVERY_RATE_CAP:int:10000000000000000}
 ---
 public_id: valory/ledger:0.19.0
