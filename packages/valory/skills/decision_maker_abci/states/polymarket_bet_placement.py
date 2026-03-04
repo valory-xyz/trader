@@ -50,10 +50,11 @@ class PolymarketBetPlacementRound(TxPreparationRound):
         # For static checking
         # Event.BET_PLACEMENT_DONE, Event.BET_PLACEMENT_FAILED, Event.INSUFFICIENT_BALANCE, Event.BET_PLACEMENT_IMPOSSIBLE
 
-        # Extract event and cached_signed_orders from payload
-        # Payload: sender(0), tx_submitter(1), tx_hash(2), mocking_mode(3), event(4), cached_signed_orders(5)
-        event = Event(self.most_voted_payload_values[-2])
-        cached_orders = self.most_voted_payload_values[-1]
+        # Extract event, cached_signed_orders, and utilized_tools from payload
+        # Payload: sender(0), tx_submitter(1), tx_hash(2), mocking_mode(3), event(4), cached_signed_orders(5), utilized_tools(6)
+        event = Event(self.most_voted_payload_values[-3])
+        cached_orders = self.most_voted_payload_values[-2]
+        utilized_tools_update = self.most_voted_payload_values[-1]
 
         # Persist cached orders to synchronized data
         if cached_orders is not None:
@@ -62,6 +63,17 @@ class PolymarketBetPlacementRound(TxPreparationRound):
                 synced_data.update(
                     synchronized_data_class=self.synchronized_data_class,
                     **{"cached_signed_orders": cached_orders}
+                ),
+            )
+
+        # Persist the conditionId→tool mapping so the redeem behaviour can later
+        # call policy.update_accuracy_store for each winning position.
+        if utilized_tools_update is not None:
+            synced_data = cast(
+                SynchronizedData,
+                synced_data.update(
+                    synchronized_data_class=self.synchronized_data_class,
+                    **{"utilized_tools": utilized_tools_update}
                 ),
             )
 

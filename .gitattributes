@@ -1,0 +1,13 @@
+# Force LF line endings for all text files to ensure consistent IPFS hashes across platforms
+* text=auto eol=lf
+
+# Explicitly mark binary files to avoid any line ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary

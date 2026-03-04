@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig6d6njvtjjiqb6m2u2ytom7qrovs2xmbvugx7ni4njxgmdkde2dm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid5ha4o2mftnd5tyznql55coddqpuamuejumbr56gb2quln672jdm
 - valory/market_manager_abci:0.1.0:bafybeihhb7dicqj5fh2qqwogh2m4svesnxippy2lyiix2cq56dpix43rqa
-- valory/decision_maker_abci:0.1.0:bafybeihiq4eablo7gpx473xlx5yrl3xpgfwvcsdpqo3eftsaegncxiagya
-- valory/trader_abci:0.1.0:bafybeiagtm2n7kqy2glbqahyqpdyw5a3co4jyrwpjwssie6credu77655e
+- valory/decision_maker_abci:0.1.0:bafybeiawnimauj2cmwejzbmsgvp7q7yrdakrdq5lw7jn5mxhqlzvirejve
+- valory/trader_abci:0.1.0:bafybeifnwfhcfd6nfoduxdfjrcpsbovgl5yktkkttiwavj34hqf6fzygkm
 - valory/staking_abci:0.1.0:bafybeibluoix3sly35f52paqlwc33n4ibfpnitlzqkt4la6yfq7jv4al6y
-- valory/check_stop_trading_abci:0.1.0:bafybeicxt3yxel66mbi242pshoboiegx7vc2pkr4w6kd2i7lqg6ev24ms4
-- valory/mech_interact_abci:0.1.0:bafybeienj5jzbq2x5hpedqwpa46rmprcdc42536zjyxkmsemjs3jjhl5oe
-- valory/chatui_abci:0.1.0:bafybeidnevjwa6ieaq33ruos4egfezsifssva2jxkciikmwo5kiopbyjbm
-- valory/agent_performance_summary_abci:0.1.0:bafybeigjtospun4f53oh5jb354gsug5vdaavtromno5jxsipknkzvgvu5i
+- valory/check_stop_trading_abci:0.1.0:bafybeigc7kcvnlvajelwc3n63ldtd2gsg3tes5pihqa5nkavhv5c2iims4
+- valory/mech_interact_abci:0.1.0:bafybeifmewonamynusdi3sz5qenlr3f7mu67sic33aub5uzc2w3mpqsyqa
+- valory/chatui_abci:0.1.0:bafybeibdynhjz7pbxwlyitqq6vxqa2ckq4c34v6u5cmu5laqlo5n7z23bq
+- valory/agent_performance_summary_abci:0.1.0:bafybeidvkbfdbx5fup6d25jkunh6vdvf6rl7cznrvawl73nspkw5kyqts4
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 customs:
 - valory/mike_strat:0.1.0:bafybeiacc63betyzzcb7qnmr7rgm6uth6ra5xp25zn4wpe5vzcuvug26zu
@@ -288,6 +288,7 @@ models:
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
       is_outcome_side_threshold_filter_enabled: ${bool:false}
       outcome_side_threshold_filter_threshold: ${float:0.8}
+      deliveries_lookback_days: ${int:30}
   benchmarking_mode:
     args:
       enabled: ${bool:false}
@@ -437,7 +438,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.subgraph.staging.autonolas.tech/api/proxy/mech-marketplace-gnosis}
+      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
       headers:
@@ -470,7 +471,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://subgraph.staging.autonolas.tech/subgraphs/name/marketplace-gnosis-v0_7_0}
+      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
       delivery_rate_cap: ${int:10000000000000000}
   polymarket_agents_subgraph:
     args:

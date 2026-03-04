@@ -23,8 +23,9 @@ import json
 from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
+from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketBetPlacementPayload,
@@ -35,7 +36,7 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 )
 
 
-class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
+class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = PolymarketBetPlacementRound
@@ -168,6 +169,24 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             if signed_order_json:
                 updated_cache[cache_key] = signed_order_json
 
+        # On success, record conditionId → mech_tool so the redeem behaviour can
+        # later update the e-greedy policy's accuracy store for this position.
+        utilized_tools_json = None
+        if event == Event.BET_PLACEMENT_DONE:
+            condition_id = self.get_active_sampled_bet().condition_id
+            if condition_id is not None:
+                self.utilized_tools[condition_id] = self.synchronized_data.mech_tool
+                utilized_tools_json = json.dumps(self.utilized_tools, sort_keys=True)
+                self.context.logger.info(
+                    f"Recorded mech tool {self.synchronized_data.mech_tool!r} "
+                    f"for condition_id {condition_id!r} in utilized_tools."
+                )
+            else:
+                self.context.logger.warning(
+                    "No condition_id found on the sampled bet; "
+                    "utilized_tools will not be updated for this placement."
+                )
+
         payload = PolymarketBetPlacementPayload(
             self.context.agent_address,
             None,
@@ -175,6 +194,12 @@ class PolymarketBetPlacementBehaviour(DecisionMakerBaseBehaviour):
             False,
             event=event.value,
             cached_signed_orders=json.dumps(updated_cache),
+            utilized_tools=utilized_tools_json,
         )
 
         yield from self.finish_behaviour(payload)
+
+    def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
+        """Finish the behaviour."""
+        self._store_utilized_tools()
+        yield from super().finish_behaviour(payload)

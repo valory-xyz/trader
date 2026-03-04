@@ -49,17 +49,6 @@ from packages.valory.skills.decision_maker_abci.policy import (
 
 
 # ---------------------------------------------------------------------------
-# Testable subclass
-# ---------------------------------------------------------------------------
-
-
-class _TestableBehaviour(PolymarketRedeemBehaviour):
-    """Shadows read-only AEA properties with plain instance attributes."""
-
-    context = None  # type: ignore[assignment]
-
-
-# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
@@ -108,19 +97,25 @@ def _make_policy(tool: str = MECH_TOOL) -> EGreedyPolicy:
     )
 
 
-def _make_behaviour() -> _TestableBehaviour:
-    """Return a _TestableBehaviour with just the minimum attributes.
+def _make_behaviour() -> PolymarketRedeemBehaviour:
+    """Return a PolymarketRedeemBehaviour with just the minimum attributes.
 
-    :return: a partially constructed _TestableBehaviour instance.
+    :return: a partially constructed PolymarketRedeemBehaviour instance.
     """
-    behaviour = object.__new__(_TestableBehaviour)
+    behaviour = object.__new__(PolymarketRedeemBehaviour)
 
+    # policy / utilized_tools are accessed as properties on the parent class;
+    # we assign them directly to the instance's __dict__ to bypass the
+    # property descriptor for testing purposes.
+    behaviour.__dict__["_policy"] = _make_policy()
+    behaviour.__dict__["_utilized_tools"] = {CONDITION_ID_KNOWN: MECH_TOOL}
+
+    # context is a read-only property on BaseBehaviour that returns self._context;
+    # inject _context directly to bypass the descriptor.
+    logger = MagicMock()
     context = MagicMock()
-    context.logger = MagicMock()
-    behaviour.context = context
-
-    behaviour._policy = _make_policy()
-    behaviour._utilized_tools = {CONDITION_ID_KNOWN: MECH_TOOL}
+    context.logger = logger
+    behaviour.__dict__["_context"] = context
 
     return behaviour  # type: ignore[return-value]
 
@@ -182,11 +177,11 @@ class TestUpdatePolicyForRedeemablePositions:
         AttributeError and the accuracy store was never mutated.
         """
         behaviour = _make_behaviour()
-        initial_requests = behaviour.policy.accuracy_store[MECH_TOOL].requests
+        initial_requests = behaviour._policy.accuracy_store[MECH_TOOL].requests  # type: ignore[union-attr]
 
         behaviour._update_policy_for_redeemable_positions(REDEEMABLE_POSITIONS_WINNING)  # type: ignore[attr-defined]
 
-        final_requests = behaviour.policy.accuracy_store[MECH_TOOL].requests
+        final_requests = behaviour._policy.accuracy_store[MECH_TOOL].requests  # type: ignore[union-attr]
         assert final_requests == initial_requests + 1, (
             f"accuracy_store[{MECH_TOOL!r}].requests was not incremented. "
             "update_accuracy_store was never called for this position."
@@ -195,13 +190,13 @@ class TestUpdatePolicyForRedeemablePositions:
     def test_accuracy_updated_as_winning_when_cur_price_is_one(self) -> None:
         """curPrice=1.0 means the token won; accuracy must increase."""
         behaviour = _make_behaviour()
-        behaviour.policy.accuracy_store[MECH_TOOL] = AccuracyInfo(
+        behaviour._policy.accuracy_store[MECH_TOOL] = AccuracyInfo(  # type: ignore[union-attr]
             accuracy=0.5, pending=1, requests=10
         )
 
         behaviour._update_policy_for_redeemable_positions(REDEEMABLE_POSITIONS_WINNING)  # type: ignore[attr-defined]
 
-        new_acc = behaviour.policy.accuracy_store[MECH_TOOL].accuracy
+        new_acc = behaviour._policy.accuracy_store[MECH_TOOL].accuracy  # type: ignore[union-attr]
         # 5 correct out of 10 before; adding 1 correct → 6/11 ≈ 0.545 > 0.5
         assert new_acc > 0.5, (
             "Accuracy did not increase after a winning redemption. "
@@ -211,13 +206,13 @@ class TestUpdatePolicyForRedeemablePositions:
     def test_accuracy_updated_as_losing_when_cur_price_is_zero(self) -> None:
         """curPrice=0.0 means the token lost; accuracy must decrease."""
         behaviour = _make_behaviour()
-        behaviour.policy.accuracy_store[MECH_TOOL] = AccuracyInfo(
+        behaviour._policy.accuracy_store[MECH_TOOL] = AccuracyInfo(  # type: ignore[union-attr]
             accuracy=0.5, pending=1, requests=10
         )
 
         behaviour._update_policy_for_redeemable_positions(REDEEMABLE_POSITIONS_LOSING)  # type: ignore[attr-defined]
 
-        new_acc = behaviour.policy.accuracy_store[MECH_TOOL].accuracy
+        new_acc = behaviour._policy.accuracy_store[MECH_TOOL].accuracy  # type: ignore[union-attr]
         # 5 correct out of 10 before; adding 1 incorrect → 5/11 ≈ 0.454 < 0.5
         assert new_acc < 0.5, (
             "Accuracy did not decrease after a losing redemption. "
@@ -227,7 +222,7 @@ class TestUpdatePolicyForRedeemablePositions:
     def test_missing_cur_price_is_skipped_gracefully(self) -> None:
         """A position without a curPrice field must be skipped without raising."""
         behaviour = _make_behaviour()
-        initial_requests = behaviour.policy.accuracy_store[MECH_TOOL].requests
+        initial_requests = behaviour._policy.accuracy_store[MECH_TOOL].requests  # type: ignore[union-attr]
         position_no_price = [
             {
                 "conditionId": CONDITION_ID_KNOWN,
@@ -239,18 +234,18 @@ class TestUpdatePolicyForRedeemablePositions:
 
         behaviour._update_policy_for_redeemable_positions(position_no_price)  # type: ignore[attr-defined]
 
-        assert behaviour.policy.accuracy_store[MECH_TOOL].requests == initial_requests, (
+        assert behaviour._policy.accuracy_store[MECH_TOOL].requests == initial_requests, (  # type: ignore[union-attr]
             "accuracy_store was modified despite curPrice being absent."
         )
 
     def test_pending_decremented(self) -> None:
         """update_accuracy_store decrements pending; verify it is called."""
         behaviour = _make_behaviour()
-        initial_pending = behaviour.policy.accuracy_store[MECH_TOOL].pending
+        initial_pending = behaviour._policy.accuracy_store[MECH_TOOL].pending  # type: ignore[union-attr]
 
         behaviour._update_policy_for_redeemable_positions(REDEEMABLE_POSITIONS)  # type: ignore[attr-defined]
 
-        final_pending = behaviour.policy.accuracy_store[MECH_TOOL].pending
+        final_pending = behaviour._policy.accuracy_store[MECH_TOOL].pending  # type: ignore[union-attr]
         assert (
             final_pending == initial_pending - 1
         ), "pending was not decremented; update_accuracy_store was not called."
@@ -258,24 +253,24 @@ class TestUpdatePolicyForRedeemablePositions:
     def test_unknown_condition_id_is_skipped_gracefully(self) -> None:
         """If a redeemable position's conditionId is NOT in utilized_tools (bet placed before the fix, or tool info lost) the method must not raise and must not modify the policy."""
         behaviour = _make_behaviour()
-        behaviour._utilized_tools = {}  # no known tools
-        initial_requests = behaviour.policy.accuracy_store[MECH_TOOL].requests
+        behaviour._utilized_tools = {}  # no known tools  # type: ignore[attr-defined]
+        initial_requests = behaviour._policy.accuracy_store[MECH_TOOL].requests  # type: ignore[union-attr]
 
         # Must not raise even though the conditionId is missing from utilized_tools.
         behaviour._update_policy_for_redeemable_positions(REDEEMABLE_POSITIONS)  # type: ignore[attr-defined]
 
-        assert behaviour.policy.accuracy_store[MECH_TOOL].requests == initial_requests, (
+        assert behaviour._policy.accuracy_store[MECH_TOOL].requests == initial_requests, (  # type: ignore[union-attr]
             "accuracy_store was modified for a position with no corresponding tool entry."
         )
 
     def test_empty_positions_list_is_a_noop(self) -> None:
         """Calling the method with an empty list must not change the policy."""
         behaviour = _make_behaviour()
-        initial_requests = behaviour.policy.accuracy_store[MECH_TOOL].requests
+        initial_requests = behaviour._policy.accuracy_store[MECH_TOOL].requests  # type: ignore[union-attr]
 
         behaviour._update_policy_for_redeemable_positions([])  # type: ignore[attr-defined]
 
-        assert behaviour.policy.accuracy_store[MECH_TOOL].requests == initial_requests
+        assert behaviour._policy.accuracy_store[MECH_TOOL].requests == initial_requests  # type: ignore[union-attr]
 
     def test_multiple_positions_each_update_their_tool(self) -> None:
         """Multiple redeemable positions update the accuracy store once per position."""
@@ -291,15 +286,15 @@ class TestUpdatePolicyForRedeemablePositions:
             },
         )
 
-        behaviour = object.__new__(_TestableBehaviour)
-        context = MagicMock()
-        context.logger = MagicMock()
-        behaviour.context = context
-        behaviour._policy = policy
-        behaviour._utilized_tools = {
+        behaviour = object.__new__(PolymarketRedeemBehaviour)  # type: ignore[arg-type]
+        behaviour.__dict__["_policy"] = policy
+        behaviour.__dict__["_utilized_tools"] = {
             "0xaaa": tool_a,
             "0xbbb": tool_b,
         }
+        context = MagicMock()
+        context.logger = MagicMock()
+        behaviour.__dict__["_context"] = context
 
         positions = [
             {
