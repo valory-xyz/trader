@@ -61,7 +61,7 @@ behaviours: {}
 models:
   params:
     args:
-      service_endpoint: trader.staging.autonolas.tech/
+      service_endpoint: trader.autonolas.tech/
     class_name: ChatUIParams
   srr_dialogues:
     args: {}
