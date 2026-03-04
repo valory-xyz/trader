@@ -456,10 +456,10 @@ class TestChatuiParamsInit:
             params = ChatuiParams(
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
-                genai_api_key="test-api-key-123",
+                genai_api_key="dummy",
             )
         assert params.service_endpoint == "https://example.com"
-        assert params.genai_api_key == "test-api-key-123"
+        assert params.genai_api_key == "dummy"
 
     def test_init_calls_super(self) -> None:
         """ChatuiParams init must call BaseParams.__init__."""
@@ -468,7 +468,7 @@ class TestChatuiParamsInit:
             ChatuiParams(
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
-                genai_api_key="test-api-key-123",
+                genai_api_key="dummy",
             )
         mock_super.assert_called_once()
 

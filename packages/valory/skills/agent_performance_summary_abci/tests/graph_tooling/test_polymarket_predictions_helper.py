@@ -1841,7 +1841,7 @@ class TestFetchPositionDetails:
             assert result["status"] == "won"
             assert result["payout"] == 1.5
             assert result["currency"] == "USDC"
-            assert "polymarket.com" in result["external_url"]
+            assert result["external_url"].startswith("https://polymarket.com/")
 
     @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post")
     def test_bet_not_found(self, mock_post) -> None:

@@ -339,13 +339,13 @@ class TestHttpHandlerProperties:
         """Test hostname_regex with a custom hostname."""
         handler = _make_handler(service_endpoint="http://myserver.example.com:9090/api")
         regex = handler.hostname_regex
-        assert "myserver.example.com" in regex
+        assert regex.startswith(".*(myserver.example.com")
 
     def test_hostname_regex_https(self) -> None:
         """Test hostname_regex with HTTPS endpoint."""
         handler = _make_handler(service_endpoint="https://secure.example.com/api")
         regex = handler.hostname_regex
-        assert "secure.example.com" in regex
+        assert regex.startswith(".*(secure.example.com")
 
     def test_shared_state_property(self) -> None:
         """Test shared_state property returns cast state."""
