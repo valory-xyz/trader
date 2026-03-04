@@ -131,10 +131,7 @@ def test_all_query_constants_count() -> None:
 
 @pytest.mark.parametrize(
     "constant_name,query_value,expected_operation",
-    [
-        (name, value, op)
-        for name, (value, op) in QUERY_CONSTANTS.items()
-    ],
+    [(name, value, op) for name, (value, op) in QUERY_CONSTANTS.items()],
 )
 def test_query_is_non_empty_string(
     constant_name: str, query_value: str, expected_operation: str
@@ -146,31 +143,25 @@ def test_query_is_non_empty_string(
 
 @pytest.mark.parametrize(
     "constant_name,query_value,expected_operation",
-    [
-        (name, value, op)
-        for name, (value, op) in QUERY_CONSTANTS.items()
-    ],
+    [(name, value, op) for name, (value, op) in QUERY_CONSTANTS.items()],
 )
 def test_query_contains_expected_operation_name(
     constant_name: str, query_value: str, expected_operation: str
 ) -> None:
     """Test that each query constant contains the expected GraphQL operation name."""
-    assert expected_operation in query_value, (
-        f"{constant_name} does not contain expected operation name '{expected_operation}'"
-    )
+    assert (
+        expected_operation in query_value
+    ), f"{constant_name} does not contain expected operation name '{expected_operation}'"
 
 
 @pytest.mark.parametrize(
     "constant_name,query_value,expected_operation",
-    [
-        (name, value, op)
-        for name, (value, op) in QUERY_CONSTANTS.items()
-    ],
+    [(name, value, op) for name, (value, op) in QUERY_CONSTANTS.items()],
 )
 def test_query_contains_query_keyword(
     constant_name: str, query_value: str, expected_operation: str
 ) -> None:
     """Test that each query constant contains the 'query' keyword."""
-    assert "query" in query_value.lower(), (
-        f"{constant_name} does not contain the 'query' keyword"
-    )
+    assert (
+        "query" in query_value.lower()
+    ), f"{constant_name} does not contain the 'query' keyword"

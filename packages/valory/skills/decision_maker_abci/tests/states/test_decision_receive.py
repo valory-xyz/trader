@@ -41,7 +41,6 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
 
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"
@@ -69,7 +68,7 @@ def get_payloads(
     bets_hash: str,
     policy: str,
     should_be_sold: bool,
-) -> Mapping[str, UpdateBetsPayload]:
+) -> Mapping[str, DecisionReceivePayload]:
     """Get payloads."""
     return {
         participant: DecisionReceivePayload(
@@ -94,7 +93,7 @@ class RoundTestCase:
 
     name: str
     initial_data: Dict[str, Hashable]
-    payloads: Mapping[str, UpdateBetsPayload]
+    payloads: Mapping[str, DecisionReceivePayload]
     final_data: Dict[str, Hashable]
     event: Event
     most_voted_payload: Any
@@ -248,7 +247,7 @@ class TestDecisionReceiveRound(BaseCollectSameUntilThresholdRoundTest):
 
         self._test_round(
             test_round=test_round,
-            round_payloads=test_case.payloads,
+            round_payloads=test_case.payloads,  # type: ignore[arg-type]
             synchronized_data_update_fn=lambda sync_data, _: sync_data.update(
                 **test_case.final_data
             ),
@@ -377,8 +376,8 @@ class TestDecisionReceiveRoundEndBlock:
         mock_synced_data.update.return_value = updated_synced_data
         round_instance = self._make_round(review_bets_for_selling=True)
         # Make synchronized_data.should_be_sold True (for `self.synchronized_data.should_be_sold`)
-        round_instance.synchronized_data.should_be_sold = True
-        mock_payload_values = (
+        round_instance.synchronized_data.should_be_sold = True  # type: ignore[misc]
+        mock_payload_values = (  # type: ignore[misc]
             "bets_hash",
             True,
             1,
@@ -416,8 +415,8 @@ class TestDecisionReceiveRoundEndBlock:
         updated_synced_data.should_be_sold = False
         mock_synced_data.update.return_value = updated_synced_data
         round_instance = self._make_round(review_bets_for_selling=True)
-        round_instance.synchronized_data.should_be_sold = False
-        mock_payload_values = (
+        round_instance.synchronized_data.should_be_sold = False  # type: ignore[misc]
+        mock_payload_values = (  # type: ignore[misc]
             "bets_hash",
             True,
             1,

@@ -34,7 +34,7 @@ Level 2 – the round must persist the mapping:
 
 import dataclasses
 import json
-from typing import Any, Dict, cast
+from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (

@@ -26,14 +26,17 @@ from packages.valory.skills.decision_maker_abci.utils.general import suppress_lo
 
 def test_suppress_logs_suppresses_logging() -> None:
     """Test that suppress_logs suppresses logging at the specified level."""
-    logger = logging.getLogger("test_suppress")
+    _ = logging.getLogger("test_suppress")
 
     with suppress_logs(logging.CRITICAL):
         # Inside the context manager, logging should be disabled at CRITICAL level
         assert logging.root.manager.disable == logging.CRITICAL
 
     # After exiting, logging should be restored to the previous level
-    assert logging.root.manager.disable != logging.CRITICAL or logging.root.manager.disable == 0
+    assert (
+        logging.root.manager.disable != logging.CRITICAL
+        or logging.root.manager.disable == 0
+    )
 
 
 def test_suppress_logs_restores_previous_level() -> None:

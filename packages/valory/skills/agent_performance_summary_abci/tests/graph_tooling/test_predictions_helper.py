@@ -22,23 +22,22 @@
 import json
 import os
 import tempfile
-from datetime import datetime
 from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
+    BetSide,
+    BetStatus,
     GRAPHQL_BATCH_SIZE,
     INVALID_ANSWER_HEX,
     ISO_TIMESTAMP_FORMAT,
     PREDICT_BASE_URL,
-    WEI_TO_NATIVE,
-    BetSide,
-    BetStatus,
     PredictionsFetcher,
     TradingStrategy,
     TradingStrategyUI,
+    WEI_TO_NATIVE,
 )
 
 
@@ -76,11 +75,15 @@ class TestTradingStrategy:
 
     def test_kelly_criterion(self) -> None:
         """Test KELLY_CRITERION_NO_CONF value."""
-        assert TradingStrategy.KELLY_CRITERION_NO_CONF.value == "kelly_criterion_no_conf"
+        assert (
+            TradingStrategy.KELLY_CRITERION_NO_CONF.value == "kelly_criterion_no_conf"
+        )
 
     def test_bet_amount_per_threshold(self) -> None:
         """Test BET_AMOUNT_PER_THRESHOLD value."""
-        assert TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value == "bet_amount_per_threshold"
+        assert (
+            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value == "bet_amount_per_threshold"
+        )
 
     def test_total_members(self) -> None:
         """Test that TradingStrategy has exactly 2 members."""
@@ -129,7 +132,10 @@ class TestConstants:
 
     def test_invalid_answer_hex(self) -> None:
         """Test INVALID_ANSWER_HEX constant."""
-        assert INVALID_ANSWER_HEX == "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        assert (
+            INVALID_ANSWER_HEX
+            == "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        )
 
     def test_predict_base_url(self) -> None:
         """Test PREDICT_BASE_URL constant."""
@@ -149,7 +155,7 @@ class TestConstants:
 # ---------------------------------------------------------------------------
 
 
-def _make_fetcher():
+def _make_fetcher() -> PredictionsFetcher:  # type: ignore[no-untyped-def]
     """Create a PredictionsFetcher instance with mocked context and logger."""
     context = MagicMock()
     context.olas_agents_subgraph.url = "https://subgraph.test/olas"
@@ -159,18 +165,18 @@ def _make_fetcher():
     return fetcher
 
 
-def _make_bet(
-    bet_id="bet_1",
-    amount=str(1 * WEI_TO_NATIVE),
-    outcome_index=0,
-    timestamp="1700000000",
-    fpmm_id="market_1",
-    question="Will it rain?",
-    current_answer="0x0000000000000000000000000000000000000000000000000000000000000000",
-    current_answer_timestamp="1700001000",
-    outcomes=None,
-    participants=None,
-):
+def _make_bet(  # type: ignore[no-untyped-def]
+    bet_id: str = "bet_1",
+    amount: str = str(1 * WEI_TO_NATIVE),  # noqa: B008
+    outcome_index: int = 0,
+    timestamp: str = "1700000000",
+    fpmm_id: str = "market_1",
+    question: str = "Will it rain?",
+    current_answer: str = "0x0000000000000000000000000000000000000000000000000000000000000000",
+    current_answer_timestamp: str = "1700001000",
+    outcomes: Optional[List[str]] = None,
+    participants: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     """Create a mock bet dict for testing."""
     if outcomes is None:
         outcomes = ["Yes", "No"]
@@ -222,8 +228,10 @@ class TestPredictionsFetcherInit:
 class TestFetchPredictions:
     """Tests for fetch_predictions."""
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_successful_fetch(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_successful_fetch(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test successful fetch of predictions."""
         fetcher = _make_fetcher()
 
@@ -263,8 +271,10 @@ class TestFetchPredictions:
         assert result["total_predictions"] == 1
         assert len(result["items"]) == 1
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_trader_agent(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_trader_agent(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when no trader agent is found."""
         fetcher = _make_fetcher()
 
@@ -277,8 +287,10 @@ class TestFetchPredictions:
 
         assert result == {"total_predictions": 0, "items": []}
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_bets(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_bets(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when trader agent has no bets."""
         fetcher = _make_fetcher()
 
@@ -311,8 +323,10 @@ class TestFetchPredictions:
         assert result["total_predictions"] == 0
         assert result["items"] == []
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_with_status_filter(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_with_status_filter(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test filtering predictions by status."""
         fetcher = _make_fetcher()
 
@@ -353,8 +367,10 @@ class TestFetchPredictions:
         assert result["total_predictions"] == 1
         assert result["items"] == []
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_with_skip(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_with_skip(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test pagination with skip parameter."""
         fetcher = _make_fetcher()
 
@@ -376,8 +392,10 @@ class TestFetchPredictions:
 class TestFetchTraderAgentBets:
     """Tests for _fetch_trader_agent_bets."""
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_non_200_response(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_non_200_response(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of non-200 HTTP response."""
         fetcher = _make_fetcher()
 
@@ -390,8 +408,10 @@ class TestFetchTraderAgentBets:
         assert result is None
         fetcher.logger.error.assert_called_once()
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_exception_handling(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_exception_handling(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of request exceptions."""
         fetcher = _make_fetcher()
         mock_post.side_effect = Exception("Connection error")
@@ -401,8 +421,10 @@ class TestFetchTraderAgentBets:
         assert result is None
         fetcher.logger.error.assert_called_once()
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_empty_participants(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_empty_participants(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when marketParticipants is empty."""
         fetcher = _make_fetcher()
 
@@ -415,8 +437,10 @@ class TestFetchTraderAgentBets:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_participants(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_participants(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when marketParticipants is None."""
         fetcher = _make_fetcher()
 
@@ -429,8 +453,10 @@ class TestFetchTraderAgentBets:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_multiple_participants(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_multiple_participants(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test with multiple participants aggregating bets."""
         fetcher = _make_fetcher()
 
@@ -467,11 +493,13 @@ class TestFetchTraderAgentBets:
 
         result = fetcher._fetch_trader_agent_bets("0xsafe", 10, 0)
 
-        assert result["totalBets"] == 3
-        assert len(result["bets"]) == 3
+        assert result["totalBets"] == 3  # type: ignore[index]
+        assert len(result["bets"]) == 3  # type: ignore[index]
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_participant_with_none_bets(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_participant_with_none_bets(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test participant with None bets list."""
         fetcher = _make_fetcher()
 
@@ -495,11 +523,13 @@ class TestFetchTraderAgentBets:
 
         result = fetcher._fetch_trader_agent_bets("0xsafe", 10, 0)
 
-        assert result["totalBets"] == 0
-        assert result["bets"] == []
+        assert result["totalBets"] == 0  # type: ignore[index]
+        assert result["bets"] == []  # type: ignore[index]
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_participant_with_none_fpmm(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_participant_with_none_fpmm(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test participant with None fixedProductMarketMaker."""
         fetcher = _make_fetcher()
 
@@ -523,8 +553,8 @@ class TestFetchTraderAgentBets:
 
         result = fetcher._fetch_trader_agent_bets("0xsafe", 10, 0)
 
-        assert result["totalBets"] == 0
-        assert len(result["bets"]) == 1
+        assert result["totalBets"] == 0  # type: ignore[index]
+        assert len(result["bets"]) == 1  # type: ignore[index]
 
 
 # ---------------------------------------------------------------------------
@@ -535,8 +565,10 @@ class TestFetchTraderAgentBets:
 class TestFetchMechToolForQuestion:
     """Tests for fetch_mech_tool_for_question."""
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_successful_fetch(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_successful_fetch(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test successful fetch of mech tool."""
         fetcher = _make_fetcher()
 
@@ -545,9 +577,7 @@ class TestFetchMechToolForQuestion:
         mock_response.json.return_value = {
             "data": {
                 "sender": {
-                    "requests": [
-                        {"parsedRequest": {"tool": "prediction-online"}}
-                    ]
+                    "requests": [{"parsedRequest": {"tool": "prediction-online"}}]
                 }
             }
         }
@@ -557,8 +587,10 @@ class TestFetchMechToolForQuestion:
 
         assert result == "prediction-online"
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_non_200_response(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_non_200_response(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of non-200 HTTP response."""
         fetcher = _make_fetcher()
 
@@ -570,24 +602,26 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_empty_requests_list(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_empty_requests_list(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when requests list is empty."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"sender": {"requests": []}}
-        }
+        mock_response.json.return_value = {"data": {"sender": {"requests": []}}}
         mock_post.return_value = mock_response
 
         result = fetcher.fetch_mech_tool_for_question("Q?", "0xsender")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_parsed_request(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_parsed_request(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when parsedRequest is missing."""
         fetcher = _make_fetcher()
 
@@ -602,8 +636,10 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_exception_handling(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_exception_handling(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of request exceptions."""
         fetcher = _make_fetcher()
         mock_post.side_effect = Exception("Network error")
@@ -612,8 +648,10 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_sender_data(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_sender_data(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when sender data is None."""
         fetcher = _make_fetcher()
 
@@ -626,8 +664,10 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_data(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_data(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when data is None."""
         fetcher = _make_fetcher()
 
@@ -640,32 +680,32 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_requests_list(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_requests_list(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when requests list is None."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"sender": {"requests": None}}
-        }
+        mock_response.json.return_value = {"data": {"sender": {"requests": None}}}
         mock_post.return_value = mock_response
 
         result = fetcher.fetch_mech_tool_for_question("Q?", "0xsender")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_first_request(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_first_request(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when first request is None."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"sender": {"requests": [None]}}
-        }
+        mock_response.json.return_value = {"data": {"sender": {"requests": [None]}}}
         mock_post.return_value = mock_response
 
         result = fetcher.fetch_mech_tool_for_question("Q?", "0xsender")
@@ -689,8 +729,10 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_successful_fetch(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_successful_fetch(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test successful fetch of prediction response."""
         fetcher = _make_fetcher()
 
@@ -700,11 +742,7 @@ class TestFetchPredictionResponseFromMech:
         mock_response.json.return_value = {
             "data": {
                 "requests": [
-                    {
-                        "deliveries": [
-                            {"toolResponse": json.dumps(prediction_data)}
-                        ]
-                    }
+                    {"deliveries": [{"toolResponse": json.dumps(prediction_data)}]}
                 ]
             }
         }
@@ -714,8 +752,10 @@ class TestFetchPredictionResponseFromMech:
 
         assert result == prediction_data
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_non_200_response(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_non_200_response(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of non-200 HTTP response."""
         fetcher = _make_fetcher()
 
@@ -727,8 +767,10 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_empty_requests(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_empty_requests(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when requests list is empty."""
         fetcher = _make_fetcher()
 
@@ -741,24 +783,26 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_empty_deliveries(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_empty_deliveries(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when deliveries list is empty."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"requests": [{"deliveries": []}]}
-        }
+        mock_response.json.return_value = {"data": {"requests": [{"deliveries": []}]}}
         mock_post.return_value = mock_response
 
         result = fetcher._fetch_prediction_response_from_mech("Q?", "0xsender")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_tool_response(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_tool_response(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when toolResponse is missing."""
         fetcher = _make_fetcher()
 
@@ -773,19 +817,17 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_invalid_json_in_tool_response(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_invalid_json_in_tool_response(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when toolResponse has invalid JSON."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "data": {
-                "requests": [
-                    {"deliveries": [{"toolResponse": "not-valid-json"}]}
-                ]
-            }
+            "data": {"requests": [{"deliveries": [{"toolResponse": "not-valid-json"}]}]}
         }
         mock_post.return_value = mock_response
 
@@ -793,8 +835,10 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_exception_handling(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_exception_handling(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of request exceptions."""
         fetcher = _make_fetcher()
         mock_post.side_effect = Exception("Network error")
@@ -803,8 +847,10 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_requests_list(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_requests_list(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when requests list is None."""
         fetcher = _make_fetcher()
 
@@ -817,24 +863,26 @@ class TestFetchPredictionResponseFromMech:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_deliveries(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_deliveries(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when deliveries is None."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"requests": [{"deliveries": None}]}
-        }
+        mock_response.json.return_value = {"data": {"requests": [{"deliveries": None}]}}
         mock_post.return_value = mock_response
 
         result = fetcher._fetch_prediction_response_from_mech("Q?", "0xsender")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_data(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_data(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when data is None."""
         fetcher = _make_fetcher()
 
@@ -871,7 +919,7 @@ class TestFormatPredictions:
     def test_status_filter_excludes_non_matching(self) -> None:
         """Test that status filter excludes non-matching bets."""
         fetcher = _make_fetcher()
-        bets = [_make_bet(current_answer=None)]  # pending bet
+        bets = [_make_bet(current_answer=None)]  # type: ignore[arg-type]
 
         result = fetcher._format_predictions(bets, "0xsafe", status_filter="won")
 
@@ -880,7 +928,7 @@ class TestFormatPredictions:
     def test_status_filter_includes_matching(self) -> None:
         """Test that status filter includes matching bets."""
         fetcher = _make_fetcher()
-        bets = [_make_bet(current_answer=None)]  # pending bet
+        bets = [_make_bet(current_answer=None)]  # type: ignore[arg-type]
 
         result = fetcher._format_predictions(bets, "0xsafe", status_filter="pending")
 
@@ -918,10 +966,9 @@ class TestFormatPredictions:
             }
         ]
 
-        # The source code's _get_prediction_status does
-        # fpmm = bet.get("fixedProductMarketMaker", {})
-        # which returns None (not {}) when the key is present but None,
-        # then fpmm.get("currentAnswer") raises AttributeError.
+        # The source code's _get_prediction_status retrieves the
+        # fixedProductMarketMaker dict from bet, then calls
+        # .get("currentAnswer") on it which raises AttributeError.
         # This is caught by the caller or represents a genuine edge case.
         with pytest.raises(AttributeError):
             fetcher._format_predictions(bets, "0xsafe")
@@ -991,7 +1038,7 @@ class TestBuildMarketContext:
     def test_null_answer_not_accumulated(self) -> None:
         """Test that null answers are not accumulated."""
         fetcher = _make_fetcher()
-        bets = [_make_bet(current_answer=None)]
+        bets = [_make_bet(current_answer=None)]  # type: ignore[arg-type]
 
         ctx = fetcher._build_market_context(bets)
 
@@ -1065,9 +1112,7 @@ class TestCalculateBetNetProfit:
     def test_no_market_ctx(self) -> None:
         """Test when market context is None."""
         fetcher = _make_fetcher()
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, None, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, None, 1.0)
 
         assert result == (0.0, None)
 
@@ -1075,9 +1120,7 @@ class TestCalculateBetNetProfit:
         """Test when market is not resolved (current_answer is None)."""
         fetcher = _make_fetcher()
         ctx = {"current_answer": None}
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1089,9 +1132,7 @@ class TestCalculateBetNetProfit:
             "total_payout": 2.0,
             "total_traded": 4.0,
         }
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         # refund_share = 2.0 * (1.0 / 4.0) = 0.5
         # net_profit = 0.5 - 1.0 = -0.5
@@ -1105,9 +1146,7 @@ class TestCalculateBetNetProfit:
             "total_payout": 0,
             "total_traded": 0,
         }
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1121,9 +1160,7 @@ class TestCalculateBetNetProfit:
             "winning_total_amount": 1.0,
         }
         # outcome_index 1 != correct answer 0
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 1}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 1}, ctx, 1.0)
 
         assert result == (-1.0, 0.0)
 
@@ -1136,9 +1173,7 @@ class TestCalculateBetNetProfit:
             "total_traded": 1.0,
             "winning_total_amount": 1.0,
         }
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         # payout_share = 2.0 * (1.0 / 1.0) = 2.0
         # net_profit = 2.0 - 1.0 = 1.0
@@ -1153,9 +1188,7 @@ class TestCalculateBetNetProfit:
             "total_traded": 1.0,
             "winning_total_amount": 0,
         }
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1167,9 +1200,7 @@ class TestCalculateBetNetProfit:
             "total_payout": 2.0,
             "total_traded": 0,
         }
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1182,9 +1213,7 @@ class TestCalculateBetNetProfit:
             "total_traded": 1.0,
             "winning_total_amount": 0,
         }
-        result = fetcher._calculate_bet_net_profit(
-            {"outcomeIndex": 0}, ctx, 1.0
-        )
+        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1457,7 +1486,7 @@ class TestLoadAgentPerformanceData:
         fetcher = _make_fetcher()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            data = {"prediction_history": {"items": []}}
+            data = {"prediction_history": {"items": []}}  # type: ignore[var-annotated]
             filepath = os.path.join(tmpdir, "agent_performance.json")
             with open(filepath, "w") as f:
                 json.dump(data, f)
@@ -1649,8 +1678,10 @@ class TestFormatBetForPosition:
 class TestFetchBetFromSubgraph:
     """Tests for _fetch_bet_from_subgraph."""
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_successful_fetch(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_successful_fetch(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test successful fetch of bet from subgraph."""
         fetcher = _make_fetcher()
 
@@ -1691,8 +1722,10 @@ class TestFetchBetFromSubgraph:
         assert result["id"] == "bet_1"
         assert result["market"]["id"] == "m1"
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_non_200_response(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_non_200_response(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of non-200 response."""
         fetcher = _make_fetcher()
 
@@ -1704,8 +1737,10 @@ class TestFetchBetFromSubgraph:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_trader_agent(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_trader_agent(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when traderAgent is None."""
         fetcher = _make_fetcher()
 
@@ -1718,24 +1753,26 @@ class TestFetchBetFromSubgraph:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_empty_bets(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_empty_bets(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when bets list is empty."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"traderAgent": {"bets": []}}
-        }
+        mock_response.json.return_value = {"data": {"traderAgent": {"bets": []}}}
         mock_post.return_value = mock_response
 
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_exception_handling(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_exception_handling(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test handling of request exceptions."""
         fetcher = _make_fetcher()
         mock_post.side_effect = Exception("Network error")
@@ -1744,8 +1781,10 @@ class TestFetchBetFromSubgraph:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_data(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_data(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when data is None."""
         fetcher = _make_fetcher()
 
@@ -1758,8 +1797,10 @@ class TestFetchBetFromSubgraph:
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_bet_not_found_uses_first(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_bet_not_found_uses_first(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when bet_id doesn't match any bet, falls back to first."""
         fetcher = _make_fetcher()
 
@@ -1797,24 +1838,28 @@ class TestFetchBetFromSubgraph:
         assert result["id"] == "other_bet"
         assert result["status"] == "pending"
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_bets_key(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_bets_key(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
         """Test when traderAgent has no bets key."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"traderAgent": {"bets": None}}
-        }
+        mock_response.json.return_value = {"data": {"traderAgent": {"bets": None}}}
         mock_post.return_value = mock_response
 
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_bets_truthy_for_get_but_falsy_for_getitem(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_bets_truthy_for_get_but_falsy_for_getitem(  # type: ignore[no-untyped-def]
+        self, mock_post: MagicMock
+    ) -> None:
         """Test the secondary empty check after bets = trader_agent['bets'].
 
         Line 517: ``not trader_agent.get("bets")`` uses dict.get which returns
@@ -1822,23 +1867,26 @@ class TestFetchBetFromSubgraph:
         We craft a dict subclass where get() returns a truthy sentinel but
         __getitem__ returns an empty list so the ``if not bets:`` guard on
         line 522 is entered.
+
+        :param mock_post: patched requests.post.
         """
         fetcher = _make_fetcher()
 
+        # type: ignore[no-untyped-def]
         class SplitBetsDict(dict):
             """Dict where get('bets') is truthy but d['bets'] is falsy."""
 
-            def __bool__(self):
+            def __bool__(self) -> bool:  # type: ignore[no-untyped-def]
                 """Always truthy so ``not trader_agent`` is False."""
                 return True
 
-            def get(self, key, default=None):
+            def get(self, key: Any, default: Any = None) -> Any:
                 """Return truthy sentinel for 'bets'."""
-                if key == "bets":
+                if key == "bets":  # type: ignore[no-untyped-def]
                     return [{"sentinel": True}]  # truthy -> passes line 517
                 return super().get(key, default)
 
-            def __getitem__(self, key):
+            def __getitem__(self, key: Any) -> Any:
                 """Return empty list for 'bets'."""
                 if key == "bets":
                     return []  # falsy -> triggers line 522
@@ -1848,17 +1896,18 @@ class TestFetchBetFromSubgraph:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {"traderAgent": trader_agent}
-        }
+        mock_response.json.return_value = {"data": {"traderAgent": trader_agent}}
         mock_post.return_value = mock_response
 
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_pending_status_no_settled_at(self, mock_post) -> None:
+    # type: ignore[no-untyped-def]
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_pending_status_no_settled_at(self, mock_post: MagicMock) -> None:
         """Test that pending status results in no settled_at."""
         fetcher = _make_fetcher()
 
@@ -1890,15 +1939,20 @@ class TestFetchBetFromSubgraph:
 
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
-        assert result["settled_at"] is None
+        assert result["settled_at"] is None  # type: ignore[index]
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_null_fpmm(self, mock_post) -> None:
+    # type: ignore[no-untyped-def]
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_null_fpmm(self, mock_post: MagicMock) -> None:
         """Test when fpmm is None.
 
         The _fetch_bet_from_subgraph method wraps everything in try/except,
         so when fpmm is None and code tries fpmm.get("id"), it will
         raise AttributeError which gets caught and returns None.
+
+        :param mock_post: patched requests.post.
         """
         fetcher = _make_fetcher()
 
@@ -1934,11 +1988,13 @@ class TestFetchBetFromSubgraph:
 # ---------------------------------------------------------------------------
 
 
-class TestFetchPositionDetails:
+class TestFetchPositionDetails:  # type: ignore[no-untyped-def]
     """Tests for fetch_position_details."""
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_successful_fetch(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_successful_fetch(self, mock_post: MagicMock) -> None:
         """Test successful position details fetch."""
         fetcher = _make_fetcher()
 
@@ -1968,7 +2024,11 @@ class TestFetchPositionDetails:
                     "items": [
                         {
                             "id": "bet_1",
-                            "market": {"id": "m1", "title": "Will it rain?", "external_url": "http://example.com"},
+                            "market": {
+                                "id": "m1",
+                                "title": "Will it rain?",
+                                "external_url": "http://example.com",
+                            },
                             "prediction_side": "yes",
                             "bet_amount": 1.0,
                             "net_profit": 0.5,
@@ -1987,9 +2047,7 @@ class TestFetchPositionDetails:
             mock_response.status_code = 200
             mock_response.json.return_value = {
                 "data": {
-                    "sender": {
-                        "requests": [{"parsedRequest": {"tool": "tool_1"}}]
-                    }
+                    "sender": {"requests": [{"parsedRequest": {"tool": "tool_1"}}]}
                 }
             }
             mock_post.return_value = mock_response
@@ -1998,11 +2056,13 @@ class TestFetchPositionDetails:
 
             assert result is not None
             assert result["id"] == "bet_1"
-            assert result["status"] == "won"
+            assert result["status"] == "won"  # type: ignore[no-untyped-def]
             assert result["payout"] == 1.5
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_bet_not_found_fetches_from_subgraph(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_bet_not_found_fetches_from_subgraph(self, mock_post: MagicMock) -> None:
         """Test fallback to subgraph when bet not in local data."""
         fetcher = _make_fetcher()
 
@@ -2027,13 +2087,17 @@ class TestFetchPositionDetails:
         """Test exception handling in fetch_position_details."""
         fetcher = _make_fetcher()
 
-        with patch.object(fetcher, "_load_multi_bets_data", side_effect=Exception("Error")):
+        with patch.object(
+            fetcher, "_load_multi_bets_data", side_effect=Exception("Error")
+        ):
             result = fetcher.fetch_position_details("bet_1", "0xsafe", "/tmp/test")
-
+        # type: ignore[no-untyped-def]
         assert result is None
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_lost_status_payout_zero(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_lost_status_payout_zero(self, mock_post: MagicMock) -> None:
         """Test lost status results in payout = 0."""
         fetcher = _make_fetcher()
 
@@ -2045,7 +2109,11 @@ class TestFetchPositionDetails:
                     "items": [
                         {
                             "id": "bet_1",
-                            "market": {"id": "m1", "title": "Q?", "external_url": "http://example.com"},
+                            "market": {
+                                "id": "m1",
+                                "title": "Q?",
+                                "external_url": "http://example.com",
+                            },
                             "prediction_side": "yes",
                             "bet_amount": 1.0,
                             "net_profit": -1.0,
@@ -2061,18 +2129,18 @@ class TestFetchPositionDetails:
 
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {
-                "data": {"sender": {"requests": []}}
-            }
+            mock_response.json.return_value = {"data": {"sender": {"requests": []}}}
             mock_post.return_value = mock_response
 
             result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
 
-            assert result is not None
+            assert result is not None  # type: ignore[no-untyped-def]
             assert result["payout"] == 0
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_pending_with_potential_profit(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_pending_with_potential_profit(self, mock_post: MagicMock) -> None:
         """Test pending status with potential profit."""
         fetcher = _make_fetcher()
 
@@ -2094,7 +2162,11 @@ class TestFetchPositionDetails:
                     "items": [
                         {
                             "id": "bet_1",
-                            "market": {"id": "m1", "title": "Q?", "external_url": "http://example.com"},
+                            "market": {
+                                "id": "m1",
+                                "title": "Q?",
+                                "external_url": "http://example.com",
+                            },
                             "prediction_side": "yes",
                             "bet_amount": 1.0,
                             "net_profit": 0,
@@ -2115,11 +2187,13 @@ class TestFetchPositionDetails:
 
             result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
 
-            assert result is not None
+            assert result is not None  # type: ignore[no-untyped-def]
             assert result["payout"] == 1.5  # 1.0 + 0.5
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_invalid_status_payout(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_invalid_status_payout(self, mock_post: MagicMock) -> None:
         """Test invalid status results in payout = total_payout."""
         fetcher = _make_fetcher()
 
@@ -2131,7 +2205,11 @@ class TestFetchPositionDetails:
                     "items": [
                         {
                             "id": "bet_1",
-                            "market": {"id": "m1", "title": "Q?", "external_url": "http://example.com"},
+                            "market": {
+                                "id": "m1",
+                                "title": "Q?",
+                                "external_url": "http://example.com",
+                            },
                             "prediction_side": "yes",
                             "bet_amount": 1.0,
                             "net_profit": -0.1,
@@ -2152,11 +2230,13 @@ class TestFetchPositionDetails:
 
             result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
 
-            assert result is not None
+            assert result is not None  # type: ignore[no-untyped-def]
             assert result["payout"] == 0.9
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_no_market_info_uses_bet_market(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_no_market_info_uses_bet_market(self, mock_post: MagicMock) -> None:
         """Test when market not found in multi_bets, uses bet's market data."""
         fetcher = _make_fetcher()
 
@@ -2185,24 +2265,26 @@ class TestFetchPositionDetails:
             # Mock for mech tool and prediction response
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {
-                "data": {"sender": {"requests": []}}
-            }
+            mock_response.json.return_value = {"data": {"sender": {"requests": []}}}
             mock_post.return_value = mock_response
 
             result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
 
-            assert result is not None
+            assert result is not None  # type: ignore[no-untyped-def]
             assert result["question"] == "Unknown Q?"
 
-    @patch("packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post")
-    def test_fetches_prediction_response_when_missing(self, mock_post) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_fetches_prediction_response_when_missing(  # type: ignore[no-untyped-def]
+        self, mock_post: MagicMock
+    ) -> None:
         """Test that prediction response is fetched from mech when not in market_info."""
         fetcher = _make_fetcher()
 
         call_count = [0]
 
-        def mock_post_side_effect(*args, **kwargs):
+        def mock_post_side_effect(*args: Any, **kwargs: Any) -> MagicMock:
             call_count[0] += 1
             mock_resp = MagicMock()
             mock_resp.status_code = 200
@@ -2215,7 +2297,12 @@ class TestFetchPositionDetails:
                                 "deliveries": [
                                     {
                                         "toolResponse": json.dumps(
-                                            {"p_yes": 0.8, "p_no": 0.2, "confidence": 0.9, "info_utility": 0.5}
+                                            {
+                                                "p_yes": 0.8,
+                                                "p_no": 0.2,
+                                                "confidence": 0.9,
+                                                "info_utility": 0.5,
+                                            }
                                         )
                                     }
                                 ]
@@ -2226,7 +2313,9 @@ class TestFetchPositionDetails:
             else:
                 # Mech tool fetch
                 mock_resp.json.return_value = {
-                    "data": {"sender": {"requests": [{"parsedRequest": {"tool": "tool_x"}}]}}
+                    "data": {
+                        "sender": {"requests": [{"parsedRequest": {"tool": "tool_x"}}]}
+                    }
                 }
             return mock_resp
 
@@ -2234,7 +2323,13 @@ class TestFetchPositionDetails:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             multi_bets = [
-                {"id": "m1", "title": "Q?", "openingTimestamp": 0, "potential_net_profit": 0, "strategy": None}
+                {
+                    "id": "m1",
+                    "title": "Q?",
+                    "openingTimestamp": 0,
+                    "potential_net_profit": 0,
+                    "strategy": None,
+                }
             ]
             with open(os.path.join(tmpdir, "multi_bets.json"), "w") as f:
                 json.dump(multi_bets, f)
@@ -2244,7 +2339,11 @@ class TestFetchPositionDetails:
                     "items": [
                         {
                             "id": "bet_1",
-                            "market": {"id": "m1", "title": "Q?", "external_url": "http://example.com"},
+                            "market": {
+                                "id": "m1",
+                                "title": "Q?",
+                                "external_url": "http://example.com",
+                            },
                             "prediction_side": "yes",
                             "bet_amount": 1.0,
                             "net_profit": 0,
@@ -2287,7 +2386,7 @@ class TestFormatSingleBet:
     def test_without_settled_at_pending(self) -> None:
         """Test that settled_at is None for pending markets."""
         fetcher = _make_fetcher()
-        bet = _make_bet(current_answer=None)
+        bet = _make_bet(current_answer=None)  # type: ignore[arg-type]
         fpmm = bet["fixedProductMarketMaker"]
         ctx = fetcher._build_market_context([bet])
         market_ctx = ctx.get("market_1")

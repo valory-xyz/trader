@@ -21,15 +21,14 @@
 
 import json
 from abc import ABC
+from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    FetchStatus,
     MAX_LOG_SIZE,
     QUERY_BATCH_SIZE,
     QUESTION_DATA_SEPARATOR,
-    FetchStatus,
     QueryingBehaviour,
     to_content,
     to_graphql_list,
@@ -206,8 +205,8 @@ class TestQueryingBehaviour:
 
             matching_round = MagicMock(spec=AbstractRound)
 
-            def async_act(self) -> None:
-                """No-op implementation for testing."""
+            def async_act(self) -> None:  # type: ignore[override]
+                """No-op implementation for testing."""  # type: ignore[override]
 
         mock_context = MagicMock()
         mock_context.params.creators_iterator = iter(
@@ -219,8 +218,8 @@ class TestQueryingBehaviour:
         with patch(
             "packages.valory.skills.abstract_round_abci.behaviour_utils.BaseBehaviour.__init__"
         ):
-            instance = _ConcreteQueryingBehaviour.__new__(_ConcreteQueryingBehaviour)
-            # Set _context (the backing field for the read-only `context` property)
+            instance = _ConcreteQueryingBehaviour.__new__(_ConcreteQueryingBehaviour)  # type: ignore[type-abstract]
+            # Set _context (the backing field for the read-only `context` property)  # type: ignore[type-abstract]
             # before __init__ since the patched BaseBehaviour.__init__ won't do it
             instance._context = mock_context
             _ConcreteQueryingBehaviour.__init__(instance)
@@ -235,17 +234,18 @@ class TestQueryingBehaviour:
 # Helpers for generator-based tests
 # ---------------------------------------------------------------------------
 
-def _noop_gen(*args, **kwargs):
-    """No-op generator that yields once and returns None."""
+
+def _noop_gen(*args: Any, **kwargs: Any) -> Any:
+    """No-op generator that yields once and returns None."""  # type: ignore[no-untyped-def]
     yield
     return None
 
 
-def _return_gen(value):
-    """Create a generator factory that yields once and returns *value*."""
+def _return_gen(value: Any) -> Any:
+    """Create a generator factory that yields once and returns *value*."""  # type: ignore[no-untyped-def]
 
-    def _gen(*args, **kwargs):
-        yield
+    def _gen(*args: Any, **kwargs: Any) -> Any:
+        yield  # type: ignore[no-untyped-def]
         return value
 
     return _gen
@@ -256,19 +256,22 @@ class _ConcreteQueryBehaviour(QueryingBehaviour):
 
     matching_round = MagicMock()
 
-    def async_act(self):  # pragma: no cover
+    def async_act(self) -> None:  # type: ignore[misc, override]
         """No-op."""
-        yield
+        yield  # type: ignore[misc]
 
 
-def _make_behaviour(**overrides):
-    """Instantiate a ``_ConcreteQueryBehaviour`` without framework wiring.
+def _make_behaviour(**overrides: Any) -> _ConcreteQueryBehaviour:
+    """Instantiate a ``_ConcreteQueryBehaviour`` without framework wiring.  # type: ignore[no-untyped-def]
 
     Uses ``object.__new__`` to skip ``__init__`` (which requires the full
     Open Autonomy runtime), then manually sets the attributes that the
     methods under test rely on.
+
+    :param **overrides: keyword arguments to override default attributes.
+    :return: an instance of _ConcreteQueryBehaviour.
     """
-    b = object.__new__(_ConcreteQueryBehaviour)
+    b = object.__new__(_ConcreteQueryBehaviour)  # type: ignore[type-abstract]
 
     # -- context / params --
     ctx = MagicMock()
@@ -293,7 +296,10 @@ def _make_behaviour(**overrides):
     return b
 
 
-def _exhaust(gen):
+# type: ignore[no-untyped-def]
+
+
+def _exhaust(gen: Any) -> Any:
     """Drive a generator to completion and return its final value."""
     result = None
     try:
@@ -427,8 +433,11 @@ class TestPrepareFetching:
 class TestHandleResponse:
     """Tests for _handle_response."""
 
+    # type: ignore[no-untyped-def]
     @staticmethod
-    def _make_subgraph(retries_exceeded=False, sleep_time=1.0):
+    def _make_subgraph(
+        retries_exceeded: bool = False, sleep_time: float = 1.0
+    ) -> MagicMock:
         """Create a mock subgraph with controllable retry behaviour."""
         sg = MagicMock()
         sg.api_id = "test_subgraph"
@@ -439,7 +448,7 @@ class TestHandleResponse:
     def test_none_response_increments_retries_and_sleeps(self) -> None:
         """A None response logs error, increments retries, sleeps."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         sg = self._make_subgraph()
 
         gen = b._handle_response(sg, None, "things")
@@ -453,7 +462,7 @@ class TestHandleResponse:
     def test_none_response_sets_fail_when_retries_exceeded(self) -> None:
         """When retries are exceeded, status becomes FAIL."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         sg = self._make_subgraph(retries_exceeded=True)
 
         gen = b._handle_response(sg, None, "things")
@@ -462,16 +471,16 @@ class TestHandleResponse:
         assert b._fetch_status == FetchStatus.FAIL
 
     def test_none_response_no_sleep_when_sleep_on_fail_false(self) -> None:
-        """When sleep_on_fail=False, the sleep generator is not invoked."""
+        """When sleep_on_fail=False, the sleep generator is not invoked."""  # type: ignore[no-untyped-def]
         b = _make_behaviour()
         sleep_called = False
 
-        def _tracking_sleep(*a, **kw):
+        def _tracking_sleep(*a: Any, **kw: Any) -> Any:
             nonlocal sleep_called
             sleep_called = True
             yield
 
-        b.sleep = _tracking_sleep
+        b.sleep = _tracking_sleep  # type: ignore[method-assign]
         sg = self._make_subgraph()
 
         gen = b._handle_response(sg, None, "things", sleep_on_fail=False)
@@ -485,7 +494,7 @@ class TestHandleResponse:
         sg = self._make_subgraph()
         data = [{"id": "1"}]
 
-        gen = b._handle_response(sg, data, "things")
+        gen = b._handle_response(sg, data, "things")  # type: ignore[arg-type]
         result = _exhaust(gen)
 
         assert result == data
@@ -548,7 +557,7 @@ class TestFetchBets:
 
         # Mock get_http_response to return a sentinel
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
 
         gen = b._fetch_bets()
         result = _exhaust(gen)
@@ -574,8 +583,8 @@ class TestFetchBets:
         b.context.state.round_sequence.last_round_transition_timestamp = mock_ts
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
-        b.sleep = _noop_gen
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
 
         gen = b._fetch_bets()
         result = _exhaust(gen)
@@ -588,10 +597,11 @@ class TestFetchBets:
 # ---------------------------------------------------------------------------
 
 
+# type: ignore[no-untyped-def]
 class TestFetchRedeemInfo:
     """Tests for the _fetch_redeem_info generator."""
 
-    def _setup_behaviour(self):
+    def _setup_behaviour(self) -> Any:
         """Create a behaviour wired for redeem-info tests."""
         b = _make_behaviour()
         b._current_market = "omen_subgraph"
@@ -613,11 +623,11 @@ class TestFetchRedeemInfo:
         b, mock_sg = self._setup_behaviour()
         batch1 = [{"fpmm": {"creationTimestamp": "100"}}]
 
-        responses = iter([batch1, []])
+        _ = iter([batch1, []])  # responses iterator (unused directly)
         process_returns = iter([batch1, []])
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
         mock_sg.process_response.side_effect = lambda _: next(process_returns)
 
         gen = b._fetch_redeem_info()
@@ -636,7 +646,7 @@ class TestFetchRedeemInfo:
 
         process_returns = iter([batch1, batch2, []])
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
         mock_sg.process_response.side_effect = lambda _: next(process_returns)
 
         gen = b._fetch_redeem_info()
@@ -649,8 +659,8 @@ class TestFetchRedeemInfo:
         b, mock_sg = self._setup_behaviour()
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
-        b.sleep = _noop_gen
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg.process_response.return_value = None
         mock_sg.retries_info.suggested_sleep_time = 1.0
 
@@ -681,7 +691,7 @@ class TestFetchBlockNumber:
         b.context.network_subgraph = mock_sg
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
 
         gen = b._fetch_block_number(timestamp=1700000000)
         result = _exhaust(gen)
@@ -701,8 +711,8 @@ class TestFetchBlockNumber:
         b.context.network_subgraph = mock_sg
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
-        b.sleep = _noop_gen
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
 
         gen = b._fetch_block_number(timestamp=1700000000)
         result = _exhaust(gen)
@@ -742,7 +752,7 @@ class TestFetchClaimParams:
         mock_sg.process_response.return_value = raw_answers
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
 
         gen = b.fetch_claim_params(question_id="0xquestion123")
         result = _exhaust(gen)
@@ -769,8 +779,8 @@ class TestFetchClaimParams:
         b.context.realitio_subgraph = mock_sg
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
-        b.sleep = _noop_gen
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
 
         gen = b.fetch_claim_params(question_id="0xquestion123")
         result = _exhaust(gen)
@@ -784,10 +794,11 @@ class TestFetchClaimParams:
 # ---------------------------------------------------------------------------
 
 
+# type: ignore[no-untyped-def]
 class TestFetchTrades:
     """Tests for the fetch_trades generator."""
 
-    def _setup_behaviour(self):
+    def _setup_behaviour(self) -> Any:
         """Create a behaviour wired for trades tests."""
         b = _make_behaviour()
 
@@ -805,7 +816,7 @@ class TestFetchTrades:
 
         process_returns = iter([batch1, []])
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
         mock_sg.process_response.side_effect = lambda _: next(process_returns)
 
         gen = b.fetch_trades(
@@ -826,7 +837,7 @@ class TestFetchTrades:
 
         process_returns = iter([batch1, batch2, []])
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
         mock_sg.process_response.side_effect = lambda _: next(process_returns)
 
         gen = b.fetch_trades(
@@ -841,8 +852,8 @@ class TestFetchTrades:
         b, mock_sg = self._setup_behaviour()
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
-        b.sleep = _noop_gen
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg.process_response.return_value = None
         mock_sg.retries_info.suggested_sleep_time = 1.0
 
@@ -860,10 +871,11 @@ class TestFetchTrades:
 # ---------------------------------------------------------------------------
 
 
+# type: ignore[no-untyped-def]
 class TestFetchUserPositions:
     """Tests for the fetch_user_positions generator."""
 
-    def _setup_behaviour(self):
+    def _setup_behaviour(self) -> Any:
         """Create a behaviour wired for user-positions tests."""
         b = _make_behaviour()
 
@@ -881,7 +893,7 @@ class TestFetchUserPositions:
 
         process_returns = iter([batch1, []])
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
         mock_sg.process_response.side_effect = lambda _: next(process_returns)
 
         gen = b.fetch_user_positions(user="0xUser1")
@@ -897,7 +909,7 @@ class TestFetchUserPositions:
 
         process_returns = iter([batch1, batch2, []])
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
         mock_sg.process_response.side_effect = lambda _: next(process_returns)
 
         gen = b.fetch_user_positions(user="0xUser1")
@@ -910,8 +922,8 @@ class TestFetchUserPositions:
         b, mock_sg = self._setup_behaviour()
 
         mock_raw = MagicMock()
-        b.get_http_response = _return_gen(mock_raw)
-        b.sleep = _noop_gen
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg.process_response.return_value = None
         mock_sg.retries_info.suggested_sleep_time = 1.0
 

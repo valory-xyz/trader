@@ -19,9 +19,7 @@
 
 """Tests for the redeem_router state of decision_maker_abci."""
 
-from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound
 from packages.valory.skills.decision_maker_abci.states.base import (

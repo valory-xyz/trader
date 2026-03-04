@@ -19,14 +19,13 @@
 
 """This module contains the tests for valory/decision_maker_abci's base behaviour."""
 
-import os
 import re
 import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, TypeVar, Union
 from unittest import mock
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from aea.configurations.base import PackageConfiguration
@@ -35,32 +34,18 @@ from hexbytes import HexBytes
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
-from packages.valory.contracts.gnosis_safe.contract import (
-    GnosisSafeContract,
-    SafeOperation,
-)
-from packages.valory.contracts.market_maker.contract import (
-    FixedProductMarketMakerContract,
-)
-from packages.valory.contracts.mech.contract import Mech
-from packages.valory.contracts.multisend.contract import MultiSendContract
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
 from packages.valory.skills.abstract_round_abci.test_tools.base import (
     FSMBehaviourBaseCase,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
-    CID_PREFIX,
-    SAFE_GAS,
-    SUPPORTED_STRATEGY_LOG_LEVELS,
-    USCDE_POLYGON,
-    USDC_POLYGON,
     DecisionMakerBaseBehaviour,
     MultisendBatch,
     TradingOperation,
+    USCDE_POLYGON,
+    USDC_POLYGON,
     WXDAI,
     remove_fraction_wei,
 )
@@ -73,12 +58,6 @@ from packages.valory.skills.decision_maker_abci.models import (
     LiquidityInfo,
 )
 from packages.valory.skills.decision_maker_abci.tests.conftest import profile_name
-from packages.valory.skills.market_manager_abci.bets import (
-    CONFIDENCE_FIELD,
-    P_NO_FIELD,
-    P_YES_FIELD,
-    PredictionResponse,
-)
 from packages.valory.skills.market_manager_abci.behaviours.base import READ_MODE
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
@@ -291,10 +270,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         strategy_key = "trading_strategy"
         if strategy_key in kwargs:
-            behaviour.shared_state.strategies_executables.get = (  # type: ignore
-                strategies_executables_get_mock_wrapper(
+            behaviour.shared_state.strategies_executables.get = (  # type: ignore[method-assign]
+                strategies_executables_get_mock_wrapper(  # type: ignore[assignment]
                     kwargs[strategy_key],
-                    method_name,  # type: ignore
+                    method_name,  # type: ignore[arg-type]
                 )
             )
 
@@ -367,9 +346,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     ) -> None:
         """Test the `get_bet_amount` method."""
         behaviour = self.behaviour
-        behaviour.download_strategies = lambda: (yield)  # type: ignore
-        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
-        behaviour.execute_strategy = lambda *_, **__: mocked_result  # type: ignore
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
+        behaviour.execute_strategy = lambda *_, **__: mocked_result  # type: ignore[assignment, method-assign]
         gen = behaviour.get_bet_amount(
             0,
             0,
@@ -424,8 +403,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     ) -> None:
         """Test the `get_bet_amount` method."""
         behaviour = self.behaviour
-        behaviour.download_strategies = lambda: (yield)  # type: ignore
-        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
         behaviour.params.strategies_kwargs = STRATEGIES_KWARGS
         behaviour.shared_state.chatui_config.trading_strategy = trading_strategy
         behaviour.shared_state.chatui_config.max_bet_size = STRATEGIES_KWARGS["default_max_bet_size"]  # type: ignore[assignment]
@@ -464,14 +443,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet.id = "0xABCDEF"
         with mock.patch.object(behaviour, "read_bets"):
             behaviour.bets = [mock_bet]
-            behaviour.synchronized_data.db.get_strict = lambda key: 0
+            behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
             result = behaviour.market_maker_contract_address
         assert result == "0xABCDEF"
 
     def test_investment_amount(self) -> None:
         """Test the `investment_amount` property."""
         behaviour = self.behaviour
-        behaviour.synchronized_data.db.get_strict = lambda key: 1000
+        behaviour.synchronized_data.db.get_strict = lambda key: 1000  # type: ignore[method-assign]
         result = behaviour.investment_amount
         assert result == 1000
 
@@ -479,24 +458,26 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test the `return_amount` property."""
         behaviour = self.behaviour
         mock_bet = MagicMock()
-        mock_bet.get_vote_amount.return_value = 500
+        mock_bet.get_vote_amount.return_value = 500  # type: ignore[method-assign]
         with mock.patch.object(behaviour, "read_bets"):
             behaviour.bets = [mock_bet]
             db_values = {"sampled_bet_index": 0, "vote": 1}
-            behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(
+            behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(  # type: ignore[method-assign]
                 key, 0
             )
-            result = behaviour.return_amount
+            result = behaviour.return_amount  # type: ignore[method-assign]
         assert result == 500
 
     def test_outcome_index(self) -> None:
         """Test the `outcome_index` property."""
         behaviour = self.behaviour
-        behaviour.synchronized_data.db.get_strict = lambda key: 1 if key == "vote" else 0
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            1 if key == "vote" else 0
+        )
         result = behaviour.outcome_index
         assert result == 1
 
-    def test_execute_strategy_no_executable(self) -> None:
+    def test_execute_strategy_no_executable(self) -> None:  # type: ignore[method-assign]
         """Test `execute_strategy` when no executable is found for the trading strategy."""
         behaviour = self.behaviour
         behaviour.shared_state.strategies_executables = {}
@@ -505,7 +486,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
     def test_mock_data_property(self) -> None:
         """Test the `mock_data` property."""
-        behaviour = self.behaviour
+        behaviour = self.behaviour  # type: ignore[method-assign]
         mock_data = BenchmarkingMockData(
             id="test_id", question="test?", answer="yes", p_yes=0.8
         )
@@ -535,7 +516,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         mock_timestamp = MagicMock()
         mock_timestamp.timestamp.return_value = 1700000000.5
-        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
         result = behaviour.synced_timestamp
         assert result == 1700000000
 
@@ -550,7 +531,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         valid_hash = "0x" + "a" * 64
         assert len(valid_hash) == TX_HASH_LENGTH
         behaviour.safe_tx_hash = valid_hash
-        assert behaviour.safe_tx_hash == "a" * 64
+        assert behaviour.safe_tx_hash == "a" * 64  # type: ignore[misc]
 
     def test_safe_tx_hash_setter_invalid_length(self) -> None:
         """Test the `safe_tx_hash` setter with an invalid hash length."""
@@ -617,7 +598,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         behaviour.shared_state.mock_data = None
-        behaviour.synchronized_data.db.get_strict = lambda key: 0
+        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
         result = behaviour.is_first_period
         assert result is True
 
@@ -627,12 +608,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.benchmarking_mode.enabled = False
         behaviour.shared_state.mock_data = MagicMock()
         db_values = {"period_count": 1}
-        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)
+        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
         result = behaviour.is_first_period
         assert result is False
 
     def test_usdc_to_native(self) -> None:
-        """Test the `usdc_to_native` static method."""
+        """Test the `usdc_to_native` static method."""  # type: ignore[method-assign]
         result = DecisionMakerBaseBehaviour.usdc_to_native(1_000_000)
         assert result == 1.0
 
@@ -642,7 +623,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         with mock.patch.object(behaviour, "read_bets"):
             behaviour.bets = [MagicMock(collateralToken=WXDAI)]
             result = behaviour.convert_unit_to_wei(1.0)
-        assert result == 10**18
+        assert result == 10**18  # type: ignore[method-assign]
 
     def test_convert_unit_to_wei_usdc(self) -> None:
         """Test the `convert_unit_to_wei` method with USDC token."""
@@ -705,7 +686,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         mock_bet = MagicMock()
         behaviour.bets = [mock_bet]
-        behaviour.synchronized_data.db.get_strict = lambda key: 0
+        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
         result = behaviour.get_active_sampled_bet()
         assert result == mock_bet
 
@@ -714,13 +695,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         mock_bet = MagicMock()
         behaviour.bets = []
-        behaviour.synchronized_data.db.get_strict = lambda key: 0
+        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
         with mock.patch.object(behaviour, "read_bets") as mock_read:
             # after read_bets, bets will be populated
-            def set_bets():
+            def set_bets() -> None:
                 """Set bets."""
                 behaviour.bets = [mock_bet]
 
+            # type: ignore[method-assign]
             mock_read.side_effect = set_bets
             result = behaviour.get_active_sampled_bet()
         assert result == mock_bet
@@ -729,10 +711,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `check_balance` in benchmarking mode."""
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = True
-        with mock.patch.object(behaviour, "_mock_balance_check") as mock_check:
+        with mock.patch.object(behaviour, "_mock_balance_check") as mock_check:  # type: ignore[method-assign]
             gen = behaviour.check_balance()
             try:
-                next(gen)
+                next(gen)  # type: ignore[no-untyped-def]
             except StopIteration as e:
                 assert e.value is True
             mock_check.assert_called_once()
@@ -745,23 +727,28 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
-        behaviour.synchronized_data.db.get_strict = lambda key: "0xsafe" if key == "safe_contract_address" else 0
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            "0xsafe" if key == "safe_contract_address" else 0
+        )
         behaviour.params.mech_chain_id = "gnosis"
 
         with mock.patch.object(
-            type(behaviour), "collateral_token", new_callable=PropertyMock, return_value=WXDAI
+            type(behaviour),
+            "collateral_token",
+            new_callable=PropertyMock,
+            return_value=WXDAI,  # type: ignore[no-untyped-def]
         ):
             gen = behaviour.check_balance()
             next(gen)  # enter yield from
             try:
                 next(gen)
-            except StopIteration as e:
+            except StopIteration as e:  # type: ignore[method-assign]
                 assert e.value is False
 
     def test_check_balance_missing_token_or_wallet(self) -> None:
@@ -773,23 +760,28 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"token": None, "wallet": None}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
-        behaviour.synchronized_data.db.get_strict = lambda key: "0xsafe" if key == "safe_contract_address" else 0
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            "0xsafe" if key == "safe_contract_address" else 0
+        )
         behaviour.params.mech_chain_id = "gnosis"
 
         with mock.patch.object(
-            type(behaviour), "collateral_token", new_callable=PropertyMock, return_value=WXDAI
+            type(behaviour),
+            "collateral_token",
+            new_callable=PropertyMock,
+            return_value=WXDAI,  # type: ignore[no-untyped-def]
         ):
             gen = behaviour.check_balance()
             next(gen)
             try:
                 next(gen)
-            except StopIteration as e:
+            except StopIteration as e:  # type: ignore[method-assign]
                 assert e.value is False
 
     def test_check_balance_success(self) -> None:
@@ -801,23 +793,28 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"token": 5000, "wallet": 10000}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
-        behaviour.synchronized_data.db.get_strict = lambda key: "0xsafe" if key == "safe_contract_address" else 0
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            "0xsafe" if key == "safe_contract_address" else 0
+        )
         behaviour.params.mech_chain_id = "gnosis"
 
         with mock.patch.object(
-            type(behaviour), "collateral_token", new_callable=PropertyMock, return_value=WXDAI
+            type(behaviour),
+            "collateral_token",
+            new_callable=PropertyMock,
+            return_value=WXDAI,  # type: ignore[no-untyped-def]
         ):
             with mock.patch.object(behaviour, "_report_balance"):
                 gen = behaviour.check_balance()
                 next(gen)
                 try:
-                    next(gen)
+                    next(gen)  # type: ignore[method-assign]
                 except StopIteration as e:
                     assert e.value is True
 
@@ -833,22 +830,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet.id = "test_bet"
 
         db_values = {"sampled_bet_index": 0, "bet_amount": 1000}
-        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)
+        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
         mock_timestamp = MagicMock()
         mock_timestamp.timestamp.return_value = 1700000000.0
-        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
 
         with mock.patch.object(
-            type(behaviour), "sampled_bet", new_callable=PropertyMock, return_value=mock_bet
+            type(behaviour),
+            "sampled_bet",
+            new_callable=PropertyMock,
+            return_value=mock_bet,
         ):
             with mock.patch.object(behaviour, "store_bets"):
                 with mock.patch.object(behaviour, "_update_bet_strategy"):
                     behaviour.update_bet_transaction_information()
 
-        mock_bet.update_investments.assert_called_once_with(1000)
+        mock_bet.update_investments.assert_called_once_with(1000)  # type: ignore[method-assign]
 
     def test_update_bet_transaction_information_update_fails(self) -> None:
-        """Test `update_bet_transaction_information` when update_investments returns False."""
+        """Test `update_bet_transaction_information` when update_investments returns False."""  # type: ignore[misc]
         behaviour = self.behaviour
         mock_bet = MagicMock()
         mock_bet.queue_status.next_status.return_value = MagicMock()
@@ -856,63 +856,74 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet.id = "test_bet"
 
         db_values = {"sampled_bet_index": 0, "bet_amount": 1000}
-        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)
+        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
         mock_timestamp = MagicMock()
         mock_timestamp.timestamp.return_value = 1700000000.0
-        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
 
         with mock.patch.object(
-            type(behaviour), "sampled_bet", new_callable=PropertyMock, return_value=mock_bet
+            type(behaviour),
+            "sampled_bet",
+            new_callable=PropertyMock,
+            return_value=mock_bet,
         ):
             with mock.patch.object(behaviour, "store_bets"):
                 with mock.patch.object(behaviour, "_update_bet_strategy"):
                     behaviour.update_bet_transaction_information()
 
-        behaviour.context.logger.error.assert_called()
+        behaviour.context.logger.error.assert_called()  # type: ignore[method-assign]
 
     def test_update_sell_transaction_information(self) -> None:
-        """Test `update_sell_transaction_information` method."""
+        """Test `update_sell_transaction_information` method."""  # type: ignore[misc]
         behaviour = self.behaviour
         mock_bet = MagicMock()
         mock_bet.queue_status.next_status.return_value = MagicMock()
         mock_bet.update_investments.return_value = True
 
-        behaviour.synchronized_data.db.get_strict = lambda key: 0
+        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
         mock_timestamp = MagicMock()
         mock_timestamp.timestamp.return_value = 1700000000.0
-        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
 
         with mock.patch.object(
-            type(behaviour), "sampled_bet", new_callable=PropertyMock, return_value=mock_bet
+            type(behaviour),
+            "sampled_bet",
+            new_callable=PropertyMock,
+            return_value=mock_bet,
         ):
             with mock.patch.object(behaviour, "store_bets"):
                 behaviour.update_sell_transaction_information()
 
         mock_bet.update_investments.assert_called_once_with(0)
 
+    # type: ignore[method-assign]
     def test_update_sell_transaction_information_fails(self) -> None:
         """Test `update_sell_transaction_information` when update fails."""
-        behaviour = self.behaviour
+        behaviour = self.behaviour  # type: ignore[misc]
         mock_bet = MagicMock()
         mock_bet.queue_status.next_status.return_value = MagicMock()
         mock_bet.update_investments.return_value = False
 
-        behaviour.synchronized_data.db.get_strict = lambda key: 0
+        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
         mock_timestamp = MagicMock()
         mock_timestamp.timestamp.return_value = 1700000000.0
-        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
 
         with mock.patch.object(
-            type(behaviour), "sampled_bet", new_callable=PropertyMock, return_value=mock_bet
+            type(behaviour),
+            "sampled_bet",
+            new_callable=PropertyMock,
+            return_value=mock_bet,
         ):
             with mock.patch.object(behaviour, "store_bets"):
                 behaviour.update_sell_transaction_information()
 
         behaviour.context.logger.error.assert_called()
 
+    # type: ignore[method-assign]
     def test_send_message(self) -> None:
         """Test `send_message` method."""
-        behaviour = self.behaviour
+        behaviour = self.behaviour  # type: ignore[misc]
         msg = MagicMock()
         dialogue = MagicMock()
         dialogue.dialogue_label.dialogue_reference = ("nonce_123", "")
@@ -983,7 +994,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.shared_state.strategy_to_filehash = {"my_strategy": "hash123"}
 
         with mock.patch.object(
-            behaviour, "_build_ipfs_get_file_req", return_value=(MagicMock(), MagicMock())
+            behaviour,
+            "_build_ipfs_get_file_req",
+            return_value=(MagicMock(), MagicMock()),
         ):
             with mock.patch.object(behaviour, "send_message") as mock_send:
                 behaviour.download_next_strategy()
@@ -998,16 +1011,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.shared_state.strategy_to_filehash = {"s1": "h1"}
 
-        original_download = behaviour.download_next_strategy
-
-        def mock_download():
+        def mock_download() -> None:
             """Mock download_next_strategy that removes entries."""
             nonlocal call_count
             call_count += 1
             behaviour.shared_state.strategy_to_filehash = {}
 
-        behaviour.download_next_strategy = mock_download  # type: ignore
-        behaviour.sleep = lambda t: (yield)  # type: ignore
+        behaviour.download_next_strategy = mock_download  # type: ignore[method-assign]
+        behaviour.sleep = lambda t: (yield)  # type: ignore[assignment, method-assign]
 
         gen = behaviour.download_strategies()
         next(gen)  # enter the sleep yield
@@ -1017,7 +1028,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             pass
         assert call_count == 1
 
-    def test_update_with_values_from_chatui_max_bet(self) -> None:
+    def test_update_with_values_from_chatui_max_bet(self) -> None:  # type: ignore[no-untyped-def]
         """Test `_update_with_values_from_chatui` with max_bet_size set."""
         behaviour = self.behaviour
         behaviour.shared_state.chatui_config.max_bet_size = 5000
@@ -1123,16 +1134,16 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"data_key": "some_data"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
         behaviour.params.mech_chain_id = "gnosis"
 
         gen = behaviour.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore[arg-type]
             contract_address="0xaddr",
             contract_public_id=PublicId.from_str("valory/test:0.1.0"),
             contract_callable="test_method",
@@ -1140,29 +1151,29 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             placeholder="test_attr",
         )
         next(gen)
-        try:
+        try:  # type: ignore[no-untyped-def]
             next(gen)
         except StopIteration as e:
             assert e.value is True
 
-        assert behaviour.test_attr == "some_data"  # type: ignore
+        assert behaviour.test_attr == "some_data"  # type: ignore[attr-defined]
 
     def test_contract_interact_bad_performative(self) -> None:
         """Test `contract_interact` with bad response performative."""
-        behaviour = self.behaviour
+        behaviour = self.behaviour  # type: ignore[arg-type]
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
         behaviour.params.mech_chain_id = "gnosis"
 
         gen = behaviour.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore[arg-type]
             contract_address="0xaddr",
             contract_public_id=PublicId.from_str("valory/test:0.1.0"),
             contract_callable="test_method",
@@ -1170,7 +1181,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             placeholder="test_attr",
         )
         next(gen)
-        try:
+        try:  # type: ignore[no-untyped-def]
             next(gen)
         except StopIteration as e:
             assert e.value is False
@@ -1179,19 +1190,19 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `contract_interact` when data_key is missing from response."""
         behaviour = self.behaviour
         response_msg = MagicMock()
-        response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
+        response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION  # type: ignore[arg-type]
         response_msg.raw_transaction.body = {"other_key": "value"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
         behaviour.params.mech_chain_id = "gnosis"
 
         gen = behaviour.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore[arg-type]
             contract_address="0xaddr",
             contract_public_id=PublicId.from_str("valory/test:0.1.0"),
             contract_callable="test_method",
@@ -1199,7 +1210,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             placeholder="test_attr",
         )
         next(gen)
-        try:
+        try:  # type: ignore[no-untyped-def]
             next(gen)
         except StopIteration as e:
             assert e.value is False
@@ -1208,19 +1219,19 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `contract_interact` when data_key is missing but message is propagated."""
         behaviour = self.behaviour
         response_msg = MagicMock()
-        response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
+        response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION  # type: ignore[arg-type]
         response_msg.raw_transaction.body = {"info": "some info"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
         behaviour.params.mech_chain_id = "gnosis"
 
         gen = behaviour.contract_interact(
-            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore[arg-type]
             contract_address="0xaddr",
             contract_public_id=PublicId.from_str("valory/test:0.1.0"),
             contract_callable="test_method",
@@ -1228,7 +1239,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             placeholder="test_attr",
         )
         next(gen)
-        try:
+        try:  # type: ignore[no-untyped-def]
             next(gen)
         except StopIteration as e:
             assert e.value is False
@@ -1237,18 +1248,18 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_mech_contract_interact` method."""
         behaviour = self.behaviour
         behaviour.params.mech_contract_address = "0xmech"
-        behaviour.params.mech_chain_id = "gnosis"
+        behaviour.params.mech_chain_id = "gnosis"  # type: ignore[arg-type]
 
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"result": "data_value"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._mech_contract_interact(
             contract_callable="some_callable",
@@ -1261,6 +1272,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         except StopIteration as e:
             assert e.value is True
 
+    # type: ignore[no-untyped-def]
     def test_build_multisend_data_success(self) -> None:
         """Test `_build_multisend_data` with a successful response."""
         behaviour = self.behaviour
@@ -1272,12 +1284,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"data": "0xabcdef"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_multisend_data()
         next(gen)
@@ -1289,7 +1301,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert behaviour.multisend_data == bytes.fromhex("abcdef")
 
     def test_build_multisend_data_bad_performative(self) -> None:
-        """Test `_build_multisend_data` with bad response performative."""
+        """Test `_build_multisend_data` with bad response performative."""  # type: ignore[no-untyped-def]
         behaviour = self.behaviour
         behaviour.params.multisend_address = "0xmultisend"
         behaviour.params.mech_chain_id = "gnosis"
@@ -1298,12 +1310,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_multisend_data()
         next(gen)
@@ -1315,7 +1327,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     def test_build_multisend_data_missing_data(self) -> None:
         """Test `_build_multisend_data` when data is missing from response."""
         behaviour = self.behaviour
-        behaviour.params.multisend_address = "0xmultisend"
+        behaviour.params.multisend_address = "0xmultisend"  # type: ignore[no-untyped-def]
         behaviour.params.mech_chain_id = "gnosis"
         behaviour.multisend_batches = []
 
@@ -1323,12 +1335,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_multisend_data()
         next(gen)
@@ -1340,7 +1352,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     def test_build_multisend_safe_tx_hash_success(self) -> None:
         """Test `_build_multisend_safe_tx_hash` with success."""
         behaviour = self.behaviour
-        behaviour.params.multisend_address = "0xmultisend"
+        behaviour.params.multisend_address = "0xmultisend"  # type: ignore[no-untyped-def]
         behaviour.params.mech_chain_id = "gnosis"
         behaviour.multisend_batches = []
         behaviour.multisend_data = b""
@@ -1350,14 +1362,16 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {"tx_hash": valid_hash}
 
-        behaviour.synchronized_data.db.get_strict = lambda key: "0xsafe" if key == "safe_contract_address" else 0
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            "0xsafe" if key == "safe_contract_address" else 0
+        )
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_multisend_safe_tx_hash()
         next(gen)
@@ -1365,11 +1379,11 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             next(gen)
         except StopIteration as e:
             assert e.value is True
-
+        # type: ignore[method-assign]
         assert behaviour.safe_tx_hash == "a" * 64
 
     def test_build_multisend_safe_tx_hash_bad_performative(self) -> None:
-        """Test `_build_multisend_safe_tx_hash` with bad performative."""
+        """Test `_build_multisend_safe_tx_hash` with bad performative."""  # type: ignore[no-untyped-def]
         behaviour = self.behaviour
         behaviour.params.multisend_address = "0xmultisend"
         behaviour.params.mech_chain_id = "gnosis"
@@ -1379,14 +1393,16 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        behaviour.synchronized_data.db.get_strict = lambda key: "0xsafe" if key == "safe_contract_address" else 0
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            "0xsafe" if key == "safe_contract_address" else 0
+        )
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_multisend_safe_tx_hash()
         next(gen)
@@ -1395,10 +1411,11 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         except StopIteration as e:
             assert e.value is False
 
+    # type: ignore[method-assign]
     def test_build_multisend_safe_tx_hash_invalid_hash(self) -> None:
         """Test `_build_multisend_safe_tx_hash` with invalid hash."""
         behaviour = self.behaviour
-        behaviour.params.multisend_address = "0xmultisend"
+        behaviour.params.multisend_address = "0xmultisend"  # type: ignore[no-untyped-def]
         behaviour.params.mech_chain_id = "gnosis"
         behaviour.multisend_batches = []
         behaviour.multisend_data = b""
@@ -1407,14 +1424,16 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {"tx_hash": None}
 
-        behaviour.synchronized_data.db.get_strict = lambda key: "0xsafe" if key == "safe_contract_address" else 0
+        behaviour.synchronized_data.db.get_strict = lambda key: (  # type: ignore[method-assign]
+            "0xsafe" if key == "safe_contract_address" else 0
+        )
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_multisend_safe_tx_hash()
         next(gen)
@@ -1423,17 +1442,18 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         except StopIteration as e:
             assert e.value is False
 
+    # type: ignore[method-assign]
     def test_wait_for_condition_with_sleep_immediate_success(self) -> None:
         """Test `wait_for_condition_with_sleep` when condition is immediately satisfied."""
         behaviour = self.behaviour
-        behaviour.params.rpc_sleep_time = 1
+        behaviour.params.rpc_sleep_time = 1  # type: ignore[no-untyped-def]
 
-        def condition_gen():
+        def condition_gen() -> Generator:
             """Condition generator that returns True immediately."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
-        gen = behaviour.wait_for_condition_with_sleep(condition_gen)
+        gen = behaviour.wait_for_condition_with_sleep(condition_gen)  # type: ignore[arg-type]
         next(gen)  # enter yield from condition_gen
         try:
             next(gen)  # condition returns True
@@ -1444,14 +1464,15 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `wait_for_condition_with_sleep` with timeout that expires."""
         behaviour = self.behaviour
         behaviour.params.rpc_sleep_time = 1
-        behaviour.sleep = lambda t: (yield)  # type: ignore
+        behaviour.sleep = lambda t: (yield)  # type: ignore[assignment, method-assign]
 
-        def condition_gen():
+        # type: ignore[no-untyped-def]
+        def condition_gen() -> Generator:
             """Condition generator that always returns False."""
             yield
-            return False
+            return False  # type: ignore[return-value]
 
-        gen = behaviour.wait_for_condition_with_sleep(condition_gen, timeout=0.0)
+        gen = behaviour.wait_for_condition_with_sleep(condition_gen, timeout=0.0)  # type: ignore[arg-type]
         next(gen)  # enter yield from condition_gen
         with pytest.raises(TimeoutException):
             next(gen)  # should timeout
@@ -1460,18 +1481,19 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `wait_for_condition_with_sleep` with retry."""
         behaviour = self.behaviour
         behaviour.params.rpc_sleep_time = 1
-        behaviour.sleep = lambda t: (yield)  # type: ignore
+        behaviour.sleep = lambda t: (yield)  # type: ignore[assignment, method-assign]
 
         call_count = 0
 
-        def condition_gen():
+        # type: ignore[no-untyped-def]
+        def condition_gen() -> Generator:
             """Condition generator that fails then succeeds."""
             nonlocal call_count
             call_count += 1
             yield
-            return call_count >= 2
+            return call_count >= 2  # type: ignore[return-value]
 
-        gen = behaviour.wait_for_condition_with_sleep(condition_gen)
+        gen = behaviour.wait_for_condition_with_sleep(condition_gen)  # type: ignore[arg-type]
         # First attempt: enter condition_gen
         next(gen)
         # First attempt fails, sleep
@@ -1481,7 +1503,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         # Second attempt succeeds
         try:
             next(gen)
-        except StopIteration:
+        except StopIteration:  # type: ignore[no-untyped-def]
             pass
         assert call_count == 2
 
@@ -1491,24 +1513,24 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.params.rpc_sleep_time = 5
         sleep_times: List[int] = []
 
-        def mock_sleep(t):
+        def mock_sleep(t: int) -> Generator:
             """Mock sleep that records the time."""
             sleep_times.append(t)
             yield
 
-        behaviour.sleep = mock_sleep  # type: ignore
+        behaviour.sleep = mock_sleep  # type: ignore[assignment, method-assign]
 
         call_count = 0
 
-        def condition_gen():
+        def condition_gen() -> Generator:
             """Condition generator that fails then succeeds."""
             nonlocal call_count
             call_count += 1
             yield
-            return call_count >= 2
+            return call_count >= 2  # type: ignore[return-value]
 
         gen = behaviour.wait_for_condition_with_sleep(
-            condition_gen, sleep_time_override=2
+            condition_gen, sleep_time_override=2  # type: ignore[arg-type, no-untyped-def]
         )
         next(gen)
         next(gen)  # sleep yield
@@ -1517,14 +1539,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             next(gen)
         except StopIteration:
             pass
-        assert sleep_times == [2]
+        assert sleep_times == [2]  # type: ignore[no-untyped-def]
 
     def test_write_benchmark_results_new_file(self) -> None:
         """Test `_write_benchmark_results` creating a new file with headers."""
         behaviour = self.behaviour
         with tempfile.TemporaryDirectory() as tmpdir:
             behaviour.params.store_path = Path(tmpdir)
-            behaviour.benchmarking_mode.results_filename = "results.csv"
+            behaviour.benchmarking_mode.results_filename = "results.csv"  # type: ignore[assignment]
             behaviour.benchmarking_mode.question_id_field = "qid"
             behaviour.benchmarking_mode.question_field = "question"
             behaviour.benchmarking_mode.answer_field = "answer"
@@ -1541,7 +1563,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             pred_response.confidence = 0.9
 
             behaviour._write_benchmark_results(pred_response, bet_amount=100.0)
-
+            # type: ignore[assignment]
             results_path = Path(tmpdir) / "results.csv"
             assert results_path.exists()
             content = results_path.read_text()
@@ -1553,7 +1575,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         with tempfile.TemporaryDirectory() as tmpdir:
             behaviour.params.store_path = Path(tmpdir)
-            behaviour.benchmarking_mode.results_filename = "results.csv"
+            behaviour.benchmarking_mode.results_filename = "results.csv"  # type: ignore[assignment]
             behaviour.benchmarking_mode.question_id_field = "qid"
             behaviour.benchmarking_mode.question_field = "question"
             behaviour.benchmarking_mode.answer_field = "answer"
@@ -1570,10 +1592,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
             pred_response = MagicMock()
             pred_response.p_yes = 0.3
-            pred_response.p_no = 0.7
+            pred_response.p_no = 0.7  # type: ignore[assignment]
             pred_response.confidence = 0.8
 
-            liquidity_info = LiquidityInfo(l0_start=100, l1_start=200, l0_end=150, l1_end=250)
+            liquidity_info = LiquidityInfo(
+                l0_start=100, l1_start=200, l0_end=150, l1_end=250
+            )
             behaviour._write_benchmark_results(
                 pred_response, bet_amount=50.0, liquidity_info=liquidity_info
             )
@@ -1589,6 +1613,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         Returns a mock bet object. The caller should use this inside
         mock.patch.object contexts for market_maker_contract_address, outcome_index,
         and investment_amount properties.
+
+        :return: a mock bet object.
         """
         mock_bet = MagicMock()
         mock_bet.id = "0xmarket"
@@ -1605,22 +1631,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"amount": 900}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.BUY,
@@ -1645,22 +1674,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"amount": 800}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.SELL,
@@ -1684,22 +1716,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.BUY,
@@ -1722,22 +1757,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.BUY,
@@ -1754,12 +1792,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_calc_buy_amount` delegates correctly."""
         behaviour = self.behaviour
 
-        with mock.patch.object(
-            behaviour, "_calc_token_amount"
-        ) as mock_calc:
+        with mock.patch.object(behaviour, "_calc_token_amount") as mock_calc:
             mock_gen = MagicMock()
             mock_calc.return_value = mock_gen
-            result = behaviour._calc_buy_amount()
+            behaviour._calc_buy_amount()
             mock_calc.assert_called_once_with(
                 operation=TradingOperation.BUY,
                 amount_field="amount",
@@ -1770,12 +1806,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_calc_sell_amount` delegates correctly."""
         behaviour = self.behaviour
 
-        with mock.patch.object(
-            behaviour, "_calc_token_amount"
-        ) as mock_calc:
+        with mock.patch.object(behaviour, "_calc_token_amount") as mock_calc:
             mock_gen = MagicMock()
             mock_calc.return_value = mock_gen
-            result = behaviour._calc_sell_amount()
+            behaviour._calc_sell_amount()
             mock_calc.assert_called_once_with(
                 operation=TradingOperation.SELL,
                 amount_field="amount",
@@ -1793,22 +1827,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {"data": "0xdeadbeef"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._build_token_tx(TradingOperation.BUY)
             next(gen)
@@ -1830,22 +1867,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {"data": "0xdeadbeef"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "return_amount",
-            new_callable=PropertyMock, return_value=2000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "return_amount",
+            new_callable=PropertyMock,
+            return_value=2000,
         ):
             gen = behaviour._build_token_tx(TradingOperation.SELL)
             next(gen)
@@ -1866,22 +1906,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._build_token_tx(TradingOperation.BUY)
             next(gen)
@@ -1901,22 +1944,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "market_maker_contract_address",
-            new_callable=PropertyMock, return_value="0xmarket"
+            type(behaviour),
+            "market_maker_contract_address",
+            new_callable=PropertyMock,
+            return_value="0xmarket",
         ), mock.patch.object(
-            type(behaviour), "outcome_index",
-            new_callable=PropertyMock, return_value=0
+            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
         ), mock.patch.object(
-            type(behaviour), "investment_amount",
-            new_callable=PropertyMock, return_value=1000
+            type(behaviour),  # type: ignore[no-untyped-def]
+            "investment_amount",
+            new_callable=PropertyMock,
+            return_value=1000,
         ):
             gen = behaviour._build_token_tx(TradingOperation.BUY)
             next(gen)
@@ -1929,24 +1975,20 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_build_buy_tx` delegates correctly."""
         behaviour = self.behaviour
 
-        with mock.patch.object(
-            behaviour, "_build_token_tx"
-        ) as mock_build:
+        with mock.patch.object(behaviour, "_build_token_tx") as mock_build:
             mock_gen = MagicMock()
             mock_build.return_value = mock_gen
-            result = behaviour._build_buy_tx()
+            behaviour._build_buy_tx()
             mock_build.assert_called_once_with(TradingOperation.BUY)
 
     def test_build_sell_tx(self) -> None:
         """Test `_build_sell_tx` delegates correctly."""
         behaviour = self.behaviour
 
-        with mock.patch.object(
-            behaviour, "_build_token_tx"
-        ) as mock_build:
+        with mock.patch.object(behaviour, "_build_token_tx") as mock_build:
             mock_gen = MagicMock()
             mock_build.return_value = mock_gen
-            result = behaviour._build_sell_tx()
+            behaviour._build_sell_tx()
             mock_build.assert_called_once_with(TradingOperation.SELL)
 
     def test_build_approval_tx_success(self) -> None:
@@ -1958,20 +2000,22 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {"data": "0xabcdef0123456789"}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "collateral_token",
-            new_callable=PropertyMock, return_value=WXDAI
+            type(behaviour),
+            "collateral_token",
+            new_callable=PropertyMock,
+            return_value=WXDAI,
         ):
             gen = behaviour.build_approval_tx(
                 amount=1000, spender="0xspender", token="0xtoken"
-            )
+            )  # type: ignore[no-untyped-def]
             next(gen)
             try:
                 next(gen)
@@ -1988,20 +2032,22 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "collateral_token",
-            new_callable=PropertyMock, return_value=WXDAI
+            type(behaviour),
+            "collateral_token",
+            new_callable=PropertyMock,
+            return_value=WXDAI,
         ):
             gen = behaviour.build_approval_tx(
                 amount=1000, spender="0xspender", token="0xtoken"
-            )
+            )  # type: ignore[no-untyped-def]
             next(gen)
             try:
                 next(gen)
@@ -2016,20 +2062,22 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         response_msg.performative = ContractApiMessage.Performative.STATE
         response_msg.state.body = {}
 
-        def mock_get_contract_api(*args, **kwargs):
+        def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
             yield
-            return response_msg
+            return response_msg  # type: ignore[return-value]
 
-        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore
+        behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
         with mock.patch.object(
-            type(behaviour), "collateral_token",
-            new_callable=PropertyMock, return_value=WXDAI
+            type(behaviour),
+            "collateral_token",
+            new_callable=PropertyMock,
+            return_value=WXDAI,
         ):
             gen = behaviour.build_approval_tx(
                 amount=1000, spender="0xspender", token="0xtoken"
-            )
+            )  # type: ignore[no-untyped-def]
             next(gen)
             try:
                 next(gen)
@@ -2041,9 +2089,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour = self.behaviour
         payload = MagicMock()
 
-        behaviour.send_a2a_transaction = lambda p: (yield)  # type: ignore
-        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore
-        behaviour.set_done = MagicMock()  # type: ignore
+        behaviour.send_a2a_transaction = lambda p: (yield)  # type: ignore[assignment, method-assign, misc]
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[assignment, method-assign, misc]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         gen = behaviour.finish_behaviour(payload)
         next(gen)  # send_a2a_transaction yield
@@ -2115,8 +2163,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     def test_get_bet_amount_with_fallback_strategy(self) -> None:
         """Test `get_bet_amount` using a fallback strategy."""
         behaviour = self.behaviour
-        behaviour.download_strategies = lambda: (yield)  # type: ignore
-        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
         behaviour.params.strategies_kwargs = deepcopy(STRATEGIES_KWARGS)
         behaviour.params.use_fallback_strategy = True
         behaviour.params.is_running_on_polymarket = False
@@ -2128,7 +2176,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         call_count = 0
 
-        def mock_execute_strategy(*args, **kwargs):
+        def mock_execute_strategy(*args: Any, **kwargs: Any) -> dict:
             """Mock execute strategy that returns 0 first time, then a value."""
             nonlocal call_count
             call_count += 1
@@ -2136,14 +2184,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 return {BET_AMOUNT_FIELD: 0}
             return {BET_AMOUNT_FIELD: 100}
 
-        behaviour.execute_strategy = mock_execute_strategy  # type: ignore
+        behaviour.execute_strategy = mock_execute_strategy  # type: ignore[method-assign]
         behaviour.shared_state.strategies_executables = {
             "first_strategy": ("code1", "method1"),
             "second_strategy": ("code2", "method2"),
         }
 
         gen = behaviour.get_bet_amount(0.5, 0.5, 100, 100, 10, 0.8, WXDAI)
-        for _ in range(2):
+        for _ in range(2):  # type: ignore[no-untyped-def]
             next(gen)
         try:
             next(gen)
@@ -2154,8 +2202,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     def test_get_bet_amount_with_logging(self) -> None:
         """Test `get_bet_amount` processes strategy log levels."""
         behaviour = self.behaviour
-        behaviour.download_strategies = lambda: (yield)  # type: ignore
-        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
         behaviour.params.strategies_kwargs = deepcopy(STRATEGIES_KWARGS)
         behaviour.params.use_fallback_strategy = False
         behaviour.params.is_running_on_polymarket = False
@@ -2165,7 +2213,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.token_balance = 10**18
         behaviour.wallet_balance = 10**18
 
-        behaviour.execute_strategy = lambda *_, **__: {  # type: ignore
+        behaviour.execute_strategy = lambda *_, **__: {  # type: ignore[method-assign]
             BET_AMOUNT_FIELD: 50,
             "info": ["Info log message"],
             "warning": ["Warning log message"],
@@ -2186,8 +2234,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     def test_get_bet_amount_polymarket_bankroll(self) -> None:
         """Test `get_bet_amount` with polymarket bankroll calculation."""
         behaviour = self.behaviour
-        behaviour.download_strategies = lambda: (yield)  # type: ignore
-        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
         behaviour.params.strategies_kwargs = deepcopy(STRATEGIES_KWARGS)
         behaviour.params.use_fallback_strategy = False
         behaviour.params.is_running_on_polymarket = True
@@ -2199,12 +2247,12 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         captured_kwargs = {}
 
-        def mock_execute(*args, **kwargs):
+        def mock_execute(*args: Any, **kwargs: Any) -> dict:
             """Capture kwargs."""
             captured_kwargs.update(kwargs)
             return {BET_AMOUNT_FIELD: 100}
 
-        behaviour.execute_strategy = mock_execute  # type: ignore
+        behaviour.execute_strategy = mock_execute  # type: ignore[method-assign]
         behaviour.shared_state.strategies_executables = {
             "test_strategy": ("code", "method"),
         }
@@ -2214,7 +2262,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             next(gen)
         try:
             next(gen)
-        except StopIteration:
+        except StopIteration:  # type: ignore[no-untyped-def]
             pass
 
         # In polymarket mode, bankroll should only be token_balance
@@ -2236,8 +2284,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
     def test_get_bet_amount_with_none_logger_level(self) -> None:
         """Test `get_bet_amount` when a logger level attribute is None."""
         behaviour = self.behaviour
-        behaviour.download_strategies = lambda: (yield)  # type: ignore
-        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
         behaviour.params.strategies_kwargs = deepcopy(STRATEGIES_KWARGS)
         behaviour.params.use_fallback_strategy = False
         behaviour.params.is_running_on_polymarket = False
@@ -2248,7 +2296,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.wallet_balance = 10**18
 
         # Mock execute_strategy to return results with log messages
-        behaviour.execute_strategy = lambda *_, **__: {  # type: ignore
+        behaviour.execute_strategy = lambda *_, **__: {  # type: ignore[method-assign]
             BET_AMOUNT_FIELD: 50,
             "info": ["some log"],
         }
@@ -2272,7 +2320,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                     return None
                 return getattr(self._real, name)
 
-        behaviour.context.logger = LimitedLogger(original_logger)  # type: ignore
+        behaviour.context.logger = LimitedLogger(original_logger)  # type: ignore[assignment]
 
         gen = behaviour.get_bet_amount(0.5, 0.5, 100, 100, 10, 0.8, WXDAI)
         for _ in range(2):

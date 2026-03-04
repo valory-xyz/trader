@@ -21,8 +21,6 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
@@ -44,24 +42,24 @@ from packages.valory.skills.mech_interact_abci.states.request import MechRequest
 # ---------------------------------------------------------------------------
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a HandleFailedTxBehaviour with mocked dependencies."""
-    behaviour = object.__new__(HandleFailedTxBehaviour)
+    behaviour = object.__new__(HandleFailedTxBehaviour)  # type: ignore[no-untyped-def]
     context = MagicMock()
     context.agent_address = "test_agent"
     behaviour.__dict__["_context"] = context
     return behaviour
 
 
-def _run_async_act(behaviour, tx_submitter):
+def _run_async_act(behaviour, tx_submitter):  # type: ignore[no-untyped-def]
     """Drive async_act to completion and return the payload."""
-    payloads_sent = []
+    payloads_sent = []  # type: ignore[no-untyped-def]
 
-    def mock_finish(payload):
+    def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
         payloads_sent.append(payload)
-        yield
+        yield  # type: ignore[no-untyped-def]
 
-    behaviour.finish_behaviour = mock_finish
+    behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
     with patch.object(
         type(behaviour), "synchronized_data", new_callable=PropertyMock

@@ -83,9 +83,7 @@ class TestFetchPerformanceDataRound:
 
     def test_synchronized_data_class(self) -> None:
         """Test synchronized_data_class attribute."""
-        assert (
-            FetchPerformanceDataRound.synchronized_data_class is BaseSynchronizedData
-        )
+        assert FetchPerformanceDataRound.synchronized_data_class is BaseSynchronizedData
 
     def test_done_event(self) -> None:
         """Test done_event attribute."""
@@ -207,21 +205,15 @@ class TestAgentPerformanceSummaryAbciApp:
             FinishedFetchPerformanceDataRound: {},
         }
 
-    def test_event_to_timeout(
-        self, abci_app: AgentPerformanceSummaryAbciApp
-    ) -> None:
+    def test_event_to_timeout(self, abci_app: AgentPerformanceSummaryAbciApp) -> None:
         """Test event_to_timeout mapping."""
         assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
 
-    def test_db_pre_conditions(
-        self, abci_app: AgentPerformanceSummaryAbciApp
-    ) -> None:
+    def test_db_pre_conditions(self, abci_app: AgentPerformanceSummaryAbciApp) -> None:
         """Test db_pre_conditions."""
         assert abci_app.db_pre_conditions == {FetchPerformanceDataRound: set()}
 
-    def test_db_post_conditions(
-        self, abci_app: AgentPerformanceSummaryAbciApp
-    ) -> None:
+    def test_db_post_conditions(self, abci_app: AgentPerformanceSummaryAbciApp) -> None:
         """Test db_post_conditions."""
         assert abci_app.db_post_conditions == {
             FinishedFetchPerformanceDataRound: set(),

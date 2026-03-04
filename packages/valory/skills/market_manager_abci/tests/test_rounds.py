@@ -397,9 +397,7 @@ class TestSynchronizedDataProperties:
     @patch(
         "packages.valory.skills.market_manager_abci.rounds.CollectionRound.deserialize_collection"
     )
-    def test_participant_to_selection(
-        self, mock_deserialize: MagicMock
-    ) -> None:
+    def test_participant_to_selection(self, mock_deserialize: MagicMock) -> None:
         """Test participant_to_selection property calls _get_deserialized."""
         mock_db = MagicMock()
         mock_db.get_strict.return_value = '{"agent_0": "selection_0"}'
@@ -456,11 +454,8 @@ class TestMarketManagerAbstractRound:
 # ============================================================================
 # Tests for states/base.py SynchronizedData (covers lines 53-54, 64, 69, 74-77, 82)
 # ============================================================================
-from packages.valory.skills.market_manager_abci.states.base import (
+from packages.valory.skills.market_manager_abci.states.base import (  # noqa: E402
     SynchronizedData as BaseSynchronizedData_States,
-)
-from packages.valory.skills.market_manager_abci.states.base import (
-    MarketManagerAbstractRound as BaseMarketManagerAbstractRound,
 )
 
 
@@ -493,9 +488,7 @@ class TestStatesBaseSynchronizedData:
     @patch(
         "packages.valory.skills.market_manager_abci.states.base.CollectionRound.deserialize_collection"
     )
-    def test_participant_to_bets_hash(
-        self, mock_deserialize: MagicMock
-    ) -> None:
+    def test_participant_to_bets_hash(self, mock_deserialize: MagicMock) -> None:
         """Test participant_to_bets_hash property."""
         mock_db = MagicMock()
         mock_db.get_strict.return_value = '{"a": "b"}'
@@ -551,9 +544,7 @@ class TestStatesBaseSynchronizedData:
     @patch(
         "packages.valory.skills.market_manager_abci.states.base.CollectionRound.deserialize_collection"
     )
-    def test_participant_to_selection(
-        self, mock_deserialize: MagicMock
-    ) -> None:
+    def test_participant_to_selection(self, mock_deserialize: MagicMock) -> None:
         """Test participant_to_selection property."""
         mock_db = MagicMock()
         mock_db.get_strict.return_value = '{"agent_0": "sel"}'
@@ -651,13 +642,13 @@ class TestFetchMarketsRouterRoundEndBlock:
 # ============================================================================
 # Tests for states/final_states.py
 # ============================================================================
-from packages.valory.skills.market_manager_abci.states.final_states import (
+from packages.valory.skills.market_manager_abci.states.final_states import (  # noqa: E402
     FailedMarketManagerRound as FinalFailedMarketManagerRound,
 )
-from packages.valory.skills.market_manager_abci.states.final_states import (
+from packages.valory.skills.market_manager_abci.states.final_states import (  # noqa: E402
     FinishedMarketManagerRound as FinalFinishedMarketManagerRound,
 )
-from packages.valory.skills.market_manager_abci.states.final_states import (
+from packages.valory.skills.market_manager_abci.states.final_states import (  # noqa: E402
     FinishedPolymarketFetchMarketRound as FinalFinishedPolymarketFetchMarketRound,
 )
 

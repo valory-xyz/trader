@@ -370,9 +370,7 @@ class TestSynchronizedDataProperties:
 
     def test_is_staking_kpi_met_true(self) -> None:
         """is_staking_kpi_met returns True when set."""
-        data = SynchronizedData(
-            db=AbciAppDB(setup_data={"is_staking_kpi_met": [True]})
-        )
+        data = SynchronizedData(db=AbciAppDB(setup_data={"is_staking_kpi_met": [True]}))
         assert data.is_staking_kpi_met is True
 
     def test_review_bets_for_selling_default(self) -> None:

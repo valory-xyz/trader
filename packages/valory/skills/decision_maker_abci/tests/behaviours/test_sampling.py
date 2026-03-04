@@ -20,17 +20,13 @@
 """Tests for SamplingBehaviour."""
 
 import time
-from collections import defaultdict
-from typing import Generator, List, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
+    SamplingBehaviour,
     UNIX_DAY,
     UNIX_WEEK,
     WEEKDAYS,
-    SamplingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
@@ -42,15 +38,15 @@ from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 # ---------------------------------------------------------------------------
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """Helper that creates a generator returning the given value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a SamplingBehaviour with mocked dependencies."""
-    behaviour = object.__new__(SamplingBehaviour)
+    behaviour = object.__new__(SamplingBehaviour)  # type: ignore[no-untyped-def]
     behaviour.should_rebet = False
 
     context = MagicMock()
@@ -60,9 +56,9 @@ def _make_behaviour():
     return behaviour
 
 
-def _make_mock_bet(
+def _make_mock_bet(  # type: ignore[no-untyped-def]
     bet_id="bet1",
-    queue_status=QueueStatus.TO_PROCESS,
+    queue_status=QueueStatus.TO_PROCESS,  # type: ignore[no-untyped-def]
     n_bets=0,
     opening_timestamp=None,
     invested_amount=0,
@@ -134,9 +130,9 @@ class TestSamplingBehaviourSetup:
     """Tests for SamplingBehaviour.setup."""
 
     def test_setup_calls_read_bets(self) -> None:
-        """setup should call read_bets."""
+        """Setup should call read_bets."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
         behaviour.setup()
         behaviour.read_bets.assert_called_once()
 
@@ -499,7 +495,7 @@ class TestSamplingBenchmarkingBet:
 class TestSample:
     """Tests for _sample."""
 
-    def _setup_behaviour_for_sample(
+    def _setup_behaviour_for_sample(  # type: ignore[no-untyped-def]
         self,
         bets=None,
         benchmarking_enabled=False,
@@ -802,10 +798,10 @@ class TestSample:
         # Use MagicMock for queue_status to avoid modifying enum instances
         qs = MagicMock()
         qs.is_expired.return_value = False
-        qs.__eq__ = lambda self, other: other == QueueStatus.TO_PROCESS
-        qs.__hash__ = lambda self: hash(QueueStatus.TO_PROCESS)
-
-        bet = _make_mock_bet(
+        qs.__eq__ = lambda self, other: other == QueueStatus.TO_PROCESS  # type: ignore[assignment, method-assign, misc]
+        qs.__hash__ = lambda self: hash(QueueStatus.TO_PROCESS)  # type: ignore[assignment, method-assign, misc]
+        # type: ignore[assignment, method-assign, misc]
+        bet = _make_mock_bet(  # type: ignore[assignment, method-assign, misc]
             bet_id="multi",
             n_bets=1,
             opening_timestamp=now + 86400 * 5,
@@ -870,10 +866,10 @@ class TestSample:
         # Use a MagicMock for queue_status
         qs = MagicMock()
         qs.is_expired.return_value = False
-        qs.__eq__ = lambda self, other: other == QueueStatus.TO_PROCESS
-        qs.__hash__ = lambda self: hash(QueueStatus.TO_PROCESS)
-        bet.queue_status = qs
-
+        qs.__eq__ = lambda self, other: other == QueueStatus.TO_PROCESS  # type: ignore[assignment, method-assign, misc]
+        qs.__hash__ = lambda self: hash(QueueStatus.TO_PROCESS)  # type: ignore[assignment, method-assign, misc]
+        bet.queue_status = qs  # type: ignore[assignment, method-assign, misc]
+        # type: ignore[assignment, method-assign, misc]
         behaviour, params, bm, ss = self._setup_behaviour_for_sample(
             bets=[bet],
             use_multi_bets_mode=False,
@@ -1160,7 +1156,9 @@ class TestAsyncAct:
         bet = _make_mock_bet(queue_status=QueueStatus.TO_PROCESS)
         bet.queue_status = MagicMock()
         bet.queue_status.move_to_fresh.return_value = QueueStatus.FRESH
-        bet.queue_status.move_to_process = MagicMock(return_value=QueueStatus.TO_PROCESS)
+        bet.queue_status.move_to_process = MagicMock(
+            return_value=QueueStatus.TO_PROCESS
+        )
         # Use a real QueueStatus so that the assignment chain works
         behaviour.bets = [bet]
 

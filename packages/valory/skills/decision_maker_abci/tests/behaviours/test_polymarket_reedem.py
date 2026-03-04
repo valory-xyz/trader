@@ -19,18 +19,15 @@
 
 """Tests for PolymarketRedeemBehaviour."""
 
-import json
 from io import StringIO
 from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
 
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
     DEFAULT_TO_BLOCK,
+    PolymarketRedeemBehaviour,
     ZERO_BYTES,
     ZERO_HEX,
-    PolymarketRedeemBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketRedeemPayload
 from packages.valory.skills.decision_maker_abci.policy import (
@@ -47,20 +44,20 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import 
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_policy(tools=None):
+def _make_policy(tools=None):  # type: ignore[no-untyped-def]
     """Create a test policy."""
-    if tools is None:
+    if tools is None:  # type: ignore[no-untyped-def]
         tools = {"tool1": AccuracyInfo(requests=5, accuracy=0.6, pending=1)}
     return EGreedyPolicy(
         eps=0.1,
@@ -70,9 +67,9 @@ def _make_policy(tools=None):
     )
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a PolymarketRedeemBehaviour with mocked dependencies."""
-    behaviour = object.__new__(PolymarketRedeemBehaviour)
+    behaviour = object.__new__(PolymarketRedeemBehaviour)  # type: ignore[no-untyped-def]
     behaviour._user_token_balance = None
     behaviour._policy = None
     behaviour._utilized_tools = {}
@@ -93,8 +90,7 @@ def _make_behaviour():
 
 
 # ---------------------------------------------------------------------------
-# Tests: Constants
-# ---------------------------------------------------------------------------
+# Tests for constants
 
 
 class TestPolymarketRedeemConstants:
@@ -118,8 +114,7 @@ class TestPolymarketRedeemConstants:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Properties
-# ---------------------------------------------------------------------------
+# Tests for properties
 
 
 class TestPolymarketRedeemProperties:
@@ -144,7 +139,7 @@ class TestPolymarketRedeemProperties:
         assert behaviour.user_token_balance is None
 
     def test_params_property(self) -> None:
-        """params property should return context.params cast to DecisionMakerParams."""
+        """Params property should return context.params cast to DecisionMakerParams."""
         behaviour = _make_behaviour()
         with patch.object(
             type(behaviour), "context", new_callable=PropertyMock
@@ -161,13 +156,14 @@ class TestPolymarketRedeemProperties:
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem.StorageManagerBehaviour.__init__",
             return_value=None,
         ):
-            behaviour = PolymarketRedeemBehaviour(name="test", skill_context=MagicMock())
+            behaviour = PolymarketRedeemBehaviour(
+                name="test", skill_context=MagicMock()
+            )
             assert behaviour._user_token_balance is None
 
 
 # ---------------------------------------------------------------------------
-# Tests: finish_behaviour
-# ---------------------------------------------------------------------------
+# Tests for finish_behaviour
 
 
 class TestFinishBehaviour:
@@ -176,14 +172,14 @@ class TestFinishBehaviour:
     def test_finish_behaviour_stores_tools_and_calls_super(self) -> None:
         """finish_behaviour should call _store_utilized_tools and then super().finish_behaviour."""
         behaviour = _make_behaviour()
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: (yield)
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         payload = PolymarketRedeemPayload(
             sender="test_agent",
@@ -205,8 +201,7 @@ class TestFinishBehaviour:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _conditional_tokens_interact
-# ---------------------------------------------------------------------------
+# Tests for conditional_tokens_interact
 
 
 class TestConditionalTokensInteract:
@@ -216,19 +211,17 @@ class TestConditionalTokensInteract:
         """Should return status from contract_interact."""
         behaviour = _make_behaviour()
 
-        def mock_contract_interact(**kwargs):
+        def mock_contract_interact(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock contract interact."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour.contract_interact = mock_contract_interact
+        behaviour.contract_interact = mock_contract_interact  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_ctf_address="0xctf"
-            )
+            mock_params.return_value = MagicMock(polymarket_ctf_address="0xctf")
 
             gen = behaviour._conditional_tokens_interact(
                 contract_callable="get_balance_of",
@@ -246,8 +239,7 @@ class TestConditionalTokensInteract:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _get_token_balance
-# ---------------------------------------------------------------------------
+# Tests for get_token_balance
 
 
 class TestGetTokenBalance:
@@ -258,19 +250,17 @@ class TestGetTokenBalance:
         behaviour = _make_behaviour()
         behaviour._user_token_balance = 500
 
-        def mock_conditional_tokens_interact(**kwargs):
+        def mock_conditional_tokens_interact(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock conditional tokens interact."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._conditional_tokens_interact = mock_conditional_tokens_interact
+        behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
-            mock_sd.return_value = MagicMock(
-                safe_contract_address="0xsafe"
-            )
+            mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
 
             gen = behaviour._get_token_balance(12345)
             result = None
@@ -286,19 +276,17 @@ class TestGetTokenBalance:
         """Should return None when contract interaction fails."""
         behaviour = _make_behaviour()
 
-        def mock_conditional_tokens_interact(**kwargs):
+        def mock_conditional_tokens_interact(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock conditional tokens interact that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._conditional_tokens_interact = mock_conditional_tokens_interact
+        behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
-            mock_sd.return_value = MagicMock(
-                safe_contract_address="0xsafe"
-            )
+            mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
 
             gen = behaviour._get_token_balance(12345)
             result = None
@@ -312,8 +300,7 @@ class TestGetTokenBalance:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _update_policy_for_redeemable_positions
-# ---------------------------------------------------------------------------
+# Tests for update_policy_for_redeemable_positions
 
 
 class TestUpdatePolicyForRedeemablePositions:
@@ -326,9 +313,7 @@ class TestUpdatePolicyForRedeemablePositions:
         behaviour._policy = policy
         behaviour._utilized_tools = {"cond1": "tool1"}
 
-        positions = [
-            {"conditionId": "cond1", "curPrice": 1.0}
-        ]
+        positions = [{"conditionId": "cond1", "curPrice": 1.0}]
 
         with patch.object(
             type(behaviour), "policy", new_callable=PropertyMock
@@ -376,9 +361,7 @@ class TestUpdatePolicyForRedeemablePositions:
         behaviour._policy = policy
         behaviour._utilized_tools = {"cond1": "tool1"}
 
-        positions = [
-            {"conditionId": "cond1", "curPrice": 0.0}
-        ]
+        positions = [{"conditionId": "cond1", "curPrice": 0.0}]
 
         with patch.object(
             type(behaviour), "policy", new_callable=PropertyMock
@@ -396,9 +379,7 @@ class TestUpdatePolicyForRedeemablePositions:
         behaviour._policy = policy
         behaviour._utilized_tools = {"cond1": "unknown_tool"}
 
-        positions = [
-            {"conditionId": "cond1", "curPrice": 1.0}
-        ]
+        positions = [{"conditionId": "cond1", "curPrice": 1.0}]
 
         with patch.object(
             type(behaviour), "policy", new_callable=PropertyMock
@@ -410,8 +391,7 @@ class TestUpdatePolicyForRedeemablePositions:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _fetch_redeemable_positions
-# ---------------------------------------------------------------------------
+# Tests for fetch_redeemable_positions
 
 
 class TestFetchRedeemablePositions:
@@ -422,8 +402,8 @@ class TestFetchRedeemablePositions:
         behaviour = _make_behaviour()
 
         expected_positions = [{"conditionId": "cond1", "redeemable": True}]
-        behaviour.send_polymarket_connection_request = (
-            lambda payload: _return_gen(expected_positions)
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            expected_positions
         )
 
         gen = behaviour._fetch_redeemable_positions()
@@ -438,8 +418,7 @@ class TestFetchRedeemablePositions:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _redeem_position
-# ---------------------------------------------------------------------------
+# Tests for redeem_position
 
 
 class TestRedeemPosition:
@@ -450,8 +429,8 @@ class TestRedeemPosition:
         behaviour = _make_behaviour()
 
         redeem_result = {"success": True}
-        behaviour.send_polymarket_connection_request = (
-            lambda payload: _return_gen(redeem_result)
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            redeem_result
         )
 
         gen = behaviour._redeem_position(
@@ -475,8 +454,8 @@ class TestRedeemPosition:
         behaviour = _make_behaviour()
 
         redeem_result = {"success": True}
-        behaviour.send_polymarket_connection_request = (
-            lambda payload: _return_gen(redeem_result)
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            redeem_result
         )
 
         gen = behaviour._redeem_position(
@@ -497,8 +476,7 @@ class TestRedeemPosition:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _setup_policy_and_tools
-# ---------------------------------------------------------------------------
+# Tests for setup_policy_and_tools
 
 
 class TestSetupPolicyAndTools:
@@ -557,8 +535,7 @@ class TestSetupPolicyAndTools:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _build_redeem_positions_data
-# ---------------------------------------------------------------------------
+# Tests for build_redeem_positions_data
 
 
 class TestBuildRedeemPositionsData:
@@ -614,8 +591,7 @@ class TestBuildRedeemPositionsData:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _build_redeem_neg_risk_data
-# ---------------------------------------------------------------------------
+# Tests for build_redeem_neg_risk_data
 
 
 class TestBuildRedeemNegRiskData:
@@ -674,8 +650,7 @@ class TestBuildRedeemNegRiskData:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _get_token_balance_from_chain
-# ---------------------------------------------------------------------------
+# Tests for get_token_balance_from_chain
 
 
 class TestGetTokenBalanceFromChain:
@@ -684,7 +659,7 @@ class TestGetTokenBalanceFromChain:
     def test_returns_none_on_failure(self) -> None:
         """Should return None when _get_token_balance fails."""
         behaviour = _make_behaviour()
-        behaviour._get_token_balance = lambda token_id: _return_gen(None)
+        behaviour._get_token_balance = lambda token_id: _return_gen(None)  # type: ignore[method-assign]
 
         gen = behaviour._get_token_balance_from_chain(123)
         result = None
@@ -699,7 +674,7 @@ class TestGetTokenBalanceFromChain:
     def test_returns_zero_when_balance_is_zero(self) -> None:
         """Should return 0 when token balance is zero."""
         behaviour = _make_behaviour()
-        behaviour._get_token_balance = lambda token_id: _return_gen(0)
+        behaviour._get_token_balance = lambda token_id: _return_gen(0)  # type: ignore[method-assign]
 
         gen = behaviour._get_token_balance_from_chain(123)
         result = None
@@ -714,7 +689,7 @@ class TestGetTokenBalanceFromChain:
     def test_returns_balance_when_positive(self) -> None:
         """Should return balance when positive."""
         behaviour = _make_behaviour()
-        behaviour._get_token_balance = lambda token_id: _return_gen(500)
+        behaviour._get_token_balance = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
 
         gen = behaviour._get_token_balance_from_chain(123)
         result = None
@@ -728,8 +703,7 @@ class TestGetTokenBalanceFromChain:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _redeem_via_builder
-# ---------------------------------------------------------------------------
+# Tests for redeem_via_builder
 
 
 class TestRedeemViaBuilder:
@@ -741,13 +715,15 @@ class TestRedeemViaBuilder:
 
         redeem_results = []
 
-        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False, size=0):
+        def mock_redeem(  # type: ignore[no-untyped-def]
+            condition_id, outcome_index, collateral_token, is_neg_risk=False, size=0
+        ):
             """Mock redeem position."""
             redeem_results.append(condition_id)
             yield
             return {"success": True}
 
-        behaviour._redeem_position = mock_redeem
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
 
         positions = [
             {
@@ -762,9 +738,7 @@ class TestRedeemViaBuilder:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0xusdc"
-            )
+            mock_params.return_value = MagicMock(polymarket_usdc_address="0xusdc")
 
             gen = behaviour._redeem_via_builder(
                 positions,
@@ -787,14 +761,16 @@ class TestRedeemViaBuilder:
 
         redeem_calls = []
 
-        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False, size=0):
+        def mock_redeem(  # type: ignore[no-untyped-def]
+            condition_id, outcome_index, collateral_token, is_neg_risk=False, size=0
+        ):
             """Mock redeem position."""
             redeem_calls.append({"condition_id": condition_id, "size": size})
             yield
             return {"success": True}
 
-        behaviour._redeem_position = mock_redeem
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(999)
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(999)  # type: ignore[method-assign]
 
         positions = [
             {
@@ -810,9 +786,7 @@ class TestRedeemViaBuilder:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0xusdc"
-            )
+            mock_params.return_value = MagicMock(polymarket_usdc_address="0xusdc")
 
             gen = behaviour._redeem_via_builder(
                 positions,
@@ -836,14 +810,14 @@ class TestRedeemViaBuilder:
 
         redeem_calls = []
 
-        def mock_redeem(**kwargs):
+        def mock_redeem(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock redeem position."""
-            redeem_calls.append(kwargs)
+            redeem_calls.append(kwargs)  # type: ignore[no-untyped-def]
             yield
             return {"success": True}
 
-        behaviour._redeem_position = lambda **kwargs: mock_redeem(**kwargs)
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(0)
+        behaviour._redeem_position = lambda **kwargs: mock_redeem(**kwargs)  # type: ignore[method-assign]
+        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(0)  # type: ignore[method-assign]
 
         positions = [
             {
@@ -859,9 +833,7 @@ class TestRedeemViaBuilder:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0xusdc"
-            )
+            mock_params.return_value = MagicMock(polymarket_usdc_address="0xusdc")
 
             gen = behaviour._redeem_via_builder(
                 positions,
@@ -882,7 +854,7 @@ class TestRedeemViaBuilder:
         """Should skip neg risk positions missing asset field."""
         behaviour = _make_behaviour()
 
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)
+        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
 
         positions = [
             {
@@ -898,9 +870,7 @@ class TestRedeemViaBuilder:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0xusdc"
-            )
+            mock_params.return_value = MagicMock(polymarket_usdc_address="0xusdc")
 
             gen = behaviour._redeem_via_builder(
                 positions,
@@ -919,8 +889,7 @@ class TestRedeemViaBuilder:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _prepare_redeem_tx
-# ---------------------------------------------------------------------------
+# Tests for prepare_redeem_tx
 
 
 class TestPrepareRedeemTx:
@@ -945,18 +914,18 @@ class TestPrepareRedeemTx:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         positions = [
             {
@@ -995,20 +964,20 @@ class TestPrepareRedeemTx:
         """Should build multisend batch for neg risk positions using on-chain balance."""
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)
+        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         positions = [
             {
@@ -1050,18 +1019,18 @@ class TestPrepareRedeemTx:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         positions = [
             {
@@ -1088,12 +1057,12 @@ class TestPrepareRedeemTx:
                 mock_tx.return_value = "0xfinalHash"
 
                 gen = behaviour._prepare_redeem_tx(positions)
-                result = None
+                _ = None
                 try:
                     while True:
                         next(gen)
                 except StopIteration as e:
-                    result = e.value
+                    _ = e.value
 
         # Skipped the position, no batches
         assert len(behaviour.multisend_batches) == 0
@@ -1103,12 +1072,12 @@ class TestPrepareRedeemTx:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._build_multisend_data = mock_build_multisend_data
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
 
         positions = [
             {
@@ -1143,18 +1112,18 @@ class TestPrepareRedeemTx:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         positions = [
             {
@@ -1188,20 +1157,20 @@ class TestPrepareRedeemTx:
         """Should skip neg risk positions with zero on-chain balance."""
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(0)
+        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(0)  # type: ignore[method-assign]
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         positions = [
             {
@@ -1228,20 +1197,19 @@ class TestPrepareRedeemTx:
                 mock_tx.return_value = "0xfinalHash"
 
                 gen = behaviour._prepare_redeem_tx(positions)
-                result = None
+                _ = None
                 try:
                     while True:
                         next(gen)
                 except StopIteration as e:
-                    result = e.value
+                    _ = e.value
 
         # Should still complete, but no batch was added for zero balance
         assert len(behaviour.multisend_batches) == 0
 
 
 # ---------------------------------------------------------------------------
-# Tests: async_act
-# ---------------------------------------------------------------------------
+# Tests for async_act
 
 
 class TestAsyncAct:
@@ -1255,26 +1223,26 @@ class TestAsyncAct:
         behaviour._mech_tools = {"tool1"}
         behaviour._utilized_tools = {}
 
-        def mock_setup():
+        def mock_setup() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock setup policy and tools."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._setup_policy_and_tools = mock_setup
-        behaviour._fetch_redeemable_positions = lambda: _return_gen([])
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour._setup_policy_and_tools = mock_setup  # type: ignore[method-assign]
+        behaviour._fetch_redeemable_positions = lambda: _return_gen([])  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: _noop_gen()
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.send_a2a_transaction = lambda payload: _noop_gen()  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        def capture_finish(payload):
+        def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Capture finish behaviour payload."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = capture_finish
+        behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -1301,12 +1269,12 @@ class TestAsyncAct:
         """Should return early when _setup_policy_and_tools fails."""
         behaviour = _make_behaviour()
 
-        def mock_setup():
+        def mock_setup() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock setup policy and tools that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._setup_policy_and_tools = mock_setup
+        behaviour._setup_policy_and_tools = mock_setup  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1331,9 +1299,9 @@ class TestAsyncAct:
         behaviour._mech_tools = {"tool1"}
         behaviour._utilized_tools = {}
 
-        def mock_setup():
+        def mock_setup() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock setup policy and tools."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
         positions = [
@@ -1349,7 +1317,9 @@ class TestAsyncAct:
 
         builder_called = []
 
-        def mock_redeem_via_builder(positions, current_mech_tools, current_policy, current_utilized_tools):
+        def mock_redeem_via_builder(  # type: ignore[no-untyped-def]
+            positions, current_mech_tools, current_policy, current_utilized_tools
+        ):
             """Mock redeem via builder."""
             builder_called.append(True)
             behaviour.payload = PolymarketRedeemPayload(
@@ -1364,22 +1334,22 @@ class TestAsyncAct:
             )
             yield
 
-        behaviour._setup_policy_and_tools = mock_setup
-        behaviour._fetch_redeemable_positions = lambda: _return_gen(positions)
-        behaviour._redeem_via_builder = mock_redeem_via_builder
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour._setup_policy_and_tools = mock_setup  # type: ignore[method-assign]
+        behaviour._fetch_redeemable_positions = lambda: _return_gen(positions)  # type: ignore[method-assign]
+        behaviour._redeem_via_builder = mock_redeem_via_builder  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: _noop_gen()
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.send_a2a_transaction = lambda payload: _noop_gen()  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        def capture_finish(payload):
+        def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Capture finish behaviour payload."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = capture_finish
+        behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -1390,7 +1360,9 @@ class TestAsyncAct:
             ) as mock_bm:
                 mock_bm.return_value = MagicMock(enabled=False)
 
-                behaviour.__dict__["_context"].params.polymarket_builder_program_enabled = True
+                behaviour.__dict__[
+                    "_context"
+                ].params.polymarket_builder_program_enabled = True
 
                 gen = behaviour.async_act()
                 try:
@@ -1409,9 +1381,9 @@ class TestAsyncAct:
         behaviour._mech_tools = {"tool1"}
         behaviour._utilized_tools = {}
 
-        def mock_setup():
+        def mock_setup() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock setup policy and tools."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
         positions = [
@@ -1425,27 +1397,27 @@ class TestAsyncAct:
             }
         ]
 
-        def mock_prepare_redeem_tx(positions):
+        def mock_prepare_redeem_tx(positions) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock prepare redeem tx."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return "0xtxhash"
 
-        behaviour._setup_policy_and_tools = mock_setup
-        behaviour._fetch_redeemable_positions = lambda: _return_gen(positions)
-        behaviour._prepare_redeem_tx = mock_prepare_redeem_tx
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour._setup_policy_and_tools = mock_setup  # type: ignore[method-assign]
+        behaviour._fetch_redeemable_positions = lambda: _return_gen(positions)  # type: ignore[method-assign]
+        behaviour._prepare_redeem_tx = mock_prepare_redeem_tx  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: _noop_gen()
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.send_a2a_transaction = lambda payload: _noop_gen()  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        def capture_finish(payload):
+        def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Capture finish behaviour payload."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = capture_finish
+        behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -1456,7 +1428,9 @@ class TestAsyncAct:
             ) as mock_bm:
                 mock_bm.return_value = MagicMock(enabled=False)
 
-                behaviour.__dict__["_context"].params.polymarket_builder_program_enabled = False
+                behaviour.__dict__[
+                    "_context"
+                ].params.polymarket_builder_program_enabled = False
 
                 gen = behaviour.async_act()
                 try:

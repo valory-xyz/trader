@@ -20,13 +20,9 @@
 """Tests for agent_performance_summary_abci/handlers.py."""
 
 import json
-import time
-from dataclasses import asdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -51,9 +47,16 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    AgentPerformanceSummaryABCIHandler,
+    ContractApiHandler,
     DEFAULT_HEADER,
     DEFAULT_PAGE_SIZE,
+    HttpContentType,
+    HttpHandler,
+    HttpMethod,
     ISO_TIMESTAMP_FORMAT,
+    IpfsHandler,
+    LedgerApiHandler,
     MAX_PAGE_SIZE,
     PREDICTION_STATUS_ALL,
     PREDICTION_STATUS_INVALID,
@@ -61,16 +64,9 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     PREDICTION_STATUS_PENDING,
     PREDICTION_STATUS_WON,
     SECONDS_PER_DAY,
-    VALID_PREDICTION_STATUSES,
-    AgentPerformanceSummaryABCIHandler,
-    ContractApiHandler,
-    HttpContentType,
-    HttpHandler,
-    HttpMethod,
-    IpfsHandler,
-    LedgerApiHandler,
     SigningHandler,
     TendermintHandler,
+    VALID_PREDICTION_STATUSES,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentDetails,
@@ -529,7 +525,7 @@ class TestSendHttpResponse:
         self.handler._send_http_response(
             self.http_msg, self.http_dialogue, "ok", 200, "OK"
         )
-        self.handler.context.outbox.put_message.assert_called_once()
+        self.handler.context.outbox.put_message.assert_called_once()  # type: ignore[attr-defined]
 
     def test_key_error_handled(self) -> None:
         """Test KeyError during reply is handled gracefully."""
@@ -537,7 +533,7 @@ class TestSendHttpResponse:
         self.handler._send_http_response(
             self.http_msg, self.http_dialogue, "ok", 200, "OK"
         )
-        self.handler.context.logger.error.assert_called_once()
+        self.handler.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
     def test_generic_exception_handled(self) -> None:
         """Test generic exception during reply is handled gracefully."""
@@ -545,7 +541,7 @@ class TestSendHttpResponse:
         self.handler._send_http_response(
             self.http_msg, self.http_dialogue, "ok", 200, "OK"
         )
-        self.handler.context.logger.error.assert_called_once()
+        self.handler.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -765,14 +761,14 @@ class TestSendInternalServerErrorResponse:
         self.handler._send_internal_server_error_response(
             self.http_msg, self.http_dialogue, "err"
         )
-        self.handler.context.outbox.put_message.assert_called_once()
+        self.handler.context.outbox.put_message.assert_called_once()  # type: ignore[attr-defined]
 
     def test_logger_called(self) -> None:
         """Test logger.info is called with the response."""
         self.handler._send_internal_server_error_response(
             self.http_msg, self.http_dialogue, "err"
         )
-        self.handler.context.logger.info.assert_called()
+        self.handler.context.logger.info.assert_called()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -796,9 +792,7 @@ class TestSendMessage:
 
         self.handler._send_message(message, dialogue, callback)
 
-        self.handler.context.outbox.put_message.assert_called_once_with(
-            message=message
-        )
+        self.handler.context.outbox.put_message.assert_called_once_with(message=message)  # type: ignore[attr-defined]
 
     def test_send_message_stores_callback(self) -> None:
         """Test _send_message stores callback in req_to_callback."""
@@ -809,7 +803,7 @@ class TestSendMessage:
 
         self.handler._send_message(message, dialogue, callback)
 
-        self.handler.context.state.req_to_callback.__setitem__.assert_called_once_with(
+        self.handler.context.state.req_to_callback.__setitem__.assert_called_once_with(  # type: ignore[attr-defined]
             "nonce123", (callback, {})
         )
 
@@ -823,7 +817,7 @@ class TestSendMessage:
 
         self.handler._send_message(message, dialogue, callback, kwargs)
 
-        self.handler.context.state.req_to_callback.__setitem__.assert_called_once_with(
+        self.handler.context.state.req_to_callback.__setitem__.assert_called_once_with(  # type: ignore[attr-defined]
             "nonce456", (callback, kwargs)
         )
 
@@ -850,7 +844,7 @@ class TestHandleGetAgentDetails:
             last_active_at="2024-06-01T12:00:00Z",
         )
         summary = AgentPerformanceSummary(agent_details=details)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -865,7 +859,7 @@ class TestHandleGetAgentDetails:
     def test_returns_error_when_details_missing(self) -> None:
         """Test returns 500 error when agent details are not available."""
         summary = AgentPerformanceSummary(agent_details=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -881,13 +875,13 @@ class TestHandleGetAgentDetails:
         """Test logger is called with agent details."""
         details = AgentDetails(id="test-id")
         summary = AgentPerformanceSummary(agent_details=details)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
         with patch.object(self.handler, "_send_ok_response"):
             self.handler._handle_get_agent_details(self.http_msg, self.http_dialogue)
-            self.handler.context.logger.info.assert_called()
+            self.handler.context.logger.info.assert_called()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -916,7 +910,8 @@ class TestHandleGetAgentPerformance:
                 roi=10.5,
                 available_funds=500.0,
             ),
-            stats=stats or PerformanceStatsData(predictions_made=50, prediction_accuracy=75.0),
+            stats=stats
+            or PerformanceStatsData(predictions_made=50, prediction_accuracy=75.0),
         )
         return AgentPerformanceSummary(agent_performance=perf)
 
@@ -924,7 +919,7 @@ class TestHandleGetAgentPerformance:
         """Test default window is 'lifetime' and currency is 'USD'."""
         http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -940,7 +935,7 @@ class TestHandleGetAgentPerformance:
             url="http://localhost:8080/api/v1/agent/performance?window=7d"
         )
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -955,7 +950,7 @@ class TestHandleGetAgentPerformance:
             url="http://localhost:8080/api/v1/agent/performance?window=30d"
         )
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -970,7 +965,7 @@ class TestHandleGetAgentPerformance:
             url="http://localhost:8080/api/v1/agent/performance?window=90d"
         )
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -985,7 +980,7 @@ class TestHandleGetAgentPerformance:
             url="http://localhost:8080/api/v1/agent/performance?currency=EUR"
         )
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1000,7 +995,7 @@ class TestHandleGetAgentPerformance:
             url="http://localhost:8080/api/v1/agent/performance?window=30d&currency=ETH"
         )
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1024,11 +1019,9 @@ class TestHandleGetAgentPerformance:
 
     def test_no_performance_data_returns_error(self) -> None:
         """Test returns 500 when performance data is unavailable."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance"
-        )
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
         summary = AgentPerformanceSummary(agent_performance=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1040,11 +1033,9 @@ class TestHandleGetAgentPerformance:
 
     def test_response_includes_agent_id(self) -> None:
         """Test response includes the safe_contract_address as agent_id."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance"
-        )
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
         summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1055,13 +1046,11 @@ class TestHandleGetAgentPerformance:
 
     def test_response_includes_metrics_and_stats(self) -> None:
         """Test response contains metrics and stats dicts."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance"
-        )
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
         metrics = PerformanceMetricsData(all_time_profit=200.0, roi=15.0)
         stats = PerformanceStatsData(predictions_made=100, prediction_accuracy=80.0)
         summary = self._make_performance_summary(metrics=metrics, stats=stats)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1073,12 +1062,10 @@ class TestHandleGetAgentPerformance:
 
     def test_performance_with_none_metrics(self) -> None:
         """Test performance data with None metrics returns empty dict."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance"
-        )
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
         perf = AgentPerformanceData(metrics=None, stats=None)
         summary = AgentPerformanceSummary(agent_performance=perf)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1090,10 +1077,8 @@ class TestHandleGetAgentPerformance:
 
     def test_exception_returns_internal_error(self) -> None:
         """Test exception in handler returns 500."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance"
-        )
-        self.handler.shared_state.read_existing_performance_summary.side_effect = (
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
+        self.handler.shared_state.read_existing_performance_summary.side_effect = (  # type: ignore[attr-defined]
             RuntimeError("DB error")
         )
 
@@ -1295,7 +1280,7 @@ class TestHandleGetPredictions:
             items=items,
         )
         summary = AgentPerformanceSummary(prediction_history=history)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1323,7 +1308,7 @@ class TestHandleGetPredictions:
             items=items,
         )
         summary = AgentPerformanceSummary(prediction_history=history)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1351,7 +1336,7 @@ class TestHandleGetPredictions:
             url="http://localhost:8080/api/v1/agent/prediction-history"
         )
         summary = AgentPerformanceSummary(prediction_history=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1362,9 +1347,7 @@ class TestHandleGetPredictions:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_ok:
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1382,7 +1365,7 @@ class TestHandleGetPredictions:
             items=[{"id": str(i)} for i in range(5)],
         )
         summary = AgentPerformanceSummary(prediction_history=history)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1393,9 +1376,7 @@ class TestHandleGetPredictions:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_ok:
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1406,7 +1387,7 @@ class TestHandleGetPredictions:
             url="http://localhost:8080/api/v1/agent/prediction-history?status=all"
         )
         summary = AgentPerformanceSummary(prediction_history=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1433,7 +1414,7 @@ class TestHandleGetPredictions:
         )
         history = PredictionHistory(total_predictions=0, stored_count=0, items=[])
         summary = AgentPerformanceSummary(prediction_history=history)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1441,9 +1422,7 @@ class TestHandleGetPredictions:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_ok:
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1453,7 +1432,7 @@ class TestHandleGetPredictions:
         http_msg = _make_http_msg(
             url="http://localhost:8080/api/v1/agent/prediction-history"
         )
-        self.handler.shared_state.read_existing_performance_summary.side_effect = (
+        self.handler.shared_state.read_existing_performance_summary.side_effect = (  # type: ignore[attr-defined]
             RuntimeError("unexpected")
         )
 
@@ -1471,7 +1450,7 @@ class TestHandleGetPredictions:
             url="http://localhost:8080/api/v1/agent/prediction-history?page=2&page_size=5"
         )
         summary = AgentPerformanceSummary(prediction_history=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1479,9 +1458,7 @@ class TestHandleGetPredictions:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_ok:
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
 
@@ -1496,11 +1473,9 @@ class TestHandleGetPredictions:
             url="http://localhost:8080/api/v1/agent/prediction-history"
         )
         items = [{"id": "1", "status": "won"}]
-        history = PredictionHistory(
-            total_predictions=1, stored_count=1, items=items
-        )
+        history = PredictionHistory(total_predictions=1, stored_count=1, items=items)
         summary = AgentPerformanceSummary(prediction_history=history)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1515,7 +1490,7 @@ class TestHandleGetPredictions:
             url="http://localhost:8080/api/v1/agent/prediction-history"
         )
         summary = AgentPerformanceSummary(prediction_history=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1523,9 +1498,7 @@ class TestHandleGetPredictions:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ):
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
 
@@ -1538,7 +1511,7 @@ class TestHandleGetPredictions:
             url="http://localhost:8080/api/v1/agent/prediction-history?status=won"
         )
         summary = AgentPerformanceSummary(prediction_history=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1546,9 +1519,7 @@ class TestHandleGetPredictions:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ):
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
 
@@ -1601,7 +1572,7 @@ class TestHandleGetProfitOverTime:
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
         summary = self._make_profit_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1616,7 +1587,7 @@ class TestHandleGetProfitOverTime:
             url="http://localhost:8080/api/v1/agent/profit-over-time?window=7d"
         )
         summary = self._make_profit_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1646,7 +1617,7 @@ class TestHandleGetProfitOverTime:
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
         summary = AgentPerformanceSummary(profit_over_time=None)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1663,7 +1634,7 @@ class TestHandleGetProfitOverTime:
         )
         profit = ProfitOverTimeData(last_updated=0, total_days=0, data_points=[])
         summary = AgentPerformanceSummary(profit_over_time=profit)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1678,7 +1649,7 @@ class TestHandleGetProfitOverTime:
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
         summary = self._make_profit_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1697,7 +1668,7 @@ class TestHandleGetProfitOverTime:
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
         summary = self._make_profit_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1712,7 +1683,7 @@ class TestHandleGetProfitOverTime:
         http_msg = _make_http_msg(
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
-        self.handler.shared_state.read_existing_performance_summary.side_effect = (
+        self.handler.shared_state.read_existing_performance_summary.side_effect = (  # type: ignore[attr-defined]
             RuntimeError("DB error")
         )
 
@@ -1730,7 +1701,7 @@ class TestHandleGetProfitOverTime:
             url="http://localhost:8080/api/v1/agent/profit-over-time?flagonly&window=7d"
         )
         summary = self._make_profit_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -1759,11 +1730,15 @@ class TestFilterProfitDataByWindow:
         """Test 'lifetime' window returns all data points unchanged."""
         points = [
             ProfitDataPoint(
-                date="2024-01-01", timestamp=1704067200, daily_profit=10.0,
+                date="2024-01-01",
+                timestamp=1704067200,
+                daily_profit=10.0,
                 cumulative_profit=10.0,
             ),
             ProfitDataPoint(
-                date="2024-06-01", timestamp=1717200000, daily_profit=20.0,
+                date="2024-06-01",
+                timestamp=1717200000,
+                daily_profit=20.0,
                 cumulative_profit=30.0,
             ),
         ]
@@ -1796,9 +1771,9 @@ class TestFilterProfitDataByWindow:
         now = int(datetime.utcnow().timestamp())
         points = [
             ProfitDataPoint(
-                date=datetime.utcfromtimestamp(
-                    now - (i * SECONDS_PER_DAY)
-                ).strftime("%Y-%m-%d"),
+                date=datetime.utcfromtimestamp(now - (i * SECONDS_PER_DAY)).strftime(
+                    "%Y-%m-%d"
+                ),
                 timestamp=now - (i * SECONDS_PER_DAY),
                 daily_profit=1.0,
                 cumulative_profit=float(i),
@@ -1872,7 +1847,9 @@ class TestFilterProfitDataByWindow:
         """Test unknown window key returns all data points (days_map gives 0)."""
         points = [
             ProfitDataPoint(
-                date="2024-01-01", timestamp=1704067200, daily_profit=10.0,
+                date="2024-01-01",
+                timestamp=1704067200,
+                daily_profit=10.0,
                 cumulative_profit=10.0,
             ),
         ]
@@ -1977,12 +1954,8 @@ class TestHandleGetPositionDetails:
 
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_ok:
-            MockFetcher.return_value.fetch_position_details.return_value = (
-                position_data
-            )
+        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
+            MockFetcher.return_value.fetch_position_details.return_value = position_data
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
             assert mock_ok.call_args[0][2] == position_data
@@ -1998,9 +1971,7 @@ class TestHandleGetPositionDetails:
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.handlers.PolymarketPredictionsFetcher"
         ) as MockFetcher, patch.object(handler, "_send_ok_response") as mock_ok:
-            MockFetcher.return_value.fetch_position_details.return_value = (
-                position_data
-            )
+            MockFetcher.return_value.fetch_position_details.return_value = position_data
             handler._handle_get_position_details(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
 
@@ -2110,7 +2081,7 @@ class TestHandleGetPositionDetails:
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
 
             MockFetcher.assert_called_once_with(
-                self.handler.context, self.handler.context.logger
+                self.handler.context, self.handler.context.logger  # type: ignore[attr-defined]
             )
 
     def test_polymarket_fetcher_receives_context(self) -> None:
@@ -2126,9 +2097,7 @@ class TestHandleGetPositionDetails:
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             handler._handle_get_position_details(http_msg, self.http_dialogue)
 
-            MockFetcher.assert_called_once_with(
-                handler.context, handler.context.logger
-            )
+            MockFetcher.assert_called_once_with(handler.context, handler.context.logger)  # type: ignore[attr-defined]
 
     def test_logs_bet_id(self) -> None:
         """Test logs the bet ID being fetched."""
@@ -2144,7 +2113,7 @@ class TestHandleGetPositionDetails:
 
             # Check that logger was called with bet ID info
             log_calls = [
-                str(call) for call in self.handler.context.logger.info.call_args_list
+                str(call) for call in self.handler.context.logger.info.call_args_list  # type: ignore[attr-defined]
             ]
             assert any("bet999" in call for call in log_calls)
 
@@ -2180,7 +2149,7 @@ class TestProfitOverTimeTimestampFormatting:
             last_updated=1704067200, total_days=1, data_points=points
         )
         summary = AgentPerformanceSummary(profit_over_time=profit)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -2206,7 +2175,7 @@ class TestProfitOverTimeTimestampFormatting:
             last_updated=1704067200, total_days=1, data_points=points
         )
         summary = AgentPerformanceSummary(profit_over_time=profit)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -2233,7 +2202,7 @@ class TestEdgeCases:
         """Test agent details with all None fields."""
         details = AgentDetails(id=None, created_at=None, last_active_at=None)
         summary = AgentPerformanceSummary(agent_details=details)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
         http_msg = _make_http_msg()
@@ -2272,7 +2241,7 @@ class TestEdgeCases:
             metrics=PerformanceMetricsData(), stats=PerformanceStatsData()
         )
         summary = AgentPerformanceSummary(agent_performance=perf)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -2297,11 +2266,9 @@ class TestEdgeCases:
                 cumulative_profit=5.0,
             )
         ]
-        profit = ProfitOverTimeData(
-            last_updated=now, total_days=1, data_points=points
-        )
+        profit = ProfitOverTimeData(last_updated=now, total_days=1, data_points=points)
         summary = AgentPerformanceSummary(profit_over_time=profit)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -2324,11 +2291,9 @@ class TestEdgeCases:
                 cumulative_profit=5.0,
             )
         ]
-        profit = ProfitOverTimeData(
-            last_updated=now, total_days=1, data_points=points
-        )
+        profit = ProfitOverTimeData(last_updated=now, total_days=1, data_points=points)
         summary = AgentPerformanceSummary(profit_over_time=profit)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -2381,14 +2346,10 @@ class TestEdgeCases:
         http_msg = _make_http_msg(
             url="http://localhost:8080/api/v1/agent/prediction-history?page=2&page_size=2"
         )
-        items = [
-            {"id": str(i), "status": "won"} for i in range(5)
-        ]
-        history = PredictionHistory(
-            total_predictions=5, stored_count=5, items=items
-        )
+        items = [{"id": str(i), "status": "won"} for i in range(5)]
+        history = PredictionHistory(total_predictions=5, stored_count=5, items=items)
         summary = AgentPerformanceSummary(prediction_history=history)
-        self.handler.shared_state.read_existing_performance_summary.return_value = (
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
             summary
         )
 
@@ -2405,9 +2366,7 @@ class TestEdgeCases:
     def test_send_http_response_with_version(self) -> None:
         """Test _send_http_response passes version from request."""
         http_msg = _make_http_msg(version="2.0")
-        self.handler._send_http_response(
-            http_msg, self.http_dialogue, "ok", 200, "OK"
-        )
+        self.handler._send_http_response(http_msg, self.http_dialogue, "ok", 200, "OK")
         call_kwargs = self.http_dialogue.reply.call_args.kwargs
         assert call_kwargs["version"] == "2.0"
 

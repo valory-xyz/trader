@@ -65,7 +65,9 @@ class TestCheckStopTradingParamsConfigureMarketplace:
         """None marketplace_config raises AEAEnforceError."""
         kwargs = {"mech_marketplace_config": None}
         instance = object.__new__(CheckStopTradingParams)
-        with pytest.raises(AEAEnforceError, match="Market place config cannot be empty"):
+        with pytest.raises(
+            AEAEnforceError, match="Market place config cannot be empty"
+        ):
             instance._configure_marketplace(kwargs)
 
     def test_valid_marketplace_config(self) -> None:
@@ -78,9 +80,7 @@ class TestCheckStopTradingParamsConfigureMarketplace:
         instance = object.__new__(CheckStopTradingParams)
         instance._configure_marketplace(kwargs)
 
-        assert (
-            instance.staking_kpi_mech_count_request_address == "0xMarketplace"
-        )
+        assert instance.staking_kpi_mech_count_request_address == "0xMarketplace"
         assert instance.mech_marketplace_config is not None
 
 
@@ -142,7 +142,7 @@ class TestModelAliases:
         assert Requests is BaseRequests
 
     def test_benchmark_tool_alias(self) -> None:
-        """BenchmarkTool is an alias for BaseBenchmarkTool."""
+        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
         from packages.valory.skills.abstract_round_abci.models import (
             BenchmarkTool as BaseBenchmarkTool,
         )
@@ -154,5 +154,5 @@ class TestSharedState:
     """Tests for SharedState model."""
 
     def test_abci_app_cls(self) -> None:
-        """SharedState points to CheckStopTradingAbciApp."""
+        """Test that SharedState points to CheckStopTradingAbciApp."""
         assert SharedState.abci_app_cls is CheckStopTradingAbciApp

@@ -21,19 +21,18 @@
 
 import json
 from abc import ABC
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
+    APTQueryingBehaviour,
     DECIMAL_SCALING_FACTOR,
+    FetchStatus,
     MAX_LOG_SIZE,
     OLAS_TOKEN_ADDRESS,
     QUERY_BATCH_SIZE,
     QUESTION_DATA_SEPARATOR,
     USD_PRICE_FIELD,
-    APTQueryingBehaviour,
-    FetchStatus,
     to_content,
 )
 
@@ -203,14 +202,15 @@ class TestAPTQueryingBehaviourStructure:
 
             matching_round = MagicMock(spec=AbstractRound)
 
-            def async_act(self):
+            # type: ignore[no-untyped-def]
+            def async_act(self) -> None:  # type: ignore[misc, override]
                 """No-op implementation for testing."""
                 yield
 
         with patch(
             "packages.valory.skills.abstract_round_abci.behaviour_utils.BaseBehaviour.__init__"
-        ):
-            instance = _ConcreteAPTBehaviour.__new__(_ConcreteAPTBehaviour)
+        ):  # type: ignore[type-abstract]
+            instance = _ConcreteAPTBehaviour.__new__(_ConcreteAPTBehaviour)  # type: ignore[type-abstract]
             instance._context = MagicMock()
             _ConcreteAPTBehaviour.__init__(instance)
 
@@ -224,16 +224,20 @@ class TestAPTQueryingBehaviourStructure:
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen(*args, **kwargs):
+# type: ignore[no-untyped-def]
+def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
     """No-op generator that yields once and returns None."""
     yield
     return None
 
 
-def _return_gen(value):
+# type: ignore[no-untyped-def]
+def _return_gen(value: Any) -> Any:
     """Create a generator factory that yields once and returns *value*."""
 
-    def _gen(*args, **kwargs):
+    # type: ignore[no-untyped-def]
+    def _gen(*args: Any, **kwargs: Any) -> Generator:
+        """Inner generator returning value."""
         yield
         return value
 
@@ -243,21 +247,27 @@ def _return_gen(value):
 class _ConcreteAPTBehaviour(APTQueryingBehaviour):
     """Minimal concrete subclass of APTQueryingBehaviour for testing."""
 
-    matching_round = MagicMock()
+    matching_round = MagicMock()  # type: ignore[no-untyped-def]
 
-    def async_act(self):  # pragma: no cover
+    def async_act(self) -> None:  # type: ignore[misc, override]
         """No-op."""
         yield
 
 
-def _make_behaviour(**overrides):
+# type: ignore[no-untyped-def]
+
+
+def _make_behaviour(**overrides: Any) -> _ConcreteAPTBehaviour:
     """Instantiate a _ConcreteAPTBehaviour without framework wiring.
 
     Uses object.__new__ to skip __init__ (which requires the full
     Open Autonomy runtime), then manually sets the attributes that the
     methods under test rely on.
+
+    :param **overrides: keyword arguments to override default attributes.
+    :return: a configured _ConcreteAPTBehaviour instance.
     """
-    b = object.__new__(_ConcreteAPTBehaviour)
+    b = object.__new__(_ConcreteAPTBehaviour)  # type: ignore[type-abstract]
 
     ctx = MagicMock()
     ctx.params.is_running_on_polymarket = False
@@ -269,12 +279,12 @@ def _make_behaviour(**overrides):
     b._fetch_status = FetchStatus.NONE
     b._current_market = ""
 
-    for k, v in overrides.items():
+    for k, v in overrides.items():  # type: ignore[no-untyped-def]
         setattr(b, k, v)
     return b
 
 
-def _exhaust(gen):
+def _exhaust(gen: Generator) -> Any:
     """Drive a generator to completion and return its final value."""
     result = None
     try:
@@ -305,11 +315,14 @@ class TestAPTQueryingBehaviourProperties:
 # ---------------------------------------------------------------------------
 
 
+# type: ignore[no-untyped-def]
 class TestHandleResponse:
     """Tests for _handle_response."""
 
     @staticmethod
-    def _make_subgraph(retries_exceeded=False, sleep_time=1.0):
+    def _make_subgraph(
+        retries_exceeded: bool = False, sleep_time: float = 1.0
+    ) -> MagicMock:
         """Create a mock subgraph with controllable retry behaviour."""
         sg = MagicMock()
         sg.api_id = "test_subgraph"
@@ -320,7 +333,7 @@ class TestHandleResponse:
     def test_none_response_increments_retries_and_sleeps(self) -> None:
         """A None response logs error, increments retries, sleeps."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         sg = self._make_subgraph()
 
         gen = b._handle_response(sg, None, "things")
@@ -334,25 +347,25 @@ class TestHandleResponse:
     def test_none_response_sets_fail_when_retries_exceeded(self) -> None:
         """When retries are exceeded, status becomes FAIL."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         sg = self._make_subgraph(retries_exceeded=True)
 
         gen = b._handle_response(sg, None, "things")
         _exhaust(gen)
 
-        assert b._fetch_status == FetchStatus.FAIL
+        assert b._fetch_status == FetchStatus.FAIL  # type: ignore[no-untyped-def]
 
     def test_none_response_no_sleep_when_sleep_on_fail_false(self) -> None:
         """When sleep_on_fail=False, the sleep generator is not invoked."""
         b = _make_behaviour()
         sleep_called = False
 
-        def _tracking_sleep(*a, **kw):
+        def _tracking_sleep(*a: Any, **kw: Any) -> Generator:
             nonlocal sleep_called
             sleep_called = True
             yield
 
-        b.sleep = _tracking_sleep
+        b.sleep = _tracking_sleep  # type: ignore[method-assign]
         sg = self._make_subgraph()
 
         gen = b._handle_response(sg, None, "things", sleep_on_fail=False)
@@ -366,7 +379,7 @@ class TestHandleResponse:
         sg = self._make_subgraph()
         data = [{"id": "1"}]
 
-        gen = b._handle_response(sg, data, "things")
+        gen = b._handle_response(sg, data, "things")  # type: ignore[arg-type]
         result = _exhaust(gen)
 
         assert result == data
@@ -402,7 +415,7 @@ class TestHandleResponse:
     def test_none_response_retries_not_exceeded_no_fail(self) -> None:
         """When retries are not exceeded, status should not become FAIL."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         sg = self._make_subgraph(retries_exceeded=False)
 
         gen = b._handle_response(sg, None, "things")
@@ -427,7 +440,7 @@ class TestFetchFromSubgraph:
         sg.process_response.return_value = {"data": "ok"}
         sg.is_retries_exceeded.return_value = False
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_from_subgraph("query", {}, sg, "test_context")
         result = _exhaust(gen)
@@ -443,7 +456,7 @@ class TestFetchFromSubgraph:
         sg.process_response.return_value = {"data": "ok"}
         sg.is_retries_exceeded.return_value = False
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_from_subgraph("query", {}, sg, "test_context")
         # After first yield, status should be IN_PROGRESS
@@ -453,14 +466,14 @@ class TestFetchFromSubgraph:
     def test_fetch_with_none_response(self) -> None:
         """When process_response returns None, _handle_response handles it."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         sg = MagicMock()
         sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         sg.process_response.return_value = None
         sg.api_id = "test_subgraph"
         sg.is_retries_exceeded.return_value = False
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_from_subgraph("query", {}, sg, "test_context")
         result = _exhaust(gen)
@@ -489,12 +502,12 @@ class TestSendPolymarketConnectionRequest:
         b.context.srr_dialogues = mock_srr_dialogues
 
         # Mock request/response
-        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce_1")
-        b.get_callback_request = MagicMock(return_value=MagicMock())
+        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce_1")  # type: ignore[method-assign]
+        b.get_callback_request = MagicMock(return_value=MagicMock())  # type: ignore[method-assign]
 
         mock_response = MagicMock()
         mock_response.payload = json.dumps({"result": "success"})
-        b.wait_for_message = _return_gen(mock_response)
+        b.wait_for_message = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b.send_polymarket_connection_request({"action": "test"})
         result = _exhaust(gen)
@@ -518,16 +531,14 @@ class TestFetchMechSender:
 
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {
-            "sender": {"requests": [{"id": "1"}]}
-        }
+        mock_sg.process_response.return_value = {"sender": {"requests": [{"id": "1"}]}}
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polygon_mech_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_sender("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"requests": [{"id": "1"}]}
 
@@ -538,16 +549,14 @@ class TestFetchMechSender:
 
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {
-            "sender": {"requests": [{"id": "2"}]}
-        }
+        mock_sg.process_response.return_value = {"sender": {"requests": [{"id": "2"}]}}
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_sender("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"requests": [{"id": "2"}]}
 
@@ -562,17 +571,17 @@ class TestFetchMechSender:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_sender("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"other": "data"}
 
     def test_returns_none_when_result_is_none(self) -> None:
         """When the subgraph returns None, returns None."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         b.context.params.is_running_on_polymarket = False
 
         mock_sg = MagicMock()
@@ -582,10 +591,10 @@ class TestFetchMechSender:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_sender("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -600,10 +609,10 @@ class TestFetchMechSender:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_sender("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "1"}]
 
@@ -629,10 +638,10 @@ class TestFetchTraderAgent:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"id": "0xagent", "totalBets": 5}
 
@@ -649,10 +658,10 @@ class TestFetchTraderAgent:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"id": "0xagent", "totalBets": 10}
 
@@ -667,17 +676,17 @@ class TestFetchTraderAgent:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"other": "data"}
 
     def test_returns_none_when_fetch_fails(self) -> None:
         """When fetch returns None, returns None."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         b.context.params.is_running_on_polymarket = False
 
         mock_sg = MagicMock()
@@ -687,10 +696,10 @@ class TestFetchTraderAgent:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -705,10 +714,10 @@ class TestFetchTraderAgent:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == "some_string"
 
@@ -732,10 +741,10 @@ class TestFetchStakingService:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polygon_staking_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_staking_service("service_1")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"staking": "data"}
 
@@ -750,10 +759,10 @@ class TestFetchStakingService:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.gnosis_staking_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_staking_service("service_1")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"staking": "gnosis_data"}
 
@@ -776,10 +785,10 @@ class TestFetchOpenMarkets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.open_markets_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_open_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "market_1"}]
 
@@ -806,10 +815,10 @@ class TestFetchTraderAgentBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_bets_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"bets": [{"id": "bet1"}, {"id": "bet2"}, {"id": "bet3"}]}
 
@@ -824,10 +833,10 @@ class TestFetchTraderAgentBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_bets_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -842,10 +851,10 @@ class TestFetchTraderAgentBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_bets_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -862,10 +871,10 @@ class TestFetchTraderAgentBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"bets": [{"id": "bet1"}]}
 
@@ -880,17 +889,17 @@ class TestFetchTraderAgentBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"other": "data"}
 
     def test_polymarket_path_fetch_fails(self) -> None:
         """When polymarket fetch returns None, returns None."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         b.context.params.is_running_on_polymarket = True
 
         mock_sg = MagicMock()
@@ -900,10 +909,10 @@ class TestFetchTraderAgentBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_bets_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -929,10 +938,10 @@ class TestFetchAgentDetails:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_agent_details("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"id": "0x1", "createdAt": "100"}
 
@@ -949,10 +958,10 @@ class TestFetchAgentDetails:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_agent_details("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"id": "0x2", "createdAt": "200"}
 
@@ -967,10 +976,10 @@ class TestFetchAgentDetails:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_agent_details("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"other": "data"}
 
@@ -985,10 +994,10 @@ class TestFetchAgentDetails:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_agent_details("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == "string_result"
 
@@ -1014,10 +1023,10 @@ class TestFetchTraderAgentPerformance:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polymarket_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_performance("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"totalBets": 10, "totalTraded": 1000}
 
@@ -1034,10 +1043,10 @@ class TestFetchTraderAgentPerformance:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_performance("0xagent", first=50, skip=10)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"totalBets": 20, "bets": []}
 
@@ -1052,10 +1061,10 @@ class TestFetchTraderAgentPerformance:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_trader_agent_performance("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "1"}]
 
@@ -1080,10 +1089,10 @@ class TestFetchPendingBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_pending_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"bets": [{"id": "pending1"}]}
 
@@ -1097,31 +1106,31 @@ class TestFetchPendingBets:
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_pending_bets("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"other": "data"}
 
 
 # ---------------------------------------------------------------------------
-# _fetch_all_resolved_markets tests
+# _fetch_all_resolved_markets tests  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 
 class TestFetchAllResolvedMarkets:
     """Tests for _fetch_all_resolved_markets."""
 
-    def _setup_subgraph(self, b, responses):
-        """Set up mock subgraph with a sequence of responses."""
+    def _setup_subgraph(self, b: _ConcreteAPTBehaviour, responses: list) -> MagicMock:  # type: ignore[type-arg]
+        """Set up mock subgraph with a sequence of responses."""  # type: ignore[no-untyped-def]
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         mock_sg.is_retries_exceeded.return_value = False
 
         call_count = [0]
 
-        def process_response_side_effect(*args, **kwargs):
+        def process_response_side_effect(*args: Any, **kwargs: Any) -> Any:
             if call_count[0] < len(responses):
                 result = responses[call_count[0]]
                 call_count[0] += 1
@@ -1130,7 +1139,7 @@ class TestFetchAllResolvedMarkets:
 
         mock_sg.process_response.side_effect = process_response_side_effect
         b.context.olas_agents_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
         return mock_sg
 
     def test_single_batch_full(self) -> None:
@@ -1140,7 +1149,7 @@ class TestFetchAllResolvedMarkets:
         self._setup_subgraph(b, [markets])
 
         gen = b._fetch_all_resolved_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == markets
 
@@ -1152,7 +1161,7 @@ class TestFetchAllResolvedMarkets:
         self._setup_subgraph(b, [batch1, batch2])
 
         gen = b._fetch_all_resolved_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert len(result) == QUERY_BATCH_SIZE + 5
 
@@ -1162,24 +1171,24 @@ class TestFetchAllResolvedMarkets:
         self._setup_subgraph(b, [[]])
 
         gen = b._fetch_all_resolved_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
     def test_none_result_breaks(self) -> None:
         """When fetch returns None, breaks the loop."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_all_resolved_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1189,7 +1198,7 @@ class TestFetchAllResolvedMarkets:
         self._setup_subgraph(b, [[{"id": "m1"}]])
 
         gen = b._fetch_all_resolved_markets(1000, timestamp_lte=2000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "m1"}]
 
@@ -1200,7 +1209,7 @@ class TestFetchAllResolvedMarkets:
         self._setup_subgraph(b, [{"fixedProductMarketMakers": markets}])
 
         gen = b._fetch_all_resolved_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == markets
 
@@ -1210,7 +1219,7 @@ class TestFetchAllResolvedMarkets:
         self._setup_subgraph(b, [{"fixedProductMarketMakers": []}])
 
         gen = b._fetch_all_resolved_markets(1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1231,10 +1240,10 @@ class TestFetchOlasInUsdPrice:
         mock_response.body = json.dumps(
             {OLAS_TOKEN_ADDRESS: {USD_PRICE_FIELD: 1.5}}
         ).encode()
-        b.get_http_response = _return_gen(mock_response)
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._fetch_olas_in_usd_price()
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == int(1.5 * DECIMAL_SCALING_FACTOR)
 
@@ -1244,10 +1253,10 @@ class TestFetchOlasInUsdPrice:
 
         mock_response = MagicMock()
         mock_response.body = b"not valid json"
-        b.get_http_response = _return_gen(mock_response)
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._fetch_olas_in_usd_price()
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
         b.context.logger.error.assert_called_once()
@@ -1258,10 +1267,10 @@ class TestFetchOlasInUsdPrice:
 
         mock_response = MagicMock()
         mock_response.body = json.dumps({"other_token": {"usd": 1.0}}).encode()
-        b.get_http_response = _return_gen(mock_response)
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._fetch_olas_in_usd_price()
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -1270,13 +1279,11 @@ class TestFetchOlasInUsdPrice:
         b = _make_behaviour()
 
         mock_response = MagicMock()
-        mock_response.body = json.dumps(
-            {OLAS_TOKEN_ADDRESS: {"eur": 1.5}}
-        ).encode()
-        b.get_http_response = _return_gen(mock_response)
+        mock_response.body = json.dumps({OLAS_TOKEN_ADDRESS: {"eur": 1.5}}).encode()
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._fetch_olas_in_usd_price()
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
 
@@ -1288,7 +1295,7 @@ class TestFetchOlasInUsdPrice:
         mock_response.body = json.dumps(
             {OLAS_TOKEN_ADDRESS: {USD_PRICE_FIELD: 2.0}}
         ).encode()
-        b.get_http_response = _return_gen(mock_response)
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._fetch_olas_in_usd_price()
         next(gen)
@@ -1296,22 +1303,22 @@ class TestFetchOlasInUsdPrice:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_daily_profit_statistics tests
+# _fetch_daily_profit_statistics tests  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 
 class TestFetchDailyProfitStatistics:
     """Tests for _fetch_daily_profit_statistics."""
 
-    def _setup_subgraph(self, b, responses, is_polymarket=False):
-        """Set up mock subgraph with sequential responses."""
+    def _setup_subgraph(self, b: _ConcreteAPTBehaviour, responses: list, is_polymarket: bool = False) -> MagicMock:  # type: ignore[type-arg]
+        """Set up mock subgraph with sequential responses."""  # type: ignore[no-untyped-def]
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         mock_sg.is_retries_exceeded.return_value = False
 
         call_count = [0]
 
-        def process_response_side_effect(*args, **kwargs):
+        def process_response_side_effect(*args: Any, **kwargs: Any) -> Any:
             if call_count[0] < len(responses):
                 result = responses[call_count[0]]
                 call_count[0] += 1
@@ -1326,7 +1333,7 @@ class TestFetchDailyProfitStatistics:
         else:
             b.context.olas_agents_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
         return mock_sg
 
     def test_omen_single_batch(self) -> None:
@@ -1340,7 +1347,7 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == stats
 
@@ -1355,24 +1362,24 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == stats
 
     def test_empty_result(self) -> None:
         """When fetch returns None, returns empty list."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_agents_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1386,7 +1393,7 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1405,7 +1412,7 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert len(result) == QUERY_BATCH_SIZE + 1
 
@@ -1420,7 +1427,7 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == stats
 
@@ -1434,7 +1441,7 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1448,7 +1455,7 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1463,23 +1470,23 @@ class TestFetchDailyProfitStatistics:
 
         We use a custom dict subclass whose .get("dailyProfitStatistics")
         returns a truthy value on the first call and an empty list on the
-        second call.
+        second call.  # type: ignore[no-untyped-def]
         """
         b = _make_behaviour()
 
         class FlipFlopDict(dict):
-            """Dict where get('dailyProfitStatistics') changes on each call."""
+            """Dict where get('dailyProfitStatistics') changes on each call."""  # type: ignore[no-untyped-def]
 
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
                 """Initialize with call counter."""
-                super().__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)  # type: ignore[no-untyped-def]
                 self._call_count = 0
 
-            def __bool__(self):
+            def __bool__(self) -> bool:
                 """Always truthy so ``or {}`` does not replace us."""
                 return True
 
-            def get(self, key, default=None):
+            def get(self, key: Any, default: Any = None) -> Any:
                 """Return truthy first, falsy second for dailyProfitStatistics."""
                 if key == "dailyProfitStatistics":
                     self._call_count += 1
@@ -1497,28 +1504,28 @@ class TestFetchDailyProfitStatistics:
         )
 
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
 
 # ---------------------------------------------------------------------------
-# _fetch_all_mech_requests tests
+# _fetch_all_mech_requests tests  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 
 class TestFetchAllMechRequests:
     """Tests for _fetch_all_mech_requests."""
 
-    def _setup_subgraph(self, b, responses, is_polymarket=False):
-        """Set up mock subgraph with sequential responses."""
+    def _setup_subgraph(self, b: _ConcreteAPTBehaviour, responses: list, is_polymarket: bool = False) -> MagicMock:  # type: ignore[type-arg]
+        """Set up mock subgraph with sequential responses."""  # type: ignore[no-untyped-def]
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         mock_sg.is_retries_exceeded.return_value = False
 
         call_count = [0]
 
-        def process_response_side_effect(*args, **kwargs):
+        def process_response_side_effect(*args: Any, **kwargs: Any) -> Any:
             if call_count[0] < len(responses):
                 result = responses[call_count[0]]
                 call_count[0] += 1
@@ -1533,7 +1540,7 @@ class TestFetchAllMechRequests:
         else:
             b.context.olas_mech_subgraph = mock_sg
 
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
         return mock_sg
 
     def test_omen_single_batch(self) -> None:
@@ -1547,7 +1554,7 @@ class TestFetchAllMechRequests:
         )
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == requests_data
 
@@ -1562,24 +1569,24 @@ class TestFetchAllMechRequests:
         )
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == requests_data
 
     def test_empty_result(self) -> None:
         """When fetch returns None, returns empty list."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1593,7 +1600,7 @@ class TestFetchAllMechRequests:
         )
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1612,7 +1619,7 @@ class TestFetchAllMechRequests:
         )
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert len(result) == QUERY_BATCH_SIZE + 1
 
@@ -1627,7 +1634,7 @@ class TestFetchAllMechRequests:
         )
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == requests_data
 
@@ -1641,7 +1648,7 @@ class TestFetchAllMechRequests:
         )
 
         gen = b._fetch_all_mech_requests("0xagent")
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1659,7 +1666,7 @@ class TestFetchMechRequestsByTitles:
         b = _make_behaviour()
 
         gen = b._fetch_mech_requests_by_titles("0xagent", [])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1675,10 +1682,10 @@ class TestFetchMechRequestsByTitles:
         }
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_requests_by_titles("0xagent", ["question1"])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "req1"}]
 
@@ -1694,10 +1701,10 @@ class TestFetchMechRequestsByTitles:
         }
         mock_sg.is_retries_exceeded.return_value = False
         b.context.polygon_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_requests_by_titles("0xagent", ["question1"])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "req2"}]
 
@@ -1711,17 +1718,17 @@ class TestFetchMechRequestsByTitles:
         mock_sg.process_response.return_value = {"requests": [{"id": "req3"}]}
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == [{"id": "req3"}]
 
     def test_none_result(self) -> None:
         """When fetch returns None, returns empty list."""
         b = _make_behaviour()
-        b.sleep = _noop_gen
+        b.sleep = _noop_gen  # type: ignore[method-assign]
         b.context.params.is_running_on_polymarket = False
 
         mock_sg = MagicMock()
@@ -1730,10 +1737,10 @@ class TestFetchMechRequestsByTitles:
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1747,10 +1754,10 @@ class TestFetchMechRequestsByTitles:
         mock_sg.process_response.return_value = "string_result"
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
 
@@ -1764,9 +1771,9 @@ class TestFetchMechRequestsByTitles:
         mock_sg.process_response.return_value = {"sender": None}
         mock_sg.is_retries_exceeded.return_value = False
         b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())
+        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
         gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)
+        result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []

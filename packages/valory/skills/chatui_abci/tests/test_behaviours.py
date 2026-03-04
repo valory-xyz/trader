@@ -24,12 +24,15 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.chatui_abci.behaviours import (
     ChatuiLoadBehaviour,
     ChatuiRoundBehaviour,
 )
-from packages.valory.skills.chatui_abci.models import ChatuiConfig, ChatuiParams, SharedState
+from packages.valory.skills.chatui_abci.models import (
+    ChatuiConfig,
+    ChatuiParams,
+    SharedState,
+)
 from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp, ChatuiLoadRound
 
 
@@ -48,10 +51,10 @@ class TestChatuiRoundBehaviour:
 
     def test_abci_app_cls(self) -> None:
         """abci_app_cls is ChatuiAbciApp."""
-        assert ChatuiRoundBehaviour.abci_app_cls is ChatuiAbciApp
+        assert ChatuiRoundBehaviour.abci_app_cls is ChatuiAbciApp  # type: ignore[misc]
 
     def test_behaviours_set(self) -> None:
-        """behaviours set contains only ChatuiLoadBehaviour."""
+        """Behaviours set contains only ChatuiLoadBehaviour."""
         assert ChatuiRoundBehaviour.behaviours == {ChatuiLoadBehaviour}
 
 
@@ -63,8 +66,8 @@ class TestChatuiLoadBehaviour:
         assert ChatuiLoadBehaviour.matching_round is ChatuiLoadRound
 
     def test_params_property(self) -> None:
-        """params returns context.params cast to ChatuiParams."""
-        behaviour = object.__new__(ChatuiLoadBehaviour)
+        """Params returns context.params cast to ChatuiParams."""
+        behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_params = MagicMock(spec=ChatuiParams)
         mock_context.params = mock_params
@@ -78,7 +81,7 @@ class TestChatuiLoadBehaviour:
 
     def test_shared_state_property(self) -> None:
         """shared_state returns context.state cast to SharedState."""
-        behaviour = object.__new__(ChatuiLoadBehaviour)
+        behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_state = MagicMock(spec=SharedState)
         mock_context.state = mock_state
@@ -96,13 +99,13 @@ class TestAsyncAct:
 
     def test_async_act_happy_path(self) -> None:
         """Drives the full async_act generator to completion when config is set."""
-        behaviour = object.__new__(ChatuiLoadBehaviour)
+        behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_context.agent_address = "agent_0"
 
         mock_shared_state = MagicMock(spec=SharedState)
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
-        mock_shared_state._chatui_config = mock_chatui_config
+        mock_shared_state._chatui_config = mock_chatui_config  # type: ignore[attr-defined]
 
         mock_set_done = MagicMock()
 
@@ -125,23 +128,25 @@ class TestAsyncAct:
             behaviour, "send_a2a_transaction", _noop_gen
         ), patch.object(
             behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(behaviour, "set_done", mock_set_done):
+        ), patch.object(
+            behaviour, "set_done", mock_set_done
+        ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
 
-            mock_shared_state._ensure_chatui_store.assert_called_once()
+            mock_shared_state._ensure_chatui_store.assert_called_once()  # type: ignore[attr-defined]
             mock_context.logger.info.assert_called_once()
             mock_set_done.assert_called_once()
 
     def test_async_act_config_is_none_raises(self) -> None:
         """async_act raises ValueError when _chatui_config is None."""
-        behaviour = object.__new__(ChatuiLoadBehaviour)
+        behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_context.agent_address = "agent_0"
 
         mock_shared_state = MagicMock(spec=SharedState)
-        mock_shared_state._chatui_config = None
+        mock_shared_state._chatui_config = None  # type: ignore[attr-defined]
 
         with patch.object(
             type(behaviour),
@@ -160,5 +165,7 @@ class TestAsyncAct:
             return_value=mock_shared_state,
         ):
             gen = behaviour.async_act()
-            with pytest.raises(ValueError, match="The chat UI config has not been set!"):
+            with pytest.raises(
+                ValueError, match="The chat UI config has not been set!"
+            ):
                 next(gen)

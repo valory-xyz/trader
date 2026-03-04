@@ -25,8 +25,8 @@ import pytest
 
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import (
     ACHIEVEMENTS_CHECKER_NS,
-    OLAS_NETWORK_NS,
     AchievementsChecker,
+    OLAS_NETWORK_NS,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import Achievements
 

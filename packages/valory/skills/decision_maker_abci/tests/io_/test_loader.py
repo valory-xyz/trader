@@ -21,9 +21,7 @@
 
 import pytest
 
-from packages.valory.skills.decision_maker_abci.io_.loader import (
-    ComponentPackageLoader,
-)
+from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 
 
 class TestComponentPackageLoader:
@@ -78,11 +76,11 @@ class TestComponentPackageLoader:
             "component.yaml": "entry_point: script.py\ncallable: run\n",
             "script.py": entry_point_code,
         }
-        result = ComponentPackageLoader.load(serialized_objects)
+        result = ComponentPackageLoader.load(serialized_objects)  # type: ignore[arg-type]
         component_yaml, entry_point, callable_method = result
 
-        assert component_yaml["entry_point"] == "script.py"
-        assert component_yaml["callable"] == "run"
+        assert component_yaml["entry_point"] == "script.py"  # type: ignore[index]
+        assert component_yaml["callable"] == "run"  # type: ignore[index]
         assert entry_point == entry_point_code
         assert callable_method == "run"
 
@@ -92,6 +90,6 @@ class TestComponentPackageLoader:
             "component.yaml": "entry_point: my_module.py\ncallable: execute\n",
             "my_module.py": "def execute():\n    return 42\n",
         }
-        result = ComponentPackageLoader.load(serialized_objects)
+        result = ComponentPackageLoader.load(serialized_objects)  # type: ignore[arg-type]
         assert isinstance(result, tuple)
         assert len(result) == 3

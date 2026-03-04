@@ -19,31 +19,20 @@
 
 """Tests for DecisionReceiveBehaviour."""
 
-import csv
 import json
-import os
 import tempfile
-from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
-    DEFAULT_MECH_COSTS,
-    SLIPPAGE,
     DecisionReceiveBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.models import (
-    BenchmarkingMockData,
-    LiquidityInfo,
-)
+from packages.valory.skills.decision_maker_abci.models import LiquidityInfo
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
 from packages.valory.skills.market_manager_abci.bets import (
-    BINARY_N_SLOTS,
     PredictionResponse,
     QueueStatus,
 )
@@ -59,7 +48,7 @@ from packages.valory.skills.mech_interact_abci.states.base import (
 
 def _make_behaviour() -> DecisionReceiveBehaviour:
     """Return a DecisionReceiveBehaviour with mocked dependencies."""
-    behaviour = object.__new__(DecisionReceiveBehaviour)
+    behaviour = object.__new__(DecisionReceiveBehaviour)  # type: ignore[type-abstract]
     behaviour._request_id = 0
     behaviour._mech_response = None
     behaviour._rows_exceeded = False
@@ -109,9 +98,7 @@ def _make_bet(**overrides: Any) -> MagicMock:
     bet.rebet_allowed = MagicMock(return_value=overrides.get("rebet_allowed", True))
     bet.update_investments = MagicMock(return_value=True)
     bet.queue_status = overrides.get("queue_status", QueueStatus.FRESH)
-    bet.investments = overrides.get(
-        "investments", {"Yes": [], "No": []}
-    )
+    bet.investments = overrides.get("investments", {"Yes": [], "No": []})
     return bet
 
 
@@ -125,7 +112,6 @@ def _make_prediction_response(
 
 
 # ---------------------------------------------------------------------------
-# Tests: Properties and basic logic
 # ---------------------------------------------------------------------------
 
 
@@ -145,7 +131,7 @@ class TestDecisionReceiveBehaviourProperties:
     def test_request_id_setter_valid(self) -> None:
         """request_id setter should convert to int."""
         behaviour = _make_behaviour()
-        behaviour.request_id = "123"
+        behaviour.request_id = "123"  # type: ignore[assignment]
         assert behaviour.request_id == 123
 
     def test_request_id_setter_int(self) -> None:
@@ -157,7 +143,7 @@ class TestDecisionReceiveBehaviourProperties:
     def test_request_id_setter_invalid(self) -> None:
         """request_id setter should log error on invalid input."""
         behaviour = _make_behaviour()
-        behaviour.request_id = "not_a_number"
+        behaviour.request_id = "not_a_number"  # type: ignore[assignment]
         # Should remain at default
         assert behaviour._request_id == 0
 
@@ -212,7 +198,6 @@ class TestDecisionReceiveBehaviourProperties:
 
 
 # ---------------------------------------------------------------------------
-# Tests: __init__
 # ---------------------------------------------------------------------------
 
 
@@ -243,7 +228,6 @@ class TestDecisionReceiveInit:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _get_decision
 # ---------------------------------------------------------------------------
 
 
@@ -259,9 +243,7 @@ class TestGetDecision:
             "confidence": 0.9,
             "info_utility": 0.5,
         }
-        behaviour._mech_response = MechInteractionResponse(
-            result=json.dumps(pred_data)
-        )
+        behaviour._mech_response = MechInteractionResponse(result=json.dumps(pred_data))
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -363,7 +345,6 @@ class TestGetDecision:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Static method _get_bet_sample_info
 # ---------------------------------------------------------------------------
 
 
@@ -392,7 +373,6 @@ class TestGetBetSampleInfo:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _get_response
 # ---------------------------------------------------------------------------
 
 
@@ -427,7 +407,6 @@ class TestGetResponse:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _compute_new_tokens_distribution
 # ---------------------------------------------------------------------------
 
 
@@ -481,7 +460,6 @@ class TestComputeNewTokensDistribution:
 
 
 # ---------------------------------------------------------------------------
-# Tests: should_sell_outcome_tokens
 # ---------------------------------------------------------------------------
 
 
@@ -491,59 +469,54 @@ class TestShouldSellOutcomeTokens:
     def test_none_prediction_response(self) -> None:
         """Should return False when prediction_response is None."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
         assert behaviour.should_sell_outcome_tokens(None) is False
 
     def test_none_vote(self) -> None:
         """Should return False when prediction_response.vote is None."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
-        pred = PredictionResponse(
-            p_yes=0.5, p_no=0.5, confidence=0.9, info_utility=0.1
-        )
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        pred = PredictionResponse(p_yes=0.5, p_no=0.5, confidence=0.9, info_utility=0.1)
         # PredictionResponse with vote None
         assert (
-            pred.vote is not None
-            or behaviour.should_sell_outcome_tokens(pred) is False
+            pred.vote is not None or behaviour.should_sell_outcome_tokens(pred) is False
         )
 
     def test_tokens_to_be_sold_zero(self) -> None:
         """Should return False when tokens_to_be_sold is zero."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
         bet = _make_bet(vote_amount=0)
-        with patch.object(
+        with patch.object(  # type: ignore[method-assign]
             type(behaviour), "sampled_bet", new_callable=PropertyMock
         ) as mock_sb:
             mock_sb.return_value = bet
             pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
             result = behaviour.should_sell_outcome_tokens(pred)
-        assert result is False
+        assert result is False  # type: ignore[method-assign]
 
     def test_tokens_to_be_sold_nonzero_low_confidence(self) -> None:
         """Should return False when confidence is below threshold."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
         bet = _make_bet(vote_amount=100)
         with patch.object(
             type(behaviour), "sampled_bet", new_callable=PropertyMock
         ) as mock_sb:
-            mock_sb.return_value = bet
+            mock_sb.return_value = bet  # type: ignore[method-assign]
             with patch.object(
                 type(behaviour), "params", new_callable=PropertyMock
             ) as mock_params:
                 mock_params.return_value = MagicMock(min_confidence_for_selling=0.9)
-                pred = _make_prediction_response(
-                    p_yes=0.8, p_no=0.2, confidence=0.5
-                )
+                pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.5)
                 result = behaviour.should_sell_outcome_tokens(pred)
         assert result is False
 
     def test_tokens_to_be_sold_nonzero_high_confidence(self) -> None:
         """Should return True when confidence is above threshold."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
-        bet = _make_bet(vote_amount=100)
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        bet = _make_bet(vote_amount=100)  # type: ignore[method-assign]
         with patch.object(
             type(behaviour), "sampled_bet", new_callable=PropertyMock
         ) as mock_sb:
@@ -552,17 +525,15 @@ class TestShouldSellOutcomeTokens:
                 type(behaviour), "params", new_callable=PropertyMock
             ) as mock_params:
                 mock_params.return_value = MagicMock(min_confidence_for_selling=0.5)
-                pred = _make_prediction_response(
-                    p_yes=0.8, p_no=0.2, confidence=0.9
-                )
+                pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
                 result = behaviour.should_sell_outcome_tokens(pred)
         assert result is True
         assert behaviour.sell_amount == 100
 
 
 # ---------------------------------------------------------------------------
-# Tests: _calc_binary_shares
 # ---------------------------------------------------------------------------
+# type: ignore[method-assign]
 
 
 class TestCalcBinaryShares:
@@ -575,9 +546,7 @@ class TestCalcBinaryShares:
             outcomeTokenAmounts=[1000, 1000],
             outcomeTokenMarginalPrices=[0.5, 0.5],
         )
-        num_shares, available_shares = behaviour._calc_binary_shares(
-            bet, 100, 0
-        )
+        num_shares, available_shares = behaviour._calc_binary_shares(bet, 100, 0)
         assert num_shares > 0
         assert available_shares > 0
 
@@ -588,15 +557,12 @@ class TestCalcBinaryShares:
             outcomeTokenAmounts=[1000, 1000],
             outcomeTokenMarginalPrices=None,
         )
-        num_shares, available_shares = behaviour._calc_binary_shares(
-            bet, 100, 0
-        )
+        num_shares, available_shares = behaviour._calc_binary_shares(bet, 100, 0)
         assert num_shares == 0
         assert available_shares == 0
 
 
 # ---------------------------------------------------------------------------
-# Tests: _update_market_liquidity
 # ---------------------------------------------------------------------------
 
 
@@ -620,9 +586,7 @@ class TestUpdateMarketLiquidity:
             type(behaviour), "shared_state", new_callable=PropertyMock
         ) as mock_ss:
             mock_ss.return_value = shared_state
-            with patch.object(
-                behaviour, "get_active_sampled_bet", return_value=bet
-            ):
+            with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
                 behaviour._update_market_liquidity()
 
         assert shared_state.current_liquidity_amounts == [500, 600]
@@ -646,9 +610,7 @@ class TestUpdateMarketLiquidity:
             type(behaviour), "shared_state", new_callable=PropertyMock
         ) as mock_ss:
             mock_ss.return_value = shared_state
-            with patch.object(
-                behaviour, "get_active_sampled_bet", return_value=bet
-            ):
+            with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
                 behaviour._update_market_liquidity()
 
         assert shared_state.current_liquidity_amounts == [700, 300]
@@ -665,9 +627,7 @@ class TestUpdateMarketLiquidity:
             type(behaviour), "shared_state", new_callable=PropertyMock
         ) as mock_ss:
             mock_ss.return_value = shared_state
-            with patch.object(
-                behaviour, "get_active_sampled_bet", return_value=bet
-            ):
+            with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
                 behaviour._update_market_liquidity()
 
         # current_liquidity_amounts should NOT have been set for existing market
@@ -676,7 +636,6 @@ class TestUpdateMarketLiquidity:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _calculate_new_liquidity
 # ---------------------------------------------------------------------------
 
 
@@ -720,7 +679,6 @@ class TestCalculateNewLiquidity:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _compute_scaled_liquidity_measure
 # ---------------------------------------------------------------------------
 
 
@@ -730,9 +688,7 @@ class TestComputeScaledLiquidityMeasure:
     def test_basic(self) -> None:
         """Should compute scaled liquidity measure correctly."""
         behaviour = _make_behaviour()
-        with patch.object(
-            behaviour, "get_token_precision", return_value=10**18
-        ):
+        with patch.object(behaviour, "get_token_precision", return_value=10**18):
             result = behaviour._compute_scaled_liquidity_measure(
                 [10**18, 10**18], [0.5, 0.5]
             )
@@ -741,9 +697,7 @@ class TestComputeScaledLiquidityMeasure:
     def test_with_usdc_precision(self) -> None:
         """Should compute scaled liquidity measure with USDC precision."""
         behaviour = _make_behaviour()
-        with patch.object(
-            behaviour, "get_token_precision", return_value=10**6
-        ):
+        with patch.object(behaviour, "get_token_precision", return_value=10**6):
             result = behaviour._compute_scaled_liquidity_measure(
                 [10**6, 10**6], [0.5, 0.5]
             )
@@ -751,7 +705,6 @@ class TestComputeScaledLiquidityMeasure:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _update_liquidity_info
 # ---------------------------------------------------------------------------
 
 
@@ -793,7 +746,6 @@ class TestUpdateLiquidityInfo:
 
 
 # ---------------------------------------------------------------------------
-# Tests: rebet_allowed
 # ---------------------------------------------------------------------------
 
 
@@ -824,7 +776,7 @@ class TestRebetAllowed:
             rebet_allowed=False,
             outcomeTokenAmounts=[1000, 1000],
         )
-        behaviour.read_bets = MagicMock()
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
 
         pred = _make_prediction_response(p_yes=0.8, p_no=0.2)
 
@@ -835,11 +787,10 @@ class TestRebetAllowed:
             result = behaviour.rebet_allowed(pred, 50)
 
         assert result is False
-        behaviour.read_bets.assert_called_once()
+        behaviour.read_bets.assert_called_once()  # type: ignore[union-attr]
 
 
 # ---------------------------------------------------------------------------
-# Tests: _is_profitable (Omenstrat path)
 # ---------------------------------------------------------------------------
 
 
@@ -849,24 +800,22 @@ class TestIsProfitable:
     def _run_is_profitable(
         self,
         behaviour: DecisionReceiveBehaviour,
-        pred: PredictionResponse,
+        pred: PredictionResponse,  # type: ignore[method-assign]
     ) -> Tuple[bool, int]:
         """Run the _is_profitable generator to completion."""
         gen = behaviour._is_profitable(pred)
         try:
             # Advance past all yield points
-            val = next(gen)
+            _ = next(gen)
             while True:
-                val = gen.send(None)
+                _ = gen.send(None)
         except StopIteration as e:
-            return e.value
+            return e.value  # type: ignore[return-value]
 
     def test_vote_is_none(self) -> None:
         """Should return (False, 0) when vote is None."""
         behaviour = _make_behaviour()
-        pred = PredictionResponse(
-            p_yes=0.5, p_no=0.5, confidence=0.9, info_utility=0.5
-        )
+        pred = PredictionResponse(p_yes=0.5, p_no=0.5, confidence=0.9, info_utility=0.5)
         # vote is None because p_yes == p_no
         gen = behaviour._is_profitable(pred)
         try:
@@ -889,7 +838,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 500
+            return 500  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -914,7 +863,7 @@ class TestIsProfitable:
                             "synchronized_data",
                             new_callable=PropertyMock,
                         ) as mock_sd:
-                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)  # type: ignore[return-value]
                             with patch.object(
                                 behaviour, "convert_to_native", return_value=0.001
                             ):
@@ -945,7 +894,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator returning zero."""
             yield
-            return 0
+            return 0  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -970,7 +919,7 @@ class TestIsProfitable:
                             "synchronized_data",
                             new_callable=PropertyMock,
                         ) as mock_sd:
-                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)  # type: ignore[return-value]
                             result = self._run_is_profitable(behaviour, pred)
 
         is_profitable, bet_amount = result
@@ -990,7 +939,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator returning a small amount."""
             yield
-            return 10
+            return 10  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1015,16 +964,14 @@ class TestIsProfitable:
                             "synchronized_data",
                             new_callable=PropertyMock,
                         ) as mock_sd:
-                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)  # type: ignore[return-value]
                             with patch.object(
                                 behaviour, "convert_to_native", return_value=0.0001
                             ):
                                 with patch.object(
                                     behaviour, "get_token_name", return_value="xDAI"
                                 ):
-                                    result = self._run_is_profitable(
-                                        behaviour, pred
-                                    )
+                                    result = self._run_is_profitable(behaviour, pred)
 
         is_profitable, _ = result
         assert is_profitable is False
@@ -1044,7 +991,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator returning a large amount."""
             yield
-            return 10000
+            return 10000  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1069,7 +1016,7 @@ class TestIsProfitable:
                             "synchronized_data",
                             new_callable=PropertyMock,
                         ) as mock_sd:
-                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)  # type: ignore[return-value]
                             with patch.object(
                                 behaviour, "convert_to_native", return_value=0.001
                             ):
@@ -1079,9 +1026,7 @@ class TestIsProfitable:
                                     with patch.object(
                                         behaviour, "rebet_allowed", return_value=True
                                     ):
-                                        result = self._run_is_profitable(
-                                            behaviour, pred
-                                        )
+                                        self._run_is_profitable(behaviour, pred)
 
         # Should have triggered warning about slippage
         behaviour.context.logger.warning.assert_called()
@@ -1099,7 +1044,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 500
+            return 500  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1126,7 +1071,7 @@ class TestIsProfitable:
                         ) as mock_sd:
                             mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
                             with patch.object(
-                                behaviour, "convert_to_native", return_value=0.001
+                                behaviour, "convert_to_native", return_value=0.001  # type: ignore[return-value]
                             ):
                                 with patch.object(
                                     behaviour, "get_token_name", return_value="xDAI"
@@ -1134,9 +1079,7 @@ class TestIsProfitable:
                                     with patch.object(
                                         behaviour, "rebet_allowed", return_value=True
                                     ):
-                                        result = self._run_is_profitable(
-                                            behaviour, pred
-                                        )
+                                        self._run_is_profitable(behaviour, pred)
 
         # Should have triggered warning about non-positive threshold
         behaviour.context.logger.warning.assert_called()
@@ -1154,7 +1097,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 500
+            return 500  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1183,7 +1126,7 @@ class TestIsProfitable:
                             with patch.object(
                                 behaviour, "convert_to_native", return_value=0.001
                             ):
-                                with patch.object(
+                                with patch.object(  # type: ignore[return-value]
                                     behaviour, "get_token_name", return_value="xDAI"
                                 ):
                                     with patch.object(
@@ -1218,7 +1161,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 10**7
+            return 10**7  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1247,7 +1190,7 @@ class TestIsProfitable:
                             with patch.object(
                                 behaviour,
                                 "convert_unit_to_wei",
-                                side_effect=lambda x: int(x * 10**6),
+                                side_effect=lambda x: int(x * 10**6),  # type: ignore[return-value]
                             ):
                                 with patch.object(
                                     behaviour,
@@ -1275,9 +1218,6 @@ class TestIsProfitable:
     def test_polymarket_not_profitable(self) -> None:
         """Should return (False, bet_amount) for non-profitable Polymarket bet."""
         behaviour = _make_behaviour()
-        # market_prob=0.5, predicted p_yes=0.6, vote=0
-        # expected = 0.6*(net/0.5) - net - mech_costs
-        # With small bet: expected = 0.6*10000 - 5000 - 10000 = -9000 < 0
         bet = _make_bet(
             outcomeTokenAmounts=[10000, 10000],
             outcomeTokenMarginalPrices=[0.5, 0.5],
@@ -1288,7 +1228,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 5000
+            return 5000  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1320,7 +1260,7 @@ class TestIsProfitable:
                                 side_effect=lambda x: int(x * 10**6),
                             ):
                                 with patch.object(
-                                    behaviour,
+                                    behaviour,  # type: ignore[return-value]
                                     "convert_to_native",
                                     return_value=0.0,
                                 ):
@@ -1349,7 +1289,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 5000
+            return 5000  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1381,7 +1321,7 @@ class TestIsProfitable:
                                 return_value=0,
                             ):
                                 result = self._run_is_profitable(behaviour, pred)
-
+        # type: ignore[return-value]
         is_profitable, bet_amount = result
         assert is_profitable is False
         assert bet_amount == 0
@@ -1399,7 +1339,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 10**7
+            return 10**7  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1431,7 +1371,7 @@ class TestIsProfitable:
                                 side_effect=lambda x: int(x * 10**6),
                             ):
                                 with patch.object(
-                                    behaviour,
+                                    behaviour,  # type: ignore[return-value]
                                     "convert_to_native",
                                     return_value=0.0,
                                 ):
@@ -1467,7 +1407,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 10**7
+            return 10**7  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1499,7 +1439,7 @@ class TestIsProfitable:
                                 side_effect=lambda x: int(x * 10**6),
                             ):
                                 with patch.object(
-                                    behaviour,
+                                    behaviour,  # type: ignore[return-value]
                                     "convert_to_native",
                                     return_value=0.0,
                                 ):
@@ -1534,7 +1474,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 500
+            return 500  # type: ignore[return-value]
 
         shared_state = MagicMock()
         shared_state.liquidity_amounts = {}
@@ -1551,12 +1491,8 @@ class TestIsProfitable:
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
         ) as mock_bm:
             mock_bm.return_value = MagicMock(enabled=True)
-            with patch.object(
-                behaviour, "get_active_sampled_bet", return_value=bet
-            ):
-                with patch.object(
-                    behaviour, "_update_market_liquidity"
-                ):
+            with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
+                with patch.object(behaviour, "_update_market_liquidity"):
                     with patch.object(
                         type(behaviour), "params", new_callable=PropertyMock
                     ) as mock_params:
@@ -1570,7 +1506,7 @@ class TestIsProfitable:
                             side_effect=mock_get_bet_amount,
                         ):
                             with patch.object(
-                                type(behaviour),
+                                type(behaviour),  # type: ignore[return-value]
                                 "synchronized_data",
                                 new_callable=PropertyMock,
                             ) as mock_sd:
@@ -1635,7 +1571,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator."""
             yield
-            return 1000
+            return 1000  # type: ignore[return-value]
 
         shared_state = MagicMock()
         shared_state.benchmarking_mech_calls = 0
@@ -1644,12 +1580,8 @@ class TestIsProfitable:
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
         ) as mock_bm:
             mock_bm.return_value = MagicMock(enabled=True)
-            with patch.object(
-                behaviour, "get_active_sampled_bet", return_value=bet
-            ):
-                with patch.object(
-                    behaviour, "_update_market_liquidity"
-                ):
+            with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
+                with patch.object(behaviour, "_update_market_liquidity"):
                     with patch.object(
                         type(behaviour), "params", new_callable=PropertyMock
                     ) as mock_params:
@@ -1671,7 +1603,7 @@ class TestIsProfitable:
                                 with patch.object(
                                     behaviour, "_write_benchmark_results"
                                 ):
-                                    with patch.object(
+                                    with patch.object(  # type: ignore[return-value]
                                         type(behaviour),
                                         "shared_state",
                                         new_callable=PropertyMock,
@@ -1714,7 +1646,7 @@ class TestIsProfitable:
         def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
             """Mock the get_bet_amount generator returning a value below threshold."""
             yield
-            return 5
+            return 5  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1747,8 +1679,8 @@ class TestIsProfitable:
         assert bet_amount == 0
 
 
+# type: ignore[return-value]
 # ---------------------------------------------------------------------------
-# Tests: _update_selected_bet
 # ---------------------------------------------------------------------------
 
 
@@ -1760,15 +1692,13 @@ class TestUpdateSelectedBet:
         behaviour = _make_behaviour()
         bet = _make_bet(id="q1")
         behaviour.bets = [bet]
-        behaviour.store_bets = MagicMock()
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
         shared_state = MagicMock()
         shared_state.get_simulated_now_timestamp.return_value = 1700000000
 
         pred = _make_prediction_response()
 
-        with patch.object(
-            behaviour, "get_active_sampled_bet", return_value=bet
-        ):
+        with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
             with patch.object(
                 type(behaviour), "shared_state", new_callable=PropertyMock
             ) as mock_ss:
@@ -1781,11 +1711,10 @@ class TestUpdateSelectedBet:
 
         assert bet.processed_timestamp == 1700000000
         bet.update_investments.assert_called_once()
-        behaviour.store_bets.assert_called_once()
+        behaviour.store_bets.assert_called_once()  # type: ignore[union-attr]
 
 
 # ---------------------------------------------------------------------------
-# Tests: _next_dataset_row
 # ---------------------------------------------------------------------------
 
 
@@ -1796,7 +1725,7 @@ class TestNextDatasetRow:
         """Should return the next row from the dataset."""
         behaviour = _make_behaviour()
         bet = _make_bet(id="q1")
-
+        # type: ignore[method-assign]
         with tempfile.TemporaryDirectory() as tmpdir:
             dataset_path = Path(tmpdir) / "dataset.csv"
             with open(dataset_path, "w") as f:
@@ -1849,9 +1778,7 @@ class TestNextDatasetRow:
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
         ) as mock_bm:
             mock_bm.return_value = MagicMock(sep=",", dataset_filename="dataset.csv")
-            with patch.object(
-                behaviour, "get_active_sampled_bet", return_value=bet
-            ):
+            with patch.object(behaviour, "get_active_sampled_bet", return_value=bet):
                 with patch.object(
                     type(behaviour), "shared_state", new_callable=PropertyMock
                 ) as mock_ss:
@@ -1913,7 +1840,6 @@ class TestNextDatasetRow:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _parse_dataset_row
 # ---------------------------------------------------------------------------
 
 
@@ -2007,7 +1933,6 @@ class TestParseDatasetRow:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _mock_response
 # ---------------------------------------------------------------------------
 
 
@@ -2024,9 +1949,7 @@ class TestMockResponse:
         with patch.object(
             behaviour, "_next_dataset_row", return_value={"some": "data"}
         ):
-            with patch.object(
-                behaviour, "_parse_dataset_row", return_value=pred_json
-            ):
+            with patch.object(behaviour, "_parse_dataset_row", return_value=pred_json):
                 behaviour._mock_response()
 
         assert behaviour._mech_response is not None
@@ -2043,7 +1966,6 @@ class TestMockResponse:
 
 
 # ---------------------------------------------------------------------------
-# Tests: initialize_bet_id_row_manager
 # ---------------------------------------------------------------------------
 
 
@@ -2079,7 +2001,6 @@ class TestInitializeBetIdRowManager:
 
 
 # ---------------------------------------------------------------------------
-# Tests: async_act
 # ---------------------------------------------------------------------------
 
 
@@ -2089,9 +2010,9 @@ class TestAsyncAct:
     def _run_generator(self, gen: Generator) -> Any:
         """Run a generator to completion."""
         try:
-            val = next(gen)
+            _ = next(gen)
             while True:
-                val = gen.send(None)
+                _ = gen.send(None)
         except StopIteration as e:
             return e.value
 
@@ -2102,7 +2023,7 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that fails."""
             yield
-            return False
+            return False  # type: ignore[return-value]
 
         benchmark = MagicMock()
         benchmark.measure.return_value.local.return_value.__enter__ = MagicMock()
@@ -2110,12 +2031,8 @@ class TestAsyncAct:
             return_value=False
         )
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
-            with patch.object(
-                behaviour.context, "benchmark_tool", benchmark
-            ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
+            with patch.object(behaviour.context, "benchmark_tool", benchmark):
                 gen = behaviour.async_act()
                 result = self._run_generator(gen)
 
@@ -2124,12 +2041,12 @@ class TestAsyncAct:
     def test_prediction_response_none(self) -> None:
         """Should handle None prediction_response gracefully."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2141,14 +2058,10 @@ class TestAsyncAct:
             return_value=False
         )
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=None):
-                with patch.object(
-                    behaviour.context, "benchmark_tool", benchmark
-                ):
-                    with patch.object(
+                with patch.object(behaviour.context, "benchmark_tool", benchmark):
+                    with patch.object(  # type: ignore[return-value]
                         type(behaviour),
                         "benchmarking_mode",
                         new_callable=PropertyMock,
@@ -2160,25 +2073,25 @@ class TestAsyncAct:
                             gen = behaviour.async_act()
                             self._run_generator(gen)
 
-        behaviour._store_all.assert_called_once()
+        behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
 
     def test_prediction_with_vote_not_selling_profitable(self) -> None:
         """Should process profitable bet when not in selling mode."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
-        behaviour._rows_exceeded = False
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+        behaviour._rows_exceeded = False  # type: ignore[method-assign]
 
         pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
 
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
-            """Mock setup that succeeds."""
+            """Mock setup that succeeds."""  # type: ignore[return-value]
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_is_profitable(*args: Any, **kwargs: Any) -> Generator:
             """Mock _is_profitable returning profitable."""
             yield
-            return (True, 500)
+            return (True, 500)  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2193,21 +2106,17 @@ class TestAsyncAct:
         mock_policy = MagicMock()
         mock_policy.serialize.return_value = "policy_data"
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
                 with patch.object(
                     behaviour, "_is_profitable", side_effect=mock_is_profitable
                 ):
-                    with patch.object(
-                        behaviour.context, "benchmark_tool", benchmark
-                    ):
+                    with patch.object(behaviour.context, "benchmark_tool", benchmark):
                         with patch.object(
                             type(behaviour),
                             "review_bets_for_selling_mode",
                             new_callable=PropertyMock,
-                        ) as mock_rsm:
+                        ) as mock_rsm:  # type: ignore[method-assign]
                             mock_rsm.return_value = False
                             with patch.object(
                                 type(behaviour),
@@ -2215,14 +2124,12 @@ class TestAsyncAct:
                                 new_callable=PropertyMock,
                             ) as mock_ts:
                                 mock_ts.return_value = 1700000000
-                                with patch.object(
-                                    behaviour, "store_bets"
-                                ):
+                                with patch.object(behaviour, "store_bets"):  # type: ignore[return-value]
                                     with patch.object(
                                         behaviour,
                                         "hash_stored_bets",
                                         return_value="hash123",
-                                    ):
+                                    ):  # type: ignore[return-value]
                                         with patch.object(
                                             type(behaviour),
                                             "policy",
@@ -2259,13 +2166,13 @@ class TestAsyncAct:
                                                             gen = behaviour.async_act()
                                                             self._run_generator(gen)
 
-        behaviour._store_all.assert_called_once()
+        behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
         mock_policy.tool_responded.assert_called_once()
 
     def test_prediction_with_selling_mode(self) -> None:
         """Should process selling when in selling mode and conditions met."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour.sell_amount = 100
         behaviour._rows_exceeded = False
 
@@ -2274,7 +2181,7 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2290,13 +2197,9 @@ class TestAsyncAct:
         mock_policy.serialize.return_value = "policy_data"
         mock_bet = _make_bet()
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
-                with patch.object(
-                    behaviour.context, "benchmark_tool", benchmark
-                ):
+                with patch.object(behaviour.context, "benchmark_tool", benchmark):
                     with patch.object(
                         type(behaviour),
                         "review_bets_for_selling_mode",
@@ -2307,18 +2210,16 @@ class TestAsyncAct:
                             behaviour,
                             "should_sell_outcome_tokens",
                             return_value=True,
-                        ):
+                        ):  # type: ignore[method-assign]
                             with patch.object(
                                 type(behaviour),
                                 "synced_timestamp",
                                 new_callable=PropertyMock,
                             ) as mock_ts:
                                 mock_ts.return_value = 1700000000
-                                with patch.object(
-                                    behaviour, "store_bets"
-                                ):
+                                with patch.object(behaviour, "store_bets"):
                                     with patch.object(
-                                        behaviour,
+                                        behaviour,  # type: ignore[return-value]
                                         "hash_stored_bets",
                                         return_value="hash123",
                                     ):
@@ -2368,23 +2269,21 @@ class TestAsyncAct:
                                                                 )
                                                                 self._run_generator(gen)
 
-        behaviour._store_all.assert_called_once()
+        behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
 
     def test_prediction_with_vote_none_benchmarking(self) -> None:
         """Should write benchmark results when vote is None and benchmarking enabled."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour._rows_exceeded = False
 
-        pred = PredictionResponse(
-            p_yes=0.5, p_no=0.5, confidence=0.9, info_utility=0.5
-        )
+        pred = PredictionResponse(p_yes=0.5, p_no=0.5, confidence=0.9, info_utility=0.5)
         # vote is None because p_yes == p_no
 
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2405,19 +2304,15 @@ class TestAsyncAct:
 
         mock_bet = _make_bet(id="q1")
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
-                with patch.object(
-                    behaviour.context, "benchmark_tool", benchmark
-                ):
+                with patch.object(behaviour.context, "benchmark_tool", benchmark):
                     with patch.object(
                         type(behaviour),
                         "benchmarking_mode",
                         new_callable=PropertyMock,
                     ) as mock_bm:
-                        mock_bm.return_value = MagicMock(enabled=True)
+                        mock_bm.return_value = MagicMock(enabled=True)  # type: ignore[method-assign]
                         with patch.object(
                             behaviour, "_write_benchmark_results"
                         ) as mock_wbr:
@@ -2426,7 +2321,7 @@ class TestAsyncAct:
                                 "shared_state",
                                 new_callable=PropertyMock,
                             ) as mock_ss:
-                                mock_ss.return_value = shared_state
+                                mock_ss.return_value = shared_state  # type: ignore[return-value]
                                 with patch.object(
                                     type(behaviour),
                                     "policy",
@@ -2470,7 +2365,7 @@ class TestAsyncAct:
     def test_benchmarking_mode_updates_and_removes_row(self) -> None:
         """Should update selected bet and remove processed row in benchmarking mode."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour._rows_exceeded = False
 
         pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
@@ -2478,12 +2373,12 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_is_profitable(*args: Any, **kwargs: Any) -> Generator:
             """Mock _is_profitable returning not profitable."""
             yield
-            return (False, 0)
+            return (False, 0)  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2503,16 +2398,12 @@ class TestAsyncAct:
 
         mock_bet = _make_bet(id="q1")
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
                 with patch.object(
                     behaviour, "_is_profitable", side_effect=mock_is_profitable
                 ):
-                    with patch.object(
-                        behaviour.context, "benchmark_tool", benchmark
-                    ):
+                    with patch.object(behaviour.context, "benchmark_tool", benchmark):  # type: ignore[method-assign]
                         with patch.object(
                             type(behaviour),
                             "review_bets_for_selling_mode",
@@ -2520,12 +2411,12 @@ class TestAsyncAct:
                         ) as mock_rsm:
                             mock_rsm.return_value = False
                             with patch.object(
-                                type(behaviour),
+                                type(behaviour),  # type: ignore[return-value]
                                 "synced_timestamp",
                                 new_callable=PropertyMock,
                             ) as mock_ts:
                                 mock_ts.return_value = 1700000000
-                                with patch.object(
+                                with patch.object(  # type: ignore[return-value]
                                     type(behaviour),
                                     "policy",
                                     new_callable=PropertyMock,
@@ -2585,7 +2476,7 @@ class TestAsyncAct:
     def test_selling_mode_opposite_vote(self) -> None:
         """Should use opposite vote when selling."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour.sell_amount = 100
         behaviour._rows_exceeded = False
 
@@ -2595,7 +2486,7 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2611,13 +2502,9 @@ class TestAsyncAct:
         mock_policy.serialize.return_value = "policy_data"
         mock_bet = _make_bet()
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
-                with patch.object(
-                    behaviour.context, "benchmark_tool", benchmark
-                ):
+                with patch.object(behaviour.context, "benchmark_tool", benchmark):
                     with patch.object(
                         type(behaviour),
                         "review_bets_for_selling_mode",
@@ -2627,7 +2514,7 @@ class TestAsyncAct:
                         with patch.object(
                             behaviour,
                             "should_sell_outcome_tokens",
-                            return_value=True,
+                            return_value=True,  # type: ignore[method-assign]
                         ):
                             with patch.object(
                                 type(behaviour),
@@ -2635,11 +2522,9 @@ class TestAsyncAct:
                                 new_callable=PropertyMock,
                             ) as mock_ts:
                                 mock_ts.return_value = 1700000000
-                                with patch.object(
-                                    behaviour, "store_bets"
-                                ):
+                                with patch.object(behaviour, "store_bets"):
                                     with patch.object(
-                                        behaviour,
+                                        behaviour,  # type: ignore[return-value]
                                         "hash_stored_bets",
                                         return_value="hash123",
                                     ):
@@ -2695,7 +2580,7 @@ class TestAsyncAct:
     def test_prediction_not_profitable_no_selling(self) -> None:
         """Should handle case where bet is not profitable and not selling."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour._rows_exceeded = False
 
         pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
@@ -2703,12 +2588,12 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_is_profitable(*args: Any, **kwargs: Any) -> Generator:
             """Mock _is_profitable returning not profitable."""
             yield
-            return (False, 0)
+            return (False, 0)  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2723,21 +2608,17 @@ class TestAsyncAct:
         mock_policy = MagicMock()
         mock_policy.serialize.return_value = "policy_data"
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
                 with patch.object(
                     behaviour, "_is_profitable", side_effect=mock_is_profitable
                 ):
-                    with patch.object(
-                        behaviour.context, "benchmark_tool", benchmark
-                    ):
+                    with patch.object(behaviour.context, "benchmark_tool", benchmark):
                         with patch.object(
                             type(behaviour),
                             "review_bets_for_selling_mode",
                             new_callable=PropertyMock,
-                        ) as mock_rsm:
+                        ) as mock_rsm:  # type: ignore[method-assign]
                             mock_rsm.return_value = False
                             with patch.object(
                                 type(behaviour),
@@ -2745,12 +2626,12 @@ class TestAsyncAct:
                                 new_callable=PropertyMock,
                             ) as mock_ts:
                                 mock_ts.return_value = 1700000000
-                                with patch.object(
+                                with patch.object(  # type: ignore[return-value]
                                     type(behaviour),
                                     "policy",
                                     new_callable=PropertyMock,
                                 ) as mock_pol:
-                                    mock_pol.return_value = mock_policy
+                                    mock_pol.return_value = mock_policy  # type: ignore[return-value]
                                     with patch.object(
                                         type(behaviour),
                                         "synchronized_data",
@@ -2781,12 +2662,12 @@ class TestAsyncAct:
                                                     gen = behaviour.async_act()
                                                     self._run_generator(gen)
 
-        behaviour._store_all.assert_called_once()
+        behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
 
     def test_benchmarking_empty_rows_queue(self) -> None:
         """Should handle empty rows queue in benchmarking mode gracefully."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour._rows_exceeded = False
 
         pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
@@ -2794,12 +2675,12 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_is_profitable(*args: Any, **kwargs: Any) -> Generator:
             """Mock _is_profitable returning not profitable."""
             yield
-            return (False, 0)
+            return (False, 0)  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2819,16 +2700,12 @@ class TestAsyncAct:
 
         mock_bet = _make_bet(id="q1")
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
                 with patch.object(
                     behaviour, "_is_profitable", side_effect=mock_is_profitable
                 ):
-                    with patch.object(
-                        behaviour.context, "benchmark_tool", benchmark
-                    ):
+                    with patch.object(behaviour.context, "benchmark_tool", benchmark):  # type: ignore[method-assign]
                         with patch.object(
                             type(behaviour),
                             "review_bets_for_selling_mode",
@@ -2836,12 +2713,12 @@ class TestAsyncAct:
                         ) as mock_rsm:
                             mock_rsm.return_value = False
                             with patch.object(
-                                type(behaviour),
+                                type(behaviour),  # type: ignore[return-value]
                                 "synced_timestamp",
                                 new_callable=PropertyMock,
                             ) as mock_ts:
                                 mock_ts.return_value = 1700000000
-                                with patch.object(
+                                with patch.object(  # type: ignore[return-value]
                                     type(behaviour),
                                     "policy",
                                     new_callable=PropertyMock,
@@ -2900,7 +2777,7 @@ class TestAsyncAct:
     def test_selling_mode_not_selling(self) -> None:
         """Should handle selling mode when should_sell_outcome_tokens returns False."""
         behaviour = _make_behaviour()
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
         behaviour._rows_exceeded = False
 
         pred = _make_prediction_response(p_yes=0.8, p_no=0.2, confidence=0.9)
@@ -2908,7 +2785,7 @@ class TestAsyncAct:
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
             """Mock setup that succeeds."""
             yield
-            return True
+            return True  # type: ignore[return-value]
 
         def mock_finish(*args: Any, **kwargs: Any) -> Generator:
             """Mock finish_behaviour."""
@@ -2923,13 +2800,9 @@ class TestAsyncAct:
         mock_policy = MagicMock()
         mock_policy.serialize.return_value = "policy_data"
 
-        with patch.object(
-            behaviour, "_setup_policy_and_tools", side_effect=mock_setup
-        ):
+        with patch.object(behaviour, "_setup_policy_and_tools", side_effect=mock_setup):
             with patch.object(behaviour, "_get_decision", return_value=pred):
-                with patch.object(
-                    behaviour.context, "benchmark_tool", benchmark
-                ):
+                with patch.object(behaviour.context, "benchmark_tool", benchmark):
                     with patch.object(
                         type(behaviour),
                         "review_bets_for_selling_mode",
@@ -2942,7 +2815,7 @@ class TestAsyncAct:
                             return_value=False,
                         ):
                             with patch.object(
-                                type(behaviour),
+                                type(behaviour),  # type: ignore[method-assign]
                                 "policy",
                                 new_callable=PropertyMock,
                             ) as mock_pol:
@@ -2950,11 +2823,9 @@ class TestAsyncAct:
                                 with patch.object(
                                     type(behaviour),
                                     "synchronized_data",
-                                    new_callable=PropertyMock,
+                                    new_callable=PropertyMock,  # type: ignore[return-value]
                                 ) as mock_sd:
-                                    mock_sd.return_value = MagicMock(
-                                        mech_tool="tool1"
-                                    )
+                                    mock_sd.return_value = MagicMock(mech_tool="tool1")
                                     with patch.object(
                                         type(behaviour),
                                         "is_invalid_response",
@@ -2977,4 +2848,4 @@ class TestAsyncAct:
                                                 gen = behaviour.async_act()
                                                 self._run_generator(gen)
 
-        behaviour._store_all.assert_called_once()
+        behaviour._store_all.assert_called_once()  # type: ignore[union-attr]

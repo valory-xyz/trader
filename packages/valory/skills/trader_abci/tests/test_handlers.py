@@ -18,10 +18,9 @@
 # ------------------------------------------------------------------------------
 """This module contains the tests for the handlers for the trader abci."""
 
-import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
 import pytest
@@ -58,7 +57,6 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 )
 from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     GetHandlerTestCase,
-    HandleTestCase,
 )
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
@@ -79,6 +77,9 @@ from packages.valory.skills.trader_abci.handlers import (
     GNOSIS_NATIVE_TOKEN_ADDRESS,
     GNOSIS_USDC_E_ADDRESS,
     GNOSIS_WRAPPED_NATIVE_ADDRESS,
+    HttpHandler,
+    IpfsHandler,
+    LedgerApiHandler,
     POLYGON_CHAIN_ID,
     POLYGON_CHAIN_NAME,
     POLYGON_NATIVE_TOKEN_ADDRESS,
@@ -86,11 +87,8 @@ from packages.valory.skills.trader_abci.handlers import (
     POLYGON_USDC_ADDRESS,
     POLYGON_USDC_E_ADDRESS,
     POLYGON_WRAPPED_NATIVE_ADDRESS,
-    TRADING_STRATEGY_EXPLANATION,
-    HttpHandler,
-    IpfsHandler,
-    LedgerApiHandler,
     SigningHandler,
+    TRADING_STRATEGY_EXPLANATION,
     TendermintHandler,
     TraderHandler,
 )
@@ -215,19 +213,18 @@ class TestHttpHandler:
     def test_setup_with_x402(self) -> None:
         """Test that setup submits x402 check when use_x402 is True."""
         handler = _make_handler(use_x402=True)
-        handler.executor.submit.assert_called()
+        handler.executor.submit.assert_called()  # type: ignore[attr-defined]
 
-    def test_setup_without_x402(self) -> None:
+    def test_setup_without_x402(self) -> None:  # type: ignore[attr-defined]
         """Test that setup does NOT submit x402 check when use_x402 is False."""
         handler = _make_handler(use_x402=False)
-        handler.executor.submit.assert_not_called()
+        handler.executor.submit.assert_not_called()  # type: ignore[attr-defined]
 
-    # -- _get_content_type ----------------------------------------------------
+    # -- _get_content_type ----------------------------------------------------  # type: ignore[attr-defined]
     def test_get_content_type(self) -> None:
         """Test _get_content_type method."""
         assert (
-            self.handler._get_content_type(Path("test.js"))
-            == HttpContentType.JS.header
+            self.handler._get_content_type(Path("test.js")) == HttpContentType.JS.header
         )
         assert (
             self.handler._get_content_type(Path("test.html"))
@@ -315,7 +312,7 @@ class TestHttpHandler:
             # which calls further up. We just verify it does not crash.
             try:
                 self.handler.handle(message)
-            except Exception:
+            except Exception:  # nosec B110
                 pass  # Expected in isolated test with mocked context
 
     def test_handle_no_handler_match(self) -> None:
@@ -332,7 +329,7 @@ class TestHttpHandler:
         ):
             try:
                 self.handler.handle(message)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
     def test_handle_invalid_dialogue(self) -> None:
@@ -425,9 +422,7 @@ class TestHttpHandler:
         http_dialogue = MagicMock()
         data = {"key": "value"}
 
-        with patch.object(
-            self.handler, "_send_http_response"
-        ) as mock_send:
+        with patch.object(self.handler, "_send_http_response") as mock_send:
             self.handler._send_ok_response(http_msg, http_dialogue, data)
             mock_send.assert_called_once_with(
                 http_msg,
@@ -648,9 +643,7 @@ class TestHandleGetTradingDetails:
 
         with patch.object(
             type(self.handler), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_send:
+        ) as mock_sd, patch.object(self.handler, "_send_ok_response") as mock_send:
             mock_sd.return_value = mock_synced
             self.handler._handle_get_trading_details(http_msg, http_dialogue)
             mock_send.assert_called_once()
@@ -691,9 +684,7 @@ class TestHandleGetStaticFile:
         http_msg.url = "http://localhost:8080/test.js"
         http_dialogue = MagicMock()
 
-        with patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_send, patch.object(
+        with patch.object(self.handler, "_send_ok_response") as mock_send, patch.object(
             self.handler, "_get_content_type", return_value="application/javascript"
         ), patch(
             "packages.valory.skills.trader_abci.handlers.urlparse"
@@ -717,9 +708,7 @@ class TestHandleGetStaticFile:
         http_msg.url = "http://localhost:8080/nonexistent"
         http_dialogue = MagicMock()
 
-        with patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_send, patch(
+        with patch.object(self.handler, "_send_ok_response") as mock_send, patch(
             "packages.valory.skills.trader_abci.handlers.urlparse"
         ) as mock_urlparse, patch(
             "packages.valory.skills.trader_abci.handlers.Path"
@@ -775,11 +764,11 @@ class TestGetAdjustedFundsStatus:
         native_threshold: int,
         native_topup: int,
         native_decimals: int = 18,
-        wrapped_addr: str = None,
+        wrapped_addr: Optional[str] = None,
         wrapped_balance: int = 0,
-        usdc_addr: str = None,
+        usdc_addr: Optional[str] = None,  # type: ignore[assignment]
         usdc_balance: int = 0,
-        usdc_decimals: int = 6,
+        usdc_decimals: int = 6,  # type: ignore[assignment]
     ) -> FundRequirements:
         """Build a FundRequirements object for testing."""
         tokens = {
@@ -846,9 +835,9 @@ class TestGetAdjustedFundsStatus:
             mock_sd.return_value = mock_synced
             result = handler._get_adjusted_funds_status()
             # actual_considered = 100 + 600 = 700, threshold=500, 700 >= 500 so deficit=0
-            native_token = result["gnosis"].accounts["0xSafe"].tokens[
-                GNOSIS_NATIVE_TOKEN_ADDRESS
-            ]
+            native_token = (
+                result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+            )
             assert native_token.deficit == 0
 
     def test_gnosis_adjustment_with_deficit(self) -> None:
@@ -876,9 +865,9 @@ class TestGetAdjustedFundsStatus:
         ) as mock_sd:
             mock_sd.return_value = mock_synced
             result = handler._get_adjusted_funds_status()
-            native_token = result["gnosis"].accounts["0xSafe"].tokens[
-                GNOSIS_NATIVE_TOKEN_ADDRESS
-            ]
+            native_token = (
+                result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+            )
             # actual_considered = 10 + 20 = 30, threshold=500, topup=1000
             # deficit = max(0, 1000 - 30) = 970
             assert native_token.deficit == 970
@@ -911,9 +900,11 @@ class TestGetAdjustedFundsStatus:
         ):
             mock_sd.return_value = mock_synced
             result = handler._get_adjusted_funds_status()
-            native_token = result["polygon"].accounts["0xSafe"].tokens[
-                POLYGON_NATIVE_TOKEN_ADDRESS
-            ]
+            native_token = (
+                result["polygon"]
+                .accounts["0xSafe"]
+                .tokens[POLYGON_NATIVE_TOKEN_ADDRESS]
+            )
             assert native_token.deficit == 0
 
     def test_polygon_missing_decimals(self) -> None:
@@ -945,7 +936,7 @@ class TestGetAdjustedFundsStatus:
             type(handler), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
             mock_sd.return_value = mock_synced
-            result = handler._get_adjusted_funds_status()
+            _ = handler._get_adjusted_funds_status()
             handler.context.logger.error.assert_called()
 
     def test_polygon_zero_usdc_balance(self) -> None:
@@ -973,7 +964,7 @@ class TestGetAdjustedFundsStatus:
             type(handler), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
             mock_sd.return_value = mock_synced
-            result = handler._get_adjusted_funds_status()
+            _ = handler._get_adjusted_funds_status()
             handler.context.logger.info.assert_called()
 
     def test_polygon_pol_equivalent_none(self) -> None:
@@ -1003,7 +994,7 @@ class TestGetAdjustedFundsStatus:
             handler, "_get_pol_equivalent_for_usdc", return_value=None
         ):
             mock_sd.return_value = mock_synced
-            result = handler._get_adjusted_funds_status()
+            _ = handler._get_adjusted_funds_status()
             handler.context.logger.warning.assert_called()
 
     def test_key_error(self) -> None:
@@ -1022,7 +1013,7 @@ class TestGetAdjustedFundsStatus:
             type(handler), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
             mock_sd.return_value = mock_synced
-            result = handler._get_adjusted_funds_status()
+            _ = handler._get_adjusted_funds_status()
             handler.context.logger.error.assert_called()
 
 
@@ -1041,18 +1032,18 @@ class TestGetPolToUsdcRate:
         """Test returning cached rate when still valid."""
         self.handler._pol_usdc_rate = 0.5
         self.handler._pol_usdc_rate_timestamp = 1000.0
-        self.handler.shared_state.synced_timestamp = 1100.0
+        self.handler.shared_state.synced_timestamp = 1100.0  # type: ignore[assignment, misc]
 
-        result = self.handler._get_pol_to_usdc_rate(self.chain_config)
+        result = self.handler._get_pol_to_usdc_rate(self.chain_config)  # type: ignore[assignment, misc]
         assert result == 0.5
 
     def test_cached_rate_expired(self) -> None:
         """Test fetching new rate when cache is stale."""
         self.handler._pol_usdc_rate = 0.5
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        mock_response = MagicMock()
+        mock_response = MagicMock()  # type: ignore[assignment, misc]
         mock_response.status_code = 200
         mock_response.json.return_value = {POLYGON_POL_ADDRESS: {"usd": 0.09}}
 
@@ -1066,9 +1057,9 @@ class TestGetPolToUsdcRate:
 
     def test_synced_timestamp_exception(self) -> None:
         """Test when synced_timestamp raises exception."""
-        type(self.handler.shared_state).synced_timestamp = PropertyMock(
+        type(self.handler.shared_state).synced_timestamp = PropertyMock(  # type: ignore[method-assign]
             side_effect=Exception("not ready")
-        )
+        )  # type: ignore[method-assign]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1090,9 +1081,9 @@ class TestGetPolToUsdcRate:
         """Test non-200 status returns stale cache."""
         self.handler._pol_usdc_rate = 0.08
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        mock_response = MagicMock()
+        mock_response = MagicMock()  # type: ignore[assignment, misc]
         mock_response.status_code = 500
         mock_response.text = "Server Error"
 
@@ -1107,9 +1098,9 @@ class TestGetPolToUsdcRate:
         """Test non-200 status returns fallback when no cache."""
         self.handler._pol_usdc_rate = None
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        mock_response = MagicMock()
+        mock_response = MagicMock()  # type: ignore[assignment, misc]
         mock_response.status_code = 429
         mock_response.text = "Rate Limited"
 
@@ -1124,9 +1115,9 @@ class TestGetPolToUsdcRate:
         """Test missing price data in CoinGecko response with stale cache."""
         self.handler._pol_usdc_rate = 0.07
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        mock_response = MagicMock()
+        mock_response = MagicMock()  # type: ignore[assignment, misc]
         mock_response.status_code = 200
         mock_response.json.return_value = {}
 
@@ -1141,9 +1132,9 @@ class TestGetPolToUsdcRate:
         """Test missing price data with no stale cache returns fallback."""
         self.handler._pol_usdc_rate = None
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        mock_response = MagicMock()
+        mock_response = MagicMock()  # type: ignore[assignment, misc]
         mock_response.status_code = 200
         mock_response.json.return_value = {}
 
@@ -1158,9 +1149,9 @@ class TestGetPolToUsdcRate:
         """Test exception handling returns stale cache."""
         self.handler._pol_usdc_rate = 0.06
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        with patch(
+        with patch(  # type: ignore[assignment, misc]
             "packages.valory.skills.trader_abci.handlers.requests.get",
             side_effect=Exception("network error"),
         ):
@@ -1171,9 +1162,9 @@ class TestGetPolToUsdcRate:
         """Test exception handling returns fallback when no cache."""
         self.handler._pol_usdc_rate = None
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 100000.0
+        self.handler.shared_state.synced_timestamp = 100000.0  # type: ignore[assignment, misc]
 
-        with patch(
+        with patch(  # type: ignore[assignment, misc]
             "packages.valory.skills.trader_abci.handlers.requests.get",
             side_effect=Exception("network error"),
         ):
@@ -1184,9 +1175,9 @@ class TestGetPolToUsdcRate:
         """Test rate is cached when current_time is not None."""
         self.handler._pol_usdc_rate = None
         self.handler._pol_usdc_rate_timestamp = 0.0
-        self.handler.shared_state.synced_timestamp = 50000.0
+        self.handler.shared_state.synced_timestamp = 50000.0  # type: ignore[assignment, misc]
 
-        mock_response = MagicMock()
+        mock_response = MagicMock()  # type: ignore[assignment, misc]
         mock_response.status_code = 200
         mock_response.json.return_value = {POLYGON_POL_ADDRESS: {"usd": 0.11}}
 
@@ -1213,9 +1204,7 @@ class TestGetPolEquivalentForUsdc:
 
     def test_success(self) -> None:
         """Test successful conversion."""
-        with patch.object(
-            self.handler, "_get_pol_to_usdc_rate", return_value=0.1
-        ):
+        with patch.object(self.handler, "_get_pol_to_usdc_rate", return_value=0.1):
             result = self.handler._get_pol_equivalent_for_usdc(
                 1000000, self.chain_config
             )
@@ -1223,9 +1212,7 @@ class TestGetPolEquivalentForUsdc:
 
     def test_rate_none(self) -> None:
         """Test when rate is None."""
-        with patch.object(
-            self.handler, "_get_pol_to_usdc_rate", return_value=None
-        ):
+        with patch.object(self.handler, "_get_pol_to_usdc_rate", return_value=None):
             result = self.handler._get_pol_equivalent_for_usdc(
                 1000000, self.chain_config
             )
@@ -1233,9 +1220,7 @@ class TestGetPolEquivalentForUsdc:
 
     def test_rate_zero(self) -> None:
         """Test when rate is zero."""
-        with patch.object(
-            self.handler, "_get_pol_to_usdc_rate", return_value=0
-        ):
+        with patch.object(self.handler, "_get_pol_to_usdc_rate", return_value=0):
             result = self.handler._get_pol_equivalent_for_usdc(
                 1000000, self.chain_config
             )
@@ -1264,9 +1249,9 @@ class TestHandleGetFundsStatus:
         """Test funds status without x402."""
         handler = _make_handler(use_x402=False)
         # Reset executor mock from setup
-        handler.executor.reset_mock()
+        handler.executor.reset_mock()  # type: ignore[attr-defined]
         http_msg = MagicMock()
-        http_dialogue = MagicMock()
+        http_dialogue = MagicMock()  # type: ignore[attr-defined]
 
         mock_result = MagicMock()
         mock_result.get_response_body.return_value = {"funds": "ok"}
@@ -1276,15 +1261,15 @@ class TestHandleGetFundsStatus:
         ), patch.object(handler, "_send_ok_response") as mock_send:
             handler._handle_get_funds_status(http_msg, http_dialogue)
             mock_send.assert_called_once()
-            handler.executor.submit.assert_not_called()
+            handler.executor.submit.assert_not_called()  # type: ignore[attr-defined]
 
-    def test_with_x402(self) -> None:
+    def test_with_x402(self) -> None:  # type: ignore[attr-defined]
         """Test funds status with x402 triggers executor submit."""
         handler = _make_handler(use_x402=True)
         # Reset the submit mock from setup
-        handler.executor.submit.reset_mock()
+        handler.executor.submit.reset_mock()  # type: ignore[attr-defined]
 
-        http_msg = MagicMock()
+        http_msg = MagicMock()  # type: ignore[attr-defined]
         http_dialogue = MagicMock()
 
         mock_result = MagicMock()
@@ -1294,9 +1279,10 @@ class TestHandleGetFundsStatus:
             handler, "_get_adjusted_funds_status", return_value=mock_result
         ), patch.object(handler, "_send_ok_response"):
             handler._handle_get_funds_status(http_msg, http_dialogue)
-            handler.executor.submit.assert_called_once()
+            handler.executor.submit.assert_called_once()  # type: ignore[attr-defined]
 
 
+# type: ignore[attr-defined]
 # ---------------------------------------------------------------------------
 # _get_eoa_account tests
 # ---------------------------------------------------------------------------
@@ -1331,9 +1317,7 @@ class TestGetEoaAccount:
 
         with patch.object(
             self.handler, "_get_password_from_args", return_value=None
-        ), patch.object(
-            Path, "open", mock_open(read_data="0xplainkey")
-        ), patch(
+        ), patch.object(Path, "open", mock_open(read_data="0xplainkey")), patch(
             "packages.valory.skills.trader_abci.handlers.Account"
         ) as MockAccount:
             MockAccount.from_key.return_value = mock_account
@@ -1345,9 +1329,7 @@ class TestGetEoaAccount:
         """Test exception when Account.from_key fails."""
         with patch.object(
             self.handler, "_get_password_from_args", return_value=None
-        ), patch.object(
-            Path, "open", mock_open(read_data="invalid_key")
-        ), patch(
+        ), patch.object(Path, "open", mock_open(read_data="invalid_key")), patch(
             "packages.valory.skills.trader_abci.handlers.Account"
         ) as MockAccount:
             MockAccount.from_key.side_effect = Exception("bad key")
@@ -1404,9 +1386,7 @@ class TestGetWeb3Instance:
 
     def test_polygon_chain(self) -> None:
         """Test getting Web3 instance for polygon."""
-        with patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        with patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             mock_instance = MagicMock()
             MockWeb3.return_value = mock_instance
             result = self.handler._get_web3_instance("polygon")
@@ -1414,9 +1394,7 @@ class TestGetWeb3Instance:
 
     def test_gnosis_chain(self) -> None:
         """Test getting Web3 instance for gnosis."""
-        with patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        with patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             mock_instance = MagicMock()
             MockWeb3.return_value = mock_instance
             result = self.handler._get_web3_instance("gnosis")
@@ -1464,23 +1442,15 @@ class TestCheckUsdcBalance:
 
         with patch.object(
             self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._check_usdc_balance(
-                "0xAddress", "polygon", "0xUSDC"
-            )
+            result = self.handler._check_usdc_balance("0xAddress", "polygon", "0xUSDC")
             assert result == 5000000
 
     def test_no_web3(self) -> None:
         """Test when web3 instance is None."""
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=None
-        ):
-            result = self.handler._check_usdc_balance(
-                "0xAddress", "polygon", "0xUSDC"
-            )
+        with patch.object(self.handler, "_get_web3_instance", return_value=None):
+            result = self.handler._check_usdc_balance("0xAddress", "polygon", "0xUSDC")
             assert result is None
 
     def test_exception(self) -> None:
@@ -1490,9 +1460,7 @@ class TestCheckUsdcBalance:
             "_get_web3_instance",
             side_effect=Exception("error"),
         ):
-            result = self.handler._check_usdc_balance(
-                "0xAddress", "polygon", "0xUSDC"
-            )
+            result = self.handler._check_usdc_balance("0xAddress", "polygon", "0xUSDC")
             assert result is None
 
 
@@ -1655,9 +1623,7 @@ class TestSignAndSubmitTxWeb3:
         mock_tx_hash.to_0x_hex.return_value = "0xhash"
         mock_w3.eth.send_raw_transaction.return_value = mock_tx_hash
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
             result = self.handler._sign_and_submit_tx_web3(
                 {"to": "0x1"}, "polygon", mock_account
             )
@@ -1665,9 +1631,7 @@ class TestSignAndSubmitTxWeb3:
 
     def test_no_web3(self) -> None:
         """Test when web3 is None."""
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=None
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=None):
             result = self.handler._sign_and_submit_tx_web3(
                 {"to": "0x1"}, "polygon", MagicMock()
             )
@@ -1679,9 +1643,7 @@ class TestSignAndSubmitTxWeb3:
         mock_account = MagicMock()
         mock_account.sign_transaction.side_effect = Exception("sign error")
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
             result = self.handler._sign_and_submit_tx_web3(
                 {"to": "0x1"}, "polygon", mock_account
             )
@@ -1705,9 +1667,7 @@ class TestCheckTransactionStatus:
         mock_receipt.status = 1
         mock_w3.eth.wait_for_transaction_receipt.return_value = mock_receipt
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
             result = self.handler._check_transaction_status("0xhash", "polygon")
             assert result is True
 
@@ -1718,17 +1678,13 @@ class TestCheckTransactionStatus:
         mock_receipt.status = 0
         mock_w3.eth.wait_for_transaction_receipt.return_value = mock_receipt
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
             result = self.handler._check_transaction_status("0xhash", "polygon")
             assert result is False
 
     def test_no_web3(self) -> None:
         """Test when web3 is None."""
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=None
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=None):
             result = self.handler._check_transaction_status("0xhash", "polygon")
             assert result is False
 
@@ -1737,9 +1693,7 @@ class TestCheckTransactionStatus:
         mock_w3 = MagicMock()
         mock_w3.eth.wait_for_transaction_receipt.side_effect = Exception("timeout")
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
             result = self.handler._check_transaction_status("0xhash", "polygon")
             assert result is False
 
@@ -1762,24 +1716,16 @@ class TestGetNonceAndGasWeb3:
 
         with patch.object(
             self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             MockWeb3.to_checksum_address = lambda addr: addr
-            nonce, gas = self.handler._get_nonce_and_gas_web3(
-                "0xAddress", "polygon"
-            )
+            nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
             assert nonce == 42
             assert gas == 50000000000
 
     def test_no_web3(self) -> None:
         """Test when web3 is None."""
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=None
-        ):
-            nonce, gas = self.handler._get_nonce_and_gas_web3(
-                "0xAddress", "polygon"
-            )
+        with patch.object(self.handler, "_get_web3_instance", return_value=None):
+            nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
             assert nonce is None
             assert gas is None
 
@@ -1790,13 +1736,9 @@ class TestGetNonceAndGasWeb3:
 
         with patch.object(
             self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             MockWeb3.to_checksum_address = lambda addr: addr
-            nonce, gas = self.handler._get_nonce_and_gas_web3(
-                "0xAddress", "polygon"
-            )
+            nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
             assert nonce is None
             assert gas is None
 
@@ -1818,9 +1760,7 @@ class TestEstimateGas:
 
         with patch.object(
             self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": "0x10"},
@@ -1837,9 +1777,7 @@ class TestEstimateGas:
 
         with patch.object(
             self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": 16},
@@ -1857,9 +1795,7 @@ class TestEstimateGas:
         type annotation says Optional[int] but the actual return is `return False`.
         See handlers.py line 856.
         """
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=None
-        ):
+        with patch.object(self.handler, "_get_web3_instance", return_value=None):
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": 0},
                 "0xEOA",
@@ -1875,9 +1811,7 @@ class TestEstimateGas:
 
         with patch.object(
             self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": 0},
@@ -1903,9 +1837,7 @@ class TestEnsureSufficientFundsForX402Payments:
 
     def test_no_eoa_account(self) -> None:
         """Test failure when EOA account cannot be obtained."""
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=None
-        ):
+        with patch.object(self.handler, "_get_eoa_account", return_value=None):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
@@ -1937,9 +1869,7 @@ class TestEnsureSufficientFundsForX402Payments:
 
         with patch.object(
             self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=None
-        ):
+        ), patch.object(self.handler, "_check_usdc_balance", return_value=None):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
@@ -1950,9 +1880,7 @@ class TestEnsureSufficientFundsForX402Payments:
 
         with patch.object(
             self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=2000000
-        ):
+        ), patch.object(self.handler, "_check_usdc_balance", return_value=2000000):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
@@ -2188,9 +2116,7 @@ class TestEnsureSufficientFundsForX402Payments:
 
         with patch.object(
             handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            handler, "_check_usdc_balance", return_value=2000000
-        ):
+        ), patch.object(handler, "_check_usdc_balance", return_value=2000000):
             result = handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
@@ -2214,9 +2140,7 @@ class TestTeardownAndShutdown:
     def test_teardown(self) -> None:
         """Test teardown calls super().teardown() and _executor_shutdown."""
         handler = _make_handler()
-        with patch.object(
-            BaseHttpHandler, "teardown"
-        ) as mock_super, patch.object(
+        with patch.object(BaseHttpHandler, "teardown") as mock_super, patch.object(
             handler, "_executor_shutdown"
         ) as mock_shutdown:
             handler.teardown()
@@ -2228,9 +2152,9 @@ class TestTeardownAndShutdown:
         handler = _make_handler()
         # executor is already a MagicMock from _make_handler
         handler._executor_shutdown()
-        handler.executor.shutdown.assert_called_once_with(
+        handler.executor.shutdown.assert_called_once_with(  # type: ignore[attr-defined]
             wait=False, cancel_futures=True
-        )
+        )  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

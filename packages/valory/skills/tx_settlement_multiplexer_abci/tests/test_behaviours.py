@@ -75,28 +75,27 @@ class TestPostTxSettlementFullBehaviour:
     """Tests for PostTxSettlementFullBehaviour attributes."""
 
     def test_initial_behaviour_cls(self) -> None:
-        """initial_behaviour_cls is PostTxSettlementBehaviour."""
+        """Initial_behaviour_cls is PostTxSettlementBehaviour."""
         assert (
             PostTxSettlementFullBehaviour.initial_behaviour_cls
             is PostTxSettlementBehaviour
         )
 
     def test_abci_app_cls(self) -> None:
-        """abci_app_cls is TxSettlementMultiplexerAbciApp."""
+        """Abci_app_cls is TxSettlementMultiplexerAbciApp."""
         assert (
-            PostTxSettlementFullBehaviour.abci_app_cls
-            is TxSettlementMultiplexerAbciApp
+            PostTxSettlementFullBehaviour.abci_app_cls is TxSettlementMultiplexerAbciApp  # type: ignore[misc]
         )
 
     def test_behaviours_set(self) -> None:
-        """behaviours set contains PreTxSettlementBehaviour and PostTxSettlementBehaviour."""
+        """Behaviours set contains PreTxSettlementBehaviour and PostTxSettlementBehaviour."""
         assert PostTxSettlementFullBehaviour.behaviours == {
             PreTxSettlementBehaviour,
             PostTxSettlementBehaviour,
         }
 
     def test_inherits_abstract_round_behaviour(self) -> None:
-        """PostTxSettlementFullBehaviour extends AbstractRoundBehaviour."""
+        """Test that PostTxSettlementFullBehaviour extends AbstractRoundBehaviour."""
         assert issubclass(PostTxSettlementFullBehaviour, AbstractRoundBehaviour)
 
 
@@ -109,12 +108,12 @@ class TestPreTxSettlementBehaviourAttributes:
     """Tests for PreTxSettlementBehaviour class attributes and properties."""
 
     def test_matching_round(self) -> None:
-        """matching_round is PreTxSettlementRound."""
+        """Matching_round is PreTxSettlementRound."""
         assert PreTxSettlementBehaviour.matching_round is PreTxSettlementRound
 
     def test_params_property(self) -> None:
-        """params returns context.params cast to TxSettlementMultiplexerParams."""
-        behaviour = object.__new__(PreTxSettlementBehaviour)
+        """Params returns context.params cast to TxSettlementMultiplexerParams."""
+        behaviour = object.__new__(PreTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_params = MagicMock(spec=TxSettlementMultiplexerParams)
         mock_context.params = mock_params
@@ -134,7 +133,7 @@ class TestGetBalance:
 
     def _make_behaviour(self) -> PreTxSettlementBehaviour:
         """Create a PreTxSettlementBehaviour bypassing __init__."""
-        return object.__new__(PreTxSettlementBehaviour)
+        return object.__new__(PreTxSettlementBehaviour)  # type: ignore[type-abstract]
 
     def test_get_balance_success(self) -> None:
         """Returns the integer balance when response is valid."""
@@ -297,7 +296,7 @@ class TestCheckBalance:
 
     def _make_behaviour(self) -> PreTxSettlementBehaviour:
         """Create a PreTxSettlementBehaviour bypassing __init__."""
-        return object.__new__(PreTxSettlementBehaviour)
+        return object.__new__(PreTxSettlementBehaviour)  # type: ignore[type-abstract]
 
     def test_balance_above_threshold(self) -> None:
         """Returns False (no refill) when balance >= threshold."""
@@ -381,7 +380,7 @@ class TestCheckBalance:
             call_count += 1
             if call_count == 1:
                 return None
-            return 5000
+            return 5000  # type: ignore[return-value]
             yield  # pragma: no cover
 
         with patch.object(
@@ -406,7 +405,7 @@ class TestRefillRequired:
 
     def _make_behaviour(self) -> PreTxSettlementBehaviour:
         """Create a PreTxSettlementBehaviour bypassing __init__."""
-        return object.__new__(PreTxSettlementBehaviour)
+        return object.__new__(PreTxSettlementBehaviour)  # type: ignore[type-abstract]
 
     def test_no_participants(self) -> None:
         """Returns False when there are no participants."""
@@ -468,8 +467,8 @@ class TestRefillRequired:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return False
-            return True
+                return False  # type: ignore[return-value]
+            return True  # type: ignore[return-value]
             yield  # pragma: no cover
 
         with patch.object(
@@ -518,7 +517,7 @@ class TestPreTxSettlementAsyncAct:
 
     def _make_behaviour(self) -> PreTxSettlementBehaviour:
         """Create a PreTxSettlementBehaviour bypassing __init__."""
-        return object.__new__(PreTxSettlementBehaviour)
+        return object.__new__(PreTxSettlementBehaviour)  # type: ignore[type-abstract]
 
     def test_async_act_no_refill(self) -> None:
         """When no refill is required, sends True payload and completes."""
@@ -548,7 +547,7 @@ class TestPreTxSettlementAsyncAct:
             behaviour, "set_done", mock_set_done
         ), patch.object(
             behaviour, "sleep", _noop_gen
-        ) as mock_sleep:
+        ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
@@ -606,16 +605,16 @@ class TestPostTxSettlementBehaviourAttributes:
     """Tests for PostTxSettlementBehaviour class attributes and properties."""
 
     def test_matching_round(self) -> None:
-        """matching_round is PostTxSettlementRound."""
+        """Matching_round is PostTxSettlementRound."""
         assert PostTxSettlementBehaviour.matching_round is PostTxSettlementRound
 
     def test_synchronized_data_property(self) -> None:
-        """synchronized_data wraps super().synchronized_data.db in SynchronizedData."""
+        """Synchronized_data wraps super().synchronized_data.db in SynchronizedData."""
         from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
             SynchronizedData,
         )
 
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_db = MagicMock()
         mock_super_sync_data = MagicMock()
         mock_super_sync_data.db = mock_db
@@ -635,7 +634,7 @@ class TestRedeemingProgressProperty:
 
     def test_getter(self) -> None:
         """Getter returns shared_state.redeeming_progress."""
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_progress = RedeemingProgress()
         mock_shared_state = MagicMock()
         mock_shared_state.redeeming_progress = mock_progress
@@ -650,7 +649,7 @@ class TestRedeemingProgressProperty:
 
     def test_setter(self) -> None:
         """Setter assigns to shared_state.redeeming_progress."""
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_shared_state = MagicMock()
         new_progress = RedeemingProgress()
 
@@ -669,7 +668,7 @@ class TestOnRedeemRoundTxSettled:
 
     def test_resets_progress_and_preserves_claimed_ids(self) -> None:
         """Resets redeeming progress and preserves claimed + claiming ids."""
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
 
         # Set up redeeming progress with existing claimed and claiming ids
@@ -708,7 +707,7 @@ class TestOnRedeemRoundTxSettled:
 
     def test_empty_ids(self) -> None:
         """Works correctly when both claimed and claiming ids are empty."""
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
 
         progress = RedeemingProgress()
@@ -742,7 +741,7 @@ class TestOnTxSettled:
 
     def _make_behaviour(self) -> PostTxSettlementBehaviour:
         """Create a PostTxSettlementBehaviour bypassing __init__."""
-        return object.__new__(PostTxSettlementBehaviour)
+        return object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
 
     def test_known_handler_called(self) -> None:
         """When handler exists for tx_submitter, it is called."""
@@ -800,7 +799,7 @@ class TestPostTxSettlementAsyncAct:
 
     def test_async_act(self) -> None:
         """Drives the full async_act generator to completion."""
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_sync_data = MagicMock()
         mock_sync_data.tx_submitter = "some_submitter"
@@ -832,8 +831,8 @@ class TestPostTxSettlementAsyncAct:
             mock_set_done.assert_called_once()
 
     def test_async_act_with_redeem_round(self) -> None:
-        """async_act correctly calls the redeem_round handler end-to-end."""
-        behaviour = object.__new__(PostTxSettlementBehaviour)
+        """Async_act correctly calls the redeem_round handler end-to-end."""
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_sync_data = MagicMock()
         mock_sync_data.tx_submitter = "redeem_round"

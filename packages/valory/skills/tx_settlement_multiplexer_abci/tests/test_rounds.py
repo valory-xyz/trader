@@ -26,16 +26,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from packages.valory.skills.abstract_round_abci.base import (
-    AbciAppDB,
     DegenerateRound,
     NONE_EVENT_ATTRIBUTE,
     VotingRound,
     get_name,
 )
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
-from packages.valory.skills.decision_maker_abci.states.base import (
-    SynchronizedData,
-)
+from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
@@ -242,8 +239,8 @@ class TestPostTxSettlementRoundEndBlock:
         assert synced_data is mock_synced
         mock_policy.tool_used.assert_called_once_with("prediction-online")
         mock_policy.serialize.assert_called_once()
-        round_.synchronized_data.update.assert_called_once_with(
-            policy="serialized_policy"
+        round_.synchronized_data.update.assert_called_once_with(  # type: ignore[attr-defined]
+            policy="serialized_policy"  # type: ignore[attr-defined]
         )
 
     def test_bet_placement_done_with_valid_tx_hash(self) -> None:
@@ -272,8 +269,8 @@ class TestPostTxSettlementRoundEndBlock:
             {"0xabc123": "prediction-online", "existing_hash": "existing_tool"},
             sort_keys=True,
         )
-        round_.synchronized_data.update.assert_called_once_with(
-            utilized_tools=expected_tools
+        round_.synchronized_data.update.assert_called_once_with(  # type: ignore[attr-defined]
+            utilized_tools=expected_tools  # type: ignore[attr-defined]
         )
 
     def test_bet_placement_done_with_none_tx_hash(self) -> None:
@@ -297,8 +294,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert synced_data is mock_synced
         round_.context.logger.warning.assert_called_once()
         # Ensure update was NOT called because we returned early
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_sell_outcome_tokens_done_with_valid_tx_hash(self) -> None:
         """Test end_block with SellOutcomeTokensRound submitter and valid tx hash updates utilized_tools."""
         round_ = self._create_round()
@@ -319,11 +317,9 @@ class TestPostTxSettlementRoundEndBlock:
         synced_data, event = result
         assert event == Event.SELL_OUTCOME_TOKENS_DONE
 
-        expected_tools = json.dumps(
-            {"0xdef456": "prediction-offline"}, sort_keys=True
-        )
-        round_.synchronized_data.update.assert_called_once_with(
-            utilized_tools=expected_tools
+        expected_tools = json.dumps({"0xdef456": "prediction-offline"}, sort_keys=True)
+        round_.synchronized_data.update.assert_called_once_with(  # type: ignore[attr-defined]
+            utilized_tools=expected_tools  # type: ignore[attr-defined]
         )
 
     def test_sell_outcome_tokens_done_with_none_tx_hash(self) -> None:
@@ -345,8 +341,9 @@ class TestPostTxSettlementRoundEndBlock:
         synced_data, event = result
         assert event == Event.SELL_OUTCOME_TOKENS_DONE
         round_.context.logger.warning.assert_called_once()
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_redeeming_done_from_redeem_round(self) -> None:
         """Test end_block with RedeemRound submitter returns REDEEMING_DONE."""
         round_ = self._create_round()
@@ -365,8 +362,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert event == Event.REDEEMING_DONE
         assert synced_data is mock_synced
         # No update should be called for REDEEMING_DONE
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_redeeming_done_from_polymarket_redeem_round(self) -> None:
         """Test end_block with PolymarketRedeemRound submitter returns REDEEMING_DONE."""
         round_ = self._create_round()
@@ -383,8 +381,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert result is not None
         synced_data, event = result
         assert event == Event.REDEEMING_DONE
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_staking_done(self) -> None:
         """Test end_block with CallCheckpointRound submitter returns STAKING_DONE."""
         round_ = self._create_round()
@@ -401,8 +400,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert result is not None
         synced_data, event = result
         assert event == Event.STAKING_DONE
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_subscription_done(self) -> None:
         """Test end_block with MechPurchaseSubscriptionRound submitter returns SUBSCRIPTION_DONE."""
         round_ = self._create_round()
@@ -419,8 +419,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert result is not None
         synced_data, event = result
         assert event == Event.SUBSCRIPTION_DONE
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_set_approval_done(self) -> None:
         """Test end_block with PolymarketSetApprovalRound submitter returns SET_APPROVAL_DONE."""
         round_ = self._create_round()
@@ -437,8 +438,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert result is not None
         synced_data, event = result
         assert event == Event.SET_APPROVAL_DONE
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_swap_done(self) -> None:
         """Test end_block with PolymarketSwapUsdcRound submitter returns SWAP_DONE."""
         round_ = self._create_round()
@@ -455,8 +457,9 @@ class TestPostTxSettlementRoundEndBlock:
         assert result is not None
         synced_data, event = result
         assert event == Event.SWAP_DONE
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_unrecognized_submitter(self) -> None:
         """Test end_block with unknown submitter returns UNRECOGNIZED."""
         round_ = self._create_round()
@@ -474,8 +477,9 @@ class TestPostTxSettlementRoundEndBlock:
         synced_data, event = result
         assert event == Event.UNRECOGNIZED
         assert synced_data is mock_synced
-        round_.synchronized_data.update.assert_not_called()
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_mech_requesting_done_policy_serialize_value(self) -> None:
         """Test that the serialized policy value is passed correctly to update."""
         round_ = self._create_round()
@@ -494,8 +498,9 @@ class TestPostTxSettlementRoundEndBlock:
 
             round_.end_block()
 
-        round_.synchronized_data.update.assert_called_once_with(policy=serialized)
+        round_.synchronized_data.update.assert_called_once_with(policy=serialized)  # type: ignore[attr-defined]
 
+    # type: ignore[attr-defined]
     def test_bet_placement_done_utilized_tools_merges_with_existing(self) -> None:
         """Test that new tools are merged with existing utilized_tools."""
         round_ = self._create_round()
@@ -520,8 +525,8 @@ class TestPostTxSettlementRoundEndBlock:
         expected_merged = existing_tools.copy()
         expected_merged["0xnew"] = "new-tool"
         expected_tools_json = json.dumps(expected_merged, sort_keys=True)
-        round_.synchronized_data.update.assert_called_once_with(
-            utilized_tools=expected_tools_json
+        round_.synchronized_data.update.assert_called_once_with(  # type: ignore[attr-defined]
+            utilized_tools=expected_tools_json  # type: ignore[attr-defined]
         )
 
     @pytest.mark.parametrize(
@@ -548,8 +553,8 @@ class TestPostTxSettlementRoundEndBlock:
             "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
         ) as MockSyncData:
             mock_synced = MagicMock()
-            mock_synced.tx_submitter = submitter_round_cls.auto_round_id()
-            # Provide attributes needed for MECH_REQUESTING_DONE path
+            mock_synced.tx_submitter = submitter_round_cls.auto_round_id()  # type: ignore[attr-defined]
+            # Provide attributes needed for MECH_REQUESTING_DONE path  # type: ignore[attr-defined]
             mock_synced.policy = MagicMock()
             mock_synced.policy.serialize.return_value = "serialized"
             mock_synced.mech_tool = "test-tool"
@@ -568,8 +573,8 @@ class TestPostTxSettlementRoundEndBlock:
         """Test that SynchronizedData is constructed using self.synchronized_data.db."""
         round_ = self._create_round()
         mock_db = MagicMock()
-        round_.synchronized_data.db = mock_db
-
+        round_.synchronized_data.db = mock_db  # type: ignore[misc]
+        # type: ignore[misc]
         with patch(
             "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
         ) as MockSyncData:
@@ -651,15 +656,11 @@ def abci_app() -> TxSettlementMultiplexerAbciApp:
 class TestTxSettlementMultiplexerAbciApp:
     """Tests for TxSettlementMultiplexerAbciApp."""
 
-    def test_initial_round_cls(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_initial_round_cls(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test that the initial round class is PreTxSettlementRound."""
         assert abci_app.initial_round_cls is PreTxSettlementRound
 
-    def test_initial_states(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_initial_states(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test the set of initial states."""
         assert TxSettlementMultiplexerAbciApp.initial_states == {
             PreTxSettlementRound,
@@ -702,9 +703,7 @@ class TestTxSettlementMultiplexerAbciApp:
         }
         assert abci_app.transition_function == expected
 
-    def test_final_states(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_final_states(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test the set of final states."""
         expected_final: Set[type] = {
             ChecksPassedRound,
@@ -720,15 +719,11 @@ class TestTxSettlementMultiplexerAbciApp:
         }
         assert abci_app.final_states == expected_final
 
-    def test_event_to_timeout(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_event_to_timeout(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test the event-to-timeout mapping."""
         assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
 
-    def test_db_pre_conditions(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_db_pre_conditions(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test the database pre-conditions."""
         expected: Dict[type, Set[str]] = {
             PreTxSettlementRound: {get_name(SynchronizedData.tx_submitter)},
@@ -736,9 +731,7 @@ class TestTxSettlementMultiplexerAbciApp:
         }
         assert abci_app.db_pre_conditions == expected
 
-    def test_db_post_conditions(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_db_post_conditions(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test the database post-conditions."""
         expected: Dict[type, Set[str]] = {
             ChecksPassedRound: set(),
@@ -754,9 +747,7 @@ class TestTxSettlementMultiplexerAbciApp:
         }
         assert abci_app.db_post_conditions == expected
 
-    def test_final_states_count(
-        self, abci_app: TxSettlementMultiplexerAbciApp
-    ) -> None:
+    def test_final_states_count(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
         """Test that there are exactly 10 final states."""
         assert len(abci_app.final_states) == 10
 

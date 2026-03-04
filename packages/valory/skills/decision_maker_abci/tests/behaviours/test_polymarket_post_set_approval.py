@@ -24,8 +24,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (
     PolymarketPostSetApprovalBehaviour,
 )
@@ -42,14 +40,14 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_appro
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a PolymarketPostSetApprovalBehaviour with mocked dependencies."""
-    behaviour = object.__new__(PolymarketPostSetApprovalBehaviour)
+    behaviour = object.__new__(PolymarketPostSetApprovalBehaviour)  # type: ignore[no-untyped-def]
     behaviour.buy_amount = 0
 
     context = MagicMock()
@@ -80,7 +78,9 @@ class TestPolymarketPostSetApprovalBehaviour:
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval.DecisionMakerBaseBehaviour.__init__",
             return_value=None,
         ):
-            behaviour = PolymarketPostSetApprovalBehaviour(name="test", skill_context=MagicMock())
+            behaviour = PolymarketPostSetApprovalBehaviour(
+                name="test", skill_context=MagicMock()
+            )
             assert behaviour.buy_amount == 0
 
     def test_write_allowances_file_success(self) -> None:
@@ -123,9 +123,7 @@ class TestPolymarketPostSetApprovalBehaviour:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                store_path=Path("/nonexistent/path")
-            )
+            mock_params.return_value = MagicMock(store_path=Path("/nonexistent/path"))
             behaviour._write_allowances_file(True)
 
         behaviour.__dict__["_context"].logger.error.assert_called()
@@ -138,19 +136,15 @@ class TestPolymarketPostSetApprovalBehaviour:
         response.error = "Connection failed"
         response.payload = None
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or response
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                store_path=Path(tempfile.mkdtemp())
-            )
+            mock_params.return_value = MagicMock(store_path=Path(tempfile.mkdtemp()))
             with patch(
                 "packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval.SrrDialogues"
-            ) as mock_srr:
+            ):
                 mock_srr_instance = MagicMock()
                 mock_srr_instance.create.return_value = (MagicMock(), MagicMock())
 
@@ -176,16 +170,12 @@ class TestPolymarketPostSetApprovalBehaviour:
         """_check_approval should handle None response."""
         behaviour = _make_behaviour()
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or None
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or None)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                store_path=Path(tempfile.mkdtemp())
-            )
+            mock_params.return_value = MagicMock(store_path=Path(tempfile.mkdtemp()))
             with patch(
                 "packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval.SrrDialogues"
             ):
@@ -222,19 +212,15 @@ class TestPolymarketPostSetApprovalBehaviour:
             }
         )
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or response
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                store_path=Path(tempfile.mkdtemp())
-            )
+            mock_params.return_value = MagicMock(store_path=Path(tempfile.mkdtemp()))
             with patch(
                 "packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval.SrrDialogues"
-            ) as mock_srr:
+            ):
                 mock_srr_instance = MagicMock()
                 mock_srr_instance.create.return_value = (MagicMock(), MagicMock())
 
@@ -270,16 +256,12 @@ class TestPolymarketPostSetApprovalBehaviour:
             }
         )
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or response
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                store_path=Path(tempfile.mkdtemp())
-            )
+            mock_params.return_value = MagicMock(store_path=Path(tempfile.mkdtemp()))
             with patch(
                 "packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval.SrrDialogues"
             ):
@@ -308,21 +290,19 @@ class TestPolymarketPostSetApprovalBehaviour:
 
         payloads_sent = []
 
-        def mock_check_approval():
+        def mock_check_approval() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock check approval."""
-            behaviour.payload = PolymarketPostSetApprovalPayload(
-                "test_agent", True
-            )
+            behaviour.payload = PolymarketPostSetApprovalPayload("test_agent", True)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour._check_approval = mock_check_approval
+        behaviour._check_approval = mock_check_approval  # type: ignore[method-assign]
 
-        def capture_finish(payload):
+        def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Capture finish behaviour payload."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = capture_finish
+        behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
 
         gen = behaviour.async_act()
         try:
@@ -339,11 +319,11 @@ class TestPolymarketPostSetApprovalBehaviour:
         behaviour = _make_behaviour()
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: (yield)
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         payload = PolymarketPostSetApprovalPayload("test_agent", True)
 

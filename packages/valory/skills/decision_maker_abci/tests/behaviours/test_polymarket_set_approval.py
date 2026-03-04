@@ -22,8 +22,6 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
 )
@@ -40,20 +38,20 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval i
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a PolymarketSetApprovalBehaviour with mocked dependencies."""
-    behaviour = object.__new__(PolymarketSetApprovalBehaviour)
+    behaviour = object.__new__(PolymarketSetApprovalBehaviour)  # type: ignore[no-untyped-def]
     behaviour.buy_amount = 0
     behaviour.multisend_batches = []
     behaviour.multisend_data = b""
@@ -77,8 +75,7 @@ class TestPolymarketSetApprovalBehaviour:
     def test_matching_round(self) -> None:
         """matching_round should be PolymarketSetApprovalRound."""
         assert (
-            PolymarketSetApprovalBehaviour.matching_round
-            == PolymarketSetApprovalRound
+            PolymarketSetApprovalBehaviour.matching_round == PolymarketSetApprovalRound
         )
 
     def test_init(self) -> None:
@@ -87,7 +84,9 @@ class TestPolymarketSetApprovalBehaviour:
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval.DecisionMakerBaseBehaviour.__init__",
             return_value=None,
         ):
-            behaviour = PolymarketSetApprovalBehaviour(name="test", skill_context=MagicMock())
+            behaviour = PolymarketSetApprovalBehaviour(
+                name="test", skill_context=MagicMock()
+            )
             assert behaviour.buy_amount == 0
 
     def test_build_erc20_approve_data(self) -> None:
@@ -136,12 +135,12 @@ class TestPolymarketSetApprovalBehaviour:
 
         payloads_sent = []
 
-        def mock_prepare():
+        def mock_prepare() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock prepare approval tx."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return "0xhash"
 
-        behaviour._prepare_approval_tx = mock_prepare
+        behaviour._prepare_approval_tx = mock_prepare  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -152,17 +151,17 @@ class TestPolymarketSetApprovalBehaviour:
                 False
             )
 
-            behaviour.send_a2a_transaction = lambda payload: (yield)
-            behaviour.wait_until_round_end = lambda: (yield)
-            behaviour.set_done = MagicMock()
+            behaviour.send_a2a_transaction = lambda payload: (yield)  # type: ignore[method-assign]
+            behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[method-assign]
+            behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
             # Capture payload
-            def capture_finish(payload):
+            def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
                 """Capture finish behaviour payload."""
-                payloads_sent.append(payload)
+                payloads_sent.append(payload)  # type: ignore[no-untyped-def]
                 yield
 
-            behaviour.finish_behaviour = capture_finish
+            behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
 
             gen = behaviour.async_act()
             try:
@@ -180,26 +179,26 @@ class TestPolymarketSetApprovalBehaviour:
 
         set_approval_called = []
 
-        def mock_set_approval():
+        def mock_set_approval() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock set approval."""
-            set_approval_called.append(True)
+            set_approval_called.append(True)  # type: ignore[no-untyped-def]
             behaviour.payload = PolymarketSetApprovalPayload(
                 "test_agent", None, None, False
             )
             yield
 
-        behaviour._set_approval = mock_set_approval
+        behaviour._set_approval = mock_set_approval  # type: ignore[method-assign]
 
         behaviour.__dict__["_context"].params.polymarket_builder_program_enabled = True
 
         payloads_sent = []
 
-        def capture_finish(payload):
+        def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Capture finish behaviour payload."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = capture_finish
+        behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
 
         gen = behaviour.async_act()
         try:
@@ -219,9 +218,7 @@ class TestPolymarketSetApprovalBehaviour:
         response.error = None
         response.payload = json.dumps({"tx_hash": "0xabc"})
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or response
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or response)  # type: ignore[method-assign]
 
         with patch(
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval.SrrDialogues"
@@ -252,9 +249,7 @@ class TestPolymarketSetApprovalBehaviour:
         response.error = "Connection failed"
         response.payload = None
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or response
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or response)  # type: ignore[method-assign]
 
         with patch(
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval.SrrDialogues"
@@ -281,9 +276,7 @@ class TestPolymarketSetApprovalBehaviour:
         """_set_approval should handle None response."""
         behaviour = _make_behaviour()
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or None
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or None)  # type: ignore[method-assign]
 
         with patch(
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval.SrrDialogues"
@@ -314,9 +307,7 @@ class TestPolymarketSetApprovalBehaviour:
         response.error = None
         response.payload = json.dumps(None)  # parses to None -> success is False
 
-        behaviour.do_connection_request = lambda msg, dlg: (
-            (yield) or response
-        )
+        behaviour.do_connection_request = lambda msg, dlg: ((yield) or response)  # type: ignore[method-assign]
 
         with patch(
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval.SrrDialogues"
@@ -346,18 +337,18 @@ class TestPolymarketSetApprovalBehaviour:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -391,12 +382,12 @@ class TestPolymarketSetApprovalBehaviour:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._build_multisend_data = mock_build_multisend_data
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -424,18 +415,18 @@ class TestPolymarketSetApprovalBehaviour:
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend safe tx hash that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -463,11 +454,11 @@ class TestPolymarketSetApprovalBehaviour:
         behaviour = _make_behaviour()
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: (yield)
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         payload = PolymarketSetApprovalPayload("test_agent", None, None, False)
 

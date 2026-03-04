@@ -19,7 +19,6 @@
 
 """Tests for staking_abci behaviours."""
 
-import json
 from pathlib import Path
 from typing import Any, Generator
 from unittest.mock import MagicMock, PropertyMock, mock_open, patch
@@ -33,14 +32,14 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 )
 from packages.valory.skills.staking_abci.behaviours import (
     CHECKPOINT_FILENAME,
+    CallCheckpointBehaviour,
     ETH_PRICE,
     NULL_ADDRESS,
     READ_MODE,
     SAFE_GAS,
-    WRITE_MODE,
-    CallCheckpointBehaviour,
     StakingInteractBaseBehaviour,
     StakingRoundBehaviour,
+    WRITE_MODE,
 )
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.rounds import (
@@ -134,14 +133,14 @@ class TestStakingInteractProperties:
 
     def _make(self) -> StakingInteractBaseBehaviour:
         """Create a bare instance."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        b._service_staking_state = StakingState.UNSTAKED
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        b._service_staking_state = StakingState.UNSTAKED  # type: ignore[type-abstract]
         b._checkpoint_ts = 0
         b._agent_ids = "[]"
         return b
 
     def test_params_property(self) -> None:
-        """params returns context.params."""
+        """Params returns context.params."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_params = MagicMock(spec=StakingParams)
@@ -152,7 +151,7 @@ class TestStakingInteractProperties:
             assert b.params is mock_params
 
     def test_use_v2_true(self) -> None:
-        """use_v2 is True when mech_activity_checker_contract is not NULL_ADDRESS."""
+        """Use_v2 is True when mech_activity_checker_contract is not NULL_ADDRESS."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_ctx.params.mech_activity_checker_contract = "0xSomeAddress"
@@ -162,7 +161,7 @@ class TestStakingInteractProperties:
             assert b.use_v2 is True
 
     def test_use_v2_false(self) -> None:
-        """use_v2 is False when mech_activity_checker_contract is NULL_ADDRESS."""
+        """Use_v2 is False when mech_activity_checker_contract is NULL_ADDRESS."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_ctx.params.mech_activity_checker_contract = NULL_ADDRESS
@@ -172,7 +171,7 @@ class TestStakingInteractProperties:
             assert b.use_v2 is False
 
     def test_synced_timestamp(self) -> None:
-        """synced_timestamp returns int from round_sequence."""
+        """Synced_timestamp returns int from round_sequence."""
         b = self._make()
         mock_rs = MagicMock()
         mock_rs.last_round_transition_timestamp.timestamp.return_value = 1700000000.5
@@ -185,7 +184,7 @@ class TestStakingInteractProperties:
             assert b.synced_timestamp == 1700000000
 
     def test_staking_contract_address(self) -> None:
-        """staking_contract_address delegates to params."""
+        """Staking_contract_address delegates to params."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_ctx.params.staking_contract_address = "0xStaking"
@@ -195,7 +194,7 @@ class TestStakingInteractProperties:
             assert b.staking_contract_address == "0xStaking"
 
     def test_mech_activity_checker_contract(self) -> None:
-        """mech_activity_checker_contract delegates to params."""
+        """Mech_activity_checker_contract delegates to params."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_ctx.params.mech_activity_checker_contract = "0xMechChecker"
@@ -205,30 +204,30 @@ class TestStakingInteractProperties:
             assert b.mech_activity_checker_contract == "0xMechChecker"
 
     def test_service_staking_state_getter(self) -> None:
-        """service_staking_state returns the internal state."""
+        """Service_staking_state returns the internal state."""
         b = self._make()
         assert b.service_staking_state == StakingState.UNSTAKED
 
     def test_service_staking_state_setter_enum(self) -> None:
-        """service_staking_state setter accepts StakingState enum."""
+        """Service_staking_state setter accepts StakingState enum."""
         b = self._make()
         b.service_staking_state = StakingState.STAKED
         assert b.service_staking_state == StakingState.STAKED
 
     def test_service_staking_state_setter_int(self) -> None:
-        """service_staking_state setter converts int to StakingState."""
+        """Service_staking_state setter converts int to StakingState."""
         b = self._make()
         b.service_staking_state = 2  # EVICTED
         assert b.service_staking_state == StakingState.EVICTED
 
     def test_next_checkpoint_getter_setter(self) -> None:
-        """next_checkpoint getter/setter round-trip."""
+        """Next_checkpoint getter/setter round-trip."""
         b = self._make()
         b.next_checkpoint = 42
         assert b.next_checkpoint == 42
 
     def test_is_checkpoint_reached_true(self) -> None:
-        """is_checkpoint_reached is True when next_checkpoint <= synced_timestamp."""
+        """Is_checkpoint_reached is True when next_checkpoint <= synced_timestamp."""
         b = self._make()
         b._next_checkpoint = 100
         mock_rs = MagicMock()
@@ -242,7 +241,7 @@ class TestStakingInteractProperties:
             assert b.is_checkpoint_reached is True
 
     def test_is_checkpoint_reached_false(self) -> None:
-        """is_checkpoint_reached is False when next_checkpoint > synced_timestamp."""
+        """Is_checkpoint_reached is False when next_checkpoint > synced_timestamp."""
         b = self._make()
         b._next_checkpoint = 300
         mock_rs = MagicMock()
@@ -256,32 +255,32 @@ class TestStakingInteractProperties:
             assert b.is_checkpoint_reached is False
 
     def test_ts_checkpoint_getter_setter(self) -> None:
-        """ts_checkpoint getter/setter round-trip."""
+        """Ts_checkpoint getter/setter round-trip."""
         b = self._make()
         b.ts_checkpoint = 999
         assert b.ts_checkpoint == 999
 
     def test_liveness_period_getter_setter(self) -> None:
-        """liveness_period getter/setter round-trip."""
+        """Liveness_period getter/setter round-trip."""
         b = self._make()
         b.liveness_period = 100
         assert b.liveness_period == 100
 
     def test_liveness_ratio_getter_setter(self) -> None:
-        """liveness_ratio getter/setter round-trip."""
+        """Liveness_ratio getter/setter round-trip."""
         b = self._make()
         b.liveness_ratio = 10**18
         assert b.liveness_ratio == 10**18
 
     def test_service_info_getter_setter(self) -> None:
-        """service_info getter/setter round-trip."""
+        """Service_info getter/setter round-trip."""
         b = self._make()
         info = (1, 2, (3, 4))
         b.service_info = info  # type: ignore
         assert b.service_info == info
 
     def test_agent_ids_getter_setter(self) -> None:
-        """agent_ids setter serializes list to JSON string."""
+        """Agent_ids setter serializes list to JSON string."""
         b = self._make()
         b.agent_ids = [1, 2, 3]  # type: ignore
         assert b.agent_ids == "[1, 2, 3]"
@@ -297,8 +296,8 @@ class TestWaitForConditionWithSleep:
 
     def _make(self) -> StakingInteractBaseBehaviour:
         """Create a behaviour with mocked context."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        b._service_staking_state = StakingState.UNSTAKED
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        b._service_staking_state = StakingState.UNSTAKED  # type: ignore[type-abstract]
         b._checkpoint_ts = 0
         b._agent_ids = "[]"
         return b
@@ -343,7 +342,7 @@ class TestWaitForConditionWithSleep:
         assert call_count == 2
 
     def test_timeout_raises(self) -> None:
-        """TimeoutException raised when deadline exceeded."""
+        """Test that TimeoutException is raised when deadline is exceeded."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_ctx.params.staking_interaction_sleep_time = 0
@@ -371,14 +370,14 @@ class TestDefaultError:
     """Tests for default_error."""
 
     def test_logs_error(self) -> None:
-        """default_error logs an error message."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        """Default_error logs an error message."""
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
         ):
-            b.default_error("contract_id", "callable_name", "response_msg")
-        mock_ctx.logger.error.assert_called_once()
+            b.default_error("contract_id", "callable_name", "response_msg")  # type: ignore[arg-type]
+        mock_ctx.logger.error.assert_called_once()  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -391,8 +390,8 @@ class TestContractInteract:
 
     def _make(self) -> StakingInteractBaseBehaviour:
         """Create a behaviour."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        return b
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        return b  # type: ignore[type-abstract]
 
     def test_success(self) -> None:
         """Successful interaction sets placeholder attribute."""
@@ -405,9 +404,7 @@ class TestContractInteract:
 
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "get_contract_api_response", _return_gen(response_msg)
-        ):
+        ), patch.object(b, "get_contract_api_response", _return_gen(response_msg)):
             gen = b.contract_interact(
                 contract_address="0x1",
                 contract_public_id=MagicMock(),
@@ -418,7 +415,7 @@ class TestContractInteract:
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
             assert exc_info.value.value is True
-        assert b.my_result == "result_value"
+        assert b.my_result == "result_value"  # type: ignore[attr-defined]
 
     def test_wrong_performative(self) -> None:
         """Wrong performative returns False."""
@@ -430,9 +427,7 @@ class TestContractInteract:
 
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "get_contract_api_response", _return_gen(response_msg)
-        ):
+        ), patch.object(b, "get_contract_api_response", _return_gen(response_msg)):
             gen = b.contract_interact(
                 contract_address="0x1",
                 contract_public_id=MagicMock(),
@@ -455,9 +450,7 @@ class TestContractInteract:
 
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "get_contract_api_response", _return_gen(response_msg)
-        ):
+        ), patch.object(b, "get_contract_api_response", _return_gen(response_msg)):
             gen = b.contract_interact(
                 contract_address="0x1",
                 contract_public_id=MagicMock(),
@@ -481,8 +474,8 @@ class TestStakingContractInteract:
     @pytest.mark.parametrize("use_v2", [True, False])
     def test_delegates_to_contract_interact(self, use_v2: bool) -> None:
         """Delegates to contract_interact with correct contract type."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.staking_contract_address = "0xStaking"
         mock_ctx.params.mech_activity_checker_contract = (
             "0xNonNull" if use_v2 else NULL_ADDRESS
@@ -505,8 +498,8 @@ class TestMechActivityCheckerContractInteract:
 
     def test_delegates_to_contract_interact(self) -> None:
         """Delegates to contract_interact with MechActivityContract."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.mech_activity_checker_contract = "0xMechChecker"
 
         with patch.object(
@@ -531,8 +524,8 @@ class TestCheckServiceStaked:
 
     def test_no_service_id(self) -> None:
         """No on_chain_service_id returns True (assumes unstaked)."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = None
 
         with patch.object(
@@ -545,8 +538,8 @@ class TestCheckServiceStaked:
 
     def test_with_service_id(self) -> None:
         """With on_chain_service_id, delegates to _staking_contract_interact."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
 
         with patch.object(
@@ -568,8 +561,9 @@ class TestGetMethods:
 
     def _make(self) -> StakingInteractBaseBehaviour:
         """Create a behaviour."""
-        return object.__new__(_ConcreteStakingBehaviour)
+        return object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
 
+    # type: ignore[type-abstract]
     def test_get_next_checkpoint(self) -> None:
         """_get_next_checkpoint delegates to _staking_contract_interact."""
         b = self._make()
@@ -638,8 +632,8 @@ class TestEnsureServiceId:
 
     def test_none_returns_false(self) -> None:
         """Returns False when on_chain_service_id is None."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = None
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
@@ -648,8 +642,8 @@ class TestEnsureServiceId:
 
     def test_set_returns_true(self) -> None:
         """Returns True when on_chain_service_id is set."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
@@ -662,8 +656,8 @@ class TestGetServiceInfo:
 
     def test_no_service_id_returns_true(self) -> None:
         """Returns True immediately when service_id is None."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = None
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
@@ -675,8 +669,8 @@ class TestGetServiceInfo:
 
     def test_with_service_id(self) -> None:
         """Delegates to _staking_contract_interact with service_id."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
@@ -692,8 +686,8 @@ class TestGetAgentIds:
 
     def test_no_service_id_returns_true(self) -> None:
         """Returns True immediately when service_id is None."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = None
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
@@ -705,8 +699,8 @@ class TestGetAgentIds:
 
     def test_with_service_id(self) -> None:
         """Delegates to _staking_contract_interact."""
-        b = object.__new__(_ConcreteStakingBehaviour)
-        mock_ctx = MagicMock()
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
@@ -760,11 +754,11 @@ class TestCallCheckpointBehaviourProperties:
         return b
 
     def test_matching_round(self) -> None:
-        """matching_round is CallCheckpointRound."""
+        """Matching_round is CallCheckpointRound."""
         assert CallCheckpointBehaviour.matching_round is CallCheckpointRound
 
     def test_params_property(self) -> None:
-        """params returns context.params."""
+        """Params returns context.params."""
         b = self._make()
         mock_ctx = MagicMock()
         mock_params = MagicMock(spec=StakingParams)
@@ -775,7 +769,7 @@ class TestCallCheckpointBehaviourProperties:
             assert b.params is mock_params
 
     def test_synchronized_data(self) -> None:
-        """synchronized_data wraps super().synchronized_data.db."""
+        """Synchronized_data wraps super().synchronized_data.db."""
         b = self._make()
         mock_sync = MagicMock()
         with patch.object(
@@ -788,7 +782,7 @@ class TestCallCheckpointBehaviourProperties:
             assert isinstance(result, SynchronizedData)
 
     def test_is_first_period_true(self) -> None:
-        """is_first_period is True when period_count is 0."""
+        """Is_first_period is True when period_count is 0."""
         b = self._make()
         mock_sync = MagicMock()
         mock_sync.period_count = 0
@@ -801,7 +795,7 @@ class TestCallCheckpointBehaviourProperties:
             assert b.is_first_period is True
 
     def test_is_first_period_false(self) -> None:
-        """is_first_period is False when period_count > 0."""
+        """Is_first_period is False when period_count > 0."""
         b = self._make()
         mock_sync = MagicMock()
         mock_sync.period_count = 5
@@ -814,7 +808,7 @@ class TestCallCheckpointBehaviourProperties:
             assert b.is_first_period is False
 
     def test_new_checkpoint_detected_no_previous(self) -> None:
-        """new_checkpoint_detected is False when previous_checkpoint is 0 (falsy)."""
+        """New_checkpoint_detected is False when previous_checkpoint is 0 (falsy)."""
         b = self._make()
         b._checkpoint_ts = 100
         mock_sync = MagicMock()
@@ -828,7 +822,7 @@ class TestCallCheckpointBehaviourProperties:
             assert b.new_checkpoint_detected is False
 
     def test_new_checkpoint_detected_same(self) -> None:
-        """new_checkpoint_detected is False when previous == current."""
+        """New_checkpoint_detected is False when previous == current."""
         b = self._make()
         b._checkpoint_ts = 100
         mock_sync = MagicMock()
@@ -842,7 +836,7 @@ class TestCallCheckpointBehaviourProperties:
             assert b.new_checkpoint_detected is False
 
     def test_new_checkpoint_detected_different(self) -> None:
-        """new_checkpoint_detected is True when previous != current and is truthy."""
+        """New_checkpoint_detected is True when previous != current and is truthy."""
         b = self._make()
         b._checkpoint_ts = 200
         mock_sync = MagicMock()
@@ -856,25 +850,25 @@ class TestCallCheckpointBehaviourProperties:
             assert b.new_checkpoint_detected is True
 
     def test_checkpoint_data_getter_setter(self) -> None:
-        """checkpoint_data getter/setter round-trip."""
+        """Checkpoint_data getter/setter round-trip."""
         b = self._make()
         b.checkpoint_data = b"\x01\x02"
         assert b.checkpoint_data == b"\x01\x02"
 
     def test_safe_tx_hash_getter(self) -> None:
-        """safe_tx_hash getter returns internal value."""
+        """Safe_tx_hash getter returns internal value."""
         b = self._make()
         assert b.safe_tx_hash == ""
 
     def test_safe_tx_hash_setter_valid(self) -> None:
-        """safe_tx_hash setter strips first 2 chars (0x prefix)."""
+        """Safe_tx_hash setter strips first 2 chars (0x prefix)."""
         b = self._make()
         valid_hash = "0x" + "a" * (TX_HASH_LENGTH - 2)
         b.safe_tx_hash = valid_hash
         assert b.safe_tx_hash == "a" * (TX_HASH_LENGTH - 2)
 
     def test_safe_tx_hash_setter_invalid_length(self) -> None:
-        """safe_tx_hash setter raises ValueError for wrong length."""
+        """Safe_tx_hash setter raises ValueError for wrong length."""
         b = self._make()
         with pytest.raises(ValueError, match="Incorrect length"):
             b.safe_tx_hash = "0xshort"
@@ -903,7 +897,7 @@ class TestReadStoredTimestamp:
         assert result == 1700000000
 
     def test_file_not_found(self) -> None:
-        """FileNotFoundError returns None and logs error."""
+        """Test that FileNotFoundError returns None and logs error."""
         b = self._make()
         mock_ctx = MagicMock()
         with patch.object(
@@ -914,7 +908,7 @@ class TestReadStoredTimestamp:
         mock_ctx.logger.error.assert_called_once()
 
     def test_permission_error(self) -> None:
-        """PermissionError returns None and logs error."""
+        """Test that PermissionError returns None and logs error."""
         b = self._make()
         mock_ctx = MagicMock()
         with patch.object(
@@ -925,7 +919,7 @@ class TestReadStoredTimestamp:
         mock_ctx.logger.error.assert_called_once()
 
     def test_os_error(self) -> None:
-        """OSError returns None and logs error."""
+        """Test that OSError returns None and logs error."""
         b = self._make()
         mock_ctx = MagicMock()
         with patch.object(
@@ -959,7 +953,7 @@ class TestStoreTimestamp:
         return b
 
     def test_zero_timestamp(self) -> None:
-        """ts_checkpoint == 0 logs warning and returns 0."""
+        """Ts_checkpoint == 0 logs warning and returns 0."""
         b = self._make()
         mock_ctx = MagicMock()
         with patch.object(
@@ -980,7 +974,7 @@ class TestStoreTimestamp:
         assert result == 10
 
     def test_write_io_error(self) -> None:
-        """IOError during write returns 0 and logs error."""
+        """Test that IOError during write returns 0 and logs error."""
         b = self._make()
         b._checkpoint_ts = 1700000000
         mock_ctx = MagicMock()
@@ -1043,7 +1037,9 @@ class TestGetSafeTxHash:
             "synchronized_data",
             new_callable=PropertyMock,
             return_value=mock_sync,
-        ), patch.object(b, "contract_interact", _return_gen(True)):
+        ), patch.object(
+            b, "contract_interact", _return_gen(True)
+        ):
             gen = b._get_safe_tx_hash()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -1063,9 +1059,7 @@ class TestPrepareSafeTx:
 
         with patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch(
+        ), patch.object(b, "wait_for_condition_with_sleep", _noop_gen), patch(
             "packages.valory.skills.staking_abci.behaviours.hash_payload_to_hex",
             return_value="0xresult",
         ) as mock_hash:
@@ -1108,7 +1102,9 @@ class TestCheckNewEpoch:
             return_value=mock_sync,
         ), patch.object(
             type(b), "context", new_callable=PropertyMock, return_value=MagicMock()
-        ), patch.object(b, "wait_for_condition_with_sleep", _noop_gen):
+        ), patch.object(
+            b, "wait_for_condition_with_sleep", _noop_gen
+        ):
             gen = b.check_new_epoch()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -1237,7 +1233,9 @@ class TestAsyncAct:
             b, "send_a2a_transaction", _noop_gen
         ), patch.object(
             b, "wait_until_round_end", _noop_gen
-        ), patch.object(b, "set_done", mock_set_done):
+        ), patch.object(
+            b, "set_done", mock_set_done
+        ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
@@ -1276,7 +1274,9 @@ class TestAsyncAct:
             b, "send_a2a_transaction", _noop_gen
         ), patch.object(
             b, "wait_until_round_end", _noop_gen
-        ), patch.object(b, "set_done", MagicMock()):
+        ), patch.object(
+            b, "set_done", MagicMock()
+        ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
@@ -1312,7 +1312,9 @@ class TestAsyncAct:
             b, "send_a2a_transaction", _noop_gen
         ), patch.object(
             b, "wait_until_round_end", _noop_gen
-        ), patch.object(b, "set_done", MagicMock()):
+        ), patch.object(
+            b, "set_done", MagicMock()
+        ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
@@ -1340,7 +1342,9 @@ class TestAsyncAct:
             b, "send_a2a_transaction", _noop_gen
         ), patch.object(
             b, "wait_until_round_end", _noop_gen
-        ), patch.object(b, "set_done", MagicMock()):
+        ), patch.object(
+            b, "set_done", MagicMock()
+        ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
@@ -1356,13 +1360,14 @@ class TestStakingRoundBehaviour:
     """Tests for StakingRoundBehaviour attributes."""
 
     def test_initial_behaviour_cls(self) -> None:
-        """initial_behaviour_cls is CallCheckpointBehaviour."""
+        """Initial_behaviour_cls is CallCheckpointBehaviour."""
         assert StakingRoundBehaviour.initial_behaviour_cls is CallCheckpointBehaviour
 
     def test_abci_app_cls(self) -> None:
-        """abci_app_cls is StakingAbciApp."""
-        assert StakingRoundBehaviour.abci_app_cls is StakingAbciApp
+        """Abci_app_cls is StakingAbciApp."""
+        assert StakingRoundBehaviour.abci_app_cls is StakingAbciApp  # type: ignore[misc]
 
+    # type: ignore[misc]
     def test_behaviours_set(self) -> None:
-        """behaviours set contains CallCheckpointBehaviour."""
+        """Behaviours set contains CallCheckpointBehaviour."""
         assert StakingRoundBehaviour.behaviours == {CallCheckpointBehaviour}

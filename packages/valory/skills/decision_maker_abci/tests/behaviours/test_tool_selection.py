@@ -300,11 +300,6 @@ class TestSelectToolEmptyIntersection:
         assert set(policy.accuracy_store.keys()) == original_keys
 
 
-# ---------------------------------------------------------------------------
-# Tests: async_act
-# ---------------------------------------------------------------------------
-
-
 def _run_async_act(behaviour: "ToolSelectionBehaviour") -> None:
     """Drive async_act() to completion."""
     gen = behaviour.async_act()
@@ -324,7 +319,7 @@ class TestAsyncActSelectedToolNone:
         behaviour = _make_behaviour(policy, {"tool-a"})
 
         benchmark_ctx = MagicMock()
-        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
         benchmark_ctx.local.return_value.__enter__ = MagicMock()
         benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
 
@@ -357,21 +352,19 @@ class TestAsyncActSelectedToolNotNone:
         behaviour._utilized_tools = {"cond1": "tool-a"}
 
         benchmark_ctx = MagicMock()
-        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
         benchmark_ctx.local.return_value.__enter__ = MagicMock()
         benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
 
         # benchmarking disabled
-        behaviour.benchmarking_mode.enabled = False
+        behaviour.benchmarking_mode.enabled = False  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ):
+            with patch.object(policy, "select_tool", return_value="tool-a"):
                 with patch.object(
                     behaviour,
                     "finish_behaviour",
@@ -397,26 +390,22 @@ class TestAsyncActSelectedToolNotNone:
         behaviour._utilized_tools = {}
 
         benchmark_ctx = MagicMock()
-        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
         benchmark_ctx.local.return_value.__enter__ = MagicMock()
         benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
 
         # benchmarking enabled, period_count=0, last_benchmarking_has_run=False
-        behaviour.benchmarking_mode.enabled = True
-        behaviour.synchronized_data.period_count = 0
-        behaviour.shared_state.last_benchmarking_has_run = False
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.period_count = 0  # type: ignore[attr-defined]
+        behaviour.shared_state.last_benchmarking_has_run = False  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ):
-                with patch.object(
-                    policy, "tool_used"
-                ) as mock_tool_used:
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(policy, "tool_used") as mock_tool_used:
                     with patch.object(
                         behaviour,
                         "finish_behaviour",
@@ -433,25 +422,21 @@ class TestAsyncActSelectedToolNotNone:
         behaviour._utilized_tools = {}
 
         benchmark_ctx = MagicMock()
-        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
         benchmark_ctx.local.return_value.__enter__ = MagicMock()
         benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
 
         # benchmarking enabled but period_count != 0
-        behaviour.benchmarking_mode.enabled = True
-        behaviour.synchronized_data.period_count = 1
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.period_count = 1  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ):
-                with patch.object(
-                    policy, "tool_used"
-                ) as mock_tool_used:
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(policy, "tool_used") as mock_tool_used:
                     with patch.object(
                         behaviour,
                         "finish_behaviour",
@@ -468,26 +453,22 @@ class TestAsyncActSelectedToolNotNone:
         behaviour._utilized_tools = {}
 
         benchmark_ctx = MagicMock()
-        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
         benchmark_ctx.local.return_value.__enter__ = MagicMock()
         benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
 
         # benchmarking enabled, period_count=0, but last_benchmarking_has_run=True
-        behaviour.benchmarking_mode.enabled = True
-        behaviour.synchronized_data.period_count = 0
-        behaviour.shared_state.last_benchmarking_has_run = True
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.period_count = 0  # type: ignore[attr-defined]
+        behaviour.shared_state.last_benchmarking_has_run = True  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ):
-                with patch.object(
-                    policy, "tool_used"
-                ) as mock_tool_used:
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(policy, "tool_used") as mock_tool_used:
                     with patch.object(
                         behaviour,
                         "finish_behaviour",

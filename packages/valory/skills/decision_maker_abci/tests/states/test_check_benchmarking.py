@@ -20,12 +20,9 @@
 """This package contains the tests for Decision Maker"""
 
 import json
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound

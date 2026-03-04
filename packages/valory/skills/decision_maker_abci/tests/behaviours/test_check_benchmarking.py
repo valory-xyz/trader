@@ -32,19 +32,23 @@ from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
     yield
 
 
-def _make_behaviour(benchmarking_enabled=False):
+def _make_behaviour(benchmarking_enabled=False):  # type: ignore[no-untyped-def]
     """Return a CheckBenchmarkingModeBehaviour with mocked dependencies."""
     behaviour = object.__new__(CheckBenchmarkingModeBehaviour)
 
     context = MagicMock()
     context.agent_address = "test_agent"
-    context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-    context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock()
+    context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (
+        MagicMock()
+    )
+    context.benchmark_tool.measure.return_value.local.return_value.__exit__ = (
+        MagicMock()
+    )
     behaviour.__dict__["_context"] = context
 
     benchmarking_mode = MagicMock()
@@ -67,11 +71,11 @@ class TestCheckBenchmarkingModeBehaviour:
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             payloads_sent.append(payload)
             yield
 
-        behaviour.finish_behaviour = mock_finish
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -95,11 +99,11 @@ class TestCheckBenchmarkingModeBehaviour:
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             payloads_sent.append(payload)
             yield
 
-        behaviour.finish_behaviour = mock_finish
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -124,6 +128,5 @@ class TestCheckBenchmarkingModeBehaviour:
         )
 
         assert (
-            CheckBenchmarkingModeBehaviour.matching_round
-            == CheckBenchmarkingModeRound
+            CheckBenchmarkingModeBehaviour.matching_round == CheckBenchmarkingModeRound
         )

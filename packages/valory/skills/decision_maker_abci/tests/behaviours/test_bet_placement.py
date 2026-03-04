@@ -21,8 +21,6 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.base import WXDAI
 from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import (
     BetPlacementBehaviour,
@@ -38,20 +36,20 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a BetPlacementBehaviour with mocked dependencies."""
-    behaviour = object.__new__(BetPlacementBehaviour)
+    behaviour = object.__new__(BetPlacementBehaviour)  # type: ignore[no-untyped-def]
     behaviour.buy_amount = 0
 
     context = MagicMock()
@@ -120,12 +118,10 @@ class TestBetPlacementBehaviour:
                         ContractApiMessage,
                     )
 
-                    response_msg.performative = (
-                        ContractApiMessage.Performative.STATE
-                    )
+                    response_msg.performative = ContractApiMessage.Performative.STATE
                     response_msg.state.body = {"data": "0xdeadbeef"}
 
-                    behaviour.get_contract_api_response = lambda **kwargs: _return_gen(
+                    behaviour.get_contract_api_response = lambda **kwargs: _return_gen(  # type: ignore[method-assign]
                         response_msg
                     )
 
@@ -154,7 +150,7 @@ class TestBetPlacementBehaviour:
 
             response_msg.performative = ContractApiMessage.Performative.ERROR
 
-            behaviour.get_contract_api_response = lambda **kwargs: _return_gen(
+            behaviour.get_contract_api_response = lambda **kwargs: _return_gen(  # type: ignore[method-assign]
                 response_msg
             )
 
@@ -183,7 +179,7 @@ class TestBetPlacementBehaviour:
             response_msg.performative = ContractApiMessage.Performative.STATE
             response_msg.state.body = {"data": None}
 
-            behaviour.get_contract_api_response = lambda **kwargs: _return_gen(
+            behaviour.get_contract_api_response = lambda **kwargs: _return_gen(  # type: ignore[method-assign]
                 response_msg
             )
 
@@ -201,19 +197,21 @@ class TestBetPlacementBehaviour:
         """_build_approval_tx should delegate to build_approval_tx."""
         behaviour, bm = _make_behaviour()
 
-        def mock_build_approval(amount, spender, token):
+        def mock_build_approval(amount, spender, token) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build approval tx."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour.build_approval_tx = mock_build_approval
+        behaviour.build_approval_tx = mock_build_approval  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "investment_amount", new_callable=PropertyMock
         ) as mock_inv:
             mock_inv.return_value = 500
             with patch.object(
-                type(behaviour), "market_maker_contract_address", new_callable=PropertyMock
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
             ) as mock_mca:
                 mock_mca.return_value = "0xmarket"
                 with patch.object(
@@ -235,18 +233,18 @@ class TestBetPlacementBehaviour:
         """_prepare_safe_tx should return None when _calc_buy_amount fails."""
         behaviour, bm = _make_behaviour()
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
 
-        def mock_calc():
+        def mock_calc() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock calc buy amount that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._calc_buy_amount = mock_calc
+        behaviour._calc_buy_amount = mock_calc  # type: ignore[method-assign]
 
         gen = behaviour._prepare_safe_tx()
         result = None
@@ -263,18 +261,18 @@ class TestBetPlacementBehaviour:
         behaviour, bm = _make_behaviour()
         behaviour.buy_amount = 1000
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
 
-        def mock_calc():
+        def mock_calc() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock calc buy amount."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._calc_buy_amount = mock_calc
+        behaviour._calc_buy_amount = mock_calc  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -300,7 +298,7 @@ class TestBetPlacementBehaviour:
                         ) as mock_tx:
                             mock_tx.return_value = "0xfinalhash"
 
-                            behaviour._collateral_amount_info = lambda x: f"{x} WEI"
+                            behaviour._collateral_amount_info = lambda x: f"{x} WEI"  # type: ignore[method-assign]
 
                             gen = behaviour._prepare_safe_tx()
                             result = None
@@ -319,17 +317,17 @@ class TestBetPlacementBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
-        behaviour.update_bet_transaction_information = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
         behaviour.wallet_balance = 1000
 
         # After benchmarking finish_behaviour completes, code falls through.
         # Mock everything needed by the non-benchmarking path too.
-        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()
+        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()  # type: ignore[method-assign]
         behaviour.token_balance = 0
 
         with patch.object(
@@ -365,23 +363,23 @@ class TestBetPlacementBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
         behaviour.wallet_balance = 2000
         behaviour.token_balance = 500
-        behaviour.check_balance = MagicMock()
+        behaviour.check_balance = MagicMock()  # type: ignore[method-assign]
 
-        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()
+        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()  # type: ignore[method-assign]
 
-        def mock_prepare():
+        def mock_prepare() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock prepare safe tx."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return "0xsafetxhash"
 
-        behaviour._prepare_safe_tx = mock_prepare
+        behaviour._prepare_safe_tx = mock_prepare  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -414,30 +412,30 @@ class TestBetPlacementBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
         behaviour.wallet_balance = 2000
         behaviour.token_balance = 50
-        behaviour.check_balance = MagicMock()
+        behaviour.check_balance = MagicMock()  # type: ignore[method-assign]
 
         wait_calls = []
 
-        def mock_wait(cond):
+        def mock_wait(cond) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition with sleep."""
-            wait_calls.append(cond)
+            wait_calls.append(cond)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
 
-        def mock_prepare():
+        def mock_prepare() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock prepare safe tx."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return "0xexchangehash"
 
-        behaviour._prepare_safe_tx = mock_prepare
+        behaviour._prepare_safe_tx = mock_prepare  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -471,16 +469,16 @@ class TestBetPlacementBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
         behaviour.wallet_balance = 10
         behaviour.token_balance = 5
-        behaviour.check_balance = MagicMock()
+        behaviour.check_balance = MagicMock()  # type: ignore[method-assign]
 
-        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()
+        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock

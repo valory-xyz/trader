@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeidqn77mpfpfrb2hdjfcggcdhdgyu5di37sgcxzgu7bwqauipaurcy
   achievements_checker/bet_payout_checker.py: bafybeidgkd3c2t4amatocqbzw7e2l67k3cn5x5opojn3i5qeuwagthe4uy
-  behaviours.py: bafybeic4qrjbhc354caljsnbtoxfxuzj62s5xri4ebpl5pnroad6szy63u
+  behaviours.py: bafybeif3qgaphc2prbojsphtlr4lt6j43p3xpcgoneqsvvg7icvwihnpgy
   dialogues.py: bafybeihqnuqcqbrxzedx5iq5bkjg7r54f2bzcwu4frwtym3o4cggscx36m
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -23,6 +23,22 @@ fingerprint:
   models.py: bafybeigaqaxu3alc442nm3w67lg2xjbec3nqreezz3y4ih6jpuigtke6zi
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
+  tests/__init__.py: bafybeifwypuhliykyjbrolydwgnzyi6hg3hshpst2yjy7ty5ptdfqb5erq
+  tests/achievements_checker/__init__.py: bafybeihzqumkk6ozznhfkzul6eylxhxuount53x5hdezxfzbmp4wfwamci
+  tests/achievements_checker/test_base.py: bafybeia2r3dpvg4p2bl2aw27s5giooesuqcaek2qcpb7eykhzzyn5hzzci
+  tests/achievements_checker/test_bet_payout_checker.py: bafybeie4h4yw5o7q54lplbuqhgbbcz2vcj2tap6stnshis54hkhv4v3fca
+  tests/graph_tooling/__init__.py: bafybeia4232yl536xzhvnkjblvfbtphtp34t4zylkay4fimm26bgo5tzru
+  tests/graph_tooling/test_base_predictions_helper.py: bafybeihcnx5crq5j5nr5p6h5y3vuqgqapdnkcghubehk7fnnyv2vmcpriq
+  tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeibfnmrtt6u2ijp6mi2j3yxhxbxzkq6fji63iznmtbbnfyviyjtlxe
+  tests/graph_tooling/test_predictions_helper.py: bafybeiduwywg64wgna2ppj36thvax6xocur5ilicxlgklyo7sv5eiha3ze
+  tests/graph_tooling/test_queries.py: bafybeicwsfmmct45nkistplftyxo3d4dqi3cgsln2wudwqvysn2cxqx3ta
+  tests/graph_tooling/test_requests.py: bafybeicfy257xs4el2e7ojn3c5cs4dz2ljng3ebfrsiflh6ibx52pqdgve
+  tests/test_behaviours.py: bafybeifilxfony64cbns7c24wclq6vp7szwlabqp2q5uwjbvucc3vvo2pm
+  tests/test_dialogues.py: bafybeiglcg5e24wn5cx3lzpdka6pnj6gl5lhoe57eacqpdxibngw7ojj3e
+  tests/test_handlers.py: bafybeiazjbylc4zk7nvo3hox2zx767vy3y2uua5csawdkaqqw4iyydp46q
+  tests/test_models.py: bafybeif7r66eofu4hik75bozvs6rdyvwkxopl3cxtuao7jtzdpkts66o3a
+  tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
+  tests/test_rounds.py: bafybeidm2rl27fpn6wyllpz25sy3t6emlk7cwy2pzbyfda7yv66znnneoq
 fingerprint_ignore_patterns: []
 contracts:
 - valory/erc20:0.1.0:bafybeig3avtl5ffku556ipvuviiat5p2psfw46fa2ieofcc4eculxe3vde
@@ -196,4 +212,4 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections:
-- valory/polymarket_client:0.1.0:bafybeict27cpr3tldxlii5qj2eyt4vpa7rnfzwztusyfrcm57zxucgqw7i
+- valory/polymarket_client:0.1.0:bafybeig2x55sfuvjvpwgvpcgabf63nyv4hvwvswqhrcfzsyptfxsaxpojm

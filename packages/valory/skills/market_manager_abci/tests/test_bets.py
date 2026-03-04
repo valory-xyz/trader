@@ -21,18 +21,16 @@
 
 import json
 import sys
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock
+from typing import Any, Dict
 
 import pytest
 
 from packages.valory.skills.market_manager_abci.bets import (
-    BINARY_N_SLOTS,
-    DAY_IN_SECONDS,
     Bet,
     BetsDecoder,
     BetsEncoder,
     BinaryOutcome,
+    DAY_IN_SECONDS,
     PredictionResponse,
     QueueStatus,
     get_default_prediction_response,

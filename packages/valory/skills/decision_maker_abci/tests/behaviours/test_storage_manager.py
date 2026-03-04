@@ -29,12 +29,11 @@ import pytest
 
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     AVAILABLE_TOOLS_STORE,
-    GET,
     NO_METADATA_HASH,
     OK_CODE,
     POLICY_STORE,
-    UTILIZED_TOOLS_STORE,
     StorageManagerBehaviour,
+    UTILIZED_TOOLS_STORE,
 )
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
@@ -50,15 +49,15 @@ from packages.valory.skills.decision_maker_abci.policy import (
 # which inherits from it, or we create a concrete subclass for testing.
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """Helper that creates a generator returning the given value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_policy(tools=None):
+def _make_policy(tools=None):  # type: ignore[no-untyped-def]
     """Create a test policy."""
-    if tools is None:
+    if tools is None:  # type: ignore[no-untyped-def]
         tools = {"tool1": AccuracyInfo(requests=5, accuracy=0.6)}
     return EGreedyPolicy(
         eps=0.1,
@@ -68,9 +67,9 @@ def _make_policy(tools=None):
     )
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a concrete StorageManagerBehaviour subclass instance with mocked dependencies."""
-    # Import a concrete subclass
+    # Import a concrete subclass  # type: ignore[no-untyped-def]
     from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
         BlacklistingBehaviour,
     )
@@ -90,11 +89,6 @@ def _make_behaviour():
     return behaviour
 
 
-# ---------------------------------------------------------------------------
-# Tests: __init__
-# ---------------------------------------------------------------------------
-
-
 class TestStorageManagerInit:
     """Tests for StorageManagerBehaviour.__init__."""
 
@@ -108,18 +102,13 @@ class TestStorageManagerInit:
             BlacklistingBehaviour,
         )
 
-        behaviour = BlacklistingBehaviour.__new__(BlacklistingBehaviour)
+        behaviour = BlacklistingBehaviour.__new__(BlacklistingBehaviour)  # type: ignore[type-abstract]
         StorageManagerBehaviour.__init__(behaviour)
-        assert behaviour._mech_id == 0
+        assert behaviour._mech_id == 0  # type: ignore[type-abstract]
         assert behaviour._mech_hash == ""
         assert behaviour._utilized_tools == {}
         assert behaviour._mech_tools == set()
         assert isinstance(behaviour._remote_accuracy_information, StringIO)
-
-
-# ---------------------------------------------------------------------------
-# Tests: Properties
-# ---------------------------------------------------------------------------
 
 
 class TestStorageManagerProperties:
@@ -173,16 +162,11 @@ class TestStorageManagerProperties:
         assert behaviour.mech_tools_api is mock_api
 
 
-# ---------------------------------------------------------------------------
-# Tests: setup
-# ---------------------------------------------------------------------------
-
-
 class TestSetup:
     """Tests for StorageManagerBehaviour.setup."""
 
     def test_setup_with_synchronized_data(self) -> None:
-        """setup should use synchronized_data.utilized_tools when available."""
+        """Setup should use synchronized_data.utilized_tools when available."""
         behaviour = _make_behaviour()
         tools = {"cond1": "tool1"}
         with patch.object(
@@ -193,7 +177,7 @@ class TestSetup:
         assert behaviour.utilized_tools == tools
 
     def test_setup_with_synchronized_data_returns_none(self) -> None:
-        """setup should fall back when synchronized_data.utilized_tools is None."""
+        """Setup should fall back when synchronized_data.utilized_tools is None."""
         behaviour = _make_behaviour()
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -207,7 +191,7 @@ class TestSetup:
         assert behaviour.utilized_tools == {"a": "b"}
 
     def test_setup_with_exception_falls_back(self) -> None:
-        """setup should fall back to recovery when synchronized_data raises."""
+        """Setup should fall back to recovery when synchronized_data raises."""
         behaviour = _make_behaviour()
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -224,11 +208,6 @@ class TestSetup:
             ) as mock_recover:
                 behaviour.setup()
         mock_recover.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# Tests: set_mech_agent_specs
-# ---------------------------------------------------------------------------
 
 
 class TestSetMechAgentSpecs:
@@ -285,8 +264,7 @@ class TestSetMechAgentSpecs:
         assert mech_tools_api.url == "https://ipfs.io/" + CID_PREFIX + "abc123"
 
 
-# ---------------------------------------------------------------------------
-# Tests: _get_tools_from_benchmark_file
+# Tests for get_tools_from_benchmark_file
 # ---------------------------------------------------------------------------
 
 
@@ -344,8 +322,7 @@ class TestGetToolsFromBenchmarkFile:
         behaviour.__dict__["_context"].logger.error.assert_called_once()
 
 
-# ---------------------------------------------------------------------------
-# Tests: _get_mech_id
+# Tests for get_mech_id
 # ---------------------------------------------------------------------------
 
 
@@ -355,9 +332,7 @@ class TestGetMechId:
     def test_get_mech_id(self) -> None:
         """Should call _mech_contract_interact with correct params."""
         behaviour = _make_behaviour()
-        behaviour._mech_contract_interact = MagicMock(
-            return_value=_return_gen(True)
-        )
+        behaviour._mech_contract_interact = MagicMock(return_value=_return_gen(True))  # type: ignore[method-assign]
         gen = behaviour._get_mech_id()
         result = None
         try:
@@ -370,8 +345,7 @@ class TestGetMechId:
         behaviour._mech_contract_interact.assert_called_once()
 
 
-# ---------------------------------------------------------------------------
-# Tests: _get_mech_hash
+# Tests for get_mech_hash
 # ---------------------------------------------------------------------------
 
 
@@ -382,14 +356,12 @@ class TestGetMechHash:
         """Should call contract_interact with correct params."""
         behaviour = _make_behaviour()
         behaviour._mech_id = 42
-        behaviour.contract_interact = MagicMock(return_value=_return_gen(True))
+        behaviour.contract_interact = MagicMock(return_value=_return_gen(True))  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                agent_registry_address="0xregistry"
-            )
+            mock_params.return_value = MagicMock(agent_registry_address="0xregistry")
             gen = behaviour._get_mech_hash()
             result = None
             try:
@@ -401,8 +373,7 @@ class TestGetMechHash:
         assert result is True
 
 
-# ---------------------------------------------------------------------------
-# Tests: _check_hash
+# Tests for check_hash
 # ---------------------------------------------------------------------------
 
 
@@ -417,9 +388,7 @@ class TestCheckHash:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                mech_contract_address="0xmech"
-            )
+            mock_params.return_value = MagicMock(mech_contract_address="0xmech")
             behaviour._check_hash()
 
         behaviour.__dict__["_context"].logger.error.assert_called_once()
@@ -433,8 +402,7 @@ class TestCheckHash:
         behaviour.__dict__["_context"].logger.error.assert_not_called()
 
 
-# ---------------------------------------------------------------------------
-# Tests: _get_mech_tools
+# Tests for get_mech_tools
 # ---------------------------------------------------------------------------
 
 
@@ -465,11 +433,11 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(irrelevant_tools=set())
-                    behaviour.get_http_response = MagicMock(
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
                     )
-                    behaviour._check_hash = MagicMock()
-                    behaviour.set_mech_agent_specs = MagicMock()
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
 
                     gen = behaviour._get_mech_tools()
                     result = None
@@ -500,11 +468,11 @@ class TestGetMechTools:
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
             ) as mock_sd:
                 mock_sd.return_value = MagicMock(is_marketplace_v2=True)
-                behaviour.get_http_response = MagicMock(
+                behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                     return_value=_return_gen(MagicMock())
                 )
-                behaviour._check_hash = MagicMock()
-                behaviour.set_mech_agent_specs = MagicMock()
+                behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
 
                 gen = behaviour._get_mech_tools()
                 result = None
@@ -536,11 +504,11 @@ class TestGetMechTools:
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
             ) as mock_sd:
                 mock_sd.return_value = MagicMock(is_marketplace_v2=True)
-                behaviour.get_http_response = MagicMock(
+                behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                     return_value=_return_gen(MagicMock())
                 )
-                behaviour._check_hash = MagicMock()
-                behaviour.set_mech_agent_specs = MagicMock()
+                behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
 
                 gen = behaviour._get_mech_tools()
                 result = None
@@ -576,11 +544,11 @@ class TestGetMechTools:
                     mock_params.return_value = MagicMock(
                         irrelevant_tools={"irrelevant_tool"}
                     )
-                    behaviour.get_http_response = MagicMock(
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(MagicMock())
                     )
-                    behaviour._check_hash = MagicMock()
-                    behaviour.set_mech_agent_specs = MagicMock()
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
 
                     gen = behaviour._get_mech_tools()
                     result = None
@@ -593,8 +561,7 @@ class TestGetMechTools:
         assert result is False
 
 
-# ---------------------------------------------------------------------------
-# Tests: _get_tools
+# Tests for get_tools
 # ---------------------------------------------------------------------------
 
 
@@ -613,7 +580,7 @@ class TestGetTools:
             new_callable=PropertyMock,
             return_value=bm,
         ):
-            behaviour._get_tools_from_benchmark_file = MagicMock()
+            behaviour._get_tools_from_benchmark_file = MagicMock()  # type: ignore[method-assign]
             gen = behaviour._get_tools()
             try:
                 while True:
@@ -658,9 +625,9 @@ class TestGetTools:
 
         call_count = 0
 
-        def fake_wait(step):
+        def fake_wait(step) -> None:  # type: ignore[no-untyped-def, misc]
             """Fake wait_for_condition_with_sleep."""
-            nonlocal call_count
+            nonlocal call_count  # type: ignore[no-untyped-def]
             call_count += 1
             yield
 
@@ -674,7 +641,7 @@ class TestGetTools:
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
             ) as mock_sd:
                 mock_sd.return_value = MagicMock(is_marketplace_v2=False)
-                behaviour.wait_for_condition_with_sleep = fake_wait
+                behaviour.wait_for_condition_with_sleep = fake_wait  # type: ignore[method-assign]
                 gen = behaviour._get_tools()
                 try:
                     while True:
@@ -685,8 +652,7 @@ class TestGetTools:
         assert call_count == 3
 
 
-# ---------------------------------------------------------------------------
-# Tests: _try_recover_policy
+# Tests for try_recover_policy
 # ---------------------------------------------------------------------------
 
 
@@ -732,8 +698,7 @@ class TestTryRecoverPolicy:
         assert result is None
 
 
-# ---------------------------------------------------------------------------
-# Tests: _get_init_policy
+# Tests for get_init_policy
 # ---------------------------------------------------------------------------
 
 
@@ -769,8 +734,7 @@ class TestGetInitPolicy:
         assert result is recovered
 
 
-# ---------------------------------------------------------------------------
-# Tests: _fetch_accuracy_info
+# Tests for fetch_accuracy_info
 # ---------------------------------------------------------------------------
 
 
@@ -784,9 +748,7 @@ class TestFetchAccuracyInfo:
         response.status_code = OK_CODE
         response.body = b"tool,requests,accuracy\ntool1,10,0.8"
 
-        behaviour.get_http_response = MagicMock(
-            return_value=_return_gen(response)
-        )
+        behaviour.get_http_response = MagicMock(return_value=_return_gen(response))  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -811,9 +773,7 @@ class TestFetchAccuracyInfo:
         response = MagicMock()
         response.status_code = 404
 
-        behaviour.get_http_response = MagicMock(
-            return_value=_return_gen(response)
-        )
+        behaviour.get_http_response = MagicMock(return_value=_return_gen(response))  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -840,9 +800,7 @@ class TestFetchAccuracyInfo:
         response.body = MagicMock()
         response.body.decode.side_effect = ValueError("decode error")
 
-        behaviour.get_http_response = MagicMock(
-            return_value=_return_gen(response)
-        )
+        behaviour.get_http_response = MagicMock(return_value=_return_gen(response))  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -862,8 +820,7 @@ class TestFetchAccuracyInfo:
         assert result is False
 
 
-# ---------------------------------------------------------------------------
-# Tests: _remove_irrelevant_tools
+# Tests for remove_irrelevant_tools
 # ---------------------------------------------------------------------------
 
 
@@ -888,8 +845,7 @@ class TestRemoveIrrelevantTools:
         assert "tool2" not in policy.accuracy_store
 
 
-# ---------------------------------------------------------------------------
-# Tests: _global_info_date_to_unix
+# Tests for global_info_date_to_unix
 # ---------------------------------------------------------------------------
 
 
@@ -922,8 +878,7 @@ class TestGlobalInfoDateToUnix:
         assert result is None
 
 
-# ---------------------------------------------------------------------------
-# Tests: _parse_global_info_row
+# Tests for parse_global_info_row
 # ---------------------------------------------------------------------------
 
 
@@ -958,9 +913,9 @@ class TestParseGlobalInfoRow:
         mock_fields.max = "max_date_col"
 
         row = {"tool_col": "tool1", "max_date_col": "2024-06-01 00:00:00"}
-        tool_to_global_info = {}
+        tool_to_global_info = {}  # type: ignore[var-annotated]
 
-        with patch.object(
+        with patch.object(  # type: ignore[var-annotated]
             type(behaviour), "acc_info_fields", new_callable=PropertyMock
         ) as mock_aif:
             mock_aif.return_value = mock_fields
@@ -969,9 +924,7 @@ class TestParseGlobalInfoRow:
                 "_global_info_date_to_unix",
                 return_value=1717200000,
             ):
-                result = behaviour._parse_global_info_row(
-                    row, 100, tool_to_global_info
-                )
+                result = behaviour._parse_global_info_row(row, 100, tool_to_global_info)
 
         assert result == 1717200000
         assert "tool1" in tool_to_global_info
@@ -986,9 +939,9 @@ class TestParseGlobalInfoRow:
         mock_fields.max = "max_date_col"
 
         row = {"tool_col": "tool1", "max_date_col": "2024-01-01 00:00:00"}
-        tool_to_global_info = {}
+        tool_to_global_info = {}  # type: ignore[var-annotated]
 
-        with patch.object(
+        with patch.object(  # type: ignore[var-annotated]
             type(behaviour), "acc_info_fields", new_callable=PropertyMock
         ) as mock_aif:
             mock_aif.return_value = mock_fields
@@ -997,9 +950,7 @@ class TestParseGlobalInfoRow:
                 "_global_info_date_to_unix",
                 return_value=50,
             ):
-                result = behaviour._parse_global_info_row(
-                    row, 100, tool_to_global_info
-                )
+                result = behaviour._parse_global_info_row(row, 100, tool_to_global_info)
 
         assert result == 100
 
@@ -1013,9 +964,9 @@ class TestParseGlobalInfoRow:
         mock_fields.max = "max_date_col"
 
         row = {"tool_col": "tool1", "max_date_col": "invalid"}
-        tool_to_global_info = {}
+        tool_to_global_info = {}  # type: ignore[var-annotated]
 
-        with patch.object(
+        with patch.object(  # type: ignore[var-annotated]
             type(behaviour), "acc_info_fields", new_callable=PropertyMock
         ) as mock_aif:
             mock_aif.return_value = mock_fields
@@ -1024,15 +975,12 @@ class TestParseGlobalInfoRow:
                 "_global_info_date_to_unix",
                 return_value=None,
             ):
-                result = behaviour._parse_global_info_row(
-                    row, 100, tool_to_global_info
-                )
+                result = behaviour._parse_global_info_row(row, 100, tool_to_global_info)
 
         assert result == 100
 
 
-# ---------------------------------------------------------------------------
-# Tests: _parse_global_info
+# Tests for parse_global_info
 # ---------------------------------------------------------------------------
 
 
@@ -1065,8 +1013,7 @@ class TestParseGlobalInfo:
         mock_row.assert_called_once()
 
 
-# ---------------------------------------------------------------------------
-# Tests: _should_use_global_info
+# Tests for should_use_global_info
 # ---------------------------------------------------------------------------
 
 
@@ -1104,8 +1051,7 @@ class TestShouldUseGlobalInfo:
         assert result is False
 
 
-# ---------------------------------------------------------------------------
-# Tests: _overwrite_local_info
+# Tests for overwrite_local_info
 # ---------------------------------------------------------------------------
 
 
@@ -1136,8 +1082,7 @@ class TestOverwriteLocalInfo:
         assert policy.accuracy_store["tool1"].accuracy == 0.9
 
 
-# ---------------------------------------------------------------------------
-# Tests: _update_accuracy_store
+# Tests for update_accuracy_store
 # ---------------------------------------------------------------------------
 
 
@@ -1151,12 +1096,8 @@ class TestUpdateAccuracyStore:
         policy = _make_policy({"tool1": AccuracyInfo(requests=1)})
         behaviour._policy = policy
 
-        with patch.object(
-            behaviour, "_should_use_global_info", return_value=True
-        ):
-            with patch.object(
-                behaviour, "_overwrite_local_info"
-            ) as mock_overwrite:
+        with patch.object(behaviour, "_should_use_global_info", return_value=True):
+            with patch.object(behaviour, "_overwrite_local_info") as mock_overwrite:
                 behaviour._update_accuracy_store(1000, {"tool1": {}})
 
         mock_overwrite.assert_called_once()
@@ -1170,20 +1111,15 @@ class TestUpdateAccuracyStore:
         policy = _make_policy({})
         behaviour._policy = policy
 
-        with patch.object(
-            behaviour, "_should_use_global_info", return_value=False
-        ):
-            with patch.object(
-                behaviour, "_overwrite_local_info"
-            ) as mock_overwrite:
+        with patch.object(behaviour, "_should_use_global_info", return_value=False):
+            with patch.object(behaviour, "_overwrite_local_info") as mock_overwrite:
                 behaviour._update_accuracy_store(100, {})
 
         mock_overwrite.assert_not_called()
         assert "tool1" in policy.accuracy_store
 
 
-# ---------------------------------------------------------------------------
-# Tests: _update_policy_tools
+# Tests for update_policy_tools
 # ---------------------------------------------------------------------------
 
 
@@ -1200,9 +1136,7 @@ class TestUpdatePolicyTools:
             with patch.object(
                 behaviour, "_parse_global_info", return_value=(100, {"tool1": {}})
             ) as mock_parse:
-                with patch.object(
-                    behaviour, "_update_accuracy_store"
-                ) as mock_update:
+                with patch.object(behaviour, "_update_accuracy_store") as mock_update:
                     behaviour._update_policy_tools()
 
         mock_remove.assert_called_once()
@@ -1210,8 +1144,7 @@ class TestUpdatePolicyTools:
         mock_update.assert_called_once_with(100, {"tool1": {}})
 
 
-# ---------------------------------------------------------------------------
-# Tests: _set_policy
+# Tests for set_policy
 # ---------------------------------------------------------------------------
 
 
@@ -1223,9 +1156,9 @@ class TestSetPolicy:
         behaviour = _make_behaviour()
         policy = _make_policy()
 
-        def fake_wait(step, sleep_time_override=None):
+        def fake_wait(step, sleep_time_override=None) -> None:  # type: ignore[no-untyped-def, misc]
             """Fake wait_for_condition_with_sleep."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
         with patch.object(
             type(behaviour), "is_first_period", new_callable=PropertyMock
@@ -1235,14 +1168,12 @@ class TestSetPolicy:
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
             ) as mock_sd:
                 mock_sd.return_value = MagicMock(is_policy_set=False)
-                with patch.object(
-                    behaviour, "_get_init_policy", return_value=policy
-                ):
+                with patch.object(behaviour, "_get_init_policy", return_value=policy):
                     with patch.object(
                         type(behaviour), "params", new_callable=PropertyMock
                     ) as mock_params:
                         mock_params.return_value = MagicMock(sleep_time=1)
-                        behaviour.wait_for_condition_with_sleep = fake_wait
+                        behaviour.wait_for_condition_with_sleep = fake_wait  # type: ignore[method-assign]
                         with patch.object(
                             behaviour, "_update_policy_tools"
                         ) as mock_update:
@@ -1261,9 +1192,9 @@ class TestSetPolicy:
         behaviour = _make_behaviour()
         existing_policy = _make_policy()
 
-        def fake_wait(step, sleep_time_override=None):
+        def fake_wait(step, sleep_time_override=None) -> None:  # type: ignore[no-untyped-def, misc]
             """Fake wait_for_condition_with_sleep."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
         with patch.object(
             type(behaviour), "is_first_period", new_callable=PropertyMock
@@ -1279,7 +1210,7 @@ class TestSetPolicy:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(sleep_time=1)
-                    behaviour.wait_for_condition_with_sleep = fake_wait
+                    behaviour.wait_for_condition_with_sleep = fake_wait  # type: ignore[method-assign]
                     gen = behaviour._set_policy()
                     try:
                         while True:
@@ -1294,9 +1225,9 @@ class TestSetPolicy:
         behaviour = _make_behaviour()
         policy = _make_policy()
 
-        def fake_wait(step, sleep_time_override=None):
+        def fake_wait(step, sleep_time_override=None) -> None:  # type: ignore[no-untyped-def, misc]
             """Fake wait_for_condition_with_sleep."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
         with patch.object(
             type(behaviour), "is_first_period", new_callable=PropertyMock
@@ -1306,14 +1237,12 @@ class TestSetPolicy:
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
             ) as mock_sd:
                 mock_sd.return_value = MagicMock(is_policy_set=False)
-                with patch.object(
-                    behaviour, "_get_init_policy", return_value=policy
-                ):
+                with patch.object(behaviour, "_get_init_policy", return_value=policy):
                     with patch.object(
                         type(behaviour), "params", new_callable=PropertyMock
                     ) as mock_params:
                         mock_params.return_value = MagicMock(sleep_time=1)
-                        behaviour.wait_for_condition_with_sleep = fake_wait
+                        behaviour.wait_for_condition_with_sleep = fake_wait  # type: ignore[method-assign]
                         gen = behaviour._set_policy()
                         try:
                             while True:
@@ -1324,8 +1253,7 @@ class TestSetPolicy:
         assert behaviour._policy is policy
 
 
-# ---------------------------------------------------------------------------
-# Tests: _try_recover_utilized_tools
+# Tests for try_recover_utilized_tools
 # ---------------------------------------------------------------------------
 
 
@@ -1382,8 +1310,7 @@ class TestTryRecoverUtilizedTools:
         behaviour.__dict__["_context"].logger.warning.assert_called()
 
 
-# ---------------------------------------------------------------------------
-# Tests: _try_recover_mech_tools
+# Tests for try_recover_mech_tools
 # ---------------------------------------------------------------------------
 
 
@@ -1421,8 +1348,7 @@ class TestTryRecoverMechTools:
         assert result is None
 
 
-# ---------------------------------------------------------------------------
-# Tests: _setup_policy_and_tools
+# Tests for setup_policy_and_tools
 # ---------------------------------------------------------------------------
 
 
@@ -1433,11 +1359,11 @@ class TestSetupPolicyAndTools:
         """Should return False when _get_tools produces no mech_tools."""
         behaviour = _make_behaviour()
 
-        def fake_get_tools():
+        def fake_get_tools() -> None:  # type: ignore[no-untyped-def, misc]
             """Fake _get_tools."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour._get_tools = fake_get_tools
+        behaviour._get_tools = fake_get_tools  # type: ignore[method-assign]
 
         gen = behaviour._setup_policy_and_tools()
         result = None
@@ -1454,18 +1380,18 @@ class TestSetupPolicyAndTools:
         behaviour = _make_behaviour()
         behaviour._mech_tools = {"tool1"}
 
-        def fake_get_tools():
+        def fake_get_tools() -> None:  # type: ignore[no-untyped-def, misc]
             """Fake _get_tools that already set mech_tools."""
-            behaviour._mech_tools = {"tool1"}
+            behaviour._mech_tools = {"tool1"}  # type: ignore[no-untyped-def]
             yield
 
-        def fake_set_policy():
+        def fake_set_policy() -> None:  # type: ignore[no-untyped-def, misc]
             """Fake _set_policy."""
-            behaviour._policy = _make_policy()
+            behaviour._policy = _make_policy()  # type: ignore[no-untyped-def]
             yield
 
-        behaviour._get_tools = fake_get_tools
-        behaviour._set_policy = fake_set_policy
+        behaviour._get_tools = fake_get_tools  # type: ignore[method-assign]
+        behaviour._set_policy = fake_set_policy  # type: ignore[method-assign]
 
         gen = behaviour._setup_policy_and_tools()
         result = None
@@ -1479,7 +1405,7 @@ class TestSetupPolicyAndTools:
 
 
 # ---------------------------------------------------------------------------
-# Tests: _store methods
+# Tests for store methods
 # ---------------------------------------------------------------------------
 
 
@@ -1538,9 +1464,9 @@ class TestStoreMethods:
     def test_store_all(self) -> None:
         """_store_all should call all store methods."""
         behaviour = _make_behaviour()
-        behaviour._store_policy = MagicMock()
-        behaviour._store_available_mech_tools = MagicMock()
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour._store_policy = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_available_mech_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         behaviour._store_all()
 

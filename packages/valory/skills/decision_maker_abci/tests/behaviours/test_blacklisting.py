@@ -21,8 +21,6 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
@@ -38,20 +36,20 @@ from packages.valory.skills.market_manager_abci.bets import QueueStatus
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a BlacklistingBehaviour with mocked dependencies."""
-    behaviour = object.__new__(BlacklistingBehaviour)
+    behaviour = object.__new__(BlacklistingBehaviour)  # type: ignore[no-untyped-def]
 
     # context
     context = MagicMock()
@@ -132,8 +130,8 @@ class TestBlacklistingAsyncAct:
             mock_ss.return_value = ss
 
             # Make _setup_policy_and_tools return False to exit early
-            behaviour._setup_policy_and_tools = lambda: _return_gen(False)
-            behaviour.finish_behaviour = lambda payload: _noop_gen()
+            behaviour._setup_policy_and_tools = lambda: _return_gen(False)  # type: ignore[method-assign]
+            behaviour.finish_behaviour = lambda payload: _noop_gen()  # type: ignore[method-assign]
 
             gen = behaviour.async_act()
             try:
@@ -154,7 +152,7 @@ class TestBlacklistingAsyncAct:
             ss.mech_timed_out = False
             mock_ss.return_value = ss
 
-            behaviour._setup_policy_and_tools = lambda: _return_gen(False)
+            behaviour._setup_policy_and_tools = lambda: _return_gen(False)  # type: ignore[method-assign]
 
             gen = behaviour.async_act()
             try:
@@ -175,17 +173,17 @@ class TestBlacklistingAsyncAct:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         # After the first finish_behaviour returns, the code falls through
         # to read_bets/store_bets/hash_stored_bets, so mock those too.
-        behaviour.read_bets = MagicMock()
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
         behaviour.bets = [MagicMock()]
 
         with patch.object(
@@ -205,7 +203,7 @@ class TestBlacklistingAsyncAct:
                 sd.mech_tool = "tool1"
                 mock_sd.return_value = sd
 
-                behaviour._setup_policy_and_tools = lambda: _return_gen(True)
+                behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
                 with patch.object(
                     type(behaviour), "policy", new_callable=PropertyMock
                 ) as mock_pol:
@@ -215,7 +213,9 @@ class TestBlacklistingAsyncAct:
                     ) as mock_ts:
                         mock_ts.return_value = 12345.0
                         with patch.object(
-                            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+                            type(behaviour),
+                            "benchmarking_mode",
+                            new_callable=PropertyMock,
                         ) as mock_bm_prop:
                             mock_bm_prop.return_value = MagicMock(enabled=False)
 
@@ -241,18 +241,18 @@ class TestBlacklistingAsyncAct:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.queue_status = QueueStatus.TO_PROCESS
 
-        behaviour.read_bets = MagicMock()
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash456")
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash456")  # type: ignore[method-assign]
         behaviour.bets = [mock_bet]
 
         with patch.object(
@@ -272,7 +272,7 @@ class TestBlacklistingAsyncAct:
                 sd.mech_tool = "tool1"
                 mock_sd.return_value = sd
 
-                behaviour._setup_policy_and_tools = lambda: _return_gen(True)
+                behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
                 with patch.object(
                     type(behaviour), "policy", new_callable=PropertyMock
                 ) as mock_pol:
@@ -282,7 +282,9 @@ class TestBlacklistingAsyncAct:
                     ) as mock_ts:
                         mock_ts.return_value = 12345.0
                         with patch.object(
-                            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+                            type(behaviour),
+                            "benchmarking_mode",
+                            new_callable=PropertyMock,
                         ) as mock_bm_prop:
                             mock_bm_prop.return_value = MagicMock(enabled=False)
 
@@ -311,18 +313,18 @@ class TestBlacklistingAsyncAct:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.queue_status = QueueStatus.TO_PROCESS
 
-        behaviour.read_bets = MagicMock()
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash789")
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash789")  # type: ignore[method-assign]
         behaviour.bets = [mock_bet]
 
         with patch.object(
@@ -342,7 +344,7 @@ class TestBlacklistingAsyncAct:
                 sd.mech_tool = "tool1"
                 mock_sd.return_value = sd
 
-                behaviour._setup_policy_and_tools = lambda: _return_gen(True)
+                behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
                 with patch.object(
                     type(behaviour), "policy", new_callable=PropertyMock
                 ) as mock_pol:
@@ -352,7 +354,9 @@ class TestBlacklistingAsyncAct:
                     ) as mock_ts:
                         mock_ts.return_value = 12345.0
                         with patch.object(
-                            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+                            type(behaviour),
+                            "benchmarking_mode",
+                            new_callable=PropertyMock,
                         ) as mock_bm_prop:
                             mock_bm_prop.return_value = MagicMock(enabled=False)
 
@@ -376,18 +380,18 @@ class TestBlacklistingAsyncAct:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.queue_status = QueueStatus.TO_PROCESS
 
-        behaviour.read_bets = MagicMock()
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
         behaviour.bets = [mock_bet]
 
         with patch.object(
@@ -407,7 +411,7 @@ class TestBlacklistingAsyncAct:
                 sd.mech_tool = "tool1"
                 mock_sd.return_value = sd
 
-                behaviour._setup_policy_and_tools = lambda: _return_gen(True)
+                behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
                 with patch.object(
                     type(behaviour), "policy", new_callable=PropertyMock
                 ) as mock_pol:
@@ -417,7 +421,9 @@ class TestBlacklistingAsyncAct:
                     ) as mock_ts:
                         mock_ts.return_value = 12345.0
                         with patch.object(
-                            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+                            type(behaviour),
+                            "benchmarking_mode",
+                            new_callable=PropertyMock,
                         ) as mock_bm_prop:
                             mock_bm_prop.return_value = MagicMock(enabled=True)
 

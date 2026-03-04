@@ -19,13 +19,12 @@
 
 """Tests for the redeem_info module of decision_maker_abci."""
 
-import pytest
 from hexbytes import HexBytes
 
 from packages.valory.skills.decision_maker_abci.redeem_info import (
-    INVALID_MARKET_ANSWER,
     Condition,
     FPMM,
+    INVALID_MARKET_ANSWER,
     Question,
     Trade,
 )

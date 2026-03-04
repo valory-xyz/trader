@@ -19,7 +19,6 @@
 
 """Tests for staking_abci models."""
 
-import os
 import stat
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -108,7 +107,7 @@ class TestStakingParamsInit:
     """Tests for StakingParams.__init__."""
 
     def test_init_sets_attributes(self, tmp_path: Path) -> None:
-        """StakingParams init sets all required attributes from kwargs."""
+        """Test that StakingParams init sets all required attributes from kwargs."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None):
             params = StakingParams(
@@ -124,7 +123,7 @@ class TestStakingParamsInit:
         assert params.store_path == tmp_path
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
-        """StakingParams init calls BaseParams.__init__."""
+        """Test that StakingParams init calls BaseParams.__init__."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
             StakingParams(
@@ -137,7 +136,7 @@ class TestStakingParamsInit:
         mock_super.assert_called_once()
 
     def test_init_invalid_store_path_raises(self) -> None:
-        """StakingParams init raises ValueError for invalid store_path."""
+        """Test that StakingParams init raises ValueError for invalid store_path."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None):
             with pytest.raises(ValueError, match="path to the store must be provided"):
@@ -154,7 +153,7 @@ class TestSharedState:
     """Tests for SharedState model."""
 
     def test_abci_app_cls(self) -> None:
-        """SharedState points to StakingAbciApp."""
+        """Test that SharedState points to StakingAbciApp."""
         assert SharedState.abci_app_cls is StakingAbciApp
 
 
@@ -166,5 +165,5 @@ class TestModelAliases:
         assert Requests is BaseRequests
 
     def test_benchmark_tool_alias(self) -> None:
-        """BenchmarkTool is an alias for BaseBenchmarkTool."""
+        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
         assert BenchmarkTool is BaseBenchmarkTool

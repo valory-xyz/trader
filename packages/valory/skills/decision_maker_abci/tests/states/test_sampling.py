@@ -19,7 +19,7 @@
 
 """This package contains the tests for Decision Maker"""
 
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -123,16 +123,12 @@ class TestSamplingRound:
 class TestSamplingRoundEndBlock:
     """Direct unit tests for SamplingRound.end_block covering all branches."""
 
-    def _make_round(
-        self, benchmarking_mode_enabled: bool = False
-    ) -> SamplingRound:
+    def _make_round(self, benchmarking_mode_enabled: bool = False) -> SamplingRound:
         """Create a SamplingRound with mocked dependencies."""
         mock_synced_data = MagicMock(spec=SynchronizedData)
         mock_context = MagicMock()
         mock_context.benchmarking_mode.enabled = benchmarking_mode_enabled
-        return SamplingRound(
-            synchronized_data=mock_synced_data, context=mock_context
-        )
+        return SamplingRound(synchronized_data=mock_synced_data, context=mock_context)
 
     def test_end_block_returns_none_when_super_returns_none(self) -> None:
         """Test end_block returns None when parent returns None."""

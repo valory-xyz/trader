@@ -69,7 +69,7 @@ def _make_shared_state(store: Dict[str, Any]) -> _TestableSharedState:
     :return: configured _TestableSharedState instance.
     """
     state = object.__new__(_TestableSharedState)
-    state._chatui_config = None
+    state._chatui_config = None  # type: ignore[attr-defined]
 
     params = MagicMock()
     params.trading_strategy = DEFAULT_TRADING_STRATEGY
@@ -268,7 +268,7 @@ class TestTradingStrategyUI:
         assert TradingStrategyUI.BALANCED.value == "balanced"
 
     def test_member_count(self) -> None:
-        """TradingStrategyUI must have exactly two members."""
+        """Test that TradingStrategyUI must have exactly two members."""
         assert len(TradingStrategyUI) == 2
 
 
@@ -323,9 +323,7 @@ class TestSharedStateInit:
     def test_init_calls_super(self) -> None:
         """SharedState.__init__ must call BaseSharedState.__init__."""
         mock_skill_context = MagicMock()
-        with patch.object(
-            BaseSharedState, "__init__", return_value=None
-        ) as mock_super:
+        with patch.object(BaseSharedState, "__init__", return_value=None) as mock_super:
             _TestableSharedState(skill_context=mock_skill_context)
         mock_super.assert_called_once()
 
@@ -362,9 +360,7 @@ class TestChatuiConfigProperty:
 class TestGetCurrentJsonStore:
     """Tests for SharedState._get_current_json_store with real temp files."""
 
-    def _make_state_with_store_path(
-        self, store_path: Path
-    ) -> _TestableSharedState:
+    def _make_state_with_store_path(self, store_path: Path) -> _TestableSharedState:
         """Create a _TestableSharedState with a real store_path (no mocked I/O).
 
         :param store_path: directory for the JSON store file.
@@ -387,7 +383,7 @@ class TestGetCurrentJsonStore:
         state = self._make_state_with_store_path(tmp_path)
         result = state._get_current_json_store()
         assert result == {}
-        state.context.logger.error.assert_called_once()
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
     def test_valid_json_file_returns_dict(self, tmp_path: Path) -> None:
         """When the store file has valid JSON, return its contents."""
@@ -407,7 +403,7 @@ class TestGetCurrentJsonStore:
         state = self._make_state_with_store_path(tmp_path)
         result = state._get_current_json_store()
         assert result == {}
-        state.context.logger.error.assert_called_once()
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -421,7 +417,7 @@ class TestSetJsonStore:
     def test_write_and_read_back(self, tmp_path: Path) -> None:
         """_set_json_store must write valid JSON that can be read back."""
         state = object.__new__(_TestableSharedState)
-        state._chatui_config = None
+        state._chatui_config = None  # type: ignore[attr-defined]
 
         params = MagicMock()
         params.store_path = tmp_path
@@ -450,7 +446,7 @@ class TestChatuiParamsInit:
     """Tests for ChatuiParams.__init__."""
 
     def test_init_sets_service_endpoint_and_genai_api_key(self) -> None:
-        """ChatuiParams init must extract service_endpoint and genai_api_key."""
+        """Test that ChatuiParams init must extract service_endpoint and genai_api_key."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None):
             params = ChatuiParams(
@@ -462,7 +458,7 @@ class TestChatuiParamsInit:
         assert params.genai_api_key == "dummy"
 
     def test_init_calls_super(self) -> None:
-        """ChatuiParams init must call BaseParams.__init__."""
+        """Test that ChatuiParams init must call BaseParams.__init__."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
             ChatuiParams(
@@ -511,9 +507,7 @@ class TestEnsureChatuiStoreBranches:
 
         assert state._chatui_config is not None
         # Because initial_trading_strategy matches YAML, it stays as-is
-        assert (
-            state._chatui_config.initial_trading_strategy == DEFAULT_TRADING_STRATEGY
-        )
+        assert state._chatui_config.initial_trading_strategy == DEFAULT_TRADING_STRATEGY
         # trading_strategy also stays as the store value since no reset is triggered
         assert state._chatui_config.trading_strategy == "custom_strategy"
 

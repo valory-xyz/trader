@@ -19,14 +19,11 @@
 
 """This package contains the tests for Decision Maker"""
 
-from typing import Any, Dict, Tuple, cast
+from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import (
-    CollectSameUntilThresholdRound,
-)
 from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,

@@ -41,7 +41,7 @@ class TestTxSettlementMultiplexerParamsInit:
     """Tests for TxSettlementMultiplexerParams.__init__."""
 
     def test_init_sets_attributes(self) -> None:
-        """TxSettlementMultiplexerParams init sets all required attributes from kwargs."""
+        """Test that TxSettlementMultiplexerParams init sets all required attributes from kwargs."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None):
             params = TxSettlementMultiplexerParams(
@@ -53,7 +53,7 @@ class TestTxSettlementMultiplexerParamsInit:
         assert params.refill_check_interval == 60
 
     def test_init_calls_super(self) -> None:
-        """TxSettlementMultiplexerParams init calls BaseParams.__init__."""
+        """Test that TxSettlementMultiplexerParams init calls BaseParams.__init__."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
             TxSettlementMultiplexerParams(
@@ -68,7 +68,7 @@ class TestSharedState:
     """Tests for SharedState model."""
 
     def test_abci_app_cls(self) -> None:
-        """SharedState points to TxSettlementMultiplexerAbciApp."""
+        """Test that SharedState points to TxSettlementMultiplexerAbciApp."""
         assert SharedState.abci_app_cls is TxSettlementMultiplexerAbciApp
 
 
@@ -80,5 +80,5 @@ class TestModelAliases:
         assert Requests is BaseRequests
 
     def test_benchmark_tool_alias(self) -> None:
-        """BenchmarkTool is an alias for BaseBenchmarkTool."""
+        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
         assert BenchmarkTool is BaseBenchmarkTool

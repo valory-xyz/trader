@@ -20,23 +20,17 @@
 """Tests for the market_manager_abci behaviours package."""
 
 import json
-import os
 from pathlib import Path
-from typing import Generator, Set, Type
-from unittest.mock import MagicMock, mock_open, patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
-import pytest
-
-from packages.valory.skills.abstract_round_abci.behaviours import (
-    AbstractRoundBehaviour,
-    BaseBehaviour,
-)
+from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BETS_FILENAME,
+    BetsManagerBehaviour,
     MULTI_BETS_FILENAME,
     READ_MODE,
     WRITE_MODE,
-    BetsManagerBehaviour,
 )
 from packages.valory.skills.market_manager_abci.behaviours.fetch_markets_router import (
     FetchMarketsRouterBehaviour,
@@ -55,29 +49,31 @@ from packages.valory.skills.market_manager_abci.states.fetch_markets_router impo
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen(*args, **kwargs):
+def _noop_gen(*args: Any, **kwargs: Any) -> Any:
     """No-op generator that yields once and returns None."""
     yield
     return None
 
 
-def _return_gen(value):
+def _return_gen(value: Any) -> Any:  # type: ignore[no-untyped-def]
     """Create a generator factory that yields once and returns *value*."""
 
-    def _gen(*args, **kwargs):
+    def _gen(*args: Any, **kwargs: Any) -> Any:
         yield
         return value
 
+    # type: ignore[no-untyped-def]
     return _gen
 
 
-def _exhaust(gen):
+# type: ignore[no-untyped-def]
+def _exhaust(gen: Any) -> Any:
     """Drive a generator to completion and return its final value."""
     result = None
     try:
         while True:
             next(gen)
-    except StopIteration as exc:
+    except StopIteration as exc:  # type: ignore[no-untyped-def]
         result = exc.value
     return result
 
@@ -87,19 +83,23 @@ class _ConcreteBetsManager(BetsManagerBehaviour):
 
     matching_round = MagicMock()
 
-    def async_act(self):  # pragma: no cover
+    def async_act(self) -> None:  # type: ignore[misc, override]
         """No-op."""
-        yield
+        yield  # type: ignore[misc]
 
 
-def _make_behaviour(tmp_path=None, **overrides):
-    """Instantiate a _ConcreteBetsManager without framework wiring.
+def _make_behaviour(tmp_path: Any = None, **overrides: Any) -> _ConcreteBetsManager:
+    """Instantiate a _ConcreteBetsManager without framework wiring.  # type: ignore[no-untyped-def]
 
-    Uses object.__new__ to skip __init__ (which requires the full
-    Open Autonomy runtime), then manually sets the attributes that the
-    methods under test rely on.
+      Uses object.__new__ to skip __init__ (which requires the full
+      Open Autonomy runtime), then manually sets the attributes that the
+      methods under test rely on.
+    # type: ignore[no-untyped-def]
+      :param tmp_path: optional temporary path for file storage.
+      :param **overrides: keyword arguments to override default attributes.
+      :return: an instance of _ConcreteBetsManager.
     """
-    b = object.__new__(_ConcreteBetsManager)
+    b = object.__new__(_ConcreteBetsManager)  # type: ignore[type-abstract]
 
     # -- context / params --
     ctx = MagicMock()
@@ -159,12 +159,15 @@ class TestBetsManagerInit:
         with patch(
             "packages.valory.skills.abstract_round_abci.behaviour_utils.BaseBehaviour.__init__"
         ):
-            instance = _ConcreteBetsManager.__new__(_ConcreteBetsManager)
+            instance = _ConcreteBetsManager.__new__(_ConcreteBetsManager)  # type: ignore[type-abstract]
             instance._context = mock_context
-            _ConcreteBetsManager.__init__(instance)
+            _ConcreteBetsManager.__init__(instance)  # type: ignore[type-abstract]
 
         assert instance.bets == []
-        assert instance.multi_bets_filepath == Path("/tmp/test_store") / MULTI_BETS_FILENAME
+        assert (
+            instance.multi_bets_filepath
+            == Path("/tmp/test_store") / MULTI_BETS_FILENAME
+        )
         assert instance.bets_filepath == Path("/tmp/test_store") / BETS_FILENAME
 
 
@@ -206,9 +209,9 @@ class TestDoConnectionRequest:
         mock_response = MagicMock()
 
         # Mock _get_request_nonce_from_dialogue
-        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce_123")
-        b.get_callback_request = MagicMock(return_value="callback")
-        b.wait_for_message = _return_gen(mock_response)
+        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce_123")  # type: ignore[method-assign]
+        b.get_callback_request = MagicMock(return_value="callback")  # type: ignore[method-assign]
+        b.wait_for_message = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._do_connection_request(mock_message, mock_dialogue, timeout=30.0)
         result = _exhaust(gen)
@@ -225,9 +228,9 @@ class TestDoConnectionRequest:
         mock_dialogue = MagicMock()
         mock_response = MagicMock()
 
-        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce_123")
-        b.get_callback_request = MagicMock(return_value="callback")
-        b.wait_for_message = _return_gen(mock_response)
+        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce_123")  # type: ignore[method-assign]
+        b.get_callback_request = MagicMock(return_value="callback")  # type: ignore[method-assign]
+        b.wait_for_message = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b.do_connection_request(mock_message, mock_dialogue, timeout=10.0)
         result = _exhaust(gen)
@@ -242,9 +245,9 @@ class TestDoConnectionRequest:
         mock_dialogue = MagicMock()
         mock_response = MagicMock()
 
-        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce")
-        b.get_callback_request = MagicMock(return_value="cb")
-        b.wait_for_message = _return_gen(mock_response)
+        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce")  # type: ignore[method-assign]
+        b.get_callback_request = MagicMock(return_value="cb")  # type: ignore[method-assign]
+        b.wait_for_message = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b._do_connection_request(mock_message, mock_dialogue)
         result = _exhaust(gen)
@@ -276,9 +279,9 @@ class TestSendPolymarketConnectionRequest:
         mock_response = MagicMock()
         mock_response.payload = json.dumps(response_payload)
 
-        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce")
-        b.get_callback_request = MagicMock(return_value="cb")
-        b.wait_for_message = _return_gen(mock_response)
+        b._get_request_nonce_from_dialogue = MagicMock(return_value="nonce")  # type: ignore[method-assign]
+        b.get_callback_request = MagicMock(return_value="cb")  # type: ignore[method-assign]
+        b.wait_for_message = _return_gen(mock_response)  # type: ignore[method-assign]
 
         gen = b.send_polymarket_connection_request(payload_data)
         result = _exhaust(gen)
@@ -308,9 +311,9 @@ class TestStoreBets:
 
         b.context.logger.warning.assert_called_once_with("No bets to store.")
 
-    def test_store_bets_success(self, tmp_path) -> None:
+    def test_store_bets_success(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test that store_bets writes serialized bets to file."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
         b.bets = [MagicMock()]
 
         serialized = '{"bets": "data"}'
@@ -324,9 +327,9 @@ class TestStoreBets:
             content = f.read()
         assert content == serialized
 
-    def test_store_bets_ioerror_writing(self, tmp_path) -> None:
+    def test_store_bets_ioerror_writing(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test that store_bets handles IOError during write."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
         b.bets = [MagicMock()]
 
         serialized = '{"bets": "data"}'
@@ -390,9 +393,9 @@ class TestStoreBets:
         b.context.logger.error.assert_called_once()
         assert "Error opening" in b.context.logger.error.call_args[0][0]
 
-    def test_store_bets_os_error_writing(self, tmp_path) -> None:
+    def test_store_bets_os_error_writing(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test that store_bets handles OSError during write."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
         b.bets = [MagicMock()]
 
         serialized = '{"bets": "data"}'
@@ -429,9 +432,9 @@ class TestReadBets:
         assert b.bets == []
         assert b.context.logger.warning.call_count == 2
 
-    def test_read_bets_multi_bets_exists(self, tmp_path) -> None:
+    def test_read_bets_multi_bets_exists(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test reading from multi_bets file when it exists."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
 
         # Write a valid bets file
         bets_data = [{"id": "bet1", "market": "test"}]
@@ -450,18 +453,18 @@ class TestReadBets:
 
         assert b.bets == bets_data
 
-    def test_read_bets_only_bets_file_exists(self, tmp_path) -> None:
+    def test_read_bets_only_bets_file_exists(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test fallback to bets.json when multi_bets.json does not exist."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
 
         bets_data = [{"id": "bet_fallback"}]
         bets_path = tmp_path / BETS_FILENAME
         bets_path.write_text(json.dumps(bets_data))
 
         # multi_bets does NOT exist, but bets does
-        def isfile_side_effect(path):
+        def isfile_side_effect(path: Any) -> bool:
             path_str = str(path)
-            if MULTI_BETS_FILENAME in path_str:
+            if MULTI_BETS_FILENAME in path_str:  # type: ignore[no-untyped-def]
                 return False
             if BETS_FILENAME in path_str:
                 return True
@@ -475,9 +478,9 @@ class TestReadBets:
         # First warning for missing multi_bets
         assert b.context.logger.warning.call_count == 1
 
-    def test_read_bets_decode_error(self, tmp_path) -> None:
+    def test_read_bets_decode_error(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test that read_bets handles JSONDecodeError."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
 
         multi_path = tmp_path / MULTI_BETS_FILENAME
         multi_path.write_text("not valid json {{{")
@@ -492,9 +495,9 @@ class TestReadBets:
         b.context.logger.error.assert_called_once()
         assert "Error decoding" in b.context.logger.error.call_args[0][0]
 
-    def test_read_bets_type_error(self, tmp_path) -> None:
+    def test_read_bets_type_error(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Test that read_bets handles TypeError from decoder."""
-        b = _make_behaviour(tmp_path=tmp_path)
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
 
         multi_path = tmp_path / MULTI_BETS_FILENAME
         multi_path.write_text("[]")
@@ -585,19 +588,19 @@ class TestFetchMarketsRouterBehaviour:
 
     def test_async_act(self) -> None:
         """Test that async_act creates payload, sends transaction, and waits."""
-        b = object.__new__(FetchMarketsRouterBehaviour)
+        b = object.__new__(FetchMarketsRouterBehaviour)  # type: ignore[type-abstract]
         ctx = MagicMock()
-        ctx.agent_address = "0xAgent1"
+        ctx.agent_address = "0xAgent1"  # type: ignore[type-abstract]
         b._context = ctx
 
-        b.send_a2a_transaction = _noop_gen
-        b.wait_until_round_end = _noop_gen
-        b.set_done = MagicMock()
-
-        gen = b.async_act()
+        b.send_a2a_transaction = _noop_gen  # type: ignore[method-assign]
+        b.wait_until_round_end = _noop_gen  # type: ignore[method-assign]
+        b.set_done = MagicMock()  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        gen = b.async_act()  # type: ignore[method-assign]
         _exhaust(gen)
 
-        b.set_done.assert_called_once()
+        b.set_done.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ===========================================================================
@@ -617,9 +620,9 @@ class TestMarketManagerRoundBehaviour:
 
     def test_abci_app_cls(self) -> None:
         """Test that abci_app_cls is MarketManagerAbciApp."""
-        assert MarketManagerRoundBehaviour.abci_app_cls is MarketManagerAbciApp
+        assert MarketManagerRoundBehaviour.abci_app_cls is MarketManagerAbciApp  # type: ignore[misc]
 
-    def test_behaviours_set(self) -> None:
+    def test_behaviours_set(self) -> None:  # type: ignore[misc]
         """Test that behaviours contains the expected behaviour classes."""
         from packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_market import (
             PolymarketFetchMarketBehaviour,

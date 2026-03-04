@@ -29,6 +29,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.network im
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import (
     questions,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.omen import (
     trades as omen_trades,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio import (

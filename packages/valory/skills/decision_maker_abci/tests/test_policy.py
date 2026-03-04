@@ -21,7 +21,6 @@
 
 import json
 from time import time
-from unittest.mock import patch
 
 import pytest
 
@@ -256,9 +255,7 @@ def test_consecutive_failures_update_status_success() -> None:
 def test_e_greedy_policy_invalid_eps() -> None:
     """Test that EGreedyPolicy raises for invalid epsilon."""
     with pytest.raises(ValueError, match="Cannot initialize the policy"):
-        EGreedyPolicy(
-            eps=1.5, consecutive_failures_threshold=2, quarantine_duration=10
-        )
+        EGreedyPolicy(eps=1.5, consecutive_failures_threshold=2, quarantine_duration=10)
 
     with pytest.raises(ValueError, match="Cannot initialize the policy"):
         EGreedyPolicy(

@@ -37,7 +37,7 @@ class TestSrrDialogues:
     """Tests for the SrrDialogues class."""
 
     def test_init(self) -> None:
-        """SrrDialogues can be instantiated with a skill_context."""
+        """Test that SrrDialogues can be instantiated with a skill_context."""
         skill_context = MagicMock()
         skill_context.skill_id = PublicId.from_str("dummy/skill:0.1.0")
         dialogues = SrrDialogues(name="srr_dialogues", skill_context=skill_context)

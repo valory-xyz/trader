@@ -26,17 +26,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from aea.skills.base import Model
 
-from packages.valory.skills.abstract_round_abci.models import (
-    ApiSpecs,
-    BaseParams,
-)
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.market_manager_abci.models import (
-    BenchmarkingMode,
     BenchmarkTool,
+    BenchmarkingMode,
     MarketManagerParams,
     NetworkSubgraph,
     OmenSubgraph,
@@ -55,7 +52,7 @@ class TestModelAliases:
         assert Requests is BaseRequests
 
     def test_benchmark_tool_alias(self) -> None:
-        """BenchmarkTool is an alias for BaseBenchmarkTool."""
+        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
         assert BenchmarkTool is BaseBenchmarkTool
 
 
@@ -63,7 +60,7 @@ class TestSharedState:
     """Tests for SharedState model."""
 
     def test_abci_app_cls(self) -> None:
-        """SharedState points to MarketManagerAbciApp."""
+        """Test that SharedState points to MarketManagerAbciApp."""
         assert SharedState.abci_app_cls is MarketManagerAbciApp
 
 
@@ -93,11 +90,9 @@ class TestSubgraphProcessResponse:
         """When super().process_response returns a non-None value, return it directly."""
         subgraph = self._make_subgraph()
         mock_response = MagicMock()
-        expected_result = {"data": {"markets": []}}
+        expected_result = {"data": {"markets": []}}  # type: ignore[var-annotated]
 
-        with patch.object(
-            ApiSpecs, "process_response", return_value=expected_result
-        ):
+        with patch.object(ApiSpecs, "process_response", return_value=expected_result):
             result = subgraph.process_response(mock_response)
 
         assert result is expected_result
@@ -109,8 +104,8 @@ class TestSubgraphProcessResponse:
 
         error_message_key = "message"
         payment_required_error = "payment required"
-        subgraph.context.params.the_graph_error_message_key = error_message_key
-        subgraph.context.params.the_graph_payment_required_error = (
+        subgraph.context.params.the_graph_error_message_key = error_message_key  # type: ignore[attr-defined]
+        subgraph.context.params.the_graph_payment_required_error = (  # type: ignore[attr-defined]
             payment_required_error
         )
         subgraph.response_info.error_data = {
@@ -122,7 +117,7 @@ class TestSubgraphProcessResponse:
             result = subgraph.process_response(mock_response)
 
         assert result is None
-        subgraph.context.logger.error.assert_called_once_with(
+        subgraph.context.logger.error.assert_called_once_with(  # type: ignore[attr-defined]
             "Payment required for subsequent requests for the current 'The Graph' API key!"
         )
 
@@ -133,20 +128,18 @@ class TestSubgraphProcessResponse:
 
         error_message_key = "message"
         payment_required_error = "payment required"
-        subgraph.context.params.the_graph_error_message_key = error_message_key
-        subgraph.context.params.the_graph_payment_required_error = (
+        subgraph.context.params.the_graph_error_message_key = error_message_key  # type: ignore[attr-defined]
+        subgraph.context.params.the_graph_payment_required_error = (  # type: ignore[attr-defined]
             payment_required_error
         )
-        subgraph.response_info.error_data = {
-            "message": "some other error occurred"
-        }
+        subgraph.response_info.error_data = {"message": "some other error occurred"}
         subgraph.response_info.error_type = "dict"
 
         with patch.object(ApiSpecs, "process_response", return_value=None):
             result = subgraph.process_response(mock_response)
 
         assert result is None
-        subgraph.context.logger.error.assert_not_called()
+        subgraph.context.logger.error.assert_not_called()  # type: ignore[attr-defined]
 
     def test_returns_none_when_error_data_is_not_expected_type(self) -> None:
         """When error_data does not match expected_error_type, skip the check."""
@@ -160,7 +153,7 @@ class TestSubgraphProcessResponse:
             result = subgraph.process_response(mock_response)
 
         assert result is None
-        subgraph.context.logger.error.assert_not_called()
+        subgraph.context.logger.error.assert_not_called()  # type: ignore[attr-defined]
 
     def test_returns_none_when_error_message_key_missing(self) -> None:
         """When error_data is a dict but missing the error_message_key, return None."""
@@ -169,8 +162,8 @@ class TestSubgraphProcessResponse:
 
         error_message_key = "message"
         payment_required_error = "payment required"
-        subgraph.context.params.the_graph_error_message_key = error_message_key
-        subgraph.context.params.the_graph_payment_required_error = (
+        subgraph.context.params.the_graph_error_message_key = error_message_key  # type: ignore[attr-defined]
+        subgraph.context.params.the_graph_payment_required_error = (  # type: ignore[attr-defined]
             payment_required_error
         )
         # error_data is a dict but does NOT have the expected key
@@ -190,11 +183,11 @@ class TestOmenSubgraph:
     """Tests for OmenSubgraph."""
 
     def test_is_subclass_of_subgraph(self) -> None:
-        """OmenSubgraph is a subclass of Subgraph."""
+        """Test that OmenSubgraph is a subclass of Subgraph."""
         assert issubclass(OmenSubgraph, Subgraph)
 
     def test_is_subclass_of_api_specs(self) -> None:
-        """OmenSubgraph is also a subclass of ApiSpecs."""
+        """Test that OmenSubgraph is also a subclass of ApiSpecs."""
         assert issubclass(OmenSubgraph, ApiSpecs)
 
 
@@ -202,11 +195,11 @@ class TestNetworkSubgraph:
     """Tests for NetworkSubgraph."""
 
     def test_is_subclass_of_subgraph(self) -> None:
-        """NetworkSubgraph is a subclass of Subgraph."""
+        """Test that NetworkSubgraph is a subclass of Subgraph."""
         assert issubclass(NetworkSubgraph, Subgraph)
 
     def test_is_subclass_of_api_specs(self) -> None:
-        """NetworkSubgraph is also a subclass of ApiSpecs."""
+        """Test that NetworkSubgraph is also a subclass of ApiSpecs."""
         assert issubclass(NetworkSubgraph, ApiSpecs)
 
 
@@ -230,7 +223,7 @@ class TestMarketManagerParamsInit:
     """Tests for MarketManagerParams.__init__."""
 
     def test_init_sets_all_attributes(self) -> None:
-        """MarketManagerParams init sets all required attributes from kwargs."""
+        """Test that MarketManagerParams init sets all required attributes from kwargs."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None):
             params = MarketManagerParams(
@@ -250,7 +243,7 @@ class TestMarketManagerParamsInit:
         assert params.enable_multi_bets_fallback is False
 
     def test_init_calls_super(self) -> None:
-        """MarketManagerParams init calls BaseParams.__init__."""
+        """Test that MarketManagerParams init calls BaseParams.__init__."""
         mock_skill_context = MagicMock()
         with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
             MarketManagerParams(
@@ -260,7 +253,7 @@ class TestMarketManagerParamsInit:
         mock_super.assert_called_once()
 
     def test_init_slot_count_not_two_raises(self) -> None:
-        """MarketManagerParams raises ValueError when slot_count is not 2."""
+        """Test that MarketManagerParams raises ValueError when slot_count is not 2."""
         mock_skill_context = MagicMock()
         bad_kwargs = {**DEFAULT_MM_KWARGS, "slot_count": 3}
         with patch.object(BaseParams, "__init__", return_value=None):
@@ -274,7 +267,7 @@ class TestMarketManagerParamsInit:
                 )
 
     def test_init_slot_count_one_raises(self) -> None:
-        """MarketManagerParams raises ValueError when slot_count is 1."""
+        """Test that MarketManagerParams raises ValueError when slot_count is 1."""
         mock_skill_context = MagicMock()
         bad_kwargs = {**DEFAULT_MM_KWARGS, "slot_count": 1}
         with patch.object(BaseParams, "__init__", return_value=None):
@@ -288,7 +281,7 @@ class TestMarketManagerParamsInit:
                 )
 
     def test_init_empty_creators(self) -> None:
-        """MarketManagerParams init accepts empty creator_per_subgraph dict."""
+        """Test that MarketManagerParams init accepts empty creator_per_subgraph dict."""
         mock_skill_context = MagicMock()
         kwargs = {**DEFAULT_MM_KWARGS, "creator_per_subgraph": {}}
         with patch.object(BaseParams, "__init__", return_value=None):
@@ -299,7 +292,7 @@ class TestMarketManagerParamsInit:
         assert params.creator_per_market == {}
 
     def test_init_multiple_creators(self) -> None:
-        """MarketManagerParams init handles multiple market-creator mappings."""
+        """Test that MarketManagerParams init handles multiple market-creator mappings."""
         mock_skill_context = MagicMock()
         creators = {
             "omen": ["creator1", "creator2"],
@@ -317,9 +310,7 @@ class TestMarketManagerParamsInit:
 class TestMarketManagerParamsCreatorsIterator:
     """Tests for MarketManagerParams.creators_iterator property."""
 
-    def _make_params(
-        self, creators: Dict[str, List[str]]
-    ) -> MarketManagerParams:
+    def _make_params(self, creators: Dict[str, List[str]]) -> MarketManagerParams:
         """Create a MarketManagerParams instance with given creators mapping."""
         mock_skill_context = MagicMock()
         kwargs = {**DEFAULT_MM_KWARGS, "creator_per_subgraph": creators}
@@ -331,14 +322,14 @@ class TestMarketManagerParamsCreatorsIterator:
         return params
 
     def test_creators_iterator_returns_items(self) -> None:
-        """creators_iterator yields (market, creators) tuples."""
+        """Creators_iterator yields (market, creators) tuples."""
         creators = {"omen": ["creator1", "creator2"]}
         params = self._make_params(creators)
         result = list(params.creators_iterator)
         assert result == [("omen", ["creator1", "creator2"])]
 
     def test_creators_iterator_multiple_markets(self) -> None:
-        """creators_iterator yields all market-creators pairs."""
+        """Creators_iterator yields all market-creators pairs."""
         creators = {
             "omen": ["creator1"],
             "polymarket": ["creator2", "creator3"],
@@ -350,13 +341,13 @@ class TestMarketManagerParamsCreatorsIterator:
         assert len(result) == 2
 
     def test_creators_iterator_empty_dict(self) -> None:
-        """creators_iterator on empty dict yields no items."""
+        """Creators_iterator on empty dict yields no items."""
         params = self._make_params({})
         result = list(params.creators_iterator)
         assert result == []
 
     def test_creators_iterator_is_exhaustible(self) -> None:
-        """creators_iterator returns a fresh iterator each time (property)."""
+        """Creators_iterator returns a fresh iterator each time (property)."""
         creators = {"omen": ["creator1"]}
         params = self._make_params(creators)
         # Exhaust the first iterator
@@ -393,7 +384,7 @@ class TestBenchmarkingModeInit:
     """Tests for BenchmarkingMode.__init__."""
 
     def test_init_sets_all_attributes(self) -> None:
-        """BenchmarkingMode init sets all required attributes from kwargs."""
+        """Test that BenchmarkingMode init sets all required attributes from kwargs."""
         mock_skill_context = MagicMock()
         with patch.object(Model, "__init__", return_value=None):
             bm = BenchmarkingMode(
@@ -420,7 +411,7 @@ class TestBenchmarkingModeInit:
         assert bm.nr_mech_calls == 3
 
     def test_init_calls_super(self) -> None:
-        """BenchmarkingMode init calls Model.__init__."""
+        """Test that BenchmarkingMode init calls Model.__init__."""
         mock_skill_context = MagicMock()
         with patch.object(Model, "__init__", return_value=None) as mock_super:
             BenchmarkingMode(
@@ -430,7 +421,7 @@ class TestBenchmarkingModeInit:
         mock_super.assert_called_once()
 
     def test_dataset_filename_is_path(self) -> None:
-        """BenchmarkingMode converts dataset_filename string to Path."""
+        """Test that BenchmarkingMode converts dataset_filename string to Path."""
         mock_skill_context = MagicMock()
         kwargs = {**DEFAULT_BM_KWARGS, "dataset_filename": "/tmp/my_data.csv"}
         with patch.object(Model, "__init__", return_value=None):
@@ -442,7 +433,7 @@ class TestBenchmarkingModeInit:
         assert bm.dataset_filename == Path("/tmp/my_data.csv")
 
     def test_results_filename_is_path(self) -> None:
-        """BenchmarkingMode converts results_filename string to Path."""
+        """Test that BenchmarkingMode converts results_filename string to Path."""
         mock_skill_context = MagicMock()
         kwargs = {**DEFAULT_BM_KWARGS, "results_filename": "/tmp/results.csv"}
         with patch.object(Model, "__init__", return_value=None):
@@ -454,7 +445,7 @@ class TestBenchmarkingModeInit:
         assert bm.results_filename == Path("/tmp/results.csv")
 
     def test_enabled_false(self) -> None:
-        """BenchmarkingMode can be initialized with enabled=False."""
+        """Test that BenchmarkingMode can be initialized with enabled=False."""
         mock_skill_context = MagicMock()
         kwargs = {**DEFAULT_BM_KWARGS, "enabled": False}
         with patch.object(Model, "__init__", return_value=None):
@@ -465,7 +456,7 @@ class TestBenchmarkingModeInit:
         assert bm.enabled is False
 
     def test_part_prefix_mode_false(self) -> None:
-        """BenchmarkingMode correctly sets part_prefix_mode to False."""
+        """Test that BenchmarkingMode correctly sets part_prefix_mode to False."""
         mock_skill_context = MagicMock()
         kwargs = {**DEFAULT_BM_KWARGS, "part_prefix_mode": False}
         with patch.object(Model, "__init__", return_value=None):

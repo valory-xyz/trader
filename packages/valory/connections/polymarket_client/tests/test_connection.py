@@ -34,7 +34,6 @@ from packages.valory.connections.polymarket_client.connection import (
     DATA_API_BASE_URL,
     GAMMA_API_BASE_URL,
     MARKETS_LIMIT,
-    MARKETS_MIN_CREATED_AT,
     MAX_UINT256,
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
@@ -83,7 +82,9 @@ def _make_connection() -> _TestableConnection:
     configuration_mock = MagicMock()
     safe_contract_addresses = {"polygon": SAFE_ADDRESS}
     configuration_mock.config.get.side_effect = lambda key, *args, **kwargs: (
-        safe_contract_addresses if key == "safe_contract_addresses" else args[0] if args else None
+        safe_contract_addresses
+        if key == "safe_contract_addresses"
+        else args[0] if args else None
     )
     conn.configuration = configuration_mock
     return conn
@@ -213,9 +214,7 @@ class TestOnSend:
         conn._route_request = MagicMock(return_value=({"result": "ok"}, ""))
         conn.put_envelope = MagicMock()
 
-        envelope = self._make_envelope(
-            {"request_type": "fetch_markets", "params": {}}
-        )
+        envelope = self._make_envelope({"request_type": "fetch_markets", "params": {}})
         # Envelope requires string addresses
         envelope.sender = "sender_address"
         envelope.to = "receiver_address"
@@ -228,7 +227,7 @@ class TestOnSend:
         # Verify the response envelope addresses are correctly swapped:
         # the reply must go back to the original sender
         sent_envelope = conn.put_envelope.call_args[0][0]
-        assert sent_envelope.to == "sender_address"   # reply goes to original sender
+        assert sent_envelope.to == "sender_address"  # reply goes to original sender
         assert sent_envelope.sender == "receiver_address"  # from the connection
 
     def test_on_send_wrong_performative_logs_error(self) -> None:
@@ -285,9 +284,7 @@ class TestRouteRequest:
     def test_handler_error_wrapped_in_dict(self) -> None:
         """When handler returns an error string, the response is wrapped."""
         conn = _make_connection()
-        conn._fetch_markets = MagicMock(
-            return_value=(None, "some error from API")
-        )
+        conn._fetch_markets = MagicMock(return_value=(None, "some error from API"))
         response, error = conn._route_request(
             {"request_type": RequestType.FETCH_MARKETS.value, "params": {}}
         )
@@ -295,7 +292,7 @@ class TestRouteRequest:
         assert error == "some error from API"
 
     def test_type_error_in_handler_returns_error(self) -> None:
-        """TypeError from handler (bad params) is caught and returned."""
+        """Test that TypeError from handler (bad params) is caught and returned."""
         conn = _make_connection()
         conn._place_bet = MagicMock(side_effect=TypeError("bad args"))
         response, error = conn._route_request(
@@ -400,10 +397,21 @@ class TestPlaceBet:
         the caller can reconstruct the order if needed.
         """
         conn = _make_connection()
-        cached = {"salt": "1", "maker": "0x0", "signer": "0x0", "taker": "0x0",
-                  "tokenId": "tok", "makerAmount": "10", "takerAmount": "5",
-                  "expiration": "0", "nonce": "0", "feeRateBps": "0",
-                  "side": "0", "signatureType": "2", "signature": "0xdeadbeef"}
+        cached = {
+            "salt": "1",
+            "maker": "0x0",
+            "signer": "0x0",
+            "taker": "0x0",
+            "tokenId": "tok",
+            "makerAmount": "10",
+            "takerAmount": "5",
+            "expiration": "0",
+            "nonce": "0",
+            "feeRateBps": "0",
+            "side": "0",
+            "signatureType": "2",
+            "signature": "0xdeadbeef",
+        }
         cached_json = json.dumps(cached)
         conn.client.post_order.return_value = {"status": "matched"}
 
@@ -423,7 +431,7 @@ class TestPlaceBet:
         assert response["signed_order_json"] == cached_json
 
     def test_place_bet_poly_api_exception_with_dict_error(self) -> None:
-        """PolyApiException with dict error_msg returns error in response.
+        """Test that PolyApiException with dict error_msg returns error in response.
 
         The response must also contain 'signed_order_json' so the caller can
         retry the submission with the same order (even though order creation
@@ -442,7 +450,7 @@ class TestPlaceBet:
         assert "signed_order_json" in response
 
     def test_place_bet_poly_api_exception_non_dict_error(self) -> None:
-        """PolyApiException with non-dict error_msg is formatted as 'Error placing bet: ...'."""
+        """Test that PolyApiException with non-dict error_msg is formatted as 'Error placing bet: ...'."""
         from py_clob_client.exceptions import PolyApiException
 
         conn = _make_connection()
@@ -480,9 +488,7 @@ class TestCacheFileMethods:
         """Loads existing JSON cache file correctly."""
         conn = _make_connection()
         data = {"allowances_set": True, "tag_id_cache": {"politics": "42"}}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             tmp_path = f.name
         try:
@@ -500,9 +506,7 @@ class TestCacheFileMethods:
     def test_load_invalid_json_returns_defaults(self) -> None:
         """Returns default dict when file contains invalid JSON."""
         conn = _make_connection()
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("not valid json {{")
             tmp_path = f.name
         try:
@@ -650,9 +654,7 @@ class TestFetchTagId:
         conn = _make_connection()
         cache = {}
         cache_data = {"allowances_set": False, "tag_id_cache": {}}
-        conn._request_with_retries = MagicMock(
-            return_value=({"id": "77"}, None)
-        )
+        conn._request_with_retries = MagicMock(return_value=({"id": "77"}, None))
         conn._save_cache_file = MagicMock()
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -671,9 +673,7 @@ class TestFetchTagId:
         conn = _make_connection()
         cache = {}
         cache_data = {"allowances_set": False}  # no tag_id_cache
-        conn._request_with_retries = MagicMock(
-            return_value=({"id": "55"}, None)
-        )
+        conn._request_with_retries = MagicMock(return_value=({"id": "55"}, None))
         conn._save_cache_file = MagicMock()
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -691,9 +691,7 @@ class TestFetchTagId:
         conn = _make_connection()
         cache = {}
         cache_data = {"allowances_set": False, "tag_id_cache": None}
-        conn._request_with_retries = MagicMock(
-            return_value=({"id": "66"}, None)
-        )
+        conn._request_with_retries = MagicMock(return_value=({"id": "66"}, None))
         conn._save_cache_file = MagicMock()
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -949,9 +947,17 @@ class TestFetchMarkets:
         # Mix: one valid Yes/No market and two that should be filtered out
         markets = [
             # passes both filters
-            {"id": "m1", "createdAt": "2026-01-01T00:00:00Z", "outcomes": '["Yes","No"]'},
+            {
+                "id": "m1",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "outcomes": '["Yes","No"]',
+            },
             # fails yes/no filter (multi-outcome)
-            {"id": "m2", "createdAt": "2026-01-01T00:00:00Z", "outcomes": '["A","B","C"]'},
+            {
+                "id": "m2",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "outcomes": '["A","B","C"]',
+            },
             # fails createdAt filter (too old - empty string < MIN_CREATED_AT)
             {"id": "m3", "createdAt": "", "outcomes": '["Yes","No"]'},
         ]
@@ -991,7 +997,8 @@ class TestFetchMarkets:
         conn._fetch_tag_id = MagicMock(return_value=("tag123", None))
         # First category fails, rest succeed with empty list
         conn._fetch_markets_by_tag = MagicMock(
-            side_effect=[(None, "api error")] + [([], None)] * (len(POLYMARKET_CATEGORY_TAGS) - 1)
+            side_effect=[(None, "api error")]
+            + [([], None)] * (len(POLYMARKET_CATEGORY_TAGS) - 1)
         )
 
         result, error = conn._fetch_markets()
@@ -1004,7 +1011,9 @@ class TestFetchMarkets:
         conn = _make_connection()
         cached_data = {
             "allowances_set": False,
-            "tag_id_cache": {cat: f"id_{i}" for i, cat in enumerate(POLYMARKET_CATEGORY_TAGS)},
+            "tag_id_cache": {
+                cat: f"id_{i}" for i, cat in enumerate(POLYMARKET_CATEGORY_TAGS)
+            },
         }
         conn._load_cache_file = MagicMock(return_value=cached_data)
         conn._fetch_tag_id = MagicMock(
@@ -1518,7 +1527,9 @@ class TestRedeemPositions:
             is_neg_risk=False,
         )
 
-        expected = keccak(b"redeemPositions(address,bytes32,bytes32,uint256[])")[:4].hex()
+        expected = keccak(b"redeemPositions(address,bytes32,bytes32,uint256[])")[
+            :4
+        ].hex()
         assert expected == "01b7037c"
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
         assert tx.data[2:10] == expected
@@ -1875,9 +1886,7 @@ class TestCheckApproval:
         conn._check_erc20_allowance = MagicMock(
             side_effect=[MAX_UINT256, 0, MAX_UINT256]
         )
-        conn._check_erc1155_approval = MagicMock(
-            side_effect=[True, False, True]
-        )
+        conn._check_erc1155_approval = MagicMock(side_effect=[True, False, True])
 
         result, error = conn._check_approval()
         assert error is None
@@ -1920,7 +1929,9 @@ class TestCheckApproval:
         """
         conn = _make_connection()
         conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        conn._check_erc20_allowance = MagicMock(return_value=1)  # minimal positive allowance
+        conn._check_erc20_allowance = MagicMock(
+            return_value=1
+        )  # minimal positive allowance
         conn._check_erc1155_approval = MagicMock(return_value=True)
 
         result, error = conn._check_approval()

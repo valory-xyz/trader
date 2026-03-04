@@ -35,7 +35,7 @@ from packages.valory.skills.decision_maker_abci.states.redeem_router import (
 # ---------------------------------------------------------------------------
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a RedeemRouterBehaviour with mocked dependencies."""
     behaviour = object.__new__(RedeemRouterBehaviour)
     context = MagicMock()
@@ -62,11 +62,11 @@ class TestRedeemRouterBehaviour:
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             payloads_sent.append(payload)
             yield
 
-        behaviour.finish_behaviour = mock_finish
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         gen = behaviour.async_act()
         try:

@@ -22,24 +22,18 @@
 import json
 from io import StringIO
 from pathlib import Path
-from sys import maxsize
-from typing import Any, Dict, Generator, Optional, Set
-from unittest.mock import MagicMock, PropertyMock, call, mock_open, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from hexbytes import HexBytes
 
 from packages.valory.skills.decision_maker_abci.behaviours.reedem import (
-    DEFAULT_TO_BLOCK,
-    ZERO_BYTES,
-    ZERO_HEX,
     RedeemBehaviour,
     RedeemInfoBehaviour,
+    ZERO_BYTES,
+    ZERO_HEX,
 )
-from packages.valory.skills.decision_maker_abci.models import (
-    MultisendBatch,
-    RedeemingProgress,
-)
+from packages.valory.skills.decision_maker_abci.models import RedeemingProgress
 from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
@@ -68,19 +62,19 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 # ---------------------------------------------------------------------------
 
 
-def _make_policy(tools=None):
+def _make_policy(tools=None) -> EGreedyPolicy:  # type: ignore[assignment, no-untyped-def]
     """Create a test policy."""
     if tools is None:
         tools = {"tool1": AccuracyInfo(requests=5, accuracy=0.6, pending=1)}
     return EGreedyPolicy(
         eps=0.1,
-        consecutive_failures_threshold=3,
+        consecutive_failures_threshold=3,  # type: ignore[no-untyped-def]
         quarantine_duration=100,
         accuracy_store=tools,
     )
 
 
-def _make_trade(
+def _make_trade(  # type: ignore[no-untyped-def]
     condition_id="0xaa",
     question_id="0xbb",
     outcome_index=0,
@@ -93,7 +87,7 @@ def _make_trade(
     creation_timestamp=1000000,
     answer_finalized_timestamp=2000000,
     creator="0xcreator",
-):
+) -> Trade:
     """Create a Trade object for testing."""
     return Trade(
         fpmm=FPMM(
@@ -113,13 +107,13 @@ def _make_trade(
     )
 
 
-def _make_redeem_behaviour():
+def _make_redeem_behaviour() -> RedeemBehaviour:
     """Return a RedeemBehaviour with mocked dependencies."""
     behaviour = object.__new__(RedeemBehaviour)
     behaviour._claim_params_batch = []
     behaviour._latest_block_number = None
     behaviour._already_resolved = False
-    behaviour._payouts = {}
+    behaviour._payouts = {}  # type: ignore[no-untyped-def]
     behaviour._built_data = None
     behaviour._current_redeem_info = None
     behaviour._expected_winnings = 0
@@ -153,35 +147,30 @@ def _make_redeem_behaviour():
     return behaviour
 
 
-def _exhaust_gen(gen):
+def _exhaust_gen(gen):  # type: ignore[no-untyped-def]
     """Exhaust a generator and return its return value."""
     result = None
     try:
         while True:
             next(gen)
-    except StopIteration as e:
+    except StopIteration as e:  # type: ignore[no-untyped-def]
         result = e.value
     return result
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """Create a generator that yields once and returns value."""
     yield
     return value
 
 
-def _return_gen_no_yield(value):
+def _return_gen_no_yield(value):  # type: ignore[no-untyped-def]
     """Create a generator returning value without yielding."""
     return value
     yield  # noqa: E501 # pragma: no cover
 
 
-# ---------------------------------------------------------------------------
-# Tests: Constants
-# ---------------------------------------------------------------------------
-
-
-class TestRedeemConstants:
+class TestRedeemConstants:  # type: ignore[no-untyped-def]
     """Tests for module-level constants."""
 
     def test_zero_hex_length(self) -> None:
@@ -191,11 +180,6 @@ class TestRedeemConstants:
     def test_zero_bytes_length(self) -> None:
         """ZERO_BYTES should be 32 bytes."""
         assert len(ZERO_BYTES) == 32
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour Properties
-# ---------------------------------------------------------------------------
 
 
 class TestRedeemBehaviourProperties:
@@ -395,11 +379,6 @@ class TestRedeemBehaviourProperties:
         assert mock_shared.redeeming_progress is progress
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemInfoBehaviour.__init__ / setup
-# ---------------------------------------------------------------------------
-
-
 class TestRedeemInfoBehaviourInit:
     """Tests for RedeemInfoBehaviour.__init__ and setup."""
 
@@ -426,8 +405,9 @@ class TestRedeemInfoBehaviourInit:
             QueryingBehaviour,
         )
 
-        with patch.object(StorageManagerBehaviour, "__init__", return_value=None), \
-             patch.object(QueryingBehaviour, "__init__", return_value=None):
+        with patch.object(
+            StorageManagerBehaviour, "__init__", return_value=None
+        ), patch.object(QueryingBehaviour, "__init__", return_value=None):
             behaviour = object.__new__(RedeemBehaviour)
             RedeemInfoBehaviour.__init__(behaviour)
 
@@ -455,7 +435,7 @@ class TestRedeemInfoBehaviourInit:
             assert behaviour._claim_winnings_simulation_ok is False
 
     def test_setup_loads_from_synchronized_data(self) -> None:
-        """setup should load redeemed_condition_ids and payout_so_far."""
+        """Setup should load redeemed_condition_ids and payout_so_far."""
         behaviour = _make_redeem_behaviour()
         mock_synced = MagicMock()
         mock_synced.redeemed_condition_ids = {"cond1", "cond2"}
@@ -476,7 +456,7 @@ class TestRedeemInfoBehaviourInit:
         assert behaviour.payout_so_far == 500
 
     def test_setup_method_directly(self) -> None:
-        """setup method should call super().setup() and set synced data."""
+        """Setup method should call super().setup() and set synced data."""
         behaviour = _make_redeem_behaviour()
         mock_synced = MagicMock()
         mock_synced.redeemed_condition_ids = {"cond3"}
@@ -488,19 +468,12 @@ class TestRedeemInfoBehaviourInit:
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            StorageManagerBehaviour, "setup", return_value=None
-        ):
+        ) as mock_sd, patch.object(StorageManagerBehaviour, "setup", return_value=None):
             mock_sd.return_value = mock_synced
             RedeemInfoBehaviour.setup(behaviour)
 
         assert behaviour.redeemed_condition_ids == {"cond3"}
         assert behaviour.payout_so_far == 750
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemInfoBehaviour._try_update_policy
-# ---------------------------------------------------------------------------
 
 
 class TestTryUpdatePolicy:
@@ -526,11 +499,6 @@ class TestTryUpdatePolicy:
         # Should not raise
         behaviour._try_update_policy("unknown_tool", winning=True)
         behaviour.__dict__["_context"].logger.warning.assert_called()
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemInfoBehaviour._update_policy
-# ---------------------------------------------------------------------------
 
 
 class TestUpdatePolicy:
@@ -565,11 +533,6 @@ class TestUpdatePolicy:
         behaviour._update_policy(mock_trade)
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemInfoBehaviour._set_block_number
-# ---------------------------------------------------------------------------
-
-
 class TestSetBlockNumber:
     """Tests for _set_block_number."""
 
@@ -580,14 +543,14 @@ class TestSetBlockNumber:
 
         call_count = [0]
 
-        def mock_fetch_block_number(timestamp):
+        def mock_fetch_block_number(timestamp):  # type: ignore[no-untyped-def]
             """Mock _fetch_block_number."""
             call_count[0] += 1
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
             return {"id": "12345"}
 
-        behaviour._fetch_block_number = mock_fetch_block_number
+        behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
         gen = behaviour._set_block_number(trade)
         _exhaust_gen(gen)
@@ -599,13 +562,13 @@ class TestSetBlockNumber:
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
-        def mock_fetch_block_number(timestamp):
+        def mock_fetch_block_number(timestamp):  # type: ignore[no-untyped-def]
             """Mock _fetch_block_number."""
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
             return {"id": "not_a_number"}
 
-        behaviour._fetch_block_number = mock_fetch_block_number
+        behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
         gen = behaviour._set_block_number(trade)
         _exhaust_gen(gen)
@@ -617,13 +580,14 @@ class TestSetBlockNumber:
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
-        def mock_fetch_block_number(timestamp):
+        # type: ignore[no-untyped-def]
+        def mock_fetch_block_number(timestamp):  # type: ignore[no-untyped-def]
             """Mock _fetch_block_number."""
             behaviour._fetch_status = FetchStatus.FAIL
             yield
             return {}
 
-        behaviour._fetch_block_number = mock_fetch_block_number
+        behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
         gen = behaviour._set_block_number(trade)
         _exhaust_gen(gen)
@@ -635,13 +599,13 @@ class TestSetBlockNumber:
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
-        def mock_fetch_block_number(timestamp):
+        def mock_fetch_block_number(timestamp):  # type: ignore[no-untyped-def]
             """Mock _fetch_block_number."""
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
             return {}
 
-        behaviour._fetch_block_number = mock_fetch_block_number
+        behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
         gen = behaviour._set_block_number(trade)
         _exhaust_gen(gen)
@@ -653,9 +617,9 @@ class TestSetBlockNumber:
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
-        call_count = [0]
+        call_count = [0]  # type: ignore[no-untyped-def]
 
-        def mock_fetch_block_number(timestamp):
+        def mock_fetch_block_number(timestamp):  # type: ignore[no-untyped-def]
             """Mock _fetch_block_number that retries once."""
             call_count[0] += 1
             if call_count[0] == 1:
@@ -665,7 +629,7 @@ class TestSetBlockNumber:
             yield
             return {"id": "999"}
 
-        behaviour._fetch_block_number = mock_fetch_block_number
+        behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
         gen = behaviour._set_block_number(trade)
         _exhaust_gen(gen)
@@ -673,9 +637,7 @@ class TestSetBlockNumber:
         assert behaviour.earliest_block_number == 999
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemInfoBehaviour.update_redeem_info
-# ---------------------------------------------------------------------------
+# type: ignore[no-untyped-def]
 
 
 class TestUpdateRedeemInfo:
@@ -696,7 +658,7 @@ class TestUpdateRedeemInfo:
                 {
                     "fpmm": {
                         "answerFinalizedTimestamp": "2000000",
-                        "collateralToken": "0xcollateral",
+                        "collateralToken": "0xcollateral",  # type: ignore[no-untyped-def]
                         "condition": {
                             "id": "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff",
                             "outcomeSlotCount": "2",
@@ -717,11 +679,11 @@ class TestUpdateRedeemInfo:
                 }
             ]
 
-            def mock_set_block_number(trade):
+            def mock_set_block_number(trade):  # type: ignore[no-untyped-def]
                 """Mock _set_block_number."""
                 yield
 
-            behaviour._set_block_number = mock_set_block_number
+            behaviour._set_block_number = mock_set_block_number  # type: ignore[method-assign]
 
             gen = behaviour.update_redeem_info(chunk)
             _exhaust_gen(gen)
@@ -758,7 +720,7 @@ class TestUpdateRedeemInfo:
                         "templateId": "2",
                     },
                     "outcomeIndex": "1",
-                    "outcomeTokenMarginalPrice": "0.5",
+                    "outcomeTokenMarginalPrice": "0.5",  # type: ignore[no-untyped-def]
                     "outcomeTokensTraded": "1000",
                     "transactionHash": "0xtx1",
                 }
@@ -814,7 +776,9 @@ class TestUpdateRedeemInfo:
         behaviour = _make_redeem_behaviour()
         behaviour._policy = _make_policy()
 
-        condition_id_hex = "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        condition_id_hex = (
+            "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
 
         trade_data = {
             "fpmm": {
@@ -844,11 +808,11 @@ class TestUpdateRedeemInfo:
         ) as mock_ts:
             mock_ts.return_value = 3000000
 
-            def mock_set_block_number(trade):
+            def mock_set_block_number(trade):  # type: ignore[no-untyped-def]
                 """Mock _set_block_number."""
                 yield
 
-            behaviour._set_block_number = mock_set_block_number
+            behaviour._set_block_number = mock_set_block_number  # type: ignore[method-assign]
 
             # First chunk
             gen = behaviour.update_redeem_info([trade_data])
@@ -872,14 +836,20 @@ class TestUpdateRedeemInfo:
         behaviour = _make_redeem_behaviour()
         behaviour._policy = _make_policy()
 
-        condition_id_hex1 = "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
-        condition_id_hex2 = "0xcc11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
-        question_id_hex2 = "0xdd11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        condition_id_hex1 = (
+            "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
+        condition_id_hex2 = (
+            "0xcc11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
+        question_id_hex2 = (
+            "0xdd11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
 
         trade_data1 = {
             "fpmm": {
                 "answerFinalizedTimestamp": "2000000",
-                "collateralToken": "0xcollateral",
+                "collateralToken": "0xcollateral",  # type: ignore[no-untyped-def]
                 "condition": {
                     "id": condition_id_hex1,
                     "outcomeSlotCount": "2",
@@ -929,12 +899,12 @@ class TestUpdateRedeemInfo:
         ) as mock_ts:
             mock_ts.return_value = 3000000
 
-            def mock_set_block_number(trade):
+            def mock_set_block_number(trade):  # type: ignore[no-untyped-def]
                 """Mock _set_block_number."""
                 set_block_call_count[0] += 1
                 yield
 
-            behaviour._set_block_number = mock_set_block_number
+            behaviour._set_block_number = mock_set_block_number  # type: ignore[method-assign]
 
             # Both trades in the same chunk
             gen = behaviour.update_redeem_info([trade_data1, trade_data2])
@@ -949,7 +919,9 @@ class TestUpdateRedeemInfo:
         behaviour = _make_redeem_behaviour()
         behaviour._policy = _make_policy()
 
-        condition_id_hex = "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        condition_id_hex = (
+            "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
 
         trade_data1 = {
             "fpmm": {
@@ -968,7 +940,7 @@ class TestUpdateRedeemInfo:
                 },
                 "templateId": "2",
             },
-            "outcomeIndex": "0",
+            "outcomeIndex": "0",  # type: ignore[no-untyped-def]
             "outcomeTokenMarginalPrice": "0.5",
             "outcomeTokensTraded": "1000",
             "transactionHash": "0xtx1",
@@ -1003,11 +975,11 @@ class TestUpdateRedeemInfo:
         ) as mock_ts:
             mock_ts.return_value = 3000000
 
-            def mock_set_block_number(trade):
+            def mock_set_block_number(trade):  # type: ignore[no-untyped-def]
                 """Mock _set_block_number."""
                 yield
 
-            behaviour._set_block_number = mock_set_block_number
+            behaviour._set_block_number = mock_set_block_number  # type: ignore[method-assign]
 
             # Both duplicate trades in the same chunk
             gen = behaviour.update_redeem_info([trade_data1, trade_data2])
@@ -1024,10 +996,18 @@ class TestUpdateRedeemInfo:
         behaviour = _make_redeem_behaviour()
         behaviour._policy = _make_policy()
 
-        condition_id_hex1 = "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
-        condition_id_hex2 = "0xcc11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
-        question_id_hex1 = "0xbb11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
-        question_id_hex2 = "0xdd11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        condition_id_hex1 = (
+            "0xaa11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
+        condition_id_hex2 = (
+            "0xcc11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
+        question_id_hex1 = (
+            "0xbb11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
+        question_id_hex2 = (
+            "0xdd11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+        )
 
         # Create two distinct existing trades
         trade1 = Trade(
@@ -1036,7 +1016,7 @@ class TestUpdateRedeemInfo:
                 collateralToken="0xcollateral",
                 condition=Condition(id=HexBytes(condition_id_hex1), outcomeSlotCount=2),
                 creator="0xcreator",
-                creationTimestamp=1000000,
+                creationTimestamp=1000000,  # type: ignore[no-untyped-def]
                 currentAnswer="0x0000000000000000000000000000000000000000000000000000000000000000",
                 question=Question(id=bytes.fromhex(question_id_hex1[2:]), data="q1"),
                 templateId=2,
@@ -1098,11 +1078,11 @@ class TestUpdateRedeemInfo:
         ) as mock_ts:
             mock_ts.return_value = 3000000
 
-            def mock_set_block_number(trade):
+            def mock_set_block_number(trade):  # type: ignore[no-untyped-def]
                 """Mock _set_block_number."""
                 yield
 
-            behaviour._set_block_number = mock_set_block_number
+            behaviour._set_block_number = mock_set_block_number  # type: ignore[method-assign]
 
             gen = behaviour.update_redeem_info([trade_data3])
             _exhaust_gen(gen)
@@ -1111,11 +1091,6 @@ class TestUpdateRedeemInfo:
         assert len(behaviour.trades) == 2
         # Claimable amount for condition2 should increase by 300
         assert behaviour.claimable_amounts[HexBytes(condition_id_hex2)] == 800
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._store_progress / _load_progress
-# ---------------------------------------------------------------------------
 
 
 class TestStoreLoadProgress:
@@ -1144,7 +1119,7 @@ class TestStoreLoadProgress:
 
     def test_load_progress(self) -> None:
         """_load_progress should load from redeeming progress."""
-        behaviour = _make_redeem_behaviour()
+        behaviour = _make_redeem_behaviour()  # type: ignore[no-untyped-def]
         policy = _make_policy()
         progress = RedeemingProgress()
         progress.trades = {MagicMock()}
@@ -1164,11 +1139,6 @@ class TestStoreLoadProgress:
         assert behaviour._policy is policy
         assert behaviour.claimable_amounts == {HexBytes("0xbb"): 200}
         assert behaviour.earliest_block_number == 99
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._build_payload
-# ---------------------------------------------------------------------------
 
 
 class TestBuildPayload:
@@ -1211,11 +1181,6 @@ class TestBuildPayload:
         assert payload.tx_hash is None
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._filter_trades
-# ---------------------------------------------------------------------------
-
-
 class TestFilterTrades:
     """Tests for _filter_trades."""
 
@@ -1248,11 +1213,6 @@ class TestFilterTrades:
         assert len(behaviour.trades) == 1
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._get_redeem_info
-# ---------------------------------------------------------------------------
-
-
 class TestGetRedeemInfo:
     """Tests for _get_redeem_info."""
 
@@ -1260,11 +1220,11 @@ class TestGetRedeemInfo:
         """Should handle case with no fetched trades."""
         behaviour = _make_redeem_behaviour()
 
-        def mock_prepare_fetching():
+        def mock_prepare_fetching() -> bool:
             """Mock _prepare_fetching returning False."""
             return False
 
-        behaviour._prepare_fetching = mock_prepare_fetching
+        behaviour._prepare_fetching = mock_prepare_fetching  # type: ignore[method-assign]
 
         gen = behaviour._get_redeem_info()
         _exhaust_gen(gen)
@@ -1278,18 +1238,18 @@ class TestGetRedeemInfo:
 
         call_count = [0]
 
-        def mock_prepare_fetching():
+        def mock_prepare_fetching() -> bool:
             """Mock _prepare_fetching returning True once then False."""
             call_count[0] += 1
             return call_count[0] <= 1
 
-        def mock_fetch_redeem_info():
+        def mock_fetch_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _fetch_redeem_info returning None."""
             yield
             return None
 
-        behaviour._prepare_fetching = mock_prepare_fetching
-        behaviour._fetch_redeem_info = mock_fetch_redeem_info
+        behaviour._prepare_fetching = mock_prepare_fetching  # type: ignore[method-assign]
+        behaviour._fetch_redeem_info = mock_fetch_redeem_info  # type: ignore[method-assign]
 
         gen = behaviour._get_redeem_info()
         _exhaust_gen(gen)
@@ -1301,31 +1261,29 @@ class TestGetRedeemInfo:
 
         call_count = [0]
 
-        def mock_prepare_fetching():
+        def mock_prepare_fetching() -> bool:
             """Mock _prepare_fetching returning True once then False."""
             call_count[0] += 1
             return call_count[0] <= 1
 
-        def mock_fetch_redeem_info():
+        def mock_fetch_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _fetch_redeem_info returning a chunk."""
             yield
             return [{"data": "test"}]
 
-        def mock_update_redeem_info(chunk):
+        def mock_update_redeem_info(chunk):  # type: ignore[no-untyped-def]
             """Mock update_redeem_info."""
             yield
 
-        behaviour._prepare_fetching = mock_prepare_fetching
-        behaviour._fetch_redeem_info = mock_fetch_redeem_info
-        behaviour.update_redeem_info = mock_update_redeem_info
+        behaviour._prepare_fetching = mock_prepare_fetching  # type: ignore[method-assign]
+        behaviour._fetch_redeem_info = mock_fetch_redeem_info  # type: ignore[method-assign]
+        behaviour.update_redeem_info = mock_update_redeem_info  # type: ignore[method-assign]
 
         gen = behaviour._get_redeem_info()
         _exhaust_gen(gen)
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._conditional_tokens_interact
-# ---------------------------------------------------------------------------
+# type: ignore[no-untyped-def]
 
 
 class TestConditionalTokensInteract:
@@ -1335,32 +1293,27 @@ class TestConditionalTokensInteract:
         """Should call contract_interact with correct params."""
         behaviour = _make_redeem_behaviour()
 
-        def mock_contract_interact(**kwargs):
+        def mock_contract_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock contract_interact."""
             yield
             return True
 
-        behaviour.contract_interact = mock_contract_interact
+        behaviour.contract_interact = mock_contract_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.conditional_tokens_address = "0xcondtokens"
 
-        with patch.object(
+        with patch.object(  # type: ignore[no-untyped-def]
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
             mock_params.return_value = params
             gen = behaviour._conditional_tokens_interact(
-                contract_callable="test_call",
+                contract_callable="test_call",  # type: ignore[no-untyped-def]
                 data_key="data",
                 placeholder="test_placeholder",
             )
             result = _exhaust_gen(gen)
 
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._get_latest_block
-# ---------------------------------------------------------------------------
 
 
 class TestGetLatestBlock:
@@ -1372,17 +1325,17 @@ class TestGetLatestBlock:
         from packages.valory.protocols.ledger_api import LedgerApiMessage
 
         response = MagicMock()
-        response.performative = LedgerApiMessage.Performative.STATE
+        response.performative = LedgerApiMessage.Performative.STATE  # type: ignore[no-untyped-def]
         response.state.body = {"number": "12345"}
 
-        def mock_get_ledger_api_response(**kwargs):
+        def mock_get_ledger_api_response(**kwargs):  # type: ignore[no-untyped-def]
             """Mock get_ledger_api_response."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return response
 
-        behaviour.get_ledger_api_response = mock_get_ledger_api_response
+        behaviour.get_ledger_api_response = mock_get_ledger_api_response  # type: ignore[assignment, method-assign]
         params = MagicMock()
-        params.mech_chain_id = "gnosis"
+        params.mech_chain_id = "gnosis"  # type: ignore[no-untyped-def]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -1402,12 +1355,13 @@ class TestGetLatestBlock:
         response = MagicMock()
         response.performative = LedgerApiMessage.Performative.ERROR
 
-        def mock_get_ledger_api_response(**kwargs):
+        def mock_get_ledger_api_response(**kwargs):  # type: ignore[no-untyped-def]
             """Mock get_ledger_api_response."""
             yield
             return response
 
-        behaviour.get_ledger_api_response = mock_get_ledger_api_response
+        # type: ignore[no-untyped-def]
+        behaviour.get_ledger_api_response = mock_get_ledger_api_response  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.mech_chain_id = "gnosis"
 
@@ -1419,11 +1373,6 @@ class TestGetLatestBlock:
             result = _exhaust_gen(gen)
 
         assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._check_already_redeemed_via_events
-# ---------------------------------------------------------------------------
 
 
 class TestCheckAlreadyRedeemedViaEvents:
@@ -1451,21 +1400,21 @@ class TestCheckAlreadyRedeemedViaEvents:
         progress.event_filtering_batch_size = 1000
 
         mock_synced = MagicMock()
-        mock_synced.safe_contract_address = "0xsafe"
+        mock_synced.safe_contract_address = "0xsafe"  # type: ignore[no-untyped-def]
 
-        def mock_get_latest_block():
+        def mock_get_latest_block():  # type: ignore[no-untyped-def]
             """Mock _get_latest_block."""
             behaviour._latest_block_number = 200
             yield
             return True
 
-        def mock_conditional_tokens_interact(**kwargs):
+        def mock_conditional_tokens_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _conditional_tokens_interact."""
             behaviour._payouts = {"tx1": 100}
             yield
             return True
 
-        behaviour.wait_for_condition_with_sleep = lambda gen_fn: gen_fn()
+        behaviour.wait_for_condition_with_sleep = lambda gen_fn: gen_fn()  # type: ignore[assignment, method-assign, misc]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -1478,13 +1427,13 @@ class TestCheckAlreadyRedeemedViaEvents:
             mock_sd.return_value = mock_synced
             params = MagicMock()
             params.contract_timeout = 30
-            params.max_filtering_retries = 3
+            params.max_filtering_retries = 3  # type: ignore[no-untyped-def]
             params.reduce_factor = 0.5
             params.minimum_batch_size = 10
             mock_params.return_value = params
 
-            behaviour._get_latest_block = mock_get_latest_block
-            behaviour._conditional_tokens_interact = mock_conditional_tokens_interact
+            behaviour._get_latest_block = mock_get_latest_block  # type: ignore[method-assign]
+            behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[assignment, method-assign]
 
             gen = behaviour._check_already_redeemed_via_events()
             result = _exhaust_gen(gen)
@@ -1508,7 +1457,7 @@ class TestCheckAlreadyRedeemedViaEvents:
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xsafe"
 
-        def mock_conditional_tokens_interact(**kwargs):
+        def mock_conditional_tokens_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _conditional_tokens_interact returning failure."""
             yield
             return False
@@ -1529,13 +1478,14 @@ class TestCheckAlreadyRedeemedViaEvents:
             params.minimum_batch_size = 10
             mock_params.return_value = params
 
-            behaviour._conditional_tokens_interact = mock_conditional_tokens_interact
+            behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[assignment, method-assign, no-untyped-def]
 
             gen = behaviour._check_already_redeemed_via_events()
             result = _exhaust_gen(gen)
 
         assert result is False
 
+    # type: ignore[no-untyped-def]
     def test_check_already_redeemed_retry_with_reduced_batch(self) -> None:
         """Should retry with reduced batch size and then succeed."""
         behaviour = _make_redeem_behaviour()
@@ -1554,7 +1504,7 @@ class TestCheckAlreadyRedeemedViaEvents:
 
         call_count = [0]
 
-        def mock_conditional_tokens_interact(**kwargs):
+        def mock_conditional_tokens_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock interact: fail first, succeed second."""
             call_count[0] += 1
             if call_count[0] == 1:
@@ -1580,17 +1530,12 @@ class TestCheckAlreadyRedeemedViaEvents:
             params.minimum_batch_size = 10
             mock_params.return_value = params
 
-            behaviour._conditional_tokens_interact = mock_conditional_tokens_interact
+            behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[assignment, method-assign]
 
             gen = behaviour._check_already_redeemed_via_events()
             result = _exhaust_gen(gen)
-
+        # type: ignore[no-untyped-def]
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._check_already_redeemed_via_subgraph
-# ---------------------------------------------------------------------------
 
 
 class TestCheckAlreadyRedeemedViaSubgraph:
@@ -1604,18 +1549,18 @@ class TestCheckAlreadyRedeemedViaSubgraph:
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xSafe"
 
-        def mock_fetch_trades(safe, from_ts, to_ts):
+        def mock_fetch_trades(safe, from_ts, to_ts):  # type: ignore[no-untyped-def]
             """Mock fetch_trades."""
             yield
             return [{"trade1": "data"}]
 
-        def mock_fetch_user_positions(safe):
+        def mock_fetch_user_positions(safe):  # type: ignore[no-untyped-def]
             """Mock fetch_user_positions."""
             yield
             return [{"position1": "data"}]
 
-        behaviour.fetch_trades = mock_fetch_trades
-        behaviour.fetch_user_positions = mock_fetch_user_positions
+        behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = mock_fetch_user_positions  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -1635,7 +1580,7 @@ class TestCheckAlreadyRedeemedViaSubgraph:
             result = _exhaust_gen(gen)
 
         assert result is True
-        assert progress.payouts == {"cond1": 100}
+        assert progress.payouts == {"cond1": 100}  # type: ignore[no-untyped-def]
         assert progress.unredeemed_trades == {"cond2": 50}
 
     def test_fetch_trades_failure(self) -> None:
@@ -1645,12 +1590,12 @@ class TestCheckAlreadyRedeemedViaSubgraph:
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xSafe"
 
-        def mock_fetch_trades(safe, from_ts, to_ts):
+        def mock_fetch_trades(safe, from_ts, to_ts):  # type: ignore[no-untyped-def]
             """Mock fetch_trades returning None."""
             yield
             return None
 
-        behaviour.fetch_trades = mock_fetch_trades
+        behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -1669,33 +1614,28 @@ class TestCheckAlreadyRedeemedViaSubgraph:
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xSafe"
 
-        def mock_fetch_trades(safe, from_ts, to_ts):
+        def mock_fetch_trades(safe, from_ts, to_ts):  # type: ignore[no-untyped-def]
             """Mock fetch_trades."""
             yield
             return [{"trade1": "data"}]
 
-        def mock_fetch_user_positions(safe):
+        def mock_fetch_user_positions(safe):  # type: ignore[no-untyped-def]
             """Mock fetch_user_positions returning None."""
             yield
             return None
 
-        behaviour.fetch_trades = mock_fetch_trades
-        behaviour.fetch_user_positions = mock_fetch_user_positions
+        behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = mock_fetch_user_positions  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
-            mock_sd.return_value = mock_synced
+            mock_sd.return_value = mock_synced  # type: ignore[no-untyped-def]
 
             gen = behaviour._check_already_redeemed_via_subgraph()
             result = _exhaust_gen(gen)
 
-        assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._check_already_redeemed
-# ---------------------------------------------------------------------------
+        assert result is False  # type: ignore[no-untyped-def]
 
 
 class TestCheckAlreadyRedeemed:
@@ -1712,12 +1652,12 @@ class TestCheckAlreadyRedeemed:
         ) as mock_params:
             mock_params.return_value = params
 
-            def mock_subgraph():
+            def mock_subgraph():  # type: ignore[no-untyped-def]
                 """Mock subgraph method."""
                 yield
                 return True
 
-            behaviour._check_already_redeemed_via_subgraph = mock_subgraph
+            behaviour._check_already_redeemed_via_subgraph = mock_subgraph  # type: ignore[method-assign]
             gen = behaviour._check_already_redeemed()
             result = _exhaust_gen(gen)
 
@@ -1731,24 +1671,19 @@ class TestCheckAlreadyRedeemed:
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        ) as mock_params:  # type: ignore[no-untyped-def]
             mock_params.return_value = params
 
-            def mock_events():
+            def mock_events():  # type: ignore[no-untyped-def]
                 """Mock events method."""
                 yield
                 return True
 
-            behaviour._check_already_redeemed_via_events = mock_events
+            behaviour._check_already_redeemed_via_events = mock_events  # type: ignore[method-assign]
             gen = behaviour._check_already_redeemed()
             result = _exhaust_gen(gen)
 
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._clean_redeem_info
-# ---------------------------------------------------------------------------
 
 
 class TestCleanRedeemInfo:
@@ -1760,20 +1695,20 @@ class TestCleanRedeemInfo:
         behaviour.payout_so_far = 100
         behaviour.redeemed_condition_ids = set()
 
-        progress = RedeemingProgress()
+        progress = RedeemingProgress()  # type: ignore[no-untyped-def]
         progress.payouts = {"cond1": 0, "cond2": 200}
 
-        def mock_check_redeemed():
+        def mock_check_redeemed():  # type: ignore[no-untyped-def]
             """Mock _check_already_redeemed."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        def mock_filter_trades():
+        def mock_filter_trades() -> None:
             """Mock _filter_trades."""
             pass
 
-        behaviour._check_already_redeemed = mock_check_redeemed
-        behaviour._filter_trades = mock_filter_trades
+        behaviour._check_already_redeemed = mock_check_redeemed  # type: ignore[method-assign]
+        behaviour._filter_trades = mock_filter_trades  # type: ignore[method-assign]
 
         params = MagicMock()
         params.use_subgraph_for_redeeming = False
@@ -1802,13 +1737,13 @@ class TestCleanRedeemInfo:
         progress = RedeemingProgress()
         progress.payouts = {"cond1": 0, "cond2": 300}
 
-        def mock_check_redeemed():
-            """Mock _check_already_redeemed."""
+        def mock_check_redeemed():  # type: ignore[no-untyped-def]
+            """Mock _check_already_redeemed."""  # type: ignore[no-untyped-def]
             yield
             return True
 
-        behaviour._check_already_redeemed = mock_check_redeemed
-        behaviour._filter_trades = lambda: None
+        behaviour._check_already_redeemed = mock_check_redeemed  # type: ignore[method-assign]
+        behaviour._filter_trades = lambda: None  # type: ignore[method-assign]
 
         params = MagicMock()
         params.use_subgraph_for_redeeming = True
@@ -1825,7 +1760,7 @@ class TestCleanRedeemInfo:
             result = _exhaust_gen(gen)
 
         assert result is True
-        assert behaviour.payout_so_far == 300
+        assert behaviour.payout_so_far == 300  # type: ignore[no-untyped-def]
 
     def test_clean_check_redeemed_failure(self) -> None:
         """Should return False if _check_already_redeemed fails."""
@@ -1835,12 +1770,12 @@ class TestCleanRedeemInfo:
         progress = RedeemingProgress()
         progress.payouts = {}
 
-        def mock_check_redeemed():
+        def mock_check_redeemed():  # type: ignore[no-untyped-def]
             """Mock _check_already_redeemed returning failure."""
             yield
             return False
 
-        behaviour._check_already_redeemed = mock_check_redeemed
+        behaviour._check_already_redeemed = mock_check_redeemed  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -1854,19 +1789,19 @@ class TestCleanRedeemInfo:
 
     def test_clean_no_payouts(self) -> None:
         """Should return True and not change payout when no payouts."""
-        behaviour = _make_redeem_behaviour()
+        behaviour = _make_redeem_behaviour()  # type: ignore[no-untyped-def]
         behaviour.payout_so_far = 0
         behaviour.redeemed_condition_ids = set()
 
         progress = RedeemingProgress()
-        progress.payouts = {}
+        progress.payouts = {}  # type: ignore[no-untyped-def]
 
-        def mock_check_redeemed():
+        def mock_check_redeemed():  # type: ignore[no-untyped-def]
             """Mock _check_already_redeemed."""
             yield
             return True
 
-        behaviour._check_already_redeemed = mock_check_redeemed
+        behaviour._check_already_redeemed = mock_check_redeemed  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -1880,11 +1815,6 @@ class TestCleanRedeemInfo:
         assert behaviour.payout_so_far == 0
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._realitio_interact
-# ---------------------------------------------------------------------------
-
-
 class TestRealitioInteract:
     """Tests for _realitio_interact."""
 
@@ -1892,13 +1822,13 @@ class TestRealitioInteract:
         """Should call contract_interact with correct params."""
         behaviour = _make_redeem_behaviour()
 
-        def mock_contract_interact(**kwargs):
+        def mock_contract_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock contract_interact."""
             yield
             return True
 
-        behaviour.contract_interact = mock_contract_interact
-        params = MagicMock()
+        behaviour.contract_interact = mock_contract_interact  # type: ignore[assignment, method-assign]
+        params = MagicMock()  # type: ignore[no-untyped-def]
         params.realitio_address = "0xrealitio"
 
         with patch.object(
@@ -1915,11 +1845,6 @@ class TestRealitioInteract:
         assert result is True
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._get_history_hash
-# ---------------------------------------------------------------------------
-
-
 class TestGetHistoryHash:
     """Tests for _get_history_hash."""
 
@@ -1929,22 +1854,17 @@ class TestGetHistoryHash:
         trade = _make_trade()
         behaviour._current_redeem_info = trade
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _realitio_interact."""
             yield
             return True
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
 
-        gen = behaviour._get_history_hash()
+        gen = behaviour._get_history_hash()  # type: ignore[no-untyped-def]
         result = _exhaust_gen(gen)
 
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._check_already_resolved
-# ---------------------------------------------------------------------------
 
 
 class TestCheckAlreadyResolved:
@@ -1956,12 +1876,12 @@ class TestCheckAlreadyResolved:
         trade = _make_trade()
         behaviour._current_redeem_info = trade
 
-        def mock_ct_interact(**kwargs):
+        def mock_ct_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _conditional_tokens_interact."""
             yield
             return True
 
-        behaviour._conditional_tokens_interact = mock_ct_interact
+        behaviour._conditional_tokens_interact = mock_ct_interact  # type: ignore[assignment, method-assign]
 
         gen = behaviour._check_already_resolved()
         result = _exhaust_gen(gen)
@@ -1969,9 +1889,7 @@ class TestCheckAlreadyResolved:
         assert result is True
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._build_resolve_data
-# ---------------------------------------------------------------------------
+# type: ignore[no-untyped-def]
 
 
 class TestBuildResolveData:
@@ -1984,13 +1902,13 @@ class TestBuildResolveData:
         behaviour._current_redeem_info = trade
         behaviour._built_data = HexBytes("0xdeadbeef")
 
-        def mock_contract_interact(**kwargs):
+        def mock_contract_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock contract_interact."""
             behaviour._built_data = HexBytes("0xdeadbeef")
             yield
             return True
 
-        behaviour.contract_interact = mock_contract_interact
+        behaviour.contract_interact = mock_contract_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.realitio_proxy_address = "0xproxy"
 
@@ -2003,7 +1921,7 @@ class TestBuildResolveData:
 
         assert result is True
         assert len(behaviour.multisend_batches) == 1
-        assert behaviour.multisend_batches[0].to == "0xproxy"
+        assert behaviour.multisend_batches[0].to == "0xproxy"  # type: ignore[no-untyped-def]
 
     def test_build_resolve_data_failure(self) -> None:
         """Should return False when contract_interact fails."""
@@ -2011,12 +1929,12 @@ class TestBuildResolveData:
         trade = _make_trade()
         behaviour._current_redeem_info = trade
 
-        def mock_contract_interact(**kwargs):
+        def mock_contract_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock contract_interact returning failure."""
             yield
             return False
 
-        behaviour.contract_interact = mock_contract_interact
+        behaviour.contract_interact = mock_contract_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.realitio_proxy_address = "0xproxy"
 
@@ -2031,11 +1949,6 @@ class TestBuildResolveData:
         assert len(behaviour.multisend_batches) == 0
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._simulate_claiming
-# ---------------------------------------------------------------------------
-
-
 class TestSimulateClaiming:
     """Tests for _simulate_claiming."""
 
@@ -2045,36 +1958,40 @@ class TestSimulateClaiming:
         trade = _make_trade()
         behaviour._current_redeem_info = trade
 
-        progress = RedeemingProgress()
-        progress.answered = [{"args": {"history_hash": b"\x00", "user": "0xuser", "bond": 1, "answer": b"\x00"}}]
+        progress = RedeemingProgress()  # type: ignore[no-untyped-def]
+        progress.answered = [
+            {
+                "args": {
+                    "history_hash": b"\x00",
+                    "user": "0xuser",
+                    "bond": 1,
+                    "answer": b"\x00",
+                }
+            }
+        ]
 
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xsafe"
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _realitio_interact."""
             yield
             return True
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
         ) as mock_rp, patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
-            mock_rp.return_value = progress
+            mock_rp.return_value = progress  # type: ignore[no-untyped-def]
             mock_sd.return_value = mock_synced
 
             gen = behaviour._simulate_claiming()
             result = _exhaust_gen(gen)
 
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._build_claim_data
-# ---------------------------------------------------------------------------
 
 
 class TestBuildClaimData:
@@ -2088,15 +2005,24 @@ class TestBuildClaimData:
         behaviour._built_data = HexBytes("0xdeadbeef")
 
         progress = RedeemingProgress()
-        progress.answered = [{"args": {"history_hash": b"\x00", "user": "0xuser", "bond": 1, "answer": b"\x00"}}]
+        progress.answered = [
+            {
+                "args": {
+                    "history_hash": b"\x00",
+                    "user": "0xuser",
+                    "bond": 1,
+                    "answer": b"\x00",
+                }
+            }  # type: ignore[no-untyped-def]
+        ]
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _realitio_interact."""
             behaviour._built_data = HexBytes("0xdeadbeef")
             yield
             return True
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.realitio_address = "0xrealitio"
 
@@ -2115,6 +2041,7 @@ class TestBuildClaimData:
         assert len(behaviour.multisend_batches) == 1
         assert behaviour.multisend_batches[0].to == "0xrealitio"
 
+    # type: ignore[no-untyped-def]
     def test_build_claim_data_no_claim_params(self) -> None:
         """Should return False when claim params are None."""
         behaviour = _make_redeem_behaviour()
@@ -2142,29 +2069,33 @@ class TestBuildClaimData:
         behaviour._current_redeem_info = trade
 
         progress = RedeemingProgress()
-        progress.answered = [{"args": {"history_hash": b"\x00", "user": "0xuser", "bond": 1, "answer": b"\x00"}}]
+        progress.answered = [
+            {
+                "args": {
+                    "history_hash": b"\x00",
+                    "user": "0xuser",
+                    "bond": 1,
+                    "answer": b"\x00",
+                }
+            }
+        ]
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _realitio_interact returning failure."""
             yield
             return False
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
         ) as mock_rp:
-            mock_rp.return_value = progress
+            mock_rp.return_value = progress  # type: ignore[no-untyped-def]
 
             gen = behaviour._build_claim_data()
             result = _exhaust_gen(gen)
 
         assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour.get_claim_params
-# ---------------------------------------------------------------------------
 
 
 class TestGetClaimParams:
@@ -2176,12 +2107,12 @@ class TestGetClaimParams:
         params = MagicMock()
         params.use_subgraph_for_redeeming = True
 
-        def mock_get_claim_params_via_subgraph():
+        def mock_get_claim_params_via_subgraph():  # type: ignore[no-untyped-def]
             """Mock subgraph claim params."""
             yield
             return True
 
-        behaviour._get_claim_params_via_subgraph = mock_get_claim_params_via_subgraph
+        behaviour._get_claim_params_via_subgraph = mock_get_claim_params_via_subgraph  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -2198,26 +2129,21 @@ class TestGetClaimParams:
         params = MagicMock()
         params.use_subgraph_for_redeeming = False
 
-        def mock_get_claim_params_via_events():
+        def mock_get_claim_params_via_events():  # type: ignore[no-untyped-def]
             """Mock events claim params."""
             yield
             return True
 
-        behaviour._get_claim_params_via_events = mock_get_claim_params_via_events
+        behaviour._get_claim_params_via_events = mock_get_claim_params_via_events  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        ) as mock_params:  # type: ignore[no-untyped-def]
             mock_params.return_value = params
             gen = behaviour.get_claim_params()
             result = _exhaust_gen(gen)
 
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._get_claim_params_via_events
-# ---------------------------------------------------------------------------
 
 
 class TestGetClaimParamsViaEvents:
@@ -2235,13 +2161,13 @@ class TestGetClaimParamsViaEvents:
         progress.event_filtering_batch_size = 1000
         behaviour.earliest_block_number = 100
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _realitio_interact."""
             behaviour._claim_params_batch = [{"args": {"data": "test"}}]
             yield
             return True
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.contract_timeout = 30
         params.max_filtering_retries = 3
@@ -2273,12 +2199,12 @@ class TestGetClaimParamsViaEvents:
         progress.claim_to_block = 200
         progress.event_filtering_batch_size = 1000
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _realitio_interact returning failure."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.contract_timeout = 30
         params.max_filtering_retries = 0
@@ -2307,11 +2233,11 @@ class TestGetClaimParamsViaEvents:
         progress.claim_started = True
         progress.claim_from_block = 100
         progress.claim_to_block = 200
-        progress.event_filtering_batch_size = 1000
+        progress.event_filtering_batch_size = 1000  # type: ignore[no-untyped-def]
 
         call_count = [0]
 
-        def mock_realitio_interact(**kwargs):
+        def mock_realitio_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock interact: fail first, succeed second."""
             call_count[0] += 1
             if call_count[0] == 1:
@@ -2321,7 +2247,7 @@ class TestGetClaimParamsViaEvents:
             yield
             return True
 
-        behaviour._realitio_interact = mock_realitio_interact
+        behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
         params = MagicMock()
         params.contract_timeout = 30
         params.max_filtering_retries = 3
@@ -2329,7 +2255,7 @@ class TestGetClaimParamsViaEvents:
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
+        ) as mock_rp, patch.object(  # type: ignore[no-untyped-def]
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
             mock_rp.return_value = progress
@@ -2339,11 +2265,6 @@ class TestGetClaimParamsViaEvents:
             result = _exhaust_gen(gen)
 
         assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._get_claim_params_via_subgraph
-# ---------------------------------------------------------------------------
 
 
 class TestGetClaimParamsViaSubgraph:
@@ -2357,12 +2278,12 @@ class TestGetClaimParamsViaSubgraph:
 
         progress = RedeemingProgress()
 
-        def mock_fetch_claim_params(question_id):
+        def mock_fetch_claim_params(question_id):  # type: ignore[no-untyped-def]
             """Mock fetch_claim_params."""
             yield
             return [{"args": {"data": "test"}}]
 
-        behaviour.fetch_claim_params = mock_fetch_claim_params
+        behaviour.fetch_claim_params = mock_fetch_claim_params  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -2371,7 +2292,7 @@ class TestGetClaimParamsViaSubgraph:
 
             gen = behaviour._get_claim_params_via_subgraph()
             result = _exhaust_gen(gen)
-
+        # type: ignore[no-untyped-def]
         assert result is True
 
     def test_failure(self) -> None:
@@ -2380,22 +2301,17 @@ class TestGetClaimParamsViaSubgraph:
         trade = _make_trade()
         behaviour._current_redeem_info = trade
 
-        def mock_fetch_claim_params(question_id):
+        def mock_fetch_claim_params(question_id):  # type: ignore[no-untyped-def]
             """Mock fetch_claim_params returning None/falsy."""
             yield
             return None
 
-        behaviour.fetch_claim_params = mock_fetch_claim_params
+        behaviour.fetch_claim_params = mock_fetch_claim_params  # type: ignore[method-assign]
 
         gen = behaviour._get_claim_params_via_subgraph()
         result = _exhaust_gen(gen)
 
         assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._build_redeem_data
-# ---------------------------------------------------------------------------
 
 
 class TestBuildRedeemData:
@@ -2408,13 +2324,13 @@ class TestBuildRedeemData:
         behaviour._current_redeem_info = trade
         behaviour._built_data = HexBytes("0xdeadbeef")
 
-        def mock_ct_interact(**kwargs):
+        def mock_ct_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _conditional_tokens_interact."""
             behaviour._built_data = HexBytes("0xdeadbeef")
             yield
             return True
 
-        behaviour._conditional_tokens_interact = mock_ct_interact
+        behaviour._conditional_tokens_interact = mock_ct_interact  # type: ignore[assignment, method-assign, no-untyped-def]
         params = MagicMock()
         params.conditional_tokens_address = "0xcondtokens"
 
@@ -2436,12 +2352,12 @@ class TestBuildRedeemData:
         trade = _make_trade()
         behaviour._current_redeem_info = trade
 
-        def mock_ct_interact(**kwargs):
+        def mock_ct_interact(**kwargs):  # type: ignore[no-untyped-def]
             """Mock _conditional_tokens_interact returning failure."""
             yield
             return False
 
-        behaviour._conditional_tokens_interact = mock_ct_interact
+        behaviour._conditional_tokens_interact = mock_ct_interact  # type: ignore[assignment, method-assign]
 
         gen = behaviour._build_redeem_data()
         result = _exhaust_gen(gen)
@@ -2450,14 +2366,10 @@ class TestBuildRedeemData:
         assert len(behaviour.multisend_batches) == 0
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._prepare_single_redeem
-# ---------------------------------------------------------------------------
-
-
 class TestPrepareSingleRedeem:
     """Tests for _prepare_single_redeem."""
 
+    # type: ignore[no-untyped-def]
     def test_prepare_single_redeem_not_resolved_with_history(self) -> None:
         """Should build resolve, claim, and redeem when not resolved and history exists."""
         behaviour = _make_redeem_behaviour()
@@ -2471,63 +2383,63 @@ class TestPrepareSingleRedeem:
 
         steps_called = []
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        def mock_check_resolved():
+        def mock_check_resolved():  # type: ignore[no-untyped-def]
             """Mock _check_already_resolved."""
             behaviour._already_resolved = False
             yield
             return True
 
-        def mock_get_history_hash():
+        def mock_get_history_hash():  # type: ignore[no-untyped-def]
             """Mock _get_history_hash."""
             behaviour._history_hash = b"\x01" * 32
             yield
             return True
 
-        def mock_get_claim_params():
+        def mock_get_claim_params():  # type: ignore[no-untyped-def]
             """Mock get_claim_params."""
             steps_called.append("claim_params")
             yield
             return True
 
-        def mock_simulate_claiming():
+        def mock_simulate_claiming():  # type: ignore[no-untyped-def]
             """Mock _simulate_claiming."""
             behaviour._claim_winnings_simulation_ok = True
             steps_called.append("simulate")
             yield
             return True
 
-        def mock_build_resolve():
-            """Mock _build_resolve_data."""
+        def mock_build_resolve():  # type: ignore[no-untyped-def]
+            """Mock _build_resolve_data."""  # type: ignore[no-untyped-def]
             steps_called.append("resolve")
             yield
             return True
 
-        def mock_build_claim():
+        def mock_build_claim():  # type: ignore[no-untyped-def]
             """Mock _build_claim_data."""
             steps_called.append("claim")
             yield
             return True
 
-        def mock_build_redeem():
+        def mock_build_redeem():  # type: ignore[no-untyped-def]
             """Mock _build_redeem_data."""
             steps_called.append("redeem")
             yield
             return True
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour._check_already_resolved = mock_check_resolved
-        behaviour._get_history_hash = mock_get_history_hash
-        behaviour.get_claim_params = mock_get_claim_params
-        behaviour._simulate_claiming = mock_simulate_claiming
-        behaviour._build_resolve_data = mock_build_resolve
-        behaviour._build_claim_data = mock_build_claim
-        behaviour._build_redeem_data = mock_build_redeem
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
+        behaviour._check_already_resolved = mock_check_resolved  # type: ignore[method-assign]
+        behaviour._get_history_hash = mock_get_history_hash  # type: ignore[method-assign]
+        behaviour.get_claim_params = mock_get_claim_params  # type: ignore[method-assign]
+        behaviour._simulate_claiming = mock_simulate_claiming  # type: ignore[method-assign]
+        behaviour._build_resolve_data = mock_build_resolve  # type: ignore[method-assign]
+        behaviour._build_claim_data = mock_build_claim  # type: ignore[method-assign, no-untyped-def]
+        behaviour._build_redeem_data = mock_build_redeem  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -2549,33 +2461,34 @@ class TestPrepareSingleRedeem:
 
         steps_called = []
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        def mock_check_resolved():
+        # type: ignore[no-untyped-def]
+        def mock_check_resolved():  # type: ignore[no-untyped-def]
             """Mock _check_already_resolved."""
             behaviour._already_resolved = True
             yield
             return True
 
-        def mock_get_history_hash():
+        def mock_get_history_hash():  # type: ignore[no-untyped-def]
             """Mock _get_history_hash."""
             yield
             return True
 
-        def mock_build_redeem():
+        def mock_build_redeem():  # type: ignore[no-untyped-def]
             """Mock _build_redeem_data."""
             steps_called.append("redeem")
             yield
             return True
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour._check_already_resolved = mock_check_resolved
-        behaviour._get_history_hash = mock_get_history_hash
-        behaviour._build_redeem_data = mock_build_redeem
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
+        behaviour._check_already_resolved = mock_check_resolved  # type: ignore[method-assign]
+        behaviour._get_history_hash = mock_get_history_hash  # type: ignore[method-assign]
+        behaviour._build_redeem_data = mock_build_redeem  # type: ignore[method-assign]
 
         gen = behaviour._prepare_single_redeem()
         result = _exhaust_gen(gen)
@@ -2583,6 +2496,7 @@ class TestPrepareSingleRedeem:
         assert result is True
         assert "redeem" in steps_called
 
+    # type: ignore[no-untyped-def]
     def test_prepare_single_redeem_get_claim_params_fails(self) -> None:
         """Should return False when get_claim_params fails."""
         behaviour = _make_redeem_behaviour()
@@ -2592,82 +2506,82 @@ class TestPrepareSingleRedeem:
         progress = RedeemingProgress()
         progress.claim_started = False
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        def mock_check_resolved():
+        def mock_check_resolved():  # type: ignore[no-untyped-def]
             """Mock _check_already_resolved."""
             yield
             return True
 
-        def mock_get_history_hash():
+        def mock_get_history_hash():  # type: ignore[no-untyped-def]
             """Mock _get_history_hash."""
             yield
             return True
 
-        def mock_get_claim_params():
+        def mock_get_claim_params():  # type: ignore[no-untyped-def]
             """Mock get_claim_params returning failure."""
             yield
             return False
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour._check_already_resolved = mock_check_resolved
-        behaviour._get_history_hash = mock_get_history_hash
-        behaviour.get_claim_params = mock_get_claim_params
-
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
+        behaviour._check_already_resolved = mock_check_resolved  # type: ignore[method-assign]
+        behaviour._get_history_hash = mock_get_history_hash  # type: ignore[method-assign]
+        behaviour.get_claim_params = mock_get_claim_params  # type: ignore[method-assign]
+        # type: ignore[no-untyped-def]
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
         ) as mock_rp:
             mock_rp.return_value = progress
 
-            gen = behaviour._prepare_single_redeem()
+            gen = behaviour._prepare_single_redeem()  # type: ignore[no-untyped-def]
             result = _exhaust_gen(gen)
 
         assert result is False
 
     def test_prepare_single_redeem_simulate_claiming_fails(self) -> None:
-        """Should return False when _simulate_claiming fails."""
+        """Should return False when _simulate_claiming fails."""  # type: ignore[no-untyped-def]
         behaviour = _make_redeem_behaviour()
         behaviour._already_resolved = True
         behaviour._history_hash = b"\x01" * 32
 
         progress = RedeemingProgress()
-        progress.claim_started = False
+        progress.claim_started = False  # type: ignore[no-untyped-def]
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        def mock_check_resolved():
+        def mock_check_resolved():  # type: ignore[no-untyped-def]
             """Mock _check_already_resolved."""
             yield
             return True
 
-        def mock_get_history_hash():
+        def mock_get_history_hash():  # type: ignore[no-untyped-def]
             """Mock _get_history_hash."""
             yield
             return True
 
-        def mock_get_claim_params():
-            """Mock get_claim_params."""
+        def mock_get_claim_params():  # type: ignore[no-untyped-def]
+            """Mock get_claim_params."""  # type: ignore[no-untyped-def]
             yield
             return True
 
-        def mock_simulate_claiming():
+        def mock_simulate_claiming():  # type: ignore[no-untyped-def]
             """Mock _simulate_claiming returning failure."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour._check_already_resolved = mock_check_resolved
-        behaviour._get_history_hash = mock_get_history_hash
-        behaviour.get_claim_params = mock_get_claim_params
-        behaviour._simulate_claiming = mock_simulate_claiming
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
+        behaviour._check_already_resolved = mock_check_resolved  # type: ignore[method-assign]
+        behaviour._get_history_hash = mock_get_history_hash  # type: ignore[method-assign]
+        behaviour.get_claim_params = mock_get_claim_params  # type: ignore[method-assign]
+        behaviour._simulate_claiming = mock_simulate_claiming  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -2695,32 +2609,32 @@ class TestPrepareSingleRedeem:
 
         steps_called = []
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        def mock_check_resolved():
+        def mock_check_resolved():  # type: ignore[no-untyped-def]
             """Mock _check_already_resolved."""
             yield
             return True
 
-        def mock_get_history_hash():
-            """Mock _get_history_hash."""
+        def mock_get_history_hash():  # type: ignore[no-untyped-def]
+            """Mock _get_history_hash."""  # type: ignore[no-untyped-def]
             yield
             return True
 
-        def mock_build_redeem():
-            """Mock _build_redeem_data."""
+        def mock_build_redeem():  # type: ignore[no-untyped-def]
+            """Mock _build_redeem_data."""  # type: ignore[no-untyped-def]
             steps_called.append("redeem")
             yield
             return True
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour._check_already_resolved = mock_check_resolved
-        behaviour._get_history_hash = mock_get_history_hash
-        behaviour._build_redeem_data = mock_build_redeem
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
+        behaviour._check_already_resolved = mock_check_resolved  # type: ignore[method-assign]
+        behaviour._get_history_hash = mock_get_history_hash  # type: ignore[method-assign]
+        behaviour._build_redeem_data = mock_build_redeem  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -2734,32 +2648,27 @@ class TestPrepareSingleRedeem:
         assert "redeem" in steps_called
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._process_candidate
-# ---------------------------------------------------------------------------
-
-
 class TestProcessCandidate:
     """Tests for _process_candidate."""
 
     def test_dust_position_skipped(self) -> None:
-        """Should return False for dust positions."""
+        """Should return False for dust positions."""  # type: ignore[no-untyped-def]
         behaviour = _make_redeem_behaviour()
         trade = _make_trade()
         cid = trade.fpmm.condition.id
         behaviour.claimable_amounts = {cid: 1}
 
-        params = MagicMock()
+        params = MagicMock()  # type: ignore[no-untyped-def]
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = False
 
         with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
+            type(behaviour), "params", new_callable=PropertyMock  # type: ignore[no-untyped-def]
         ) as mock_params:
             mock_params.return_value = params
 
             gen = behaviour._process_candidate(trade)
-            result = _exhaust_gen(gen)
+            result = _exhaust_gen(gen)  # type: ignore[no-untyped-def]
 
         assert result is False
 
@@ -2774,12 +2683,12 @@ class TestProcessCandidate:
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = False
 
-        def mock_prepare_single_redeem():
+        def mock_prepare_single_redeem():  # type: ignore[no-untyped-def]
             """Mock _prepare_single_redeem."""
             yield
             return True
 
-        behaviour._prepare_single_redeem = mock_prepare_single_redeem
+        behaviour._prepare_single_redeem = mock_prepare_single_redeem  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -2788,28 +2697,28 @@ class TestProcessCandidate:
 
             gen = behaviour._process_candidate(trade)
             result = _exhaust_gen(gen)
-
+        # type: ignore[no-untyped-def]
         assert result is True
         assert behaviour._expected_winnings == 1000
 
     def test_prepare_single_redeem_failure(self) -> None:
         """Should return False when _prepare_single_redeem fails."""
-        behaviour = _make_redeem_behaviour()
+        behaviour = _make_redeem_behaviour()  # type: ignore[no-untyped-def]
         trade = _make_trade()
         cid = trade.fpmm.condition.id
         behaviour.claimable_amounts = {cid: 1000}
 
-        params = MagicMock()
+        params = MagicMock()  # type: ignore[no-untyped-def]
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = False
 
-        def mock_prepare_single_redeem():
-            """Mock _prepare_single_redeem returning failure."""
+        def mock_prepare_single_redeem():  # type: ignore[no-untyped-def]
+            """Mock _prepare_single_redeem returning failure."""  # type: ignore[no-untyped-def]
             yield
             return False
 
-        behaviour._prepare_single_redeem = mock_prepare_single_redeem
-
+        behaviour._prepare_single_redeem = mock_prepare_single_redeem  # type: ignore[method-assign]
+        # type: ignore[no-untyped-def]
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
@@ -2847,22 +2756,23 @@ class TestProcessCandidate:
 
         assert result is False
 
+    # type: ignore[no-untyped-def]
     def test_subgraph_condition_zero_amount(self) -> None:
         """Should return False when using subgraph and condition has 0 unredeemed."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade()
         cid = trade.fpmm.condition.id
-        behaviour.claimable_amounts = {cid: 1000}
+        behaviour.claimable_amounts = {cid: 1000}  # type: ignore[no-untyped-def]
         condition_id_hex = cid.to_0x_hex().lower()
 
         progress = RedeemingProgress()
         progress.unredeemed_trades = {condition_id_hex: 0}
-
+        # type: ignore[no-untyped-def]
         params = MagicMock()
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = True
 
-        with patch.object(
+        with patch.object(  # type: ignore[no-untyped-def]
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params, patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -2890,12 +2800,12 @@ class TestProcessCandidate:
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = True
 
-        def mock_prepare_single_redeem():
+        def mock_prepare_single_redeem():  # type: ignore[no-untyped-def]
             """Mock _prepare_single_redeem."""
             yield
             return True
 
-        behaviour._prepare_single_redeem = mock_prepare_single_redeem
+        behaviour._prepare_single_redeem = mock_prepare_single_redeem  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -2912,11 +2822,6 @@ class TestProcessCandidate:
         assert behaviour._expected_winnings == 1000
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._prepare_safe_tx
-# ---------------------------------------------------------------------------
-
-
 class TestPrepareSafeTx:
     """Tests for _prepare_safe_tx."""
 
@@ -2930,18 +2835,18 @@ class TestPrepareSafeTx:
 
         assert result is None
 
-    def test_no_winnings(self) -> None:
+    def test_no_winnings(self) -> None:  # type: ignore[no-untyped-def]
         """Should return None when no winnings found."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade()
         behaviour.trades = {trade}
 
-        def mock_process_candidate(candidate):
+        def mock_process_candidate(candidate):  # type: ignore[no-untyped-def]
             """Mock _process_candidate returning False."""
             yield
             return False
 
-        behaviour._process_candidate = mock_process_candidate
+        behaviour._process_candidate = mock_process_candidate  # type: ignore[method-assign]
 
         gen = behaviour._prepare_safe_tx()
         result = _exhaust_gen(gen)
@@ -2957,38 +2862,38 @@ class TestPrepareSafeTx:
 
         progress = RedeemingProgress()
 
-        def mock_process_candidate(candidate):
+        def mock_process_candidate(candidate):  # type: ignore[no-untyped-def]
             """Mock _process_candidate returning True."""
-            behaviour._expected_winnings = 1000
+            behaviour._expected_winnings = 1000  # type: ignore[no-untyped-def]
             yield
             return True
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        behaviour._process_candidate = mock_process_candidate
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour._process_candidate = mock_process_candidate  # type: ignore[method-assign]
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
         behaviour._safe_tx_hash = "a" * 64
         behaviour.multisend_data = b"data"
 
         params = MagicMock()
         params.redeeming_batch_size = 10
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data():  # type: ignore[no-untyped-def]
             """Mock _build_multisend_data."""
             yield
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash():  # type: ignore[no-untyped-def]
             """Mock _build_multisend_safe_tx_hash."""
             yield
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -3020,34 +2925,34 @@ class TestPrepareSafeTx:
 
         processed = []
 
-        def mock_process_candidate(candidate):
+        def mock_process_candidate(candidate):  # type: ignore[no-untyped-def]
             """Mock _process_candidate returning True."""
             processed.append(candidate)
             behaviour._expected_winnings += 100
             yield
             return True
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        behaviour._process_candidate = mock_process_candidate
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour._process_candidate = mock_process_candidate  # type: ignore[method-assign]
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data():  # type: ignore[no-untyped-def]
             """Mock _build_multisend_data."""
             yield
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash():  # type: ignore[no-untyped-def]
             """Mock _build_multisend_safe_tx_hash."""
             yield
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign, no-untyped-def]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         params = MagicMock()
         params.redeeming_batch_size = 1  # only 1 position
@@ -3077,33 +2982,33 @@ class TestPrepareSafeTx:
 
         progress = RedeemingProgress()
 
-        def mock_process_candidate(candidate):
+        def mock_process_candidate(candidate):  # type: ignore[no-untyped-def]
             """Mock _process_candidate returning True."""
             behaviour._expected_winnings = 100
             yield
             return True
 
-        def mock_wait(gen_fn):
+        def mock_wait(gen_fn):  # type: ignore[no-untyped-def]
             """Mock wait_for_condition_with_sleep."""
             gen = gen_fn()
             _exhaust_gen(gen)
             yield
 
-        behaviour._process_candidate = mock_process_candidate
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour._process_candidate = mock_process_candidate  # type: ignore[method-assign]
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[assignment, method-assign]
 
-        def mock_build_multisend_data():
+        def mock_build_multisend_data():  # type: ignore[no-untyped-def]
             """Mock _build_multisend_data."""
             yield
             return True
 
-        def mock_build_multisend_safe_tx_hash():
+        def mock_build_multisend_safe_tx_hash():  # type: ignore[no-untyped-def]
             """Mock _build_multisend_safe_tx_hash."""
             yield
             return True
 
-        behaviour._build_multisend_data = mock_build_multisend_data
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
         params = MagicMock()
         params.redeeming_batch_size = 5
@@ -3113,23 +3018,18 @@ class TestPrepareSafeTx:
         ) as mock_params, patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
         ) as mock_rp, patch.object(
-            type(behaviour), "tx_hex", new_callable=PropertyMock
+            type(behaviour), "tx_hex", new_callable=PropertyMock  # type: ignore[no-untyped-def]
         ) as mock_tx_hex:
             mock_params.return_value = params
             mock_rp.return_value = progress
             mock_tx_hex.return_value = "0xresult"
 
-            gen = behaviour._prepare_safe_tx()
-            result = _exhaust_gen(gen)
+            gen = behaviour._prepare_safe_tx()  # type: ignore[no-untyped-def]
+            _exhaust_gen(gen)
 
-        behaviour.context.logger.info.assert_any_call(
+        behaviour.context.logger.info.assert_any_call(  # type: ignore[union-attr]
             "Adding position to the multisend batch..."
         )
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._store_utilized_tools / finish_behaviour
-# ---------------------------------------------------------------------------
 
 
 class TestStoreUtilizedToolsAndFinish:
@@ -3138,12 +3038,12 @@ class TestStoreUtilizedToolsAndFinish:
     def test_store_utilized_tools(self, tmp_path: Path) -> None:
         """Should write utilized tools to JSON file."""
         behaviour = _make_redeem_behaviour()
-        behaviour.utilized_tools = {"tx1": "tool1"}
+        behaviour.utilized_tools = {"tx1": "tool1"}  # type: ignore[no-untyped-def]
 
         params = MagicMock()
         params.store_path = tmp_path
 
-        with patch.object(
+        with patch.object(  # type: ignore[no-untyped-def]
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
             mock_params.return_value = params
@@ -3165,7 +3065,7 @@ class TestStoreUtilizedToolsAndFinish:
 
         payload = MagicMock()
 
-        def mock_parent_finish(self_arg, payload_arg):
+        def mock_parent_finish(self_arg, payload_arg):  # type: ignore[no-untyped-def]
             """Mock parent finish_behaviour."""
             yield
 
@@ -3179,21 +3079,17 @@ class TestStoreUtilizedToolsAndFinish:
             _exhaust_gen(gen)
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._setup_policy_and_tools
-# ---------------------------------------------------------------------------
-
-
 class TestSetupPolicyAndTools:
     """Tests for _setup_policy_and_tools on RedeemBehaviour."""
 
+    # type: ignore[no-untyped-def]
     def test_setup_policy_from_synced_data(self) -> None:
         """Should use policy from synced data when is_policy_set."""
         behaviour = _make_redeem_behaviour()
         policy = _make_policy()
 
         mock_synced = MagicMock()
-        mock_synced.is_policy_set = True
+        mock_synced.is_policy_set = True  # type: ignore[no-untyped-def]
         mock_synced.policy = policy
         mock_synced.available_mech_tools = {"tool1"}
 
@@ -3202,12 +3098,12 @@ class TestSetupPolicyAndTools:
         ) as mock_sd:
             mock_sd.return_value = mock_synced
 
-            gen = behaviour._setup_policy_and_tools()
+            gen = behaviour._setup_policy_and_tools()  # type: ignore[no-untyped-def]
             result = _exhaust_gen(gen)
 
         assert result is True
         assert behaviour._policy is policy
-        assert behaviour._mech_tools == {"tool1"}
+        assert behaviour._mech_tools == {"tool1"}  # type: ignore[no-untyped-def]
 
     def test_setup_policy_fallback_to_parent(self) -> None:
         """Should fall back to parent when is_policy_set is False."""
@@ -3216,7 +3112,7 @@ class TestSetupPolicyAndTools:
         mock_synced = MagicMock()
         mock_synced.is_policy_set = False
 
-        def mock_parent_setup(self_arg):
+        def mock_parent_setup(self_arg):  # type: ignore[no-untyped-def]
             """Mock parent _setup_policy_and_tools."""
             behaviour._policy = _make_policy()
             behaviour._mech_tools = {"tool1"}
@@ -3236,11 +3132,6 @@ class TestSetupPolicyAndTools:
         assert result is True
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._benchmarking_act
-# ---------------------------------------------------------------------------
-
-
 class TestBenchmarkingAct:
     """Tests for _benchmarking_act."""
 
@@ -3248,13 +3139,13 @@ class TestBenchmarkingAct:
         """Should update policy with mech tool and return payload."""
         behaviour = _make_redeem_behaviour()
         behaviour._policy = _make_policy()
-        behaviour._mech_tools = {"tool1"}
+        behaviour._mech_tools = {"tool1"}  # type: ignore[no-untyped-def]
         behaviour.redeemed_condition_ids = set()
         behaviour.payout_so_far = 0
 
         mock_synced = MagicMock()
         mock_synced.mech_tool = "tool1"
-
+        # type: ignore[no-untyped-def]
         mock_data = MagicMock()
         mock_data.is_winning = True
 
@@ -3263,20 +3154,15 @@ class TestBenchmarkingAct:
         ) as mock_sd, patch.object(
             type(behaviour), "mock_data", new_callable=PropertyMock
         ) as mock_md, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock  # type: ignore[no-untyped-def]
         ) as mock_bm:
             mock_sd.return_value = mock_synced
             mock_md.return_value = mock_data
             mock_bm.return_value = MagicMock(enabled=False)
-
+            # type: ignore[no-untyped-def]
             result = behaviour._benchmarking_act()
 
         assert isinstance(result, RedeemPayload)
-
-
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour._normal_act
-# ---------------------------------------------------------------------------
 
 
 class TestNormalAct:
@@ -3292,29 +3178,29 @@ class TestNormalAct:
         progress.check_started = False
         progress.cleaned = False
 
-        def mock_get_redeem_info():
+        def mock_get_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _get_redeem_info."""
             yield
 
-        def mock_store_progress():
+        def mock_store_progress() -> None:
             """Mock _store_progress."""
             pass
 
-        def mock_clean_redeem_info():
+        def mock_clean_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _clean_redeem_info."""
             progress.cleaned = True
             yield
             return True
 
-        def mock_prepare_safe_tx():
+        def mock_prepare_safe_tx():  # type: ignore[no-untyped-def]
             """Mock _prepare_safe_tx."""
             yield
             return None
 
-        behaviour._get_redeem_info = mock_get_redeem_info
-        behaviour._store_progress = mock_store_progress
-        behaviour._clean_redeem_info = mock_clean_redeem_info
-        behaviour._prepare_safe_tx = mock_prepare_safe_tx
+        behaviour._get_redeem_info = mock_get_redeem_info  # type: ignore[method-assign]
+        behaviour._store_progress = mock_store_progress  # type: ignore[method-assign]
+        behaviour._clean_redeem_info = mock_clean_redeem_info  # type: ignore[method-assign]
+        behaviour._prepare_safe_tx = mock_prepare_safe_tx  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -3341,15 +3227,15 @@ class TestNormalAct:
         progress.trades = set()
         progress.utilized_tools = {}
         progress.policy = policy
-        progress.claimable_amounts = {}
+        progress.claimable_amounts = {}  # type: ignore[no-untyped-def]
         progress.earliest_block_number = 0
 
-        def mock_prepare_safe_tx():
+        def mock_prepare_safe_tx():  # type: ignore[no-untyped-def]
             """Mock _prepare_safe_tx."""
             yield
             return None
 
-        behaviour._prepare_safe_tx = mock_prepare_safe_tx
+        behaviour._prepare_safe_tx = mock_prepare_safe_tx  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -3373,29 +3259,29 @@ class TestNormalAct:
         progress.check_started = False
         progress.cleaned = False
 
-        def mock_get_redeem_info():
+        def mock_get_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _get_redeem_info."""
             yield
 
-        def mock_store_progress():
+        def mock_store_progress() -> None:
             """Mock _store_progress."""
             pass
 
-        def mock_clean_redeem_info():
+        def mock_clean_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _clean_redeem_info."""
             progress.cleaned = True
             yield
             return True
 
-        def mock_prepare_safe_tx():
+        def mock_prepare_safe_tx():  # type: ignore[no-untyped-def]
             """Mock _prepare_safe_tx returning tx hex."""
             yield
             return "0xresult_tx"
 
-        behaviour._get_redeem_info = mock_get_redeem_info
-        behaviour._store_progress = mock_store_progress
-        behaviour._clean_redeem_info = mock_clean_redeem_info
-        behaviour._prepare_safe_tx = mock_prepare_safe_tx
+        behaviour._get_redeem_info = mock_get_redeem_info  # type: ignore[method-assign, no-untyped-def]
+        behaviour._store_progress = mock_store_progress  # type: ignore[method-assign]
+        behaviour._clean_redeem_info = mock_clean_redeem_info  # type: ignore[method-assign]
+        behaviour._prepare_safe_tx = mock_prepare_safe_tx  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -3421,22 +3307,22 @@ class TestNormalAct:
         progress.check_started = False
         progress.cleaned = False
 
-        def mock_get_redeem_info():
+        def mock_get_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _get_redeem_info."""
             yield
 
-        def mock_store_progress():
+        def mock_store_progress() -> None:
             """Mock _store_progress."""
             pass
 
-        def mock_clean_redeem_info():
+        def mock_clean_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _clean_redeem_info returning False (not cleaned)."""
             yield
             return False
 
-        behaviour._get_redeem_info = mock_get_redeem_info
-        behaviour._store_progress = mock_store_progress
-        behaviour._clean_redeem_info = mock_clean_redeem_info
+        behaviour._get_redeem_info = mock_get_redeem_info  # type: ignore[method-assign]
+        behaviour._store_progress = mock_store_progress  # type: ignore[method-assign]
+        behaviour._clean_redeem_info = mock_clean_redeem_info  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
@@ -3465,29 +3351,25 @@ class TestNormalAct:
         progress.claimable_amounts = {}
         progress.earliest_block_number = 0
 
-        def mock_clean_redeem_info():
+        def mock_clean_redeem_info():  # type: ignore[no-untyped-def]
             """Mock _clean_redeem_info."""
             yield
-            return False
+            return False  # type: ignore[no-untyped-def]
 
-        behaviour._clean_redeem_info = mock_clean_redeem_info
+        behaviour._clean_redeem_info = mock_clean_redeem_info  # type: ignore[method-assign]
 
-        with patch.object(
+        with patch.object(  # type: ignore[no-untyped-def]
             type(behaviour), "redeeming_progress", new_callable=PropertyMock
         ) as mock_rp:
             mock_rp.return_value = progress
-
+            # type: ignore[no-untyped-def]
             gen = behaviour._normal_act()
             result = _exhaust_gen(gen)
 
         assert isinstance(result, RedeemPayload)
 
 
-# ---------------------------------------------------------------------------
-# Tests: RedeemBehaviour.async_act
-# ---------------------------------------------------------------------------
-
-
+# type: ignore[no-untyped-def]
 class TestAsyncAct:
     """Tests for async_act."""
 
@@ -3515,19 +3397,17 @@ class TestAsyncAct:
         params = MagicMock()
         params.store_path = Path("/tmp/test")
 
-        m = mock_open()
-
-        def mock_store_all():
+        def mock_store_all() -> None:
             """Mock _store_all."""
             pass
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             """Mock finish_behaviour."""
             yield
 
-        behaviour._store_all = mock_store_all
-        behaviour.finish_behaviour = mock_finish
-
+        behaviour._store_all = mock_store_all  # type: ignore[method-assign]
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        # type: ignore[no-untyped-def]
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd, patch.object(
@@ -3543,8 +3423,12 @@ class TestAsyncAct:
             mock_params.return_value = params
 
             # Mock the benchmark_tool context manager
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(return_value=False)
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (
+                MagicMock()
+            )
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
@@ -3552,42 +3436,42 @@ class TestAsyncAct:
     def test_async_act_normal_mode(self) -> None:
         """Should use normal path when benchmarking is disabled."""
         behaviour = _make_redeem_behaviour()
-        behaviour._policy = _make_policy()
+        behaviour._policy = _make_policy()  # type: ignore[no-untyped-def]
         behaviour._mech_tools = {"tool1"}
         behaviour.redeemed_condition_ids = set()
         behaviour.payout_so_far = 0
-
+        # type: ignore[no-untyped-def]
         mock_synced = MagicMock()
         mock_synced.is_policy_set = True
         mock_synced.policy = _make_policy()
-        mock_synced.available_mech_tools = {"tool1"}
+        mock_synced.available_mech_tools = {"tool1"}  # type: ignore[no-untyped-def]
         mock_synced.did_transact = False
 
         mock_bm = MagicMock()
         mock_bm.enabled = False
 
-        params = MagicMock()
+        params = MagicMock()  # type: ignore[no-untyped-def]
         params.store_path = Path("/tmp/test")
 
         progress = RedeemingProgress()
         progress.check_started = False
 
-        def mock_normal_act():
+        def mock_normal_act():  # type: ignore[no-untyped-def]
             """Mock _normal_act."""
             yield
             return RedeemPayload("test_agent", mech_tools="[]")
 
-        def mock_store_all():
+        def mock_store_all() -> None:
             """Mock _store_all."""
             pass
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             """Mock finish_behaviour."""
             yield
 
-        behaviour._normal_act = mock_normal_act
-        behaviour._store_all = mock_store_all
-        behaviour.finish_behaviour = mock_finish
+        behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
+        behaviour._store_all = mock_store_all  # type: ignore[method-assign]
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -3600,11 +3484,15 @@ class TestAsyncAct:
             mock_benchmark.return_value = mock_bm
             mock_params.return_value = params
 
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(return_value=False)
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (  # type: ignore[no-untyped-def]
+                MagicMock()
+            )
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(
+                return_value=False  # type: ignore[no-untyped-def]
+            )
 
             gen = behaviour.async_act()
-            _exhaust_gen(gen)
+            _exhaust_gen(gen)  # type: ignore[no-untyped-def]
 
     def test_async_act_setup_fails(self) -> None:
         """Should return early when setup fails."""
@@ -3613,7 +3501,7 @@ class TestAsyncAct:
         mock_synced = MagicMock()
         mock_synced.is_policy_set = False
 
-        def mock_parent_setup(self_arg):
+        def mock_parent_setup(self_arg):  # type: ignore[no-untyped-def]
             """Mock parent _setup_policy_and_tools returning False."""
             yield
             return False
@@ -3625,8 +3513,12 @@ class TestAsyncAct:
         ):
             mock_sd.return_value = mock_synced
 
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(return_value=False)
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (
+                MagicMock()
+            )
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
@@ -3636,7 +3528,7 @@ class TestAsyncAct:
         behaviour = _make_redeem_behaviour()
         behaviour._policy = _make_policy()
         behaviour._mech_tools = {"tool1"}
-
+        # type: ignore[no-untyped-def]
         mock_synced = MagicMock()
         mock_synced.is_policy_set = True
         mock_synced.policy = _make_policy()
@@ -3646,12 +3538,12 @@ class TestAsyncAct:
         mock_bm = MagicMock()
         mock_bm.enabled = False
 
-        def mock_normal_act():
+        def mock_normal_act():  # type: ignore[no-untyped-def]
             """Mock _normal_act returning None."""
             yield
             return None
 
-        behaviour._normal_act = mock_normal_act
+        behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -3661,8 +3553,12 @@ class TestAsyncAct:
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
 
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(return_value=False)
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (
+                MagicMock()
+            )
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
@@ -3685,27 +3581,28 @@ class TestAsyncAct:
         mock_bm = MagicMock()
         mock_bm.enabled = False
 
-        def mock_normal_act():
+        # type: ignore[no-untyped-def]
+        def mock_normal_act():  # type: ignore[no-untyped-def]
             """Mock _normal_act."""
             yield
-            return RedeemPayload("test_agent", mech_tools="[]")
+            return RedeemPayload("test_agent", mech_tools="[]")  # type: ignore[no-untyped-def]
 
-        def mock_store_all():
+        def mock_store_all() -> None:
             """Mock _store_all."""
             pass
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             """Mock finish_behaviour."""
             yield
 
-        def mock_update_bet():
+        def mock_update_bet() -> None:
             """Mock update_bet_transaction_information."""
             pass
 
-        behaviour._normal_act = mock_normal_act
-        behaviour._store_all = mock_store_all
-        behaviour.finish_behaviour = mock_finish
-        behaviour.update_bet_transaction_information = mock_update_bet
+        behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
+        behaviour._store_all = mock_store_all  # type: ignore[method-assign]
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = mock_update_bet  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -3715,8 +3612,12 @@ class TestAsyncAct:
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
 
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(return_value=False)
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (
+                MagicMock()
+            )
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
@@ -3739,27 +3640,27 @@ class TestAsyncAct:
         mock_bm = MagicMock()
         mock_bm.enabled = False
 
-        def mock_normal_act():
+        def mock_normal_act():  # type: ignore[no-untyped-def]
             """Mock _normal_act."""
             yield
             return RedeemPayload("test_agent", mech_tools="[]")
 
-        def mock_store_all():
+        def mock_store_all() -> None:  # type: ignore[no-untyped-def]
             """Mock _store_all."""
             pass
 
-        def mock_finish(payload):
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
             """Mock finish_behaviour."""
             yield
 
-        def mock_update_bet():
+        def mock_update_bet() -> None:
             """Mock update_bet_transaction_information."""
             pass
 
-        behaviour._normal_act = mock_normal_act
-        behaviour._store_all = mock_store_all
-        behaviour.finish_behaviour = mock_finish
-        behaviour.update_bet_transaction_information = mock_update_bet
+        behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
+        behaviour._store_all = mock_store_all  # type: ignore[method-assign]
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = mock_update_bet  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -3769,8 +3670,12 @@ class TestAsyncAct:
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
 
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = MagicMock()
-            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(return_value=False)
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__enter__ = (
+                MagicMock()
+            )
+            behaviour.context.benchmark_tool.measure.return_value.local.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)

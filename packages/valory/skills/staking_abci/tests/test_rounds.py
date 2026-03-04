@@ -427,9 +427,7 @@ class TestSynchronizedDataProperties:
 
     def test_agent_ids_returns_set_value(self) -> None:
         """Test agent_ids returns the set value."""
-        data = SynchronizedData(
-            db=AbciAppDB(setup_data={"agent_ids": ['[1, 2, 3]']})
-        )
+        data = SynchronizedData(db=AbciAppDB(setup_data={"agent_ids": ["[1, 2, 3]"]}))
         assert data.agent_ids == "[1, 2, 3]"
 
     def test_service_id_default_none(self) -> None:
@@ -439,7 +437,5 @@ class TestSynchronizedDataProperties:
 
     def test_service_id_returns_set_value(self) -> None:
         """Test service_id returns the set value."""
-        data = SynchronizedData(
-            db=AbciAppDB(setup_data={"service_id": [42]})
-        )
+        data = SynchronizedData(db=AbciAppDB(setup_data={"service_id": [42]}))
         assert data.service_id == 42

@@ -21,18 +21,15 @@
 
 import json
 from datetime import datetime, timezone
-from typing import Any, Generator, Optional, Set
+from typing import Any, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.behaviours import (
-    AbstractRoundBehaviour,
-    BaseBehaviour,
-)
+from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
+    AgentPerformanceSummaryRoundBehaviour,
     DEFAULT_MECH_FEE,
+    FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
     LIFI_QUOTE_URL,
     LIFI_RATE_LIMIT_SECONDS,
@@ -42,7 +39,6 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     PERCENTAGE_FACTOR,
     POLYGON_CHAIN_ID,
     POLYGON_NATIVE_TOKEN_ADDRESS,
-    POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
     POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD,
     PREDICT_MARKET_DURATION_DAYS,
     QUESTION_DATA_SEPARATOR,
@@ -52,11 +48,9 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     UPDATE_INTERVAL,
     USDC_DECIMALS_DIVISOR,
     USDC_E_ADDRESS,
+    UpdateAchievementsBehaviour,
     WEI_IN_ETH,
     WXDAI_ADDRESS,
-    AgentPerformanceSummaryRoundBehaviour,
-    FetchPerformanceSummaryBehaviour,
-    UpdateAchievementsBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
@@ -68,11 +62,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
     PerformanceMetricsData,
-    PerformanceStatsData,
     PredictionHistory,
     ProfitDataPoint,
     ProfitOverTimeData,
-    SharedState,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
@@ -99,7 +91,7 @@ def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
         yield  # pragma: no cover
 
 
-def _return_gen(value: Any):  # type: ignore
+def _return_gen(value: Any) -> Any:
     """Factory returning a generator that immediately returns *value*."""
 
     def gen(*args: Any, **kwargs: Any) -> Generator:
@@ -124,7 +116,7 @@ def _make_fetch_behaviour(**overrides: Any) -> FetchPerformanceSummaryBehaviour:
     b._settled_mech_requests_count = 0
     b._placed_mech_requests_count = 0
     b._unplaced_mech_requests_count = 0
-    b._placed_titles = set()  # type: ignore
+    b._placed_titles = set()  # type: ignore[assignment]
     b._pol_usdc_rate = None
     b._pol_usdc_rate_timestamp = 0.0
     b._call_failed = False
@@ -139,7 +131,7 @@ def _mock_context(
     safe_address: str = SAFE_ADDRESS,
     period_count: int = 1,
     mech_chain_id: int = 100,
-) -> MagicMock:
+) -> Tuple[MagicMock, MagicMock, MagicMock, MagicMock]:
     """Build a mock context with common attributes."""
     ctx = MagicMock()
     ctx.logger = MagicMock()
@@ -169,10 +161,12 @@ def _mock_context(
     )
     ctx.benchmark_tool.measure.return_value = benchmark_measure
 
-    return ctx, params, synced_data, state
+    return ctx, params, synced_data, state  # type: ignore[return-value]
 
 
-def _patch_context(behaviour, ctx, synced_data):
+def _patch_context(  # type: ignore[no-untyped-def]
+    behaviour: Any, ctx: MagicMock, synced_data: MagicMock
+) -> Tuple[Any, Any]:
     """Patch context and synchronized_data as PropertyMock on the behaviour type."""
     return (
         patch.object(
@@ -237,7 +231,9 @@ class TestModuleConstants:
 
     def test_polygon_native_token_address(self) -> None:
         """POLYGON_NATIVE_TOKEN_ADDRESS is correct."""
-        assert POLYGON_NATIVE_TOKEN_ADDRESS == "0x0000000000000000000000000000000000001010"
+        assert (
+            POLYGON_NATIVE_TOKEN_ADDRESS == "0x0000000000000000000000000000000000001010"
+        )
 
     def test_polygon_chain_id(self) -> None:
         """POLYGON_CHAIN_ID is 137."""
@@ -325,7 +321,9 @@ class TestFetchPerformanceSummaryBehaviourInit:
 
     def test_matching_round(self) -> None:
         """matching_round is FetchPerformanceDataRound."""
-        assert FetchPerformanceSummaryBehaviour.matching_round is FetchPerformanceDataRound
+        assert (
+            FetchPerformanceSummaryBehaviour.matching_round is FetchPerformanceDataRound
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -345,7 +343,10 @@ class TestShouldUpdate:
         b = self._make()
         ctx, params, synced_data, state = _mock_context()
         state.read_existing_performance_summary.return_value = None
-        with _patch_context(b, ctx, synced_data)[0], _patch_context(b, ctx, synced_data)[1]:
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
             result = b._should_update()
         assert result is True
 
@@ -354,7 +355,10 @@ class TestShouldUpdate:
         b = self._make()
         ctx, params, synced_data, state = _mock_context(period_count=0)
         state.read_existing_performance_summary.return_value = _default_summary()
-        with _patch_context(b, ctx, synced_data)[0], _patch_context(b, ctx, synced_data)[1]:
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
             result = b._should_update()
         assert result is True
 
@@ -402,9 +406,9 @@ class TestShouldUpdate:
 
     def test_summary_timestamp_none(self) -> None:
         """Returns True when summary timestamp is None (uses 0 fallback)."""
-        b = self._make(_update_interval=1800)
+        b = self._make(_update_interval=1800)  # type: ignore[arg-type]
         ctx, params, synced_data, state = _mock_context(synced_timestamp=1700002000)
-        summary = _default_summary(timestamp=None)
+        summary = _default_summary(timestamp=None)  # type: ignore[arg-type]
         state.read_existing_performance_summary.return_value = summary
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -537,17 +541,21 @@ class TestMarketOpenTimestamp:
         # 1700000000 = 2023-11-14 22:13:20 UTC
         synced_dt = datetime.fromtimestamp(1700000000, tz=timezone.utc)
         utc_midnight = datetime(
-            year=synced_dt.year, month=synced_dt.month, day=synced_dt.day, tzinfo=timezone.utc
+            year=synced_dt.year,
+            month=synced_dt.month,
+            day=synced_dt.day,
+            tzinfo=timezone.utc,
         )
         from datetime import timedelta
 
-        expected = int((utc_midnight - timedelta(days=PREDICT_MARKET_DURATION_DAYS)).timestamp())
+        expected = int(
+            (utc_midnight - timedelta(days=PREDICT_MARKET_DURATION_DAYS)).timestamp()
+        )
         assert result == expected
 
 
 # ---------------------------------------------------------------------------
-# _extract_omen_question_title (static)
-# ---------------------------------------------------------------------------
+# Tests for _extract_omen_question_title - static method
 
 
 class TestExtractOmenQuestionTitle:
@@ -556,11 +564,17 @@ class TestExtractOmenQuestionTitle:
     def test_with_separator(self) -> None:
         """Extracts title before separator."""
         q = f"Will it rain?{QUESTION_DATA_SEPARATOR}extra{QUESTION_DATA_SEPARATOR}more"
-        assert FetchPerformanceSummaryBehaviour._extract_omen_question_title(q) == "Will it rain?"
+        assert (
+            FetchPerformanceSummaryBehaviour._extract_omen_question_title(q)
+            == "Will it rain?"
+        )
 
     def test_without_separator(self) -> None:
         """Returns full string when no separator."""
-        assert FetchPerformanceSummaryBehaviour._extract_omen_question_title("Hello") == "Hello"
+        assert (
+            FetchPerformanceSummaryBehaviour._extract_omen_question_title("Hello")
+            == "Hello"
+        )
 
     def test_empty_string(self) -> None:
         """Returns empty string for empty input."""
@@ -715,9 +729,9 @@ class TestCalculateOmenAccuracy:
                 "outcomeIndex": "0",
             },
         ]
-        # 3 resolved, 2 correct => 66.67%
+        # 3 resolved, 2 correct => 66.67%  # type: ignore[operator]
         result = b._calculate_omen_accuracy({"bets": bets})
-        assert abs(result - 66.66666666666667) < 0.01
+        assert abs(result - 66.66666666666667) < 0.01  # type: ignore[operator]
 
 
 # ---------------------------------------------------------------------------
@@ -823,8 +837,7 @@ class TestCalculatePolymarketAccuracy:
 
 
 # ---------------------------------------------------------------------------
-# _get_prediction_accuracy (generator)
-# ---------------------------------------------------------------------------
+# Tests for _get_prediction_accuracy - generator method
 
 
 class TestGetPredictionAccuracy:
@@ -856,7 +869,9 @@ class TestGetPredictionAccuracy:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_trader_agent_bets", side_effect=_return_gen({"bets": []})),
+            patch.object(
+                b, "_fetch_trader_agent_bets", side_effect=_return_gen({"bets": []})
+            ),
         ):
             gen = b._get_prediction_accuracy()
             try:
@@ -879,7 +894,9 @@ class TestGetPredictionAccuracy:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_trader_agent_bets", side_effect=_return_gen(bets_data)),
+            patch.object(
+                b, "_fetch_trader_agent_bets", side_effect=_return_gen(bets_data)
+            ),
         ):
             gen = b._get_prediction_accuracy()
             try:
@@ -902,7 +919,9 @@ class TestGetPredictionAccuracy:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_trader_agent_bets", side_effect=_return_gen(bets_data)),
+            patch.object(
+                b, "_fetch_trader_agent_bets", side_effect=_return_gen(bets_data)
+            ),
         ):
             gen = b._get_prediction_accuracy()
             try:
@@ -994,9 +1013,9 @@ class TestCalculateMechFeesForDay:
     def test_none_participants(self) -> None:
         """Returns (0.0, 0) for None participants."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()
+        ctx, _, synced_data, _ = _mock_context()  # type: ignore[arg-type]
         with _patch_context(b, ctx, synced_data)[0]:
-            result = b._calculate_mech_fees_for_day(None, {})
+            result = b._calculate_mech_fees_for_day(None, {})  # type: ignore[arg-type]
         assert result == (0.0, 0)
 
     def test_omen_participants_with_lookup(self) -> None:
@@ -1051,9 +1070,9 @@ class TestCalculateMechFeesForDay:
     def test_polymarket_none_metadata(self) -> None:
         """Handles None metadata gracefully on Polymarket."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)  # type: ignore[var-annotated]
         participants = [{"metadata": None}]
-        lookup = {}
+        lookup = {}  # type: ignore[var-annotated]
         with _patch_context(b, ctx, synced_data)[0]:
             fees, count = b._calculate_mech_fees_for_day(participants, lookup)
         assert count == 0
@@ -1161,8 +1180,7 @@ class TestApplyMechFees:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_polymarket_open_position_titles (generator)
-# ---------------------------------------------------------------------------
+# Tests for _fetch_polymarket_open_position_titles - generator method
 
 
 class TestFetchPolymarketOpenPositionTitles:
@@ -1180,7 +1198,11 @@ class TestFetchPolymarketOpenPositionTitles:
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "send_polymarket_connection_request", side_effect=_return_gen(positions)),
+            patch.object(
+                b,
+                "send_polymarket_connection_request",
+                side_effect=_return_gen(positions),
+            ),
         ):
             gen = b._fetch_polymarket_open_position_titles()
             try:
@@ -1195,7 +1217,9 @@ class TestFetchPolymarketOpenPositionTitles:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "send_polymarket_connection_request", side_effect=_return_gen(None)),
+            patch.object(
+                b, "send_polymarket_connection_request", side_effect=_return_gen(None)
+            ),
         ):
             gen = b._fetch_polymarket_open_position_titles()
             try:
@@ -1210,7 +1234,11 @@ class TestFetchPolymarketOpenPositionTitles:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "send_polymarket_connection_request", side_effect=_return_gen("not_list")),
+            patch.object(
+                b,
+                "send_polymarket_connection_request",
+                side_effect=_return_gen("not_list"),
+            ),
         ):
             gen = b._fetch_polymarket_open_position_titles()
             try:
@@ -1222,15 +1250,17 @@ class TestFetchPolymarketOpenPositionTitles:
     def test_exception_returns_empty_set(self) -> None:
         """Returns empty set on exception."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)  # type: ignore[no-untyped-def]
 
-        def _raising_gen(*a, **k):
+        def _raising_gen(*a: Any, **k: Any) -> Generator:
             raise ValueError("boom")
             yield  # pragma: no cover
 
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "send_polymarket_connection_request", side_effect=_raising_gen),
+            patch.object(
+                b, "send_polymarket_connection_request", side_effect=_raising_gen
+            ),
         ):
             gen = b._fetch_polymarket_open_position_titles()
             try:
@@ -1241,8 +1271,7 @@ class TestFetchPolymarketOpenPositionTitles:
 
 
 # ---------------------------------------------------------------------------
-# _get_total_mech_requests (generator)
-# ---------------------------------------------------------------------------
+# Tests for _get_total_mech_requests - generator method
 
 
 class TestGetTotalMechRequests:
@@ -1297,7 +1326,11 @@ class TestGetTotalMechRequests:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_mech_sender", side_effect=_return_gen({"totalMarketplaceRequests": None})),
+            patch.object(
+                b,
+                "_fetch_mech_sender",
+                side_effect=_return_gen({"totalMarketplaceRequests": None}),
+            ),
         ):
             gen = b._get_total_mech_requests("0xaddr")
             try:
@@ -1307,8 +1340,7 @@ class TestGetTotalMechRequests:
 
 
 # ---------------------------------------------------------------------------
-# _get_open_market_requests (generator)
-# ---------------------------------------------------------------------------
+# Tests for _get_open_market_requests - generator method
 
 
 class TestGetOpenMarketRequests:
@@ -1340,9 +1372,9 @@ class TestGetOpenMarketRequests:
 
     def test_omen_no_open_markets(self) -> None:
         """Returns 0 when no open markets on Omen."""
-        b = _make_fetch_behaviour()
+        b = _make_fetch_behaviour()  # type: ignore[var-annotated]
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        mech_sender = {"requests": []}
+        mech_sender = {"requests": []}  # type: ignore[var-annotated]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -1371,7 +1403,9 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -1393,7 +1427,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
-            patch.object(b, "_fetch_polymarket_open_position_titles", side_effect=_return_gen({"Market A"})),
+            patch.object(
+                b,
+                "_fetch_polymarket_open_position_titles",
+                side_effect=_return_gen({"Market A"}),
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -1415,7 +1453,9 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -1425,8 +1465,7 @@ class TestGetOpenMarketRequests:
 
 
 # ---------------------------------------------------------------------------
-# _calculate_settled_mech_requests (generator)
-# ---------------------------------------------------------------------------
+# Tests for _calculate_settled_mech_requests - generator method
 
 
 class TestCalculateSettledMechRequests:
@@ -1435,9 +1474,7 @@ class TestCalculateSettledMechRequests:
     def test_no_total_requests(self) -> None:
         """Returns 0 when total mech requests is 0."""
         b = _make_fetch_behaviour()
-        with (
-            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
-        ):
+        with (patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),):
             gen = b._calculate_settled_mech_requests("0xaddr")
             try:
                 next(gen)
@@ -1459,14 +1496,13 @@ class TestCalculateSettledMechRequests:
 
 
 # ---------------------------------------------------------------------------
-# calculate_roi (generator)
-# ---------------------------------------------------------------------------
+# Tests for calculate_roi - generator method
 
 
 class TestCalculateRoi:
-    """Tests for calculate_roi."""
+    """Tests for calculate_roi."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive a generator to completion and return value."""
         try:
             next(gen)
@@ -1483,7 +1519,7 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_trader_agent_missing_serviceId(self) -> None:
@@ -1496,7 +1532,7 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_trader_agent_missing_totalTraded(self) -> None:
@@ -1509,7 +1545,7 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_trader_agent_missing_totalPayout(self) -> None:
@@ -1522,7 +1558,7 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_staking_service_none(self) -> None:
@@ -1536,7 +1572,7 @@ class TestCalculateRoi:
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
             patch.object(b, "_fetch_staking_service", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_olas_price_none(self) -> None:
@@ -1552,7 +1588,7 @@ class TestCalculateRoi:
             patch.object(b, "_fetch_staking_service", side_effect=_return_gen(staking)),
             patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_zero_total_costs(self) -> None:
@@ -1572,9 +1608,13 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
             patch.object(b, "_fetch_staking_service", side_effect=_return_gen(staking)),
-            patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(1000000000000000000)),
+            patch.object(
+                b,
+                "_fetch_olas_in_usd_price",
+                side_effect=_return_gen(1000000000000000000),
+            ),
         ):
-            result = self._run_gen(b.calculate_roi())
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
     def test_successful_roi_gnosis(self) -> None:
@@ -1596,9 +1636,11 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
             patch.object(b, "_fetch_staking_service", side_effect=_return_gen(staking)),
-            patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)),
+            patch.object(
+                b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
+            ),
         ):
-            final_roi, partial_roi = self._run_gen(b.calculate_roi())
+            final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
         assert partial_roi is not None
         assert b._final_roi == final_roi
@@ -1622,22 +1664,23 @@ class TestCalculateRoi:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
             patch.object(b, "_fetch_staking_service", side_effect=_return_gen(staking)),
-            patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)),
+            patch.object(
+                b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
+            ),
         ):
-            final_roi, partial_roi = self._run_gen(b.calculate_roi())
+            final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
         assert partial_roi is not None
 
 
 # ---------------------------------------------------------------------------
-# _fetch_agent_details_data (generator)
-# ---------------------------------------------------------------------------
+# Tests for _fetch_agent_details_data - generator method
 
 
 class TestFetchAgentDetailsData:
-    """Tests for _fetch_agent_details_data."""
+    """Tests for _fetch_agent_details_data."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
         try:
             next(gen)
@@ -1654,7 +1697,7 @@ class TestFetchAgentDetailsData:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_agent_details", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b._fetch_agent_details_data())
+            result = self._run_gen(b._fetch_agent_details_data())  # type: ignore[arg-type]
         assert isinstance(result, AgentDetails)
         assert result.id is None
 
@@ -1662,27 +1705,30 @@ class TestFetchAgentDetailsData:
         """Returns AgentDetails with formatted fields."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        raw = {"id": "0xabc", "blockTimestamp": "1700000000", "lastActive": "1700001000"}
+        raw = {
+            "id": "0xabc",
+            "blockTimestamp": "1700000000",
+            "lastActive": "1700001000",
+        }
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_agent_details", side_effect=_return_gen(raw)),
         ):
-            result = self._run_gen(b._fetch_agent_details_data())
+            result = self._run_gen(b._fetch_agent_details_data())  # type: ignore[arg-type]
         assert result.id == "0xabc"
         assert result.created_at is not None
         assert result.last_active_at is not None
 
 
 # ---------------------------------------------------------------------------
-# _fetch_agent_performance_data (generator)
-# ---------------------------------------------------------------------------
+# Tests for _fetch_agent_performance_data - generator method
 
 
 class TestFetchAgentPerformanceData:
-    """Tests for _fetch_agent_performance_data."""
+    """Tests for _fetch_agent_performance_data."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
         try:
             next(gen)
@@ -1697,9 +1743,11 @@ class TestFetchAgentPerformanceData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_trader_agent_performance", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_fetch_trader_agent_performance", side_effect=_return_gen(None)
+            ),
         ):
-            result = self._run_gen(b._fetch_agent_performance_data())
+            result = self._run_gen(b._fetch_agent_performance_data())  # type: ignore[arg-type]
         assert isinstance(result, AgentPerformanceData)
         assert result.metrics is not None
         assert result.stats is not None
@@ -1726,12 +1774,16 @@ class TestFetchAgentPerformanceData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_trader_agent_performance", side_effect=_return_gen(trader_agent)),
+            patch.object(
+                b,
+                "_fetch_trader_agent_performance",
+                side_effect=_return_gen(trader_agent),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(75.0)),
         ):
-            result = self._run_gen(b._fetch_agent_performance_data())
+            result = self._run_gen(b._fetch_agent_performance_data())  # type: ignore[arg-type]
         assert result.window == "lifetime"
         assert result.currency == "USD"
         assert result.metrics is not None
@@ -1741,14 +1793,13 @@ class TestFetchAgentPerformanceData:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_available_funds (generator)
-# ---------------------------------------------------------------------------
+# Tests for _fetch_available_funds - generator method
 
 
 class TestFetchAvailableFunds:
-    """Tests for _fetch_available_funds."""
+    """Tests for _fetch_available_funds."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
         try:
             next(gen)
@@ -1765,9 +1816,11 @@ class TestFetchAvailableFunds:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "get_contract_api_response", side_effect=_return_gen(response)),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ),
         ):
-            result = self._run_gen(b._fetch_available_funds())
+            result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         assert result is None
 
     def test_token_or_wallet_none(self) -> None:
@@ -1780,9 +1833,11 @@ class TestFetchAvailableFunds:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "get_contract_api_response", side_effect=_return_gen(response)),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ),
         ):
-            result = self._run_gen(b._fetch_available_funds())
+            result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         assert result is None
 
     def test_gnosis_success(self) -> None:
@@ -1795,9 +1850,11 @@ class TestFetchAvailableFunds:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "get_contract_api_response", side_effect=_return_gen(response)),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ),
         ):
-            result = self._run_gen(b._fetch_available_funds())
+            result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         # token_balance = 1.0, wallet_balance = 1.0
         assert result == 2.0
 
@@ -1814,10 +1871,14 @@ class TestFetchAvailableFunds:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "get_contract_api_response", side_effect=_return_gen(response)),
-            patch.object(b, "_get_usdc_equivalent_for_pol", side_effect=_return_gen(0.5)),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ),
+            patch.object(
+                b, "_get_usdc_equivalent_for_pol", side_effect=_return_gen(0.5)
+            ),
         ):
-            result = self._run_gen(b._fetch_available_funds())
+            result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         # token_balance = 1.0 (USDC), pol_in_usdc = 0.5
         assert result == 1.5
 
@@ -1834,22 +1895,25 @@ class TestFetchAvailableFunds:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "get_contract_api_response", side_effect=_return_gen(response)),
-            patch.object(b, "_get_usdc_equivalent_for_pol", side_effect=_return_gen(None)),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ),
+            patch.object(
+                b, "_get_usdc_equivalent_for_pol", side_effect=_return_gen(None)
+            ),
         ):
-            result = self._run_gen(b._fetch_available_funds())
+            result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         assert result == 1.0  # token only
 
 
 # ---------------------------------------------------------------------------
-# _get_pol_to_usdc_rate (generator)
-# ---------------------------------------------------------------------------
+# Tests for _get_pol_to_usdc_rate - generator method
 
 
 class TestGetPolToUsdcRate:
-    """Tests for _get_pol_to_usdc_rate."""
+    """Tests for _get_pol_to_usdc_rate."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
         try:
             next(gen)
@@ -1864,10 +1928,8 @@ class TestGetPolToUsdcRate:
             _pol_usdc_rate_timestamp=1700000000.0 - 100,
         )
         ctx, _, synced_data, state = _mock_context(synced_timestamp=1700000000)
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-        ):
-            result = self._run_gen(b._get_pol_to_usdc_rate())
+        with (_patch_context(b, ctx, synced_data)[0],):
+            result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.5
 
     def test_stale_cache_fetches_new(self) -> None:
@@ -1879,13 +1941,15 @@ class TestGetPolToUsdcRate:
         ctx, _, synced_data, _ = _mock_context(synced_timestamp=1700000000)
         response = MagicMock()
         response.status_code = 200
-        response.body = json.dumps({"estimate": {"toAmount": "500000"}}).encode()  # 0.5 USDC
+        response.body = json.dumps(
+            {"estimate": {"toAmount": "500000"}}
+        ).encode()  # 0.5 USDC
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "get_http_response", side_effect=_return_gen(response)),
         ):
-            result = self._run_gen(b._get_pol_to_usdc_rate())
+            result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.5
         assert b._pol_usdc_rate == 0.5
 
@@ -1903,7 +1967,7 @@ class TestGetPolToUsdcRate:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "get_http_response", side_effect=_return_gen(response)),
         ):
-            result = self._run_gen(b._get_pol_to_usdc_rate())
+            result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.3
 
     def test_no_to_amount_returns_stale(self) -> None:
@@ -1921,7 +1985,7 @@ class TestGetPolToUsdcRate:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "get_http_response", side_effect=_return_gen(response)),
         ):
-            result = self._run_gen(b._get_pol_to_usdc_rate())
+            result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.4
 
     def test_exception_returns_stale(self) -> None:
@@ -1930,9 +1994,9 @@ class TestGetPolToUsdcRate:
             _pol_usdc_rate=0.2,
             _pol_usdc_rate_timestamp=0.0,
         )
-        ctx, _, synced_data, _ = _mock_context(synced_timestamp=1700000000)
+        ctx, _, synced_data, _ = _mock_context(synced_timestamp=1700000000)  # type: ignore[no-untyped-def]
 
-        def _raising_gen(*a, **k):
+        def _raising_gen(*a: Any, **k: Any) -> Generator:
             raise ValueError("network error")
             yield  # pragma: no cover
 
@@ -1941,19 +2005,18 @@ class TestGetPolToUsdcRate:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "get_http_response", side_effect=_raising_gen),
         ):
-            result = self._run_gen(b._get_pol_to_usdc_rate())
+            result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.2
 
 
 # ---------------------------------------------------------------------------
-# _get_usdc_equivalent_for_pol (generator)
-# ---------------------------------------------------------------------------
+# Tests for _get_usdc_equivalent_for_pol - generator method
 
 
 class TestGetUsdcEquivalentForPol:
-    """Tests for _get_usdc_equivalent_for_pol."""
+    """Tests for _get_usdc_equivalent_for_pol."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
         try:
             next(gen)
@@ -1969,7 +2032,7 @@ class TestGetUsdcEquivalentForPol:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_get_pol_to_usdc_rate", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b._get_usdc_equivalent_for_pol(WEI_IN_ETH))
+            result = self._run_gen(b._get_usdc_equivalent_for_pol(WEI_IN_ETH))  # type: ignore[arg-type]
         assert result is None
 
     def test_zero_rate(self) -> None:
@@ -1980,7 +2043,7 @@ class TestGetUsdcEquivalentForPol:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_get_pol_to_usdc_rate", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._get_usdc_equivalent_for_pol(WEI_IN_ETH))
+            result = self._run_gen(b._get_usdc_equivalent_for_pol(WEI_IN_ETH))  # type: ignore[arg-type]
         assert result is None
 
     def test_successful_conversion(self) -> None:
@@ -1991,16 +2054,16 @@ class TestGetUsdcEquivalentForPol:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_get_pol_to_usdc_rate", side_effect=_return_gen(0.5)),
         ):
-            result = self._run_gen(b._get_usdc_equivalent_for_pol(2 * WEI_IN_ETH))
+            result = self._run_gen(b._get_usdc_equivalent_for_pol(2 * WEI_IN_ETH))  # type: ignore[arg-type]
         # 2 POL * 0.5 = 1.0 USDC
         assert result == 1.0
 
     def test_exception_returns_none(self) -> None:
         """Returns None on exception."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()
+        ctx, _, synced_data, _ = _mock_context()  # type: ignore[no-untyped-def]
 
-        def _raising_gen(*a, **k):
+        def _raising_gen(*a: Any, **k: Any) -> Generator:
             raise ValueError("err")
             yield  # pragma: no cover
 
@@ -2008,19 +2071,18 @@ class TestGetUsdcEquivalentForPol:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_get_pol_to_usdc_rate", side_effect=_raising_gen),
         ):
-            result = self._run_gen(b._get_usdc_equivalent_for_pol(WEI_IN_ETH))
+            result = self._run_gen(b._get_usdc_equivalent_for_pol(WEI_IN_ETH))  # type: ignore[arg-type]
         assert result is None
 
 
 # ---------------------------------------------------------------------------
-# _build_mech_request_lookup (generator)
-# ---------------------------------------------------------------------------
+# Tests for _build_mech_request_lookup - generator method
 
 
 class TestBuildMechRequestLookup:
-    """Tests for _build_mech_request_lookup."""
+    """Tests for _build_mech_request_lookup."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
         try:
             next(gen)
@@ -2033,7 +2095,7 @@ class TestBuildMechRequestLookup:
         b = _make_fetch_behaviour(_mech_request_lookup={"Q1": 2})
         ctx, _, synced_data, _ = _mock_context()
         with _patch_context(b, ctx, synced_data)[0]:
-            result = self._run_gen(b._build_mech_request_lookup("0xaddr"))
+            result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
         assert result == {"Q1": 2}
 
     def test_no_mech_requests(self) -> None:
@@ -2044,7 +2106,7 @@ class TestBuildMechRequestLookup:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b._build_mech_request_lookup("0xaddr"))
+            result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
         assert result == {}
 
     def test_builds_lookup(self) -> None:
@@ -2060,9 +2122,11 @@ class TestBuildMechRequestLookup:
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen(requests)),
+            patch.object(
+                b, "_fetch_all_mech_requests", side_effect=_return_gen(requests)
+            ),
         ):
-            result = self._run_gen(b._build_mech_request_lookup("0xaddr"))
+            result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
         assert result == {"Q1": 2, "Q2": 1}
         assert b._mech_request_lookup == {"Q1": 2, "Q2": 1}
 
@@ -2080,8 +2144,14 @@ class TestBuildMultiBetAllocations:
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         stats = [
-            {"date": "100", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
-            {"date": "200", "profitParticipants": [{"question": f"Q2{QUESTION_DATA_SEPARATOR}x"}]},
+            {
+                "date": "100",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
+            {
+                "date": "200",
+                "profitParticipants": [{"question": f"Q2{QUESTION_DATA_SEPARATOR}x"}],
+            },
         ]
         lookup = {"Q1": 2, "Q2": 3}
         with _patch_context(b, ctx, synced_data)[0]:
@@ -2094,8 +2164,14 @@ class TestBuildMultiBetAllocations:
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         stats = [
-            {"date": "100", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
-            {"date": "200", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
+            {
+                "date": "100",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
+            {
+                "date": "200",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
         ]
         lookup = {"Q1": 4}
         with _patch_context(b, ctx, synced_data)[0]:
@@ -2108,8 +2184,14 @@ class TestBuildMultiBetAllocations:
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         stats = [
-            {"date": "100", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
-            {"date": "200", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
+            {
+                "date": "100",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
+            {
+                "date": "200",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
         ]
         lookup = {"Q1": 0}
         with _patch_context(b, ctx, synced_data)[0]:
@@ -2145,7 +2227,10 @@ class TestComputeMechFeeBuckets:
         b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=2)
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         stats = [
-            {"date": "100", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
+            {
+                "date": "100",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
         ]
         lookup = {"Q1": 3}
         placed_titles = {"Q1"}
@@ -2178,7 +2263,9 @@ class TestFetchPredictionHistory:
     def test_omen_success(self) -> None:
         """Returns PredictionHistory from Omen fetcher."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, state = _mock_context(is_polymarket=False, synced_timestamp=1700000000)
+        ctx, _, synced_data, state = _mock_context(
+            is_polymarket=False, synced_timestamp=1700000000
+        )
 
         mock_fetcher = MagicMock()
         mock_fetcher.fetch_predictions.return_value = {
@@ -2201,7 +2288,9 @@ class TestFetchPredictionHistory:
     def test_polymarket_success(self) -> None:
         """Returns PredictionHistory from Polymarket fetcher."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, state = _mock_context(is_polymarket=True, synced_timestamp=1700000000)
+        ctx, _, synced_data, state = _mock_context(
+            is_polymarket=True, synced_timestamp=1700000000
+        )
 
         mock_fetcher = MagicMock()
         mock_fetcher.fetch_predictions.return_value = {
@@ -2238,14 +2327,13 @@ class TestFetchPredictionHistory:
 
 
 # ---------------------------------------------------------------------------
-# _calculate_performance_stats (generator)
-# ---------------------------------------------------------------------------
+# Tests for _calculate_performance_stats - generator method
 
 
 class TestCalculatePerformanceStats:
-    """Tests for _calculate_performance_stats."""
+    """Tests for _calculate_performance_stats."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -2262,7 +2350,7 @@ class TestCalculatePerformanceStats:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(75.0)),
         ):
-            result = self._run_gen(b._calculate_performance_stats(trader_agent))
+            result = self._run_gen(b._calculate_performance_stats(trader_agent))  # type: ignore[arg-type]
         assert result.predictions_made == 20
         assert result.prediction_accuracy == 0.75
 
@@ -2275,20 +2363,19 @@ class TestCalculatePerformanceStats:
             _patch_context(b, ctx, synced_data)[0],
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b._calculate_performance_stats(trader_agent))
+            result = self._run_gen(b._calculate_performance_stats(trader_agent))  # type: ignore[arg-type]
         assert result.predictions_made == 5
         assert result.prediction_accuracy is None
 
 
 # ---------------------------------------------------------------------------
-# _calculate_performance_metrics (generator)
-# ---------------------------------------------------------------------------
+# Tests for _calculate_performance_metrics - generator method
 
 
 class TestCalculatePerformanceMetrics:
-    """Tests for _calculate_performance_metrics."""
+    """Tests for _calculate_performance_metrics."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -2320,7 +2407,7 @@ class TestCalculatePerformanceMetrics:
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
         ):
-            result = self._run_gen(b._calculate_performance_metrics(trader_agent))
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         assert isinstance(result, PerformanceMetricsData)
         assert result.roi == 0.5  # 50.0 / 100
 
@@ -2348,20 +2435,19 @@ class TestCalculatePerformanceMetrics:
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b._calculate_performance_metrics(trader_agent))
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         assert result.roi is None
         assert result.available_funds is None
 
 
 # ---------------------------------------------------------------------------
-# _build_profit_over_time_data (generator) - routing
-# ---------------------------------------------------------------------------
+# Tests for _build_profit_over_time_data - routing logic
 
 
 class TestBuildProfitOverTimeData:
-    """Tests for _build_profit_over_time_data routing logic."""
+    """Tests for _build_profit_over_time_data routing logic."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -2382,9 +2468,11 @@ class TestBuildProfitOverTimeData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)),
+            patch.object(
+                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
+            ),
         ):
-            result = self._run_gen(b._build_profit_over_time_data())
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
     def test_empty_data_points_triggers_backfill(self) -> None:
@@ -2402,9 +2490,11 @@ class TestBuildProfitOverTimeData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)),
+            patch.object(
+                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
+            ),
         ):
-            result = self._run_gen(b._build_profit_over_time_data())
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
     def test_settled_mismatch_triggers_backfill(self) -> None:
@@ -2415,7 +2505,14 @@ class TestBuildProfitOverTimeData:
         existing_profit = ProfitOverTimeData(
             last_updated=1700000000,
             total_days=1,
-            data_points=[ProfitDataPoint(date="2023-11-14", timestamp=1700000000, daily_profit=1.0, cumulative_profit=1.0)],
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                )
+            ],
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=True,
         )
@@ -2430,9 +2527,11 @@ class TestBuildProfitOverTimeData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)),
+            patch.object(
+                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
+            ),
         ):
-            result = self._run_gen(b._build_profit_over_time_data())
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
     def test_missing_settled_mech_request_count_triggers_backfill(self) -> None:
@@ -2443,7 +2542,14 @@ class TestBuildProfitOverTimeData:
         existing_profit = ProfitOverTimeData(
             last_updated=1700000000,
             total_days=1,
-            data_points=[ProfitDataPoint(date="2023-11-14", timestamp=1700000000, daily_profit=1.0, cumulative_profit=1.0)],
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                )
+            ],
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=True,
         )
@@ -2460,9 +2566,11 @@ class TestBuildProfitOverTimeData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)),
+            patch.object(
+                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
+            ),
         ):
-            result = self._run_gen(b._build_profit_over_time_data())
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
     def test_missing_unplaced_mech_fees_triggers_backfill(self) -> None:
@@ -2473,7 +2581,14 @@ class TestBuildProfitOverTimeData:
         existing_profit = ProfitOverTimeData(
             last_updated=1700000000,
             total_days=1,
-            data_points=[ProfitDataPoint(date="2023-11-14", timestamp=1700000000, daily_profit=1.0, cumulative_profit=1.0)],
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                )
+            ],
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=False,
         )
@@ -2488,9 +2603,11 @@ class TestBuildProfitOverTimeData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)),
+            patch.object(
+                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
+            ),
         ):
-            result = self._run_gen(b._build_profit_over_time_data())
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
     def test_incremental_update_path(self) -> None:
@@ -2501,7 +2618,14 @@ class TestBuildProfitOverTimeData:
         existing_profit = ProfitOverTimeData(
             last_updated=1700000000,
             total_days=1,
-            data_points=[ProfitDataPoint(date="2023-11-14", timestamp=1700000000, daily_profit=1.0, cumulative_profit=1.0)],
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                )
+            ],
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=True,
         )
@@ -2516,21 +2640,22 @@ class TestBuildProfitOverTimeData:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_perform_incremental_update", side_effect=_return_gen(incr_result)),
+            patch.object(
+                b, "_perform_incremental_update", side_effect=_return_gen(incr_result)
+            ),
         ):
-            result = self._run_gen(b._build_profit_over_time_data())
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is incr_result
 
 
 # ---------------------------------------------------------------------------
-# _perform_initial_backfill (generator)
-# ---------------------------------------------------------------------------
+# Tests for _perform_initial_backfill - generator method
 
 
 class TestPerformInitialBackfill:
-    """Tests for _perform_initial_backfill."""
+    """Tests for _perform_initial_backfill."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -2545,9 +2670,11 @@ class TestPerformInitialBackfill:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(None)
+            ),
         ):
-            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
         assert result is None
 
     def test_empty_daily_stats(self) -> None:
@@ -2557,9 +2684,11 @@ class TestPerformInitialBackfill:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen([])),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen([])
+            ),
         ):
-            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
         assert result is not None
         assert result.total_days == 0
         assert result.data_points == []
@@ -2568,14 +2697,24 @@ class TestPerformInitialBackfill:
         """Returns empty ProfitOverTimeData when no mech requests."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        daily_stats = [{"date": "1700000000", "dailyProfit": "1000000000000000000", "profitParticipants": []}]
+        daily_stats = [
+            {
+                "date": "1700000000",
+                "dailyProfit": "1000000000000000000",
+                "profitParticipants": [],
+            }
+        ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(daily_stats)),
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(daily_stats),
+            ),
             patch.object(b, "_build_mech_request_lookup", side_effect=_return_gen({})),
         ):
-            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
         assert result is not None
         assert result.total_days == 0
 
@@ -2599,10 +2738,16 @@ class TestPerformInitialBackfill:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(daily_stats)),
-            patch.object(b, "_build_mech_request_lookup", side_effect=_return_gen(lookup)),
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(daily_stats),
+            ),
+            patch.object(
+                b, "_build_mech_request_lookup", side_effect=_return_gen(lookup)
+            ),
         ):
-            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
         assert result is not None
         assert result.total_days == 1
         assert len(result.data_points) == 1
@@ -2619,32 +2764,35 @@ class TestPerformInitialBackfill:
             {
                 "date": "1700000000",
                 "dailyProfit": str(USDC_DECIMALS_DIVISOR),
-                "profitParticipants": [
-                    {"metadata": {"title": "Market A"}}
-                ],
+                "profitParticipants": [{"metadata": {"title": "Market A"}}],
             },
         ]
         lookup = {"Market A": 1}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(daily_stats)),
-            patch.object(b, "_build_mech_request_lookup", side_effect=_return_gen(lookup)),
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(daily_stats),
+            ),
+            patch.object(
+                b, "_build_mech_request_lookup", side_effect=_return_gen(lookup)
+            ),
         ):
-            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
         assert result is not None
         assert result.total_days == 1
 
 
 # ---------------------------------------------------------------------------
-# _perform_incremental_update (generator)
-# ---------------------------------------------------------------------------
+# Tests for _perform_incremental_update - generator method
 
 
 class TestPerformIncrementalUpdate:
-    """Tests for _perform_incremental_update."""
+    """Tests for _perform_incremental_update."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -2681,9 +2829,13 @@ class TestPerformIncrementalUpdate:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(None)
+            ),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", 1700001000, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", 1700001000, existing)  # type: ignore[arg-type]
+            )
         assert result is existing
 
     def test_empty_new_stats(self) -> None:
@@ -2694,9 +2846,13 @@ class TestPerformIncrementalUpdate:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen([])),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen([])
+            ),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", 1700001000, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", 1700001000, existing)  # type: ignore[arg-type]
+            )
         assert result is existing
 
     def test_new_day_added(self) -> None:
@@ -2718,11 +2874,19 @@ class TestPerformIncrementalUpdate:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(mech_requests)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(mech_requests),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
         assert result.total_days == 2
 
@@ -2749,11 +2913,19 @@ class TestPerformIncrementalUpdate:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(mech_requests)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(mech_requests),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         # Should still have 1 day (replaced)
         assert result is not None
 
@@ -2775,9 +2947,13 @@ class TestPerformIncrementalUpdate:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is existing
 
     def test_unchanged_last_day_skips_update(self) -> None:
@@ -2816,28 +2992,38 @@ class TestPerformIncrementalUpdate:
                 ],
             }
         ]
-        mech_requests = [{"parsedRequest": {"questionTitle": "Q1"}}, {"parsedRequest": {"questionTitle": "Q1"}}]
+        mech_requests = [
+            {"parsedRequest": {"questionTitle": "Q1"}},
+            {"parsedRequest": {"questionTitle": "Q1"}},
+        ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(mech_requests)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(mech_requests),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         # Result may or may not be the same object depending on whether values match
         assert result is not None
 
 
 # ---------------------------------------------------------------------------
-# _update_profit_over_time_storage (generator)
-# ---------------------------------------------------------------------------
+# Tests for _update_profit_over_time_storage - generator method
 
 
 class TestUpdateProfitOverTimeStorage:
-    """Tests for _update_profit_over_time_storage."""
+    """Tests for _update_profit_over_time_storage."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -2856,7 +3042,9 @@ class TestUpdateProfitOverTimeStorage:
         )
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)
+            ),
         ):
             self._run_gen(b._update_profit_over_time_storage())
         assert summary.profit_over_time is profit_data
@@ -2870,7 +3058,9 @@ class TestUpdateProfitOverTimeStorage:
         state.read_existing_performance_summary.return_value = summary
         with (
             _patch_context(b, ctx, synced_data)[0],
-            patch.object(b, "_build_profit_over_time_data", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(None)
+            ),
         ):
             self._run_gen(b._update_profit_over_time_storage())
         state.overwrite_performance_summary.assert_not_called()
@@ -2901,8 +3091,7 @@ class TestSaveAgentPerformanceSummary:
 
 
 # ---------------------------------------------------------------------------
-# finish_behaviour (generator)
-# ---------------------------------------------------------------------------
+# Tests for finish_behaviour - generator method
 
 
 class TestFinishBehaviour:
@@ -2922,20 +3111,19 @@ class TestFinishBehaviour:
             gen = b.finish_behaviour(payload)
             try:
                 next(gen)
-            except StopIteration:
+            except StopIteration:  # type: ignore[attr-defined]
                 pass
-            b.set_done.assert_called_once()
+            b.set_done.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
-# async_act (generator) - FetchPerformanceSummaryBehaviour
-# ---------------------------------------------------------------------------
+# Tests for async_act - FetchPerformanceSummaryBehaviour
 
 
 class TestFetchAsyncAct:
-    """Tests for FetchPerformanceSummaryBehaviour.async_act."""
+    """Tests for FetchPerformanceSummaryBehaviour.async_act."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> None:
         """Drive generator to completion."""
         try:
             while True:
@@ -2982,9 +3170,9 @@ class TestFetchAsyncAct:
                 AgentPerformanceMetrics(name="Accuracy", is_primary=False, value="75%"),
                 AgentPerformanceMetrics(name="ROI", is_primary=True, value="10%"),
             ]
-        )
+        )  # type: ignore[no-untyped-def]
 
-        def mock_fetch(*a, **k):
+        def mock_fetch(*a: Any, **k: Any) -> Generator:
             b._agent_performance_summary = summary
             return
             yield  # pragma: no cover
@@ -3011,9 +3199,9 @@ class TestFetchAsyncAct:
                 AgentPerformanceMetrics(name="Accuracy", is_primary=False, value=NA),
                 AgentPerformanceMetrics(name="ROI", is_primary=True, value="10%"),
             ]
-        )
+        )  # type: ignore[no-untyped-def]
 
-        def mock_fetch(*a, **k):
+        def mock_fetch(*a: Any, **k: Any) -> Generator:
             b._agent_performance_summary = summary
             return
             yield  # pragma: no cover
@@ -3033,9 +3221,9 @@ class TestFetchAsyncAct:
     def test_summary_none(self) -> None:
         """Sends vote=False when summary is None."""
         b = _make_fetch_behaviour()
-        ctx, params, synced_data, state = _mock_context()
+        ctx, params, synced_data, state = _mock_context()  # type: ignore[no-untyped-def]
 
-        def mock_fetch(*a, **k):
+        def mock_fetch(*a: Any, **k: Any) -> Generator:
             b._agent_performance_summary = None
             return
             yield  # pragma: no cover
@@ -3053,14 +3241,13 @@ class TestFetchAsyncAct:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_agent_performance_summary (generator) - integration-level
-# ---------------------------------------------------------------------------
+# Tests for _fetch_agent_performance_summary - integration level
 
 
 class TestFetchAgentPerformanceSummaryIntegration:
-    """Tests for _fetch_agent_performance_summary."""
+    """Tests for _fetch_agent_performance_summary."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -3074,15 +3261,26 @@ class TestFetchAgentPerformanceSummaryIntegration:
         ctx, params, synced_data, state = _mock_context(is_polymarket=False)
 
         profit_data = ProfitOverTimeData(
-            last_updated=1700000000, total_days=1,
-            data_points=[ProfitDataPoint(date="2023-11-14", timestamp=1700000000, daily_profit=1.0, cumulative_profit=1.0)],
+            last_updated=1700000000,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                )
+            ],
             unplaced_mech_requests_count=0,
             placed_mech_requests_count=2,
         )
         agent_details = AgentDetails(id="0xabc")
         agent_perf = AgentPerformanceData()
         # Create enough winning trades
-        winning_items = [{"id": str(i), "total_payout": 10} for i in range(MIN_TRADES_FOR_ROI_DISPLAY)]
+        winning_items = [
+            {"id": str(i), "total_payout": 10}
+            for i in range(MIN_TRADES_FOR_ROI_DISPLAY)
+        ]
         pred_history = PredictionHistory(
             total_predictions=MIN_TRADES_FOR_ROI_DISPLAY,
             stored_count=MIN_TRADES_FOR_ROI_DISPLAY,
@@ -3092,18 +3290,28 @@ class TestFetchAgentPerformanceSummaryIntegration:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_calculate_settled_mech_requests", side_effect=_return_gen(5)),
-            patch.object(b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)),
+            patch.object(
+                b, "_calculate_settled_mech_requests", side_effect=_return_gen(5)
+            ),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)
+            ),
             patch.object(b, "calculate_roi", side_effect=_return_gen((10.0, 5.0))),
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(75.0)),
-            patch.object(b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)),
-            patch.object(b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)),
+            patch.object(
+                b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)
+            ),
+            patch.object(
+                b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)
+            ),
             patch.object(b, "_fetch_prediction_history", return_value=pred_history),
         ):
             self._run_gen(b._fetch_agent_performance_summary())
         assert b._agent_performance_summary is not None
         # Check that Total ROI metric has the actual value (not MORE_TRADES_NEEDED_TEXT)
-        roi_metric = [m for m in b._agent_performance_summary.metrics if m.name == "Total ROI"][0]
+        roi_metric = [
+            m for m in b._agent_performance_summary.metrics if m.name == "Total ROI"
+        ][0]
         assert roi_metric.value == "10%"
 
     def test_full_flow_not_enough_winning_trades(self) -> None:
@@ -3112,31 +3320,44 @@ class TestFetchAgentPerformanceSummaryIntegration:
         ctx, params, synced_data, state = _mock_context(is_polymarket=False)
 
         profit_data = ProfitOverTimeData(
-            last_updated=1700000000, total_days=0, data_points=[],
+            last_updated=1700000000,
+            total_days=0,
+            data_points=[],
             unplaced_mech_requests_count=0,
             placed_mech_requests_count=0,
         )
         agent_details = AgentDetails(id="0xabc")
         agent_perf = AgentPerformanceData()
         pred_history = PredictionHistory(
-            total_predictions=2, stored_count=2,
+            total_predictions=2,
+            stored_count=2,
             items=[{"id": "1", "total_payout": 10}, {"id": "2", "total_payout": 0}],
         )
 
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)),
-            patch.object(b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)),
+            patch.object(
+                b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)
+            ),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)
+            ),
             patch.object(b, "calculate_roi", side_effect=_return_gen((None, None))),
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(None)),
-            patch.object(b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)),
-            patch.object(b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)),
+            patch.object(
+                b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)
+            ),
+            patch.object(
+                b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)
+            ),
             patch.object(b, "_fetch_prediction_history", return_value=pred_history),
         ):
             self._run_gen(b._fetch_agent_performance_summary())
         assert b._agent_performance_summary is not None
-        roi_metric = [m for m in b._agent_performance_summary.metrics if m.name == "Total ROI"][0]
+        roi_metric = [
+            m for m in b._agent_performance_summary.metrics if m.name == "Total ROI"
+        ][0]
         assert roi_metric.value == MORE_TRADES_NEEDED_TEXT
 
     def test_profit_data_none(self) -> None:
@@ -3151,12 +3372,20 @@ class TestFetchAgentPerformanceSummaryIntegration:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)),
-            patch.object(b, "_build_profit_over_time_data", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)
+            ),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(None)
+            ),
             patch.object(b, "calculate_roi", side_effect=_return_gen((None, None))),
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(None)),
-            patch.object(b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)),
-            patch.object(b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)),
+            patch.object(
+                b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)
+            ),
+            patch.object(
+                b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)
+            ),
             patch.object(b, "_fetch_prediction_history", return_value=pred_history),
         ):
             self._run_gen(b._fetch_agent_performance_summary())
@@ -3179,12 +3408,20 @@ class TestFetchAgentPerformanceSummaryIntegration:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)),
-            patch.object(b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)),
+            patch.object(
+                b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)
+            ),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)
+            ),
             patch.object(b, "calculate_roi", side_effect=_return_gen((None, None))),
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(None)),
-            patch.object(b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)),
-            patch.object(b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)),
+            patch.object(
+                b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)
+            ),
+            patch.object(
+                b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)
+            ),
             patch.object(b, "_fetch_prediction_history", return_value=pred_history),
         ):
             self._run_gen(b._fetch_agent_performance_summary())
@@ -3225,7 +3462,9 @@ class TestUpdateAchievementsBehaviourInit:
             b = UpdateAchievementsBehaviour()
         assert b._bet_payout_checker is not None
         assert b._bet_payout_checker._achievement_type == "polystrat/payout"
-        assert b._bet_payout_checker._roi_threshold == POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD
+        assert (
+            b._bet_payout_checker._roi_threshold == POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD
+        )
 
     def test_init_omen(self) -> None:
         """__init__ creates BetPayoutChecker with omen settings."""
@@ -3250,9 +3489,9 @@ class TestUpdateAchievementsBehaviourInit:
 
 
 class TestUpdateAchievementsAsyncAct:
-    """Tests for UpdateAchievementsBehaviour.async_act."""
+    """Tests for UpdateAchievementsBehaviour.async_act."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> None:
         """Drive generator to completion."""
         try:
             while True:
@@ -3281,9 +3520,9 @@ class TestUpdateAchievementsAsyncAct:
         ctx, params, synced_data, state = _mock_context()
         summary = _default_summary()
         summary.achievements = None
-        summary.prediction_history = PredictionHistory()
+        summary.prediction_history = PredictionHistory()  # type: ignore[attr-defined]
         state.read_existing_performance_summary.return_value = summary
-        b._bet_payout_checker.update_achievements.return_value = False
+        b._bet_payout_checker.update_achievements.return_value = False  # type: ignore[attr-defined]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -3299,9 +3538,9 @@ class TestUpdateAchievementsAsyncAct:
         ctx, params, synced_data, state = _mock_context()
         summary = _default_summary()
         summary.achievements = Achievements()
-        summary.prediction_history = PredictionHistory()
+        summary.prediction_history = PredictionHistory()  # type: ignore[attr-defined]
         state.read_existing_performance_summary.return_value = summary
-        b._bet_payout_checker.update_achievements.return_value = True
+        b._bet_payout_checker.update_achievements.return_value = True  # type: ignore[attr-defined]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -3316,9 +3555,9 @@ class TestUpdateAchievementsAsyncAct:
         ctx, params, synced_data, state = _mock_context()
         summary = _default_summary()
         summary.achievements = Achievements()
-        summary.prediction_history = PredictionHistory()
+        summary.prediction_history = PredictionHistory()  # type: ignore[attr-defined]
         state.read_existing_performance_summary.return_value = summary
-        b._bet_payout_checker.update_achievements.return_value = False
+        b._bet_payout_checker.update_achievements.return_value = False  # type: ignore[attr-defined]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -3333,9 +3572,9 @@ class TestUpdateAchievementsAsyncAct:
         ctx, params, synced_data, state = _mock_context()
         summary = _default_summary()
         summary.achievements = Achievements()
-        summary.prediction_history = PredictionHistory()
+        summary.prediction_history = PredictionHistory()  # type: ignore[attr-defined]
         state.read_existing_performance_summary.return_value = summary
-        b._bet_payout_checker.update_achievements.return_value = False
+        b._bet_payout_checker.update_achievements.return_value = False  # type: ignore[attr-defined]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -3363,9 +3602,9 @@ class TestUpdateAchievementsFinishBehaviour:
             gen = b.finish_behaviour(payload)
             try:
                 next(gen)
-            except StopIteration:
+            except StopIteration:  # type: ignore[attr-defined]
                 pass
-            b.set_done.assert_called_once()
+            b.set_done.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -3388,14 +3627,14 @@ class TestAgentPerformanceSummaryRoundBehaviour:
         )
 
     def test_abci_app_cls(self) -> None:
-        """abci_app_cls is AgentPerformanceSummaryAbciApp."""
+        """abci_app_cls is AgentPerformanceSummaryAbciApp."""  # type: ignore[misc]
         assert (
-            AgentPerformanceSummaryRoundBehaviour.abci_app_cls
+            AgentPerformanceSummaryRoundBehaviour.abci_app_cls  # type: ignore[misc]
             is AgentPerformanceSummaryAbciApp
         )
 
     def test_behaviours_set(self) -> None:
-        """behaviours set contains both behaviour classes."""
+        """Behaviours set contains both behaviour classes."""
         assert AgentPerformanceSummaryRoundBehaviour.behaviours == {
             FetchPerformanceSummaryBehaviour,
             UpdateAchievementsBehaviour,
@@ -3422,8 +3661,9 @@ class TestPostTxRoundDetectedExceptionPath:
         # Force the actual exception path by making reversed() fail
         bad_app = MagicMock()
 
+        # type: ignore[no-untyped-def]
         class BadList:
-            def __getitem__(self, key):
+            def __getitem__(self, key: Any) -> Any:
                 raise RuntimeError("cannot slice")
 
         bad_app._previous_rounds = BadList()
@@ -3443,8 +3683,14 @@ class TestComputeMechFeeBucketsMultiBetBranch:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         # Create stats where same title appears on two days -> triggers multi-bet allocation
         stats = [
-            {"date": "100", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
-            {"date": "200", "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]},
+            {
+                "date": "100",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
+            {
+                "date": "200",
+                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
+            },
         ]
         lookup = {"Q1": 6, "Q2": 2}
         placed_titles = {"Q1", "Q2"}
@@ -3468,9 +3714,9 @@ class TestBuildMultiBetAllocationsOmenBranch:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         stats = [
             {"date": "100", "profitParticipants": [{"question": ""}]},
-            {"date": "200", "profitParticipants": [{"question": ""}]},
+            {"date": "200", "profitParticipants": [{"question": ""}]},  # type: ignore[var-annotated]
         ]
-        lookup = {}
+        lookup = {}  # type: ignore[var-annotated]
         with _patch_context(b, ctx, synced_data)[0]:
             allocations, titles = b._build_multi_bet_allocations(stats, lookup)
         assert allocations == {}
@@ -3504,9 +3750,9 @@ class TestBuildMultiBetAllocationsOmenBranch:
 
 
 class TestPerformIncrementalUpdateCoverageBranches:
-    """Cover remaining branches in _perform_incremental_update."""
+    """Cover remaining branches in _perform_incremental_update."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -3545,7 +3791,9 @@ class TestPerformIncrementalUpdateCoverageBranches:
         b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
         # Same day => replace_last starts True
         current_ts = ts + 100
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False, synced_timestamp=current_ts)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
         existing = self._existing_data(ts=ts)
         # New stats are for a DIFFERENT day from the last data point
         new_day_ts = ts + SECONDS_PER_DAY
@@ -3559,10 +3807,14 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         # Should not have replaced, should have appended
         assert result is not None
         assert result.total_days == 2
@@ -3591,11 +3843,19 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(mech_requests)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(mech_requests),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
         assert result.total_days == 2
 
@@ -3604,7 +3864,9 @@ class TestPerformIncrementalUpdateCoverageBranches:
         ts = 1700000000
         b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=0)
         current_ts = ts + 100  # same day
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False, synced_timestamp=current_ts)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
         existing = self._existing_data(ts=ts)
         # Stats for same day => replace_last triggers pop
         new_stats = [
@@ -3620,11 +3882,19 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(mech_requests)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(mech_requests),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
         # Should still have 1 day (replaced, not appended)
         assert result.total_days == 1
@@ -3640,8 +3910,11 @@ class TestPerformIncrementalUpdateCoverageBranches:
             total_days=1,
             data_points=[
                 ProfitDataPoint(
-                    date="2023-11-14", timestamp=ts, daily_profit=1.0,
-                    cumulative_profit=1.0, daily_mech_requests=5,  # high existing count
+                    date="2023-11-14",
+                    timestamp=ts,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=5,  # high existing count
                     daily_profit_raw=1.0,
                 )
             ],
@@ -3660,10 +3933,14 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(3)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
         # settled should be bounded: max(prev=5, min(5+0, max(3-1, 0))) = max(5, 2) = 5
         assert result.settled_mech_requests_count >= 2  # bounded by total - open
@@ -3674,7 +3951,9 @@ class TestPerformIncrementalUpdateCoverageBranches:
         # total == open means 0 remaining unplaced, so unplaced_allocated will be 0
         b = _make_fetch_behaviour(_total_mech_requests=0, _open_market_requests=0)
         current_ts = ts + 100  # same day
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False, synced_timestamp=current_ts)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
 
         # Set up data point that will be identical after re-processing
         dp = ProfitDataPoint(
@@ -3705,10 +3984,14 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         # Should return existing data (skipped)
         assert result is existing
 
@@ -3725,17 +4008,23 @@ class TestPerformIncrementalUpdateCoverageBranches:
                 "dailyProfit": str(WEI_IN_ETH),
                 "profitParticipants": [
                     {"question": ""},  # empty question => empty title => skipped
-                    {"question": f"{QUESTION_DATA_SEPARATOR}only_suffix"},  # empty title part
+                    {
+                        "question": f"{QUESTION_DATA_SEPARATOR}only_suffix"
+                    },  # empty title part
                 ],
             }
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         # Should still produce result (no question titles => no mech lookup)
         assert result is not None
 
@@ -3759,11 +4048,17 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen([])),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b, "_fetch_mech_requests_by_titles", side_effect=_return_gen([])
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
 
     def test_replace_last_but_day_not_in_incoming(self) -> None:
@@ -3779,27 +4074,42 @@ class TestPerformIncrementalUpdateCoverageBranches:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         # Existing data: data point on day X
         dp = ProfitDataPoint(
-            date="2023-11-14", timestamp=ts,
-            daily_profit=1.0, cumulative_profit=1.0,
-            daily_mech_requests=0, daily_profit_raw=1.0,
+            date="2023-11-14",
+            timestamp=ts,
+            daily_profit=1.0,
+            cumulative_profit=1.0,
+            daily_mech_requests=0,
+            daily_profit_raw=1.0,
         )
         existing = ProfitOverTimeData(
-            last_updated=ts, total_days=1, data_points=[dp],
-            settled_mech_requests_count=0, unplaced_mech_requests_count=0,
-            placed_mech_requests_count=0, includes_unplaced_mech_fees=True,
+            last_updated=ts,
+            total_days=1,
+            data_points=[dp],
+            settled_mech_requests_count=0,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=0,
+            includes_unplaced_mech_fees=True,
         )
         # Stats for day X (same as last data point) AND day X+1
         new_stats = [
             {"date": str(ts), "dailyProfit": str(WEI_IN_ETH), "profitParticipants": []},
-            {"date": str(new_ts), "dailyProfit": str(WEI_IN_ETH), "profitParticipants": []},
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [],
+            },
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
         # Replace last should work; total_days should be 2
         assert result.total_days == 2
@@ -3812,15 +4122,23 @@ class TestPerformIncrementalUpdateCoverageBranches:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         existing = self._existing_data(ts=ts)
         new_stats = [
-            {"date": str(new_ts), "dailyProfit": str(WEI_IN_ETH), "profitParticipants": []},
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [],
+            },
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(None)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
 
     def test_changed_last_day_does_not_skip(self) -> None:
@@ -3828,17 +4146,26 @@ class TestPerformIncrementalUpdateCoverageBranches:
         ts = 86400 * 19700  # day boundary
         b = _make_fetch_behaviour(_total_mech_requests=0, _open_market_requests=0)
         current_ts = ts + 100  # same day
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False, synced_timestamp=current_ts)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
 
         dp = ProfitDataPoint(
             date=datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d"),
-            timestamp=ts, daily_profit=0.0, cumulative_profit=0.0,
-            daily_mech_requests=0, daily_profit_raw=0.0,
+            timestamp=ts,
+            daily_profit=0.0,
+            cumulative_profit=0.0,
+            daily_mech_requests=0,
+            daily_profit_raw=0.0,
         )
         existing = ProfitOverTimeData(
-            last_updated=ts, total_days=1, data_points=[dp],
-            settled_mech_requests_count=0, unplaced_mech_requests_count=0,
-            placed_mech_requests_count=0, includes_unplaced_mech_fees=True,
+            last_updated=ts,
+            total_days=1,
+            data_points=[dp],
+            settled_mech_requests_count=0,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=0,
+            includes_unplaced_mech_fees=True,
         )
         # Different profit => should NOT skip
         new_stats = [
@@ -3847,10 +4174,14 @@ class TestPerformIncrementalUpdateCoverageBranches:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         # Should NOT return existing because profit changed
         assert result is not existing
         assert result.data_points[0].daily_profit_raw == 1.0
@@ -3876,9 +4207,9 @@ class TestBuildMultiBetAllocationsEmptyTitleBranch:
                 "profitParticipants": [
                     {"question": f"{QUESTION_DATA_SEPARATOR}only_data"},
                 ],
-            },
+            },  # type: ignore[var-annotated]
         ]
-        lookup = {}
+        lookup = {}  # type: ignore[var-annotated]
         with _patch_context(b, ctx, synced_data)[0]:
             allocations, titles = b._build_multi_bet_allocations(stats, lookup)
         assert allocations == {}
@@ -3897,9 +4228,9 @@ class TestBuildMultiBetAllocationsEmptyTitleBranch:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
 
         call_count = [0]
-        original_extract = FetchPerformanceSummaryBehaviour._extract_omen_question_title
+        original_extract = FetchPerformanceSummaryBehaviour._extract_omen_question_title  # type: ignore[misc]
 
-        @staticmethod
+        @staticmethod  # type: ignore[misc]
         def mock_extract(question: str) -> str:
             """Return empty string on second participant to bypass inner guard."""
             call_count[0] += 1
@@ -3941,9 +4272,9 @@ class TestBuildMultiBetAllocationsEmptyTitleBranch:
 
 
 class TestIncrementalUpdateEdgeCases:
-    """Tests targeting remaining partial branches in _perform_incremental_update."""
+    """Tests targeting remaining partial branches in _perform_incremental_update."""  # type: ignore[no-untyped-def]
 
-    def _run_gen(self, gen):
+    def _run_gen(self, gen: Generator) -> Any:
         """Drive generator."""
         try:
             next(gen)
@@ -3958,9 +4289,12 @@ class TestIncrementalUpdateEdgeCases:
             total_days=1,
             data_points=[
                 ProfitDataPoint(
-                    date="2023-11-14", timestamp=ts,
-                    daily_profit=1.0, cumulative_profit=1.0,
-                    daily_mech_requests=2, daily_profit_raw=1.0,
+                    date="2023-11-14",
+                    timestamp=ts,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=2,
+                    daily_profit_raw=1.0,
                 )
             ],
             settled_mech_requests_count=2,
@@ -3988,17 +4322,27 @@ class TestIncrementalUpdateEdgeCases:
         # Return mech requests where one has valid title and one has empty title
         mech_requests = [
             {"parsedRequest": {"questionTitle": "Q1"}},
-            {"parsedRequest": {"questionTitle": ""}},  # empty title => if title: is False
+            {
+                "parsedRequest": {"questionTitle": ""}
+            },  # empty title => if title: is False
             {"parsedRequest": None},  # None parsedRequest => {} or {} => empty title
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(mech_requests)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(mech_requests),
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", new_ts + 100, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
 
     def test_replace_last_with_mismatched_dp_day(self) -> None:
@@ -4014,18 +4358,27 @@ class TestIncrementalUpdateEdgeCases:
         # We make current_day == last_updated_day so replace_last starts True
         current_ts = ts + 100
         b = _make_fetch_behaviour(_total_mech_requests=0, _open_market_requests=0)
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False, synced_timestamp=current_ts)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
 
         # Use a data point with timestamp on the SAME day as ts
         dp = ProfitDataPoint(
-            date="2023-11-14", timestamp=ts,
-            daily_profit=0.0, cumulative_profit=0.0,
-            daily_mech_requests=0, daily_profit_raw=0.0,
+            date="2023-11-14",
+            timestamp=ts,
+            daily_profit=0.0,
+            cumulative_profit=0.0,
+            daily_mech_requests=0,
+            daily_profit_raw=0.0,
         )
         existing = ProfitOverTimeData(
-            last_updated=ts, total_days=1, data_points=[dp],
-            settled_mech_requests_count=0, unplaced_mech_requests_count=0,
-            placed_mech_requests_count=0, includes_unplaced_mech_fees=True,
+            last_updated=ts,
+            total_days=1,
+            data_points=[dp],
+            settled_mech_requests_count=0,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=0,
+            includes_unplaced_mech_fees=True,
         )
         # Include the same day in stats so replace_last=True is confirmed at 1445
         new_stats = [
@@ -4034,9 +4387,13 @@ class TestIncrementalUpdateEdgeCases:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)),
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", current_ts, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         # The result should skip (unchanged)
         assert result is existing

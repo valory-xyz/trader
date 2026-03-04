@@ -20,7 +20,7 @@
 """Tests for chatui_abci/handlers.py."""
 
 import json
-from typing import Optional, cast
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.chatui_abci.handlers import (
@@ -29,12 +29,12 @@ from packages.valory.skills.chatui_abci.handlers import (
     GENAI_API_KEY_NOT_SET_ERROR,
     GENAI_RATE_LIMIT_ERROR,
     HTTP_CONTENT_TYPE_MAP,
+    HttpHandler,
     LLM_MESSAGE_FIELD,
     PREVIOUS_TRADING_TYPE_FIELD,
+    SrrHandler,
     TRADING_TYPE_FIELD,
     UPDATED_PARAMS_FIELD,
-    HttpHandler,
-    SrrHandler,
 )
 from packages.valory.skills.chatui_abci.models import ChatuiConfig, TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import (
@@ -95,9 +95,9 @@ def _make_handler(
     handler.synchronized_data = sync_data  # type: ignore[misc]
 
     # Patch store helpers — no filesystem side-effects.
-    handler._store_trading_strategy = MagicMock()
-    handler._store_allowed_tools = MagicMock()
-    handler._store_chatui_param_to_json = MagicMock()
+    handler._store_trading_strategy = MagicMock()  # type: ignore[method-assign]
+    handler._store_allowed_tools = MagicMock()  # type: ignore[method-assign]
+    handler._store_chatui_param_to_json = MagicMock()  # type: ignore[method-assign]
 
     return handler
 
@@ -265,7 +265,7 @@ class TestFixedBetSize:
         assert issues == []
         assert params["fixed_bet_size"] is None
         handler._store_chatui_param_to_json.assert_any_call("fixed_bet_size", None)  # type: ignore[attr-defined]
-        assert handler.shared_state.chatui_config.fixed_bet_size is None  # type: ignore[attr-defined]
+        assert handler.shared_state.chatui_config.fixed_bet_size is None  # type: ignore[attr-defined, union-attr]
 
     def test_absent_field_is_noop(self) -> None:
         """Missing fixed_bet_size field must be a no-op."""
@@ -312,7 +312,7 @@ class TestMaxBetSize:
         assert issues == []
         assert params["max_bet_size"] is None
         handler._store_chatui_param_to_json.assert_any_call("max_bet_size", None)  # type: ignore[attr-defined]
-        assert handler.shared_state.chatui_config.max_bet_size is None  # type: ignore[attr-defined]
+        assert handler.shared_state.chatui_config.max_bet_size is None  # type: ignore[attr-defined, union-attr]
 
     def test_absent_field_is_noop(self) -> None:
         """Missing max_bet_size field must be a no-op."""
@@ -422,11 +422,6 @@ class TestConstants:
             assert strategy.value in AVAILABLE_TRADING_STRATEGIES
 
 
-# ---------------------------------------------------------------------------
-# HttpHandler.setup()
-# ---------------------------------------------------------------------------
-
-
 class TestHttpHandlerSetup:
     """Tests for HttpHandler.setup()."""
 
@@ -465,11 +460,6 @@ class TestHttpHandlerSetup:
         assert post_handler_funcs.count(handler._handle_chatui_prompt) == 2
 
 
-# ---------------------------------------------------------------------------
-# _handle_get_features()
-# ---------------------------------------------------------------------------
-
-
 class TestHandleGetFeatures:
     """Tests for HttpHandler._handle_get_features()."""
 
@@ -480,8 +470,8 @@ class TestHandleGetFeatures:
     ) -> _TestableHttpHandler:
         """Create a handler wired for features tests."""
         handler = _make_handler()
-        handler.context.params.use_x402 = use_x402
-        handler.context.params.genai_api_key = genai_api_key
+        handler.context.params.use_x402 = use_x402  # type: ignore[attr-defined]
+        handler.context.params.genai_api_key = genai_api_key  # type: ignore[attr-defined]
         handler._send_ok_response = MagicMock()  # type: ignore[assignment]
         return handler
 
@@ -491,7 +481,7 @@ class TestHandleGetFeatures:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": True}
         )
 
@@ -503,7 +493,7 @@ class TestHandleGetFeatures:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": True}
         )
 
@@ -513,7 +503,7 @@ class TestHandleGetFeatures:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": False}
         )
 
@@ -523,7 +513,7 @@ class TestHandleGetFeatures:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": False}
         )
 
@@ -533,7 +523,7 @@ class TestHandleGetFeatures:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": False}
         )
 
@@ -543,17 +533,17 @@ class TestHandleGetFeatures:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": False}
         )
 
     def test_double_quoted_empty_api_key_chat_is_disabled(self) -> None:
-        """Double-quoted empty string '\"\"' api_key must disable chat."""
+        r"""Double-quoted empty string '\"\"' api_key must disable chat."""
         handler = self._make_features_handler(use_x402=False, genai_api_key='""')
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": False}
         )
 
@@ -561,13 +551,13 @@ class TestHandleGetFeatures:
         """When use_x402 is not present on params at all, getattr fallback must be False."""
         handler = _make_handler()
         # Remove the use_x402 attribute so getattr falls back
-        del handler.context.params.use_x402
-        handler.context.params.genai_api_key = "valid-key"
+        del handler.context.params.use_x402  # type: ignore[attr-defined]
+        handler.context.params.genai_api_key = "valid-key"  # type: ignore[attr-defined]
         handler._send_ok_response = MagicMock()  # type: ignore[assignment]
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         handler._handle_get_features(http_msg, http_dialogue)
-        handler._send_ok_response.assert_called_once_with(
+        handler._send_ok_response.assert_called_once_with(  # type: ignore[attr-defined]
             http_msg, http_dialogue, {"isChatEnabled": True}
         )
 
@@ -587,7 +577,7 @@ class TestProperties:
         sentinel = MagicMock()
         handler.context.state = sentinel
         # Access the property from HttpHandler (not _TestableHttpHandler which shadows it)
-        result = HttpHandler.shared_state.fget(handler)  # type: ignore[union-attr]
+        result = HttpHandler.shared_state.fget(handler)  # type: ignore[attr-defined, union-attr]
         assert result is sentinel
 
     def test_round_sequence_returns_shared_state_round_sequence(self) -> None:
@@ -598,7 +588,7 @@ class TestProperties:
         # shared_state property calls self.context.state, set it up
         handler.context.state.round_sequence = rs_sentinel
         # Wire shared_state so that round_sequence can chain through it
-        handler.shared_state = handler.context.state
+        handler.shared_state = handler.context.state  # type: ignore[misc]
         result = HttpHandler.round_sequence.fget(handler)  # type: ignore[union-attr]
         assert result is rs_sentinel
 
@@ -609,14 +599,9 @@ class TestProperties:
         db_mock = MagicMock()
         handler.context.state.round_sequence.latest_synchronized_data.db = db_mock
         # Wire shared_state so that round_sequence and then synchronized_data can chain
-        handler.shared_state = handler.context.state
-        result = HttpHandler.synchronized_data.fget(handler)  # type: ignore[union-attr]
+        handler.shared_state = handler.context.state  # type: ignore[misc]
+        result = HttpHandler.synchronized_data.fget(handler)  # type: ignore[attr-defined, union-attr]
         assert result.db is db_mock
-
-
-# ---------------------------------------------------------------------------
-# _get_ui_trading_strategy()
-# ---------------------------------------------------------------------------
 
 
 class TestGetUiTradingStrategy:
@@ -651,11 +636,6 @@ class TestGetUiTradingStrategy:
         assert result == TradingStrategyUI.RISKY
 
 
-# ---------------------------------------------------------------------------
-# _get_available_tools()
-# ---------------------------------------------------------------------------
-
-
 class TestGetAvailableTools:
     """Tests for _get_available_tools()."""
 
@@ -671,7 +651,7 @@ class TestGetAvailableTools:
         """When synchronized_data raises TypeError, return None and send 425."""
         handler = _make_handler()
         # Make accessing available_mech_tools raise TypeError
-        type(handler.synchronized_data).available_mech_tools = property(
+        type(handler.synchronized_data).available_mech_tools = property(  # type: ignore[attr-defined]
             lambda self: (_ for _ in ()).throw(TypeError("not ready"))
         )
         handler._send_too_early_request_response = MagicMock()  # type: ignore[assignment]
@@ -679,12 +659,7 @@ class TestGetAvailableTools:
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
         assert result is None
-        handler._send_too_early_request_response.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# _handle_chatui_prompt()
-# ---------------------------------------------------------------------------
+        handler._send_too_early_request_response.assert_called_once()  # type: ignore[attr-defined]
 
 
 class TestHandleChatuiPrompt:
@@ -715,8 +690,8 @@ class TestHandleChatuiPrompt:
         http_msg = self._make_http_msg({"prompt": ""})
         http_dialogue = MagicMock()
         handler._handle_chatui_prompt(http_msg, http_dialogue)
-        handler._send_bad_request_response.assert_called_once()
-        handler._send_chatui_llm_request.assert_not_called()
+        handler._send_bad_request_response.assert_called_once()  # type: ignore[attr-defined]
+        handler._send_chatui_llm_request.assert_not_called()  # type: ignore[attr-defined]
 
     def test_missing_prompt_key_sends_bad_request(self) -> None:
         """A body without the 'prompt' key must send a bad request response."""
@@ -724,7 +699,7 @@ class TestHandleChatuiPrompt:
         http_msg = self._make_http_msg({})
         http_dialogue = MagicMock()
         handler._handle_chatui_prompt(http_msg, http_dialogue)
-        handler._send_bad_request_response.assert_called_once()
+        handler._send_bad_request_response.assert_called_once()  # type: ignore[attr-defined]
 
     def test_available_tools_none_returns_early(self) -> None:
         """When _get_available_tools returns None, prompt handling must return."""
@@ -733,8 +708,8 @@ class TestHandleChatuiPrompt:
         http_msg = self._make_http_msg({"prompt": "test"})
         http_dialogue = MagicMock()
         handler._handle_chatui_prompt(http_msg, http_dialogue)
-        handler._send_chatui_llm_request.assert_not_called()
-        handler._send_bad_request_response.assert_not_called()
+        handler._send_chatui_llm_request.assert_not_called()  # type: ignore[attr-defined]
+        handler._send_bad_request_response.assert_not_called()  # type: ignore[attr-defined]
 
     def test_valid_prompt_calls_send_chatui_llm_request(self) -> None:
         """A valid prompt must result in _send_chatui_llm_request being called."""
@@ -742,8 +717,8 @@ class TestHandleChatuiPrompt:
         http_msg = self._make_http_msg({"prompt": "make me risky"})
         http_dialogue = MagicMock()
         handler._handle_chatui_prompt(http_msg, http_dialogue)
-        handler._send_chatui_llm_request.assert_called_once()
-        call_kwargs = handler._send_chatui_llm_request.call_args
+        handler._send_chatui_llm_request.assert_called_once()  # type: ignore[attr-defined]
+        call_kwargs = handler._send_chatui_llm_request.call_args  # type: ignore[attr-defined]
         assert "make me risky" in call_kwargs.kwargs.get(
             "prompt", call_kwargs[1].get("prompt", "")
         ) or "make me risky" in str(call_kwargs)
@@ -760,15 +735,10 @@ class TestHandleChatuiPrompt:
         http_msg = self._make_http_msg({"prompt": "status"})
         http_dialogue = MagicMock()
         handler._handle_chatui_prompt(http_msg, http_dialogue)
-        prompt_arg = handler._send_chatui_llm_request.call_args
+        prompt_arg = handler._send_chatui_llm_request.call_args  # type: ignore[attr-defined]
         prompt_str = str(prompt_arg)
         assert "kelly_criterion_no_conf" in prompt_str
         assert "prediction-online" in prompt_str
-
-
-# ---------------------------------------------------------------------------
-# _send_chatui_llm_request()
-# ---------------------------------------------------------------------------
 
 
 class TestSendChatuiLlmRequest:
@@ -784,7 +754,7 @@ class TestSendChatuiLlmRequest:
             mock_request_msg,
             mock_srr_dialogue,
         )
-        handler.context.srr_dialogues = mock_srr_dialogues
+        handler.context.srr_dialogues = mock_srr_dialogues  # type: ignore[attr-defined]
         handler._send_message = MagicMock()  # type: ignore[assignment]
 
         http_msg = MagicMock()
@@ -797,8 +767,8 @@ class TestSendChatuiLlmRequest:
         )
 
         mock_srr_dialogues.create.assert_called_once()
-        handler._send_message.assert_called_once()
-        call_args = handler._send_message.call_args
+        handler._send_message.assert_called_once()  # type: ignore[attr-defined]
+        call_args = handler._send_message.call_args  # type: ignore[attr-defined]
         assert call_args[0][0] is mock_request_msg
         assert call_args[0][1] is mock_srr_dialogue
         # The callback must be _handle_chatui_llm_response
@@ -813,7 +783,7 @@ class TestSendChatuiLlmRequest:
         handler = _make_handler()
         mock_srr_dialogues = MagicMock()
         mock_srr_dialogues.create.return_value = (MagicMock(), MagicMock())
-        handler.context.srr_dialogues = mock_srr_dialogues
+        handler.context.srr_dialogues = mock_srr_dialogues  # type: ignore[attr-defined]
         handler._send_message = MagicMock()  # type: ignore[assignment]
 
         handler._send_chatui_llm_request(
@@ -828,11 +798,6 @@ class TestSendChatuiLlmRequest:
         assert "prompt" in payload
         assert payload["prompt"] == "hello"
         assert "schema" in payload
-
-
-# ---------------------------------------------------------------------------
-# _handle_chatui_llm_response()
-# ---------------------------------------------------------------------------
 
 
 class TestHandleChatuiLlmResponse:
@@ -863,28 +828,28 @@ class TestHandleChatuiLlmResponse:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
-        handler._handle_chatui_llm_error.assert_called_once_with(
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
+        handler._handle_chatui_llm_error.assert_called_once_with(  # type: ignore[attr-defined]
             "something went wrong", http_msg, http_dialogue
         )
-        handler._send_ok_response.assert_not_called()
+        handler._send_ok_response.assert_not_called()  # type: ignore[attr-defined]
 
     def test_empty_updated_config_sends_ok_with_empty_params(self) -> None:
         """No updated_agent_config must send OK with empty updated_params."""
         handler = self._make_response_handler()
         srr_msg = self._make_srr_msg(
-            {"response": json.dumps({"message": "No changes.", "updated_agent_config": {}})}
+            {
+                "response": json.dumps(
+                    {"message": "No changes.", "updated_agent_config": {}}
+                )
+            }
         )
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
-        handler._send_ok_response.assert_called_once()
-        response_data = handler._send_ok_response.call_args[0][2]
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
+        handler._send_ok_response.assert_called_once()  # type: ignore[attr-defined]
+        response_data = handler._send_ok_response.call_args[0][2]  # type: ignore[attr-defined]
         assert response_data[UPDATED_PARAMS_FIELD] == {}
         assert response_data[LLM_MESSAGE_FIELD] == "No changes."
 
@@ -895,11 +860,9 @@ class TestHandleChatuiLlmResponse:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
         # No error, empty config => sends OK with empty params
-        handler._send_ok_response.assert_called_once()
+        handler._send_ok_response.assert_called_once()  # type: ignore[attr-defined]
 
     def test_valid_config_update_sends_ok_with_trading_type(self) -> None:
         """A valid config update must include TRADING_TYPE_FIELD in response."""
@@ -920,11 +883,9 @@ class TestHandleChatuiLlmResponse:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
-        handler._send_ok_response.assert_called_once()
-        response_data = handler._send_ok_response.call_args[0][2]
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
+        handler._send_ok_response.assert_called_once()  # type: ignore[attr-defined]
+        response_data = handler._send_ok_response.call_args[0][2]  # type: ignore[attr-defined]
         assert TRADING_TYPE_FIELD in response_data
 
     def test_strategy_change_includes_previous_trading_type(self) -> None:
@@ -946,12 +907,13 @@ class TestHandleChatuiLlmResponse:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
-        response_data = handler._send_ok_response.call_args[0][2]
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
+        response_data = handler._send_ok_response.call_args[0][2]  # type: ignore[attr-defined]
         assert PREVIOUS_TRADING_TYPE_FIELD in response_data
-        assert response_data[PREVIOUS_TRADING_TYPE_FIELD] == TradingStrategyUI.BALANCED.value
+        assert (
+            response_data[PREVIOUS_TRADING_TYPE_FIELD]
+            == TradingStrategyUI.BALANCED.value
+        )
 
     def test_same_strategy_no_previous_trading_type(self) -> None:
         """When strategy does not change, PREVIOUS_TRADING_TYPE_FIELD must not appear."""
@@ -974,10 +936,8 @@ class TestHandleChatuiLlmResponse:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
-        response_data = handler._send_ok_response.call_args[0][2]
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
+        response_data = handler._send_ok_response.call_args[0][2]  # type: ignore[attr-defined]
         assert PREVIOUS_TRADING_TYPE_FIELD not in response_data
 
     def test_issues_replace_llm_message_in_reasoning(self) -> None:
@@ -998,16 +958,9 @@ class TestHandleChatuiLlmResponse:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         dialogue = MagicMock()
-        handler._handle_chatui_llm_response(
-            srr_msg, dialogue, http_msg, http_dialogue
-        )
-        response_data = handler._send_ok_response.call_args[0][2]
+        handler._handle_chatui_llm_response(srr_msg, dialogue, http_msg, http_dialogue)
+        response_data = handler._send_ok_response.call_args[0][2]  # type: ignore[attr-defined]
         assert "Unsupported trading strategy" in response_data[LLM_MESSAGE_FIELD]
-
-
-# ---------------------------------------------------------------------------
-# _handle_chatui_llm_error()
-# ---------------------------------------------------------------------------
 
 
 class TestHandleChatuiLlmError:
@@ -1029,10 +982,10 @@ class TestHandleChatuiLlmError:
         handler._handle_chatui_llm_error(
             GENAI_API_KEY_NOT_SET_ERROR, http_msg, http_dialogue
         )
-        handler._send_internal_server_error_response.assert_called_once()
-        call_data = handler._send_internal_server_error_response.call_args[0][2]
+        handler._send_internal_server_error_response.assert_called_once()  # type: ignore[attr-defined]
+        call_data = handler._send_internal_server_error_response.call_args[0][2]  # type: ignore[attr-defined]
         assert "No GENAI_API_KEY set." in call_data["error"]
-        handler._send_too_many_requests_response.assert_not_called()
+        handler._send_too_many_requests_response.assert_not_called()  # type: ignore[attr-defined]
 
     def test_rate_limit_error(self) -> None:
         """GENAI_RATE_LIMIT_ERROR must trigger too many requests response."""
@@ -1042,8 +995,8 @@ class TestHandleChatuiLlmError:
         handler._handle_chatui_llm_error(
             f"Error {GENAI_RATE_LIMIT_ERROR} too many", http_msg, http_dialogue
         )
-        handler._send_too_many_requests_response.assert_called_once()
-        call_data = handler._send_too_many_requests_response.call_args[0][2]
+        handler._send_too_many_requests_response.assert_called_once()  # type: ignore[attr-defined]
+        call_data = handler._send_too_many_requests_response.call_args[0][2]  # type: ignore[attr-defined]
         assert "Too many requests" in call_data["error"]
 
     def test_generic_error(self) -> None:
@@ -1054,8 +1007,8 @@ class TestHandleChatuiLlmError:
         handler._handle_chatui_llm_error(
             "something unexpected", http_msg, http_dialogue
         )
-        handler._send_internal_server_error_response.assert_called_once()
-        call_data = handler._send_internal_server_error_response.call_args[0][2]
+        handler._send_internal_server_error_response.assert_called_once()  # type: ignore[attr-defined]
+        call_data = handler._send_internal_server_error_response.call_args[0][2]  # type: ignore[attr-defined]
         assert "An error occurred" in call_data["error"]
 
     def test_api_key_error_returns_before_rate_limit_check(self) -> None:
@@ -1068,13 +1021,8 @@ class TestHandleChatuiLlmError:
             http_msg,
             http_dialogue,
         )
-        handler._send_internal_server_error_response.assert_called_once()
-        handler._send_too_many_requests_response.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# _store_chatui_param_to_json()
-# ---------------------------------------------------------------------------
+        handler._send_internal_server_error_response.assert_called_once()  # type: ignore[attr-defined]
+        handler._send_too_many_requests_response.assert_not_called()  # type: ignore[attr-defined]
 
 
 class TestStoreChatuiParamToJson:
@@ -1087,7 +1035,7 @@ class TestStoreChatuiParamToJson:
         shared_state_mock = MagicMock()
         current_store = {"existing_key": "existing_value"}
         shared_state_mock._get_current_json_store.return_value = current_store
-        handler.shared_state = shared_state_mock
+        handler.shared_state = shared_state_mock  # type: ignore[misc]
 
         # Call the real (un-mocked) method
         HttpHandler._store_chatui_param_to_json(handler, "new_param", 42)
@@ -1099,11 +1047,6 @@ class TestStoreChatuiParamToJson:
         assert stored["new_param"] == 42
 
 
-# ---------------------------------------------------------------------------
-# _store_trading_strategy()
-# ---------------------------------------------------------------------------
-
-
 class TestStoreTradingStrategy:
     """Tests for _store_trading_strategy()."""
 
@@ -1113,20 +1056,18 @@ class TestStoreTradingStrategy:
         handler.context = MagicMock()
         shared_state_mock = MagicMock()
         shared_state_mock.chatui_config = ChatuiConfig()
-        handler.shared_state = shared_state_mock
+        handler.shared_state = shared_state_mock  # type: ignore[misc]
         handler._store_chatui_param_to_json = MagicMock()  # type: ignore[assignment]
 
         HttpHandler._store_trading_strategy(handler, "kelly_criterion_no_conf")
 
-        assert shared_state_mock.chatui_config.trading_strategy == "kelly_criterion_no_conf"
-        handler._store_chatui_param_to_json.assert_called_once_with(
+        assert (
+            shared_state_mock.chatui_config.trading_strategy
+            == "kelly_criterion_no_conf"
+        )
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
             "trading_strategy", "kelly_criterion_no_conf"
         )
-
-
-# ---------------------------------------------------------------------------
-# _store_allowed_tools()
-# ---------------------------------------------------------------------------
 
 
 class TestStoreAllowedTools:
@@ -1138,14 +1079,14 @@ class TestStoreAllowedTools:
         handler.context = MagicMock()
         shared_state_mock = MagicMock()
         shared_state_mock.chatui_config = ChatuiConfig()
-        handler.shared_state = shared_state_mock
+        handler.shared_state = shared_state_mock  # type: ignore[misc]
         handler._store_chatui_param_to_json = MagicMock()  # type: ignore[assignment]
 
         tools = ["prediction-online"]
         HttpHandler._store_allowed_tools(handler, tools)
 
         assert shared_state_mock.chatui_config.allowed_tools == tools
-        handler._store_chatui_param_to_json.assert_called_once_with(
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
             "allowed_tools", tools
         )
 
@@ -1155,13 +1096,13 @@ class TestStoreAllowedTools:
         handler.context = MagicMock()
         shared_state_mock = MagicMock()
         shared_state_mock.chatui_config = ChatuiConfig(allowed_tools=["old"])
-        handler.shared_state = shared_state_mock
+        handler.shared_state = shared_state_mock  # type: ignore[misc]
         handler._store_chatui_param_to_json = MagicMock()  # type: ignore[assignment]
 
         HttpHandler._store_allowed_tools(handler, None)
 
         assert shared_state_mock.chatui_config.allowed_tools is None
-        handler._store_chatui_param_to_json.assert_called_once_with(
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
             "allowed_tools", None
         )
 
@@ -1184,9 +1125,9 @@ class TestSrrHandler:
     def _make_srr_handler() -> _TestableSrrHandler:
         """Create a testable SrrHandler."""
         handler = object.__new__(_TestableSrrHandler)
-        handler.context = MagicMock()
-        handler.context.state.req_to_callback = {}
-        handler.context.srr_dialogues = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
+        handler.context.state.req_to_callback = {}  # type: ignore[attr-defined]
+        handler.context.srr_dialogues = MagicMock()  # type: ignore[attr-defined]
         return handler
 
     @staticmethod
@@ -1211,7 +1152,7 @@ class TestSrrHandler:
 
         handler.handle(msg)
 
-        handler.context.logger.warning.assert_called_once()
+        handler.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_no_callback_delegates_to_super(self) -> None:
         """When no callback is registered for the nonce, must call super().handle()."""
@@ -1232,14 +1173,14 @@ class TestSrrHandler:
 
         callback = MagicMock()
         extra_kwargs = {"http_msg": MagicMock(), "http_dialogue": MagicMock()}
-        handler.context.state.req_to_callback[nonce] = (callback, extra_kwargs)
+        handler.context.state.req_to_callback[nonce] = (callback, extra_kwargs)  # type: ignore[attr-defined]
 
         mock_dialogue = MagicMock()
-        handler.context.srr_dialogues.update.return_value = mock_dialogue
+        handler.context.srr_dialogues.update.return_value = mock_dialogue  # type: ignore[attr-defined]
 
         handler.handle(msg)
 
-        handler.context.srr_dialogues.update.assert_called_once_with(msg)
+        handler.context.srr_dialogues.update.assert_called_once_with(msg)  # type: ignore[attr-defined]
         callback.assert_called_once_with(
             msg,
             mock_dialogue,
@@ -1252,16 +1193,21 @@ class TestSrrHandler:
         handler = self._make_srr_handler()
         nonce = "pop-nonce"
         msg = self._make_srr_message(nonce=nonce)
-        handler.context.state.req_to_callback[nonce] = (MagicMock(), {})
-        handler.context.srr_dialogues.update.return_value = MagicMock()
+        handler.context.state.req_to_callback[nonce] = (MagicMock(), {})  # type: ignore[attr-defined]
+        handler.context.srr_dialogues.update.return_value = MagicMock()  # type: ignore[attr-defined]
 
         handler.handle(msg)
 
-        assert nonce not in handler.context.state.req_to_callback
+        assert nonce not in handler.context.state.req_to_callback  # type: ignore[attr-defined]
 
     def test_allowed_response_performatives(self) -> None:
         """allowed_response_performatives must include REQUEST and RESPONSE."""
         from packages.valory.protocols.srr.message import SrrMessage
 
-        assert SrrMessage.Performative.REQUEST in SrrHandler.allowed_response_performatives
-        assert SrrMessage.Performative.RESPONSE in SrrHandler.allowed_response_performatives
+        assert (
+            SrrMessage.Performative.REQUEST in SrrHandler.allowed_response_performatives
+        )
+        assert (
+            SrrMessage.Performative.RESPONSE
+            in SrrHandler.allowed_response_performatives
+        )

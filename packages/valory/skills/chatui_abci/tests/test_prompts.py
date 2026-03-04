@@ -36,8 +36,12 @@ class TestTradingStrategy:
 
     def test_values(self) -> None:
         """Test that enum values are correct."""
-        assert TradingStrategy.KELLY_CRITERION_NO_CONF.value == "kelly_criterion_no_conf"
-        assert TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value == "bet_amount_per_threshold"
+        assert (
+            TradingStrategy.KELLY_CRITERION_NO_CONF.value == "kelly_criterion_no_conf"
+        )
+        assert (
+            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value == "bet_amount_per_threshold"
+        )
 
     def test_members(self) -> None:
         """Test that all expected members exist."""

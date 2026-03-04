@@ -26,9 +26,7 @@ import pytest
 from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens import (
     SellOutcomeTokensBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.payloads import (
-    SellOutcomeTokensPayload,
-)
+from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
@@ -39,20 +37,20 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a SellOutcomeTokensBehaviour with mocked dependencies."""
-    behaviour = object.__new__(SellOutcomeTokensBehaviour)
+    behaviour = object.__new__(SellOutcomeTokensBehaviour)  # type: ignore[no-untyped-def]
     behaviour.sell_amount = 0
 
     context = MagicMock()
@@ -80,7 +78,9 @@ class TestSellOutcomeTokensBehaviour:
             "packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens.DecisionMakerBaseBehaviour.__init__",
             return_value=None,
         ):
-            behaviour = SellOutcomeTokensBehaviour(name="test", skill_context=MagicMock())
+            behaviour = SellOutcomeTokensBehaviour(
+                name="test", skill_context=MagicMock()
+            )
             # __init__ runs super().__init__(**kwargs) - no additional attributes set
             assert behaviour is not None
 
@@ -90,16 +90,16 @@ class TestSellOutcomeTokensBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
-        behaviour.update_sell_transaction_information = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         # After benchmarking finish_behaviour completes, code falls through.
         # Mock _prepare_safe_tx so the non-benchmarking path does not crash.
-        behaviour._prepare_safe_tx = lambda: _return_gen(None)
+        behaviour._prepare_safe_tx = lambda: _return_gen(None)  # type: ignore[method-assign]
         behaviour.sell_amount = 0
 
         with patch.object(
@@ -131,12 +131,12 @@ class TestSellOutcomeTokensBehaviour:
         """_build_approval_tx should delegate to build_approval_tx."""
         behaviour = _make_behaviour()
 
-        def mock_build_approval_tx(amount, spender, token):
+        def mock_build_approval_tx(amount, spender, token) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build approval tx."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour.build_approval_tx = mock_build_approval_tx
+        behaviour.build_approval_tx = mock_build_approval_tx  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "return_amount", new_callable=PropertyMock
@@ -169,18 +169,18 @@ class TestSellOutcomeTokensBehaviour:
         """_prepare_safe_tx should return None when _calc_sell_amount fails."""
         behaviour = _make_behaviour()
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
 
-        def mock_calc_sell():
+        def mock_calc_sell() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock calc sell amount that fails."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return False
 
-        behaviour._calc_sell_amount = mock_calc_sell
+        behaviour._calc_sell_amount = mock_calc_sell  # type: ignore[method-assign]
 
         gen = behaviour._prepare_safe_tx()
         result = None
@@ -196,18 +196,18 @@ class TestSellOutcomeTokensBehaviour:
         """_prepare_safe_tx should return tx_hex on success."""
         behaviour = _make_behaviour()
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
 
-        def mock_calc_sell():
+        def mock_calc_sell() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock calc sell amount."""
-            yield
+            yield  # type: ignore[no-untyped-def]
             return True
 
-        behaviour._calc_sell_amount = mock_calc_sell
+        behaviour._calc_sell_amount = mock_calc_sell  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -233,7 +233,7 @@ class TestSellOutcomeTokensBehaviour:
                         ) as mock_tx:
                             mock_tx.return_value = "0xsellhash"
 
-                            behaviour._collateral_amount_info = lambda x: f"{x} WEI"
+                            behaviour._collateral_amount_info = lambda x: f"{x} WEI"  # type: ignore[method-assign]
 
                             gen = behaviour._prepare_safe_tx()
                             result = None
@@ -252,13 +252,13 @@ class TestSellOutcomeTokensBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        behaviour._prepare_safe_tx = lambda: _return_gen("0xsafehash")
+        behaviour._prepare_safe_tx = lambda: _return_gen("0xsafehash")  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.opposite_vote.return_value = 1
@@ -301,13 +301,13 @@ class TestSellOutcomeTokensBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        behaviour._prepare_safe_tx = lambda: _return_gen("0xsafehash")
+        behaviour._prepare_safe_tx = lambda: _return_gen("0xsafehash")  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -319,7 +319,7 @@ class TestSellOutcomeTokensBehaviour:
                 mock_sd.return_value = MagicMock(vote=None)
 
                 gen = behaviour.async_act()
-                with pytest.raises(ValueError):
+                with pytest.raises(ValueError):  # type: ignore[name-defined]
                     while True:
                         next(gen)
 
@@ -330,13 +330,13 @@ class TestSellOutcomeTokensBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: _noop_gen()
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        behaviour._prepare_safe_tx = lambda: _return_gen("0xsafehash")
+        behaviour._prepare_safe_tx = lambda: _return_gen("0xsafehash")  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock

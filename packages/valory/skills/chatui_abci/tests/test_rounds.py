@@ -55,9 +55,7 @@ class TestSynchronizedData:
     def test_available_mech_tools_single(self) -> None:
         """Test available_mech_tools with a single tool."""
         data = SynchronizedData(
-            db=AbciAppDB(
-                setup_data={"available_mech_tools": [json.dumps(["tool-a"])]}
-            )
+            db=AbciAppDB(setup_data={"available_mech_tools": [json.dumps(["tool-a"])]})
         )
         assert data.available_mech_tools == {"tool-a"}
 

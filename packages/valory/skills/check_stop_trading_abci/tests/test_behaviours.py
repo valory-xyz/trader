@@ -19,28 +19,23 @@
 
 """Tests for check_stop_trading_abci behaviours."""
 
-from typing import Any, Generator, Set, Type
+from typing import Any, Generator
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.check_stop_trading_abci.behaviours import (
-    LIVENESS_RATIO_SCALE_FACTOR,
-    REQUIRED_MECH_REQUESTS_SAFETY_MARGIN,
     CheckStopTradingBehaviour,
     CheckStopTradingRoundBehaviour,
+    LIVENESS_RATIO_SCALE_FACTOR,
+    REQUIRED_MECH_REQUESTS_SAFETY_MARGIN,
 )
-from packages.valory.skills.check_stop_trading_abci.models import (
-    CheckStopTradingParams,
-)
+from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.check_stop_trading_abci.rounds import (
     CheckStopTradingAbciApp,
     CheckStopTradingRound,
 )
-from packages.valory.skills.staking_abci.behaviours import (
-    StakingInteractBaseBehaviour,
-)
+from packages.valory.skills.staking_abci.behaviours import StakingInteractBaseBehaviour
 from packages.valory.skills.staking_abci.rounds import StakingState
 
 
@@ -65,37 +60,31 @@ class TestCheckStopTradingRoundBehaviour:
     """Tests for CheckStopTradingRoundBehaviour attributes."""
 
     def test_initial_behaviour_cls(self) -> None:
-        """initial_behaviour_cls is CheckStopTradingBehaviour."""
+        """Initial_behaviour_cls is CheckStopTradingBehaviour."""
         assert (
             CheckStopTradingRoundBehaviour.initial_behaviour_cls
             is CheckStopTradingBehaviour
         )
 
     def test_abci_app_cls(self) -> None:
-        """abci_app_cls is CheckStopTradingAbciApp."""
-        assert (
-            CheckStopTradingRoundBehaviour.abci_app_cls is CheckStopTradingAbciApp
-        )
+        """Abci_app_cls is CheckStopTradingAbciApp."""
+        assert CheckStopTradingRoundBehaviour.abci_app_cls is CheckStopTradingAbciApp  # type: ignore[misc]
 
     def test_behaviours_set(self) -> None:
-        """behaviours set contains only CheckStopTradingBehaviour."""
-        assert CheckStopTradingRoundBehaviour.behaviours == {
-            CheckStopTradingBehaviour
-        }
+        """Behaviours set contains only CheckStopTradingBehaviour."""
+        assert CheckStopTradingRoundBehaviour.behaviours == {CheckStopTradingBehaviour}
 
 
 class TestCheckStopTradingBehaviour:
     """Tests for CheckStopTradingBehaviour."""
 
     def test_matching_round(self) -> None:
-        """matching_round is CheckStopTradingRound."""
+        """Matching_round is CheckStopTradingRound."""
         assert CheckStopTradingBehaviour.matching_round is CheckStopTradingRound
 
     def test_init(self) -> None:
         """Test __init__ sets _staking_kpi_request_count to 0."""
-        with patch.object(
-            StakingInteractBaseBehaviour, "__init__", return_value=None
-        ):
+        with patch.object(StakingInteractBaseBehaviour, "__init__", return_value=None):
             b = CheckStopTradingBehaviour()
         assert b._staking_kpi_request_count == 0
 
@@ -110,7 +99,7 @@ class TestCheckStopTradingBehaviour:
         assert behaviour.staking_kpi_request_count == 42
 
     def test_is_first_period_true(self) -> None:
-        """is_first_period returns True when period_count is 0."""
+        """Is_first_period returns True when period_count is 0."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         mock_sync_data = MagicMock()
         mock_sync_data.period_count = 0
@@ -123,7 +112,7 @@ class TestCheckStopTradingBehaviour:
             assert behaviour.is_first_period is True
 
     def test_is_first_period_false(self) -> None:
-        """is_first_period returns False when period_count > 0."""
+        """Is_first_period returns False when period_count > 0."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         mock_sync_data = MagicMock()
         mock_sync_data.period_count = 5
@@ -136,7 +125,7 @@ class TestCheckStopTradingBehaviour:
             assert behaviour.is_first_period is False
 
     def test_params_property(self) -> None:
-        """params returns context.params cast to CheckStopTradingParams."""
+        """Params returns context.params cast to CheckStopTradingParams."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         mock_context = MagicMock()
         mock_params = MagicMock(spec=CheckStopTradingParams)
@@ -248,7 +237,9 @@ class TestGetStakingKpiRequestCount:
             "synchronized_data",
             new_callable=PropertyMock,
             return_value=mock_sync_data,
-        ), patch.object(behaviour, "contract_interact", _return_gen(True)):
+        ), patch.object(
+            behaviour, "contract_interact", _return_gen(True)
+        ):
             gen = behaviour._get_staking_kpi_request_count()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -294,8 +285,7 @@ class TestIsStakingKpiMet:
         behaviour = self._make_behaviour()
         behaviour.service_staking_state = StakingState.STAKED
         behaviour.staking_kpi_request_count = 100
-        # service_info[2][1] = mech_request_count_on_last_checkpoint
-        behaviour.service_info = [None, None, [None, 5]]
+        # service_info index 2,1 holds the mech_request_count_on_last_checkpoint
         behaviour.ts_checkpoint = 1000
         behaviour.liveness_period = 10
         behaviour.liveness_ratio = 10**18  # 1 request per second
@@ -311,7 +301,9 @@ class TestIsStakingKpiMet:
             "synced_timestamp",
             new_callable=PropertyMock,
             return_value=1010,
-        ), patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen):
+        ), patch.object(
+            behaviour, "wait_for_condition_with_sleep", _noop_gen
+        ):
             gen = behaviour.is_staking_kpi_met()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -325,7 +317,7 @@ class TestIsStakingKpiMet:
         behaviour = self._make_behaviour()
         behaviour.service_staking_state = StakingState.STAKED
         behaviour.staking_kpi_request_count = 6
-        behaviour.service_info = [None, None, [None, 5]]
+        behaviour.service_info = [None, None, [None, 5]]  # type: ignore[assignment]
         behaviour.ts_checkpoint = 1000
         behaviour.liveness_period = 10
         behaviour.liveness_ratio = 10**18
@@ -341,7 +333,9 @@ class TestIsStakingKpiMet:
             "synced_timestamp",
             new_callable=PropertyMock,
             return_value=1010,
-        ), patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen):
+        ), patch.object(
+            behaviour, "wait_for_condition_with_sleep", _noop_gen
+        ):
             gen = behaviour.is_staking_kpi_met()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -378,7 +372,9 @@ class TestAsyncAct:
             behaviour, "send_a2a_transaction", _noop_gen
         ), patch.object(
             behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(behaviour, "set_done", mock_set_done):
+        ), patch.object(
+            behaviour, "set_done", mock_set_done
+        ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
                 next(gen)

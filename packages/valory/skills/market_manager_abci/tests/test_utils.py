@@ -211,9 +211,7 @@ class TestGetPositionBalance:
             {
                 "position": {
                     "conditionIds": ["0xother"],
-                    "conditions": [
-                        {"id": "0xother", "outcomes": ["Yes", "No"]}
-                    ],
+                    "conditions": [{"id": "0xother", "outcomes": ["Yes", "No"]}],
                     "indexSets": ["1"],
                 },
                 "balance": "1000",
@@ -245,9 +243,7 @@ class TestGetPositionBalance:
             {
                 "position": {
                     "conditionIds": [condition_id],
-                    "conditions": [
-                        {"id": condition_id, "outcomes": ["Yes", "No"]}
-                    ],
+                    "conditions": [{"id": condition_id, "outcomes": ["Yes", "No"]}],
                     "indexSets": [],
                 },
                 "balance": "1000",
@@ -263,9 +259,7 @@ class TestGetPositionBalance:
             {
                 "position": {
                     "conditionIds": [condition_id],
-                    "conditions": [
-                        {"id": condition_id, "outcomes": []}
-                    ],
+                    "conditions": [{"id": condition_id, "outcomes": []}],
                     "indexSets": ["1"],
                 },
                 "balance": "1000",
@@ -281,9 +275,7 @@ class TestGetPositionBalance:
             {
                 "position": {
                     "conditionIds": [condition_id],
-                    "conditions": [
-                        {"id": condition_id, "outcomes": None}
-                    ],
+                    "conditions": [{"id": condition_id, "outcomes": None}],
                     "indexSets": ["1"],
                 },
                 "balance": "1000",
@@ -299,9 +291,7 @@ class TestGetPositionBalance:
             {
                 "position": {
                     "conditionIds": [condition_id],
-                    "conditions": [
-                        {"id": condition_id, "outcomes": ["Yes", "No"]}
-                    ],
+                    "conditions": [{"id": condition_id, "outcomes": ["Yes", "No"]}],
                     "indexSets": ["1"],
                 },
                 "balance": "5000",
@@ -427,9 +417,7 @@ class TestGetConditionIdToBalancesInvalidAnswer:
                     "indexSets": ["1"],
                     "conditionIds": [condition_id],
                     "lifetimeValue": "5000",
-                    "conditions": [
-                        {"id": condition_id, "outcomes": ["Yes", "No"]}
-                    ],
+                    "conditions": [{"id": condition_id, "outcomes": ["Yes", "No"]}],
                 },
                 "balance": "0",
                 "totalBalance": "5000",
@@ -468,9 +456,7 @@ class TestGetConditionIdToBalancesInvalidAnswer:
                     "indexSets": ["1"],
                     "conditionIds": [condition_id],
                     "lifetimeValue": "5000",
-                    "conditions": [
-                        {"id": condition_id, "outcomes": ["Yes", "No"]}
-                    ],
+                    "conditions": [{"id": condition_id, "outcomes": ["Yes", "No"]}],
                 },
                 "balance": "5000",
                 "totalBalance": "5000",
@@ -506,9 +492,7 @@ class TestGetConditionIdToBalancesInvalidAnswer:
 
     def test_empty_trades(self) -> None:
         """Test with an empty trades list."""
-        condition_to_payout, condition_to_balance = get_condition_id_to_balances(
-            [], []
-        )
+        condition_to_payout, condition_to_balance = get_condition_id_to_balances([], [])
         assert condition_to_payout == {}
         assert condition_to_balance == {}
 

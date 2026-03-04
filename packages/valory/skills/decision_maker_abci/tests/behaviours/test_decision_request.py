@@ -24,8 +24,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.decision_request import (
     DecisionRequestBehaviour,
 )
@@ -41,20 +39,20 @@ from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a DecisionRequestBehaviour with mocked dependencies."""
-    behaviour = object.__new__(DecisionRequestBehaviour)
+    behaviour = object.__new__(DecisionRequestBehaviour)  # type: ignore[no-untyped-def]
     behaviour._metadata = None
 
     context = MagicMock()
@@ -104,12 +102,10 @@ class TestDecisionRequestBehaviour:
             assert behaviour.n_slots_supported is False
 
     def test_metadata_property(self) -> None:
-        """metadata property should return asdict of _metadata."""
+        """Metadata property should return asdict of _metadata."""
         from dataclasses import asdict
 
-        from packages.valory.skills.mech_interact_abci.states.base import (
-            MechMetadata,
-        )
+        from packages.valory.skills.mech_interact_abci.states.base import MechMetadata
 
         behaviour = _make_behaviour()
         meta = MechMetadata(prompt="test?", tool="tool1", nonce="n1")
@@ -121,7 +117,7 @@ class TestDecisionRequestBehaviour:
         assert result["nonce"] == "n1"
 
     def test_setup_unsupported_slots(self) -> None:
-        """setup should return early when n_slots_supported is False."""
+        """Setup should return early when n_slots_supported is False."""
         behaviour = _make_behaviour()
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -135,7 +131,7 @@ class TestDecisionRequestBehaviour:
                 assert behaviour._metadata is None
 
     def test_setup_benchmarking_enabled(self) -> None:
-        """setup should return early when benchmarking is enabled."""
+        """Setup should return early when benchmarking is enabled."""
         behaviour = _make_behaviour()
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -149,7 +145,7 @@ class TestDecisionRequestBehaviour:
                 assert behaviour._metadata is None
 
     def test_setup_creates_metadata(self) -> None:
-        """setup should create metadata when conditions are met."""
+        """Setup should create metadata when conditions are met."""
         from string import Template
 
         behaviour = _make_behaviour()
@@ -189,21 +185,19 @@ class TestDecisionRequestBehaviour:
 
     def test_async_act_with_metadata(self) -> None:
         """async_act should produce a payload with mech_requests when _metadata is set."""
-        from packages.valory.skills.mech_interact_abci.states.base import (
-            MechMetadata,
-        )
+        from packages.valory.skills.mech_interact_abci.states.base import MechMetadata
 
         behaviour = _make_behaviour()
         behaviour._metadata = MechMetadata(prompt="q?", tool="t1", nonce="n1")
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock finish behaviour."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = mock_finish
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -241,12 +235,12 @@ class TestDecisionRequestBehaviour:
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock finish behaviour."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = mock_finish
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -279,12 +273,12 @@ class TestDecisionRequestBehaviour:
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock finish behaviour."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = mock_finish
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -311,24 +305,20 @@ class TestDecisionRequestBehaviour:
 
     def test_async_act_benchmarking_loads_bet_id_manager(self) -> None:
         """In benchmarking mode, should initialize bet_id_row_manager when empty."""
-        from packages.valory.skills.mech_interact_abci.states.base import (
-            MechMetadata,
-        )
+        from packages.valory.skills.mech_interact_abci.states.base import MechMetadata
 
         behaviour = _make_behaviour()
         behaviour._metadata = MechMetadata(prompt="q?", tool="t1", nonce="n1")
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock finish behaviour."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = mock_finish
-        behaviour.initialize_bet_id_row_manager = MagicMock(
-            return_value={"q1": [1, 2]}
-        )
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.initialize_bet_id_row_manager = MagicMock(return_value={"q1": [1, 2]})  # type: ignore[method-assign]
 
         shared_state = MagicMock()
         shared_state.mech_timed_out = False
@@ -359,24 +349,20 @@ class TestDecisionRequestBehaviour:
 
     def test_async_act_benchmarking_bet_id_already_loaded(self) -> None:
         """In benchmarking mode with non-empty bet_id_row_manager, should not reinitialize."""
-        from packages.valory.skills.mech_interact_abci.states.base import (
-            MechMetadata,
-        )
+        from packages.valory.skills.mech_interact_abci.states.base import MechMetadata
 
         behaviour = _make_behaviour()
         behaviour._metadata = MechMetadata(prompt="q?", tool="t1", nonce="n1")
 
         payloads_sent = []
 
-        def mock_finish(payload):
+        def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock finish behaviour."""
-            payloads_sent.append(payload)
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
             yield
 
-        behaviour.finish_behaviour = mock_finish
-        behaviour.initialize_bet_id_row_manager = MagicMock(
-            return_value={"q1": [1]}
-        )
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.initialize_bet_id_row_manager = MagicMock(return_value={"q1": [1]})  # type: ignore[method-assign]
 
         shared_state = MagicMock()
         shared_state.mech_timed_out = False
@@ -413,9 +399,7 @@ class TestDecisionRequestBehaviour:
 
         csv_content = "question_id,p_yes_tool1,other\nq1,0.8,x\nq2,0.9,y\nq1,0.7,z\n"
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write(csv_content)
             tmp_path = Path(f.name)
 

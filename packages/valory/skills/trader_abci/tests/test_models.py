@@ -90,27 +90,27 @@ from packages.valory.skills.mech_interact_abci.models import (
     MechResponseSpecs as BaseMechResponseSpecs,
 )
 from packages.valory.skills.mech_interact_abci.models import (
-    MechsSubgraph as InteractMechsSubgraph,
+    MechToolsSpecs as InteractMechToolsSpecs,
 )
 from packages.valory.skills.mech_interact_abci.models import (
-    MechToolsSpecs as InteractMechToolsSpecs,
+    MechsSubgraph as InteractMechsSubgraph,
 )
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
 from packages.valory.skills.trader_abci.models import (
-    MARGIN,
     AccuracyInfoFields,
     AgentToolsSpecs,
-    BenchmarkingMode,
     BenchmarkTool,
+    BenchmarkingMode,
     ConditionalTokensSubgraph,
     EventToTimeoutMappingType,
     EventType,
     GnosisStakingSubgraph,
+    MARGIN,
     MechResponseSpecs,
-    MechsSubgraph,
     MechToolsSpecs,
+    MechsSubgraph,
     NetworkSubgraph,
     OlasAgentsSubgraph,
     OlasMechSubgraph,
@@ -176,11 +176,11 @@ class TestTypeAliases:
     """Test that module-level type aliases exist."""
 
     def test_event_type_exists(self) -> None:
-        """EventType is defined in the module."""
+        """Test that EventType is defined in the module."""
         assert EventType is not None
 
     def test_event_to_timeout_mapping_type_exists(self) -> None:
-        """EventToTimeoutMappingType is defined in the module."""
+        """Test that EventToTimeoutMappingType is defined in the module."""
         assert EventToTimeoutMappingType is not None
 
 
@@ -188,7 +188,7 @@ class TestRandomnessApi:
     """Tests for the RandomnessApi model."""
 
     def test_is_subclass_of_api_specs(self) -> None:
-        """RandomnessApi inherits from ApiSpecs."""
+        """Test that RandomnessApi inherits from ApiSpecs."""
         assert issubclass(RandomnessApi, ApiSpecs)
 
 
@@ -208,9 +208,7 @@ class TestTraderParams:
             "skill_context": MagicMock(),
         }
         # Patch the first parent class in the MRO to avoid deep dependency chain
-        with patch.object(
-            TraderParams.__mro__[1], "__init__", return_value=None
-        ):
+        with patch.object(TraderParams.__mro__[1], "__init__", return_value=None):
             params = TraderParams.__new__(TraderParams)
             TraderParams.__init__(params, **kwargs)
 
@@ -237,7 +235,9 @@ class TestSharedState:
         mock_context = MagicMock()
         mock_context.params = mock_params
 
-        with patch.object(type(state), "context", new_callable=PropertyMock, return_value=mock_context):
+        with patch.object(
+            type(state), "context", new_callable=PropertyMock, return_value=mock_context
+        ):
             result = state.params
             assert result is mock_params
 
@@ -278,9 +278,7 @@ class TestSharedState:
                 TraderAbciApp.event_to_timeout[DecisionMakerEvent.ROUND_TIMEOUT] == 30
             )
             assert TraderAbciApp.event_to_timeout[TSEvent.ROUND_TIMEOUT] == 30
-            assert (
-                TraderAbciApp.event_to_timeout[ResetPauseEvent.ROUND_TIMEOUT] == 30
-            )
+            assert TraderAbciApp.event_to_timeout[ResetPauseEvent.ROUND_TIMEOUT] == 30
 
             # Verify MechInteractEvent.ROUND_TIMEOUT uses mech-specific timeout
             assert (
@@ -295,18 +293,14 @@ class TestSharedState:
 
             # Verify DecisionMakerEvent redeem timeout
             assert (
-                TraderAbciApp.event_to_timeout[
-                    DecisionMakerEvent.REDEEM_ROUND_TIMEOUT
-                ]
+                TraderAbciApp.event_to_timeout[DecisionMakerEvent.REDEEM_ROUND_TIMEOUT]
                 == 3600
             )
 
             # Verify reset_pause_timeout = reset_pause_duration + MARGIN
             expected_reset_pause = 10 + MARGIN
             assert (
-                TraderAbciApp.event_to_timeout[
-                    ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT
-                ]
+                TraderAbciApp.event_to_timeout[ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT]
                 == expected_reset_pause
             )
         finally:

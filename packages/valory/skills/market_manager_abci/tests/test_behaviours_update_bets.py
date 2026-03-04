@@ -20,19 +20,13 @@
 """Tests for the update_bets behaviour of the MarketManager ABCI application."""
 
 from copy import deepcopy
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from packages.valory.skills.market_manager_abci.behaviours.update_bets import (
     UpdateBetsBehaviour,
 )
-from packages.valory.skills.market_manager_abci.bets import (
-    Bet,
-    BinaryOutcome,
-    QueueStatus,
-)
+from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
 )
@@ -49,13 +43,14 @@ def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
     return None
 
 
-def _return_gen(value: Any):
+def _return_gen(value: Any) -> Any:
     """Return a generator factory that yields once then returns *value*."""
 
     def gen(*args: Any, **kwargs: Any) -> Generator:
         yield
         return value
 
+    # type: ignore[no-untyped-def]
     return gen
 
 
@@ -139,8 +134,10 @@ class TestInit:
                 # __init__ calls super().__init__(**kwargs) which hits MRO
                 # We just check the call happens without error
                 try:
-                    UpdateBetsBehaviour.__init__(behaviour, name="test", skill_context=MagicMock())
-                except Exception:
+                    UpdateBetsBehaviour.__init__(
+                        behaviour, name="test", skill_context=MagicMock()
+                    )
+                except Exception:  # nosec B110
                     pass  # Exceptions from deep framework internals are expected
 
 
@@ -207,13 +204,13 @@ class TestRequeueBetsForSelling:
         behaviour.context.params.sell_check_interval = 0
 
         # Make synced_time property return a value
-        type(behaviour).synced_time = property(lambda self: 99999)
+        type(behaviour).synced_time = property(lambda self: 99999)  # type: ignore[assignment, method-assign]
 
         behaviour._requeue_bets_for_selling()
         assert bet.queue_status == QueueStatus.EXPIRED
 
     def test_no_invested_amount_skipped(self) -> None:
-        """Test that bets with no invested amount are skipped."""
+        """Test that bets with no invested amount are skipped."""  # type: ignore[assignment, method-assign]
         bet = _make_bet(id="no_invest", openingTimestamp=1000)
         bet.queue_status = QueueStatus.PROCESSED
         bet.investments = {"Yes": [], "No": []}
@@ -222,13 +219,13 @@ class TestRequeueBetsForSelling:
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 0
 
-        type(behaviour).synced_time = property(lambda self: 99999)
+        type(behaviour).synced_time = property(lambda self: 99999)  # type: ignore[assignment, method-assign]
 
         behaviour._requeue_bets_for_selling()
         assert bet.queue_status == QueueStatus.PROCESSED
 
     def test_ready_to_sell_gets_requeued(self) -> None:
-        """Test that a bet ready to sell with no last_processed_sell_check is requeued."""
+        """Test that a bet ready to sell with no last_processed_sell_check is requeued."""  # type: ignore[assignment, method-assign]
         bet = self._make_sellable_bet()
         # Make sure last_processed_sell_check is 0 (falsy) so the condition passes
         bet.last_processed_sell_check = 0  # type: ignore[attr-defined]
@@ -237,13 +234,13 @@ class TestRequeueBetsForSelling:
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 0
 
-        type(behaviour).synced_time = property(lambda self: 999999)
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
 
         behaviour._requeue_bets_for_selling()
         assert bet.queue_status == QueueStatus.FRESH
 
     def test_last_processed_sell_check_within_interval_not_requeued(self) -> None:
-        """Test that a bet with recent sell check is not requeued."""
+        """Test that a bet with recent sell check is not requeued."""  # type: ignore[assignment, method-assign]
         bet = self._make_sellable_bet()
         # Set a last_processed_sell_check that makes time_since < interval
         bet.last_processed_sell_check = 999990  # type: ignore[attr-defined]
@@ -252,13 +249,13 @@ class TestRequeueBetsForSelling:
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 100  # interval is 100
 
-        type(behaviour).synced_time = property(lambda self: 999999)
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
         # time_since = 999999 - 999990 = 9, interval = 100 => 9 < 100 => not requeued
 
         behaviour._requeue_bets_for_selling()
         assert bet.queue_status == QueueStatus.PROCESSED
 
-    def test_last_processed_sell_check_exceeded_interval_requeued(self) -> None:
+    def test_last_processed_sell_check_exceeded_interval_requeued(self) -> None:  # type: ignore[assignment, method-assign]
         """Test that a bet with old sell check is requeued."""
         bet = self._make_sellable_bet()
         bet.last_processed_sell_check = 900000  # type: ignore[attr-defined]
@@ -267,13 +264,13 @@ class TestRequeueBetsForSelling:
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 10
 
-        type(behaviour).synced_time = property(lambda self: 999999)
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
         # time_since = 999999 - 900000 = 99999, interval = 10 => 99999 > 10 => requeued
 
         behaviour._requeue_bets_for_selling()
         assert bet.queue_status == QueueStatus.FRESH
 
-    def test_not_ready_to_sell_not_requeued(self) -> None:
+    def test_not_ready_to_sell_not_requeued(self) -> None:  # type: ignore[assignment, method-assign]
         """Test that a bet not ready to sell is not requeued."""
         # openingTimestamp far in the future => not ready
         bet = _make_bet(id="future", openingTimestamp=99999999999)
@@ -285,13 +282,13 @@ class TestRequeueBetsForSelling:
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 0
 
-        type(behaviour).synced_time = property(lambda self: 1000)
+        type(behaviour).synced_time = property(lambda self: 1000)  # type: ignore[assignment, method-assign]
 
         behaviour._requeue_bets_for_selling()
         assert bet.queue_status == QueueStatus.PROCESSED
 
 
-class TestBlacklistExpiredBets:
+class TestBlacklistExpiredBets:  # type: ignore[assignment, method-assign]
     """Tests for _blacklist_expired_bets."""
 
     def test_blacklists_past_opening_margin(self) -> None:
@@ -300,13 +297,13 @@ class TestBlacklistExpiredBets:
         behaviour = _make_behaviour(bets=[bet])
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 950)
+        type(behaviour).synced_time = property(lambda self: 950)  # type: ignore[assignment, method-assign]
         # synced_time(950) >= openingTimestamp(1000) - opening_margin(100) = 900 => True
 
         behaviour._blacklist_expired_bets()
         assert bet.queue_status == QueueStatus.EXPIRED
 
-    def test_does_not_blacklist_within_margin(self) -> None:
+    def test_does_not_blacklist_within_margin(self) -> None:  # type: ignore[assignment, method-assign]
         """Test that bets within the opening margin are not blacklisted."""
         bet = _make_bet(id="future", openingTimestamp=1000)
         original_status = bet.queue_status
@@ -314,23 +311,23 @@ class TestBlacklistExpiredBets:
         behaviour = _make_behaviour(bets=[bet])
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 800)
+        type(behaviour).synced_time = property(lambda self: 800)  # type: ignore[assignment, method-assign]
         # synced_time(800) >= openingTimestamp(1000) - opening_margin(100) = 900 => False
 
         behaviour._blacklist_expired_bets()
         assert bet.queue_status == original_status
 
-    def test_empty_bets(self) -> None:
+    def test_empty_bets(self) -> None:  # type: ignore[assignment, method-assign]
         """Test with empty bets list."""
         behaviour = _make_behaviour(bets=[])
         behaviour.context.params.opening_margin = 100
-        type(behaviour).synced_time = property(lambda self: 1000)
+        type(behaviour).synced_time = property(lambda self: 1000)  # type: ignore[assignment, method-assign]
         behaviour._blacklist_expired_bets()
         assert behaviour.bets == []
 
 
 class TestReviewBetsForSelling:
-    """Tests for review_bets_for_selling."""
+    """Tests for review_bets_for_selling."""  # type: ignore[assignment, method-assign]
 
     def test_returns_synchronized_data_value(self) -> None:
         """Test that it delegates to synchronized_data.review_bets_for_selling."""
@@ -338,23 +335,23 @@ class TestReviewBetsForSelling:
         mock_sync_data = MagicMock()
         mock_sync_data.review_bets_for_selling = True
 
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         assert behaviour.review_bets_for_selling() is True
 
     def test_returns_false(self) -> None:
         """Test that it returns False when synchronized_data says False."""
-        behaviour = _make_behaviour()
+        behaviour = _make_behaviour()  # type: ignore[assignment, method-assign]
         mock_sync_data = MagicMock()
         mock_sync_data.review_bets_for_selling = False
 
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         assert behaviour.review_bets_for_selling() is False
 
 
 class TestUpdateBetsInvestments:
-    """Tests for update_bets_investments."""
+    """Tests for update_bets_investments."""  # type: ignore[assignment, method-assign]
 
     def test_expired_bet_skipped(self) -> None:
         """Test that expired bets are skipped during investment update."""
@@ -362,13 +359,13 @@ class TestUpdateBetsInvestments:
         bet.blacklist_forever()
 
         behaviour = _make_behaviour(bets=[bet])
-        behaviour.get_active_bets = _return_gen({"expired_bet": {"Yes": 100, "No": 50}})
+        behaviour.get_active_bets = _return_gen({"expired_bet": {"Yes": 100, "No": 50}})  # type: ignore[method-assign]
 
         gen = behaviour.update_bets_investments()
         try:
             next(gen)
             gen.send(None)
-        except StopIteration:
+        except StopIteration:  # type: ignore[method-assign]
             pass
 
         # Expired bet should be skipped, investments should not change
@@ -380,13 +377,13 @@ class TestUpdateBetsInvestments:
         balances = {"bet1": {"Yes": 100, "No": 50}}
 
         behaviour = _make_behaviour(bets=[bet])
-        behaviour.get_active_bets = _return_gen(balances)
+        behaviour.get_active_bets = _return_gen(balances)  # type: ignore[method-assign]
 
         gen = behaviour.update_bets_investments()
         try:
             next(gen)
             gen.send(None)
-        except StopIteration:
+        except StopIteration:  # type: ignore[method-assign]
             pass
 
         # "Yes" => BinaryOutcome.YES => outcome_int = 1 => get_outcome(1) = "No"
@@ -402,16 +399,16 @@ class TestUpdateBetsInvestments:
         original_investments = deepcopy(bet.investments)
 
         # Return empty balances for the bet
-        balances = {"bet1": {}}
+        balances = {"bet1": {}}  # type: ignore[var-annotated]
 
         behaviour = _make_behaviour(bets=[bet])
-        behaviour.get_active_bets = _return_gen(balances)
+        behaviour.get_active_bets = _return_gen(balances)  # type: ignore[method-assign]
 
         gen = behaviour.update_bets_investments()
-        try:
+        try:  # type: ignore[var-annotated]
             next(gen)
             gen.send(None)
-        except StopIteration:
+        except StopIteration:  # type: ignore[method-assign]
             pass
 
         # Since new investments are empty, should retain existing
@@ -463,16 +460,16 @@ class TestGetActiveBets:
         behaviour = _make_behaviour()
         mock_sync_data = MagicMock()
         mock_sync_data.safe_contract_address = "0xSAFE"
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
-        behaviour.fetch_trades = _return_gen(None)
-        behaviour.fetch_user_positions = _return_gen([{"data": "pos"}])
+        behaviour.fetch_trades = _return_gen(None)  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = _return_gen([{"data": "pos"}])  # type: ignore[method-assign]
 
         gen = behaviour.get_active_bets()
-        result = None
+        result = None  # type: ignore[assignment, method-assign]
         try:
-            next(gen)
-            gen.send(None)
+            next(gen)  # type: ignore[method-assign]
+            gen.send(None)  # type: ignore[method-assign]
         except StopIteration as e:
             result = e.value
 
@@ -483,17 +480,17 @@ class TestGetActiveBets:
         behaviour = _make_behaviour()
         mock_sync_data = MagicMock()
         mock_sync_data.safe_contract_address = "0xSAFE"
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
-        behaviour.fetch_trades = _return_gen([{"some": "trade"}])
-        behaviour.fetch_user_positions = _return_gen(None)
+        behaviour.fetch_trades = _return_gen([{"some": "trade"}])  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = _return_gen(None)  # type: ignore[method-assign]
 
         gen = behaviour.get_active_bets()
-        result = None
+        result = None  # type: ignore[assignment, method-assign]
         try:
-            val = next(gen)
-            while True:
-                val = gen.send(None)
+            next(gen)  # type: ignore[method-assign]
+            while True:  # type: ignore[method-assign]
+                gen.send(None)
         except StopIteration as e:
             result = e.value
 
@@ -504,13 +501,13 @@ class TestGetActiveBets:
         behaviour = _make_behaviour()
         mock_sync_data = MagicMock()
         mock_sync_data.safe_contract_address = "0xSAFE"
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         trades_data = [{"fpmm": {"id": "bet1", "condition": {"id": "cond1"}}}]
         positions_data = [
             {
                 "balance": "100",
-                "position": {
+                "position": {  # type: ignore[assignment, method-assign]
                     "conditionIds": ["cond1"],
                     "conditions": [{"outcomes": ["Yes", "No"]}],
                     "indexSets": ["1"],
@@ -518,15 +515,15 @@ class TestGetActiveBets:
             }
         ]
 
-        behaviour.fetch_trades = _return_gen(trades_data)
-        behaviour.fetch_user_positions = _return_gen(positions_data)
+        behaviour.fetch_trades = _return_gen(trades_data)  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = _return_gen(positions_data)  # type: ignore[method-assign]
 
         gen = behaviour.get_active_bets()
         result = None
         try:
-            val = next(gen)
-            while True:
-                val = gen.send(None)
+            next(gen)  # type: ignore[method-assign]
+            while True:  # type: ignore[method-assign]
+                gen.send(None)
         except StopIteration as e:
             result = e.value
 
@@ -543,26 +540,27 @@ class TestSetup:
 
         mock_sync_data = MagicMock()
         mock_sync_data.is_checkpoint_reached = False
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = False
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 999999)
-
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
+        # type: ignore[assignment, method-assign]
         # read_bets populates some bets
         bet = _make_bet(id="b1", openingTimestamp=1000)
 
-        def fake_read_bets():
-            behaviour.bets = [bet]
+        def fake_read_bets() -> None:
+            behaviour.bets = [bet]  # type: ignore[assignment, method-assign]
 
-        behaviour.read_bets = fake_read_bets
+        behaviour.read_bets = fake_read_bets  # type: ignore[method-assign]
 
         behaviour.setup()
-
+        # type: ignore[no-untyped-def]
         # bet with openingTimestamp=1000 should be blacklisted (999999 >= 1000 - 100 = 900)
         assert bet.queue_status == QueueStatus.EXPIRED
 
+    # type: ignore[method-assign]
     def test_setup_checkpoint_requeues_multi_bets(self) -> None:
         """Test that setup requeues all bets when checkpoint reached in multi-bets mode."""
         behaviour = _make_behaviour()
@@ -572,23 +570,25 @@ class TestSetup:
 
         mock_sync_data = MagicMock()
         mock_sync_data.is_checkpoint_reached = True
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = True
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 0)
+        type(behaviour).synced_time = property(lambda self: 0)  # type: ignore[assignment, method-assign]
 
-        def fake_read_bets():
+        # type: ignore[assignment, method-assign]
+        def fake_read_bets() -> None:
             behaviour.bets = [bet]
 
-        behaviour.read_bets = fake_read_bets
-
+        behaviour.read_bets = fake_read_bets  # type: ignore[method-assign]
+        # type: ignore[assignment, method-assign]
         behaviour.setup()
-
+        # type: ignore[no-untyped-def]
         # Should have been requeued to FRESH
         assert bet.queue_status == QueueStatus.FRESH
 
+    # type: ignore[method-assign]
     def test_setup_no_checkpoint_no_requeue(self) -> None:
         """Test that setup does not requeue when checkpoint not reached."""
         behaviour = _make_behaviour()
@@ -598,42 +598,44 @@ class TestSetup:
 
         mock_sync_data = MagicMock()
         mock_sync_data.is_checkpoint_reached = False
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = True
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 0)
+        type(behaviour).synced_time = property(lambda self: 0)  # type: ignore[assignment, method-assign]
 
-        def fake_read_bets():
+        # type: ignore[assignment, method-assign]
+        def fake_read_bets() -> None:
             behaviour.bets = [bet]
 
-        behaviour.read_bets = fake_read_bets
-
+        behaviour.read_bets = fake_read_bets  # type: ignore[method-assign]
+        # type: ignore[assignment, method-assign]
         behaviour.setup()
-
+        # type: ignore[no-untyped-def]
         assert bet.queue_status == QueueStatus.PROCESSED
 
-    def test_setup_empty_bets_no_blacklist(self) -> None:
+    def test_setup_empty_bets_no_blacklist(self) -> None:  # type: ignore[method-assign]
         """Test that setup does not call blacklist on empty bets."""
         behaviour = _make_behaviour()
 
         mock_sync_data = MagicMock()
         mock_sync_data.is_checkpoint_reached = False
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = False
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 999999)
-
-        behaviour.read_bets = lambda: None
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
+        # type: ignore[assignment, method-assign]
+        behaviour.read_bets = lambda: None  # type: ignore[method-assign]
 
         behaviour.setup()
         assert behaviour.bets == []
 
+    # type: ignore[assignment, method-assign]
     def test_setup_checkpoint_not_multi_bets_mode(self) -> None:
-        """Test that setup does not requeue when checkpoint reached but not multi-bets mode."""
+        """Test that setup does not requeue when checkpoint reached but not multi-bets mode."""  # type: ignore[method-assign]
         behaviour = _make_behaviour()
 
         bet = _make_bet(id="b1")
@@ -641,22 +643,26 @@ class TestSetup:
 
         mock_sync_data = MagicMock()
         mock_sync_data.is_checkpoint_reached = True
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = False
         behaviour.context.params.opening_margin = 100
 
-        type(behaviour).synced_time = property(lambda self: 0)
+        type(behaviour).synced_time = property(lambda self: 0)  # type: ignore[assignment, method-assign]
 
-        def fake_read_bets():
+        # type: ignore[assignment, method-assign]
+        def fake_read_bets() -> None:
             behaviour.bets = [bet]
 
-        behaviour.read_bets = fake_read_bets
-
+        behaviour.read_bets = fake_read_bets  # type: ignore[method-assign]
+        # type: ignore[assignment, method-assign]
         behaviour.setup()
-
+        # type: ignore[no-untyped-def]
         # Not multi-bets mode, so no requeue even though checkpoint reached
         assert bet.queue_status == QueueStatus.PROCESSED
+
+
+# type: ignore[method-assign]
 
 
 class TestGetBetIdx:
@@ -752,19 +758,19 @@ class TestUpdateBets:
 
         call_count = [0]
 
-        def mock_prepare():
+        def mock_prepare() -> bool:
             call_count[0] += 1
             if call_count[0] == 1:
                 return True
             return False
 
-        behaviour._prepare_fetching = mock_prepare
+        behaviour._prepare_fetching = mock_prepare  # type: ignore[method-assign, no-untyped-def]
         behaviour._fetch_status = FetchStatus.SUCCESS
 
         raw_bet = dict(
             id="bet1",
             title="Q?",
-            collateralToken="0x",
+            collateralToken="0x",  # type: ignore[method-assign]
             creator="0x",
             fee=0,
             openingTimestamp=9999999999,
@@ -774,14 +780,14 @@ class TestUpdateBets:
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=10.0,
         )
-        behaviour._fetch_bets = _return_gen([raw_bet])
+        behaviour._fetch_bets = _return_gen([raw_bet])  # type: ignore[method-assign]
         behaviour._current_market = "omen_subgraph"
 
         gen = behaviour._update_bets()
         try:
-            val = next(gen)
-            while True:
-                val = gen.send(None)
+            next(gen)
+            while True:  # type: ignore[method-assign]
+                gen.send(None)
         except StopIteration:
             pass
 
@@ -793,14 +799,14 @@ class TestUpdateBets:
         behaviour = _make_behaviour(bets=[bet])
 
         # _prepare_fetching returns False immediately
-        behaviour._prepare_fetching = lambda: False
+        behaviour._prepare_fetching = lambda: False  # type: ignore[method-assign]
         behaviour._fetch_status = FetchStatus.FAIL
 
         gen = behaviour._update_bets()
         try:
-            val = next(gen)
-            while True:
-                val = gen.send(None)
+            next(gen)
+            while True:  # type: ignore[method-assign]
+                gen.send(None)
         except StopIteration:
             pass
 
@@ -811,14 +817,14 @@ class TestUpdateBets:
         bet = _make_bet(id="existing")
         behaviour = _make_behaviour(bets=[bet])
 
-        behaviour._prepare_fetching = lambda: False
+        behaviour._prepare_fetching = lambda: False  # type: ignore[method-assign]
         behaviour._fetch_status = FetchStatus.SUCCESS
 
         gen = behaviour._update_bets()
         try:
-            val = next(gen)
-            while True:
-                val = gen.send(None)
+            next(gen)
+            while True:  # type: ignore[method-assign]
+                gen.send(None)
         except StopIteration:
             pass
 
@@ -927,9 +933,9 @@ class TestAsyncAct:
     def _run_generator(self, gen: Generator) -> None:
         """Run a generator to completion."""
         try:
-            val = next(gen)
+            next(gen)
             while True:
-                val = gen.send(None)
+                gen.send(None)
         except StopIteration:
             pass
 
@@ -952,34 +958,35 @@ class TestAsyncAct:
         # Mock synchronized_data
         mock_sync_data = MagicMock()
         mock_sync_data.review_bets_for_selling = False
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         # Mock params
         behaviour.context.params.use_multi_bets_mode = False
         behaviour.context.params.enable_multi_bets_fallback = False
         behaviour.context.params.opening_margin = 100
-
-        type(behaviour).synced_time = property(lambda self: 999999)
+        # type: ignore[assignment, method-assign]
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
 
         # Mock _update_bets to populate bets
-        def mock_update_bets():
+        def mock_update_bets() -> Generator:
             behaviour.bets = [bet]
             yield
 
-        behaviour._update_bets = mock_update_bets
-        behaviour.update_bets_investments = _noop_gen
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")
-        behaviour.send_a2a_transaction = _noop_gen
-        behaviour.wait_until_round_end = _noop_gen
-        behaviour.set_done = MagicMock()
-        behaviour.context.agent_address = "0xagent"
-
-        self._run_generator(behaviour.async_act())
-
-        behaviour.store_bets.assert_called_once()
-        behaviour.hash_stored_bets.assert_called_once()
-        behaviour.set_done.assert_called_once()
+        # type: ignore[assignment, method-assign]
+        behaviour._update_bets = mock_update_bets  # type: ignore[method-assign]
+        behaviour.update_bets_investments = _noop_gen  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign, no-untyped-def]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
+        behaviour.send_a2a_transaction = _noop_gen  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = _noop_gen  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.agent_address = "0xagent"  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        self._run_generator(behaviour.async_act())  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        behaviour.store_bets.assert_called_once()  # type: ignore[attr-defined, method-assign]
+        behaviour.hash_stored_bets.assert_called_once()  # type: ignore[attr-defined, method-assign]
+        behaviour.set_done.assert_called_once()  # type: ignore[attr-defined]
 
     def test_full_lifecycle_no_bets(self) -> None:
         """Test async_act lifecycle with no bets (hash is None)."""
@@ -997,26 +1004,26 @@ class TestAsyncAct:
 
         mock_sync_data = MagicMock()
         mock_sync_data.review_bets_for_selling = False
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = False
         behaviour.context.params.enable_multi_bets_fallback = False
 
-        behaviour._update_bets = _noop_gen
-        behaviour.update_bets_investments = _noop_gen
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")
-        behaviour.send_a2a_transaction = _noop_gen
-        behaviour.wait_until_round_end = _noop_gen
-        behaviour.set_done = MagicMock()
-        behaviour.context.agent_address = "0xagent"
-
-        self._run_generator(behaviour.async_act())
-
-        behaviour.store_bets.assert_called_once()
-        # hash_stored_bets should NOT be called since bets is empty
-        behaviour.hash_stored_bets.assert_not_called()
-        behaviour.set_done.assert_called_once()
+        behaviour._update_bets = _noop_gen  # type: ignore[method-assign]
+        behaviour.update_bets_investments = _noop_gen  # type: ignore[assignment, method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
+        behaviour.send_a2a_transaction = _noop_gen  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = _noop_gen  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.agent_address = "0xagent"  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        self._run_generator(behaviour.async_act())  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        behaviour.store_bets.assert_called_once()  # type: ignore[attr-defined, method-assign]
+        # hash_stored_bets should NOT be called since bets is empty  # type: ignore[method-assign]
+        behaviour.hash_stored_bets.assert_not_called()  # type: ignore[attr-defined]
+        behaviour.set_done.assert_called_once()  # type: ignore[attr-defined]
 
     def test_review_bets_for_selling_triggers_requeue(self) -> None:
         """Test that review_bets_for_selling triggers _requeue_bets_for_selling."""
@@ -1039,31 +1046,31 @@ class TestAsyncAct:
 
         mock_sync_data = MagicMock()
         mock_sync_data.review_bets_for_selling = True
-        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)
+        type(behaviour).synchronized_data = property(lambda self: mock_sync_data)  # type: ignore[assignment, method-assign]
 
         behaviour.context.params.use_multi_bets_mode = False
         behaviour.context.params.enable_multi_bets_fallback = False
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 0
+        # type: ignore[assignment, method-assign]
+        type(behaviour).synced_time = property(lambda self: 999999)  # type: ignore[assignment, method-assign]
 
-        type(behaviour).synced_time = property(lambda self: 999999)
-
-        def mock_update_bets():
+        def mock_update_bets() -> Generator:
             behaviour.bets = [bet]
             yield
 
-        behaviour._update_bets = mock_update_bets
-        behaviour.update_bets_investments = _noop_gen
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")
-        behaviour.send_a2a_transaction = _noop_gen
-        behaviour.wait_until_round_end = _noop_gen
-        behaviour.set_done = MagicMock()
-        behaviour.context.agent_address = "0xagent"
-
-        self._run_generator(behaviour.async_act())
-
-        # The bet should have been requeued for selling
-        # After _requeue_bets_for_selling, then _bet_freshness_check_and_update
+        behaviour._update_bets = mock_update_bets  # type: ignore[assignment, method-assign]
+        behaviour.update_bets_investments = _noop_gen  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign, no-untyped-def]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
+        behaviour.send_a2a_transaction = _noop_gen  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = _noop_gen  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.agent_address = "0xagent"  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        self._run_generator(behaviour.async_act())  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        # The bet should have been requeued for selling  # type: ignore[method-assign]
+        # After _requeue_bets_for_selling, then _bet_freshness_check_and_update  # type: ignore[method-assign]
         # moves FRESH to TO_PROCESS (single-bet mode)
         assert bet.queue_status == QueueStatus.TO_PROCESS

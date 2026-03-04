@@ -114,9 +114,7 @@ class TestBetPayoutCheckerUpdateAchievements:
         """Test that prediction_history=None returns False."""
         checker = self._make_checker()
         achievements = Achievements()
-        result = checker.update_achievements(
-            achievements, prediction_history=None
-        )
+        result = checker.update_achievements(achievements, prediction_history=None)
         assert result is False
 
     def test_empty_prediction_history_returns_false(self) -> None:
@@ -243,9 +241,7 @@ class TestBetPayoutCheckerUpdateAchievements:
             settled_at="2024-01-15T12:00:00Z",
         )
         prediction_history = PredictionHistory(items=[bet])
-        checker.update_achievements(
-            achievements, prediction_history=prediction_history
-        )
+        checker.update_achievements(achievements, prediction_history=prediction_history)
         achievement = list(achievements.items.values())[0]
         assert achievement.title == "ROI: 3x on bet!"
 
@@ -264,9 +260,7 @@ class TestBetPayoutCheckerUpdateAchievements:
             settled_at="2024-01-15T12:00:00Z",
         )
         prediction_history = PredictionHistory(items=[bet])
-        checker.update_achievements(
-            achievements, prediction_history=prediction_history
-        )
+        checker.update_achievements(achievements, prediction_history=prediction_history)
         achievement = list(achievements.items.values())[0]
         assert achievement.description == "Agent closed at 3x."
 
@@ -285,9 +279,7 @@ class TestBetPayoutCheckerUpdateAchievements:
             settled_at="2024-01-15T12:00:00Z",
         )
         prediction_history = PredictionHistory(items=[bet])
-        checker.update_achievements(
-            achievements, prediction_history=prediction_history
-        )
+        checker.update_achievements(achievements, prediction_history=prediction_history)
         achievement = list(achievements.items.values())[0]
         assert achievement.title == "2.5x"
 
@@ -352,9 +344,7 @@ class TestBetPayoutCheckerUpdateAchievements:
             settled_at="2024-01-15T12:00:00Z",
         )
         prediction_history = PredictionHistory(items=[bet])
-        checker.update_achievements(
-            achievements, prediction_history=prediction_history
-        )
+        checker.update_achievements(achievements, prediction_history=prediction_history)
         achievement = list(achievements.items.values())[0]
         # 2024-01-15T12:00:00Z in Unix timestamp
         assert achievement.timestamp == 1705320000
@@ -363,7 +353,11 @@ class TestBetPayoutCheckerUpdateAchievements:
         """Test that a bet missing bet_amount defaults to 0 and is skipped."""
         checker = self._make_checker(roi_threshold=2.0)
         achievements = Achievements()
-        bet = {"id": "no_amount", "total_payout": 30.0, "settled_at": "2024-01-15T12:00:00Z"}
+        bet = {
+            "id": "no_amount",
+            "total_payout": 30.0,
+            "settled_at": "2024-01-15T12:00:00Z",
+        }
         prediction_history = PredictionHistory(items=[bet])
         result = checker.update_achievements(
             achievements, prediction_history=prediction_history

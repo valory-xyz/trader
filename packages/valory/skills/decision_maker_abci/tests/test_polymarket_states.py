@@ -34,7 +34,10 @@ from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketSetApprovalPayload,
     PolymarketSwapPayload,
 )
-from packages.valory.skills.decision_maker_abci.states.base import Event, SynchronizedData
+from packages.valory.skills.decision_maker_abci.states.base import (
+    Event,
+    SynchronizedData,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
     PolymarketBetPlacementRound,
 )
@@ -59,16 +62,16 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
 # ---------------------------------------------------------------------------
 
 
-def _make_round(round_cls):
+def _make_round(round_cls):  # type: ignore[no-untyped-def]
     """Instantiate a round with mocked synchronized_data and context."""
     synced_data = MagicMock(spec=SynchronizedData)
     context = MagicMock()
     return round_cls(synchronized_data=synced_data, context=context)
 
 
-def _mock_super_end_block_none(round_instance):
+def _mock_super_end_block_none(round_instance):  # type: ignore[no-untyped-def]
     """Patch the CollectSameUntilThresholdRound.end_block to return None."""
-    with patch.object(type(round_instance).__mro__[1], "end_block", return_value=None):
+    with patch.object(type(round_instance).__mro__[1], "end_block", return_value=None):  # type: ignore[arg-type]
         pass
 
 
@@ -85,7 +88,9 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
 
     def test_payload_class(self) -> None:
         """Payload class is PolymarketBetPlacementPayload."""
-        assert PolymarketBetPlacementRound.payload_class is PolymarketBetPlacementPayload
+        assert (
+            PolymarketBetPlacementRound.payload_class is PolymarketBetPlacementPayload
+        )
 
     def test_none_event_is_insufficient_balance(self) -> None:
         """none_event defaults to INSUFFICIENT_BALANCE."""
@@ -117,14 +122,23 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
         cached_orders = json.dumps({"tok1": '{"salt": "1"}'})
         # most_voted_payload_values[-3] = event, [-2] = cached_orders, [-1] = utilized_tools
         mvpv = (
-            "tx_submitter", "tx_hash", "False",
-            Event.BET_PLACEMENT_DONE.value, cached_orders, None
+            "tx_submitter",
+            "tx_hash",
+            "False",
+            Event.BET_PLACEMENT_DONE.value,
+            cached_orders,
+            None,
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -144,14 +158,23 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         mvpv = (
-            "tx_submitter", "tx_hash", "False",
-            Event.BET_PLACEMENT_FAILED.value, None, None
+            "tx_submitter",
+            "tx_hash",
+            "False",
+            Event.BET_PLACEMENT_FAILED.value,
+            None,
+            None,
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -167,14 +190,23 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         mvpv = (
-            "tx_submitter", "tx_hash", "False",
-            Event.BET_PLACEMENT_IMPOSSIBLE.value, None, None
+            "tx_submitter",
+            "tx_hash",
+            "False",
+            Event.BET_PLACEMENT_IMPOSSIBLE.value,
+            None,
+            None,
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -189,14 +221,23 @@ class TestPolymarketBetPlacementRound(BaseCollectSameUntilThresholdRoundTest):
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         mvpv = (
-            "tx_submitter", "tx_hash", "False",
-            Event.INSUFFICIENT_BALANCE.value, None, None
+            "tx_submitter",
+            "tx_hash",
+            "False",
+            Event.INSUFFICIENT_BALANCE.value,
+            None,
+            None,
         )
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -278,8 +319,8 @@ class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
             result = round_.end_block()
 
         # Event overridden to DONE; synced_data must be the same object from parent
-        assert result[0] is synced_data_mock
-        assert result[1] == Event.DONE
+        assert result[0] is synced_data_mock  # type: ignore[index]
+        assert result[1] == Event.DONE  # type: ignore[index]
 
     def test_builder_disabled_passes_through_synced_data(self) -> None:
         """The synced_data from parent is returned unchanged when builder is disabled."""
@@ -294,8 +335,8 @@ class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
             result = round_.end_block()
 
         # Event overridden to PREPARE_TX; synced_data must be the same object from parent
-        assert result[0] is synced_data_mock
-        assert result[1] == Event.PREPARE_TX
+        assert result[0] is synced_data_mock  # type: ignore[index]
+        assert result[1] == Event.PREPARE_TX  # type: ignore[index]
 
 
 # ---------------------------------------------------------------------------
@@ -347,13 +388,14 @@ class TestPolymarketPostSetApprovalRound(BaseCollectSameUntilThresholdRoundTest)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
         # most_voted_payload is a read-only property, patch it at the class level
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(
-                 type(round_),
-                 "most_voted_payload",
-                 new_callable=PropertyMock,
-                 return_value=False,
-             ):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload",
+            new_callable=PropertyMock,
+            return_value=False,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -370,13 +412,14 @@ class TestPolymarketPostSetApprovalRound(BaseCollectSameUntilThresholdRoundTest)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
         # most_voted_payload is a read-only property, patch it at the class level
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(
-                 type(round_),
-                 "most_voted_payload",
-                 new_callable=PropertyMock,
-                 return_value=True,
-             ):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload",
+            new_callable=PropertyMock,
+            return_value=True,
+        ):
             result = round_.end_block()
 
         # Should pass through the original result from super
@@ -423,13 +466,14 @@ class TestPolymarketPostSetApprovalRound(BaseCollectSameUntilThresholdRoundTest)
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(
-                 type(round_),
-                 "most_voted_payload",
-                 new_callable=PropertyMock,
-                 return_value=0,  # 0 == False but 0 is not False
-             ):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload",
+            new_callable=PropertyMock,
+            return_value=0,  # 0 == False but 0 is not False
+        ):
             result = round_.end_block()
 
         assert result == (synced_data_mock, Event.DONE)
@@ -446,13 +490,14 @@ class TestPolymarketPostSetApprovalRound(BaseCollectSameUntilThresholdRoundTest)
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         parent_cls = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(
-                 type(round_),
-                 "most_voted_payload",
-                 new_callable=PropertyMock,
-                 return_value=None,
-             ):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload",
+            new_callable=PropertyMock,
+            return_value=None,
+        ):
             result = round_.end_block()
 
         assert result == (synced_data_mock, Event.DONE)
@@ -496,9 +541,14 @@ class TestPolymarketSwapUsdcRound(BaseCollectSameUntilThresholdRoundTest):
         mvpv = ("tx_submitter", "tx_hash", "False", True)
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -514,9 +564,14 @@ class TestPolymarketSwapUsdcRound(BaseCollectSameUntilThresholdRoundTest):
         mvpv = ("tx_submitter", "tx_hash", "False", False)
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -536,9 +591,14 @@ class TestPolymarketSwapUsdcRound(BaseCollectSameUntilThresholdRoundTest):
         mvpv = ("tx_submitter", "tx_hash", "False", None)
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -558,9 +618,14 @@ class TestPolymarketSwapUsdcRound(BaseCollectSameUntilThresholdRoundTest):
         mvpv = ("tx_submitter", "tx_hash", "False", True)
 
         parent_cls = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(parent_cls, return_value=(synced_data_mock, Event.DONE)), \
-             patch.object(type(round_), "most_voted_payload_values",
-                          new_callable=PropertyMock, return_value=mvpv):
+        with patch(
+            parent_cls, return_value=(synced_data_mock, Event.DONE)
+        ), patch.object(
+            type(round_),
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=mvpv,
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -618,7 +683,9 @@ class TestPolymarketRedeemRound:
         none_mech_tools_values = (None, None, None, None, None, None, None, None, None)
 
         parent_prop = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.most_voted_payload_values"
-        with patch(parent_prop, new_callable=PropertyMock, return_value=none_mech_tools_values):
+        with patch(
+            parent_prop, new_callable=PropertyMock, return_value=none_mech_tools_values
+        ):
             with pytest.raises(ValueError, match="mech_tools"):
                 _ = round_.most_voted_payload_values
 
@@ -627,12 +694,21 @@ class TestPolymarketRedeemRound:
         round_ = _make_round(PolymarketRedeemRound)
         # Non-null values
         original_values = (
-            "tx_sub", "tx_hash", True, "[]", "policy_str",
-            '{"tool": "x"}', '["cid"]', 100, Event.DONE.value
+            "tx_sub",
+            "tx_hash",
+            True,
+            "[]",
+            "policy_str",
+            '{"tool": "x"}',
+            '["cid"]',
+            100,
+            Event.DONE.value,
         )
 
         parent_prop = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.most_voted_payload_values"
-        with patch(parent_prop, new_callable=PropertyMock, return_value=original_values):
+        with patch(
+            parent_prop, new_callable=PropertyMock, return_value=original_values
+        ):
             result = round_.most_voted_payload_values
 
         assert result == original_values
@@ -704,8 +780,15 @@ class TestPolymarketRedeemRound:
 
         # mech_tools (index 3) = '["tool_a"]' — this must end up in synced data
         original_values = (
-            "tx_sub", "tx_hash", False, '["tool_a"]', "policy",
-            '{}', '[]', 0, Event.DONE.value
+            "tx_sub",
+            "tx_hash",
+            False,
+            '["tool_a"]',
+            "policy",
+            "{}",
+            "[]",
+            0,
+            Event.DONE.value,
         )
         payload_count_mock = MagicMock()
         payload_count_mock.most_common.return_value = [(original_values, 3)]
@@ -713,9 +796,11 @@ class TestPolymarketRedeemRound:
         redeem_prop = "packages.valory.skills.decision_maker_abci.states.polymarket_redeem.PolymarketRedeemRound.most_voted_payload_values"
         parent_eb = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
         pvc_prop = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.payload_values_count"
-        with patch(redeem_prop, new_callable=PropertyMock, return_value=original_values), \
-             patch(parent_eb, return_value=(synced_data_mock, Event.DONE)), \
-             patch(pvc_prop, new_callable=PropertyMock, return_value=payload_count_mock):
+        with patch(
+            redeem_prop, new_callable=PropertyMock, return_value=original_values
+        ), patch(parent_eb, return_value=(synced_data_mock, Event.DONE)), patch(
+            pvc_prop, new_callable=PropertyMock, return_value=payload_count_mock
+        ):
             result = round_.end_block()
 
         assert result is not None
@@ -739,14 +824,22 @@ class TestPolymarketRedeemRound:
         synced_data_mock = MagicMock(spec=SynchronizedData)
 
         end_values = (
-            "tx_sub", "tx_hash", False, '["tool"]', "policy",
-            '{}', '[]', 0, Event.NO_REDEEMING.value
+            "tx_sub",
+            "tx_hash",
+            False,
+            '["tool"]',
+            "policy",
+            "{}",
+            "[]",
+            0,
+            Event.NO_REDEEMING.value,
         )
 
         redeem_prop = "packages.valory.skills.decision_maker_abci.states.polymarket_redeem.PolymarketRedeemRound.most_voted_payload_values"
         parent_eb = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
-        with patch(redeem_prop, new_callable=PropertyMock, return_value=end_values), \
-             patch(parent_eb, return_value=(synced_data_mock, Event.NO_MAJORITY)):
+        with patch(
+            redeem_prop, new_callable=PropertyMock, return_value=end_values
+        ), patch(parent_eb, return_value=(synced_data_mock, Event.NO_MAJORITY)):
             result = round_.end_block()
 
         # NO_MAJORITY equals no_majority_event, so return res as-is
@@ -769,8 +862,15 @@ class TestPolymarketRedeemRound:
 
         # Payload encodes PREPARE_TX; parent returns DONE — payload must win
         original_values = (
-            "tx_sub", "tx_hash", False, '["tool"]', "policy",
-            '{}', '[]', 0, Event.PREPARE_TX.value
+            "tx_sub",
+            "tx_hash",
+            False,
+            '["tool"]',
+            "policy",
+            "{}",
+            "[]",
+            0,
+            Event.PREPARE_TX.value,
         )
         payload_count_mock = MagicMock()
         payload_count_mock.most_common.return_value = [(original_values, 3)]
@@ -778,14 +878,18 @@ class TestPolymarketRedeemRound:
         redeem_prop = "packages.valory.skills.decision_maker_abci.states.polymarket_redeem.PolymarketRedeemRound.most_voted_payload_values"
         parent_eb = "packages.valory.skills.decision_maker_abci.states.base.TxPreparationRound.end_block"
         pvc_prop = "packages.valory.skills.abstract_round_abci.base.CollectSameUntilThresholdRound.payload_values_count"
-        with patch(redeem_prop, new_callable=PropertyMock, return_value=original_values), \
-             patch(parent_eb, return_value=(synced_data_mock, Event.DONE)), \
-             patch(pvc_prop, new_callable=PropertyMock, return_value=payload_count_mock):
+        with patch(
+            redeem_prop, new_callable=PropertyMock, return_value=original_values
+        ), patch(parent_eb, return_value=(synced_data_mock, Event.DONE)), patch(
+            pvc_prop, new_callable=PropertyMock, return_value=payload_count_mock
+        ):
             result = round_.end_block()
 
         assert result is not None
         _, result_event = result
-        assert result_event == Event.PREPARE_TX  # payload-encoded event overrides parent
+        assert (
+            result_event == Event.PREPARE_TX
+        )  # payload-encoded event overrides parent
 
 
 # ---------------------------------------------------------------------------
@@ -797,43 +901,49 @@ class TestPolymarketRoundAttributes:
     """Tests for basic attribute and class structure of Polymarket rounds."""
 
     def test_bet_placement_round_is_tx_preparation(self) -> None:
-        """PolymarketBetPlacementRound extends TxPreparationRound."""
+        """Test that PolymarketBetPlacementRound extends TxPreparationRound."""
         from packages.valory.skills.decision_maker_abci.states.base import (
             TxPreparationRound,
         )
+
         assert issubclass(PolymarketBetPlacementRound, TxPreparationRound)
 
     def test_set_approval_round_is_tx_preparation(self) -> None:
-        """PolymarketSetApprovalRound extends TxPreparationRound."""
+        """Test that PolymarketSetApprovalRound extends TxPreparationRound."""
         from packages.valory.skills.decision_maker_abci.states.base import (
             TxPreparationRound,
         )
+
         assert issubclass(PolymarketSetApprovalRound, TxPreparationRound)
 
     def test_post_set_approval_round_is_collect_same(self) -> None:
-        """PolymarketPostSetApprovalRound extends CollectSameUntilThresholdRound."""
+        """Test that PolymarketPostSetApprovalRound extends CollectSameUntilThresholdRound."""
         from packages.valory.skills.abstract_round_abci.base import (
             CollectSameUntilThresholdRound,
         )
-        assert issubclass(PolymarketPostSetApprovalRound, CollectSameUntilThresholdRound)
+
+        assert issubclass(
+            PolymarketPostSetApprovalRound, CollectSameUntilThresholdRound
+        )
 
     def test_swap_round_is_tx_preparation(self) -> None:
-        """PolymarketSwapUsdcRound extends TxPreparationRound."""
+        """Test that PolymarketSwapUsdcRound extends TxPreparationRound."""
         from packages.valory.skills.decision_maker_abci.states.base import (
             TxPreparationRound,
         )
+
         assert issubclass(PolymarketSwapUsdcRound, TxPreparationRound)
 
     def test_redeem_round_is_tx_preparation(self) -> None:
-        """PolymarketRedeemRound extends TxPreparationRound."""
+        """Test that PolymarketRedeemRound extends TxPreparationRound."""
         from packages.valory.skills.decision_maker_abci.states.base import (
             TxPreparationRound,
         )
+
         assert issubclass(PolymarketRedeemRound, TxPreparationRound)
 
     def test_redeem_round_selection_key_includes_extra_fields(self) -> None:
         """PolymarketRedeemRound.selection_key includes extra Polymarket-specific fields."""
-        from packages.valory.skills.abstract_round_abci.base import get_name
         from packages.valory.skills.decision_maker_abci.states.base import (
             TxPreparationRound,
         )

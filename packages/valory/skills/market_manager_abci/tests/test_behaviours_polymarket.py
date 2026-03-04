@@ -21,20 +21,17 @@
 
 import json
 import sys
-from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
 
 from packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_market import (
     EXTREME_PRICE_THRESHOLD,
     POLYMARKET_CATEGORY_KEYWORDS,
-    USDC_DECIMALS,
-    USCDE_POLYGON,
-    ZERO_ADDRESS,
     PolymarketFetchMarketBehaviour,
+    USCDE_POLYGON,
+    USDC_DECIMALS,
+    ZERO_ADDRESS,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -53,10 +50,10 @@ def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
     return None
 
 
-def _return_gen(value: Any):
+def _return_gen(value: Any) -> Any:
     """Return a generator factory that yields once and returns the given value."""
 
-    def gen(*args: Any, **kwargs: Any) -> Generator:
+    def gen(*args: Any, **kwargs: Any) -> Generator:  # type: ignore[no-untyped-def]
         yield
         return value
 
@@ -65,10 +62,10 @@ def _return_gen(value: Any):
 
 def _make_behaviour(**overrides: Any) -> PolymarketFetchMarketBehaviour:
     """Create a PolymarketFetchMarketBehaviour instance using object.__new__."""
-    behaviour = object.__new__(PolymarketFetchMarketBehaviour)
+    behaviour = object.__new__(PolymarketFetchMarketBehaviour)  # type: ignore[type-abstract]
     behaviour._context = MagicMock()
     behaviour.bets = []
-    behaviour.multi_bets_filepath = "/tmp/multi_bets.json"
+    behaviour.multi_bets_filepath = "/tmp/multi_bets.json"  # type: ignore[type-abstract]
     behaviour.bets_filepath = "/tmp/bets.json"
     behaviour._call_failed = False
     behaviour._fetch_status = FetchStatus.NONE
@@ -105,9 +102,9 @@ def _exhaust_gen(gen: Generator) -> Any:
     """Exhaust a generator, sending None on each yield, and return the final value."""
     result = None
     try:
-        val = next(gen)
+        next(gen)
         while True:
-            val = gen.send(None)
+            gen.send(None)
     except StopIteration as exc:
         result = exc.value
     return result
@@ -232,10 +229,10 @@ class TestRequeueBetsForSelling:
         behaviour = _make_behaviour(bets=bets)
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 3600
-        type(behaviour).synced_time = PropertyMock(return_value=5000000000)
+        type(behaviour).synced_time = PropertyMock(return_value=5000000000)  # type: ignore[method-assign]
         return behaviour
 
-    def test_requeue_bets_for_selling_no_bets(self) -> None:
+    def test_requeue_bets_for_selling_no_bets(self) -> None:  # type: ignore[method-assign]
         """Test _requeue_bets_for_selling with empty list."""
         behaviour = self._setup_behaviour([])
         behaviour._requeue_bets_for_selling()
@@ -254,20 +251,20 @@ class TestRequeueBetsForSelling:
         behaviour = self._setup_behaviour([bet])
 
         # Mock is_ready_to_sell directly
-        bet.is_ready_to_sell = MagicMock(return_value=True)
+        bet.is_ready_to_sell = MagicMock(return_value=True)  # type: ignore[method-assign]
 
         behaviour._requeue_bets_for_selling()
-        assert bet.queue_status == QueueStatus.FRESH
+        assert bet.queue_status == QueueStatus.FRESH  # type: ignore[method-assign]
 
     def test_not_ready_to_sell(self) -> None:
         """Test a bet that is not ready to sell is NOT requeued."""
         bet = _make_bet(id="b1", queue_status=QueueStatus.PROCESSED)
         bet.investments = {"Yes": [100], "No": []}
         bet.last_processed_sell_check = 0
-        bet.is_ready_to_sell = MagicMock(return_value=False)
+        bet.is_ready_to_sell = MagicMock(return_value=False)  # type: ignore[method-assign]
 
         behaviour = self._setup_behaviour([bet])
-        behaviour._requeue_bets_for_selling()
+        behaviour._requeue_bets_for_selling()  # type: ignore[method-assign]
         assert bet.queue_status == QueueStatus.PROCESSED
 
     def test_expired_bet_not_requeued(self) -> None:
@@ -276,10 +273,10 @@ class TestRequeueBetsForSelling:
         bet.queue_status = QueueStatus.EXPIRED
         bet.investments = {"Yes": [100], "No": []}
         bet.last_processed_sell_check = 0
-        bet.is_ready_to_sell = MagicMock(return_value=True)
+        bet.is_ready_to_sell = MagicMock(return_value=True)  # type: ignore[method-assign]
 
         behaviour = self._setup_behaviour([bet])
-        behaviour._requeue_bets_for_selling()
+        behaviour._requeue_bets_for_selling()  # type: ignore[method-assign]
         assert bet.queue_status == QueueStatus.EXPIRED
 
     def test_zero_invested_amount_not_requeued(self) -> None:
@@ -287,10 +284,10 @@ class TestRequeueBetsForSelling:
         bet = _make_bet(id="b1", queue_status=QueueStatus.PROCESSED)
         bet.investments = {"Yes": [], "No": []}
         bet.last_processed_sell_check = 0
-        bet.is_ready_to_sell = MagicMock(return_value=True)
+        bet.is_ready_to_sell = MagicMock(return_value=True)  # type: ignore[method-assign]
 
         behaviour = self._setup_behaviour([bet])
-        behaviour._requeue_bets_for_selling()
+        behaviour._requeue_bets_for_selling()  # type: ignore[method-assign]
         assert bet.queue_status == QueueStatus.PROCESSED
 
     def test_recent_sell_check_not_requeued(self) -> None:
@@ -298,11 +295,13 @@ class TestRequeueBetsForSelling:
         bet = _make_bet(id="b1", queue_status=QueueStatus.PROCESSED)
         bet.investments = {"Yes": [100], "No": []}
         # last_processed_sell_check is recent (within sell_check_interval)
-        bet.last_processed_sell_check = 5000000000 - 100  # 100 seconds ago, less than 3600
-        bet.is_ready_to_sell = MagicMock(return_value=True)
+        bet.last_processed_sell_check = (
+            5000000000 - 100
+        )  # 100 seconds ago, less than 3600
+        bet.is_ready_to_sell = MagicMock(return_value=True)  # type: ignore[method-assign]
 
         behaviour = self._setup_behaviour([bet])
-        behaviour._requeue_bets_for_selling()
+        behaviour._requeue_bets_for_selling()  # type: ignore[method-assign]
         assert bet.queue_status == QueueStatus.PROCESSED
 
     def test_last_processed_sell_check_is_zero(self) -> None:
@@ -310,10 +309,10 @@ class TestRequeueBetsForSelling:
         bet = _make_bet(id="b1", queue_status=QueueStatus.PROCESSED)
         bet.investments = {"Yes": [100], "No": []}
         bet.last_processed_sell_check = 0
-        bet.is_ready_to_sell = MagicMock(return_value=True)
+        bet.is_ready_to_sell = MagicMock(return_value=True)  # type: ignore[method-assign]
 
         behaviour = self._setup_behaviour([bet])
-        behaviour._requeue_bets_for_selling()
+        behaviour._requeue_bets_for_selling()  # type: ignore[method-assign]
         assert bet.queue_status == QueueStatus.FRESH
 
 
@@ -329,10 +328,10 @@ class TestBlacklistExpiredBets:
         """Set up a behaviour for blacklist tests."""
         behaviour = _make_behaviour(bets=bets)
         behaviour.context.params.opening_margin = 1000
-        type(behaviour).synced_time = PropertyMock(return_value=5000000000)
+        type(behaviour).synced_time = PropertyMock(return_value=5000000000)  # type: ignore[method-assign]
         return behaviour
 
-    def test_blacklist_expired_opening_margin(self) -> None:
+    def test_blacklist_expired_opening_margin(self) -> None:  # type: ignore[method-assign]
         """Test bet is blacklisted when synced_time >= openingTimestamp - opening_margin."""
         bet = _make_bet(id="b1", openingTimestamp=5000000500)  # within margin
         behaviour = self._setup([bet])
@@ -506,9 +505,7 @@ class TestValidateMarketCategory:
     def test_empty_title(self) -> None:
         """Test with empty title."""
         assert (
-            PolymarketFetchMarketBehaviour._validate_market_category(
-                "", "technology"
-            )
+            PolymarketFetchMarketBehaviour._validate_market_category("", "technology")
             is False
         )
 
@@ -643,18 +640,19 @@ class TestReviewBetsForSelling:
         behaviour = _make_behaviour()
         mock_synced = MagicMock()
         mock_synced.review_bets_for_selling = True
-        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)
+        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)  # type: ignore[method-assign]
         assert behaviour.review_bets_for_selling is True
 
-    def test_returns_false(self) -> None:
+    def test_returns_false(self) -> None:  # type: ignore[method-assign]
         """Test that review_bets_for_selling returns False when synced data says False."""
         behaviour = _make_behaviour()
         mock_synced = MagicMock()
         mock_synced.review_bets_for_selling = False
-        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)
+        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)  # type: ignore[method-assign]
         assert behaviour.review_bets_for_selling is False
 
 
+# type: ignore[method-assign]
 # ===========================================================================
 # Tests for setup
 # ===========================================================================
@@ -666,65 +664,65 @@ class TestSetup:
     def _setup_behaviour(self) -> PolymarketFetchMarketBehaviour:
         """Create a behaviour with mocked dependencies for setup."""
         behaviour = _make_behaviour()
-        behaviour.read_bets = MagicMock()
-        behaviour._requeue_all_bets = MagicMock()
-        behaviour._blacklist_expired_bets = MagicMock()
-        mock_synced = MagicMock()
-        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)
-        return behaviour
+        behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour._requeue_all_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
+        mock_synced = MagicMock()  # type: ignore[method-assign]
+        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)  # type: ignore[method-assign]
+        return behaviour  # type: ignore[method-assign]
 
-    def test_setup_reads_bets(self) -> None:
+    def test_setup_reads_bets(self) -> None:  # type: ignore[method-assign]
         """Test that setup calls read_bets."""
         behaviour = self._setup_behaviour()
-        behaviour.synchronized_data.is_checkpoint_reached = False
+        behaviour.synchronized_data.is_checkpoint_reached = False  # type: ignore[misc]
         behaviour.params.use_multi_bets_mode = False
         behaviour.setup()
-        behaviour.read_bets.assert_called_once()
+        behaviour.read_bets.assert_called_once()  # type: ignore[attr-defined, misc]
 
     def test_setup_requeues_on_checkpoint_multi_mode(self) -> None:
-        """Test that setup requeues all bets when checkpoint is reached in multi-bets mode."""
+        """Test that setup requeues all bets when checkpoint is reached in multi-bets mode."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
-        behaviour.synchronized_data.is_checkpoint_reached = True
+        behaviour.synchronized_data.is_checkpoint_reached = True  # type: ignore[misc]
         behaviour.params.use_multi_bets_mode = True
         behaviour.setup()
-        behaviour._requeue_all_bets.assert_called_once()
+        behaviour._requeue_all_bets.assert_called_once()  # type: ignore[attr-defined, misc]
 
     def test_setup_does_not_requeue_when_not_checkpoint(self) -> None:
-        """Test that setup does NOT requeue when checkpoint is not reached."""
+        """Test that setup does NOT requeue when checkpoint is not reached."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
-        behaviour.synchronized_data.is_checkpoint_reached = False
+        behaviour.synchronized_data.is_checkpoint_reached = False  # type: ignore[misc]
         behaviour.params.use_multi_bets_mode = True
         behaviour.setup()
-        behaviour._requeue_all_bets.assert_not_called()
+        behaviour._requeue_all_bets.assert_not_called()  # type: ignore[attr-defined, misc]
 
     def test_setup_does_not_requeue_when_not_multi_mode(self) -> None:
-        """Test that setup does NOT requeue when not in multi-bets mode."""
+        """Test that setup does NOT requeue when not in multi-bets mode."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
-        behaviour.synchronized_data.is_checkpoint_reached = True
+        behaviour.synchronized_data.is_checkpoint_reached = True  # type: ignore[misc]
         behaviour.params.use_multi_bets_mode = False
         behaviour.setup()
-        behaviour._requeue_all_bets.assert_not_called()
+        behaviour._requeue_all_bets.assert_not_called()  # type: ignore[attr-defined, misc]
 
     def test_setup_blacklists_expired_when_bets_exist(self) -> None:
-        """Test that setup blacklists expired bets when bets are not empty."""
+        """Test that setup blacklists expired bets when bets are not empty."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
-        behaviour.synchronized_data.is_checkpoint_reached = False
+        behaviour.synchronized_data.is_checkpoint_reached = False  # type: ignore[misc]
         behaviour.params.use_multi_bets_mode = False
         behaviour.bets = [_make_bet()]
-        behaviour.setup()
-        behaviour._blacklist_expired_bets.assert_called_once()
+        behaviour.setup()  # type: ignore[misc]
+        behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
 
     def test_setup_does_not_blacklist_when_no_bets(self) -> None:
-        """Test that setup does NOT blacklist when bets are empty."""
+        """Test that setup does NOT blacklist when bets are empty."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
-        behaviour.synchronized_data.is_checkpoint_reached = False
+        behaviour.synchronized_data.is_checkpoint_reached = False  # type: ignore[misc]
         behaviour.params.use_multi_bets_mode = False
         behaviour.bets = []
-        behaviour.setup()
-        behaviour._blacklist_expired_bets.assert_not_called()
+        behaviour.setup()  # type: ignore[misc]
+        behaviour._blacklist_expired_bets.assert_not_called()  # type: ignore[attr-defined]
 
 
-# ===========================================================================
+# ===========================================================================  # type: ignore[attr-defined]
 # Tests for get_bet_idx
 # ===========================================================================
 
@@ -1021,7 +1019,12 @@ class TestProcessAndGroupTrades:
         """Test invalid trades are skipped."""
         behaviour = _make_behaviour()
         trades = [
-            {"conditionId": "c1", "side": "BUY", "size": "10", "price": "0.5"},  # missing outcomeIndex
+            {
+                "conditionId": "c1",
+                "side": "BUY",
+                "size": "10",
+                "price": "0.5",
+            },  # missing outcomeIndex
         ]
         result = behaviour._process_and_group_trades(trades)
         assert len(result) == 0
@@ -1225,12 +1228,12 @@ class TestUpdateSingleBetInvestments:
         bet.queue_status = QueueStatus.EXPIRED
 
         # Mock the methods that would fail when outcomes is None
-        behaviour._replace_with_existing_investments_if_empty = MagicMock()
+        behaviour._replace_with_existing_investments_if_empty = MagicMock()  # type: ignore[method-assign]
 
         behaviour._update_single_bet_investments(bet, trades_map)
-        # Verify the warning was logged and replace fallback was called
+        # Verify the warning was logged and replace fallback was called  # type: ignore[method-assign]
         behaviour.context.logger.warning.assert_called()
-        behaviour._replace_with_existing_investments_if_empty.assert_called_once()
+        behaviour._replace_with_existing_investments_if_empty.assert_called_once()  # type: ignore[attr-defined]
 
     def test_outcome_index_out_of_bounds(self) -> None:
         """Test when outcome_index is out of bounds."""
@@ -1422,37 +1425,37 @@ class TestFetchMarketsFromPolymarket:
         """Set up a behaviour with mocked params."""
         behaviour = _make_behaviour()
         behaviour.context.params.store_path = Path("/tmp")
-        behaviour.send_polymarket_connection_request = MagicMock()
+        behaviour.send_polymarket_connection_request = MagicMock()  # type: ignore[method-assign]
         return behaviour
 
-    def test_response_none_returns_none(self) -> None:
+    def test_response_none_returns_none(self) -> None:  # type: ignore[method-assign]
         """Test that None response returns None."""
         behaviour = self._setup_behaviour()
-        behaviour.send_polymarket_connection_request = _return_gen(None)
+        behaviour.send_polymarket_connection_request = _return_gen(None)  # type: ignore[method-assign]
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
-        assert result is None
+        result = _exhaust_gen(gen)  # type: ignore[arg-type]
+        assert result is None  # type: ignore[method-assign]
 
-    def test_response_error_dict_returns_none(self) -> None:
+    def test_response_error_dict_returns_none(self) -> None:  # type: ignore[arg-type]
         """Test that error dict response returns None."""
         behaviour = self._setup_behaviour()
-        behaviour.send_polymarket_connection_request = _return_gen({"error": "failed"})
+        behaviour.send_polymarket_connection_request = _return_gen({"error": "failed"})  # type: ignore[method-assign]
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
-        assert result is None
+        result = _exhaust_gen(gen)  # type: ignore[arg-type]
+        assert result is None  # type: ignore[method-assign]
 
-    def test_successful_fetch_with_valid_markets(self) -> None:
+    def test_successful_fetch_with_valid_markets(self) -> None:  # type: ignore[arg-type]
         """Test successful fetch with valid markets."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market()
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["id"] == "market1"
         assert result[0]["collateralToken"] == USCDE_POLYGON
 
@@ -1461,13 +1464,13 @@ class TestFetchMarketsFromPolymarket:
         behaviour = self._setup_behaviour()
         market = _make_valid_market(outcomes=json.dumps([]))
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_market_mismatched_lengths(self) -> None:
         """Test market with mismatched lengths is skipped."""
@@ -1477,91 +1480,91 @@ class TestFetchMarketsFromPolymarket:
             outcomePrices=json.dumps(["0.5"]),
         )
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_market_missing_end_date(self) -> None:
         """Test market missing endDate is skipped."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market(endDate="")
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_market_negative_liquidity(self) -> None:
         """Test market with negative liquidity is skipped."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market(liquidity="-100")
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_market_invalid_price_range(self) -> None:
         """Test market with invalid prices is skipped."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market(outcomePrices=json.dumps(["1.5", "0.4"]))
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_market_missing_condition_id(self) -> None:
         """Test market missing conditionId is skipped."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market(conditionId="")
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_market_missing_question(self) -> None:
         """Test market missing question is skipped."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market(question="")
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_closed_market_blacklisted(self) -> None:
         """Test closed market gets blacklisted (outcomes=None, queue=EXPIRED)."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market(closed=True)
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["outcomes"] is None
         assert result[0]["queue_status"] == QueueStatus.EXPIRED
 
@@ -1573,13 +1576,13 @@ class TestFetchMarketsFromPolymarket:
             category_valid=False,
         )
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         # _validate_markets_by_category will set category_valid based on actual check
         # "cats fly" doesn't match technology keywords, so it will be invalid
 
@@ -1589,13 +1592,13 @@ class TestFetchMarketsFromPolymarket:
         market = _make_valid_market()
         del market["submitted_by"]
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["creator"] == ZERO_ADDRESS
 
     def test_json_decode_error_skips_market(self) -> None:
@@ -1603,32 +1606,32 @@ class TestFetchMarketsFromPolymarket:
         behaviour = self._setup_behaviour()
         market = _make_valid_market(outcomes="not valid json {")
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_unexpected_exception_skips_market(self) -> None:
         """Test that unexpected exceptions are caught and market is skipped."""
         behaviour = self._setup_behaviour()
         market = _make_valid_market()
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         # Patch _validate_markets_by_category to return data that causes an unexpected error
-        # We'll mock date_parser.isoparse to raise an unexpected error
+        # We'll mock date_parser.isoparse to raise an unexpected error  # type: ignore[method-assign]
         with patch(
             "packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_market.date_parser"
         ) as mock_parser:
             mock_parser.isoparse.side_effect = RuntimeError("unexpected")
             gen = behaviour._fetch_markets_from_polymarket()
-            result = _exhaust_gen(gen)
+            result = _exhaust_gen(gen)  # type: ignore[arg-type]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_multiple_categories(self) -> None:
         """Test processing markets from multiple categories."""
@@ -1639,13 +1642,13 @@ class TestFetchMarketsFromPolymarket:
             "technology": [market1],
             "politics": [market2],
         }
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 2
+        assert len(result) == 2  # type: ignore[arg-type]
 
     def test_valid_market_has_correct_bet_dict_structure(self) -> None:
         """Test that a valid market produces a correctly structured bet_dict."""
@@ -1657,13 +1660,13 @@ class TestFetchMarketsFromPolymarket:
             submitted_by="0xsubmitter",
         )
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         bet_dict = result[0]
         assert bet_dict["id"] == "m1"
         assert bet_dict["title"] == "Will Tesla stock go up?"
@@ -1683,13 +1686,13 @@ class TestFetchMarketsFromPolymarket:
         behaviour = self._setup_behaviour()
         market = _make_valid_market(outcomePrices=json.dumps(["-0.1", "0.5"]))
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_skipped_markets_logged_in_summary(self) -> None:
         """Test that category summary is logged when markets are skipped."""
@@ -1698,13 +1701,13 @@ class TestFetchMarketsFromPolymarket:
         market1 = _make_valid_market(id="m1", question="Will AI improve?")
         market2 = _make_valid_market(id="m2", conditionId="")
         response = {"technology": [market1, market2]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         # Verify logger was called with category skip info
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
         assert any("skipped" in call.lower() for call in log_calls)
@@ -1715,13 +1718,13 @@ class TestFetchMarketsFromPolymarket:
         market = _make_valid_market()
         del market["id"]
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         # The market should still be processed, just with id="unknown"
-        assert result is not None
+        assert result is not None  # type: ignore[arg-type]
         if len(result) > 0:
             assert result[0]["id"] == "unknown"
 
@@ -1736,13 +1739,13 @@ class TestFetchMarketsFromPolymarket:
             for i in range(6)
         ]
         response = {"technology": markets}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 6
+        assert len(result) == 6  # type: ignore[arg-type]
         # First 5 should trigger the debug log
         info_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
         creating_calls = [c for c in info_calls if "Creating bet_dict" in c]
@@ -1761,15 +1764,15 @@ class TestUpdateBets:
         """Test that failed fetch clears bets."""
         behaviour = _make_behaviour()
         behaviour.bets = [_make_bet()]
-        behaviour._fetch_markets_from_polymarket = _return_gen(None)
-        behaviour._blacklist_expired_bets = MagicMock()
-        type(behaviour).synced_time = PropertyMock(return_value=5000)
-
-        gen = behaviour._update_bets()
-        _exhaust_gen(gen)
+        behaviour._fetch_markets_from_polymarket = _return_gen(None)  # type: ignore[method-assign]
+        behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        gen = behaviour._update_bets()  # type: ignore[method-assign]
+        _exhaust_gen(gen)  # type: ignore[method-assign]
 
         assert behaviour.bets == []
-        behaviour._blacklist_expired_bets.assert_not_called()
+        behaviour._blacklist_expired_bets.assert_not_called()  # type: ignore[attr-defined]
 
     def test_successful_update(self) -> None:
         """Test successful bet update."""
@@ -1790,16 +1793,16 @@ class TestUpdateBets:
                 scaledLiquidityMeasure=10.0,
             )
         ]
-        behaviour._fetch_markets_from_polymarket = _return_gen(bet_data)
-        behaviour._blacklist_expired_bets = MagicMock()
+        behaviour._fetch_markets_from_polymarket = _return_gen(bet_data)  # type: ignore[method-assign]
+        behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
         behaviour.context.params.opening_margin = 1000
-        type(behaviour).synced_time = PropertyMock(return_value=5000)
-
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
+        # type: ignore[method-assign]
         gen = behaviour._update_bets()
-        _exhaust_gen(gen)
+        _exhaust_gen(gen)  # type: ignore[method-assign]
 
         assert len(behaviour.bets) == 1
-        behaviour._blacklist_expired_bets.assert_called_once()
+        behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ===========================================================================
@@ -1814,35 +1817,45 @@ class TestFetchPolymarketTrades:
         """Test successful trades fetch."""
         behaviour = _make_behaviour()
         trades_data = [
-            {"conditionId": "c1", "outcomeIndex": 0, "side": "BUY", "size": "10", "price": "0.5"}
+            {
+                "conditionId": "c1",
+                "outcomeIndex": 0,
+                "side": "BUY",
+                "size": "10",
+                "price": "0.5",
+            }
         ]
-        behaviour.send_polymarket_connection_request = _return_gen(trades_data)
+        behaviour.send_polymarket_connection_request = _return_gen(trades_data)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_polymarket_trades()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result == trades_data
 
+    # type: ignore[arg-type]
     def test_none_response(self) -> None:
         """Test None response returns None."""
         behaviour = _make_behaviour()
-        behaviour.send_polymarket_connection_request = _return_gen(None)
+        behaviour.send_polymarket_connection_request = _return_gen(None)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_polymarket_trades()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is None
 
+    # type: ignore[arg-type]
     def test_error_response(self) -> None:
         """Test error dict response returns None."""
         behaviour = _make_behaviour()
-        behaviour.send_polymarket_connection_request = _return_gen({"error": "oops"})
+        behaviour.send_polymarket_connection_request = _return_gen({"error": "oops"})  # type: ignore[method-assign]
 
         gen = behaviour._fetch_polymarket_trades()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is None
 
+
+# type: ignore[arg-type]
 
 # ===========================================================================
 # Tests for update_bets_investments (generator)
@@ -1855,29 +1868,35 @@ class TestUpdateBetsInvestments:
     def test_trades_none_returns_early(self) -> None:
         """Test that None trades causes early return."""
         behaviour = _make_behaviour()
-        behaviour._fetch_polymarket_trades = _return_gen(None)
-        behaviour._process_and_group_trades = MagicMock()
+        behaviour._fetch_polymarket_trades = _return_gen(None)  # type: ignore[method-assign]
+        behaviour._process_and_group_trades = MagicMock()  # type: ignore[method-assign]
 
-        gen = behaviour.update_bets_investments()
-        _exhaust_gen(gen)
+        gen = behaviour.update_bets_investments()  # type: ignore[method-assign]
+        _exhaust_gen(gen)  # type: ignore[method-assign]
 
-        behaviour._process_and_group_trades.assert_not_called()
+        behaviour._process_and_group_trades.assert_not_called()  # type: ignore[attr-defined]
 
     def test_successful_update(self) -> None:
         """Test successful investment update flow."""
         behaviour = _make_behaviour()
         trades_data = [
-            {"conditionId": "c1", "outcomeIndex": 0, "side": "BUY", "size": "10", "price": "0.5"}
+            {
+                "conditionId": "c1",
+                "outcomeIndex": 0,
+                "side": "BUY",
+                "size": "10",
+                "price": "0.5",
+            }
         ]
-        behaviour._fetch_polymarket_trades = _return_gen(trades_data)
-        behaviour._process_and_group_trades = MagicMock(return_value={"c1": {0: []}})
-        behaviour._update_all_bets_investments = MagicMock()
+        behaviour._fetch_polymarket_trades = _return_gen(trades_data)  # type: ignore[method-assign]
+        behaviour._process_and_group_trades = MagicMock(return_value={"c1": {0: []}})  # type: ignore[method-assign]
+        behaviour._update_all_bets_investments = MagicMock()  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        gen = behaviour.update_bets_investments()  # type: ignore[method-assign]
+        _exhaust_gen(gen)  # type: ignore[method-assign]
 
-        gen = behaviour.update_bets_investments()
-        _exhaust_gen(gen)
-
-        behaviour._process_and_group_trades.assert_called_once_with(trades_data)
-        behaviour._update_all_bets_investments.assert_called_once()
+        behaviour._process_and_group_trades.assert_called_once_with(trades_data)  # type: ignore[attr-defined]
+        behaviour._update_all_bets_investments.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ===========================================================================
@@ -1902,8 +1921,8 @@ class TestAsyncAct:
         mock_benchmark.measure.return_value.local.return_value.__exit__ = MagicMock(
             return_value=False
         )
-        mock_benchmark.measure.return_value.consensus.return_value.__enter__ = MagicMock(
-            return_value=None
+        mock_benchmark.measure.return_value.consensus.return_value.__enter__ = (
+            MagicMock(return_value=None)
         )
         mock_benchmark.measure.return_value.consensus.return_value.__exit__ = MagicMock(
             return_value=False
@@ -1911,23 +1930,24 @@ class TestAsyncAct:
         behaviour.context.benchmark_tool = mock_benchmark
 
         # Mock generator methods
-        behaviour._update_bets = _noop_gen
-        behaviour.update_bets_investments = _noop_gen
-        behaviour._requeue_bets_for_selling = MagicMock()
-        behaviour._bet_freshness_check_and_update = MagicMock()
-        behaviour.store_bets = MagicMock()
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")
-        behaviour.send_a2a_transaction = _noop_gen
-        behaviour.wait_until_round_end = _noop_gen
-        behaviour.set_done = MagicMock()
-        behaviour.context.agent_address = "agent_addr"
-
-        mock_synced = MagicMock()
+        behaviour._update_bets = _noop_gen  # type: ignore[method-assign]
+        behaviour.update_bets_investments = _noop_gen  # type: ignore[method-assign]
+        behaviour._requeue_bets_for_selling = MagicMock()  # type: ignore[method-assign]
+        behaviour._bet_freshness_check_and_update = MagicMock()  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
+        behaviour.send_a2a_transaction = _noop_gen  # type: ignore[method-assign]
+        behaviour.wait_until_round_end = _noop_gen  # type: ignore[method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.agent_address = "agent_addr"  # type: ignore[method-assign]
+        # type: ignore[method-assign]
+        mock_synced = MagicMock()  # type: ignore[method-assign]
         mock_synced.review_bets_for_selling = False
-        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)
+        type(behaviour).synchronized_data = PropertyMock(return_value=mock_synced)  # type: ignore[method-assign]
 
         return behaviour
 
+    # type: ignore[method-assign]
     def test_async_act_full_lifecycle(self) -> None:
         """Test async_act goes through full lifecycle."""
         behaviour = self._setup_behaviour()
@@ -1936,71 +1956,72 @@ class TestAsyncAct:
         gen = behaviour.async_act()
         _exhaust_gen(gen)
 
-        behaviour.store_bets.assert_called_once()
-        behaviour.hash_stored_bets.assert_called_once()
-        behaviour.set_done.assert_called_once()
+        behaviour.store_bets.assert_called_once()  # type: ignore[attr-defined]
+        behaviour.hash_stored_bets.assert_called_once()  # type: ignore[attr-defined]
+        behaviour.set_done.assert_called_once()  # type: ignore[attr-defined]
 
-    def test_async_act_with_review_selling(self) -> None:
-        """Test async_act calls requeue for selling when review flag is set."""
+    # type: ignore[attr-defined]
+    def test_async_act_with_review_selling(self) -> None:  # type: ignore[attr-defined]
+        """Test async_act calls requeue for selling when review flag is set."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
         behaviour.bets = [_make_bet()]
-        behaviour.synchronized_data.review_bets_for_selling = True
+        behaviour.synchronized_data.review_bets_for_selling = True  # type: ignore[misc]
 
         gen = behaviour.async_act()
-        _exhaust_gen(gen)
+        _exhaust_gen(gen)  # type: ignore[misc]
 
-        behaviour._requeue_bets_for_selling.assert_called_once()
+        behaviour._requeue_bets_for_selling.assert_called_once()  # type: ignore[attr-defined]
 
     def test_async_act_without_review_selling(self) -> None:
-        """Test async_act does NOT call requeue for selling when review flag is not set."""
+        """Test async_act does NOT call requeue for selling when review flag is not set."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
         behaviour.bets = [_make_bet()]
-        behaviour.synchronized_data.review_bets_for_selling = False
+        behaviour.synchronized_data.review_bets_for_selling = False  # type: ignore[misc]
 
         gen = behaviour.async_act()
-        _exhaust_gen(gen)
+        _exhaust_gen(gen)  # type: ignore[misc]
 
-        behaviour._requeue_bets_for_selling.assert_not_called()
+        behaviour._requeue_bets_for_selling.assert_not_called()  # type: ignore[attr-defined]
 
     def test_async_act_freshness_check_when_bets_exist(self) -> None:
-        """Test async_act calls freshness check when bets exist."""
+        """Test async_act calls freshness check when bets exist."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
         behaviour.bets = [_make_bet()]
 
         gen = behaviour.async_act()
         _exhaust_gen(gen)
 
-        behaviour._bet_freshness_check_and_update.assert_called_once()
+        behaviour._bet_freshness_check_and_update.assert_called_once()  # type: ignore[attr-defined]
 
     def test_async_act_no_freshness_check_when_no_bets(self) -> None:
-        """Test async_act does NOT call freshness check when no bets."""
+        """Test async_act does NOT call freshness check when no bets."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
         behaviour.bets = []
 
         gen = behaviour.async_act()
         _exhaust_gen(gen)
 
-        behaviour._bet_freshness_check_and_update.assert_not_called()
+        behaviour._bet_freshness_check_and_update.assert_not_called()  # type: ignore[attr-defined]
 
     def test_async_act_no_bets_hash_is_none(self) -> None:
-        """Test async_act sets bets_hash to None when no bets."""
+        """Test async_act sets bets_hash to None when no bets."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
         behaviour.bets = []
 
         gen = behaviour.async_act()
         _exhaust_gen(gen)
 
-        behaviour.hash_stored_bets.assert_not_called()
+        behaviour.hash_stored_bets.assert_not_called()  # type: ignore[attr-defined]
 
     def test_async_act_calls_store_bets(self) -> None:
-        """Test async_act stores bets."""
+        """Test async_act stores bets."""  # type: ignore[attr-defined]
         behaviour = self._setup_behaviour()
         gen = behaviour.async_act()
         _exhaust_gen(gen)
-        behaviour.store_bets.assert_called_once()
+        behaviour.store_bets.assert_called_once()  # type: ignore[attr-defined]
 
 
-# ===========================================================================
+# ===========================================================================  # type: ignore[attr-defined]
 # Tests for matching_round class attribute
 # ===========================================================================
 
@@ -2014,7 +2035,9 @@ class TestMatchingRound:
             PolymarketFetchMarketRound,
         )
 
-        assert PolymarketFetchMarketBehaviour.matching_round == PolymarketFetchMarketRound
+        assert (
+            PolymarketFetchMarketBehaviour.matching_round == PolymarketFetchMarketRound
+        )
 
 
 # ===========================================================================
@@ -2052,10 +2075,10 @@ class TestEdgeCases:
         """Test blacklisting at exact boundary: synced_time == openingTimestamp - opening_margin."""
         behaviour = _make_behaviour()
         behaviour.context.params.opening_margin = 1000
-        type(behaviour).synced_time = PropertyMock(return_value=5000)
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
         # openingTimestamp - opening_margin == 6000 - 1000 == 5000 == synced_time -> should blacklist
         bet = _make_bet(id="b1", openingTimestamp=6000)
-        behaviour.bets = [bet]
+        behaviour.bets = [bet]  # type: ignore[method-assign]
         behaviour._blacklist_expired_bets()
         assert bet.queue_status == QueueStatus.EXPIRED
 
@@ -2137,22 +2160,22 @@ class TestEdgeCases:
         behaviour = _make_behaviour()
         behaviour.context.params.opening_margin = 100
         behaviour.context.params.sell_check_interval = 3600
-        type(behaviour).synced_time = PropertyMock(return_value=5000000000)
+        type(behaviour).synced_time = PropertyMock(return_value=5000000000)  # type: ignore[method-assign]
 
         # Bet that meets all conditions
-        bet1 = _make_bet(id="b1", queue_status=QueueStatus.PROCESSED)
+        bet1 = _make_bet(id="b1", queue_status=QueueStatus.PROCESSED)  # type: ignore[method-assign]
         bet1.investments = {"Yes": [100], "No": []}
         bet1.last_processed_sell_check = 0
-        bet1.is_ready_to_sell = MagicMock(return_value=True)
+        bet1.is_ready_to_sell = MagicMock(return_value=True)  # type: ignore[method-assign]
 
         # Bet that is not ready to sell
-        bet2 = _make_bet(id="b2", queue_status=QueueStatus.PROCESSED)
+        bet2 = _make_bet(id="b2", queue_status=QueueStatus.PROCESSED)  # type: ignore[method-assign]
         bet2.investments = {"Yes": [100], "No": []}
         bet2.last_processed_sell_check = 0
-        bet2.is_ready_to_sell = MagicMock(return_value=False)
+        bet2.is_ready_to_sell = MagicMock(return_value=False)  # type: ignore[method-assign]
 
         behaviour.bets = [bet1, bet2]
-        behaviour._requeue_bets_for_selling()
+        behaviour._requeue_bets_for_selling()  # type: ignore[method-assign]
 
         assert bet1.queue_status == QueueStatus.FRESH
         assert bet2.queue_status == QueueStatus.PROCESSED
@@ -2170,22 +2193,22 @@ class TestEdgeCases:
         )
         # liquidity="not_a_number_that_causes_issues" will fail float conversion
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_extreme_price_at_boundary(self) -> None:
         """Test extreme price exactly at threshold (0.99)."""
         behaviour = _make_behaviour()
         behaviour.context.params.opening_margin = 1000
-        type(behaviour).synced_time = PropertyMock(return_value=5000)
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
 
         bet = _make_bet(
-            id="b1",
+            id="b1",  # type: ignore[method-assign]
             openingTimestamp=9999999999,
             outcomeTokenMarginalPrices=[0.99, 0.01],
         )
@@ -2197,10 +2220,10 @@ class TestEdgeCases:
         """Test price just below threshold is NOT blacklisted."""
         behaviour = _make_behaviour()
         behaviour.context.params.opening_margin = 1000
-        type(behaviour).synced_time = PropertyMock(return_value=5000)
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
 
         bet = _make_bet(
-            id="b1",
+            id="b1",  # type: ignore[method-assign]
             openingTimestamp=9999999999,
             outcomeTokenMarginalPrices=[0.989, 0.011],
         )
@@ -2250,13 +2273,13 @@ class TestEdgeCases:
             closed=False,
         )
         response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 1
+        assert len(result) == 1  # type: ignore[arg-type]
         bet = result[0]
         assert bet["outcomes"] is not None  # valid market has outcomes
         assert bet["queue_status"] == QueueStatus.FRESH
@@ -2266,13 +2289,13 @@ class TestEdgeCases:
         """Test fetching with empty response dict."""
         behaviour = _make_behaviour()
         behaviour.context.params.store_path = Path("/tmp")
-        behaviour.send_polymarket_connection_request = _return_gen({})
+        behaviour.send_polymarket_connection_request = _return_gen({})  # type: ignore[method-assign]
 
         gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
 
         assert result is not None
-        assert len(result) == 0
+        assert len(result) == 0  # type: ignore[arg-type]
 
     def test_get_bet_idx_first_element(self) -> None:
         """Test get_bet_idx returns 0 for first element."""

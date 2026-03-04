@@ -20,48 +20,40 @@
 """Tests for the models module of decision_maker_abci."""
 
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Set
-from unittest.mock import MagicMock, PropertyMock, patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
-from packages.valory.skills.abstract_round_abci.models import (
-    ApiSpecs,
-    BaseParams,
-)
+from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.decision_maker_abci.models import (
-    REQUIRED_BET_TEMPLATE_KEYS,
-    STRATEGY_KELLY_CRITERION,
-    ZERO_BYTES,
-    ZERO_HEX,
     AccuracyInfoFields,
     AgentToolsSpecs,
-    BenchmarkingMockData,
     BenchmarkTool,
+    BenchmarkingMockData,
     ConditionalTokensSubgraph,
     DecisionMakerParams,
     LiquidityInfo,
     MultisendBatch,
     PromptTemplate,
+    REQUIRED_BET_TEMPLATE_KEYS,
     RealitioSubgraph,
     RedeemingProgress,
     Requests,
+    STRATEGY_KELLY_CRITERION,
     SharedState,
     TradesSubgraph,
+    ZERO_BYTES,
+    ZERO_HEX,
     _raise_incorrect_config,
     check_prompt_template,
     extract_keys_from_template,
-)
-from packages.valory.skills.decision_maker_abci.policy import (
-    AccuracyInfo,
-    EGreedyPolicy,
 )
 
 
@@ -355,30 +347,22 @@ class TestBenchmarkingMockData:
 
     def test_is_winning_yes_high_pyes(self) -> None:
         """Test is_winning when answer is yes and p_yes > 0.5."""
-        data = BenchmarkingMockData(
-            id="1", question="q", answer="yes", p_yes=0.7
-        )
+        data = BenchmarkingMockData(id="1", question="q", answer="yes", p_yes=0.7)
         assert data.is_winning is True
 
     def test_is_winning_yes_low_pyes(self) -> None:
         """Test is_winning when answer is yes and p_yes < 0.5."""
-        data = BenchmarkingMockData(
-            id="1", question="q", answer="yes", p_yes=0.3
-        )
+        data = BenchmarkingMockData(id="1", question="q", answer="yes", p_yes=0.3)
         assert data.is_winning is False
 
     def test_is_winning_no_low_pyes(self) -> None:
         """Test is_winning when answer is no and p_yes < 0.5."""
-        data = BenchmarkingMockData(
-            id="1", question="q", answer="no", p_yes=0.3
-        )
+        data = BenchmarkingMockData(id="1", question="q", answer="no", p_yes=0.3)
         assert data.is_winning is True
 
     def test_is_winning_no_high_pyes(self) -> None:
         """Test is_winning when answer is no and p_yes > 0.5."""
-        data = BenchmarkingMockData(
-            id="1", question="q", answer="no", p_yes=0.7
-        )
+        data = BenchmarkingMockData(id="1", question="q", answer="no", p_yes=0.7)
         assert data.is_winning is False
 
 
@@ -421,9 +405,7 @@ class TestConstants:
 def _make_shared_state_via_init() -> SharedState:
     """Create a SharedState by calling __init__ with mocked super().__init__."""
     mock_context = MagicMock()
-    with patch.object(
-        SharedState.__mro__[1], "__init__", return_value=None
-    ):
+    with patch.object(SharedState.__mro__[1], "__init__", return_value=None):
         state = SharedState(skill_context=mock_context)
     state._context = mock_context
     return state
@@ -543,12 +525,12 @@ class TestSharedState:
         mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
         bets = [mock_bet1, mock_bet2]
 
-        self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)
+        self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
         assert len(self.state.simulated_days) > 0
         # Each day is separated by one day interval
-        for i in range(1, len(self.state.simulated_days)):
+        for i in range(1, len(self.state.simulated_days)):  # type: ignore[arg-type]
             diff = self.state.simulated_days[i] - self.state.simulated_days[i - 1]
             assert diff == 86400
 
@@ -579,12 +561,12 @@ class TestSharedState:
         mock_bet.openingTimestamp = now_ts + 86400 * 2 + safe_voting_range + 1
         bets = [mock_bet]
 
-        result = self.state.get_simulated_now_timestamp(bets, safe_voting_range)
+        result = self.state.get_simulated_now_timestamp(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert len(self.state.simulated_days) > 0
         assert result == self.state.simulated_days[0]
 
-    def test_get_simulated_now_timestamp_returns_current_day(self) -> None:
+    def test_get_simulated_now_timestamp_returns_current_day(self) -> None:  # type: ignore[arg-type]
         """Test get_simulated_now_timestamp returns the timestamp at the current index."""
         self.state.simulated_days = [100, 200, 300]
         self.state.simulated_days_idx = 1
@@ -603,9 +585,7 @@ class TestSharedState:
         self.state.context.params = mock_params
         self.state.redeeming_progress = MagicMock()
 
-        with patch.object(
-            type(self.state).__mro__[1], "setup", return_value=None
-        ):
+        with patch.object(type(self.state).__mro__[1], "setup", return_value=None):  # type: ignore[arg-type]
             self.state.setup()
 
         assert self.state.strategy_to_filehash == {
@@ -613,9 +593,7 @@ class TestSharedState:
             "strategy_b": "hash1",
             "strategy_c": "hash2",
         }
-        assert (
-            self.state.redeeming_progress.event_filtering_batch_size == 100
-        )
+        assert self.state.redeeming_progress.event_filtering_batch_size == 100
 
     def test_setup_raises_for_invalid_strategy(self) -> None:
         """Test setup raises ValueError when selected strategy is not in executables."""
@@ -629,7 +607,7 @@ class TestSharedState:
         self.state.redeeming_progress = MagicMock()
 
         with patch.object(
-            type(self.state).__mro__[1], "setup", return_value=None
+            type(self.state).__mro__[1], "setup", return_value=None  # type: ignore[arg-type]
         ), pytest.raises(ValueError, match="not in the strategies"):
             self.state.setup()
 
@@ -693,6 +671,7 @@ class TestDecisionMakerParams:
 
     def test_sample_bets_closing_days_zero_raises(self) -> None:
         """Test that sample_bets_closing_days <= 0 raises ValueError via __init__."""
+
         # Mock _ensure to return 0 for sample_bets_closing_days
         def mock_ensure(key: str, kwargs: dict, type_: Any) -> Any:
             """Return controlled values for _ensure calls."""
@@ -809,9 +788,7 @@ class TestAccuracyInfoFields:
     def test_init(self) -> None:
         """Test AccuracyInfoFields.__init__ sets all fields."""
         mock_context = MagicMock()
-        with patch.object(
-            AccuracyInfoFields.__mro__[1], "__init__", return_value=None
-        ):
+        with patch.object(AccuracyInfoFields.__mro__[1], "__init__", return_value=None):
             fields = AccuracyInfoFields(
                 skill_context=mock_context,
                 name="accuracy_info_fields",

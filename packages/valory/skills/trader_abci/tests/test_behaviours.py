@@ -47,7 +47,7 @@ def test_initial_behaviour_cls() -> None:
 
 def test_abci_app_cls() -> None:
     """Test that the abci_app_cls is TraderAbciApp."""
-    assert TraderConsensusBehaviour.abci_app_cls is TraderAbciApp
+    assert TraderConsensusBehaviour.abci_app_cls is TraderAbciApp  # type: ignore[misc]
 
 
 def test_behaviours_set_is_non_empty() -> None:
@@ -58,9 +58,9 @@ def test_behaviours_set_is_non_empty() -> None:
 def test_behaviours_set_contains_base_behaviours() -> None:
     """Test that all elements in the behaviours set are BaseBehaviour subclasses."""
     for behaviour_cls in TraderConsensusBehaviour.behaviours:
-        assert issubclass(behaviour_cls, BaseBehaviour), (
-            f"{behaviour_cls} is not a subclass of BaseBehaviour"
-        )
+        assert issubclass(
+            behaviour_cls, BaseBehaviour
+        ), f"{behaviour_cls} is not a subclass of BaseBehaviour"
 
 
 def test_background_behaviours_cls() -> None:

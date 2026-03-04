@@ -20,7 +20,6 @@
 """Tests for agent_performance_summary_abci models."""
 
 import json
-import os
 import stat
 from dataclasses import asdict
 from pathlib import Path
@@ -490,7 +489,9 @@ class TestAgentPerformanceSummaryParams:
                 store_path=str(tmp_path),
                 **DEFAULT_APS_KWARGS,
             )
-        assert params.coingecko_olas_in_usd_price_url == "https://api.coingecko.com/olas"
+        assert (
+            params.coingecko_olas_in_usd_price_url == "https://api.coingecko.com/olas"
+        )
         assert params.coingecko_pol_in_usd_price_url == "https://api.coingecko.com/pol"
         assert params.store_path == tmp_path
         assert params.is_agent_performance_summary_enabled is True
@@ -643,14 +644,14 @@ class TestSharedState:
         return state
 
     def test_abci_app_cls(self) -> None:
-        """SharedState points to AgentPerformanceSummaryAbciApp."""
+        """Test that SharedState points to AgentPerformanceSummaryAbciApp."""
         assert SharedState.abci_app_cls is AgentPerformanceSummaryAbciApp
 
     def test_params_property(self) -> None:
-        """params property returns context.params cast to AgentPerformanceSummaryParams."""
+        """Params property returns context.params cast to AgentPerformanceSummaryParams."""
         state = self._make_state()
         mock_params = MagicMock(spec=AgentPerformanceSummaryParams)
-        state.context.params = mock_params
+        state.context.params = mock_params  # type: ignore[attr-defined]
         result = state.params
         assert result is mock_params
 
@@ -659,20 +660,18 @@ class TestSharedState:
         state = self._make_state()
         mock_ts = MagicMock()
         mock_ts.timestamp.return_value = 1700000000.5
-        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
         result = state.synced_timestamp
         assert result == 1700000000
         assert isinstance(result, int)
 
-    def test_read_existing_performance_summary_happy_path(
-        self, tmp_path: Path
-    ) -> None:
+    def test_read_existing_performance_summary_happy_path(self, tmp_path: Path) -> None:
         """read_existing_performance_summary reads and returns data from file."""
         state = self._make_state()
 
         mock_params = MagicMock()
         mock_params.store_path = tmp_path
-        state.context.params = mock_params
+        state.context.params = mock_params  # type: ignore[attr-defined]
 
         summary = AgentPerformanceSummary(
             timestamp=1700000000,
@@ -695,12 +694,12 @@ class TestSharedState:
 
         mock_params = MagicMock()
         mock_params.store_path = tmp_path
-        state.context.params = mock_params
+        state.context.params = mock_params  # type: ignore[attr-defined]
 
         result = state.read_existing_performance_summary()
         assert isinstance(result, AgentPerformanceSummary)
         assert result.timestamp is None
-        state.context.logger.warning.assert_called_once()
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_read_existing_performance_summary_json_decode_error(
         self, tmp_path: Path
@@ -710,7 +709,7 @@ class TestSharedState:
 
         mock_params = MagicMock()
         mock_params.store_path = tmp_path
-        state.context.params = mock_params
+        state.context.params = mock_params  # type: ignore[attr-defined]
 
         file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
         file_path.write_text("not valid json {{{")
@@ -718,7 +717,7 @@ class TestSharedState:
         result = state.read_existing_performance_summary()
         assert isinstance(result, AgentPerformanceSummary)
         assert result.timestamp is None
-        state.context.logger.warning.assert_called_once()
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_overwrite_performance_summary(self, tmp_path: Path) -> None:
         """overwrite_performance_summary writes JSON to file."""
@@ -726,7 +725,7 @@ class TestSharedState:
 
         mock_params = MagicMock()
         mock_params.store_path = tmp_path
-        state.context.params = mock_params
+        state.context.params = mock_params  # type: ignore[attr-defined]
 
         summary = AgentPerformanceSummary(
             timestamp=1700000000,
@@ -747,12 +746,12 @@ class TestSharedState:
 
         mock_params = MagicMock()
         mock_params.store_path = tmp_path
-        state.context.params = mock_params
+        state.context.params = mock_params  # type: ignore[attr-defined]
 
         # Set up synced_timestamp
         mock_ts = MagicMock()
         mock_ts.timestamp.return_value = 1700000100.0
-        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
 
         # Write initial data
         initial = AgentPerformanceSummary(timestamp=1700000000, agent_behavior="idle")
@@ -786,7 +785,7 @@ class TestSubgraphProcessResponse:
         subgraph = object.__new__(_TestableSubgraph)
         subgraph.__dict__["_frozen"] = False
         subgraph.context = MagicMock()  # type: ignore[assignment]
-        subgraph.response_info = MagicMock()
+        subgraph.response_info = MagicMock()  # type: ignore[assignment]
         subgraph.response_info.error_type = "dict"
         return subgraph
 
@@ -794,11 +793,9 @@ class TestSubgraphProcessResponse:
         """When super().process_response returns non-None, return it directly."""
         subgraph = self._make_subgraph()
         mock_response = MagicMock()
-        expected_result = {"data": {"agents": []}}
+        expected_result = {"data": {"agents": []}}  # type: ignore[var-annotated]
 
-        with patch.object(
-            ApiSpecs, "process_response", return_value=expected_result
-        ):
+        with patch.object(ApiSpecs, "process_response", return_value=expected_result):
             result = subgraph.process_response(mock_response)
 
         assert result is expected_result
@@ -810,8 +807,8 @@ class TestSubgraphProcessResponse:
 
         error_message_key = "message"
         payment_required_error = "payment required"
-        subgraph.context.params.the_graph_error_message_key = error_message_key
-        subgraph.context.params.the_graph_payment_required_error = (
+        subgraph.context.params.the_graph_error_message_key = error_message_key  # type: ignore[attr-defined]
+        subgraph.context.params.the_graph_payment_required_error = (  # type: ignore[attr-defined]
             payment_required_error
         )
         subgraph.response_info.error_data = {
@@ -823,7 +820,7 @@ class TestSubgraphProcessResponse:
             result = subgraph.process_response(mock_response)
 
         assert result is None
-        subgraph.context.logger.error.assert_called_once_with(
+        subgraph.context.logger.error.assert_called_once_with(  # type: ignore[attr-defined]
             "Payment required for subsequent requests for the current 'The Graph' API key!"
         )
 
@@ -834,8 +831,8 @@ class TestSubgraphProcessResponse:
 
         error_message_key = "message"
         payment_required_error = "payment required"
-        subgraph.context.params.the_graph_error_message_key = error_message_key
-        subgraph.context.params.the_graph_payment_required_error = (
+        subgraph.context.params.the_graph_error_message_key = error_message_key  # type: ignore[attr-defined]
+        subgraph.context.params.the_graph_payment_required_error = (  # type: ignore[attr-defined]
             payment_required_error
         )
         subgraph.response_info.error_data = {"message": "some other error occurred"}
@@ -845,7 +842,7 @@ class TestSubgraphProcessResponse:
             result = subgraph.process_response(mock_response)
 
         assert result is None
-        subgraph.context.logger.error.assert_not_called()
+        subgraph.context.logger.error.assert_not_called()  # type: ignore[attr-defined]
 
     def test_returns_none_when_error_data_is_not_expected_type(self) -> None:
         """When error_data does not match expected_error_type, skip the check."""
@@ -859,7 +856,7 @@ class TestSubgraphProcessResponse:
             result = subgraph.process_response(mock_response)
 
         assert result is None
-        subgraph.context.logger.error.assert_not_called()
+        subgraph.context.logger.error.assert_not_called()  # type: ignore[attr-defined]
 
     def test_returns_none_when_error_message_key_missing(self) -> None:
         """When error_data is a dict but missing the error_message_key, return None."""
@@ -868,8 +865,8 @@ class TestSubgraphProcessResponse:
 
         error_message_key = "message"
         payment_required_error = "payment required"
-        subgraph.context.params.the_graph_error_message_key = error_message_key
-        subgraph.context.params.the_graph_payment_required_error = (
+        subgraph.context.params.the_graph_error_message_key = error_message_key  # type: ignore[attr-defined]
+        subgraph.context.params.the_graph_payment_required_error = (  # type: ignore[attr-defined]
             payment_required_error
         )
         subgraph.response_info.error_data = {"other_key": "some value"}

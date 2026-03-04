@@ -22,8 +22,6 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
 )
@@ -41,20 +39,20 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a PolymarketBetPlacementBehaviour with mocked dependencies."""
-    behaviour = object.__new__(PolymarketBetPlacementBehaviour)
+    behaviour = object.__new__(PolymarketBetPlacementBehaviour)  # type: ignore[no-untyped-def]
     behaviour.buy_amount = 0
     behaviour._mech_id = 0
     behaviour._mech_hash = ""
@@ -89,7 +87,9 @@ class TestPolymarketBetPlacementBehaviour:
             "packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement.StorageManagerBehaviour.__init__",
             return_value=None,
         ):
-            behaviour = PolymarketBetPlacementBehaviour(name="test", skill_context=MagicMock())
+            behaviour = PolymarketBetPlacementBehaviour(
+                name="test", skill_context=MagicMock()
+            )
             assert behaviour.buy_amount == 0
 
     def test_async_act_outcome_token_ids_none(self) -> None:
@@ -99,13 +99,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -120,14 +120,14 @@ class TestPolymarketBetPlacementBehaviour:
             ) as mock_oi:
                 mock_oi.return_value = 0
 
-                behaviour.send_a2a_transaction = lambda payload: _noop_gen()
-                behaviour.wait_until_round_end = lambda: _noop_gen()
-                behaviour.set_done = MagicMock()
+                behaviour.send_a2a_transaction = lambda payload: _noop_gen()  # type: ignore[method-assign]
+                behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[method-assign]
+                behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-                behaviour.finish_behaviour = lambda payload: (
-                    payloads_sent.append(payload) or (yield)
+                behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                    payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                 )
-
+                # type: ignore[func-returns-value]
                 gen = behaviour.async_act()
                 try:
                     while True:
@@ -146,13 +146,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -171,11 +171,11 @@ class TestPolymarketBetPlacementBehaviour:
                 ) as mock_inv:
                     mock_inv.return_value = 100
 
-                    behaviour.usdc_to_native = lambda x: x / 10**6
-                    behaviour.finish_behaviour = lambda payload: (
-                        payloads_sent.append(payload) or (yield)
+                    behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                    behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                        payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                     )
-
+                    # type: ignore[func-returns-value]
                     gen = behaviour.async_act()
                     try:
                         while True:
@@ -193,14 +193,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
-        behaviour.update_bet_transaction_information = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -216,7 +216,7 @@ class TestPolymarketBetPlacementBehaviour:
             "status": "matched",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -248,11 +248,11 @@ class TestPolymarketBetPlacementBehaviour:
                         ) as mock_gasb:
                             mock_gasb.return_value = mock_bet
 
-                            behaviour.usdc_to_native = lambda x: x / 10**6
-                            behaviour.finish_behaviour = lambda payload: (
-                                payloads_sent.append(payload) or (yield)
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                                payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                             )
-
+                            # type: ignore[func-returns-value]
                             gen = behaviour.async_act()
                             try:
                                 while True:
@@ -270,19 +270,19 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
         mock_bet.outcome_token_ids = {"Yes": "token123"}
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(None)
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(None)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "sampled_bet", new_callable=PropertyMock
@@ -306,11 +306,11 @@ class TestPolymarketBetPlacementBehaviour:
                             cached_signed_orders={},
                         )
 
-                        behaviour.usdc_to_native = lambda x: x / 10**6
-                        behaviour.finish_behaviour = lambda payload: (
-                            payloads_sent.append(payload) or (yield)
+                        behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                        behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                         )
-
+                        # type: ignore[func-returns-value]
                         gen = behaviour.async_act()
                         try:
                             while True:
@@ -328,14 +328,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
-        behaviour.update_bet_transaction_information = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -344,14 +344,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         response = {
             "success": False,
-            "orderID": None,
+            "orderID": None,  # type: ignore[var-annotated]
             "transactionsHashes": [],
             "signed_order_json": None,
             "error": "Duplicated order",
             "status": "failed",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -383,11 +383,11 @@ class TestPolymarketBetPlacementBehaviour:
                         ) as mock_gasb:
                             mock_gasb.return_value = mock_bet
 
-                            behaviour.usdc_to_native = lambda x: x / 10**6
-                            behaviour.finish_behaviour = lambda payload: (
-                                payloads_sent.append(payload) or (yield)
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                                payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                             )
-
+                            # type: ignore[func-returns-value]
                             gen = behaviour.async_act()
                             try:
                                 while True:
@@ -405,13 +405,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -419,14 +419,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         response = {
             "success": False,
-            "orderID": None,
+            "orderID": None,  # type: ignore[var-annotated]
             "transactionsHashes": [],
             "signed_order_json": None,
             "error": "No orderbook exists for the requested token id",
             "status": "failed",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -452,11 +452,11 @@ class TestPolymarketBetPlacementBehaviour:
                             cached_signed_orders={},
                         )
 
-                        behaviour.usdc_to_native = lambda x: x / 10**6
-                        behaviour.finish_behaviour = lambda payload: (
-                            payloads_sent.append(payload) or (yield)
+                        behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                        behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                         )
-
+                        # type: ignore[func-returns-value]
                         gen = behaviour.async_act()
                         try:
                             while True:
@@ -474,13 +474,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -489,14 +489,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         response = {
             "success": False,
-            "orderID": None,
+            "orderID": None,  # type: ignore[var-annotated]
             "transactionsHashes": [],
             "signed_order_json": '{"order": "data"}',
             "error": "Execution failed",
             "status": "failed",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -522,11 +522,11 @@ class TestPolymarketBetPlacementBehaviour:
                             cached_signed_orders={},
                         )
 
-                        behaviour.usdc_to_native = lambda x: x / 10**6
-                        behaviour.finish_behaviour = lambda payload: (
-                            payloads_sent.append(payload) or (yield)
+                        behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                        behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                         )
-
+                        # type: ignore[func-returns-value]
                         gen = behaviour.async_act()
                         try:
                             while True:
@@ -546,13 +546,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -561,14 +561,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         response = {
             "success": False,
-            "orderID": None,
+            "orderID": None,  # type: ignore[var-annotated]
             "transactionsHashes": [],
             "signed_order_json": None,
             "error": "Some other error",
             "status": "failed",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -594,11 +594,11 @@ class TestPolymarketBetPlacementBehaviour:
                             cached_signed_orders={},
                         )
 
-                        behaviour.usdc_to_native = lambda x: x / 10**6
-                        behaviour.finish_behaviour = lambda payload: (
-                            payloads_sent.append(payload) or (yield)
+                        behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                        behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                         )
-
+                        # type: ignore[func-returns-value]
                         gen = behaviour.async_act()
                         try:
                             while True:
@@ -619,14 +619,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
-        behaviour.update_bet_transaction_information = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -642,7 +642,7 @@ class TestPolymarketBetPlacementBehaviour:
             "status": "matched",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -674,11 +674,11 @@ class TestPolymarketBetPlacementBehaviour:
                         ) as mock_gasb:
                             mock_gasb.return_value = mock_bet
 
-                            behaviour.usdc_to_native = lambda x: x / 10**6
-                            behaviour.finish_behaviour = lambda payload: (
-                                payloads_sent.append(payload) or (yield)
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                                payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                             )
-
+                            # type: ignore[func-returns-value]
                             gen = behaviour.async_act()
                             try:
                                 while True:
@@ -698,14 +698,14 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
-        behaviour.update_bet_transaction_information = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -724,13 +724,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         request_payloads = []
 
-        def mock_send(payload):
+        def mock_send(payload) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock send polymarket connection request."""
-            request_payloads.append(payload)
+            request_payloads.append(payload)  # type: ignore[no-untyped-def]
             yield
             return response
 
-        behaviour.send_polymarket_connection_request = mock_send
+        behaviour.send_polymarket_connection_request = mock_send  # type: ignore[method-assign]
 
         cache_key = "1_bet1_token123"
         cached_orders = {cache_key: '{"cached": "order"}'}
@@ -763,11 +763,11 @@ class TestPolymarketBetPlacementBehaviour:
                         ) as mock_gasb:
                             mock_gasb.return_value = mock_bet
 
-                            behaviour.usdc_to_native = lambda x: x / 10**6
-                            behaviour.finish_behaviour = lambda payload: (
-                                payloads_sent.append(payload) or (yield)
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                                payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                             )
-
+                            # type: ignore[func-returns-value]
                             gen = behaviour.async_act()
                             try:
                                 while True:
@@ -785,13 +785,13 @@ class TestPolymarketBetPlacementBehaviour:
 
         payloads_sent = []
 
-        def mock_wait(condition):
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
             """Mock wait for condition."""
-            yield
+            yield  # type: ignore[no-untyped-def]
 
-        behaviour.wait_for_condition_with_sleep = mock_wait
-        behaviour.check_balance = lambda: _return_gen(True)
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -803,14 +803,14 @@ class TestPolymarketBetPlacementBehaviour:
         # so that event stays None, triggering the fallback path
         response = {
             "success": False,
-            "orderID": None,
+            "orderID": None,  # type: ignore[var-annotated]
             "transactionsHashes": [],
             "signed_order_json": '{"order": "cached"}',
             "error": None,
             "status": "unknown",
         }
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             response
         )
 
@@ -836,7 +836,7 @@ class TestPolymarketBetPlacementBehaviour:
                             cached_signed_orders={},
                         )
 
-                        behaviour.usdc_to_native = lambda x: x / 10**6
+                        behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
 
                         # Patch the str() of response to avoid "No orderbook" match
                         # and also ensure error_msg is None (no duplicate error)
@@ -845,10 +845,10 @@ class TestPolymarketBetPlacementBehaviour:
                         # -> goes to else branch -> event = BET_PLACEMENT_FAILED
                         # This already covers lines 160-164, which we need
 
-                        behaviour.finish_behaviour = lambda payload: (
-                            payloads_sent.append(payload) or (yield)
+                        behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
                         )
-
+                        # type: ignore[func-returns-value]
                         gen = behaviour.async_act()
                         try:
                             while True:
@@ -866,14 +866,14 @@ class TestPolymarketBetPlacementBehaviour:
     def test_finish_behaviour_stores_tools(self) -> None:
         """finish_behaviour should call _store_utilized_tools before super."""
         behaviour = _make_behaviour()
-        behaviour._store_utilized_tools = MagicMock()
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
 
         payloads_sent = []
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: (yield)
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         payload = PolymarketBetPlacementPayload(
             "test_agent", None, None, False, event="done"

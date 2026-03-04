@@ -22,19 +22,15 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
     ETHER_VALUE,
     HTTP_OK,
     INTEGRATOR,
     LIFI_QUOTE_URL,
-    POL_ADDRESS,
     POLYGON_CHAIN_ID,
-    SAFE_TX_GAS,
-    USDC_ADDRESS,
     PolymarketSwapUsdcBehaviour,
+    SAFE_TX_GAS,
 )
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
 from packages.valory.skills.decision_maker_abci.rounds import PolymarketSwapUsdcRound
@@ -45,31 +41,26 @@ from packages.valory.skills.decision_maker_abci.rounds import PolymarketSwapUsdc
 # ---------------------------------------------------------------------------
 
 
-def _noop_gen():
+def _noop_gen():  # type: ignore[no-untyped-def]
     """A no-op generator that yields once."""
-    yield
+    yield  # type: ignore[no-untyped-def]
 
 
-def _return_gen(value):
+def _return_gen(value):  # type: ignore[no-untyped-def]
     """A generator that yields once and returns a value."""
-    yield
+    yield  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():
+def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a PolymarketSwapUsdcBehaviour with mocked dependencies."""
-    behaviour = object.__new__(PolymarketSwapUsdcBehaviour)
+    behaviour = object.__new__(PolymarketSwapUsdcBehaviour)  # type: ignore[no-untyped-def]
 
     context = MagicMock()
     context.agent_address = "test_agent"
     behaviour.__dict__["_context"] = context
 
     return behaviour
-
-
-# ---------------------------------------------------------------------------
-# Tests: Constants
-# ---------------------------------------------------------------------------
 
 
 class TestPolymarketSwapConstants:
@@ -113,10 +104,10 @@ class TestPolymarketSwapUsdcBehaviour:
 
         payloads_sent = []
 
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.set_done = MagicMock()
+        behaviour.set_done = MagicMock()  # type: ignore[func-returns-value, method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -142,12 +133,12 @@ class TestPolymarketSwapUsdcBehaviour:
 
         payloads_sent = []
 
-        behaviour.get_tx_hash = lambda: _return_gen("0xfinalhash")
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.get_tx_hash = lambda: _return_gen("0xfinalhash")  # type: ignore[method-assign]
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: (yield)
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -174,12 +165,12 @@ class TestPolymarketSwapUsdcBehaviour:
 
         payloads_sent = []
 
-        behaviour.get_tx_hash = lambda: _return_gen(None)
-        behaviour.send_a2a_transaction = lambda payload: (
-            payloads_sent.append(payload) or (yield)
+        behaviour.get_tx_hash = lambda: _return_gen(None)  # type: ignore[method-assign]
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
         )
-        behaviour.wait_until_round_end = lambda: (yield)
-        behaviour.set_done = MagicMock()
+        behaviour.wait_until_round_end = lambda: (yield)  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -208,7 +199,7 @@ class TestPolymarketSwapUsdcBehaviour:
         response.performative = LedgerApiMessage.Performative.STATE
         response.state.body = {"get_balance_result": 5000}
 
-        behaviour.get_ledger_api_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_ledger_api_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._get_balance("0xsafe")
         result = None
@@ -229,7 +220,7 @@ class TestPolymarketSwapUsdcBehaviour:
         response = MagicMock()
         response.performative = LedgerApiMessage.Performative.ERROR
 
-        behaviour.get_ledger_api_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_ledger_api_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         gen = behaviour._get_balance("0xsafe")
         result = None
@@ -249,16 +240,14 @@ class TestPolymarketSwapUsdcBehaviour:
         response.performative = ContractApiMessage.Performative.STATE
         response.state.body = {"tx_hash": "0xdeadbeef1234"}
 
-        behaviour.get_contract_api_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_contract_api_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
             mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
 
-            gen = behaviour._get_safe_tx_hash(
-                to_address="0xto", data=b"\x00", value=0
-            )
+            gen = behaviour._get_safe_tx_hash(to_address="0xto", data=b"\x00", value=0)
             result = None
             try:
                 while True:
@@ -276,16 +265,14 @@ class TestPolymarketSwapUsdcBehaviour:
         response = MagicMock()
         response.performative = ContractApiMessage.Performative.ERROR
 
-        behaviour.get_contract_api_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_contract_api_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
             mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
 
-            gen = behaviour._get_safe_tx_hash(
-                to_address="0xto", data=b"\x00", value=0
-            )
+            gen = behaviour._get_safe_tx_hash(to_address="0xto", data=b"\x00", value=0)
             result = None
             try:
                 while True:
@@ -299,7 +286,7 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when balance is None."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(None)
+        behaviour._get_balance = lambda addr: _return_gen(None)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -320,7 +307,7 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when balance is below threshold."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(100)
+        behaviour._get_balance = lambda addr: _return_gen(100)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -345,7 +332,7 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return tx payload data on full success."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
 
         lifi_quote = {
             "transactionRequest": {
@@ -354,10 +341,10 @@ class TestPolymarketSwapUsdcBehaviour:
                 "value": "0x64",
             }
         }
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)  # type: ignore[method-assign]
         # safe_tx_hash must be exactly 64 hex chars (32 bytes)
         safe_hash = "a" * 64
-        behaviour._get_safe_tx_hash = (
+        behaviour._get_safe_tx_hash = (  # type: ignore[method-assign]
             lambda to_address, data, value, safe_tx_gas, operation: _return_gen(
                 safe_hash
             )
@@ -386,8 +373,8 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when LiFi quote fails."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(None)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(None)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -412,8 +399,8 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when quote has no transactionRequest."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen({})
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen({})  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -438,9 +425,9 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when transactionRequest lacks required fields."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
         lifi_quote = {"transactionRequest": {"to": None, "data": None}}
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -465,7 +452,7 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when transaction data is not valid hex."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
         lifi_quote = {
             "transactionRequest": {
                 "to": "0x1234567890123456789012345678901234567890",
@@ -473,7 +460,7 @@ class TestPolymarketSwapUsdcBehaviour:
                 "value": 100,
             }
         }
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
@@ -498,7 +485,7 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should return None when _get_safe_tx_hash returns None."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
         lifi_quote = {
             "transactionRequest": {
                 "to": "0x1234567890123456789012345678901234567890",
@@ -506,8 +493,8 @@ class TestPolymarketSwapUsdcBehaviour:
                 "value": 100,
             }
         }
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)
-        behaviour._get_safe_tx_hash = (
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)  # type: ignore[method-assign]
+        behaviour._get_safe_tx_hash = (  # type: ignore[method-assign]
             lambda to_address, data, value, safe_tx_gas, operation: _return_gen(None)
         )
 
@@ -534,7 +521,7 @@ class TestPolymarketSwapUsdcBehaviour:
         """get_tx_hash should handle value as integer (not string)."""
         behaviour = _make_behaviour()
 
-        behaviour._get_balance = lambda addr: _return_gen(1000)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
         lifi_quote = {
             "transactionRequest": {
                 "to": "0x1234567890123456789012345678901234567890",
@@ -542,10 +529,10 @@ class TestPolymarketSwapUsdcBehaviour:
                 "value": 100,
             }
         }
-        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)
+        behaviour._get_lifi_quote = lambda addr, amount: _return_gen(lifi_quote)  # type: ignore[method-assign]
         # safe_tx_hash must be exactly 64 hex chars (32 bytes)
         safe_hash_2 = "b" * 64
-        behaviour._get_safe_tx_hash = (
+        behaviour._get_safe_tx_hash = (  # type: ignore[method-assign]
             lambda to_address, data, value, safe_tx_gas, operation: _return_gen(
                 safe_hash_2
             )
@@ -574,19 +561,22 @@ class TestPolymarketSwapUsdcBehaviour:
         """_get_lifi_quote should return parsed quote on success."""
         behaviour = _make_behaviour()
 
-        quote_data = {"transactionRequest": {"to": "0x1234567890123456789012345678901234567890", "data": "0xdata"}}
+        quote_data = {
+            "transactionRequest": {
+                "to": "0x1234567890123456789012345678901234567890",
+                "data": "0xdata",
+            }
+        }
         response = MagicMock()
         response.status_code = 200
         response.body = json.dumps(quote_data).encode()
 
-        behaviour.get_http_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_http_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                slippages_for_swap={"POL-USDC": 0.01}
-            )
+            mock_params.return_value = MagicMock(slippages_for_swap={"POL-USDC": 0.01})
 
             gen = behaviour._get_lifi_quote("0xsafe", 1000)
             result = None
@@ -607,14 +597,12 @@ class TestPolymarketSwapUsdcBehaviour:
         response.status_code = 500
         response.body = b"error"
 
-        behaviour.get_http_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_http_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                slippages_for_swap={"POL-USDC": 0.01}
-            )
+            mock_params.return_value = MagicMock(slippages_for_swap={"POL-USDC": 0.01})
 
             gen = behaviour._get_lifi_quote("0xsafe", 1000)
             result = None
@@ -634,14 +622,12 @@ class TestPolymarketSwapUsdcBehaviour:
         response.status_code = 200
         response.body = b"not json"
 
-        behaviour.get_http_response = lambda **kwargs: _return_gen(response)
+        behaviour.get_http_response = lambda **kwargs: _return_gen(response)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(
-                slippages_for_swap={"POL-USDC": 0.01}
-            )
+            mock_params.return_value = MagicMock(slippages_for_swap={"POL-USDC": 0.01})
 
             gen = behaviour._get_lifi_quote("0xsafe", 1000)
             result = None
