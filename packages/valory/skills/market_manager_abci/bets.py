@@ -109,7 +109,9 @@ class PredictionResponse:
         self.info_utility = float(kwargs.pop(INFO_UTILITY_FIELD))
 
         # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
-        probabilities = (getattr(self, field_.name) for field_ in dataclasses.fields(self))
+        probabilities = (
+            getattr(self, field_.name) for field_ in dataclasses.fields(self)
+        )
         if (
             any(not (0 <= prob <= 1) for prob in probabilities)
             or self.p_yes + self.p_no != 1
