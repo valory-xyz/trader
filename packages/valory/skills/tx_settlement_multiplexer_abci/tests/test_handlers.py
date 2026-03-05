@@ -17,6 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the tests for the handlers of the tx settlement multiplexer abci."""
+
 from unittest.mock import MagicMock
 
 import pytest

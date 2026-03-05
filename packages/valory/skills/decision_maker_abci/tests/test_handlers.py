@@ -17,6 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the tests for the handlers for the decision maker abci."""
+
 import json
 from dataclasses import dataclass
 from typing import Any, Dict, Union

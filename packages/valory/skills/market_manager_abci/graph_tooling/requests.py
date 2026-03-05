@@ -51,7 +51,6 @@ from packages.valory.skills.market_manager_abci.models import (
 )
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
 
-
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 

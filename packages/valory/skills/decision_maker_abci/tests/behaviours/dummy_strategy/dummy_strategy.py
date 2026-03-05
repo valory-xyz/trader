@@ -20,7 +20,6 @@
 
 """Implements a dummy strategy for testing purposes."""
 
-
 from typing import Any
 
 

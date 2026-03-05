@@ -21,9 +21,7 @@
 
 from string import Template
 
-
-questions = Template(
-    """
+questions = Template("""
     {
       fixedProductMarketMakers(
         where: {
@@ -50,11 +48,9 @@ questions = Template(
         scaledLiquidityMeasure
       }
     }
-    """
-)
+    """)
 
-trades = Template(
-    """
+trades = Template("""
     {
       fpmmTrades (
         where: {
@@ -92,5 +88,4 @@ trades = Template(
         transactionHash
       }
     }
-    """
-)
+    """)

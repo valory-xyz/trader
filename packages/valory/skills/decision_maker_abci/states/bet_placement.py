@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the sampling state of the decision-making abci app."""
+
 from enum import Enum
 from typing import Optional, Tuple, Type, cast
 

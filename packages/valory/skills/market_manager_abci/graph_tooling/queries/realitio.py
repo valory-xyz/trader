@@ -21,9 +21,7 @@
 
 from string import Template
 
-
-answers = Template(
-    """
+answers = Template("""
     {
         answers(where: {question_: {questionId: "${question_id}"}}) {
         answer
@@ -39,5 +37,4 @@ answers = Template(
         timestamp
       }
     }
-    """
-)
+    """)

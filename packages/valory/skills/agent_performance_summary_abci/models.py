@@ -37,7 +37,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
 )
 
-
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 

@@ -17,6 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains helper classes for IPFS interaction."""
+
 from typing import Dict
 
 import yaml

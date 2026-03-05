@@ -19,6 +19,7 @@
 # ------------------------------------------------------------------------------
 
 """Shared helper for fetching and formatting predictions data."""
+
 import enum
 import json
 from datetime import datetime
@@ -35,7 +36,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_PREDICTION_HISTORY_QUERY,
     GET_SPECIFIC_MARKET_BETS_QUERY,
 )
-
 
 # Constants
 WEI_TO_NATIVE = 10**18

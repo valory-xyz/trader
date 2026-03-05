@@ -20,7 +20,6 @@
 
 """This package contains helpers for scaling operations."""
 
-
 from typing import List, Tuple
 
 

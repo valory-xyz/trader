@@ -71,7 +71,6 @@ from packages.valory.skills.staking_abci.rounds import SynchronizedData
 from packages.valory.skills.trader_abci.dialogues import HttpDialogue
 from packages.valory.skills.trader_abci.models import TraderParams
 
-
 TraderHandler = ABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler

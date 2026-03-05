@@ -24,7 +24,6 @@ from pathlib import Path
 
 from hypothesis import settings
 
-
 # pylint: skip-file
 
 

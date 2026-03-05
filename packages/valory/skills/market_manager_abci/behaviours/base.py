@@ -46,7 +46,6 @@ from packages.valory.skills.market_manager_abci.models import (
     SharedState,
 )
 
-
 BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"

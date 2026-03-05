@@ -59,7 +59,6 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     SynchronizedData,
 )
 
-
 DUMMY_PAYLOAD_DATA = {"example_key": "example_value"}
 
 

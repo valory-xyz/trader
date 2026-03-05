@@ -21,9 +21,7 @@
 
 from string import Template
 
-
-block_number = Template(
-    """
+block_number = Template("""
     {
       blocks (
         first: 1,
@@ -37,5 +35,4 @@ block_number = Template(
         id
       }
     }
-    """
-)
+    """)

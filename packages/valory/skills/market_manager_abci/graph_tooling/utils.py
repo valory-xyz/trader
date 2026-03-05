@@ -18,11 +18,11 @@
 # ------------------------------------------------------------------------------
 
 """Utils for graph interactions."""
+
 import time
 from collections import defaultdict
 from enum import Enum
 from typing import Any, Dict, List, Tuple
-
 
 INVALID_MARKET_ANSWER = (
     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF

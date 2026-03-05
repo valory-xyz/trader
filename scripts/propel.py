@@ -42,7 +42,6 @@ from propel_client.propel import (  # type: ignore  # pylint: disable=import-err
     PropelClient,
 )
 
-
 logger = logging.getLogger("propel")
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

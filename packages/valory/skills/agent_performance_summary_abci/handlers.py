@@ -68,7 +68,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState,
 )
 
-
 # Constants
 DEFAULT_MECH_FEE = 10000000000000000  # 0.01 xDAI in wei (1e16)
 WEI_TO_NATIVE = 10**18

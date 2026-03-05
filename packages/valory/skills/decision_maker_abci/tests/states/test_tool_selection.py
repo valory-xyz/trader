@@ -20,7 +20,6 @@
 
 """This package contains the tests for Decision Maker"""
 
-
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional
 from unittest import mock
@@ -39,7 +38,6 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )
-
 
 DUMMY_TOOL_SELECTION_HASH = "dummy_tool_selection_hash"
 DUMMY_POLICY = "dummy_policy"

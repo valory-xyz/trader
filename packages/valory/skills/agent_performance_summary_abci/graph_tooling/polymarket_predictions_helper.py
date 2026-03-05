@@ -41,7 +41,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_POLYMARKET_SPECIFIC_BET_QUERY,
 )
 
-
 # Constants
 USDC_DECIMALS_DIVISOR = 10**6  # USDC has 6 decimals on Polymarket
 POLYMARKET_MARKET_BASE_URL = "https://polymarket.com/market"

@@ -37,7 +37,6 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.models import MechMarketplaceConfig
 from packages.valory.skills.staking_abci.models import StakingParams
 
-
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 

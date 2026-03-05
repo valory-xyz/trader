@@ -19,7 +19,6 @@
 
 """This module contains general utils for the decision maker skill."""
 
-
 import logging
 from contextlib import contextmanager
 from typing import Generator

@@ -34,7 +34,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     TxSettlementMultiplexerAbciApp,
 )
 
-
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 

@@ -40,7 +40,6 @@ from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciApp
 
-
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 

@@ -33,7 +33,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     QueryingBehaviour,
 )
 
-
 WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY

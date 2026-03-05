@@ -27,7 +27,6 @@ import sys
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-
 P_YES_FIELD = "p_yes"
 P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"

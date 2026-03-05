@@ -17,6 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the staking abci."""
+
 from typing import Dict, Type
 
 import pytest

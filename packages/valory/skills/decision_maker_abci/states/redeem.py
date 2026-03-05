@@ -36,7 +36,6 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     TxPreparationRound,
 )
 
-
 IGNORED = "ignored"
 MECH_TOOLS_FIELD = "mech_tools"
 

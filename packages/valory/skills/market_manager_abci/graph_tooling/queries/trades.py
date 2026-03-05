@@ -21,9 +21,7 @@
 
 from string import Template
 
-
-trades = Template(
-    """
+trades = Template("""
         {
             fpmmTrades(
                 where: {
@@ -72,5 +70,4 @@ trades = Template(
                 }
             }
         }
-        """
-)
+        """)

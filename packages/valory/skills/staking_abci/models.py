@@ -34,7 +34,6 @@ from packages.valory.skills.abstract_round_abci.models import (
 )
 from packages.valory.skills.staking_abci.rounds import StakingAbciApp
 
-
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
 

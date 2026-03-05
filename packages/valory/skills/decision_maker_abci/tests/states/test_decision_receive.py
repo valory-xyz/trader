@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This package contains the tests for Decision Maker"""
+
 import datetime
 import json
 from dataclasses import dataclass, field
@@ -38,7 +39,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
 from packages.valory.skills.market_manager_abci.payloads import UpdateBetsPayload
-
 
 DUMMY_DECISION_HASH = "dummy_decision_hash"
 DUMMY_PARTICIPANT_TO_DECISION_HASH = json.dumps(

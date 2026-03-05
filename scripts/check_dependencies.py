@@ -42,7 +42,6 @@ from aea.configurations.data_types import Dependency
 from aea.package_manager.base import load_configuration
 from aea.package_manager.v1 import PackageManagerV1
 
-
 ANY_SPECIFIER = "*"
 
 

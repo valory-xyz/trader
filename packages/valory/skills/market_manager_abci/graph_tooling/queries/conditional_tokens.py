@@ -21,9 +21,7 @@
 
 from string import Template
 
-
-user_positions = Template(
-    """
+user_positions = Template("""
     {
         user(id: "${id}") {
             userPositions(
@@ -50,5 +48,4 @@ user_positions = Template(
             }
         }
     }
-    """
-)
+    """)

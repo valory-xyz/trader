@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------------
 
 """This package contains the tests for Decision Maker"""
+
 from unittest.mock import MagicMock, patch
 
 import pytest

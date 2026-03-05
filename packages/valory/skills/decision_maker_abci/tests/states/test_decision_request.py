@@ -40,7 +40,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
 
-
 DUMMY_REQUEST_HASH = "dummy_request_hash"
 DUMMY_PARTICIPANT_TO_SELECTION_HASH = json.dumps(
     {

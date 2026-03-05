@@ -19,6 +19,7 @@
 
 
 """This module contains the tests for the handlers for the 'market_manager_abci' skill."""
+
 from unittest.mock import MagicMock
 
 import pytest
