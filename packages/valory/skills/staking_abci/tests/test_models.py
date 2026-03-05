@@ -19,6 +19,7 @@
 
 """Tests for staking_abci models."""
 
+import platform
 import stat
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -66,6 +67,10 @@ class TestGetStorePath:
         with pytest.raises(ValueError, match="is not a directory or is not accessible"):
             get_store_path({"store_path": str(nonexistent)})
 
+    @pytest.mark.skipif(
+        platform.system() == "Windows",
+        reason="chmod does not restrict permissions on Windows",
+    )
     def test_non_writable_directory_raises(self, tmp_path: Path) -> None:
         """A directory without write permissions raises ValueError."""
         read_only_dir = tmp_path / "read_only"
@@ -81,6 +86,10 @@ class TestGetStorePath:
             # Restore permissions so pytest can clean up
             read_only_dir.chmod(stat.S_IRWXU)
 
+    @pytest.mark.skipif(
+        platform.system() == "Windows",
+        reason="chmod does not restrict permissions on Windows",
+    )
     def test_non_readable_directory_raises(self, tmp_path: Path) -> None:
         """A directory without read permissions raises ValueError."""
         no_read_dir = tmp_path / "no_read"

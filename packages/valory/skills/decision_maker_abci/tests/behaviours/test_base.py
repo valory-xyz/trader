@@ -22,6 +22,7 @@
 import re
 import tempfile
 from copy import deepcopy
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, TypeVar, Union
 from unittest import mock
@@ -204,7 +205,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                         "irrelevant_tools": [],
                         "ignored_mechs": [],
                         "deliveries_lookback_days": 30,
-                        "store_path": "/tmp",  # nosec B108
+                        "store_path": tempfile.gettempdir(),
                     }
                 }
             }
@@ -1472,10 +1473,21 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             yield
             return False  # type: ignore[return-value]
 
-        gen = behaviour.wait_for_condition_with_sleep(condition_gen, timeout=0.0)  # type: ignore[arg-type]
-        next(gen)  # enter yield from condition_gen
-        with pytest.raises(TimeoutException):
-            next(gen)  # should timeout
+        # Mock datetime.now so the second call is past the deadline.
+        # This avoids Windows low-resolution timer issues with timeout=0.0.
+        start = datetime(2020, 1, 1, 0, 0, 0)
+        past_deadline = start + timedelta(seconds=1)
+        mock_dt = MagicMock(wraps=datetime)
+        mock_dt.now.side_effect = [start, past_deadline]
+        mock_dt.max = datetime.max
+        with mock.patch(
+            "packages.valory.skills.decision_maker_abci.behaviours.base.datetime",
+            mock_dt,
+        ):
+            gen = behaviour.wait_for_condition_with_sleep(condition_gen, timeout=0.0)  # type: ignore[arg-type]
+            next(gen)  # enter yield from condition_gen
+            with pytest.raises(TimeoutException):
+                next(gen)  # should timeout
 
     def test_wait_for_condition_with_sleep_retry(self) -> None:
         """Test `wait_for_condition_with_sleep` with retry."""

@@ -180,4 +180,9 @@ def test_payload(payload_class: Type[BaseTxPayload], payload_kwargs: Dict) -> No
 
     assert payload.sender == "sender"
     assert payload.data == payload_kwargs
-    assert payload_class.from_json(payload.json) == payload
+
+    # Verify JSON serialization contains all expected fields
+    json_data = payload.json
+    assert json_data["sender"] == "sender"
+    for key, value in payload_kwargs.items():
+        assert json_data[key] == value

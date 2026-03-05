@@ -36,7 +36,7 @@ fingerprint:
   tests/test_behaviours.py: bafybeiglmlcxyc4xdtytb7rak6ymv4wctyz6tcsi6zg44c6osyinrctsmm
   tests/test_dialogues.py: bafybeiglcg5e24wn5cx3lzpdka6pnj6gl5lhoe57eacqpdxibngw7ojj3e
   tests/test_handlers.py: bafybeicwf5263ynncxxlhluyunjv64pbxc5pbkouus572xmkl32pbzq2am
-  tests/test_models.py: bafybeif7r66eofu4hik75bozvs6rdyvwkxopl3cxtuao7jtzdpkts66o3a
+  tests/test_models.py: bafybeiggo3ou4xxc3n6tnzdkdvuqlobrdxjp5s4bl25ayvnz56mzlot4si
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeidm2rl27fpn6wyllpz25sy3t6emlk7cwy2pzbyfda7yv66znnneoq
 fingerprint_ignore_patterns: []
@@ -212,4 +212,4 @@ dependencies:
     version: '>=2.28.1, <2.31.2'
 is_abstract: true
 connections:
-- valory/polymarket_client:0.1.0:bafybeid6ooz37l2hrnxhmb4m5kdt3dydomtzlfofyfl33wqgalfkonn6wu
+- valory/polymarket_client:0.1.0:bafybeidnatqercspwlr6ttg5r34jdbtrkmsdpwy63x3d4a7kqkk4huj7nu

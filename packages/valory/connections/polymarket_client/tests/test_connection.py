@@ -532,8 +532,8 @@ class TestCacheFileMethods:
     def test_save_cache_file_handles_exception(self) -> None:
         """Logs error but does not raise when save fails."""
         conn = _make_connection()
-        # Pass an invalid path (file system root with no permissions)
-        conn._save_cache_file("/proc/invalid_path_that_cannot_be_created/x.json", {})
+        with patch("builtins.open", side_effect=OSError("disk full")):
+            conn._save_cache_file("/tmp/test_cache.json", {})  # nosec B108
         conn.logger.error.assert_called_once()
 
 
