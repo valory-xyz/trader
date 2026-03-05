@@ -25,7 +25,7 @@ import dataclasses
 import json
 import sys
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, get_type_hints
 
 P_YES_FIELD = "p_yes"
 P_NO_FIELD = "p_no"
@@ -267,7 +267,7 @@ class Bet:
         """Cast the values of the instance."""
         types_to_cast = ("int", "float", "str")
         str_to_type = {getattr(builtins, type_): type_ for type_ in types_to_cast}
-        for field, hinted_type in self.__annotations__.items():
+        for field, hinted_type in get_type_hints(type(self)).items():
             uncasted = getattr(self, field)
             if uncasted is None:
                 continue
@@ -426,13 +426,13 @@ class BetsDecoder(json.JSONDecoder):
     def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:
         """Perform the custom decoding."""
         # if this is a `PredictionResponse`
-        prediction_attributes = sorted(PredictionResponse.__annotations__.keys())
+        prediction_attributes = sorted(f.name for f in dataclasses.fields(PredictionResponse))
         data_attributes = sorted(data.keys())
         if prediction_attributes == data_attributes:
             return PredictionResponse(**data)
 
         # if this is a `Bet`
-        bet_annotations = sorted(Bet.__annotations__.keys())
+        bet_annotations = sorted(f.name for f in dataclasses.fields(Bet))
         if bet_annotations == data_attributes:
             data["queue_status"] = QueueStatus(data["queue_status"])
             return Bet(**data)
