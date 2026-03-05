@@ -1079,7 +1079,9 @@ class FetchPerformanceSummaryBehaviour(
                     if title:
                         titles.add(title)
             for title in titles:
-                if title:
+                if (
+                    title
+                ):  # pragma: no cover  # defensive: titles set already filters empty strings
                     title_days.setdefault(title, []).append(day_ts)
 
         allocations: Dict[int, int] = {}
@@ -1499,7 +1501,9 @@ class FetchPerformanceSummaryBehaviour(
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
-            if last_dp_day in incoming_days:
+            if (
+                last_dp_day in incoming_days
+            ):  # pragma: no cover  # defensive: replace_last guarantees membership
                 new_data_points.pop()
                 prev_settled -= last_dp.daily_mech_requests
         cumulative_profit = (

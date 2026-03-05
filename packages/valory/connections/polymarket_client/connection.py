@@ -913,8 +913,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 offset += limit
 
             pages_fetched = (len(all_trades) + limit - 1) // limit if all_trades else 0
-            if pages_fetched == 0 and len(all_trades) > 0:
-                pages_fetched = 1  # At least one page was fetched
 
             self.logger.info(
                 f"Fetched total of {len(all_trades)} trades for {self.safe_address} "

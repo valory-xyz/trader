@@ -7,6 +7,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   lock_check:
     continue-on-error: False
@@ -128,7 +131,7 @@ jobs:
           gitleaks detect --report-format json --report-path --log-opts="HEAD" leak_report -v
 
   test:
-    continue-on-error: True
+    continue-on-error: False
     needs:
       - lock_check
       - copyright_and_dependencies_check

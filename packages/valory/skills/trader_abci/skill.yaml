@@ -15,7 +15,11 @@ fingerprint:
   handlers.py: bafybeib3gttui4xpcg35fhpg6tioh7ehdesvwsfjkgqpds6ziqhmt7mpky
   models.py: bafybeial4jlvqrubm7q6hgiz4ehsaipgq2t6ruop2mkxkecz32kv3lwdeu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/tests_handlers.py: bafybeia3i6o4or4pxjjpd6as4epdq4rqwgwnlxn56auq52rg2xvkhx6nbe
+  tests/test_behaviours.py: bafybeibbnzwxdtrmmhg7u46dmmhulf6bihdb7hlzxmawhz7m4hpc3foueu
+  tests/test_composition.py: bafybeicwxr37urp6rvpkpx7r4saq6eeeyz5r6ogittkupi6hcoqd6of7by
+  tests/test_dialogues.py: bafybeih4zfxgm2ycxro2qv3msr2mjnu3v53p6qqjrndorrhb4xwjlqhp2m
+  tests/test_handlers.py: bafybeihf3dp4hmgowxybhnzm4hoiguq762cbz5z75pwcooph3bp6qmsqn4
+  tests/test_models.py: bafybeigqhswbxyn2lgheatkxdnbhbo3kbutrv5km3psn26xqw7j254b4oa
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   ui-build/omenstrat/assets/index-BIK2xSTL.js: bafybeifm4xccxdkj5x3b7xlnzdphd272q7g2va3mhyshl4pkzya4yhsuea
@@ -51,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeicffwijiecbqc6z22nowir2fgwwqzwu6vokzuwgd5wa3zxromxevm
 - valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
 - valory/termination_abci:0.1.0:bafybeiaylk6haefa2xex55krizafzwo2v5tpkcoflw5hiwaqm3qxice23m
-- valory/market_manager_abci:0.1.0:bafybeihhb7dicqj5fh2qqwogh2m4svesnxippy2lyiix2cq56dpix43rqa
-- valory/decision_maker_abci:0.1.0:bafybeihnceaclqbzypmrnu7gpgre5ygrn6m6jx2cpju7hdiwkvbbe6st4m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic4ihjteg364lryqjldyeugkvzimcm54vlrysjeex26wqqmsldbwi
-- valory/staking_abci:0.1.0:bafybeibluoix3sly35f52paqlwc33n4ibfpnitlzqkt4la6yfq7jv4al6y
-- valory/check_stop_trading_abci:0.1.0:bafybeicxt3yxel66mbi242pshoboiegx7vc2pkr4w6kd2i7lqg6ev24ms4
-- valory/mech_interact_abci:0.1.0:bafybeienj5jzbq2x5hpedqwpa46rmprcdc42536zjyxkmsemjs3jjhl5oe
-- valory/chatui_abci:0.1.0:bafybeib6pa27nuekin6l67udngemh5buwfa2ywtfchbuusit6ibv3p2en4
-- valory/agent_performance_summary_abci:0.1.0:bafybeidvkbfdbx5fup6d25jkunh6vdvf6rl7cznrvawl73nspkw5kyqts4
+- valory/market_manager_abci:0.1.0:bafybeigkb7eb4zsuussyfqwigtc5rnoekmj6dqoplo7xahehedydizbo5e
+- valory/decision_maker_abci:0.1.0:bafybeib54xlmqlzoy2knjtkt72oqyf74uivcw7opcww334p67mtublr5ha
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeictx3zwvq7aqg62mwflxdaxn6s3agfp3ow4bfegaqunhfbaz6b27a
+- valory/staking_abci:0.1.0:bafybeih4b6pc3ap24uaux6tux4nsth4csms2xastk6vu7fbzsamhjk624e
+- valory/check_stop_trading_abci:0.1.0:bafybeidsynznzzczvths57xxdeuhewkh5pv5odsfattdcki7w2p7e6mudu
+- valory/mech_interact_abci:0.1.0:bafybeifmewonamynusdi3sz5qenlr3f7mu67sic33aub5uzc2w3mpqsyqa
+- valory/chatui_abci:0.1.0:bafybeibyi4p7mufq3taontk7xmcc4kfr7pbctkhleeh5dmmskqn2kytmwm
+- valory/agent_performance_summary_abci:0.1.0:bafybeicib5yfkur4twyotisads6dsdfnxs7a5rwlm34vmztnq3py7gnzuq
 - valory/funds_manager:0.1.0:bafybeidtprwtynln7kig2ymxmgiohinofq5jf4n5g2wkbxa4bw3nm2pn4y
 behaviours:
   main:

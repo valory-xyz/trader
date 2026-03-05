@@ -340,9 +340,6 @@ class Bet:
         if vote is None:
             return False
 
-        if vote is None:
-            return False
-
         outcome = self.get_outcome(vote)
 
         # method to reset the investment amount for a vote

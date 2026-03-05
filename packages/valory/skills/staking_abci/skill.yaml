@@ -12,14 +12,16 @@ fingerprint:
   dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
   handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeihphis32wfnecirtukgzo5pwm73pwhjikesjckvdefzfbjjnn5gvq
+  models.py: bafybeihuujt2aiunnlqikrgvlijfdpd4zanucxc4eecbgsngawkmp35ihm
   payloads.py: bafybeigncopqpz3a2nd6hgpsbqjqff2hsoa73abjck4ic5tnxpkzmfmkwu
   rounds.py: bafybeih2we7exxrb67aoyhmvsuntwstmeoq2qibrctyf6jed4mde6qo6wu
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
+  tests/test_behaviours.py: bafybeifqbdmmdmn3ufnx3qatctekxtgwld2n6sykwwkr224xvgs5alvgta
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
-  tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
+  tests/test_handlers.py: bafybeigoz6bdshjxsam6t7kzad273lwkucpvgrkmfak73qlssluopjfbzi
+  tests/test_models.py: bafybeienlqsgfyc5qnj5tko2gq7ogy7hbmdjfoqzfedmhrjwaffrmqwgv4
   tests/test_payloads.py: bafybeihckpp57y4uhsm5jro6eax3bc7uqlly2deym6gzx3z2zc7jxj3b2i
-  tests/test_rounds.py: bafybeie3ow2si7bztvgnqvqnzpjo5qkkmg44ig74z4ehwqdk6jtrcqtmou
+  tests/test_rounds.py: bafybeifbam24yodcmtgr6262festb4x3id5k3nthrvxvjeqg4whh37adfe
 fingerprint_ignore_patterns: []
 connections: []
 contracts:

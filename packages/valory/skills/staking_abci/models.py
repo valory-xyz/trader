@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ def get_store_path(kwargs: dict) -> Path:
         or not os.access(path, os.W_OK)
         or not os.access(path, os.R_OK)
     ):
-        msg = f"The store path {path!r} is not a directory or is not writable."
+        msg = f"The store path {path!r} is not a directory or is not accessible."
         raise ValueError(msg)
 
     return Path(path)

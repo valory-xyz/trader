@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -24,10 +24,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Hashable, List, Mapping, Optional
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.abstract_round_abci.base import (
+    BaseTxPayload,
+    CollectSameUntilThresholdRound,
+)
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
@@ -155,3 +159,68 @@ class TestDecisionRequestRound(BaseCollectSameUntilThresholdRoundTest):
             most_voted_payload=test_case.most_voted_payload,
             exit_event=test_case.event,
         )
+
+
+class TestDecisionRequestRoundEndBlock:
+    """Direct unit tests for DecisionRequestRound.end_block covering all branches."""
+
+    def _make_round(self) -> DecisionRequestRound:
+        """Create a DecisionRequestRound with mocked dependencies."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        return DecisionRequestRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+
+    def test_end_block_returns_none_when_super_returns_none(self) -> None:
+        """Test end_block returns None when parent returns None."""
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound, "end_block", return_value=None
+        ):
+            result = round_instance.end_block()
+        assert result is None
+
+    def test_end_block_done_mocking_mode_returns_mock_mech_request(self) -> None:
+        """Test end_block returns MOCK_MECH_REQUEST when DONE and mocking_mode is True."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.mocking_mode = True
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.MOCK_MECH_REQUEST
+
+    def test_end_block_done_not_mocking_mode_returns_done(self) -> None:
+        """Test end_block returns DONE when DONE and mocking_mode is False."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.mocking_mode = False
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE
+
+    def test_end_block_non_done_event_passes_through(self) -> None:
+        """Test end_block passes through non-DONE events."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        with patch.object(
+            CollectSameUntilThresholdRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.NO_MAJORITY),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY
