@@ -278,33 +278,33 @@ jobs:
           make check-agent-runner
 
       - name: Upload Release Assets Windows
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{env.FILENAME}}
           path: dist/${{env.FILENAME}}
 
       - name: Upload Release Assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hash_id
           path: hash_id
           overwrite: true
       - name: Upload Release Assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agent_id
           path: agent_id
           overwrite: true
 
       - name: Upload Release Assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agent.tar.gz
           path: agent.tar.gz
           overwrite: true
 
       - name: Upload Release Assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agent.zip
           path: agent.zip
@@ -316,48 +316,48 @@ jobs:
     steps:
       # MAC OS
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent_runner_macos_x64
           path: ./dist/
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent_runner_macos_arm64
           path: ./dist/
 
       # LINUX
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent_runner_linux_x64
           path: ./dist/
 
       # WINDOWS
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent_runner_windows_x64.exe
           path: ./dist/
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent_id
           path: ./dist/
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: hash_id
           path: ./dist/
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent.zip
           path: ./dist/
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: agent.tar.gz
           path: ./dist/
