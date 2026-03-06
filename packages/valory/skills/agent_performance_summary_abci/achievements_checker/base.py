@@ -19,12 +19,10 @@
 
 """Base class for all achievements checkers."""
 
-
 from typing import Any
 from uuid import NAMESPACE_DNS, uuid5
 
 from packages.valory.skills.agent_performance_summary_abci.models import Achievements
-
 
 OLAS_NETWORK_NS = uuid5(NAMESPACE_DNS, "olas.network")
 ACHIEVEMENTS_CHECKER_NS = uuid5(

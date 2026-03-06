@@ -69,7 +69,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     UpdateAchievementsRound,
 )
 
-
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
@@ -581,7 +580,7 @@ class FetchPerformanceSummaryBehaviour(
             return None
         try:
             unix_timestamp = int(timestamp)
-            dt = datetime.utcfromtimestamp(unix_timestamp)
+            dt = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
             return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
@@ -1338,7 +1337,9 @@ class FetchPerformanceSummaryBehaviour(
 
         for stat in daily_stats:
             date_timestamp = int(stat["date"])
-            date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
+            date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Calculate mech fees (placed + unplaced) using cached lookup
@@ -1516,7 +1517,9 @@ class FetchPerformanceSummaryBehaviour(
         new_mech_sum = 0
         for stat in filtered_daily_stats:
             date_timestamp = int(stat["date"])
-            date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
+            date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Calculate mech fees using lookup for this day only

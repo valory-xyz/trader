@@ -142,7 +142,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     TxSettlementMultiplexerAbciApp,
 )
 
-
 abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRegistrationRound: FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,

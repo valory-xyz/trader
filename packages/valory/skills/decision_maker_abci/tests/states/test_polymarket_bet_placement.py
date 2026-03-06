@@ -48,7 +48,6 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
     PolymarketBetPlacementRound,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

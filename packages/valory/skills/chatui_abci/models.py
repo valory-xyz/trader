@@ -20,7 +20,6 @@
 
 """Models for the ChatUI ABCI application."""
 
-
 import enum
 import json
 from dataclasses import asdict, dataclass
@@ -35,7 +34,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
-
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
 

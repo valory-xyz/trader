@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Type
 
 import pytest
@@ -50,7 +50,9 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "bet_amount": 1,
                 "next_mock_data_row": 1,
                 "policy": "dummy policy",
-                "decision_received_timestamp": int(datetime.utcnow().timestamp()),
+                "decision_received_timestamp": int(
+                    datetime.now(timezone.utc).timestamp()
+                ),
                 "should_be_sold": False,
             },
         ),

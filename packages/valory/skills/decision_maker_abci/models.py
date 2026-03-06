@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-
 import re
 import time
 from dataclasses import dataclass, field
@@ -59,7 +58,6 @@ from packages.valory.skills.mech_interact_abci.models import (
 from packages.valory.skills.mech_interact_abci.models import (
     SharedState as MechInteractSharedState,
 )
-
 
 FromBlockMappingType = Dict[HexBytes, Union[int, str]]
 ClaimParamsType = Tuple[List[bytes], List[str], List[int], List[bytes]]

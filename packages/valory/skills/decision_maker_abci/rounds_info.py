@@ -25,7 +25,6 @@ from typing import Dict
 import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case
 
-
 ROUNDS_INFO = {
     "benchmarking_randomness_round": {
         "name": "Gathering randomness in benchmarking mode",
