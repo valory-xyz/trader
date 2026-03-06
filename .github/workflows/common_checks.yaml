@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-2025]
         python-version: ["3.10"]
         poetry-version: ["1.8.0"]
 
@@ -25,8 +25,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install and configure Poetry
@@ -48,16 +48,16 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         python-version: ["3.10"]
 
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -79,14 +79,14 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         python-version: ["3.10"]
 
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -116,9 +116,9 @@ jobs:
 
   scan:
     name: gitleaks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - run: |
@@ -137,16 +137,16 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-2025]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - uses: actions/setup-go@v5
@@ -154,8 +154,8 @@ jobs:
           go-version: "1.20.x"
       - name: Create decision maker's `store_path` (data folder)
         run: mkdir data
-      - if: matrix.os == 'ubuntu-latest'
-        name: Install dependencies (ubuntu-latest)
+      - if: matrix.os == 'ubuntu-24.04'
+        name: Install dependencies (ubuntu-24.04)
         run: |
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
@@ -173,13 +173,13 @@ jobs:
           tar -xf tendermint.tar.gz
           sudo mv tendermint /usr/local/bin/tendermint
 
-      - if: matrix.os == 'ubuntu-latest'
-        name: Packages unit tests ubuntu-latest
+      - if: matrix.os == 'ubuntu-24.04'
+        name: Packages unit tests ubuntu-24.04
         run: |
           tox -e py${{ matrix.python-version }}-linux
 
-      - if: matrix.os == 'macos-latest'
-        name: Install dependencies (macos-latest)
+      - if: matrix.os == 'macos-15'
+        name: Install dependencies (macos-15)
         run: |
           pip install tomte[tox]==0.6.1
           brew install gcc
@@ -191,13 +191,13 @@ jobs:
           brew tap yoheimuta/protolint
           brew install protolint
 
-      - if: matrix.os == 'macos-latest'
-        name: Packages unit tests macos-latest
+      - if: matrix.os == 'macos-15'
+        name: Packages unit tests macos-15
         run: |
           tox -e py${{ matrix.python-version }}-darwin
 
-      - if: matrix.os == 'windows-latest'
-        name: Install dependencies (windows-latest)
+      - if: matrix.os == 'windows-2025'
+        name: Install dependencies (windows-2025)
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         run: |
@@ -211,14 +211,14 @@ jobs:
           make --version
           pip install tomte[tox]==0.6.1
 
-      - if: matrix.os == 'windows-latest'
-        name: Packages unit tests windows-latest
+      - if: matrix.os == 'windows-2025'
+        name: Packages unit tests windows-2025
         run: |
           tox -e py${{ matrix.python-version }}-win
 
-      - if: matrix.os == 'ubuntu-latest'
+      - if: matrix.os == 'ubuntu-24.04'
         name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.xml

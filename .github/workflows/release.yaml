@@ -10,23 +10,23 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-versions }}
       - uses: maus007/docker-run-action-fork@v1
         with:
-            image: valory/open-autonomy-user:0.21.8
-            options: -v ${{ github.workspace }}:/work
-            run: |
-              echo "Pushing Packages"
-              cd /work
-              export AUTHOR=$(grep 'service' packages/packages.json | awk -F/ '{print $2}' | head -1)
-              autonomy init --reset --author $AUTHOR --ipfs --remote
-              autonomy push-all
+          image: valory/open-autonomy-user:0.21.8
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            echo "Pushing Packages"
+            cd /work
+            export AUTHOR=$(grep 'service' packages/packages.json | awk -F/ '{print $2}' | head -1)
+            autonomy init --reset --author $AUTHOR --ipfs --remote
+            autonomy push-all
   publish-images:
     name: Publish Docker Images
     runs-on: ${{ matrix.os }}
@@ -34,72 +34,72 @@ jobs:
       - "publish-packages"
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         python-version: ["3.10"]
     env:
-        DOCKER_USER: ${{secrets.DOCKER_USER}}
-        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      DOCKER_USER: ${{secrets.DOCKER_USER}}
+      DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Set up tag and vars
         uses: maus007/docker-run-action-fork@v1
         with:
-            image: valory/open-autonomy-user:0.21.8
-            options: -v ${{ github.workspace }}:/work
-            run: |
-              echo "Setting Tag Images"
-              cd /work
-              apt-get update && apt-get install git -y || exit 1
-              git config --global --add safe.directory /work
-              head=$(git rev-parse HEAD)
-              TAG=$(git describe --exact-match --tags "$head")
-              export TAG=$(echo "$TAG" | sed 's/^v//')
-              echo VERSION=$TAG > env.sh
-              echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
-              echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
-              echo AGENT=$(grep 'agent/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
-              echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
-              cat env.sh
+          image: valory/open-autonomy-user:0.21.8
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            echo "Setting Tag Images"
+            cd /work
+            apt-get update && apt-get install git -y || exit 1
+            git config --global --add safe.directory /work
+            head=$(git rev-parse HEAD)
+            TAG=$(git describe --exact-match --tags "$head")
+            export TAG=$(echo "$TAG" | sed 's/^v//')
+            echo VERSION=$TAG > env.sh
+            echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
+            echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
+            echo AGENT=$(grep 'agent/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
+            echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
+            cat env.sh
 
       - uses: maus007/docker-run-action-fork@v1
         name: Build Images
         with:
-            image: valory/open-autonomy-user:0.21.8
-            options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
-            shell: bash
-            run: |
-              echo "Building and Pushing Docker Images"
-              cd /work
-              source env.sh || exit 1
-              echo "Pinning click temporarily as a workaround to address a breaking change in its defaults, \
-              which is introduced due to a too wide range of click used in open-autonomy"
-              pip install click==8.2.0
-              echo "Building images for $AUTHOR for service $SERVICE"
-              autonomy init --reset --author $AUTHOR --ipfs --remote
-              autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
-              cd $SERVICE || exit 1
-              echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
-              docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.8 --push || exit 1
-              autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.8 --version $VERSION --push || exit 1
+          image: valory/open-autonomy-user:0.21.8
+          options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
+          shell: bash
+          run: |
+            echo "Building and Pushing Docker Images"
+            cd /work
+            source env.sh || exit 1
+            echo "Pinning click temporarily as a workaround to address a breaking change in its defaults, \
+            which is introduced due to a too wide range of click used in open-autonomy"
+            pip install click==8.2.0
+            echo "Building images for $AUTHOR for service $SERVICE"
+            autonomy init --reset --author $AUTHOR --ipfs --remote
+            autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
+            cd $SERVICE || exit 1
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
+            docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
+            autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.8 --push || exit 1
+            autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.8 --version $VERSION --push || exit 1
 
   deploy-service-on-propel:
     name: Deploy service on propel
     environment: ${{ github.event.action == 'released' && 'production' || 'staging' }}
     needs:
-    - "publish-packages"
-    - "publish-images"
+      - "publish-packages"
+      - "publish-images"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         python-version: ["3.10"]
     env:
       CMD: "propel -U ${{ vars.PROPEL_BASE_URL }}"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-versions }}
@@ -144,18 +144,18 @@ jobs:
 
   build-agent-runner:
     needs:
-    - "publish-packages"
+      - "publish-packages"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-14, macos-14-large, ubuntu-latest]
+        os: [windows-2025, macos-14, macos-14-large, ubuntu-24.04]
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       # Set up Python with setup-python action and add it to PATH
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         id: setup-python
         with:
           python-version: "3.10"
@@ -163,7 +163,6 @@ jobs:
       - name: Add Python to PATH
         run: |
           echo "${{ steps.setup-python.outputs.python-path }}" >> $GITHUB_PATH
-
 
       - name: prepare sign things windows
         if: runner.os == 'Windows'
@@ -230,9 +229,9 @@ jobs:
         env:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}  # Apple ID email
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}  # App-specific password
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}  # Team ID из Apple Dev Account
+          APPLE_ID: ${{ secrets.APPLE_ID }} # Apple ID email
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }} # App-specific password
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} # Team ID из Apple Dev Account
           SIGN_ID: "Developer ID Application: Valory AG (${{ secrets.APPLE_TEAM_ID }})"
         run: |
           echo "$CSC_LINK" | base64 --decode > certificate.p12
@@ -259,7 +258,7 @@ jobs:
       - name: Build Agent Runner Windonws
         if: runner.os == 'Windows'
         run: |
-            make build-agent-runner
+          make build-agent-runner
 
       - name: sign the file
         if: runner.os == 'Windows'
@@ -312,71 +311,67 @@ jobs:
           overwrite: true
 
   upload-assets:
-      needs: build-agent-runner
-      runs-on: ubuntu-latest
-      steps:
-        # MAC OS
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent_runner_macos_x64
-            path: ./dist/
+    needs: build-agent-runner
+    runs-on: ubuntu-24.04
+    steps:
+      # MAC OS
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent_runner_macos_x64
+          path: ./dist/
 
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent_runner_macos_arm64
-            path: ./dist/
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent_runner_macos_arm64
+          path: ./dist/
 
-        # LINUX
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent_runner_linux_x64
-            path: ./dist/
+      # LINUX
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent_runner_linux_x64
+          path: ./dist/
 
-        # WINDOWS
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent_runner_windows_x64.exe
-            path: ./dist/
+      # WINDOWS
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent_runner_windows_x64.exe
+          path: ./dist/
 
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent_id
+          path: ./dist/
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hash_id
+          path: ./dist/
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent.zip
+          path: ./dist/
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: agent.tar.gz
+          path: ./dist/
 
+      - name: List files
+        run: ls ./dist/
 
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent_id
-            path: ./dist/
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: hash_id
-            path: ./dist/
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent.zip
-            path: ./dist/
-        - name: Download artifacts
-          uses: actions/download-artifact@v4
-          with:
-            name: agent.tar.gz
-            path: ./dist/
-
-        - name: List files
-          run: ls ./dist/
-
-
-
-        - name: Publish Release
-          uses: softprops/action-gh-release@v2
-          if: startsWith(github.ref, 'refs/tags/')
-          with:
-            files: |
-              ./dist/agent_runner*
-              ./dist/hash_id
-              ./dist/agent_id
-              ./dist/agent.zip
-              ./dist/agent.tar.gz
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ./dist/agent_runner*
+            ./dist/hash_id
+            ./dist/agent_id
+            ./dist/agent.zip
+            ./dist/agent.tar.gz
