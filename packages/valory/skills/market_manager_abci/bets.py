@@ -426,7 +426,9 @@ class BetsDecoder(json.JSONDecoder):
     def hook(data: Dict[str, Any]) -> Union[Bet, PredictionResponse, Dict[str, Bet]]:
         """Perform the custom decoding."""
         # if this is a `PredictionResponse`
-        prediction_attributes = sorted(f.name for f in dataclasses.fields(PredictionResponse))
+        prediction_attributes = sorted(
+            f.name for f in dataclasses.fields(PredictionResponse)
+        )
         data_attributes = sorted(data.keys())
         if prediction_attributes == data_attributes:
             return PredictionResponse(**data)

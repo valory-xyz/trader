@@ -23,7 +23,7 @@
 import json
 import re
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -645,8 +645,8 @@ class HttpHandler(BaseHttpHandler):
             for point in filtered_points:
                 api_points.append(
                     {
-                        "timestamp": datetime.utcfromtimestamp(
-                            point.timestamp
+                        "timestamp": datetime.fromtimestamp(
+                            point.timestamp, tz=timezone.utc
                         ).strftime(ISO_TIMESTAMP_FORMAT),
                         "delta_profit": point.cumulative_profit,
                     }
@@ -678,7 +678,7 @@ class HttpHandler(BaseHttpHandler):
             return data_points
 
         # Calculate cutoff timestamp
-        current_timestamp = int(datetime.utcnow().timestamp())
+        current_timestamp = int(datetime.now(timezone.utc).timestamp())
         days_map = {"7d": 7, "30d": 30, "90d": 90}
         days = days_map.get(window, 0)
 
@@ -697,7 +697,9 @@ class HttpHandler(BaseHttpHandler):
             points = []
             for i in range(days):
                 day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
-                day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
+                day_date = datetime.fromtimestamp(
+                    day_timestamp, tz=timezone.utc
+                ).strftime("%Y-%m-%d")
 
                 zero_point = ProfitDataPoint(
                     date=day_date,
@@ -720,7 +722,9 @@ class HttpHandler(BaseHttpHandler):
         }
         for i in range(days):
             day_timestamp = cutoff_timestamp + (i * SECONDS_PER_DAY)
-            day_date = datetime.utcfromtimestamp(day_timestamp).strftime("%Y-%m-%d")
+            day_date = datetime.fromtimestamp(day_timestamp, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
 
             if day_date in data_lookup:
                 # Use actual data for this day

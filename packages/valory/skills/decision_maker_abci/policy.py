@@ -21,7 +21,7 @@
 
 import json
 import random
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -105,7 +105,7 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
     ]:
         """Perform the custom decoding."""
         for cls_ in (AccuracyInfo, ConsecutiveFailures, EGreedyPolicy):
-            cls_attributes = cls_.__annotations__.keys()  # pylint: disable=no-member
+            cls_attributes = (f.name for f in fields(cls_))  # pylint: disable=no-member
             if sorted(cls_attributes) == sorted(data.keys()):
                 # if the attributes match the ones of the current class, use it to perform the deserialization
                 return cls_(**data)

@@ -22,7 +22,7 @@
 
 import enum
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -344,7 +344,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
             total_payout = bet.get("total_payout", 0)
             status = bet.get("status", 0)
             closing_timestamp = market_info.get("openingTimestamp", 0)
-            current_timestamp = int(datetime.utcnow().timestamp())
+            current_timestamp = int(datetime.now(timezone.utc).timestamp())
 
             remaining_seconds = (
                 (closing_timestamp - current_timestamp)
@@ -776,7 +776,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         try:
             unix_timestamp = int(timestamp)
-            dt = datetime.utcfromtimestamp(unix_timestamp)
+            dt = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
             return dt.strftime(ISO_TIMESTAMP_FORMAT)
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")

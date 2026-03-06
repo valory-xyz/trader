@@ -77,7 +77,9 @@ def get_payloads(
             is_profitable=is_profitable,
             bets_hash=bets_hash,
             policy=policy,
-            decision_received_timestamp=int(datetime.datetime.utcnow().timestamp()),
+            decision_received_timestamp=int(
+                datetime.datetime.now(datetime.timezone.utc).timestamp()
+            ),
             should_be_sold=should_be_sold,
         )
         for participant in get_participants()
