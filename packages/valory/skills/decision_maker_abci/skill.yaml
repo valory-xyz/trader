@@ -88,7 +88,7 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeidmwtths2ccqh4n4zai3wgurxq4miyspg7kkyr6esnk7dvybfnj5q
-  tests/test_payloads.py: bafybeibxfzh3jp5zmodgl3zhwekciuuzexmldpym2xjavvzbrsibeilmzy
+  tests/test_payloads.py: bafybeihfzr2vw6w2v7potzdwug2y7nipjricp37a54hxejr7hxdigne6um
   tests/test_policy.py: bafybeicam5j67poflsqz7mrifenzh2l4cj6u4xcekoakhksfunvmkmcfci
   tests/test_rounds.py: bafybeieqfaax5gpy63xa557vvxexobdtorcmnq2bxorzxo3g3nousdwkoy
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
