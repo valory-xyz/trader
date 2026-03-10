@@ -37,11 +37,11 @@ fingerprint:
   handlers.py: bafybeic3obtgnagyyieqtyccqlgpvtgmwinngxyvexephbulx4xqtnukbi
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeie6vqteyrtyk5rtf5c7snjs5zynx33bdjsfx6v4du7l6sp5l2y45e
+  models.py: bafybeig3zmhnupafhuwe5zvrtuvjfiao2thpdvtjtqelghf2qjfcqg5dwi
   payloads.py: bafybeiczclt3op6yxx4gajjkudmz2m2u7lnif42nwlhvwgcujxmkhxs65a
   policy.py: bafybeigofm7wfojy4xjelzylkltnvx64plblgv76xkzecq5kjvoeij5iky
   redeem_info.py: bafybeibkeer54i2td5bibpu2mvf6iblnxqaaevuaa7t575y2ygkwopiofe
-  rounds.py: bafybeig7iqubrdbai334sdrpbml2se657matpdx4tjbg2crlhesvrycf3u
+  rounds.py: bafybeifild5pdr4o3ajb4elonzvfyugl6urhuwepimtkxfhqfqgghpsz2q
   rounds_info.py: bafybeie24ezlmubnmglhpaoxd4ebnzqcmhm7jwmcvl3fzdde42ms7wqxeu
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeiflhneytc3crs3rorwynuikqd3faou4km2vc5vbg46ge5h33ppidm
@@ -121,7 +121,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeigqq2vnnwqelllo2rb2wq3v6adkstkv47atcr6ieqxstvkkxm3toy
 - valory/staking_abci:0.1.0:bafybeigfx2u6nqjj6cplobftmiklled43qugerlj4ie4srbxuxc3c45ywa
 - valory/agent_performance_summary_abci:0.1.0:bafybeihqlugn7aqnzltary27jzpkz5zbi5567yb6phygvw6f6zt4gpt5aa
-- valory/chatui_abci:0.1.0:bafybeiey6ngrfzdljb54jvh5qfoiocf6i57w65zrd7fzlbc5pinye4dnta
+- valory/chatui_abci:0.1.0:bafybeibxm2iotdou7kszyg6nagjjkft5gdmev2er4g6ys7d6g337kkbcc4
 behaviours:
   main:
     args: {}
