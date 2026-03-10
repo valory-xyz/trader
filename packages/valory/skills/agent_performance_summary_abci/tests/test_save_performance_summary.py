@@ -421,6 +421,56 @@ class TestSaveAgentPerformanceSummary:
         # Timestamp should be the existing one since data was preserved
         assert saved.timestamp == 1700000000
 
+    def test_post_init_converts_metric_dicts_to_dataclasses(self):
+        """Construct AgentPerformanceSummary with metrics as raw dicts (like JSON gives),
+        assert they become AgentPerformanceMetrics instances."""
+        raw_metrics = [
+            {"name": "Total ROI", "is_primary": True, "value": "12.5%"},
+            {"name": "Prediction accuracy", "is_primary": False, "value": "75%"},
+        ]
+        summary = AgentPerformanceSummary(metrics=raw_metrics)
+        assert all(isinstance(m, AgentPerformanceMetrics) for m in summary.metrics)
+        assert summary.metrics[0].name == "Total ROI"
+        assert summary.metrics[0].value == "12.5%"
+        assert summary.metrics[1].name == "Prediction accuracy"
+        assert summary.metrics[1].value == "75%"
+
+    def test_save_preserves_metrics_when_existing_loaded_from_json(self):
+        """When existing summary has metrics as raw dicts (simulating JSON load),
+        _save_agent_performance_summary with NA metrics should preserve existing values."""
+        # Simulate what read_existing_performance_summary returns from JSON:
+        # metrics are raw dicts, not AgentPerformanceMetrics instances
+        existing = AgentPerformanceSummary(
+            timestamp=1700000000,
+            metrics=[
+                {"name": "Total ROI", "is_primary": True, "value": "12.5%"},
+                {"name": "Prediction accuracy", "is_primary": False, "value": "75%"},
+                {"name": "Total staking rewards", "is_primary": False, "value": "3.2 OLAS"},
+            ],
+            agent_behavior="some_behavior",
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+        behaviour = _make_behaviour(existing)
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_na_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        assert saved.metrics[0].value == "12.5%"
+        assert saved.metrics[1].value == "75%"
+        assert saved.metrics[2].value == "3.2 OLAS"
+
     def test_save_uses_new_timestamp_on_full_success(self):
         """When all data is valid (no preservation), the new timestamp should be used."""
         existing = _good_existing_summary()
