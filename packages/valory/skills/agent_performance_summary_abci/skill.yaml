@@ -35,7 +35,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeignxomufl7xwd23gtnmdezgbc4ufjsn2npchvqlomd7hxsfxf6ahq
 connections:
-- valory/polymarket_client:0.1.0:bafybeib6b35srftg7dyx3wtvghj72wjctd6kixh7ewtuebp5dbn6opitbe
+- valory/polymarket_client:0.1.0:bafybeigol73gttis6xdljz5ztzd6ioyzl3pg642lhikgahylgsp2j3ymp4
 handlers:
   abci:
     args: {}
@@ -197,5 +197,5 @@ models:
     class_name: PolygonMechSubgraph
 dependencies:
   requests:
-    version: '>=2.28.1, <2.31.2'
+    version: <2.33.0,>=2.32.5
 is_abstract: true
