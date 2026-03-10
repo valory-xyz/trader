@@ -19,14 +19,14 @@ fingerprint:
   tests/test_models.py: bafybeihhyfrhnk2pd52jnguaetus3fjpf4j5ix3ux7c5jejayjucmypqmy
 fingerprint_ignore_patterns: []
 connections:
-- dvilela/genai:0.1.0:bafybeic3ydvjmb33addd5ye3et3xl4enhmoug4n4agmutz6xgan7rvpqiq
+- dvilela/genai:0.1.0:bafybeieuwwoww4scfzs7ljzlmotldu5jp24o4h235qy54ovliwxf6zjxai
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeicehi2yqab3lldm7qzoqev3tmqrdk275sbtcabneyorhmzft76z7m
-- valory/agent_performance_summary_abci:0.1.0:bafybeihvpjcnqhhzmgr4qrtvv2gxzgyjh3k555zojpi323mrfm476qfn3m
+- valory/abstract_round_abci:0.1.0:bafybeignxomufl7xwd23gtnmdezgbc4ufjsn2npchvqlomd7hxsfxf6ahq
+- valory/agent_performance_summary_abci:0.1.0:bafybeifnl5fpglfbobigyzvw2kdu7xyjj54sjr5a5oqcttqklas5nrphse
 handlers:
   abci:
     args: {}
