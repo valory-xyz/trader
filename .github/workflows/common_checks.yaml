@@ -61,7 +61,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install tomte[tox,cli]==0.6.1
+        run: pip install tomte[tox,cli]==0.6.2
       - name: Check copyright headers
         run: tox -e copyright-check
       - name: License compatibility check
@@ -91,7 +91,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install tomte[tox,cli]==0.6.1
+          pip install tomte[tox,cli]==0.6.2
           pip install marshmallow==3.26.2
 
           # Install `mdspell` for spelling checks
@@ -160,7 +160,7 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install tomte[tox]==0.6.1
+          pip install tomte[tox]==0.6.2
           pip install --user --upgrade setuptools
 
           # install Protobuf compiler
@@ -181,7 +181,7 @@ jobs:
       - if: matrix.os == 'macos-15'
         name: Install dependencies (macos-15)
         run: |
-          pip install tomte[tox]==0.6.1
+          pip install tomte[tox]==0.6.2
           brew install gcc
           # brew install protobuf
           # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/72457f0166d5619a83f508f2345b22d0617b5021/Formula/protobuf.rb
@@ -209,7 +209,7 @@ jobs:
           choco install make -y
           # to check make was installed
           make --version
-          pip install tomte[tox]==0.6.1
+          pip install tomte[tox]==0.6.2
 
       - if: matrix.os == 'windows-2025'
         name: Packages unit tests windows-2025
