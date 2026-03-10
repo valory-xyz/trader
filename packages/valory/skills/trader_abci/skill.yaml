@@ -618,5 +618,5 @@ dependencies:
   requests:
     version: <2.33.0,>=2.28.1
   open-aea-ledger-ethereum:
-    version: ==2.1.0rc6
+    version: ==2.1.0
 is_abstract: false
