@@ -567,11 +567,8 @@ class BenchmarkingMockData:
     @property
     def is_winning(self) -> bool:
         """Whether the current position is winning."""
-        return (
-            self.answer == YES
-            and self.p_yes > 0.5
-            or self.answer == NO
-            and self.p_yes < 0.5
+        return (self.answer == YES and self.p_yes > 0.5) or (
+            self.answer == NO and self.p_yes < 0.5
         )
 
 
