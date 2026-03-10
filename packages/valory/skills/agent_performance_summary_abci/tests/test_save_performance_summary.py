@@ -19,9 +19,8 @@
 
 """Tests for _save_agent_performance_summary preserving data on API failures."""
 
+from typing import Any, List
 from unittest.mock import MagicMock
-
-import pytest
 
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     FetchPerformanceSummaryBehaviour,
@@ -43,10 +42,10 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 class _TestableBehaviour(FetchPerformanceSummaryBehaviour):
     """Shadows read-only AEA properties with plain instance attributes."""
 
-    context = None  # type: ignore[assignment]
-    shared_state = None  # type: ignore[assignment]
-    synchronized_data = None  # type: ignore[assignment]
-    params = None  # type: ignore[assignment]
+    context: Any = None
+    shared_state: Any = None
+    synchronized_data: Any = None
+    params: Any = None
 
 
 def _make_behaviour(
@@ -64,7 +63,7 @@ def _make_behaviour(
     return behaviour
 
 
-def _good_metrics():
+def _good_metrics() -> List[AgentPerformanceMetrics]:
     """Return a list of metrics with real values."""
     return [
         AgentPerformanceMetrics(name="Total ROI", is_primary=True, value="12.5%"),
@@ -77,20 +76,18 @@ def _good_metrics():
     ]
 
 
-def _na_metrics():
+def _na_metrics() -> List[AgentPerformanceMetrics]:
     """Return a list of metrics with NA values (API failure)."""
     return [
         AgentPerformanceMetrics(name="Total ROI", is_primary=True, value=NA),
-        AgentPerformanceMetrics(
-            name="Prediction accuracy", is_primary=False, value=NA
-        ),
+        AgentPerformanceMetrics(name="Prediction accuracy", is_primary=False, value=NA),
         AgentPerformanceMetrics(
             name="Total staking rewards", is_primary=False, value=NA
         ),
     ]
 
 
-def _good_agent_details():
+def _good_agent_details() -> AgentDetails:
     """Return agent details with real values."""
     return AgentDetails(
         id="0xabc123",
@@ -99,12 +96,12 @@ def _good_agent_details():
     )
 
 
-def _none_agent_details():
+def _none_agent_details() -> AgentDetails:
     """Return agent details with all-None fields (API failure)."""
     return AgentDetails(id=None, created_at=None, last_active_at=None)
 
 
-def _good_agent_performance():
+def _good_agent_performance() -> AgentPerformanceData:
     """Return agent performance data with real values."""
     return AgentPerformanceData(
         metrics=PerformanceMetricsData(
@@ -119,7 +116,7 @@ def _good_agent_performance():
     )
 
 
-def _none_agent_performance():
+def _none_agent_performance() -> AgentPerformanceData:
     """Return agent performance data with all-None key fields (API failure)."""
     return AgentPerformanceData(
         metrics=PerformanceMetricsData(
@@ -130,7 +127,7 @@ def _none_agent_performance():
     )
 
 
-def _good_profit_over_time():
+def _good_profit_over_time() -> ProfitOverTimeData:
     """Return profit over time with real data."""
     return ProfitOverTimeData(
         last_updated=1700000000,
@@ -146,7 +143,7 @@ def _good_profit_over_time():
     )
 
 
-def _good_prediction_history():
+def _good_prediction_history() -> PredictionHistory:
     """Return prediction history with real data."""
     return PredictionHistory(
         total_predictions=50,
@@ -156,7 +153,7 @@ def _good_prediction_history():
     )
 
 
-def _empty_prediction_history():
+def _empty_prediction_history() -> PredictionHistory:
     """Return prediction history with 0 predictions (API failure)."""
     return PredictionHistory(
         total_predictions=0,
@@ -166,7 +163,7 @@ def _empty_prediction_history():
     )
 
 
-def _good_existing_summary():
+def _good_existing_summary() -> AgentPerformanceSummary:
     """Return a fully populated existing summary."""
     return AgentPerformanceSummary(
         timestamp=1700000000,
@@ -182,7 +179,7 @@ def _good_existing_summary():
 class TestSaveAgentPerformanceSummary:
     """Tests for _save_agent_performance_summary merge logic."""
 
-    def test_save_overwrites_with_good_data(self):
+    def test_save_overwrites_with_good_data(self) -> None:
         """When all new data is valid, it should fully replace existing data."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -217,7 +214,7 @@ class TestSaveAgentPerformanceSummary:
         # agent_behavior should always come from existing
         assert saved.agent_behavior == "some_behavior"
 
-    def test_save_preserves_metrics_on_na(self):
+    def test_save_preserves_metrics_on_na(self) -> None:
         """When new metrics have NA values but existing had real values, preserve existing."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -239,7 +236,7 @@ class TestSaveAgentPerformanceSummary:
         assert saved.metrics[1].value == "75%"
         assert saved.metrics[2].value == "3.2 OLAS"
 
-    def test_save_preserves_agent_details_on_failure(self):
+    def test_save_preserves_agent_details_on_failure(self) -> None:
         """When new agent_details has all-None fields, preserve existing."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -260,7 +257,7 @@ class TestSaveAgentPerformanceSummary:
         assert saved.agent_details.created_at == "2025-01-01T00:00:00Z"
         assert saved.agent_details.last_active_at == "2025-06-15T12:00:00Z"
 
-    def test_save_preserves_agent_performance_on_failure(self):
+    def test_save_preserves_agent_performance_on_failure(self) -> None:
         """When new agent_performance has all-None key fields, preserve existing."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -281,7 +278,7 @@ class TestSaveAgentPerformanceSummary:
         assert saved.agent_performance.metrics.all_time_profit == 12.5
         assert saved.agent_performance.metrics.roi == 0.125
 
-    def test_save_preserves_profit_over_time_on_none(self):
+    def test_save_preserves_profit_over_time_on_none(self) -> None:
         """When new profit_over_time is None, preserve existing."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -302,7 +299,7 @@ class TestSaveAgentPerformanceSummary:
         assert saved.profit_over_time.total_days == 30
         assert len(saved.profit_over_time.data_points) == 1
 
-    def test_save_preserves_prediction_history_on_empty(self):
+    def test_save_preserves_prediction_history_on_empty(self) -> None:
         """When new prediction_history has 0 predictions/empty items, preserve existing."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -323,7 +320,7 @@ class TestSaveAgentPerformanceSummary:
         assert saved.prediction_history.stored_count == 25
         assert len(saved.prediction_history.items) == 1
 
-    def test_save_preserves_agent_behavior(self):
+    def test_save_preserves_agent_behavior(self) -> None:
         """agent_behavior from existing data is always preserved."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
@@ -343,8 +340,8 @@ class TestSaveAgentPerformanceSummary:
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.agent_behavior == "some_behavior"
 
-    def test_save_partial_failure_preserves_failed_sections_only(self):
-        """Mixed case: some sections succeed (update), others fail (preserve existing)."""
+    def test_save_partial_failure_preserves_failed_sections_only(self) -> None:
+        """Mixed case: some sections succeed, others fail (preserve existing)."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
 
@@ -381,7 +378,6 @@ class TestSaveAgentPerformanceSummary:
         behaviour._save_agent_performance_summary(new_summary)
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
-
         # Metrics: preserved from existing (NA -> keep old)
         assert saved.metrics[0].value == "12.5%"
         assert saved.metrics[1].value == "75%"
@@ -401,8 +397,8 @@ class TestSaveAgentPerformanceSummary:
         # Behavior always preserved
         assert saved.agent_behavior == "some_behavior"
 
-    def test_save_preserves_timestamp_on_failure(self):
-        """When any data section is preserved (failure), the saved timestamp should be the existing older one."""
+    def test_save_preserves_timestamp_on_failure(self) -> None:
+        """When data is preserved (failure), saved timestamp should be existing."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
 
@@ -421,31 +417,42 @@ class TestSaveAgentPerformanceSummary:
         # Timestamp should be the existing one since data was preserved
         assert saved.timestamp == 1700000000
 
-    def test_post_init_converts_metric_dicts_to_dataclasses(self):
-        """Construct AgentPerformanceSummary with metrics as raw dicts (like JSON gives),
-        assert they become AgentPerformanceMetrics instances."""
+    def test_post_init_converts_metric_dicts_to_dataclasses(self) -> None:
+        """Construct AgentPerformanceSummary with metrics as raw dicts.
+
+        Assert they become AgentPerformanceMetrics instances.
+        """
         raw_metrics = [
             {"name": "Total ROI", "is_primary": True, "value": "12.5%"},
             {"name": "Prediction accuracy", "is_primary": False, "value": "75%"},
         ]
-        summary = AgentPerformanceSummary(metrics=raw_metrics)
+        summary = AgentPerformanceSummary(
+            metrics=raw_metrics,  # type: ignore[arg-type]
+        )
         assert all(isinstance(m, AgentPerformanceMetrics) for m in summary.metrics)
         assert summary.metrics[0].name == "Total ROI"
         assert summary.metrics[0].value == "12.5%"
         assert summary.metrics[1].name == "Prediction accuracy"
         assert summary.metrics[1].value == "75%"
 
-    def test_save_preserves_metrics_when_existing_loaded_from_json(self):
-        """When existing summary has metrics as raw dicts (simulating JSON load),
-        _save_agent_performance_summary with NA metrics should preserve existing values."""
+    def test_save_preserves_metrics_when_existing_loaded_from_json(self) -> None:
+        """Preserve existing values when existing summary has metrics as raw dicts.
+
+        Simulates JSON load where _save_agent_performance_summary with NA
+        metrics should preserve existing values.
+        """
         # Simulate what read_existing_performance_summary returns from JSON:
         # metrics are raw dicts, not AgentPerformanceMetrics instances
         existing = AgentPerformanceSummary(
             timestamp=1700000000,
             metrics=[
-                {"name": "Total ROI", "is_primary": True, "value": "12.5%"},
-                {"name": "Prediction accuracy", "is_primary": False, "value": "75%"},
-                {"name": "Total staking rewards", "is_primary": False, "value": "3.2 OLAS"},
+                {"name": "Total ROI", "is_primary": True, "value": "12.5%"},  # type: ignore[list-item]
+                {"name": "Prediction accuracy", "is_primary": False, "value": "75%"},  # type: ignore[list-item]
+                {  # type: ignore[list-item]
+                    "name": "Total staking rewards",
+                    "is_primary": False,
+                    "value": "3.2 OLAS",
+                },
             ],
             agent_behavior="some_behavior",
             agent_details=_good_agent_details(),
@@ -471,8 +478,8 @@ class TestSaveAgentPerformanceSummary:
         assert saved.metrics[1].value == "75%"
         assert saved.metrics[2].value == "3.2 OLAS"
 
-    def test_save_uses_new_timestamp_on_full_success(self):
-        """When all data is valid (no preservation), the new timestamp should be used."""
+    def test_save_uses_new_timestamp_on_full_success(self) -> None:
+        """When all data is valid, the new timestamp should be used."""
         existing = _good_existing_summary()
         behaviour = _make_behaviour(existing)
 

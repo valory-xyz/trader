@@ -1752,12 +1752,16 @@ class FetchPerformanceSummaryBehaviour(
         if (
             agent_performance_summary.agent_performance is not None
             and agent_performance_summary.agent_performance.metrics is not None
-            and agent_performance_summary.agent_performance.metrics.all_time_funds_used is None
-            and agent_performance_summary.agent_performance.metrics.all_time_profit is None
+            and agent_performance_summary.agent_performance.metrics.all_time_funds_used
+            is None
+            and agent_performance_summary.agent_performance.metrics.all_time_profit
+            is None
             and agent_performance_summary.agent_performance.metrics.roi is None
             and existing_data.agent_performance is not None
         ):
-            agent_performance_summary.agent_performance = existing_data.agent_performance
+            agent_performance_summary.agent_performance = (
+                existing_data.agent_performance
+            )
             preserved = True
 
         # Preserve profit_over_time if new is None
@@ -1776,7 +1780,9 @@ class FetchPerformanceSummaryBehaviour(
             and existing_data.prediction_history is not None
             and existing_data.prediction_history.total_predictions > 0
         ):
-            agent_performance_summary.prediction_history = existing_data.prediction_history
+            agent_performance_summary.prediction_history = (
+                existing_data.prediction_history
+            )
             preserved = True
 
         # If any section was preserved, keep the existing timestamp so the UI
