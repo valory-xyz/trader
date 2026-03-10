@@ -100,7 +100,7 @@ connections:
 - valory/polymarket_client:0.1.0:bafybeib6b35srftg7dyx3wtvghj72wjctd6kixh7ewtuebp5dbn6opitbe
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeicdxmqeojifvejur3n464palfdgazhjnzrb7d6rbawyw6vop4ppuy
-- valory/market_maker:0.1.0:bafybeiab2vcexhzyg5psgo4g2p3fezpcph2geghuudzy2j75ttl6nsk4pq
+- valory/market_maker:0.1.0:bafybeidrmib2beov3nfolxkvy2tatmcclcagv2h7ef2e53bgqquvsu57zu
 - valory/erc20:0.1.0:bafybeiglz5lbgaygxgpqtvcggr6cxsbw5wldw2xc3srijm2jap3jv3vlyi
 - valory/multisend:0.1.0:bafybeiaf3hapi3prgpjeugwhq64k7lqelo6kibhol5rkajt7id3knomp5q
 - valory/mech:0.1.0:bafybeian74rifshzpwst2nupoud4vg26pixsluifbxzowe3h7awh3gscxa

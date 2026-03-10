@@ -52,8 +52,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeifwkty66c2uxuusjwql4abjgnndsiu4gqgbugrn2dcmnziil7yoiq
 - valory/termination_abci:0.1.0:bafybeieao3fd6lhpr5uoxgaotizh6nao34eodnoxaz624oxha7pd2mgx54
 - valory/market_manager_abci:0.1.0:bafybeihtlms757cwhlf3dewpyc5enbkhzg3cum2vihicaueneblozv723y
-- valory/decision_maker_abci:0.1.0:bafybeic7e32w6bz5kqxlogetfeohdemxvqezzzhldixbcoyqre6cgajevu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifp3huyjyum3unmqo4zcw6tuoenodl3rv3fgkvzx3e3qqc4vs32q4
+- valory/decision_maker_abci:0.1.0:bafybeigmmjvugf6tdrx3rbqceuhhglx47vkgnwtnof7jslxk3hbsz35rne
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieoyov4g2r7sxr3xn7le74ya33xoxmrrxt3k4rgofsalaanoe45ru
 - valory/staking_abci:0.1.0:bafybeiemdzacba74lmryndxzwjq7tucibgdgst7ejalbk2o6oqj4t22sbm
 - valory/check_stop_trading_abci:0.1.0:bafybeih45usd5pj6ng3yjeps42ou5mggdcvceddsxhegfvq4ucpczkh4by
 - valory/mech_interact_abci:0.1.0:bafybeiarch34l53dcrfxpfvrxqkq2dp3v5zwbrpj5lr3eyk6yhvap3lcae
@@ -616,7 +616,7 @@ dependencies:
   web3:
     version: <8,>=7.0.0
   requests:
-    version: <2.33.0,>=2.28.1
+    version: <2.33.0,>=2.32.5
   open-aea-ledger-ethereum:
     version: ==2.1.0
 is_abstract: false
