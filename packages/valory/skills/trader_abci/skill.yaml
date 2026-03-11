@@ -46,20 +46,20 @@ protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeicehi2yqab3lldm7qzoqev3tmqrdk275sbtcabneyorhmzft76z7m
-- valory/registration_abci:0.1.0:bafybeihjgfzqvuymqgku6mwqih7hlvqwr2tmdjrip3m6unt5l4e55bshkm
-- valory/reset_pause_abci:0.1.0:bafybeih6bjalcohxytg6hj3doy5dhkxonrxpqgcnclyf6tnmuyfbom2usy
-- valory/transaction_settlement_abci:0.1.0:bafybeigivknq755rbnelrdemaz3vm4x7jkofvaskm34uh36pbbg6uiquo4
-- valory/termination_abci:0.1.0:bafybeiarjw4hhu2vf56yxqb4jh3kmk4hfxvqahygn6scc3rfnlogjkwwpe
-- valory/market_manager_abci:0.1.0:bafybeic5rhtmpetkirqktnue733q2n2bfngzuem7gtnb5jfbdpdydh6ohe
-- valory/decision_maker_abci:0.1.0:bafybeihwz5uybgftmlbxcxntoodwlpo5d7hf64dedkj3cvibhu4r6wthje
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaticx7vtf4x62v5ejlnsy7x7bqcgannh7dmtwwifb7434dxu2yaa
-- valory/staking_abci:0.1.0:bafybeigfx2u6nqjj6cplobftmiklled43qugerlj4ie4srbxuxc3c45ywa
-- valory/check_stop_trading_abci:0.1.0:bafybeid4vtps4eadsuamcswmmi4bzmhjtcdroeda7u7lhfmqrbhyznbrui
-- valory/mech_interact_abci:0.1.0:bafybeigqq2vnnwqelllo2rb2wq3v6adkstkv47atcr6ieqxstvkkxm3toy
-- valory/chatui_abci:0.1.0:bafybeibxm2iotdou7kszyg6nagjjkft5gdmev2er4g6ys7d6g337kkbcc4
-- valory/agent_performance_summary_abci:0.1.0:bafybeihqlugn7aqnzltary27jzpkz5zbi5567yb6phygvw6f6zt4gpt5aa
-- valory/funds_manager:0.1.0:bafybeih5k7v6zx7mtkdg4hkgmsyngkz66bbwmrpqqxccnhif666v2hzi6y
+- valory/abstract_round_abci:0.1.0:bafybeiaalla55aprhvoumv4u7qt4v6l53fjmgln6wgyjr5e5tw7u4kscja
+- valory/registration_abci:0.1.0:bafybeiayry7tzttlivibbfnwikilbgdl54g3btvc4uhl4x5qqdv6a673o4
+- valory/reset_pause_abci:0.1.0:bafybeibsdhil35py7zjhielonaycxo7gp34jfufe2ynprjv2etwxnzcxqy
+- valory/transaction_settlement_abci:0.1.0:bafybeigspkourznaiagdkedyxjbjl6svhuhdwbvejr3jv3e3dil2hslose
+- valory/termination_abci:0.1.0:bafybeic3jppoya7jkmylbl5evcssl5qhppl6hadxebfxcxmi5o7qysce6a
+- valory/market_manager_abci:0.1.0:bafybeiesgge4so2vwqrcvsk3vwhm5ltkn6m5bqe7z7smxwr2edh2hjw2va
+- valory/decision_maker_abci:0.1.0:bafybeiaepgojnnvt4gvhtppffelc4okcb3427yrjxtmt7tjgflvh7ao62e
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihxhdm4pptjspia6ycwmkkwp2s5lmd4rzqzyo4mz5dgcgc332frqq
+- valory/staking_abci:0.1.0:bafybeidw7zl5jb4m6car4uqnuufgzs3tcqrwyllcdkrvnyytoglq4dhrne
+- valory/check_stop_trading_abci:0.1.0:bafybeid4k6srlgeol5oxymr63yg4uicjcyeyduidepbeu4qmfjvwqgof4q
+- valory/mech_interact_abci:0.1.0:bafybeiduf3h73xhv4q5vbdn6ek2tyal3haym5of4mq2ucm2zhqbclr35le
+- valory/chatui_abci:0.1.0:bafybeifql5hjjzwehcsyghgkgivslpxywc3qubiebovpy72oesljhhtyfm
+- valory/agent_performance_summary_abci:0.1.0:bafybeib2hszhy6fnckflyiwomdhzlqqmuqia3ksu33mr7xz5i4kyaxdzbe
+- valory/funds_manager:0.1.0:bafybeibid2nm7qoysj44foptkisf5ajguvacxsuoaix4og4ehotal47mcy
 behaviours:
   main:
     args: {}
@@ -616,7 +616,7 @@ dependencies:
   web3:
     version: <8,>=7.0.0
   requests:
-    version: <2.33.0,>=2.28.1
+    version: <2.33.0,>=2.32.5
   open-aea-ledger-ethereum:
-    version: ==2.1.0rc6
+    version: ==2.1.0
 is_abstract: false

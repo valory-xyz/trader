@@ -1718,9 +1718,78 @@ class FetchPerformanceSummaryBehaviour(
     def _save_agent_performance_summary(
         self, agent_performance_summary: AgentPerformanceSummary
     ) -> None:
-        """Save the agent performance summary to a file."""
+        """Save the agent performance summary to a file, preserving existing data for failed sections."""
         existing_data = self.shared_state.read_existing_performance_summary()
+
+        # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
+
+        # Track whether any section fell back to existing data
+        preserved = False
+
+        # Preserve metrics where new value is NA but existing had real values
+        if existing_data.metrics:
+            existing_by_name = {m.name: m for m in existing_data.metrics}
+            for i, metric in enumerate(agent_performance_summary.metrics):
+                if metric.value == NA and metric.name in existing_by_name:
+                    existing_metric = existing_by_name[metric.name]
+                    if existing_metric.value != NA:
+                        agent_performance_summary.metrics[i] = existing_metric
+                        preserved = True
+
+        # Preserve agent_details if new has all-None fields
+        if (
+            agent_performance_summary.agent_details is not None
+            and agent_performance_summary.agent_details.id is None
+            and agent_performance_summary.agent_details.created_at is None
+            and agent_performance_summary.agent_details.last_active_at is None
+            and existing_data.agent_details is not None
+        ):
+            agent_performance_summary.agent_details = existing_data.agent_details
+            preserved = True
+
+        # Preserve agent_performance if new has all-None key fields
+        if (
+            agent_performance_summary.agent_performance is not None
+            and agent_performance_summary.agent_performance.metrics is not None
+            and agent_performance_summary.agent_performance.metrics.all_time_funds_used
+            is None
+            and agent_performance_summary.agent_performance.metrics.all_time_profit
+            is None
+            and agent_performance_summary.agent_performance.metrics.roi is None
+            and existing_data.agent_performance is not None
+        ):
+            agent_performance_summary.agent_performance = (
+                existing_data.agent_performance
+            )
+            preserved = True
+
+        # Preserve profit_over_time if new is None
+        if (
+            agent_performance_summary.profit_over_time is None
+            and existing_data.profit_over_time is not None
+        ):
+            agent_performance_summary.profit_over_time = existing_data.profit_over_time
+            preserved = True
+
+        # Preserve prediction_history if new has 0 predictions and empty items
+        if (
+            agent_performance_summary.prediction_history is not None
+            and agent_performance_summary.prediction_history.total_predictions == 0
+            and not agent_performance_summary.prediction_history.items
+            and existing_data.prediction_history is not None
+            and existing_data.prediction_history.total_predictions > 0
+        ):
+            agent_performance_summary.prediction_history = (
+                existing_data.prediction_history
+            )
+            preserved = True
+
+        # If any section was preserved, keep the existing timestamp so the UI
+        # can detect that the data is stale rather than freshly fetched.
+        if preserved and existing_data.timestamp is not None:
+            agent_performance_summary.timestamp = existing_data.timestamp
+
         self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
     def async_act(self) -> Generator:
@@ -1756,7 +1825,7 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 if not success:
                     self.context.logger.warning(
-                        "Agent performance summary could not be fetched. Saving default values"
+                        "Agent performance summary could not be fetched. Preserving existing values for failed metrics"
                     )
                 self._save_agent_performance_summary(self._agent_performance_summary)
             else:
