@@ -36,7 +36,6 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
 )
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

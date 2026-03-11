@@ -38,7 +38,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------

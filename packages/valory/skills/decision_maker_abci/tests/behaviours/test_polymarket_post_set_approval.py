@@ -34,7 +34,6 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_appro
     PolymarketPostSetApprovalRound,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

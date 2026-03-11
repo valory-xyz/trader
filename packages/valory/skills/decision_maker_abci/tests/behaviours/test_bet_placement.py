@@ -30,7 +30,6 @@ from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

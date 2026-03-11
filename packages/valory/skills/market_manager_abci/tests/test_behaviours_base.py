@@ -43,7 +43,6 @@ from packages.valory.skills.market_manager_abci.states.fetch_markets_router impo
     FetchMarketsRouterRound,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

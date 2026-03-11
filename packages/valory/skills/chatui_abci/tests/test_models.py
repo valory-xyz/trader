@@ -373,7 +373,7 @@ class TestGetCurrentJsonStore:
 
         context = MagicMock()
         context.params = params
-        state.context = context
+        state.context = context  # type: ignore[assignment]
 
         return state
 
@@ -423,7 +423,7 @@ class TestSetJsonStore:
 
         context = MagicMock()
         context.params = params
-        state.context = context
+        state.context = context  # type: ignore[assignment]
 
         payload = {"trading_strategy": "balanced", "max_bet_size": 100}
         state._set_json_store(payload)

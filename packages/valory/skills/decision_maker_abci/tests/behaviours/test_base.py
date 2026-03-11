@@ -758,7 +758,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
-        response_msg.raw_transaction.body = {"token": None, "wallet": None}  # nosec B105
+        response_msg.raw_transaction.body = {
+            "token": None,
+            "wallet": None,
+        }  # nosec B105
 
         def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""
@@ -791,7 +794,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
-        response_msg.raw_transaction.body = {"token": 5000, "wallet": 10000}  # nosec B105
+        response_msg.raw_transaction.body = {
+            "token": 5000,
+            "wallet": 10000,
+        }  # nosec B105
 
         def mock_get_contract_api(*args: Any, **kwargs: Any) -> Generator:
             """Mock get_contract_api_response."""

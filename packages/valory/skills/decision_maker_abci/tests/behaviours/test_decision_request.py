@@ -33,7 +33,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 )
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

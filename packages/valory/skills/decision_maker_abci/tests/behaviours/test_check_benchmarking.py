@@ -26,7 +26,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.check_benchmarking im
 )
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

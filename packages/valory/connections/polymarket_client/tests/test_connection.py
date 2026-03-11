@@ -42,7 +42,6 @@ from packages.valory.connections.polymarket_client.connection import (
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

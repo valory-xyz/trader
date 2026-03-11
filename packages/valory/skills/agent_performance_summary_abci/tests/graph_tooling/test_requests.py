@@ -36,7 +36,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     to_content,
 )
 
-
 # ---------------------------------------------------------------------------
 # to_content tests
 # ---------------------------------------------------------------------------

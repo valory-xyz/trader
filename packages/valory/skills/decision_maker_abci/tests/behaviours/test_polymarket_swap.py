@@ -35,7 +35,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap impor
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
 from packages.valory.skills.decision_maker_abci.rounds import PolymarketSwapUsdcRound
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

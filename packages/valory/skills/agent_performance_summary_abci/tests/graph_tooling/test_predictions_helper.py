@@ -40,7 +40,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     WEI_TO_NATIVE,
 )
 
-
 # ---------------------------------------------------------------------------
 # Enum tests
 # ---------------------------------------------------------------------------

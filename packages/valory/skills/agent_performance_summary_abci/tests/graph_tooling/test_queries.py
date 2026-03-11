@@ -47,7 +47,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_TRADER_AGENT_QUERY,
 )
 
-
 # Map of constant name to expected GraphQL query operation name
 QUERY_CONSTANTS = {
     "GET_TRADER_AGENT_QUERY": (GET_TRADER_AGENT_QUERY, "GetOlasTraderAgent"),

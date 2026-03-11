@@ -31,7 +31,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Generator helpers for mocking `yield from` calls
 # ---------------------------------------------------------------------------

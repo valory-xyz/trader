@@ -79,7 +79,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     ProfitOverTimeData,
 )
 
-
 # ---------------------------------------------------------------------------
 # Testable subclass: shadows read-only AEA properties with plain attributes
 # ---------------------------------------------------------------------------
@@ -113,17 +112,17 @@ def _make_handler(
     context.params.store_path = store_path
     context.logger = MagicMock()
     context.outbox = MagicMock()
-    handler.context = context
+    handler.context = context  # type: ignore[assignment]
 
     shared_state = MagicMock()
     shared_state.read_existing_performance_summary.return_value = (
         AgentPerformanceSummary()
     )
-    handler.shared_state = shared_state  # type: ignore[misc]
+    handler.shared_state = shared_state  # type: ignore[assignment]
 
     sync_data = MagicMock()
     sync_data.safe_contract_address = safe_address
-    handler.synchronized_data = sync_data  # type: ignore[misc]
+    handler.synchronized_data = sync_data  # type: ignore[assignment]
 
     handler.handler_url_regex = ""
     handler.routes = {}
@@ -1823,9 +1822,7 @@ class TestFilterProfitDataByWindow:
         now_ts = int(fixed_now.timestamp())
         cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
-        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime(
-            "%Y-%m-%d"
-        )
+        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime("%Y-%m-%d")
         points = [
             ProfitDataPoint(
                 date=day0_date,
@@ -1901,9 +1898,7 @@ class TestFilterProfitDataByWindow:
         now_ts = int(fixed_now.timestamp())
         cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
-        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime(
-            "%Y-%m-%d"
-        )
+        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime("%Y-%m-%d")
         points = [
             ProfitDataPoint(
                 date=day0_date,
@@ -1928,9 +1923,7 @@ class TestFilterProfitDataByWindow:
         now_ts = int(fixed_now.timestamp())
         cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
-        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime(
-            "%Y-%m-%d"
-        )
+        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime("%Y-%m-%d")
         day1_date = datetime.fromtimestamp(
             cutoff + SECONDS_PER_DAY, tz=timezone.utc
         ).strftime("%Y-%m-%d")

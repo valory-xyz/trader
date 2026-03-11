@@ -33,7 +33,6 @@ from packages.valory.skills.trader_abci.composition import (
     termination_config,
 )
 
-
 EXPECTED_TRANSITION_MAPPING_LENGTH = 44
 
 

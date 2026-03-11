@@ -36,7 +36,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
     USDC_DECIMALS_DIVISOR,
 )
 
-
 # ---------------------------------------------------------------------------
 # Constants tests
 # ---------------------------------------------------------------------------

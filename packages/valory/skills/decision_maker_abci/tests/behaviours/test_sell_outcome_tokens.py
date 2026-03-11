@@ -31,7 +31,6 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
     SellOutcomeTokensRound,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

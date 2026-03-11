@@ -427,8 +427,8 @@ class TestHttpHandlerSetup:
     def test_setup_adds_chatui_routes(self) -> None:
         """setup() must add chatui-prompt, configure_strategies, and features routes."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
-        handler.context.params.service_endpoint = "http://localhost:8000"
+        handler.context = MagicMock()  # type: ignore[assignment]
+        handler.context.params.service_endpoint = "http://localhost:8000"  # type: ignore[attr-defined]
         handler.routes = {}
 
         # Patch the parent setup() and the hostname_regex property
@@ -572,9 +572,9 @@ class TestProperties:
     def test_shared_state_returns_context_state(self) -> None:
         """shared_state property must cast and return context.state."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         sentinel = MagicMock()
-        handler.context.state = sentinel
+        handler.context.state = sentinel  # type: ignore[attr-defined]
         # Access the property from HttpHandler (not _TestableHttpHandler which shadows it)
         result = HttpHandler.shared_state.fget(handler)  # type: ignore[attr-defined, union-attr]
         assert result is sentinel
@@ -582,23 +582,23 @@ class TestProperties:
     def test_round_sequence_returns_shared_state_round_sequence(self) -> None:
         """round_sequence property must return shared_state.round_sequence."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         rs_sentinel = MagicMock()
         # shared_state property calls self.context.state, set it up
-        handler.context.state.round_sequence = rs_sentinel
+        handler.context.state.round_sequence = rs_sentinel  # type: ignore[attr-defined]
         # Wire shared_state so that round_sequence can chain through it
-        handler.shared_state = handler.context.state  # type: ignore[misc]
-        result = HttpHandler.round_sequence.fget(handler)  # type: ignore[union-attr]
+        handler.shared_state = handler.context.state  # type: ignore[attr-defined]
+        result = HttpHandler.round_sequence.fget(handler)  # type: ignore[attr-defined, union-attr]
         assert result is rs_sentinel
 
     def test_synchronized_data_returns_synced_data(self) -> None:
         """synchronized_data property must return a SynchronizedData from the DB."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         db_mock = MagicMock()
-        handler.context.state.round_sequence.latest_synchronized_data.db = db_mock
+        handler.context.state.round_sequence.latest_synchronized_data.db = db_mock  # type: ignore[attr-defined]
         # Wire shared_state so that round_sequence and then synchronized_data can chain
-        handler.shared_state = handler.context.state  # type: ignore[misc]
+        handler.shared_state = handler.context.state  # type: ignore[attr-defined]
         result = HttpHandler.synchronized_data.fget(handler)  # type: ignore[attr-defined, union-attr]
         assert result.db is db_mock
 
@@ -1030,11 +1030,11 @@ class TestStoreChatuiParamToJson:
     def test_updates_json_store(self) -> None:
         """Must get current store, update it, and set it back."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         shared_state_mock = MagicMock()
         current_store = {"existing_key": "existing_value"}
         shared_state_mock._get_current_json_store.return_value = current_store
-        handler.shared_state = shared_state_mock  # type: ignore[misc]
+        handler.shared_state = shared_state_mock  # type: ignore[assignment]
 
         # Call the real (un-mocked) method
         HttpHandler._store_chatui_param_to_json(handler, "new_param", 42)
@@ -1052,10 +1052,10 @@ class TestStoreTradingStrategy:
     def test_stores_strategy_and_calls_json_store(self) -> None:
         """Must update chatui_config and call _store_chatui_param_to_json."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         shared_state_mock = MagicMock()
         shared_state_mock.chatui_config = ChatuiConfig()
-        handler.shared_state = shared_state_mock  # type: ignore[misc]
+        handler.shared_state = shared_state_mock  # type: ignore[assignment]
         handler._store_chatui_param_to_json = MagicMock()  # type: ignore[assignment]
 
         HttpHandler._store_trading_strategy(handler, "kelly_criterion_no_conf")
@@ -1075,10 +1075,10 @@ class TestStoreAllowedTools:
     def test_stores_tools_and_calls_json_store(self) -> None:
         """Must update chatui_config and call _store_chatui_param_to_json."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         shared_state_mock = MagicMock()
         shared_state_mock.chatui_config = ChatuiConfig()
-        handler.shared_state = shared_state_mock  # type: ignore[misc]
+        handler.shared_state = shared_state_mock  # type: ignore[assignment]
         handler._store_chatui_param_to_json = MagicMock()  # type: ignore[assignment]
 
         tools = ["prediction-online"]
@@ -1092,10 +1092,10 @@ class TestStoreAllowedTools:
     def test_stores_none_when_clearing(self) -> None:
         """Passing None must clear allowed_tools."""
         handler = object.__new__(_TestableHttpHandler)
-        handler.context = MagicMock()
+        handler.context = MagicMock()  # type: ignore[assignment]
         shared_state_mock = MagicMock()
         shared_state_mock.chatui_config = ChatuiConfig(allowed_tools=["old"])
-        handler.shared_state = shared_state_mock  # type: ignore[misc]
+        handler.shared_state = shared_state_mock  # type: ignore[assignment]
         handler._store_chatui_param_to_json = MagicMock()  # type: ignore[assignment]
 
         HttpHandler._store_allowed_tools(handler, None)

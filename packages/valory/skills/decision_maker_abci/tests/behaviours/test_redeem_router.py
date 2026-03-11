@@ -29,7 +29,6 @@ from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
