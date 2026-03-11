@@ -8,7 +8,9 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeidhdxio3oq5gqdnxmngumvt3fcd6zyiyrpk5f2k4dwhflbg4e5iky
   build/ConditionalTokens.json: bafybeia2ahis7zx2yhhf23kpkcxu56hto6fwg6ptjg5ld46lp4dgz7cz3e
-  contract.py: bafybeicb7tjctvtaljuuropn2xczji5pqwcsc2jayzfr55z6nig5jyxtla
+  contract.py: bafybeia4d7cam2dfedfevpafh67pdpm2cwb4qjp6ieef7tzvwazvwkznde
+  tests/__init__.py: bafybeic23nvh24n43zw355zrb2xj5mzb2k5bzj5ysw67tgnv2z76p7klie
+  tests/test_contract.py: bafybeihbkyhqtnufnimff4pmwhmxv2rbqp23qhu7tsnhvd7fmpacng25om
 fingerprint_ignore_patterns: []
 class_name: ConditionalTokensContract
 contract_interface_paths:

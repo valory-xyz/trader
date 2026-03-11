@@ -9,6 +9,8 @@ fingerprint:
   __init__.py: bafybeickfnpykdx2ffgrrza6yhn7gfr2plis354oohzljhlnpwnp4kpe2u
   build/Realitio.json: bafybeiaqw4aid7mitc4vfzhlcxhbncei4hd3ywok2ugzs3zkhcx3pliatm
   contract.py: bafybeid4f5paos4746xt4jieothomuinw4eniuxwtkmc2u5dwmeo3a7dpm
+  tests/__init__.py: bafybeid3uttde2fexo2u2wae5a2extcywc5ewcb3cw3fkesn6cyf2z5u2e
+  tests/test_contract.py: bafybeia6rcn5inllcobvafo2btqvafe3fm6hbot2xjaghozmur4hgimjue
 fingerprint_ignore_patterns: []
 class_name: RealitioProxyContract
 contract_interface_paths:

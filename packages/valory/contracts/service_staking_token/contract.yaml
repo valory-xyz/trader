@@ -9,6 +9,8 @@ fingerprint:
   __init__.py: bafybeid3wfzglolebuo6jrrsopswzu4lk77bm76mvw3euizlsjtnt3wmgu
   build/ServiceStakingToken.json: bafybeib6frfpqtr4dfyxuylehqmic2iawofydx7u24t7j5zbrsc4m4ijoi
   contract.py: bafybeidxm3lqkx5puj7et6nm5z3sekmalfwsezqtzx3wpcin43xqdhc64u
+  tests/__init__.py: bafybeign6mrqdpt3mwx5v3jn3fhg5oyh7n6hqgfxbxvw7jrh2a37az6s2y
+  tests/test_contract.py: bafybeif3mf4ogbp4ye7xjbyc2vav5m645tjqtwn4ttvytzmnwl7jn6libm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: ServiceStakingTokenContract

@@ -35,11 +35,11 @@ fingerprint:
   tests/graph_tooling/test_requests.py: bafybeibfsud2gg32zrxls3cmu4m2ozj7uebrd24nfqrsjdfmvjoaj45qri
   tests/test_behaviours.py: bafybeiglmlcxyc4xdtytb7rak6ymv4wctyz6tcsi6zg44c6osyinrctsmm
   tests/test_dialogues.py: bafybeiglcg5e24wn5cx3lzpdka6pnj6gl5lhoe57eacqpdxibngw7ojj3e
-  tests/test_handlers.py: bafybeicwf5263ynncxxlhluyunjv64pbxc5pbkouus572xmkl32pbzq2am
+  tests/test_handlers.py: bafybeifhxqrldidfbkmismwf5lyo6ebycagmm7gsue5eovootuab5vxjyu
   tests/test_models.py: bafybeiggo3ou4xxc3n6tnzdkdvuqlobrdxjp5s4bl25ayvnz56mzlot4si
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeidm2rl27fpn6wyllpz25sy3t6emlk7cwy2pzbyfda7yv66znnneoq
-  tests/test_save_performance_summary.py: bafybeidbhrzjv2fs2qjoxrfmisrcdjw27vqx2vsqkscsdh5w5jvj5pqn54
+  tests/test_save_performance_summary.py: bafybeibgyx3n4dn7zhb7vfcc4wwq7nuyfep723cyqfrpnwqgsvhhwagure
 fingerprint_ignore_patterns: []
 contracts:
 - valory/erc20:0.1.0:bafybeif37n2xmh6xkn3vzybty7q37fq4f5rsey5ep33vvobh2yofeao5ae
