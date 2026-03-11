@@ -13,6 +13,15 @@ source =
     packages/valory/customs/bet_amount_per_threshold
     packages/valory/customs/kelly_criterion_no_conf
     packages/valory/customs/mike_strat
+    packages/valory/contracts/mech_activity
+    packages/valory/contracts/relayer
+    packages/valory/contracts/realitio_proxy
+    packages/valory/contracts/realitio
+    packages/valory/contracts/conditional_tokens
+    packages/valory/contracts/market_maker
+    packages/valory/contracts/service_staking_token
+    packages/w1kke/customs/always_blue
+    packages/jhehemann/customs/kelly_criterion
 omit =
     */tests/*
     */__init__.py
