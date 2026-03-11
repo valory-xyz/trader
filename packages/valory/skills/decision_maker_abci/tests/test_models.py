@@ -437,7 +437,7 @@ class TestSharedStateInit:
 class TestSharedState:
     """Tests for the SharedState model class."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up the SharedState instance bypassing __init__."""
         self.state = object.__new__(SharedState)
         self.state.mock_data = None

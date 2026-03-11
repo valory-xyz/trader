@@ -20,7 +20,7 @@
 """Tests for agent_performance_summary_abci/handlers.py."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
@@ -446,7 +446,7 @@ class TestHttpHandlerSetup:
 class TestSendHttpResponse:
     """Tests for _send_http_response."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_msg = _make_http_msg()
@@ -552,7 +552,7 @@ class TestSendHttpResponse:
 class TestConvenienceResponseMethods:
     """Tests for convenience response methods."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_msg = _make_http_msg()
@@ -703,7 +703,7 @@ class TestConvenienceResponseMethods:
 class TestSendInternalServerErrorResponse:
     """Tests for _send_internal_server_error_response."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_msg = _make_http_msg()
@@ -779,7 +779,7 @@ class TestSendInternalServerErrorResponse:
 class TestSendMessage:
     """Tests for _send_message."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
 
@@ -830,7 +830,7 @@ class TestSendMessage:
 class TestHandleGetAgentDetails:
     """Tests for _handle_get_agent_details."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_msg = _make_http_msg()
@@ -892,7 +892,7 @@ class TestHandleGetAgentDetails:
 class TestHandleGetAgentPerformance:
     """Tests for _handle_get_agent_performance."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_dialogue = _make_http_dialogue()
@@ -1099,7 +1099,7 @@ class TestHandleGetAgentPerformance:
 class TestParseQueryParams:
     """Tests for _parse_query_params."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
 
@@ -1178,7 +1178,7 @@ class TestParseQueryParams:
 class TestFilterAndPaginate:
     """Tests for _filter_and_paginate."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.items = [
@@ -1260,7 +1260,7 @@ class TestFilterAndPaginate:
 class TestHandleGetPredictions:
     """Tests for _handle_get_predictions."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_dialogue = _make_http_dialogue()
@@ -1535,7 +1535,7 @@ class TestHandleGetPredictions:
 class TestHandleGetProfitOverTime:
     """Tests for _handle_get_profit_over_time."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_dialogue = _make_http_dialogue()
@@ -1722,7 +1722,7 @@ class TestHandleGetProfitOverTime:
 class TestFilterProfitDataByWindow:
     """Tests for _filter_profit_data_by_window."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
 
@@ -1819,11 +1819,13 @@ class TestFilterProfitDataByWindow:
 
     def test_gap_filling_with_last_known_cumulative(self) -> None:
         """Test gap filling uses last known cumulative profit."""
-        now = int(datetime.utcnow().timestamp())
-        cutoff = now - (6 * SECONDS_PER_DAY)  # 7d window cutoff
+        fixed_now = datetime(2026, 3, 11, 12, 0, 0, tzinfo=timezone.utc)
+        now_ts = int(fixed_now.timestamp())
+        cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
-        # Create a point on the first day of the window
-        day0_date = datetime.utcfromtimestamp(cutoff).strftime("%Y-%m-%d")
+        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime(
+            "%Y-%m-%d"
+        )
         points = [
             ProfitDataPoint(
                 date=day0_date,
@@ -1833,7 +1835,13 @@ class TestFilterProfitDataByWindow:
             )
         ]
 
-        result = self.handler._filter_profit_data_by_window(points, "7d")
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.handlers.datetime"
+        ) as mock_dt:
+            mock_dt.now.return_value = fixed_now
+            mock_dt.fromtimestamp = datetime.fromtimestamp
+            result = self.handler._filter_profit_data_by_window(points, "7d")
+
         assert len(result) == 7
         # First day should have the actual profit
         assert result[0].daily_profit == 10.0
@@ -1858,11 +1866,14 @@ class TestFilterProfitDataByWindow:
 
     def test_data_lookup_by_date(self) -> None:
         """Test that data points are matched by date string."""
-        now = int(datetime.utcnow().timestamp())
-        cutoff = now - (6 * SECONDS_PER_DAY)
+        fixed_now = datetime(2026, 3, 11, 12, 0, 0, tzinfo=timezone.utc)
+        now_ts = int(fixed_now.timestamp())
+        cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
         day2_ts = cutoff + (2 * SECONDS_PER_DAY)
-        day2_date = datetime.utcfromtimestamp(day2_ts).strftime("%Y-%m-%d")
+        day2_date = datetime.fromtimestamp(day2_ts, tz=timezone.utc).strftime(
+            "%Y-%m-%d"
+        )
 
         points = [
             ProfitDataPoint(
@@ -1873,17 +1884,26 @@ class TestFilterProfitDataByWindow:
             )
         ]
 
-        result = self.handler._filter_profit_data_by_window(points, "7d")
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.handlers.datetime"
+        ) as mock_dt:
+            mock_dt.now.return_value = fixed_now
+            mock_dt.fromtimestamp = datetime.fromtimestamp
+            result = self.handler._filter_profit_data_by_window(points, "7d")
+
         assert len(result) == 7
         # Day 2 should have the actual data
         assert result[2].daily_profit == 15.0
 
     def test_cumulative_profit_rounding(self) -> None:
         """Test cumulative profit is rounded to 3 decimal places."""
-        now = int(datetime.utcnow().timestamp())
-        cutoff = now - (6 * SECONDS_PER_DAY)
+        fixed_now = datetime(2026, 3, 11, 12, 0, 0, tzinfo=timezone.utc)
+        now_ts = int(fixed_now.timestamp())
+        cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
-        day0_date = datetime.utcfromtimestamp(cutoff).strftime("%Y-%m-%d")
+        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime(
+            "%Y-%m-%d"
+        )
         points = [
             ProfitDataPoint(
                 date=day0_date,
@@ -1893,18 +1913,27 @@ class TestFilterProfitDataByWindow:
             )
         ]
 
-        result = self.handler._filter_profit_data_by_window(points, "7d")
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.handlers.datetime"
+        ) as mock_dt:
+            mock_dt.now.return_value = fixed_now
+            mock_dt.fromtimestamp = datetime.fromtimestamp
+            result = self.handler._filter_profit_data_by_window(points, "7d")
+
         assert result[0].cumulative_profit == round(1.123456789, 3)
 
     def test_multiple_data_points_in_window(self) -> None:
         """Test multiple actual data points within the window."""
-        now = int(datetime.utcnow().timestamp())
-        cutoff = now - (6 * SECONDS_PER_DAY)
+        fixed_now = datetime(2026, 3, 11, 12, 0, 0, tzinfo=timezone.utc)
+        now_ts = int(fixed_now.timestamp())
+        cutoff = now_ts - (6 * SECONDS_PER_DAY)
 
-        day0_date = datetime.utcfromtimestamp(cutoff).strftime("%Y-%m-%d")
-        day1_date = datetime.utcfromtimestamp(cutoff + SECONDS_PER_DAY).strftime(
+        day0_date = datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime(
             "%Y-%m-%d"
         )
+        day1_date = datetime.fromtimestamp(
+            cutoff + SECONDS_PER_DAY, tz=timezone.utc
+        ).strftime("%Y-%m-%d")
 
         points = [
             ProfitDataPoint(
@@ -1921,7 +1950,13 @@ class TestFilterProfitDataByWindow:
             ),
         ]
 
-        result = self.handler._filter_profit_data_by_window(points, "7d")
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.handlers.datetime"
+        ) as mock_dt:
+            mock_dt.now.return_value = fixed_now
+            mock_dt.fromtimestamp = datetime.fromtimestamp
+            result = self.handler._filter_profit_data_by_window(points, "7d")
+
         assert len(result) == 7
         assert result[0].daily_profit == 10.0
         assert result[0].cumulative_profit == 10.0
@@ -1940,7 +1975,7 @@ class TestFilterProfitDataByWindow:
 class TestHandleGetPositionDetails:
     """Tests for _handle_get_position_details."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_dialogue = _make_http_dialogue()
@@ -2126,7 +2161,7 @@ class TestHandleGetPositionDetails:
 class TestProfitOverTimeTimestampFormatting:
     """Tests for timestamp formatting in profit-over-time endpoint."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_dialogue = _make_http_dialogue()
@@ -2193,7 +2228,7 @@ class TestProfitOverTimeTimestampFormatting:
 class TestEdgeCases:
     """Tests for edge cases and integration scenarios."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.handler = _make_handler()
         self.http_dialogue = _make_http_dialogue()

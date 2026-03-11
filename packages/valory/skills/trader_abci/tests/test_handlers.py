@@ -183,7 +183,7 @@ def _make_handler(
 class TestHttpHandler:
     """Class for testing the Http Handler."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up the tests."""
         self.handler = _make_handler(is_polymarket=False, use_x402=False)
         self.context = self.handler.context
@@ -466,7 +466,7 @@ class TestHttpHandler:
 class TestHttpHandlerProperties:
     """Test properties of HttpHandler."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up the tests."""
         self.handler = _make_handler()
         self.context = self.handler.context
@@ -544,7 +544,7 @@ class TestGetChainConfig:
 class TestGetUiTradingStrategy:
     """Test _get_ui_trading_strategy."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -579,7 +579,7 @@ class TestGetUiTradingStrategy:
 class TestHandleGetAgentInfo:
     """Test _handle_get_agent_info."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
         self.context = self.handler.context
@@ -628,7 +628,7 @@ class TestHandleGetAgentInfo:
 class TestHandleGetTradingDetails:
     """Test _handle_get_trading_details."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -673,7 +673,7 @@ class TestHandleGetTradingDetails:
 class TestHandleGetStaticFile:
     """Test _handle_get_static_file."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
         self.handler.agent_profile_path = "ui-build/omenstrat"
@@ -1023,7 +1023,7 @@ class TestGetAdjustedFundsStatus:
 class TestGetPolToUsdcRate:
     """Test _get_pol_to_usdc_rate."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler(is_polymarket=True)
         self.chain_config = self.handler._get_chain_config()
@@ -1197,7 +1197,7 @@ class TestGetPolToUsdcRate:
 class TestGetPolEquivalentForUsdc:
     """Test _get_pol_equivalent_for_usdc."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler(is_polymarket=True)
         self.chain_config = self.handler._get_chain_config()
@@ -1289,7 +1289,7 @@ class TestHandleGetFundsStatus:
 class TestGetEoaAccount:
     """Test _get_eoa_account."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
         self.handler.context.default_ledger_id = "ethereum"
@@ -1343,7 +1343,7 @@ class TestGetEoaAccount:
 class TestGetPasswordFromArgs:
     """Test _get_password_from_args."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -1378,7 +1378,7 @@ class TestGetPasswordFromArgs:
 class TestGetWeb3Instance:
     """Test _get_web3_instance."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
         self.handler.context.params.polygon_ledger_rpc = "http://polygon-rpc.com"
@@ -1429,7 +1429,7 @@ class TestGetWeb3Instance:
 class TestCheckUsdcBalance:
     """Test _check_usdc_balance."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -1470,7 +1470,7 @@ class TestCheckUsdcBalance:
 class TestGetLifiQuote:
     """Test _get_lifi_quote."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler(is_polymarket=True)
         self.handler.context.params.slippages_for_swap = {
@@ -1609,7 +1609,7 @@ class TestGetLifiQuote:
 class TestSignAndSubmitTxWeb3:
     """Test _sign_and_submit_tx_web3."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -1656,7 +1656,7 @@ class TestSignAndSubmitTxWeb3:
 class TestCheckTransactionStatus:
     """Test _check_transaction_status."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -1704,7 +1704,7 @@ class TestCheckTransactionStatus:
 class TestGetNonceAndGasWeb3:
     """Test _get_nonce_and_gas_web3."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -1749,7 +1749,7 @@ class TestGetNonceAndGasWeb3:
 class TestEstimateGas:
     """Test _estimate_gas."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
@@ -1827,7 +1827,7 @@ class TestEstimateGas:
 class TestEnsureSufficientFundsForX402Payments:
     """Test _ensure_sufficient_funds_for_x402_payments."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler(is_polymarket=True)
         self.handler.context.params.x402_payment_requirements = {

@@ -236,6 +236,35 @@ class TestSaveAgentPerformanceSummary:
         assert saved.metrics[1].value == "75%"
         assert saved.metrics[2].value == "3.2 OLAS"
 
+    def test_save_keeps_na_when_existing_also_na(self) -> None:
+        """When both new and existing metrics are NA, the NA value is kept."""
+        existing = AgentPerformanceSummary(
+            timestamp=1700000000,
+            metrics=_na_metrics(),
+            agent_behavior="some_behavior",
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+        behaviour = _make_behaviour(existing)
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_na_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        # Both new and existing are NA so no replacement happens
+        for metric in saved.metrics:
+            assert metric.value == NA
+
     def test_save_preserves_agent_details_on_failure(self) -> None:
         """When new agent_details has all-None fields, preserve existing."""
         existing = _good_existing_summary()
