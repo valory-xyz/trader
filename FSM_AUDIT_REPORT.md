@@ -11,10 +11,10 @@
 - **Issue:** `Event.INSUFFICIENT_BALANCE: RefillRequiredRound` appeared twice in `PolymarketBetPlacementRound`'s transition function entry. Python silently overwrites the first with the second. Both mapped to the same target, but this copy-paste error could mask a future bug if one is changed.
 - **Fix applied:** Removed the duplicate entry, kept one with the comment.
 
-### M3 (elevated to Critical): `set(get_name(...))` Creates Set of Characters — FIXED
+### M3 (elevated to Critical): `set(get_name(...))` Creates Set of Characters — NOT FIXED (third-party package)
 - **File:** `packages/valory/skills/mech_interact_abci/rounds.py:207`
 - **Issue:** `set(get_name(SynchronizedData.mech_responses))` called `set()` on a string, producing a set of individual characters (`{'m','e','c','h','_','r','s','p','o','n'}`) instead of a set containing one string (`{"mech_responses"}`). This meant db_post_conditions validation checked against wrong keys.
-- **Fix applied:** Changed to `{get_name(SynchronizedData.mech_responses)}` (set literal).
+- **Status:** `mech_interact_abci` is a third-party package not maintained in this repository. The fix (`{get_name(SynchronizedData.mech_responses)}`) should be applied upstream.
 
 ## High Findings
 
@@ -49,7 +49,7 @@ No findings.
 
 | Severity | Count | Fixed |
 |----------|-------|-------|
-| Critical | 2     | 2     |
+| Critical | 2     | 1 (M3 is in third-party `mech_interact_abci`, not fixed here) |
 | High     | 0     | —     |
 | Medium   | 1     | 1     |
 | Test     | 3 (skills missing tests) | 0 (handled separately) |
