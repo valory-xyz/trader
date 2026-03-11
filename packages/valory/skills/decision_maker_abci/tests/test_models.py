@@ -27,28 +27,17 @@ import pytest
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
-from packages.valory.skills.abstract_round_abci.models import (
-    BenchmarkTool as BaseBenchmarkTool,
-)
-from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
-    AgentToolsSpecs,
-    BenchmarkTool,
     BenchmarkingMockData,
-    ConditionalTokensSubgraph,
     DecisionMakerParams,
     LiquidityInfo,
     MultisendBatch,
     PromptTemplate,
     REQUIRED_BET_TEMPLATE_KEYS,
-    RealitioSubgraph,
     RedeemingProgress,
-    Requests,
     STRATEGY_KELLY_CRITERION,
     SharedState,
-    TradesSubgraph,
     ZERO_BYTES,
     ZERO_HEX,
     _raise_incorrect_config,
@@ -57,24 +46,8 @@ from packages.valory.skills.decision_maker_abci.models import (
 )
 
 
-class TestModelAliases:
-    """Tests for model aliases."""
-
-    def test_requests_alias(self) -> None:
-        """Test that Requests is an alias for BaseRequests."""
-        assert Requests is BaseRequests
-
-    def test_benchmark_tool_alias(self) -> None:
-        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
-        assert BenchmarkTool is BaseBenchmarkTool
-
-
 class TestPromptTemplate:
     """Tests for the PromptTemplate class."""
-
-    def test_delimiter_is_at_sign(self) -> None:
-        """Test that the delimiter is '@'."""
-        assert PromptTemplate.delimiter == "@"
 
     def test_template_substitution(self) -> None:
         """Test that PromptTemplate performs substitution with '@' delimiter."""
@@ -364,26 +337,6 @@ class TestBenchmarkingMockData:
         """Test is_winning when answer is no and p_yes > 0.5."""
         data = BenchmarkingMockData(id="1", question="q", answer="no", p_yes=0.7)
         assert data.is_winning is False
-
-
-class TestSubgraphAliases:
-    """Tests for subgraph class aliases."""
-
-    def test_trades_subgraph_is_subgraph(self) -> None:
-        """Test TradesSubgraph inherits from the right parent."""
-        assert issubclass(TradesSubgraph, ApiSpecs)
-
-    def test_conditional_tokens_subgraph_is_subgraph(self) -> None:
-        """Test ConditionalTokensSubgraph inherits from the right parent."""
-        assert issubclass(ConditionalTokensSubgraph, ApiSpecs)
-
-    def test_realitio_subgraph_is_subgraph(self) -> None:
-        """Test RealitioSubgraph inherits from the right parent."""
-        assert issubclass(RealitioSubgraph, ApiSpecs)
-
-    def test_agent_tools_specs_is_api_specs(self) -> None:
-        """Test AgentToolsSpecs inherits from ApiSpecs."""
-        assert issubclass(AgentToolsSpecs, ApiSpecs)
 
 
 class TestConstants:

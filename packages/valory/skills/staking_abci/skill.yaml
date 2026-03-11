@@ -16,10 +16,10 @@ fingerprint:
   payloads.py: bafybeigncopqpz3a2nd6hgpsbqjqff2hsoa73abjck4ic5tnxpkzmfmkwu
   rounds.py: bafybeih2we7exxrb67aoyhmvsuntwstmeoq2qibrctyf6jed4mde6qo6wu
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
-  tests/test_behaviours.py: bafybeifqbdmmdmn3ufnx3qatctekxtgwld2n6sykwwkr224xvgs5alvgta
+  tests/test_behaviours.py: bafybeiaga5xh3hjrwh5sddm4vrcdkqml6twlfhfhrgbjbl7k2xbmwutuji
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
   tests/test_handlers.py: bafybeigoz6bdshjxsam6t7kzad273lwkucpvgrkmfak73qlssluopjfbzi
-  tests/test_models.py: bafybeienlqsgfyc5qnj5tko2gq7ogy7hbmdjfoqzfedmhrjwaffrmqwgv4
+  tests/test_models.py: bafybeicxywbnbxlebb7bhglieooujfibmni2ui6hqnw3tvxka65suaj42y
   tests/test_payloads.py: bafybeif6oourkbrvtxszekfdcwmnjgwaaobpbf3sglyrsbcy422jy2f2ge
   tests/test_rounds.py: bafybeifbam24yodcmtgr6262festb4x3id5k3nthrvxvjeqg4whh37adfe
 fingerprint_ignore_patterns: []

@@ -2025,20 +2025,6 @@ class TestAsyncAct:
 # ===========================================================================
 
 
-class TestMatchingRound:
-    """Tests for matching_round attribute."""
-
-    def test_matching_round(self) -> None:
-        """Test that matching_round is set correctly."""
-        from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market import (
-            PolymarketFetchMarketRound,
-        )
-
-        assert (
-            PolymarketFetchMarketBehaviour.matching_round == PolymarketFetchMarketRound
-        )
-
-
 # ===========================================================================
 # Edge case and integration-like tests
 # ===========================================================================

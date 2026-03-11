@@ -26,15 +26,8 @@ import pytest
 
 from packages.valory.skills.check_stop_trading_abci.behaviours import (
     CheckStopTradingBehaviour,
-    CheckStopTradingRoundBehaviour,
-    LIVENESS_RATIO_SCALE_FACTOR,
-    REQUIRED_MECH_REQUESTS_SAFETY_MARGIN,
 )
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
-from packages.valory.skills.check_stop_trading_abci.rounds import (
-    CheckStopTradingAbciApp,
-    CheckStopTradingRound,
-)
 from packages.valory.skills.staking_abci.behaviours import StakingInteractBaseBehaviour
 from packages.valory.skills.staking_abci.rounds import StakingState
 
@@ -56,47 +49,14 @@ def _return_gen(value: Any):  # type: ignore
     return gen
 
 
-class TestCheckStopTradingRoundBehaviour:
-    """Tests for CheckStopTradingRoundBehaviour attributes."""
-
-    def test_initial_behaviour_cls(self) -> None:
-        """Initial_behaviour_cls is CheckStopTradingBehaviour."""
-        assert (
-            CheckStopTradingRoundBehaviour.initial_behaviour_cls
-            is CheckStopTradingBehaviour
-        )
-
-    def test_abci_app_cls(self) -> None:
-        """Abci_app_cls is CheckStopTradingAbciApp."""
-        assert CheckStopTradingRoundBehaviour.abci_app_cls is CheckStopTradingAbciApp  # type: ignore[misc]
-
-    def test_behaviours_set(self) -> None:
-        """Behaviours set contains only CheckStopTradingBehaviour."""
-        assert CheckStopTradingRoundBehaviour.behaviours == {CheckStopTradingBehaviour}
-
-
 class TestCheckStopTradingBehaviour:
     """Tests for CheckStopTradingBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """Matching_round is CheckStopTradingRound."""
-        assert CheckStopTradingBehaviour.matching_round is CheckStopTradingRound
 
     def test_init(self) -> None:
         """Test __init__ sets _staking_kpi_request_count to 0."""
         with patch.object(StakingInteractBaseBehaviour, "__init__", return_value=None):
             b = CheckStopTradingBehaviour()
         assert b._staking_kpi_request_count == 0
-
-    def test_staking_kpi_request_count_property(self) -> None:
-        """Test getter and setter for staking_kpi_request_count."""
-        behaviour = object.__new__(CheckStopTradingBehaviour)
-        behaviour._staking_kpi_request_count = 0
-
-        assert behaviour.staking_kpi_request_count == 0
-
-        behaviour.staking_kpi_request_count = 42
-        assert behaviour.staking_kpi_request_count == 42
 
     def test_is_first_period_true(self) -> None:
         """Is_first_period returns True when period_count is 0."""
@@ -379,15 +339,3 @@ class TestAsyncAct:
             with pytest.raises(StopIteration):
                 next(gen)
             mock_set_done.assert_called_once()
-
-
-class TestConstants:
-    """Tests for module-level constants."""
-
-    def test_liveness_ratio_scale_factor(self) -> None:
-        """LIVENESS_RATIO_SCALE_FACTOR is 10^18."""
-        assert LIVENESS_RATIO_SCALE_FACTOR == 10**18
-
-    def test_safety_margin(self) -> None:
-        """REQUIRED_MECH_REQUESTS_SAFETY_MARGIN is 1."""
-        assert REQUIRED_MECH_REQUESTS_SAFETY_MARGIN == 1

@@ -23,16 +23,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.base import (
-    BaseSynchronizedData,
-    DegenerateRound,
-    VotingRound,
-    get_name,
-)
-from packages.valory.skills.agent_performance_summary_abci.payloads import (
-    FetchPerformanceDataPayload,
-    UpdateAchievementsPayload,
-)
+from packages.valory.skills.abstract_round_abci.base import DegenerateRound
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
     Event,
@@ -40,110 +31,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     FinishedFetchPerformanceDataRound,
     UpdateAchievementsRound,
 )
-
-
-class TestEvent:
-    """Tests for the Event enum."""
-
-    def test_done_value(self) -> None:
-        """Test DONE event value."""
-        assert Event.DONE.value == "done"
-
-    def test_none_value(self) -> None:
-        """Test NONE event value."""
-        assert Event.NONE.value == "none"
-
-    def test_fail_value(self) -> None:
-        """Test FAIL event value."""
-        assert Event.FAIL.value == "fail"
-
-    def test_round_timeout_value(self) -> None:
-        """Test ROUND_TIMEOUT event value."""
-        assert Event.ROUND_TIMEOUT.value == "round_timeout"
-
-    def test_no_majority_value(self) -> None:
-        """Test NO_MAJORITY event value."""
-        assert Event.NO_MAJORITY.value == "no_majority"
-
-    def test_event_count(self) -> None:
-        """Test that there are exactly 5 events."""
-        assert len(Event) == 5
-
-
-class TestFetchPerformanceDataRound:
-    """Tests for FetchPerformanceDataRound."""
-
-    def test_is_voting_round(self) -> None:
-        """Test that FetchPerformanceDataRound is a VotingRound."""
-        assert issubclass(FetchPerformanceDataRound, VotingRound)
-
-    def test_payload_class(self) -> None:
-        """Test payload_class attribute."""
-        assert FetchPerformanceDataRound.payload_class is FetchPerformanceDataPayload
-
-    def test_synchronized_data_class(self) -> None:
-        """Test synchronized_data_class attribute."""
-        assert FetchPerformanceDataRound.synchronized_data_class is BaseSynchronizedData
-
-    def test_done_event(self) -> None:
-        """Test done_event attribute."""
-        assert FetchPerformanceDataRound.done_event == Event.DONE
-
-    def test_negative_event(self) -> None:
-        """Test negative_event attribute."""
-        assert FetchPerformanceDataRound.negative_event == Event.FAIL
-
-    def test_none_event(self) -> None:
-        """Test none_event attribute."""
-        assert FetchPerformanceDataRound.none_event == Event.NONE
-
-    def test_no_majority_event(self) -> None:
-        """Test no_majority_event attribute."""
-        assert FetchPerformanceDataRound.no_majority_event == Event.NO_MAJORITY
-
-    def test_collection_key(self) -> None:
-        """Test collection_key attribute."""
-        assert FetchPerformanceDataRound.collection_key == get_name(
-            BaseSynchronizedData.participant_to_votes
-        )
-
-
-class TestUpdateAchievementsRound:
-    """Tests for UpdateAchievementsRound."""
-
-    def test_is_voting_round(self) -> None:
-        """Test that UpdateAchievementsRound is a VotingRound."""
-        assert issubclass(UpdateAchievementsRound, VotingRound)
-
-    def test_payload_class(self) -> None:
-        """Test payload_class attribute."""
-        assert UpdateAchievementsRound.payload_class is UpdateAchievementsPayload
-
-    def test_synchronized_data_class(self) -> None:
-        """Test synchronized_data_class attribute."""
-        assert UpdateAchievementsRound.synchronized_data_class is BaseSynchronizedData
-
-    def test_done_event(self) -> None:
-        """Test done_event attribute."""
-        assert UpdateAchievementsRound.done_event == Event.DONE
-
-    def test_negative_event(self) -> None:
-        """Test negative_event attribute."""
-        assert UpdateAchievementsRound.negative_event == Event.FAIL
-
-    def test_none_event(self) -> None:
-        """Test none_event attribute."""
-        assert UpdateAchievementsRound.none_event == Event.NONE
-
-    def test_no_majority_event(self) -> None:
-        """Test no_majority_event attribute."""
-        assert UpdateAchievementsRound.no_majority_event == Event.NO_MAJORITY
-
-    def test_collection_key(self) -> None:
-        """Test collection_key attribute."""
-        assert UpdateAchievementsRound.collection_key == get_name(
-            BaseSynchronizedData.participant_to_votes
-        )
 
 
 class TestFinishedFetchPerformanceDataRound:

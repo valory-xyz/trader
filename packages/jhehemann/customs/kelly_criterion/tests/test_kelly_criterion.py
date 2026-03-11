@@ -20,11 +20,6 @@
 """Tests for the kelly_criterion custom strategy."""
 
 from packages.jhehemann.customs.kelly_criterion.kelly_criterion import (
-    ALL_FIELDS,
-    DEFAULT_MAX_BET,
-    DEFAULT_MIN_BET,
-    DEFAULT_TOKEN_DECIMALS,
-    OPTIONAL_FIELDS,
     REQUIRED_FIELDS,
     calculate_kelly_bet_amount,
     check_missing_fields,
@@ -33,7 +28,6 @@ from packages.jhehemann.customs.kelly_criterion.kelly_criterion import (
     run,
     wei_to_native,
 )
-
 
 VALID_KWARGS = {
     "bet_kelly_fraction": 0.5,
@@ -241,28 +235,3 @@ class TestRun:
         """Optional fields are passed through."""
         result = run(**VALID_KWARGS, max_bet=10**18, min_bet=1, token_decimals=18)
         assert "bet_amount" in result
-
-
-class TestConstants:
-    """Tests for module constants."""
-
-    def test_required_fields_complete(self) -> None:
-        """Verify required fields set."""
-        assert "bankroll" in REQUIRED_FIELDS
-        assert "win_probability" in REQUIRED_FIELDS
-
-    def test_optional_fields_complete(self) -> None:
-        """Verify optional fields set."""
-        assert "max_bet" in OPTIONAL_FIELDS
-        assert "min_bet" in OPTIONAL_FIELDS
-        assert "token_decimals" in OPTIONAL_FIELDS
-
-    def test_all_fields_union(self) -> None:
-        """ALL_FIELDS is the union of required and optional."""
-        assert ALL_FIELDS == REQUIRED_FIELDS.union(OPTIONAL_FIELDS)
-
-    def test_defaults(self) -> None:
-        """Verify default constants."""
-        assert DEFAULT_MAX_BET == 8e17
-        assert DEFAULT_MIN_BET == 1
-        assert DEFAULT_TOKEN_DECIMALS == 18

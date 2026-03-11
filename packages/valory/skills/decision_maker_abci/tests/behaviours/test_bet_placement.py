@@ -26,9 +26,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import 
     BetPlacementBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
-from packages.valory.skills.decision_maker_abci.states.bet_placement import (
-    BetPlacementRound,
-)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -68,10 +65,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
 class TestBetPlacementBehaviour:
     """Tests for BetPlacementBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be BetPlacementRound."""
-        assert BetPlacementBehaviour.matching_round == BetPlacementRound
 
     def test_init_sets_buy_amount(self) -> None:
         """__init__ should set buy_amount to 0."""

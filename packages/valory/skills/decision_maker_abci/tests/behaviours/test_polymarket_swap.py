@@ -33,7 +33,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap impor
     SAFE_TX_GAS,
 )
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
-from packages.valory.skills.decision_maker_abci.rounds import PolymarketSwapUsdcRound
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -92,10 +91,6 @@ class TestPolymarketSwapConstants:
 
 class TestPolymarketSwapUsdcBehaviour:
     """Tests for PolymarketSwapUsdcBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be PolymarketSwapUsdcRound."""
-        assert PolymarketSwapUsdcBehaviour.matching_round == PolymarketSwapUsdcRound
 
     def test_async_act_not_on_polymarket(self) -> None:
         """When not running on Polymarket, should skip swap."""

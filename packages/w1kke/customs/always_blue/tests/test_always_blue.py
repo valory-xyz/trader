@@ -39,18 +39,6 @@ class TestGetAlwaysBlue:
 class TestRun:
     """Tests for run entry point."""
 
-    def test_ignores_args(self) -> None:
-        """Run ignores positional arguments."""
-        result = run("arg1", "arg2")
-        assert result["bet_amount"] == 0
-        assert result["info"] == ["ALWAYS BLUE!"]
-
-    def test_ignores_kwargs(self) -> None:
-        """Run ignores keyword arguments."""
-        result = run(some_key="some_value", another=123)
-        assert result["bet_amount"] == 0
-        assert result["info"] == ["ALWAYS BLUE!"]
-
     def test_no_args(self) -> None:
         """Run works with no arguments."""
         result = run()

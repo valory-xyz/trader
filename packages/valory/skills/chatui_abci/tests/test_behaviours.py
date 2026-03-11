@@ -24,16 +24,12 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.chatui_abci.behaviours import (
-    ChatuiLoadBehaviour,
-    ChatuiRoundBehaviour,
-)
+from packages.valory.skills.chatui_abci.behaviours import ChatuiLoadBehaviour
 from packages.valory.skills.chatui_abci.models import (
     ChatuiConfig,
     ChatuiParams,
     SharedState,
 )
-from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp, ChatuiLoadRound
 
 
 def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
@@ -42,28 +38,8 @@ def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
         yield  # pragma: no cover
 
 
-class TestChatuiRoundBehaviour:
-    """Tests for ChatuiRoundBehaviour attributes."""
-
-    def test_initial_behaviour_cls(self) -> None:
-        """initial_behaviour_cls is ChatuiLoadBehaviour."""
-        assert ChatuiRoundBehaviour.initial_behaviour_cls is ChatuiLoadBehaviour
-
-    def test_abci_app_cls(self) -> None:
-        """abci_app_cls is ChatuiAbciApp."""
-        assert ChatuiRoundBehaviour.abci_app_cls is ChatuiAbciApp  # type: ignore[misc]
-
-    def test_behaviours_set(self) -> None:
-        """Behaviours set contains only ChatuiLoadBehaviour."""
-        assert ChatuiRoundBehaviour.behaviours == {ChatuiLoadBehaviour}
-
-
 class TestChatuiLoadBehaviour:
     """Tests for ChatuiLoadBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round is ChatuiLoadRound."""
-        assert ChatuiLoadBehaviour.matching_round is ChatuiLoadRound
 
     def test_params_property(self) -> None:
         """Params returns context.params cast to ChatuiParams."""

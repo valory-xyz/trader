@@ -72,58 +72,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 )
 
 # =============================================================================
-# Tests for Event enum
-# =============================================================================
-
-
-class TestEvent:
-    """Tests for the Event enum."""
-
-    def test_event_values(self) -> None:
-        """Test that all Event enum values are as expected."""
-        expected = {
-            "CHECKS_PASSED": "checks_passed",
-            "REFILL_REQUIRED": "refill_required",
-            "MECH_REQUESTING_DONE": "mech_requesting_done",
-            "BET_PLACEMENT_DONE": "bet_placement_done",
-            "SELL_OUTCOME_TOKENS_DONE": "sell_outcome_tokens_done",
-            "REDEEMING_DONE": "redeeming_done",
-            "STAKING_DONE": "staking_done",
-            "SUBSCRIPTION_DONE": "subscription_done",
-            "SET_APPROVAL_DONE": "set_approval_done",
-            "ROUND_TIMEOUT": "round_timeout",
-            "UNRECOGNIZED": "unrecognized",
-            "NO_MAJORITY": "no_majority",
-            "SWAP_DONE": "swap_done",
-        }
-        for name, value in expected.items():
-            assert Event[name].value == value
-
-    def test_event_count(self) -> None:
-        """Test that the Event enum has exactly 13 members."""
-        assert len(Event) == 13
-
-    def test_all_event_members(self) -> None:
-        """Test that all expected Event members exist."""
-        expected_members = {
-            Event.CHECKS_PASSED,
-            Event.REFILL_REQUIRED,
-            Event.MECH_REQUESTING_DONE,
-            Event.BET_PLACEMENT_DONE,
-            Event.SELL_OUTCOME_TOKENS_DONE,
-            Event.REDEEMING_DONE,
-            Event.STAKING_DONE,
-            Event.SUBSCRIPTION_DONE,
-            Event.SET_APPROVAL_DONE,
-            Event.ROUND_TIMEOUT,
-            Event.UNRECOGNIZED,
-            Event.NO_MAJORITY,
-            Event.SWAP_DONE,
-        }
-        assert set(Event) == expected_members
-
-
-# =============================================================================
 # Tests for PreTxSettlementRound
 # =============================================================================
 

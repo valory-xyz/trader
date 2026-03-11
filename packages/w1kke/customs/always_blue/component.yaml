@@ -9,7 +9,7 @@ fingerprint:
   __init__.py: bafybeibkl7srd6nmuo7p6vcrueviwryjo6y25xfkckndkghnos7okadzpm
   always_blue.py: bafybeidyj2m7hwfrufjpzsqdihsvdmbzvqjatqasfs4r7ihxx2pwhoe6li
   tests/__init__.py: bafybeib2pev5doxcaxbybwbhnvmeuebqircn2avgtjudmopa6kr36kxbnq
-  tests/test_always_blue.py: bafybeib3xmx7k4ssawwnmntxtwqk43xpvwnsmmp57vzst4pck7c3fvgnty
+  tests/test_always_blue.py: bafybeieto2gboc3cbszuthtpxssmnkfxrlr2hz5u4say7adq3jyyvzugxe
 fingerprint_ignore_patterns: []
 entry_point: always_blue.py
 callable: run

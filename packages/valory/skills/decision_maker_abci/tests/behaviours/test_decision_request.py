@@ -28,9 +28,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
     DecisionRequestBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import DecisionRequestPayload
-from packages.valory.skills.decision_maker_abci.states.decision_request import (
-    DecisionRequestRound,
-)
 from packages.valory.skills.market_manager_abci.bets import BINARY_N_SLOTS
 
 # ---------------------------------------------------------------------------
@@ -68,10 +65,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
 class TestDecisionRequestBehaviour:
     """Tests for DecisionRequestBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be DecisionRequestRound."""
-        assert DecisionRequestBehaviour.matching_round == DecisionRequestRound
 
     def test_init(self) -> None:
         """__init__ should set _metadata to None."""

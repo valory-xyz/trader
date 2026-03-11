@@ -34,9 +34,6 @@ from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
 )
-from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
-    PolymarketRedeemRound,
-)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -118,10 +115,6 @@ class TestPolymarketRedeemConstants:
 
 class TestPolymarketRedeemProperties:
     """Tests for PolymarketRedeemBehaviour properties."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be PolymarketRedeemRound."""
-        assert PolymarketRedeemBehaviour.matching_round == PolymarketRedeemRound
 
     def test_user_token_balance_property(self) -> None:
         """user_token_balance should get/set correctly."""

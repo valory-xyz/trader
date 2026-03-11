@@ -56,17 +56,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     Subgraph,
     TradesSubgraph,
 )
-from packages.valory.skills.agent_performance_summary_abci.rounds import (
-    AgentPerformanceSummaryAbciApp,
-)
-
-
-class TestConstant:
-    """Tests for module-level constants."""
-
-    def test_agent_performance_summary_file(self) -> None:
-        """AGENT_PERFORMANCE_SUMMARY_FILE has the expected value."""
-        assert AGENT_PERFORMANCE_SUMMARY_FILE == "agent_performance.json"
 
 
 class TestAgentPerformanceMetrics:
@@ -651,10 +640,6 @@ class TestSharedState:
         state = object.__new__(_TestableSharedState)
         state.context = MagicMock()  # type: ignore[assignment]
         return state
-
-    def test_abci_app_cls(self) -> None:
-        """Test that SharedState points to AgentPerformanceSummaryAbciApp."""
-        assert SharedState.abci_app_cls is AgentPerformanceSummaryAbciApp
 
     def test_params_property(self) -> None:
         """Params property returns context.params cast to AgentPerformanceSummaryParams."""

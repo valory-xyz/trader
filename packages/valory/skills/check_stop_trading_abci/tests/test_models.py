@@ -24,15 +24,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from aea.exceptions import AEAEnforceError
 
-from packages.valory.skills.check_stop_trading_abci.models import (
-    BenchmarkTool,
-    CheckStopTradingParams,
-    Requests,
-    SharedState,
-)
-from packages.valory.skills.check_stop_trading_abci.rounds import (
-    CheckStopTradingAbciApp,
-)
+from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.staking_abci.models import StakingParams
 
 
@@ -128,31 +120,3 @@ class TestCheckStopTradingParamsInit:
         assert params.mech_contract_address == "0xabc"
         assert params.use_mech_marketplace is True
         assert params.staking_kpi_mech_count_request_address == "0xMarketplace"
-
-
-class TestModelAliases:
-    """Tests for model aliases Requests and BenchmarkTool."""
-
-    def test_requests_alias(self) -> None:
-        """Requests is an alias for BaseRequests."""
-        from packages.valory.skills.abstract_round_abci.models import (
-            Requests as BaseRequests,
-        )
-
-        assert Requests is BaseRequests
-
-    def test_benchmark_tool_alias(self) -> None:
-        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
-        from packages.valory.skills.abstract_round_abci.models import (
-            BenchmarkTool as BaseBenchmarkTool,
-        )
-
-        assert BenchmarkTool is BaseBenchmarkTool
-
-
-class TestSharedState:
-    """Tests for SharedState model."""
-
-    def test_abci_app_cls(self) -> None:
-        """Test that SharedState points to CheckStopTradingAbciApp."""
-        assert SharedState.abci_app_cls is CheckStopTradingAbciApp

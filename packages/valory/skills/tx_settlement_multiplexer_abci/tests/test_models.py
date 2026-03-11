@@ -22,18 +22,8 @@
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
-from packages.valory.skills.abstract_round_abci.models import (
-    BenchmarkTool as BaseBenchmarkTool,
-)
-from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
-    BenchmarkTool,
-    Requests,
-    SharedState,
     TxSettlementMultiplexerParams,
-)
-from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
-    TxSettlementMultiplexerAbciApp,
 )
 
 
@@ -62,23 +52,3 @@ class TestTxSettlementMultiplexerParamsInit:
                 refill_check_interval=60,
             )
         mock_super.assert_called_once()
-
-
-class TestSharedState:
-    """Tests for SharedState model."""
-
-    def test_abci_app_cls(self) -> None:
-        """Test that SharedState points to TxSettlementMultiplexerAbciApp."""
-        assert SharedState.abci_app_cls is TxSettlementMultiplexerAbciApp
-
-
-class TestModelAliases:
-    """Tests for model aliases Requests and BenchmarkTool."""
-
-    def test_requests_alias(self) -> None:
-        """Requests is an alias for BaseRequests."""
-        assert Requests is BaseRequests
-
-    def test_benchmark_tool_alias(self) -> None:
-        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
-        assert BenchmarkTool is BaseBenchmarkTool

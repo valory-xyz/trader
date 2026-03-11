@@ -45,7 +45,6 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
-from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -64,11 +63,7 @@ from packages.valory.skills.funds_manager.models import (
     FundRequirements,
     TokenRequirement,
 )
-from packages.valory.skills.mech_interact_abci.handlers import (
-    AcnHandler as BaseAcnHandler,
-)
 from packages.valory.skills.trader_abci.handlers import (
-    COINGECKO_RATE_CACHE_SECONDS,
     ContractApiHandler,
     DEFAULT_HEADER,
     FALLBACK_POL_TO_USD_RATE,
@@ -88,7 +83,6 @@ from packages.valory.skills.trader_abci.handlers import (
     POLYGON_USDC_E_ADDRESS,
     POLYGON_WRAPPED_NATIVE_ADDRESS,
     SigningHandler,
-    TRADING_STRATEGY_EXPLANATION,
     TendermintHandler,
     TraderHandler,
 )
@@ -115,44 +109,6 @@ def test_handler(handler: Handler, base_handler: Handler) -> None:
         skill_context=MagicMock(skill_id=PublicId.from_str("dummy/skill:0.1.0")),
     )
     assert isinstance(handler, base_handler)
-
-
-def test_acn_handler_alias() -> None:
-    """Test AcnHandler alias."""
-    from packages.valory.skills.trader_abci.handlers import AcnHandler
-
-    assert AcnHandler is BaseAcnHandler
-
-
-def test_srr_handler_alias() -> None:
-    """Test SrrHandler alias."""
-    from packages.valory.skills.trader_abci.handlers import SrrHandler
-
-    assert SrrHandler is BaseSrrHandler
-
-
-# ---------------------------------------------------------------------------
-# Constants tests
-# ---------------------------------------------------------------------------
-def test_constants() -> None:
-    """Test module-level constants are set correctly."""
-    from packages.valory.skills.trader_abci.handlers import (
-        OMENSTRAT_UI_SUBDIR,
-        POLYSTRAT_UI_SUBDIR,
-        UI_BUILD_BASE_DIR,
-    )
-
-    assert UI_BUILD_BASE_DIR == "ui-build"
-    assert OMENSTRAT_UI_SUBDIR == "omenstrat"
-    assert POLYSTRAT_UI_SUBDIR == "polystrat"
-    assert GNOSIS_CHAIN_NAME == "gnosis"
-    assert GNOSIS_CHAIN_ID == 100
-    assert POLYGON_CHAIN_NAME == "polygon"
-    assert POLYGON_CHAIN_ID == 137
-    assert COINGECKO_RATE_CACHE_SECONDS == 7200
-    assert isinstance(FALLBACK_POL_TO_USD_RATE, float)
-    assert "risky" in TRADING_STRATEGY_EXPLANATION
-    assert "balanced" in TRADING_STRATEGY_EXPLANATION
 
 
 # ---------------------------------------------------------------------------

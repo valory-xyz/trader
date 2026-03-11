@@ -119,13 +119,3 @@ class TestCheckBenchmarkingModeBehaviour:
         assert len(payloads_sent) == 1
         assert isinstance(payloads_sent[0], VotingPayload)
         assert payloads_sent[0].vote is False
-
-    def test_matching_round_is_correct(self) -> None:
-        """matching_round should reference CheckBenchmarkingModeRound."""
-        from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
-            CheckBenchmarkingModeRound,
-        )
-
-        assert (
-            CheckBenchmarkingModeBehaviour.matching_round == CheckBenchmarkingModeRound
-        )

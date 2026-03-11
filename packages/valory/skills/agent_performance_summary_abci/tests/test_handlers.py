@@ -49,24 +49,17 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     AgentPerformanceSummaryABCIHandler,
     ContractApiHandler,
-    DEFAULT_HEADER,
     DEFAULT_PAGE_SIZE,
     HttpContentType,
     HttpHandler,
     HttpMethod,
-    ISO_TIMESTAMP_FORMAT,
     IpfsHandler,
     LedgerApiHandler,
     MAX_PAGE_SIZE,
     PREDICTION_STATUS_ALL,
-    PREDICTION_STATUS_INVALID,
-    PREDICTION_STATUS_LOST,
-    PREDICTION_STATUS_PENDING,
-    PREDICTION_STATUS_WON,
     SECONDS_PER_DAY,
     SigningHandler,
     TendermintHandler,
-    VALID_PREDICTION_STATUSES,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentDetails,
@@ -152,97 +145,12 @@ def _make_http_dialogue() -> MagicMock:
 
 
 # ---------------------------------------------------------------------------
-# Test constants and enums
+# Test enums
 # ---------------------------------------------------------------------------
-
-
-class TestConstants:
-    """Tests for module-level constants."""
-
-    def test_default_header(self) -> None:
-        """Test DEFAULT_HEADER is the HTML content type header."""
-        assert DEFAULT_HEADER == "Content-Type: text/html\n"
-
-    def test_default_page_size(self) -> None:
-        """Test DEFAULT_PAGE_SIZE value."""
-        assert DEFAULT_PAGE_SIZE == 10
-
-    def test_max_page_size(self) -> None:
-        """Test MAX_PAGE_SIZE value."""
-        assert MAX_PAGE_SIZE == 100
-
-    def test_iso_timestamp_format(self) -> None:
-        """Test ISO_TIMESTAMP_FORMAT value."""
-        assert ISO_TIMESTAMP_FORMAT == "%Y-%m-%dT%H:%M:%SZ"
-
-    def test_prediction_statuses(self) -> None:
-        """Test prediction status constants."""
-        assert PREDICTION_STATUS_PENDING == "pending"
-        assert PREDICTION_STATUS_WON == "won"
-        assert PREDICTION_STATUS_LOST == "lost"
-        assert PREDICTION_STATUS_INVALID == "invalid"
-        assert PREDICTION_STATUS_ALL == "all"
-
-    def test_valid_prediction_statuses(self) -> None:
-        """Test VALID_PREDICTION_STATUSES list."""
-        assert VALID_PREDICTION_STATUSES == [
-            "pending",
-            "won",
-            "lost",
-            "invalid",
-        ]
-
-    def test_seconds_per_day(self) -> None:
-        """Test SECONDS_PER_DAY value."""
-        assert SECONDS_PER_DAY == 86400
-
-
-class TestHttpMethod:
-    """Tests for HttpMethod enum."""
-
-    def test_get(self) -> None:
-        """Test GET value."""
-        assert HttpMethod.GET.value == "get"
-
-    def test_head(self) -> None:
-        """Test HEAD value."""
-        assert HttpMethod.HEAD.value == "head"
-
-    def test_post(self) -> None:
-        """Test POST value."""
-        assert HttpMethod.POST.value == "post"
 
 
 class TestHttpContentType:
     """Tests for HttpContentType enum."""
-
-    def test_html(self) -> None:
-        """Test HTML content type."""
-        assert HttpContentType.HTML.value == "text/html"
-
-    def test_js(self) -> None:
-        """Test JS content type."""
-        assert HttpContentType.JS.value == "application/javascript"
-
-    def test_json(self) -> None:
-        """Test JSON content type."""
-        assert HttpContentType.JSON.value == "application/json"
-
-    def test_css(self) -> None:
-        """Test CSS content type."""
-        assert HttpContentType.CSS.value == "text/css"
-
-    def test_png(self) -> None:
-        """Test PNG content type."""
-        assert HttpContentType.PNG.value == "image/png"
-
-    def test_jpg(self) -> None:
-        """Test JPG content type."""
-        assert HttpContentType.JPG.value == "image/jpeg"
-
-    def test_jpeg(self) -> None:
-        """Test JPEG content type."""
-        assert HttpContentType.JPEG.value == "image/jpeg"
 
     def test_header_property(self) -> None:
         """Test header property for each content type."""

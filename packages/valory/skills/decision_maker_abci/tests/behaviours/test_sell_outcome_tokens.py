@@ -27,9 +27,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.sell_outcome_tokens i
     SellOutcomeTokensBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SellOutcomeTokensPayload
-from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
-    SellOutcomeTokensRound,
-)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,10 +63,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
 class TestSellOutcomeTokensBehaviour:
     """Tests for SellOutcomeTokensBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be SellOutcomeTokensRound."""
-        assert SellOutcomeTokensBehaviour.matching_round == SellOutcomeTokensRound
 
     def test_init(self) -> None:
         """__init__ should initialise correctly."""

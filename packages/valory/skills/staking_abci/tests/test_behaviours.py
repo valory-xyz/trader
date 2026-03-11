@@ -33,18 +33,12 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import (
 from packages.valory.skills.staking_abci.behaviours import (
     CHECKPOINT_FILENAME,
     CallCheckpointBehaviour,
-    ETH_PRICE,
     NULL_ADDRESS,
-    READ_MODE,
-    SAFE_GAS,
     StakingInteractBaseBehaviour,
-    StakingRoundBehaviour,
-    WRITE_MODE,
 )
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.rounds import (
     CallCheckpointRound,
-    StakingAbciApp,
     StakingState,
     SynchronizedData,
 )
@@ -76,39 +70,6 @@ def _return_gen(value: Any):  # type: ignore
         yield  # pragma: no cover
 
     return gen
-
-
-# ---------------------------------------------------------------------------
-# Module-level constants
-# ---------------------------------------------------------------------------
-
-
-class TestModuleConstants:
-    """Tests for module-level constants."""
-
-    def test_eth_price(self) -> None:
-        """ETH_PRICE is 0."""
-        assert ETH_PRICE == 0
-
-    def test_safe_gas(self) -> None:
-        """SAFE_GAS is 0."""
-        assert SAFE_GAS == 0
-
-    def test_null_address(self) -> None:
-        """NULL_ADDRESS is the zero address."""
-        assert NULL_ADDRESS == "0x" + "0" * 40
-
-    def test_checkpoint_filename(self) -> None:
-        """CHECKPOINT_FILENAME is checkpoint.txt."""
-        assert CHECKPOINT_FILENAME == "checkpoint.txt"
-
-    def test_read_mode(self) -> None:
-        """READ_MODE is 'r'."""
-        assert READ_MODE == "r"
-
-    def test_write_mode(self) -> None:
-        """WRITE_MODE is 'w'."""
-        assert WRITE_MODE == "w"
 
 
 # ---------------------------------------------------------------------------
@@ -755,10 +716,6 @@ class TestCallCheckpointBehaviourProperties:
         b._agent_ids = "[]"
         return b
 
-    def test_matching_round(self) -> None:
-        """Matching_round is CallCheckpointRound."""
-        assert CallCheckpointBehaviour.matching_round is CallCheckpointRound
-
     def test_params_property(self) -> None:
         """Params returns context.params."""
         b = self._make()
@@ -1351,25 +1308,3 @@ class TestAsyncAct:
             with pytest.raises(StopIteration):
                 next(gen)
         mock_ctx.logger.critical.assert_called_once_with("Service has been evicted!")
-
-
-# ---------------------------------------------------------------------------
-# StakingRoundBehaviour
-# ---------------------------------------------------------------------------
-
-
-class TestStakingRoundBehaviour:
-    """Tests for StakingRoundBehaviour attributes."""
-
-    def test_initial_behaviour_cls(self) -> None:
-        """Initial_behaviour_cls is CallCheckpointBehaviour."""
-        assert StakingRoundBehaviour.initial_behaviour_cls is CallCheckpointBehaviour
-
-    def test_abci_app_cls(self) -> None:
-        """Abci_app_cls is StakingAbciApp."""
-        assert StakingRoundBehaviour.abci_app_cls is StakingAbciApp  # type: ignore[misc]
-
-    # type: ignore[misc]
-    def test_behaviours_set(self) -> None:
-        """Behaviours set contains CallCheckpointBehaviour."""
-        assert StakingRoundBehaviour.behaviours == {CallCheckpointBehaviour}

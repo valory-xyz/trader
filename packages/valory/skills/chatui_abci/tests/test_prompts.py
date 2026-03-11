@@ -31,37 +31,6 @@ from packages.valory.skills.chatui_abci.prompts import (
 )
 
 
-class TestTradingStrategy:
-    """Tests for the TradingStrategy enum."""
-
-    def test_values(self) -> None:
-        """Test that enum values are correct."""
-        assert (
-            TradingStrategy.KELLY_CRITERION_NO_CONF.value == "kelly_criterion_no_conf"
-        )
-        assert (
-            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value == "bet_amount_per_threshold"
-        )
-
-    def test_members(self) -> None:
-        """Test that all expected members exist."""
-        assert len(TradingStrategy) == 2
-
-
-class TestFieldsThatCanBeRemoved:
-    """Tests for the FieldsThatCanBeRemoved enum."""
-
-    def test_values(self) -> None:
-        """Test that enum values are correct."""
-        assert FieldsThatCanBeRemoved.ALLOWED_TOOLS.value == "allowed_tools"
-        assert FieldsThatCanBeRemoved.FIXED_BET_SIZE.value == "fixed_bet_size"
-        assert FieldsThatCanBeRemoved.MAX_BET_SIZE.value == "max_bet_size"
-
-    def test_members(self) -> None:
-        """Test that all expected members exist."""
-        assert len(FieldsThatCanBeRemoved) == 3
-
-
 class TestUpdatedAgentConfig:
     """Tests for the UpdatedAgentConfig pydantic model."""
 

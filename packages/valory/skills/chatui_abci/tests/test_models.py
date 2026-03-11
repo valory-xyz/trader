@@ -35,7 +35,6 @@ from packages.valory.skills.chatui_abci.models import (
     ChatuiConfig,
     ChatuiParams,
     SharedState,
-    TradingStrategyUI,
 )
 
 # ---------------------------------------------------------------------------
@@ -248,27 +247,6 @@ class TestEnsureChatuiStoreDefaults:
         state._ensure_chatui_store()
 
         state._set_json_store.assert_called_once()  # type: ignore[attr-defined]
-
-
-# ---------------------------------------------------------------------------
-# TradingStrategyUI enum tests
-# ---------------------------------------------------------------------------
-
-
-class TestTradingStrategyUI:
-    """Tests for TradingStrategyUI enum values."""
-
-    def test_risky_value(self) -> None:
-        """RISKY member must have value 'risky'."""
-        assert TradingStrategyUI.RISKY.value == "risky"
-
-    def test_balanced_value(self) -> None:
-        """BALANCED member must have value 'balanced'."""
-        assert TradingStrategyUI.BALANCED.value == "balanced"
-
-    def test_member_count(self) -> None:
-        """Test that TradingStrategyUI must have exactly two members."""
-        assert len(TradingStrategyUI) == 2
 
 
 # ---------------------------------------------------------------------------

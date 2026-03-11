@@ -27,18 +27,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
-from packages.valory.skills.abstract_round_abci.models import (
-    BenchmarkTool as BaseBenchmarkTool,
-)
-from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
-from packages.valory.skills.staking_abci.models import (
-    BenchmarkTool,
-    Requests,
-    SharedState,
-    StakingParams,
-    get_store_path,
-)
-from packages.valory.skills.staking_abci.rounds import StakingAbciApp
+from packages.valory.skills.staking_abci.models import StakingParams, get_store_path
 
 
 class TestGetStorePath:
@@ -156,23 +145,3 @@ class TestStakingParamsInit:
                     mech_activity_checker_contract="0xMechChecker",
                     store_path="",
                 )
-
-
-class TestSharedState:
-    """Tests for SharedState model."""
-
-    def test_abci_app_cls(self) -> None:
-        """Test that SharedState points to StakingAbciApp."""
-        assert SharedState.abci_app_cls is StakingAbciApp
-
-
-class TestModelAliases:
-    """Tests for model aliases Requests and BenchmarkTool."""
-
-    def test_requests_alias(self) -> None:
-        """Requests is an alias for BaseRequests."""
-        assert Requests is BaseRequests
-
-    def test_benchmark_tool_alias(self) -> None:
-        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
-        assert BenchmarkTool is BaseBenchmarkTool

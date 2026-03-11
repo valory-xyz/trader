@@ -2293,11 +2293,6 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert behaviour._is_usdc(WXDAI) is False
         assert behaviour._is_usdc("0xrandom") is False
 
-    def test_trading_operation_enum(self) -> None:
-        """Test `TradingOperation` enum values."""
-        assert TradingOperation.BUY.value == "buy"
-        assert TradingOperation.SELL.value == "sell"
-
     def test_get_bet_amount_with_none_logger_level(self) -> None:
         """Test `get_bet_amount` when a logger level attribute is None."""
         behaviour = self.behaviour

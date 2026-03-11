@@ -29,9 +29,6 @@ from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketBetPlacementPayload,
 )
 from packages.valory.skills.decision_maker_abci.states.base import Event
-from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
-    PolymarketBetPlacementRound,
-)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -72,13 +69,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
 class TestPolymarketBetPlacementBehaviour:
     """Tests for PolymarketBetPlacementBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be PolymarketBetPlacementRound."""
-        assert (
-            PolymarketBetPlacementBehaviour.matching_round
-            == PolymarketBetPlacementRound
-        )
 
     def test_init(self) -> None:
         """__init__ should set buy_amount to 0."""

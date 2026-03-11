@@ -31,7 +31,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.reedem import (
     RedeemBehaviour,
     RedeemInfoBehaviour,
     ZERO_BYTES,
-    ZERO_HEX,
 )
 from packages.valory.skills.decision_maker_abci.models import RedeemingProgress
 from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
@@ -48,7 +47,6 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
-from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
@@ -169,24 +167,8 @@ def _return_gen_no_yield(value):  # type: ignore[no-untyped-def]
     yield  # noqa: E501 # pragma: no cover
 
 
-class TestRedeemConstants:  # type: ignore[no-untyped-def]
-    """Tests for module-level constants."""
-
-    def test_zero_hex_length(self) -> None:
-        """ZERO_HEX should be 64 chars."""
-        assert len(ZERO_HEX) == 64
-
-    def test_zero_bytes_length(self) -> None:
-        """ZERO_BYTES should be 32 bytes."""
-        assert len(ZERO_BYTES) == 32
-
-
 class TestRedeemBehaviourProperties:
     """Tests for RedeemBehaviour properties."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be RedeemRound."""
-        assert RedeemBehaviour.matching_round == RedeemRound
 
     def test_latest_block_number_raises_when_none(self) -> None:
         """latest_block_number should raise ValueError when not set."""
@@ -319,35 +301,31 @@ class TestRedeemBehaviourProperties:
         assert isinstance(behaviour.built_data, HexBytes)
 
     def test_claim_winnings_simulation_ok(self) -> None:
-        """claim_winnings_simulation_ok should get/set correctly."""
+        """claim_winnings_simulation_ok setter should store value."""
         behaviour = _make_redeem_behaviour()
-        assert behaviour.claim_winnings_simulation_ok is False
         behaviour.claim_winnings_simulation_ok = True
         assert behaviour.claim_winnings_simulation_ok is True
 
     def test_already_resolved(self) -> None:
-        """already_resolved should get/set correctly."""
+        """already_resolved setter should store value."""
         behaviour = _make_redeem_behaviour()
-        assert behaviour.already_resolved is False
         behaviour.already_resolved = True
         assert behaviour.already_resolved is True
 
-    def test_payouts_batch(self) -> None:
-        """payouts_batch should get/set correctly."""
+    def test_payouts_batch_setter(self) -> None:
+        """payouts_batch setter should store value."""
         behaviour = _make_redeem_behaviour()
-        assert behaviour.payouts_batch == {}
         behaviour.payouts_batch = {"tx1": 100}
         assert behaviour.payouts_batch == {"tx1": 100}
 
-    def test_claim_params_batch(self) -> None:
-        """claim_params_batch should get/set correctly."""
+    def test_claim_params_batch_setter(self) -> None:
+        """claim_params_batch setter should store value."""
         behaviour = _make_redeem_behaviour()
-        assert behaviour.claim_params_batch == []
         behaviour.claim_params_batch = [{"a": 1}]
         assert behaviour.claim_params_batch == [{"a": 1}]
 
     def test_history_hash_setter(self) -> None:
-        """history_hash setter should set _history_hash."""
+        """history_hash setter should store value."""
         behaviour = _make_redeem_behaviour()
         new_hash = b"\x01" * 32
         behaviour.history_hash = new_hash

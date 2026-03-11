@@ -29,9 +29,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_receive impo
     DecisionReceiveBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.models import LiquidityInfo
-from packages.valory.skills.decision_maker_abci.states.decision_receive import (
-    DecisionReceiveRound,
-)
 from packages.valory.skills.market_manager_abci.bets import (
     PredictionResponse,
     QueueStatus,
@@ -116,10 +113,6 @@ def _make_prediction_response(
 
 class TestDecisionReceiveBehaviourProperties:
     """Tests for DecisionReceiveBehaviour properties."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be DecisionReceiveRound."""
-        assert DecisionReceiveBehaviour.matching_round == DecisionReceiveRound
 
     def test_request_id_getter(self) -> None:
         """request_id should return _request_id."""

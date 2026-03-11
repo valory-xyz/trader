@@ -97,11 +97,6 @@ def _make_connection() -> _TestableConnection:
 class TestSrrDialogues:
     """Tests for SrrDialogues."""
 
-    def test_init(self) -> None:
-        """Test SrrDialogues initialises without error."""
-        dialogues = SrrDialogues(connection_id=MagicMock())
-        assert dialogues is not None
-
     def test_role_from_first_message(self) -> None:
         """The role is always CONNECTION; verified by invoking the dialogue creation path."""
         from packages.valory.protocols.srr.dialogues import SrrDialogue

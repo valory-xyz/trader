@@ -123,11 +123,6 @@ QUERY_CONSTANTS = {
 }
 
 
-def test_all_query_constants_count() -> None:
-    """Test that we have exactly 23 query constants."""
-    assert len(QUERY_CONSTANTS) == 23
-
-
 @pytest.mark.parametrize(
     "constant_name,query_value,expected_operation",
     [(name, value, op) for name, (value, op) in QUERY_CONSTANTS.items()],

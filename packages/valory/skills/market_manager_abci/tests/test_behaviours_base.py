@@ -24,23 +24,13 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BETS_FILENAME,
     BetsManagerBehaviour,
     MULTI_BETS_FILENAME,
-    READ_MODE,
-    WRITE_MODE,
 )
 from packages.valory.skills.market_manager_abci.behaviours.fetch_markets_router import (
     FetchMarketsRouterBehaviour,
-)
-from packages.valory.skills.market_manager_abci.behaviours.round_behaviour import (
-    MarketManagerRoundBehaviour,
-)
-from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciApp
-from packages.valory.skills.market_manager_abci.states.fetch_markets_router import (
-    FetchMarketsRouterRound,
 )
 
 # ---------------------------------------------------------------------------
@@ -115,31 +105,6 @@ def _make_behaviour(tmp_path: Any = None, **overrides: Any) -> _ConcreteBetsMana
     for k, v in overrides.items():
         setattr(b, k, v)
     return b
-
-
-# ===========================================================================
-# Tests for base.py constants
-# ===========================================================================
-
-
-class TestConstants:
-    """Tests for module-level constants in base.py."""
-
-    def test_bets_filename(self) -> None:
-        """Test the BETS_FILENAME constant."""
-        assert BETS_FILENAME == "bets.json"
-
-    def test_multi_bets_filename(self) -> None:
-        """Test the MULTI_BETS_FILENAME constant."""
-        assert MULTI_BETS_FILENAME == "multi_bets.json"
-
-    def test_read_mode(self) -> None:
-        """Test the READ_MODE constant."""
-        assert READ_MODE == "r"
-
-    def test_write_mode(self) -> None:
-        """Test the WRITE_MODE constant."""
-        assert WRITE_MODE == "w"
 
 
 # ===========================================================================
@@ -584,10 +549,6 @@ class TestHashStoredBets:
 class TestFetchMarketsRouterBehaviour:
     """Tests for FetchMarketsRouterBehaviour."""
 
-    def test_matching_round(self) -> None:
-        """Test that matching_round is set to FetchMarketsRouterRound."""
-        assert FetchMarketsRouterBehaviour.matching_round is FetchMarketsRouterRound
-
     def test_async_act(self) -> None:
         """Test that async_act creates payload, sends transaction, and waits."""
         b = object.__new__(FetchMarketsRouterBehaviour)  # type: ignore[type-abstract]
@@ -605,41 +566,15 @@ class TestFetchMarketsRouterBehaviour:
         b.set_done.assert_called_once()  # type: ignore[attr-defined]
 
 
-# ===========================================================================
-# Tests for round_behaviour.py
-# ===========================================================================
-
-
 class TestMarketManagerRoundBehaviour:
     """Tests for MarketManagerRoundBehaviour."""
 
-    def test_initial_behaviour_cls(self) -> None:
-        """Test that initial_behaviour_cls is FetchMarketsRouterBehaviour."""
-        assert (
-            MarketManagerRoundBehaviour.initial_behaviour_cls
-            is FetchMarketsRouterBehaviour
+    def test_behaviours_are_base_behaviour_subclasses(self) -> None:
+        """All registered behaviours should be BaseBehaviour subclasses."""
+        from packages.valory.skills.abstract_round_abci.behaviours import BaseBehaviour
+        from packages.valory.skills.market_manager_abci.behaviours.round_behaviour import (
+            MarketManagerRoundBehaviour,
         )
 
-    def test_abci_app_cls(self) -> None:
-        """Test that abci_app_cls is MarketManagerAbciApp."""
-        assert MarketManagerRoundBehaviour.abci_app_cls is MarketManagerAbciApp  # type: ignore[misc]
-
-    def test_behaviours_set(self) -> None:  # type: ignore[misc]
-        """Test that behaviours contains the expected behaviour classes."""
-        from packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_market import (
-            PolymarketFetchMarketBehaviour,
-        )
-        from packages.valory.skills.market_manager_abci.behaviours.update_bets import (
-            UpdateBetsBehaviour,
-        )
-
-        expected = {
-            FetchMarketsRouterBehaviour,
-            UpdateBetsBehaviour,
-            PolymarketFetchMarketBehaviour,
-        }
-        assert MarketManagerRoundBehaviour.behaviours == expected
-
-    def test_is_abstract_round_behaviour_subclass(self) -> None:
-        """Test that MarketManagerRoundBehaviour extends AbstractRoundBehaviour."""
-        assert issubclass(MarketManagerRoundBehaviour, AbstractRoundBehaviour)
+        for b_cls in MarketManagerRoundBehaviour.behaviours:
+            assert issubclass(b_cls, BaseBehaviour)

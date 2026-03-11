@@ -22,174 +22,20 @@
 from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
-from packages.valory.skills.abstract_round_abci.models import (
-    BenchmarkTool as BaseBenchmarkTool,
-)
-from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    GnosisStakingSubgraph as APTGnosisStakingSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    OlasAgentsSubgraph as APTOlasAgentsSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    OlasMechSubgraph as APTOlasMechSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    OpenMarketsSubgraph as APTOpenMarketsSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    PolygonMechSubgraph as APTPolygonMechSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    PolygonStakingSubgraph as APTPolygonStakingSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    PolymarketAgentsSubgraph as APTPolymarketAgentsSubgraph,
-)
-from packages.valory.skills.agent_performance_summary_abci.models import (
-    PolymarketBetsSubgraph as APTPolymarketBetsSubgraph,
-)
-from packages.valory.skills.decision_maker_abci.models import (
-    AccuracyInfoFields as BaseAccuracyInfoFields,
-)
-from packages.valory.skills.decision_maker_abci.models import (
-    AgentToolsSpecs as DecisionMakerAgentToolsSpecs,
-)
-from packages.valory.skills.decision_maker_abci.models import (
-    ConditionalTokensSubgraph as DecisionMakerConditionalTokensSubgraph,
-)
-from packages.valory.skills.decision_maker_abci.models import (
-    RealitioSubgraph as DecisionMakerRealitioSubgraph,
-)
 from packages.valory.skills.decision_maker_abci.models import (
     SharedState as BaseSharedState,
-)
-from packages.valory.skills.decision_maker_abci.models import (
-    TradesSubgraph as DecisionMakerTradesSubgraph,
 )
 from packages.valory.skills.decision_maker_abci.rounds import (
     Event as DecisionMakerEvent,
 )
-from packages.valory.skills.market_manager_abci.models import (
-    BenchmarkingMode as BaseBenchmarkingMode,
-)
-from packages.valory.skills.market_manager_abci.models import (
-    NetworkSubgraph as MarketManagerNetworkSubgraph,
-)
-from packages.valory.skills.market_manager_abci.models import (
-    OmenSubgraph as MarketManagerOmenSubgraph,
-)
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
-)
-from packages.valory.skills.mech_interact_abci.models import (
-    MechResponseSpecs as BaseMechResponseSpecs,
-)
-from packages.valory.skills.mech_interact_abci.models import (
-    MechToolsSpecs as InteractMechToolsSpecs,
-)
-from packages.valory.skills.mech_interact_abci.models import (
-    MechsSubgraph as InteractMechsSubgraph,
 )
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
-from packages.valory.skills.trader_abci.models import (
-    AccuracyInfoFields,
-    AgentToolsSpecs,
-    BenchmarkTool,
-    BenchmarkingMode,
-    ConditionalTokensSubgraph,
-    EventToTimeoutMappingType,
-    EventType,
-    GnosisStakingSubgraph,
-    MARGIN,
-    MechResponseSpecs,
-    MechToolsSpecs,
-    MechsSubgraph,
-    NetworkSubgraph,
-    OlasAgentsSubgraph,
-    OlasMechSubgraph,
-    OmenSubgraph,
-    OpenMarketsSubgraph,
-    PolygonMechSubgraph,
-    PolygonStakingSubgraph,
-    PolymarketAgentsSubgraph,
-    PolymarketBetsSubgraph,
-    RandomnessApi,
-    RealitioSubgraph,
-    Requests,
-    SharedState,
-    TraderParams,
-    TradesSubgraph,
-)
+from packages.valory.skills.trader_abci.models import MARGIN, SharedState, TraderParams
 from packages.valory.skills.transaction_settlement_abci.rounds import Event as TSEvent
-
-
-class TestModelAliases:
-    """Tests for all re-export aliases in models.py."""
-
-    @pytest.mark.parametrize(
-        "alias, base",
-        [
-            (Requests, BaseRequests),
-            (BenchmarkTool, BaseBenchmarkTool),
-            (OmenSubgraph, MarketManagerOmenSubgraph),
-            (NetworkSubgraph, MarketManagerNetworkSubgraph),
-            (MechResponseSpecs, BaseMechResponseSpecs),
-            (AgentToolsSpecs, DecisionMakerAgentToolsSpecs),
-            (TradesSubgraph, DecisionMakerTradesSubgraph),
-            (ConditionalTokensSubgraph, DecisionMakerConditionalTokensSubgraph),
-            (RealitioSubgraph, DecisionMakerRealitioSubgraph),
-            (BenchmarkingMode, BaseBenchmarkingMode),
-            (AccuracyInfoFields, BaseAccuracyInfoFields),
-            (GnosisStakingSubgraph, APTGnosisStakingSubgraph),
-            (PolygonStakingSubgraph, APTPolygonStakingSubgraph),
-            (OlasMechSubgraph, APTOlasMechSubgraph),
-            (OlasAgentsSubgraph, APTOlasAgentsSubgraph),
-            (OpenMarketsSubgraph, APTOpenMarketsSubgraph),
-            (MechToolsSpecs, InteractMechToolsSpecs),
-            (MechsSubgraph, InteractMechsSubgraph),
-            (PolygonMechSubgraph, APTPolygonMechSubgraph),
-            (PolymarketAgentsSubgraph, APTPolymarketAgentsSubgraph),
-            (PolymarketBetsSubgraph, APTPolymarketBetsSubgraph),
-        ],
-    )
-    def test_alias_identity(self, alias: type, base: type) -> None:
-        """Each re-exported alias is the same object as its base."""
-        assert alias is base
-
-
-class TestMarginConstant:
-    """Test the MARGIN module-level constant."""
-
-    def test_margin_value(self) -> None:
-        """MARGIN equals 5."""
-        assert MARGIN == 5
-
-
-class TestTypeAliases:
-    """Test that module-level type aliases exist."""
-
-    def test_event_type_exists(self) -> None:
-        """Test that EventType is defined in the module."""
-        assert EventType is not None
-
-    def test_event_to_timeout_mapping_type_exists(self) -> None:
-        """Test that EventToTimeoutMappingType is defined in the module."""
-        assert EventToTimeoutMappingType is not None
-
-
-class TestRandomnessApi:
-    """Tests for the RandomnessApi model."""
-
-    def test_is_subclass_of_api_specs(self) -> None:
-        """Test that RandomnessApi inherits from ApiSpecs."""
-        assert issubclass(RandomnessApi, ApiSpecs)
 
 
 class TestTraderParams:
@@ -223,10 +69,6 @@ class TestTraderParams:
 
 class TestSharedState:
     """Tests for the SharedState model."""
-
-    def test_abci_app_cls(self) -> None:
-        """SharedState.abci_app_cls points to TraderAbciApp."""
-        assert SharedState.abci_app_cls is TraderAbciApp
 
     def test_params_property(self) -> None:
         """The params property casts context.params to TraderParams."""

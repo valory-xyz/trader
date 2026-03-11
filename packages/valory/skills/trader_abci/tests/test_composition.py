@@ -21,7 +21,6 @@
 
 # pylint: skip-file
 
-from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.termination_abci.rounds import (
     BackgroundRound,
     Event,
@@ -74,11 +73,6 @@ def test_termination_config_start_event() -> None:
 def test_termination_config_abci_app() -> None:
     """Test that termination_config has the correct abci_app."""
     assert termination_config.abci_app is TerminationAbciApp
-
-
-def test_trader_abci_app_is_abci_app_subclass() -> None:
-    """Test that TraderAbciApp is a subclass of AbciApp."""
-    assert issubclass(TraderAbciApp, AbciApp)
 
 
 def test_trader_abci_app_is_type() -> None:

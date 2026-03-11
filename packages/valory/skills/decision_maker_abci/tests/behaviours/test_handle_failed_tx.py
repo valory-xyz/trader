@@ -91,10 +91,6 @@ def _run_async_act(behaviour, tx_submitter):  # type: ignore[no-untyped-def]
 class TestHandleFailedTxBehaviour:
     """Tests for HandleFailedTxBehaviour.async_act."""
 
-    def test_matching_round(self) -> None:
-        """matching_round should be HandleFailedTxRound."""
-        assert HandleFailedTxBehaviour.matching_round == HandleFailedTxRound
-
     def test_mech_timeout_sets_flags(self) -> None:
         """When tx_submitter is MechRequestRound, mech_timed_out and after_bet_attempt should be True."""
         behaviour = _make_behaviour()

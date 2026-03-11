@@ -25,9 +25,7 @@ from typing import Any, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
-    AgentPerformanceSummaryRoundBehaviour,
     DEFAULT_MECH_FEE,
     FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
@@ -69,11 +67,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
     UpdateAchievementsPayload,
-)
-from packages.valory.skills.agent_performance_summary_abci.rounds import (
-    AgentPerformanceSummaryAbciApp,
-    FetchPerformanceDataRound,
-    UpdateAchievementsRound,
 )
 
 # ---------------------------------------------------------------------------
@@ -316,12 +309,6 @@ class TestFetchPerformanceSummaryBehaviourInit:
         assert b._placed_titles == set()
         assert b._pol_usdc_rate is None
         assert b._pol_usdc_rate_timestamp == 0.0
-
-    def test_matching_round(self) -> None:
-        """matching_round is FetchPerformanceDataRound."""
-        assert (
-            FetchPerformanceSummaryBehaviour.matching_round is FetchPerformanceDataRound
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -3481,10 +3468,6 @@ class TestUpdateAchievementsBehaviourInit:
             b = UpdateAchievementsBehaviour()
         assert b._bet_payout_checker._achievement_type == "omen/payout"
 
-    def test_matching_round(self) -> None:
-        """matching_round is UpdateAchievementsRound."""
-        assert UpdateAchievementsBehaviour.matching_round is UpdateAchievementsRound
-
 
 class TestUpdateAchievementsAsyncAct:
     """Tests for UpdateAchievementsBehaviour.async_act."""  # type: ignore[no-untyped-def]
@@ -3603,40 +3586,6 @@ class TestUpdateAchievementsFinishBehaviour:
             except StopIteration:  # type: ignore[attr-defined]
                 pass
             b.set_done.assert_called_once()  # type: ignore[attr-defined]
-
-
-# ---------------------------------------------------------------------------
-# AgentPerformanceSummaryRoundBehaviour
-# ---------------------------------------------------------------------------
-
-
-class TestAgentPerformanceSummaryRoundBehaviour:
-    """Tests for AgentPerformanceSummaryRoundBehaviour."""
-
-    def test_is_abstract_round_behaviour(self) -> None:
-        """Is a subclass of AbstractRoundBehaviour."""
-        assert issubclass(AgentPerformanceSummaryRoundBehaviour, AbstractRoundBehaviour)
-
-    def test_initial_behaviour_cls(self) -> None:
-        """initial_behaviour_cls is FetchPerformanceSummaryBehaviour."""
-        assert (
-            AgentPerformanceSummaryRoundBehaviour.initial_behaviour_cls
-            is FetchPerformanceSummaryBehaviour
-        )
-
-    def test_abci_app_cls(self) -> None:
-        """abci_app_cls is AgentPerformanceSummaryAbciApp."""  # type: ignore[misc]
-        assert (
-            AgentPerformanceSummaryRoundBehaviour.abci_app_cls  # type: ignore[misc]
-            is AgentPerformanceSummaryAbciApp
-        )
-
-    def test_behaviours_set(self) -> None:
-        """Behaviours set contains both behaviour classes."""
-        assert AgentPerformanceSummaryRoundBehaviour.behaviours == {
-            FetchPerformanceSummaryBehaviour,
-            UpdateAchievementsBehaviour,
-        }
 
 
 # ---------------------------------------------------------------------------

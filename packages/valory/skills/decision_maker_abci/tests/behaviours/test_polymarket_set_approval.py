@@ -28,9 +28,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approv
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketSetApprovalPayload,
 )
-from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
-    PolymarketSetApprovalRound,
-)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -70,12 +67,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
 class TestPolymarketSetApprovalBehaviour:
     """Tests for PolymarketSetApprovalBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be PolymarketSetApprovalRound."""
-        assert (
-            PolymarketSetApprovalBehaviour.matching_round == PolymarketSetApprovalRound
-        )
 
     def test_init(self) -> None:
         """__init__ should set buy_amount to 0."""

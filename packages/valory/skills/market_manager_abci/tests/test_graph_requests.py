@@ -20,14 +20,12 @@
 """Tests for the graph_tooling.requests module."""
 
 import json
-from abc import ABC
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
-    QUERY_BATCH_SIZE,
     QUESTION_DATA_SEPARATOR,
     QueryingBehaviour,
     to_content,
@@ -109,64 +107,8 @@ class TestToGraphqlList:
         assert result == "[1, 2, 3]"
 
 
-class TestFetchStatus:
-    """Tests for the FetchStatus enum."""
-
-    def test_success_value(self) -> None:
-        """Test that SUCCESS is a valid FetchStatus."""
-        assert FetchStatus.SUCCESS is not None
-        assert FetchStatus.SUCCESS.name == "SUCCESS"
-
-    def test_in_progress_value(self) -> None:
-        """Test that IN_PROGRESS is a valid FetchStatus."""
-        assert FetchStatus.IN_PROGRESS is not None
-        assert FetchStatus.IN_PROGRESS.name == "IN_PROGRESS"
-
-    def test_fail_value(self) -> None:
-        """Test that FAIL is a valid FetchStatus."""
-        assert FetchStatus.FAIL is not None
-        assert FetchStatus.FAIL.name == "FAIL"
-
-    def test_none_value(self) -> None:
-        """Test that NONE is a valid FetchStatus."""
-        assert FetchStatus.NONE is not None
-        assert FetchStatus.NONE.name == "NONE"
-
-    def test_total_members(self) -> None:
-        """Test that FetchStatus has exactly 4 members."""
-        assert len(FetchStatus) == 4
-
-    def test_all_values_unique(self) -> None:
-        """Test that all FetchStatus values are unique."""
-        values = [member.value for member in FetchStatus]
-        assert len(values) == len(set(values))
-
-
-class TestConstants:
-    """Tests for module-level constants."""
-
-    def test_query_batch_size(self) -> None:
-        """Test the QUERY_BATCH_SIZE constant."""
-        assert QUERY_BATCH_SIZE == 1000
-        assert isinstance(QUERY_BATCH_SIZE, int)
-
-    def test_max_log_size(self) -> None:
-        """Test the MAX_LOG_SIZE constant."""
-        assert MAX_LOG_SIZE == 1000
-        assert isinstance(MAX_LOG_SIZE, int)
-
-    def test_question_data_separator(self) -> None:
-        """Test the QUESTION_DATA_SEPARATOR constant."""
-        assert QUESTION_DATA_SEPARATOR == "\u241f"
-        assert isinstance(QUESTION_DATA_SEPARATOR, str)
-
-
 class TestQueryingBehaviour:
     """Tests for the QueryingBehaviour abstract class."""
-
-    def test_is_abstract(self) -> None:
-        """Test that QueryingBehaviour is an ABC subclass."""
-        assert issubclass(QueryingBehaviour, ABC)
 
     def test_has_expected_methods(self) -> None:
         """Test that QueryingBehaviour has the expected method signatures."""

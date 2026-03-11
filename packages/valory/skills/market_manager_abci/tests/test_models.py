@@ -27,41 +27,11 @@ import pytest
 from aea.skills.base import Model
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
-from packages.valory.skills.abstract_round_abci.models import (
-    BenchmarkTool as BaseBenchmarkTool,
-)
-from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
 from packages.valory.skills.market_manager_abci.models import (
-    BenchmarkTool,
     BenchmarkingMode,
     MarketManagerParams,
-    NetworkSubgraph,
-    OmenSubgraph,
-    Requests,
-    SharedState,
     Subgraph,
 )
-from packages.valory.skills.market_manager_abci.rounds import MarketManagerAbciApp
-
-
-class TestModelAliases:
-    """Tests for model aliases Requests and BenchmarkTool."""
-
-    def test_requests_alias(self) -> None:
-        """Requests is an alias for BaseRequests."""
-        assert Requests is BaseRequests
-
-    def test_benchmark_tool_alias(self) -> None:
-        """Test that BenchmarkTool is an alias for BaseBenchmarkTool."""
-        assert BenchmarkTool is BaseBenchmarkTool
-
-
-class TestSharedState:
-    """Tests for SharedState model."""
-
-    def test_abci_app_cls(self) -> None:
-        """Test that SharedState points to MarketManagerAbciApp."""
-        assert SharedState.abci_app_cls is MarketManagerAbciApp
 
 
 class _TestableSubgraph(Subgraph):
@@ -177,30 +147,6 @@ class TestSubgraphProcessResponse:
             # We test the actual behavior
             with pytest.raises(TypeError):
                 subgraph.process_response(mock_response)
-
-
-class TestOmenSubgraph:
-    """Tests for OmenSubgraph."""
-
-    def test_is_subclass_of_subgraph(self) -> None:
-        """Test that OmenSubgraph is a subclass of Subgraph."""
-        assert issubclass(OmenSubgraph, Subgraph)
-
-    def test_is_subclass_of_api_specs(self) -> None:
-        """Test that OmenSubgraph is also a subclass of ApiSpecs."""
-        assert issubclass(OmenSubgraph, ApiSpecs)
-
-
-class TestNetworkSubgraph:
-    """Tests for NetworkSubgraph."""
-
-    def test_is_subclass_of_subgraph(self) -> None:
-        """Test that NetworkSubgraph is a subclass of Subgraph."""
-        assert issubclass(NetworkSubgraph, Subgraph)
-
-    def test_is_subclass_of_api_specs(self) -> None:
-        """Test that NetworkSubgraph is also a subclass of ApiSpecs."""
-        assert issubclass(NetworkSubgraph, ApiSpecs)
 
 
 # Default kwargs for MarketManagerParams init

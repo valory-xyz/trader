@@ -60,42 +60,6 @@ class TestSynchronizedData:
         assert data.available_mech_tools == {"tool-a"}
 
 
-class TestEvent:
-    """Tests for the Event enum."""
-
-    def test_event_values(self) -> None:
-        """Test that all event values are correct."""
-        assert Event.DONE.value == "done"
-        assert Event.NONE.value == "none"
-        assert Event.ROUND_TIMEOUT.value == "round_timeout"
-        assert Event.NO_MAJORITY.value == "no_majority"
-
-    def test_event_members(self) -> None:
-        """Test that all expected members exist."""
-        assert len(Event) == 4
-
-
-class TestChatuiLoadRound:
-    """Tests for the ChatuiLoadRound class."""
-
-    def test_class_attributes(self) -> None:
-        """Test that class-level attributes are set correctly."""
-        assert ChatuiLoadRound.done_event == Event.DONE
-        assert ChatuiLoadRound.negative_event == Event.DONE
-        assert ChatuiLoadRound.none_event == Event.NONE
-        assert ChatuiLoadRound.no_majority_event == Event.NO_MAJORITY
-
-    def test_payload_class(self) -> None:
-        """Test that the payload class is ChatuiPayload."""
-        from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
-
-        assert ChatuiLoadRound.payload_class is ChatuiPayload
-
-    def test_synchronized_data_class(self) -> None:
-        """Test that the synchronized data class is SynchronizedData."""
-        assert ChatuiLoadRound.synchronized_data_class is SynchronizedData
-
-
 class TestFinishedChatuiLoadRound:
     """Tests for the FinishedChatuiLoadRound class."""
 

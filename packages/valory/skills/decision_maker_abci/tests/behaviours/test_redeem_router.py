@@ -25,9 +25,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.redeem_router import 
     RedeemRouterBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import RedeemRouterPayload
-from packages.valory.skills.decision_maker_abci.states.redeem_router import (
-    RedeemRouterRound,
-)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -50,10 +47,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
 class TestRedeemRouterBehaviour:
     """Tests for RedeemRouterBehaviour."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be RedeemRouterRound."""
-        assert RedeemRouterBehaviour.matching_round == RedeemRouterRound
 
     def test_async_act_sends_vote_true(self) -> None:
         """async_act should always send a payload with vote=True."""

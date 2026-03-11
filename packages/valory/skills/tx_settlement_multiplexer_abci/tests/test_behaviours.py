@@ -24,23 +24,14 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.behaviours import (
-    AbstractRoundBehaviour,
-    BaseBehaviour,
-)
+from packages.valory.skills.abstract_round_abci.behaviours import BaseBehaviour
 from packages.valory.skills.decision_maker_abci.models import RedeemingProgress
 from packages.valory.skills.tx_settlement_multiplexer_abci.behaviours import (
     PostTxSettlementBehaviour,
-    PostTxSettlementFullBehaviour,
     PreTxSettlementBehaviour,
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
     TxSettlementMultiplexerParams,
-)
-from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
-    PostTxSettlementRound,
-    PreTxSettlementRound,
-    TxSettlementMultiplexerAbciApp,
 )
 
 # ---------------------------------------------------------------------------
@@ -66,49 +57,12 @@ def _return_gen(value: Any):  # type: ignore
 
 
 # ---------------------------------------------------------------------------
-# PostTxSettlementFullBehaviour (the AbstractRoundBehaviour composite)
-# ---------------------------------------------------------------------------
-
-
-class TestPostTxSettlementFullBehaviour:
-    """Tests for PostTxSettlementFullBehaviour attributes."""
-
-    def test_initial_behaviour_cls(self) -> None:
-        """Initial_behaviour_cls is PostTxSettlementBehaviour."""
-        assert (
-            PostTxSettlementFullBehaviour.initial_behaviour_cls
-            is PostTxSettlementBehaviour
-        )
-
-    def test_abci_app_cls(self) -> None:
-        """Abci_app_cls is TxSettlementMultiplexerAbciApp."""
-        assert (
-            PostTxSettlementFullBehaviour.abci_app_cls is TxSettlementMultiplexerAbciApp  # type: ignore[misc]
-        )
-
-    def test_behaviours_set(self) -> None:
-        """Behaviours set contains PreTxSettlementBehaviour and PostTxSettlementBehaviour."""
-        assert PostTxSettlementFullBehaviour.behaviours == {
-            PreTxSettlementBehaviour,
-            PostTxSettlementBehaviour,
-        }
-
-    def test_inherits_abstract_round_behaviour(self) -> None:
-        """Test that PostTxSettlementFullBehaviour extends AbstractRoundBehaviour."""
-        assert issubclass(PostTxSettlementFullBehaviour, AbstractRoundBehaviour)
-
-
-# ---------------------------------------------------------------------------
 # PreTxSettlementBehaviour
 # ---------------------------------------------------------------------------
 
 
 class TestPreTxSettlementBehaviourAttributes:
     """Tests for PreTxSettlementBehaviour class attributes and properties."""
-
-    def test_matching_round(self) -> None:
-        """Matching_round is PreTxSettlementRound."""
-        assert PreTxSettlementBehaviour.matching_round is PreTxSettlementRound
 
     def test_params_property(self) -> None:
         """Params returns context.params cast to TxSettlementMultiplexerParams."""
@@ -602,10 +556,6 @@ class TestPreTxSettlementAsyncAct:
 
 class TestPostTxSettlementBehaviourAttributes:
     """Tests for PostTxSettlementBehaviour class attributes and properties."""
-
-    def test_matching_round(self) -> None:
-        """Matching_round is PostTxSettlementRound."""
-        assert PostTxSettlementBehaviour.matching_round is PostTxSettlementRound
 
     def test_synchronized_data_property(self) -> None:
         """Synchronized_data wraps super().synchronized_data.db in SynchronizedData."""

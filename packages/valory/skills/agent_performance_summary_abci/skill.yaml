@@ -30,15 +30,15 @@ fingerprint:
   tests/graph_tooling/__init__.py: bafybeia4232yl536xzhvnkjblvfbtphtp34t4zylkay4fimm26bgo5tzru
   tests/graph_tooling/test_base_predictions_helper.py: bafybeihcnx5crq5j5nr5p6h5y3vuqgqapdnkcghubehk7fnnyv2vmcpriq
   tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeicq3r2vqcgykzwo6rrzb4ceuj44jqclw53nke3sjfdbqbikqrhywa
-  tests/graph_tooling/test_predictions_helper.py: bafybeicavec3dvhbk5glj5irdvk6ou35fxdjuzhw67omocs3pufkhtk7ve
-  tests/graph_tooling/test_queries.py: bafybeihp2tvevwolf5upwfjpv235xirtn4572xnvya4wftwffyimypdnne
-  tests/graph_tooling/test_requests.py: bafybeiezeaxjlppuxnokcozsdifnmlj3agnzc77wfbfzv46i6rp4nawefi
-  tests/test_behaviours.py: bafybeibq4nzn2tqidbuco6wtqt7qc6oq6d7jxmqb2afkpbcexnktqhl3v4
-  tests/test_dialogues.py: bafybeiglcg5e24wn5cx3lzpdka6pnj6gl5lhoe57eacqpdxibngw7ojj3e
-  tests/test_handlers.py: bafybeiee5doq6nn3ielwmobnbxkyb7bjeu36bp7myred5o7z2aahz5l6mm
-  tests/test_models.py: bafybeiggo3ou4xxc3n6tnzdkdvuqlobrdxjp5s4bl25ayvnz56mzlot4si
+  tests/graph_tooling/test_predictions_helper.py: bafybeigntxk26i4ttu2uz2ztl67yfnbnzdrxhkhiqgoa3qc4i2qkrps5we
+  tests/graph_tooling/test_queries.py: bafybeie6wyseflaysawnicyyci6a2mdrxpxzwmikg4p4s2iq2uznx5hgpi
+  tests/graph_tooling/test_requests.py: bafybeibltl6isfzxepljn6vsg4zoa3dtlofmpdvpnh7nk5osipjbrksd6u
+  tests/test_behaviours.py: bafybeigvnxvmttmxpcotj3mzapxdc3loxdes3gubunoev5qu33afc3gyge
+  tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
+  tests/test_handlers.py: bafybeicc7x2aq5fwslm4wcn6e6cqasw4dvfyj35f6m4sevclkruwmnn4v4
+  tests/test_models.py: bafybeifjodh6iikde72q2xuljl2gh3tzqzyiwo2bp7imxb5wa7yhwgdoqa
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
-  tests/test_rounds.py: bafybeidm2rl27fpn6wyllpz25sy3t6emlk7cwy2pzbyfda7yv66znnneoq
+  tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
   tests/test_save_performance_summary.py: bafybeibgyx3n4dn7zhb7vfcc4wwq7nuyfep723cyqfrpnwqgsvhhwagure
 fingerprint_ignore_patterns: []
 contracts:
@@ -50,7 +50,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiaalla55aprhvoumv4u7qt4v6l53fjmgln6wgyjr5e5tw7u4kscja
 connections:
-- valory/polymarket_client:0.1.0:bafybeidff6td4amdm6iiblx6c7iqdtyv56swrhiuzqw4cj3oeozqwx4ag4
+- valory/polymarket_client:0.1.0:bafybeievoazw2czsftdemm42qs56ozw27r244enbstxwjrdbvx5uriacce
 handlers:
   abci:
     args: {}

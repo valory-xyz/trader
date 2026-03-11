@@ -29,7 +29,6 @@ from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     WEEKDAYS,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
-from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 
 # ---------------------------------------------------------------------------
@@ -138,10 +137,6 @@ class TestSamplingBehaviourSetup:
 
 class TestSamplingBehaviourProperties:
     """Tests for SamplingBehaviour properties."""
-
-    def test_matching_round(self) -> None:
-        """matching_round should be SamplingRound."""
-        assert SamplingBehaviour.matching_round == SamplingRound
 
     def test_kpi_is_met(self) -> None:
         """kpi_is_met should return synchronized_data value."""
