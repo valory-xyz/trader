@@ -1126,7 +1126,7 @@ class TestGetPositions:
     def test_returns_positions(self) -> None:
         """Returns list of positions on success."""
         conn = _make_connection()
-        positions = [{"token": "tok1", "size": 10}]
+        positions = [{"token": "tok1", "size": 10}]  # nosec B105
         mock_resp = MagicMock()
         mock_resp.json.return_value = positions
         conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}

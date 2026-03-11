@@ -1828,7 +1828,7 @@ class TestFetchAvailableFunds:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         response = MagicMock()
         response.performative = ContractApiMessage.Performative.RAW_TRANSACTION
-        response.raw_transaction.body = {"token": None, "wallet": 100}
+        response.raw_transaction.body = {"token": None, "wallet": 100}  # nosec B105
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
