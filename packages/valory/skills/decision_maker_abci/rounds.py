@@ -363,11 +363,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.BET_PLACEMENT_DONE: RedeemRouterRound,
             Event.BET_PLACEMENT_FAILED: PolymarketBetPlacementRound,
             Event.BET_PLACEMENT_IMPOSSIBLE: BlacklistingRound,
+            # degenerate round on purpose, owner must refill the safe
             Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
             # skip the bet placement tx
             Event.MOCK_TX: RedeemRouterRound,
-            # degenerate round on purpose, owner must refill the safe
-            Event.INSUFFICIENT_BALANCE: RefillRequiredRound,
             Event.NO_MAJORITY: PolymarketBetPlacementRound,
             Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
             # this is here because of `autonomy analyse fsm-specs`
