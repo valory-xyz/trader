@@ -19,6 +19,7 @@
 # ------------------------------------------------------------------------------
 
 """Genai connection."""
+
 import json
 import time
 from datetime import datetime, timedelta, timezone
@@ -48,7 +49,6 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 from packages.valory.protocols.srr.dialogues import SrrDialogue
 from packages.valory.protocols.srr.dialogues import SrrDialogues as BaseSrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
-
 
 PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"

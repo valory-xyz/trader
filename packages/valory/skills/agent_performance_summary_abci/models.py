@@ -37,7 +37,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
 )
 
-
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 
@@ -207,6 +206,13 @@ class AgentPerformanceSummary:
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
+        if self.metrics and isinstance(self.metrics[0], dict):
+            self.metrics = [
+                AgentPerformanceMetrics(**m)
+                for m in self.metrics
+                if isinstance(m, dict)
+            ]
+
         if isinstance(self.agent_details, dict):
             self.agent_details = AgentDetails(**self.agent_details)
 

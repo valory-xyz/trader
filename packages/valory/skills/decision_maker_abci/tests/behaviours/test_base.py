@@ -62,7 +62,6 @@ from packages.valory.skills.decision_maker_abci.tests.conftest import profile_na
 from packages.valory.skills.market_manager_abci.behaviours.base import READ_MODE
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
-
 settings.load_profile(profile_name)
 FRACTION_REMOVAL_PRECISION = 2
 CURRENT_FILE_PATH = Path(__file__).resolve()
@@ -213,7 +212,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         with mock.patch.object(PackageConfiguration, "check_overrides_valid"):
             super().setup_class(**kwargs)
 
-    def setup(self, **kwargs: Any) -> None:
+    def setup_method(self, **kwargs: Any) -> None:
         """Setup."""
         self.round_sequence_mock = MagicMock()
         context_mock = MagicMock(params=MagicMock())

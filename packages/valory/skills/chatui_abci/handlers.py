@@ -70,7 +70,6 @@ from packages.valory.skills.chatui_abci.prompts import (
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 
-
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler

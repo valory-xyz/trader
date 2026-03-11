@@ -107,7 +107,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.models import (
     TxSettlementMultiplexerParams,
 )
 
-
 EventType = Union[
     Type[MarketManagerEvent],
     Type[DecisionMakerEvent],

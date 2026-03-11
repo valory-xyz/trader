@@ -53,7 +53,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
 
-
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 

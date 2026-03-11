@@ -39,7 +39,6 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
     SellOutcomeTokensRound,
 )
 
-
 DUMMY_SELL_HASH = "dummy_sell_hash"
 DUMMY_PARTICIPANT_TO_SELL_HASH = json.dumps(
     {

@@ -38,7 +38,6 @@ from packages.valory.skills.chatui_abci.models import (
     TradingStrategyUI,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -80,7 +79,7 @@ def _make_shared_state(store: Dict[str, Any]) -> _TestableSharedState:
 
     context = MagicMock()
     context.params = params
-    state.context = context
+    state.context = context  # type: ignore[assignment]
 
     state._get_current_json_store = MagicMock(return_value=dict(store))  # type: ignore[method-assign]
     state._set_json_store = MagicMock()  # type: ignore[method-assign]

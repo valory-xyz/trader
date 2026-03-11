@@ -32,7 +32,6 @@ from packages.valory.skills.decision_maker_abci.policy import (
     EGreedyPolicy,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -101,26 +100,26 @@ def _make_behaviour(
 
     # context
     context = MagicMock()
-    behaviour.context = context
+    behaviour.context = context  # type: ignore[assignment]
 
     # benchmarking_mode disabled so we use synchronized_data.most_voted_randomness
     benchmarking_mode = MagicMock()
     benchmarking_mode.enabled = False
-    behaviour.benchmarking_mode = benchmarking_mode  # type: ignore[misc]
+    behaviour.benchmarking_mode = benchmarking_mode  # type: ignore[assignment]
 
     # synchronized_data
     sync_data = MagicMock()
     sync_data.most_voted_randomness = randomness
-    behaviour.synchronized_data = sync_data  # type: ignore[misc]
+    behaviour.synchronized_data = sync_data  # type: ignore[assignment]
 
     # shared_state / chatui_config
     shared_state = MagicMock()
     shared_state.chatui_config.allowed_tools = allowed_tools
-    behaviour.shared_state = shared_state  # type: ignore[misc]
+    behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy and mech_tools
-    behaviour.policy = policy  # type: ignore[misc]
-    behaviour.mech_tools = mech_tools
+    behaviour.policy = policy  # type: ignore[assignment]
+    behaviour.mech_tools = mech_tools  # type: ignore[assignment]
 
     return behaviour
 

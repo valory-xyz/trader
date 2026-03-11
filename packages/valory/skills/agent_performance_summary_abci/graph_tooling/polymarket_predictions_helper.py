@@ -21,7 +21,7 @@
 """Helper for fetching and formatting Polymarket predictions data."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -40,7 +40,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
     GET_POLYMARKET_SPECIFIC_BET_QUERY,
 )
-
 
 # Constants
 USDC_DECIMALS_DIVISOR = 10**6  # USDC has 6 decimals on Polymarket
@@ -320,7 +319,7 @@ class PolymarketPredictionsFetcher(
 
         try:
             unix_timestamp = int(timestamp)
-            dt = datetime.utcfromtimestamp(unix_timestamp)
+            dt = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
             return dt.strftime(ISO_TIMESTAMP_FORMAT)
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")
@@ -682,7 +681,7 @@ class PolymarketPredictionsFetcher(
             closing_timestamp = (
                 market_info.get("openingTimestamp", 0) if market_info else 0
             )
-            current_timestamp = int(datetime.utcnow().timestamp())
+            current_timestamp = int(datetime.now(timezone.utc).timestamp())
             remaining_seconds = (
                 (closing_timestamp - current_timestamp)
                 if closing_timestamp > current_timestamp

@@ -42,7 +42,6 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import 
     PolymarketRedeemRound,
 )
 
-
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_NUMBER_KEY = "number"

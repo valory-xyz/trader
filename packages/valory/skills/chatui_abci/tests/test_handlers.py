@@ -42,7 +42,6 @@ from packages.valory.skills.chatui_abci.prompts import (
     TradingStrategy,
 )
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -84,15 +83,15 @@ def _make_handler(
         "absolute_min_bet_size": ABS_MIN,
         "absolute_max_bet_size": ABS_MAX,
     }
-    handler.context = context
+    handler.context = context  # type: ignore[assignment]
 
     shared_state = MagicMock()
     shared_state.chatui_config = current_config or ChatuiConfig()
-    handler.shared_state = shared_state  # type: ignore[misc]
+    handler.shared_state = shared_state  # type: ignore[assignment]
 
     sync_data = MagicMock()
     sync_data.available_mech_tools = available_tools
-    handler.synchronized_data = sync_data  # type: ignore[misc]
+    handler.synchronized_data = sync_data  # type: ignore[assignment]
 
     # Patch store helpers — no filesystem side-effects.
     handler._store_trading_strategy = MagicMock()  # type: ignore[method-assign]

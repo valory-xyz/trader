@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2021-2025 Valory AG
+#   Copyright 2021-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ from packages.valory.skills.market_manager_abci.models import (
     SharedState,
 )
 from packages.valory.skills.market_manager_abci.rounds import SynchronizedData
-
 
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
