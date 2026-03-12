@@ -10,7 +10,7 @@ fingerprint:
   build/MechActivity.json: bafybeiagrufcoljrlo2zklc7kxwh7eyrf67usos2bqnf7hss47hgm6low4
   contract.py: bafybeihgiwyy5gj5tpyz6wnjlfsywssanrbuzskqctt557f3galofewqse
   tests/__init__.py: bafybeigwx4nxux6pd4bi5yhwdpjo3gy3rbljmgj55lih4dhwmwzoqk4lh4
-  tests/test_contract.py: bafybeifxjosushqusmnoqpf6lpag5si5ogxzhbsi4ctmtnqkllhvgz5tnu
+  tests/test_contract.py: bafybeib2tpb7j2ubpfnsfcyxggv72dzxpccaebvq5th54wcfdefxkgopom
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: MechActivityContract

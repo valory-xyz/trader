@@ -10,7 +10,7 @@ fingerprint:
   build/ConditionalTokens.json: bafybeia2ahis7zx2yhhf23kpkcxu56hto6fwg6ptjg5ld46lp4dgz7cz3e
   contract.py: bafybeia4d7cam2dfedfevpafh67pdpm2cwb4qjp6ieef7tzvwazvwkznde
   tests/__init__.py: bafybeic23nvh24n43zw355zrb2xj5mzb2k5bzj5ysw67tgnv2z76p7klie
-  tests/test_contract.py: bafybeihbkyhqtnufnimff4pmwhmxv2rbqp23qhu7tsnhvd7fmpacng25om
+  tests/test_contract.py: bafybeifxovcatetgdcl4hmu2rdzp3wxlln4tng2jnu4gfc4kfyuxfyiz5m
 fingerprint_ignore_patterns: []
 class_name: ConditionalTokensContract
 contract_interface_paths:
