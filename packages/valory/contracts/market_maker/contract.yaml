@@ -11,7 +11,7 @@ fingerprint:
   build/FixedProductMarketMaker.json: bafybeigim7n3f67r5czfc5wp2m7cxzxwvnhxops3n5j2zlawenan7qrrtu
   contract.py: bafybeichcklcimfntmwvcrlce6szyjqo5okgeir4zbwnla7g2lqcrycdti
   tests/__init__.py: bafybeienqvttlvi32ohg47yg4ihylchoo4quti3bxfvb7ewmyy3tt5igsy
-  tests/test_contract.py: bafybeidbr6wbuua5bbnis5u5extk53masqy6jdcn7l6xwcdcr3h6iwdrna
+  tests/test_contract.py: bafybeibdap5mqygtf7j6vas44vqmytxonoij4qfypqk5trw75mlpzmohwm
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: FixedProductMarketMakerContract

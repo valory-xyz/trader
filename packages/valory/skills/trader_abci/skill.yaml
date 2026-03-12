@@ -56,10 +56,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigspkourznaiagdkedyxjbjl6svhuhdwbvejr3jv3e3dil2hslose
 - valory/termination_abci:0.1.0:bafybeic3jppoya7jkmylbl5evcssl5qhppl6hadxebfxcxmi5o7qysce6a
 - valory/market_manager_abci:0.1.0:bafybeielsjcopbx2x3gnx6o6wedsxpxul2dkfcechwfq4bqu6qtrmrelxm
-- valory/decision_maker_abci:0.1.0:bafybeiakiqa2lwwkowapj4dqcknij5lsgvwjd6u42y4jdoscerufjwnlfu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicz74vzgeit3ll6lhppvfnslprbhpyt3hgthoy5iksypmfhmgengm
-- valory/staking_abci:0.1.0:bafybeibpylqed2tunnmtftnotpyc446jjvl2uepdmbxa4qb3nilx5mlji4
-- valory/check_stop_trading_abci:0.1.0:bafybeihuiirpkmhizukp6eb3vn6rpobrug6bggvzb2z3ba6mwtli2nq6xe
+- valory/decision_maker_abci:0.1.0:bafybeihirspryeezbvpq37qpejujaiypvgxe7qupbjziuymygs7arfckf4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihnyosi36cchpuj5xbu5imimiokywcvswbkjerzss6pcahvgcekmy
+- valory/staking_abci:0.1.0:bafybeigczs4zcpor3x5kk2jeolxiok7irvtoz3ep76nhx63sjbwv4wcpe4
+- valory/check_stop_trading_abci:0.1.0:bafybeihrsvh3esxrjeysnzb7gxstsmloivijwn3yhu6fijq6ilv7qxqixm
 - valory/mech_interact_abci:0.1.0:bafybeiduf3h73xhv4q5vbdn6ek2tyal3haym5of4mq2ucm2zhqbclr35le
 - valory/chatui_abci:0.1.0:bafybeiaiwltkzfaxl6ncrb3vezvccekagmgy5q4vpzatorqzhy3icrfi5q
 - valory/agent_performance_summary_abci:0.1.0:bafybeihjtj2f7wscxhl2qkqhh7xp2v5g2vwskw6xbi2f5eqg3kehsjwa4u

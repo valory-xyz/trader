@@ -125,13 +125,13 @@ connections:
 - valory/polymarket_client:0.1.0:bafybeievoazw2czsftdemm42qs56ozw27r244enbstxwjrdbvx5uriacce
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeico3uzjdwumf2jg2e627ut4rwzwmedjavenw6e2hshi2m6yw642bq
-- valory/market_maker:0.1.0:bafybeie2uzl3xpk5w5etdnig5bgfzsshbcvmlvz4bo6rmccj4a3aqtbnl4
+- valory/market_maker:0.1.0:bafybeidbmq65ruvix6iwkyumcnh3hxy4qebc2ndgnknlkhu6zwckthpp3y
 - valory/erc20:0.1.0:bafybeif37n2xmh6xkn3vzybty7q37fq4f5rsey5ep33vvobh2yofeao5ae
 - valory/multisend:0.1.0:bafybeiaf3hapi3prgpjeugwhq64k7lqelo6kibhol5rkajt7id3knomp5q
 - valory/mech:0.1.0:bafybeian74rifshzpwst2nupoud4vg26pixsluifbxzowe3h7awh3gscxa
-- valory/conditional_tokens:0.1.0:bafybeiccq3nahcaxgskmq4dnqvvy63z56szzzup66huovjzbqw7z2xua3i
-- valory/realitio:0.1.0:bafybeidnzqfvmrse75og5ixrmgd25xhvbiqlsi4b25z5wegyimsvdvtxbe
-- valory/realitio_proxy:0.1.0:bafybeigq4oxqh6dryhsbf5naxns5mjblae6wk6dgipkagn6wjanxs6rgtq
+- valory/conditional_tokens:0.1.0:bafybeieumljzqj6dw3aifiza4msx6m4etyqhsthvcgw3s26kn73oktxdk4
+- valory/realitio:0.1.0:bafybeibj7wequqhgxcke2bwsq5onp6amk35vdhzf5zcczhytiohz2tfqua
+- valory/realitio_proxy:0.1.0:bafybeiehe26tllwbni57zomdyxtwipmdvmrirgc54fp5gwtg324lbfl7im
 - valory/agent_registry:0.1.0:bafybeiera7snkcp4p356vcicc33zmphajj54ajxlb5kmhphfx7bb7qttxa
 protocols:
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
@@ -144,7 +144,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeielsjcopbx2x3gnx6o6wedsxpxul2dkfcechwfq4bqu6qtrmrelxm
 - valory/transaction_settlement_abci:0.1.0:bafybeigspkourznaiagdkedyxjbjl6svhuhdwbvejr3jv3e3dil2hslose
 - valory/mech_interact_abci:0.1.0:bafybeiduf3h73xhv4q5vbdn6ek2tyal3haym5of4mq2ucm2zhqbclr35le
-- valory/staking_abci:0.1.0:bafybeibpylqed2tunnmtftnotpyc446jjvl2uepdmbxa4qb3nilx5mlji4
+- valory/staking_abci:0.1.0:bafybeigczs4zcpor3x5kk2jeolxiok7irvtoz3ep76nhx63sjbwv4wcpe4
 - valory/agent_performance_summary_abci:0.1.0:bafybeihjtj2f7wscxhl2qkqhh7xp2v5g2vwskw6xbi2f5eqg3kehsjwa4u
 - valory/chatui_abci:0.1.0:bafybeiaiwltkzfaxl6ncrb3vezvccekagmgy5q4vpzatorqzhy3icrfi5q
 behaviours:
