@@ -17,12 +17,25 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Tests for packages/valory/skills/chatui_abci/models.py -- SharedState._ensure_chatui_store."""
+"""Tests for packages/valory/skills/chatui_abci/models.py."""
 
+import json
+from pathlib import Path
 from typing import Any, Dict
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from packages.valory.skills.chatui_abci.models import ChatuiConfig, SharedState
+import pytest
+
+from packages.valory.skills.abstract_round_abci.models import BaseParams
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    SharedState as BaseSharedState,
+)
+from packages.valory.skills.chatui_abci.models import (
+    CHATUI_PARAM_STORE,
+    ChatuiConfig,
+    ChatuiParams,
+    SharedState,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -54,7 +67,7 @@ def _make_shared_state(store: Dict[str, Any]) -> _TestableSharedState:
     :return: configured _TestableSharedState instance.
     """
     state = object.__new__(_TestableSharedState)
-    state._chatui_config = None
+    state._chatui_config = None  # type: ignore[attr-defined]
 
     params = MagicMock()
     params.trading_strategy = DEFAULT_TRADING_STRATEGY
@@ -234,3 +247,259 @@ class TestEnsureChatuiStoreDefaults:
         state._ensure_chatui_store()
 
         state._set_json_store.assert_called_once()  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# ChatuiConfig dataclass tests
+# ---------------------------------------------------------------------------
+
+
+class TestChatuiConfig:
+    """Tests for ChatuiConfig dataclass defaults and field assignment."""
+
+    def test_default_values(self) -> None:
+        """All fields must default to None."""
+        config = ChatuiConfig()
+        assert config.trading_strategy is None
+        assert config.initial_trading_strategy is None
+        assert config.allowed_tools is None
+        assert config.fixed_bet_size is None
+        assert config.max_bet_size is None
+
+    def test_custom_values(self) -> None:
+        """Fields must accept and store custom values."""
+        config = ChatuiConfig(
+            trading_strategy="kelly_criterion_no_conf",
+            initial_trading_strategy="bet_amount_per_threshold",
+            allowed_tools=["tool-a", "tool-b"],
+            fixed_bet_size=100,
+            max_bet_size=999,
+        )
+        assert config.trading_strategy == "kelly_criterion_no_conf"
+        assert config.initial_trading_strategy == "bet_amount_per_threshold"
+        assert config.allowed_tools == ["tool-a", "tool-b"]
+        assert config.fixed_bet_size == 100
+        assert config.max_bet_size == 999
+
+
+# ---------------------------------------------------------------------------
+# SharedState.__init__ tests
+# ---------------------------------------------------------------------------
+
+
+class TestSharedStateInit:
+    """Tests for SharedState.__init__ (lines 72-74)."""
+
+    def test_init_sets_chatui_config_to_none(self) -> None:
+        """SharedState.__init__ must initialise _chatui_config to None."""
+        mock_skill_context = MagicMock()
+        with patch.object(BaseSharedState, "__init__", return_value=None):
+            state = _TestableSharedState(skill_context=mock_skill_context)
+        assert state._chatui_config is None
+
+    def test_init_calls_super(self) -> None:
+        """SharedState.__init__ must call BaseSharedState.__init__."""
+        mock_skill_context = MagicMock()
+        with patch.object(BaseSharedState, "__init__", return_value=None) as mock_super:
+            _TestableSharedState(skill_context=mock_skill_context)
+        mock_super.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# SharedState.chatui_config property tests
+# ---------------------------------------------------------------------------
+
+
+class TestChatuiConfigProperty:
+    """Tests for SharedState.chatui_config property (lines 79-83)."""
+
+    def test_property_returns_config_after_ensure(self) -> None:
+        """chatui_config must return the config after _ensure_chatui_store sets it."""
+        state = _make_shared_state({})
+        # Access via property triggers _ensure_chatui_store, which sets _chatui_config
+        config = state.chatui_config
+        assert isinstance(config, ChatuiConfig)
+
+    def test_property_raises_when_config_is_none_after_ensure(self) -> None:
+        """chatui_config must raise ValueError if _chatui_config is still None after _ensure."""
+        state = _make_shared_state({})
+        # Override _ensure_chatui_store so it does NOT set _chatui_config
+        state._ensure_chatui_store = MagicMock()  # type: ignore[method-assign]
+        with pytest.raises(ValueError, match="The chat UI config has not been set!"):
+            _ = state.chatui_config
+
+
+# ---------------------------------------------------------------------------
+# SharedState._get_current_json_store tests (real file I/O, lines 87-100)
+# ---------------------------------------------------------------------------
+
+
+class TestGetCurrentJsonStore:
+    """Tests for SharedState._get_current_json_store with real temp files."""
+
+    def _make_state_with_store_path(self, store_path: Path) -> _TestableSharedState:
+        """Create a _TestableSharedState with a real store_path (no mocked I/O).
+
+        :param store_path: directory for the JSON store file.
+        :return: configured _TestableSharedState instance.
+        """
+        state = object.__new__(_TestableSharedState)
+        state._chatui_config = None
+
+        params = MagicMock()
+        params.store_path = store_path
+
+        context = MagicMock()
+        context.params = params
+        state.context = context  # type: ignore[assignment]
+
+        return state
+
+    def test_file_not_exists_returns_empty_dict(self, tmp_path: Path) -> None:
+        """When the store file does not exist, return {} and log an error."""
+        state = self._make_state_with_store_path(tmp_path)
+        result = state._get_current_json_store()
+        assert result == {}
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_valid_json_file_returns_dict(self, tmp_path: Path) -> None:
+        """When the store file has valid JSON, return its contents."""
+        store_file = tmp_path / CHATUI_PARAM_STORE
+        expected = {"trading_strategy": "risky", "max_bet_size": 42}
+        store_file.write_text(json.dumps(expected))
+
+        state = self._make_state_with_store_path(tmp_path)
+        result = state._get_current_json_store()
+        assert result == expected
+
+    def test_invalid_json_returns_empty_dict(self, tmp_path: Path) -> None:
+        """When the store file has invalid JSON, return {} and log an error."""
+        store_file = tmp_path / CHATUI_PARAM_STORE
+        store_file.write_text("not-valid-json{{{")
+
+        state = self._make_state_with_store_path(tmp_path)
+        result = state._get_current_json_store()
+        assert result == {}
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# SharedState._set_json_store tests (real file I/O, lines 104-107)
+# ---------------------------------------------------------------------------
+
+
+class TestSetJsonStore:
+    """Tests for SharedState._set_json_store with real temp files."""
+
+    def test_write_and_read_back(self, tmp_path: Path) -> None:
+        """_set_json_store must write valid JSON that can be read back."""
+        state = object.__new__(_TestableSharedState)
+        state._chatui_config = None  # type: ignore[attr-defined]
+
+        params = MagicMock()
+        params.store_path = tmp_path
+
+        context = MagicMock()
+        context.params = params
+        state.context = context  # type: ignore[assignment]
+
+        payload = {"trading_strategy": "balanced", "max_bet_size": 100}
+        state._set_json_store(payload)
+
+        store_file = tmp_path / CHATUI_PARAM_STORE
+        assert store_file.exists()
+
+        with open(store_file) as f:
+            written = json.load(f)
+        assert written == payload
+
+
+# ---------------------------------------------------------------------------
+# ChatuiParams.__init__ tests (lines 177-179)
+# ---------------------------------------------------------------------------
+
+
+class TestChatuiParamsInit:
+    """Tests for ChatuiParams.__init__."""
+
+    def test_init_sets_service_endpoint_and_genai_api_key(self) -> None:
+        """Test that ChatuiParams init must extract service_endpoint and genai_api_key."""
+        mock_skill_context = MagicMock()
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = ChatuiParams(
+                skill_context=mock_skill_context,
+                service_endpoint="https://example.com",
+                genai_api_key="dummy",
+            )
+        assert params.service_endpoint == "https://example.com"
+        assert params.genai_api_key == "dummy"
+
+    def test_init_calls_super(self) -> None:
+        """Test that ChatuiParams init must call BaseParams.__init__."""
+        mock_skill_context = MagicMock()
+        with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
+            ChatuiParams(
+                skill_context=mock_skill_context,
+                service_endpoint="https://example.com",
+                genai_api_key="dummy",
+            )
+        mock_super.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Branch coverage tests
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureChatuiStoreBranches:
+    """Tests for branch conditions in _ensure_chatui_store."""
+
+    def test_valid_int_max_bet_size_skips_default(self) -> None:
+        """When max_bet_size IS a valid int in store, don't overwrite with param default."""
+        custom_max_bet = 5_000_000_000_000_000_000
+        state = _make_shared_state({"max_bet_size": custom_max_bet})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.max_bet_size == custom_max_bet
+
+    def test_valid_int_fixed_bet_size_skips_default(self) -> None:
+        """When fixed_bet_size IS a valid int in store, don't overwrite with param default."""
+        custom_fixed_bet = 50_000_000_000_000_000
+        state = _make_shared_state({"fixed_bet_size": custom_fixed_bet})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.fixed_bet_size == custom_fixed_bet
+
+    def test_initial_trading_strategy_matches_yaml_no_reset(self) -> None:
+        """When initial_trading_strategy == YAML value, no reset should happen."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "custom_strategy",
+                "initial_trading_strategy": DEFAULT_TRADING_STRATEGY,
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        # Because initial_trading_strategy matches YAML, it stays as-is
+        assert state._chatui_config.initial_trading_strategy == DEFAULT_TRADING_STRATEGY
+        # trading_strategy also stays as the store value since no reset is triggered
+        assert state._chatui_config.trading_strategy == "custom_strategy"
+
+    def test_non_int_max_bet_size_resets_to_default(self) -> None:
+        """When max_bet_size is a non-int string, overwrite with param default."""
+        state = _make_shared_state({"max_bet_size": "not_an_int"})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.max_bet_size == DEFAULT_MAX_BET_SIZE
+
+    def test_non_int_fixed_bet_size_resets_to_default(self) -> None:
+        """When fixed_bet_size is a non-int string, overwrite with param default."""
+        state = _make_shared_state({"fixed_bet_size": "not_an_int"})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.fixed_bet_size == DEFAULT_MIN_BET_SIZE

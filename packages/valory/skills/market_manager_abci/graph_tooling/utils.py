@@ -71,7 +71,7 @@ def get_position_balance(
         outcome_index = int(indexSets[0]) - 1
 
         balance = int(position["balance"])
-        if condition_id.lower() in position_condition_ids:
+        if condition_id.lower() in position_condition_ids:  # pragma: no branch
             positions[outcomes[outcome_index]] += balance
 
     return positions

@@ -49,7 +49,7 @@ include = "packages"
 [tool.poetry.dependencies]
 python = "<3.15,>=3.10"
 open-autonomy = "==0.21.13"
-requests = "<2.33.0,>=2.32.5"
+requests = "<2.33.0,>=2.28.1"
 py-multibase = "==1.0.3"
 py-multicodec = "==0.2.1"
 py-eth-sig-utils = "*"

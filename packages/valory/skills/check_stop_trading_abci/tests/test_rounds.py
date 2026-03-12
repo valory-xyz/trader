@@ -33,7 +33,7 @@ from typing import (
     Optional,
     Type,
 )
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -343,3 +343,69 @@ def test_synchronized_data_initialization() -> None:
     """Test the initialization and attributes of SynchronizedData."""
     data = SynchronizedData(db=AbciAppDB(setup_data={"test": ["test"]}))
     assert data.db._data == {0: {"test": ["test"]}}
+
+
+class TestSynchronizedDataProperties:
+    """Tests for SynchronizedData property methods."""
+
+    def test_get_deserialized(self) -> None:
+        """_get_deserialized calls db.get_strict and deserializes."""
+        mock_db = MagicMock()
+        mock_db.get_strict.return_value = {"agent_0": {"some": "data"}}
+        data = SynchronizedData(db=mock_db)
+        expected = {"agent_0": MagicMock()}
+        with patch(
+            "packages.valory.skills.check_stop_trading_abci.rounds.CollectionRound.deserialize_collection",
+            return_value=expected,
+        ):
+            result = data._get_deserialized("votes")
+        mock_db.get_strict.assert_called_once_with("votes")
+        assert result is expected
+
+    def test_is_staking_kpi_met_default(self) -> None:
+        """is_staking_kpi_met defaults to False."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.is_staking_kpi_met is False
+
+    def test_is_staking_kpi_met_true(self) -> None:
+        """is_staking_kpi_met returns True when set."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"is_staking_kpi_met": [True]}))
+        assert data.is_staking_kpi_met is True
+
+    def test_review_bets_for_selling_default(self) -> None:
+        """review_bets_for_selling defaults to False when not set."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.review_bets_for_selling is False
+
+    def test_review_bets_for_selling_non_bool(self) -> None:
+        """review_bets_for_selling returns False when value is not bool."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"review_bets_for_selling": ["yes"]})
+        )
+        assert data.review_bets_for_selling is False
+
+    def test_review_bets_for_selling_true(self) -> None:
+        """review_bets_for_selling returns True when bool True is stored."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"review_bets_for_selling": [True]})
+        )
+        assert data.review_bets_for_selling is True
+
+
+class TestCheckStopTradingRoundShouldReviewBets:
+    """Tests for CheckStopTradingRound.should_review_bets."""
+
+    def test_not_kpi_met(self) -> None:
+        """When KPI is not met, should not review bets."""
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert round_.should_review_bets(is_staking_kpi_met=False) is False
+
+    def test_kpi_met_review_disabled(self) -> None:
+        """When KPI met but position review disabled, should not review."""
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        round_.context.params.enable_position_review = False
+        assert round_.should_review_bets(is_staking_kpi_met=True) is False
