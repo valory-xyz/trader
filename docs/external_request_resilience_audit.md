@@ -228,13 +228,12 @@ No funds at risk (tx never reaches chain), but the agent is stuck retrying until
 
 ### Bugs found
 
-**BUG 8 -- CRITICAL: httpx Client in py_clob_client has no timeout**
-- The module-level `httpx.Client(http2=True)` has no timeout configured.
-- If the Polymarket CLOB API becomes unresponsive (accepts connection but never responds), the single worker thread blocks **indefinitely**.
-- All subsequent Polymarket operations (market fetches, position queries, bet placement) queue behind it.
-- The agent continues its FSM but cannot interact with Polymarket at all.
-- **Recovery**: Only agent restart clears the blocked thread.
-- **Constraint**: `py-clob-client==0.34.5` is a pinned third-party dependency -- we cannot patch the library internals directly. Fix must be a workaround at the connection layer.
+**BUG 8 -- LOW: httpx Client in py_clob_client — default timeout is adequate**
+- The module-level `httpx.Client(http2=True)` does NOT explicitly set a timeout.
+- However, httpx 0.28.1 (the installed version) **defaults to `Timeout(timeout=5.0)`** — 5 seconds for connect, read, write, and pool.
+- If the API is down (connection refused, DNS failure), httpx throws `httpx.ConnectError` immediately.
+- If the API is half-open (accepts connection, never responds), the 5s read timeout fires.
+- **Not a real risk.** The only scenario where this matters is if someone pins httpx to an old version (<0.11) where the default was no timeout.
 
 ---
 
@@ -269,10 +268,12 @@ No funds at risk (tx never reaches chain), but the agent is stuck retrying until
 
 ### Bugs found
 
-**BUG 9 -- CRITICAL: RelayClient requests have no timeout**
-- The internal `requests.request()` call in py_builder_relayer_client has no `timeout=` parameter.
-- Same impact as BUG 8: single worker thread blocks indefinitely, all Polymarket operations stall.
-- **Constraint**: `py-builder-relayer-client==0.0.1` is a pinned third-party dependency -- we cannot patch the library internals directly. Fix must be a workaround at the connection layer.
+**BUG 9 -- MEDIUM: RelayClient requests.request has no timeout**
+- The internal `requests.request()` call in `py_builder_relayer_client/http_helpers/helpers.py:13` has no `timeout=` parameter.
+- Unlike httpx, the `requests` library has **no default timeout** — `requests.request()` without `timeout=` will wait forever.
+- If the API is fully down (connection refused, DNS failure), `requests` throws `ConnectionError` immediately — no hang.
+- **The risk is half-open connections only**: load balancer accepts the TCP connection but the backend never responds. In this case, the single worker thread blocks indefinitely and all Polymarket operations stall. This scenario is uncommon but real (e.g., during partial infrastructure failures).
+- **Constraint**: `py-builder-relayer-client==0.0.1` is a pinned third-party dependency — we cannot patch the library internals directly. Workaround: wrap RelayClient calls with `future.result(timeout=60)` at the connection layer.
 
 ---
 
@@ -787,8 +788,8 @@ This uses the standard `ApiSpecs`/`get_http_response` framework path. Failure ->
 
 | # | Severity | Location | Bug |
 |---|----------|----------|-----|
-| 8 | **CRITICAL** | py_clob_client (ClobClient) | httpx Client has no timeout -- can block worker thread indefinitely |
-| 9 | **CRITICAL** | py_builder_relayer_client (RelayClient) | requests.request has no timeout -- can block worker thread indefinitely |
+| 9 | **MEDIUM** | py_builder_relayer_client (RelayClient) | `requests.request` has no timeout -- can block worker thread on half-open connections |
+| 8 | **LOW** | py_clob_client (ClobClient) | httpx Client has no explicit timeout, but httpx 0.28.1 defaults to 5s -- adequate |
 | 1 | **HIGH** | `market_manager_abci/models.py:67` | `Subgraph.process_response` crashes with `TypeError` when error message is `None` (`in` on `NoneType`) |
 | 2 | **HIGH** | `market_manager_abci/graph_tooling/requests.py:298-313` | `fetch_claim_params` uses direct dict indexing -- `KeyError` crashes generator |
 | 5 | **HIGH** | `connections/polymarket_client/connection.py:443` | `JSONDecodeError` bypasses retry logic in `_request_with_retries` and `_fetch_market_by_slug` (BP1) |
@@ -821,8 +822,8 @@ This uses the standard `ApiSpecs`/`get_http_response` framework path. Failure ->
 
 | Severity | Service | Failure Impact | FSM Outcome |
 |----------|---------|----------------|-------------|
-| **CRITICAL** | Polymarket Relayer (#5) | Trades cannot execute; worker thread blocks indefinitely | Round retries until timeout; period ends without trading. Agent restart required if thread hangs. |
-| **CRITICAL** | CLOB API (#4) | Bet placement blocked; worker thread blocks indefinitely | Same as above |
+| **MEDIUM** | Polymarket Relayer (#5) | Trades cannot execute; half-open connections block worker thread | Round retries until timeout; period ends without trading. Half-open hang requires restart (rare). |
+| **LOW** | CLOB API (#4) | Bet placement blocked; httpx default 5s timeout adequate | httpx 0.28.1 defaults to `Timeout(timeout=5.0)`. Down API throws immediately; half-open times out in 5s. |
 | **HIGH** | Gamma API (#2) | No new markets discovered | `FETCH_ERROR` -> `FailedMarketManagerRound` -> `ImpossibleRound` |
 | **HIGH** | Open Markets Subgraph (#14) | No Omen markets discovered | Same as Gamma API |
 | **HIGH** | Agents Subgraphs (#10, #11) | Performance + prediction history unavailable | `Event.FAIL` -> stale data preserved; UI endpoints fall back to stored data or return 404/500 |
@@ -868,8 +869,8 @@ This uses the standard `ApiSpecs`/`get_http_response` framework path. Failure ->
 
 | # | Trigger | Mechanism | Duration | Recovery |
 |---|---------|-----------|----------|----------|
-| B1 | **CLOB API unresponsive** (BUG 8) | httpx Client blocks worker thread forever | **Indefinite** | Agent restart only |
-| B2 | **Relayer API unresponsive** (BUG 9) | requests.request blocks worker thread forever | **Indefinite** | Agent restart only |
+| B1 | **Relayer API half-open connection** (BUG 9) | requests.request with no timeout blocks worker thread on half-open connection (load balancer accepts TCP but backend never responds) | **Indefinite** (half-open only) | Agent restart only. Note: fully down API throws `ConnectionError` immediately. |
+| B2 | ~~CLOB API unresponsive~~ (BUG 8) | httpx 0.28.1 defaults to `Timeout(timeout=5.0)` — 5s for connect, read, write, pool. Not a real stuck risk. | **5s max** | Automatic |
 | B3 | **Gamma API returning 5xx on all categories** (BUG 6) | 11 categories x 60s retry ceiling in single thread | **11+ minutes** | Automatic (retries exhaust) |
 | B4 | **Background executor blocks on RPC** | `_ensure_sufficient_funds_for_x402_payments()` runs in `ThreadPoolExecutor(max_workers=1)`. `w3.eth.wait_for_transaction_receipt(timeout=60)` blocks the thread. Second submission queues behind. | **60-120s per blocked call** | Executor is not on the FSM path -- agent trading continues. But `/funds-status` HTTP endpoint blocks until executor is free. |
 | B5 | **Subgraph retry backoff exceeds round timeout** (BUG 4) | `_handle_response()` sleeps with exponential backoff: `backoff_factor^retries_attempted`. 5 retries = 1+2+4+8+16 = 31s total. Round timeout is 30s. | **31s worst case** | The sleep is `yield from self.sleep()`, which is cooperative. The round timeout fires via Tendermint. The timeout event transitions the FSM, but the sleeping behaviour continues until it yields -- it just becomes irrelevant because the round has moved on. |
@@ -879,7 +880,7 @@ This uses the standard `ApiSpecs`/`get_http_response` framework path. Failure ->
 | B9 | **`FailedMarketManagerRound` -> `ResetAndPauseRound` loop** | If market fetching fails every period: fail -> reset -> fetch -> fail again. | **Indefinite** (until API recovers) | By design -- agent keeps retrying each period. `ResetAndPauseRound` has its own timeout; if it also fails: `FinishedResetAndPauseErrorRound` -> `ResetAndPauseRound` (loops). |
 | B10 | **`ImpossibleRound` in decision_maker** | Some error transitions go to `ImpossibleRound` (degenerate terminal). Reachable from `SamplingRound`, `BlacklistingRound`, `BenchmarkingRandomnessRound`, etc. via `FETCH_ERROR` or `NONE` events. | **Period stuck** | Period timeout eventually fires and resets. |
 
-**Net assessment:** B1 and B2 are the most severe -- an unresponsive Polymarket CLOB API or Relayer can permanently block the connection's single worker thread, requiring a full agent restart. This is not a hypothetical -- API outages and network partitions occur regularly. B9 is the most common under sustained outage -- agent loops without trading.
+**Net assessment:** B1 (Relayer half-open connection) is the only indefinite-hang risk, but requires the rare condition of a half-open TCP connection. B3 (Gamma API blocking 11+ minutes) is the most impactful in practice — it stalls the single worker thread for the entire retry budget. B9 is the most common under sustained outage — agent loops without trading.
 
 ---
 
@@ -915,14 +916,14 @@ This uses the standard `ApiSpecs`/`get_http_response` framework path. Failure ->
 | CoinGecko (handler) | 0 | N/A | 10s | 10s |
 | LiFi (behaviour) | 0 | N/A | Framework default | Framework default |
 | LiFi (handler) | 0 | N/A | 30s | 30s |
-| ClobClient (library) | 0 | N/A | **None (infinite)** | **None** |
-| RelayClient (library) | 0 | N/A | **None (infinite)** | **None** |
+| ClobClient (library) | 0 | N/A | **5s** (httpx default) | **5s** (httpx 0.28.1 default `Timeout(timeout=5.0)`) |
+| RelayClient (library) | 0 | N/A | **None (infinite)** | **None** (requests has no default timeout) |
 | Web3 RPC (handler) | 0 | N/A | **Default (varies)** | **Not set** |
 | Subgraph queries (direct requests) | 0 | N/A | 30s | 30s |
 | IPFS gateway (behaviour) | Unbounded | Via `wait_for_condition_with_sleep` | Round timeout | Framework default |
 | `_fetch_market_slug` (predictions helper) | 0 | N/A | 10s | 10s |
 
-**Assessment:** Wide inconsistency. Critical financial operations (bet placement via ClobClient, position redemption via RelayClient) have zero retries and no timeout, while market data queries have 3 retries with 60s blocking. The priorities are inverted.
+**Assessment:** Wide inconsistency. The RelayClient (position redemption) has zero retries and no timeout, while market data queries have 3 retries with 60s blocking. ClobClient benefits from httpx's 5s default timeout but still has zero retries.
 
 ### CC2: No circuit breaker
 
@@ -958,7 +959,7 @@ No circuit breaker pattern exists anywhere in the codebase. Under sustained API 
 | LiFi handler | requests | Yes (30s) |
 | Prediction helpers (all) | requests | Yes (30s) |
 | Gamma API (perf summary) | requests | Yes (10s) |
-| ClobClient internal | httpx | **NO** |
+| ClobClient internal | httpx | Yes (5s default) |
 | RelayClient internal | requests | **NO** |
 | Web3 HTTPProvider | urllib3 | **NO (default)** |
 
@@ -978,8 +979,6 @@ Multiple methods use `.get("data", {})` expecting a dict default, but when the A
 
 | Priority | Issue | Category | Fix complexity | Fix description |
 |----------|-------|----------|----------------|-----------------|
-| **P0** | BUG 8: ClobClient httpx has no timeout | Stuck | Medium | `py-clob-client==0.34.5` is a third-party dep -- cannot patch internally. Workarounds: (1) wrap ClobClient calls in the connection with `concurrent.futures.ThreadPoolExecutor` + `future.result(timeout=30)` to enforce a deadline, (2) set `HTTPX_DEFAULT_TIMEOUT` env var (if httpx respects it), (3) monkey-patch `httpx._client.Client.send` at connection init to inject timeout, or (4) fork/vendor the dependency. Option 1 is cleanest. |
-| **P0** | BUG 9: RelayClient requests has no timeout | Stuck | Medium | `py-builder-relayer-client==0.0.1` is a third-party dep -- cannot patch internally. Same workaround as BUG 8: wrap RelayClient calls with `future.result(timeout=60)` to enforce a deadline at the connection layer. |
 | **P0** | BUG 16: No global try-catch in handler dispatch | Crash | Low | Wrap `handler(http_msg, http_dialogue, **kwargs)` at `decision_maker_abci/handlers.py:253` in `try/except Exception` that sends HTTP 500. |
 | **P0** | BUG 5: JSONDecodeError bypasses retries and crashes connection | Crash | Low | Change `except requests.exceptions.RequestException` to `except (requests.exceptions.RequestException, ValueError)` in `_request_with_retries` and `_fetch_market_by_slug`. |
 | **P1** | BUG 1: Subgraph.process_response TypeError on None error message | Crash | Low | Add `if error_message is not None:` guard before the `in` check at `models.py:67`. |
@@ -990,6 +989,7 @@ Multiple methods use `.get("data", {})` expecting a dict default, but when the A
 | **P2** | BUG 17: _handle_get_agent_info no error handling | Crash | Low | Wrap body in try/except Exception that sends HTTP 500. |
 | **P2** | BUG 15: _estimate_gas returns False | Side-effect | Low | Change `return False` to `return None` at `handlers.py:855`. |
 | **P2** | BUG 18: _handle_chatui_prompt json.loads crash | Crash | Low | Wrap `json.loads` in try/except JSONDecodeError that sends 400 Bad Request. |
+| **P2** | BUG 9: RelayClient requests has no timeout (half-open risk) | Stuck | Medium | `py-builder-relayer-client==0.0.1` is a third-party dep. Wrap RelayClient calls with `future.result(timeout=60)` to enforce a deadline at the connection layer. |
 | **P2** | BUG 12: Synchronous requests.get blocks event loop | Stuck | Medium | Move CoinGecko fetch into the ThreadPoolExecutor, or use the framework's async HTTP path. Increase `max_workers` to 2 if sharing executor. |
 | **P2** | BUG 14: Web3 HTTPProvider no timeout | Stuck | Low | Add `request_kwargs={"timeout": 30}` to `Web3.HTTPProvider()` calls. |
 | **P2** | BUG 24/26: `{"data": null}` AttributeError guards | Crash (potential) | Low | Add `or {}` after `.get("data", {})` in `predictions_helper.py:152` and `polymarket_predictions_helper.py:136`. |
@@ -1007,5 +1007,6 @@ Multiple methods use `.get("data", {})` expecting a dict default, but when the A
 | **P4** | BUG 11: `if not price_usd` treats zero as missing | Side-effect | Low | Change to `if price_usd is None:`. |
 | **P4** | BUG 13: No max retry for accuracy fetch | Stuck | Low | Add max_retries parameter to `wait_for_condition_with_sleep` call. |
 | **P4** | BUG 20: Static file handler incomplete exception handling | Crash | Low | Broaden except clause to catch `OSError`. |
+| **P4** | BUG 8: ClobClient httpx timeout | N/A | None | httpx 0.28.1 defaults to `Timeout(timeout=5.0)`. No fix needed — default timeout is adequate. |
 | **P4** | BUG 22: json.loads outside try-except in on_send | Stuck | Low | Move `json.loads(srr_message.payload)` inside `_route_request` or add try/except in `on_send`. |
 | **P4** | C9: x402 USDC depletion | Side-effect | Low | Add monitoring/alerting for x402 balance. |
