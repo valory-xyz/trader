@@ -2504,10 +2504,9 @@ class TestFetchMarketParticipantsDataNull:
     def test_data_null_returns_none_without_attribute_error(  # type: ignore[no-untyped-def]
         self, mock_post: MagicMock
     ) -> None:
-        """{"data": null} should return None cleanly, not via AttributeError.
+        """Verify {"data": null} returns empty list cleanly, not via AttributeError.
 
-        Currently caught by broad except -- returns None but logs error.
-        After fix: .get("data", {}) or {} prevents the AttributeError entirely.
+        :param mock_post: patched requests.post
         """
         fetcher = _make_fetcher()
 

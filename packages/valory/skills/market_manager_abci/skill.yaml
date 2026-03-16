@@ -24,10 +24,10 @@ fingerprint:
   graph_tooling/queries/omen.py: bafybeihpcx4il6esnudevyifa74e3opvrl3yccaciyi5ldy4fqbheyohzu
   graph_tooling/queries/realitio.py: bafybeigasvg5iyaa5bxljytncokwvzppnqnybd4mqui5pfffirasltmkfi
   graph_tooling/queries/trades.py: bafybeialr7u7cpfauc56hjyas3nh7htw5qoa52ypgbrnhaueudwc5ahcia
-  graph_tooling/requests.py: bafybeifnl4baeszftgdo3s2l636oet65xtxf25rvybleqftscfm7rxktfe
+  graph_tooling/requests.py: bafybeid45b2yatbk5bfodtulcrr6vt44kwphhql6teqs4kxobm33m3f5ne
   graph_tooling/utils.py: bafybeigf3fq3s6y6trubrwdhfr3jizsuk4enn4yiaucycexgban2nliykm
   handlers.py: bafybeidlrg2lh3iigg4dvf6wcakeljt7r7diaw5b3hxzevm32kkav2nik4
-  models.py: bafybeibconjcoigjtvf5kiukilyjmqvbmkv4weer7eq3uwif6i3wzpeavu
+  models.py: bafybeiamsspjpvyghlu73nv6b2fk2mgzd2rev66vzsssj6o2fqqlqdliwm
   payloads.py: bafybeiduptsixzxaut2zvak3htjmhkm2jgvprlvkaiiwjjtel7w5cwhw2y
   rounds.py: bafybeigdtdskkaxkf5ov74mnvq65koajwfbm77n6dxcp273l3bxknecd3u
   states/__init__.py: bafybeiawiqqbn667kpne23y5fvq3tgo3lyd5hho44zm6zh66bplwxpqgqa
@@ -43,15 +43,15 @@ fingerprint:
   tests/test_bets.py: bafybeifyqlrr3ytasofzopik2ravi3xm745fcs4kovpbogbb2ynsig6pay
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_graph_queries.py: bafybeifrh723g6jbu2yvikz74eyfjwdbo4sz7ockecliia5zfqe5vu3ed4
-  tests/test_graph_requests.py: bafybeic4mogiz6kznaiur26em7g7ve7yyfxjrbyxedqc6767zbj3ezseay
+  tests/test_graph_requests.py: bafybeieffwcfkafyl32b7jrqzwtctoj76cvs5vhsreg4y3bs3xxuvh3vga
   tests/test_handlers.py: bafybeibcgtc22bzdzh33zqkxux52rd2vdmui4tvaaztbpxgoioxo632wra
-  tests/test_models.py: bafybeifxc2djons6o7ibaxukvcnw2kuavws3sxlneavd4bcefqu6kele7m
+  tests/test_models.py: bafybeih6a3uwvfthzkxhvoeae4rklw6ud632nzoi3xqrmvrsdiottdrrs4
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeiaiozpmj6sqywzc3xf7zvadaupchtquaeuv3lq2us5svrlvmmvmw4
   tests/test_utils.py: bafybeibnbj5p3aghklkn7t2edhwgssyyjmwtckgbieqssztlpc24hzhuny
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeievoazw2czsftdemm42qs56ozw27r244enbstxwjrdbvx5uriacce
+- valory/polymarket_client:0.1.0:bafybeia6pz7glnlnvpaju4wwjp7ohsovc6vosymttgy6rghg4iqqoakz5y
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy

@@ -2337,10 +2337,9 @@ class TestFetchTraderAgentBetsDataNull:
     def test_data_null_returns_none_without_attribute_error(  # type: ignore[no-untyped-def]
         self, mock_post: MagicMock
     ) -> None:
-        """{"data": null} should return None cleanly, not via AttributeError.
+        """Verify {"data": null} returns None cleanly, not via AttributeError.
 
-        Currently caught by broad except -- not a crash, but indicates missing guard.
-        After fix: .get("data", {}) or {} prevents the AttributeError entirely.
+        :param mock_post: patched requests.post
         """
         fetcher = _make_fetcher()
 
@@ -2374,9 +2373,9 @@ class TestFetchBetFromSubgraphWrongBetReturned:
     def test_nonexistent_bet_returns_first_bet_not_none(  # type: ignore[no-untyped-def]
         self, mock_post: MagicMock
     ) -> None:
-        """Requesting a nonexistent bet_id returns the first bet (wrong data).
+        """Verify nonexistent bet_id returns None.
 
-        After fix: should return None when the requested bet_id is not found.
+        :param mock_post: patched requests.post
         """
         fetcher = _make_fetcher()
 
